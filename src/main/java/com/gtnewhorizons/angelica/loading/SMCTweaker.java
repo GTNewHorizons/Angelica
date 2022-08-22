@@ -1,55 +1,37 @@
 package com.gtnewhorizons.angelica.loading;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import net.minecraft.launchwrapper.ITweaker;
-import net.minecraft.launchwrapper.Launch;
-import net.minecraft.launchwrapper.LaunchClassLoader;
+import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import java.util.Map;
 
-public class SMCTweaker implements ITweaker {
-    public List<String> args;
-    public File gameDir;
-    public File assetsDir;
-    public String version;
+@IFMLLoadingPlugin.TransformerExclusions({
+    "com.gtnewhorizons.angelica",
+    "com.gtnewhorizons.angelica.loading",
+    "com.gtnewhorizons.angelica.transform"
+})
+@IFMLLoadingPlugin.MCVersion("1.7.10")
+public class SMCTweaker implements IFMLLoadingPlugin {
+    public SMCTweaker() {}
 
     @Override
-    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String version) {
-        this.args = args;
-        this.gameDir = gameDir;
-        this.assetsDir = assetsDir;
-        this.version = version;
+    public String[] getASMTransformerClass() {
+        return new String[] {"com.gtnewhorizons.angelica.transform.SMCClassTransformer"};
     }
 
     @Override
-    public void injectIntoClassLoader(LaunchClassLoader launchClassLoader) {
-        launchClassLoader.addTransformerExclusion("shadersmodcore.loading.");
-        launchClassLoader.addTransformerExclusion("shadersmodcore.transform.");
-        launchClassLoader.registerTransformer("shadersmodcore.transform.SMCClassTransformer");
+    public String getModContainerClass() {
+        return null;
     }
 
     @Override
-    public String[] getLaunchArguments() {
-        ArrayList argumentList = (ArrayList) Launch.blackboard.get("ArgumentList");
-        if (argumentList.isEmpty()) {
-            List<String> argsList = new ArrayList();
-            if (gameDir != null) {
-                argumentList.add("--gameDir");
-                argumentList.add(gameDir.getPath());
-            }
-            if (assetsDir != null) {
-                argumentList.add("--assetsDir");
-                argumentList.add(assetsDir.getPath());
-            }
-            argumentList.add("--version");
-            argumentList.add(version);
-            argumentList.addAll(args);
-        }
-        return new String[0];
+    public String getSetupClass() {
+        return null;
     }
 
     @Override
-    public String getLaunchTarget() {
-        return "net.minecraft.client.main.Main";
+    public void injectData(Map<String, Object> map) {}
+
+    @Override
+    public String getAccessTransformerClass() {
+        return null;
     }
 }
