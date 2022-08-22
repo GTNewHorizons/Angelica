@@ -5,15 +5,13 @@ import net.minecraft.client.resources.IResourceManager;
 
 public class DefaultTexture extends AbstractTexture {
 
-	public DefaultTexture()
-	{
-		loadTexture(null);
-	}
+    public DefaultTexture() {
+        loadTexture(null);
+    }
 
-	@Override
-	public void loadTexture(IResourceManager resourcemanager)
-	{
-		int[] aint = ShadersTex.createAIntImage(1,0xFFFFFFFF);
-		ShadersTex.setupTexture(this.getMultiTexID(), aint, 1, 1, false, false);
-	}
+    @Override
+    public void loadTexture(IResourceManager resourcemanager) {
+        int[] aint = ShadersTex.createAIntImage(1, 0xFFFFFFFF);
+        ShadersTex.setupTexture(this.getMultiTexID(), aint, 1, 1, false, false);
+    }
 }
