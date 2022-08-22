@@ -7,14 +7,11 @@ public abstract class AbstractTexture implements ITextureObject {
     public int glTextureId = -1;
     public MultiTexID multiTex;
 
-    public int getGlTextureId()
-    {
+    public int getGlTextureId() {
         return 0;
     }
 
-    public MultiTexID getMultiTexID()
-    {
+    public MultiTexID getMultiTexID() {
         return null;
     }
-
 }
