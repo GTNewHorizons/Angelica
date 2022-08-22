@@ -21,30 +21,6 @@ diff U3 net/minecraft/client/model/ModelRenderer.java net/minecraft/client/model
 +    }
  }
 \ No newline at end of file
-diff U3 net/minecraft/client/renderer/EntityRenderer.java net/minecraft/client/renderer/EntityRenderer.java
---- net/minecraft/client/renderer/EntityRenderer.java	Sun Jul 06 20:27:14 2014
-+++ net/minecraft/client/renderer/EntityRenderer.java	Sun Jul 06 20:40:40 2014
-@@ -756,7 +756,7 @@
-     /**
-      * Render player hand
-      */
--    private void renderHand(float p_78476_1_, int p_78476_2_)
-+    public void renderHand(float p_78476_1_, int p_78476_2_)
-     {
-         if (this.debugViewDirection <= 0)
-         {
-diff U3 net/minecraft/client/renderer/RenderGlobal.java net/minecraft/client/renderer/RenderGlobal.java
---- net/minecraft/client/renderer/RenderGlobal.java	Sun Jul 06 20:27:14 2014
-+++ net/minecraft/client/renderer/RenderGlobal.java	Sat Jul 12 03:14:01 2014
-@@ -96,7 +96,7 @@
-     private final TextureManager renderEngine;
-     private List worldRenderersToUpdate = new ArrayList();
-     private WorldRenderer[] sortedWorldRenderers;
--    private WorldRenderer[] worldRenderers;
-+    public WorldRenderer[] worldRenderers;
-     private int renderChunksWide;
-     private int renderChunksTall;
-     private int renderChunksDeep;
 diff U3 net/minecraft/client/renderer/Tessellator.java net/minecraft/client/renderer/Tessellator.java
 --- net/minecraft/client/renderer/Tessellator.java	Sun Jul 06 20:27:14 2014
 +++ net/minecraft/client/renderer/Tessellator.java	Sun Jul 06 21:01:03 2014
