@@ -9,7 +9,6 @@ public class DefaultTexture extends AbstractTexture {
         loadTexture(null);
     }
 
-    @Override
     public void loadTexture(IResourceManager resourcemanager) {
         int[] aint = ShadersTex.createAIntImage(1, 0xFFFFFFFF);
         ShadersTex.setupTexture(this.getMultiTexID(), aint, 1, 1, false, false);
