@@ -7,5 +7,4 @@ public interface IShaderPack {
     void close();
 
     InputStream getResourceAsStream(String resName);
-
 }
