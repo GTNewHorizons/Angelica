@@ -1,0 +1,11 @@
+
+configurations {
+    compileStubs
+}
+
+sourceSets {
+    compileStubsStubs
+    compileStubs {
+        compileClasspath += configurations.compileStubs
+    }
+}

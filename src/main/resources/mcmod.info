@@ -1,0 +1,17 @@
+[
+{
+  "modid": "${modId}",
+  "name": "${modName}",
+  "description": "The little angle that supports shaders while saving your FPS from a certain death",
+  "version": "2.3.18",
+  "mcversion": "1.7.10",
+  "url": "",
+  "updateUrl": "",
+  "authors": ["karyonix","sonic ether","id_miner","daxnitro"],
+  "credits": "Based on daxnitro's GLSL Shaders Mod.",
+  "logoFile": "",
+  "screenshots": [],
+  "parent":"",
+  "dependencies": []
+}
+]
