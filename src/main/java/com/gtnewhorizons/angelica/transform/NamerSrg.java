@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
-import static shadersmodcore.transform.Names.*;
+import static com.gtnewhorizons.angelica.transform.Names.*;
 
 public class NamerSrg extends Namer {
 
