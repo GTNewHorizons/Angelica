@@ -8,13 +8,11 @@ public class TextureMap extends AbstractTexture {
     public int atlasWidth;
     public int atlasHeight;
 
-    public int getTextureType()
-    {
+    public int getTextureType() {
         return 0;
     }
 
     public ResourceLocation completeResourceLocation(ResourceLocation resourceLocation, int i) {
         return null;
     }
-
 }

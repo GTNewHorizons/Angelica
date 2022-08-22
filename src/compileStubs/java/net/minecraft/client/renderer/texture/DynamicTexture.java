@@ -9,6 +9,5 @@ public class DynamicTexture extends AbstractTexture {
         return null;
     }
 
-    public void updateDynamicTexture() {
-    }
+    public void updateDynamicTexture() {}
 }
