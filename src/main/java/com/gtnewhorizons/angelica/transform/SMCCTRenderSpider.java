@@ -64,7 +64,7 @@ public class SMCCTRenderSpider implements IClassTransformer {
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             mv.visitMethodInsn(opcode, owner, name, desc);
             if (Names.equals("org/lwjgl/opengl/GL11", "glColor4f", "(FFFF)V", owner, name, desc)) {
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "beginSpiderEyes", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginSpiderEyes", "()V");
             }
         }
     }

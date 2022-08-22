@@ -60,7 +60,7 @@ public class SMCCTTextureManager implements IClassTransformer {
             if (Names.iTextureObject_getGlTextureId.equals(owner, name, desc)) {
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "bindTexture",
                         "(" + Names.iTextureObject_.desc + ")V");
                 return;
@@ -81,7 +81,7 @@ public class SMCCTTextureManager implements IClassTransformer {
             if (Names.iTextureObject_getGlTextureId.equals(owner, name, desc)) {
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "deleteMultiTex",
                         "(" + Names.iTextureObject_.desc + ")I");
                 return;

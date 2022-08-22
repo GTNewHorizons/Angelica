@@ -55,14 +55,14 @@ public class SMCCTTextureAbstract implements IClassTransformer {
                 endFields = true;
                 FieldVisitor fv;
                 // multiTex
-                fv = cv.visitField(ACC_PUBLIC, "multiTex", "Lshadersmodcore/client/MultiTexID;", null, null);
+                fv = cv.visitField(ACC_PUBLIC, "multiTex", "Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
                 fv.visitEnd();
             }
             // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.abstractTexture_deleteGlTexture.equalsNameDesc(name, desc)) {
                 // SMCLog.finer("  patching method %s.%s%s = %s%s",classname,name,desc,nameM,descM);
                 return new MVdeleteGlTexture(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (name.equals("getMultiTexID") && desc.equals("()Lshadersmodcore/client/MultiTexID;")) {
+            } else if (name.equals("getMultiTexID") && desc.equals("()Lcom/gtnewhorizons/angelica/client/MultiTexID;")) {
                 return null;
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -72,14 +72,14 @@ public class SMCCTTextureAbstract implements IClassTransformer {
         public void visitEnd() {
             MethodVisitor mv;
             // getMultiTexID
-            mv = cv.visitMethod(ACC_PUBLIC, "getMultiTexID", "()Lshadersmodcore/client/MultiTexID;", null, null);
+            mv = cv.visitMethod(ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
             mv.visitCode();
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/ShadersTex",
+                    "com/gtnewhorizons/angelica/client/ShadersTex",
                     "getMultiTexID",
-                    "(" + Names.abstractTexture_.desc + ")Lshadersmodcore/client/MultiTexID;");
+                    "(" + Names.abstractTexture_.desc + ")Lcom/gtnewhorizons/angelica/client/MultiTexID;");
             mv.visitInsn(ARETURN);
             mv.visitMaxs(1, 1);
             mv.visitEnd();
@@ -99,7 +99,7 @@ public class SMCCTTextureAbstract implements IClassTransformer {
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/ShadersTex",
+                    "com/gtnewhorizons/angelica/client/ShadersTex",
                     "deleteTextures",
                     "(" + Names.abstractTexture_.desc + ")V");
         }

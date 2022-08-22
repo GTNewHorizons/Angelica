@@ -75,7 +75,7 @@ public class SMCCTMinecraft implements IClassTransformer {
                         mv.visitVarInsn(ALOAD, 0);
                         mv.visitMethodInsn(
                                 INVOKESTATIC,
-                                "shadersmodcore/client/Shaders",
+                                "com/gtnewhorizons/angelica/client/Shaders",
                                 "startup",
                                 "(" + Names.minecraft_.desc + ")V");
                         // SMCLog.finest("    startup");

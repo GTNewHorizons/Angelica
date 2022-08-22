@@ -92,7 +92,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
             mv.visitVarInsn(ILOAD, 4);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/Shaders",
+                    "com/gtnewhorizons/angelica/client/Shaders",
                     "pushEntity",
                     "(" + Names.renderBlocks_.desc + Names.block_.desc + "III)V");
             // SMCLog.info("    pushEntity");
@@ -102,7 +102,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
         @Override
         public void visitInsn(int opcode) {
             if (opcode == Opcodes.IRETURN) {
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "popEntity", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
                 // SMCLog.info("    popEntity");
                 ++nPatch;
             }
@@ -131,7 +131,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
                 ++state;
                 mv.visitVarInsn(ALOAD, var);
                 mv.visitMethodInsn(
-                        INVOKESTATIC, "shadersmodcore/client/Shaders", "pushEntity", "(" + Names.block_.desc + ")V");
+                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "pushEntity", "(" + Names.block_.desc + ")V");
             }
         }
 
@@ -152,7 +152,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
                 case 3:
                     if (Names.tessellator_addTranslation.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "popEntity", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
                     }
                     break;
             }
@@ -168,7 +168,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
             mv.visitVarInsn(ILOAD, 4);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/Shaders",
+                    "com/gtnewhorizons/angelica/client/Shaders",
                     "pushEntity",
                     "(" + Names.renderBlocks_.desc + Names.block_.desc + "III)V");
             // SMCLog.info("    pushEntity");
@@ -178,7 +178,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
         @Override
         public void visitInsn(int opcode) {
             if (opcode == Opcodes.IRETURN) {
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "popEntity", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
                 // SMCLog.info("    popEntity");
                 ++nPatch;
             }
@@ -260,7 +260,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
                 }
                 if (match2 != 0) {
                     String fieldName = fieldsBlockLightLevel[match2];
-                    mn.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", fieldName, "F");
+                    mn.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
                     // SMCLog.info("    %s", fieldName);
                     ++nPatch;
                     return;
@@ -291,7 +291,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
             if (match1 != 0 && state < 3) {
                 ++state;
                 String fieldName = fieldsBlockLightLevel[match1];
-                mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", fieldName, "F");
+                mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
                 // SMCLog.info("    %s", fieldName);
                 ++nPatch;
                 return;
@@ -332,7 +332,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
             }
             if (match1 != 0 && state == 1) {
                 String fieldName = fieldsBlockLightLevel[match1];
-                mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", fieldName, "F");
+                mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
                 // SMCLog.info("    %s", fieldName);
                 ++nPatch;
                 return;

@@ -67,7 +67,7 @@ public class SMCCTTextureLayered implements IClassTransformer {
                     Names.layeredTexture_layeredTextureNames.desc);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/ShadersTex",
+                    "com/gtnewhorizons/angelica/client/ShadersTex",
                     "loadLayeredTexture",
                     "(" + Names.layeredTexture_.desc + Names.iResourceManager_.desc + "Ljava/util/List;)V");
             mv.visitInsn(RETURN);

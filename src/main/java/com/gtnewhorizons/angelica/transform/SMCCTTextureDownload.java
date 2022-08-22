@@ -58,7 +58,7 @@ public class SMCCTTextureDownload implements IClassTransformer {
         public void visitEnd() {
             MethodVisitor mv;
             // getMultiTexID
-            mv = cv.visitMethod(ACC_PUBLIC, "getMultiTexID", "()Lshadersmodcore/client/MultiTexID;", null, null);
+            mv = cv.visitMethod(ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
             mv.visitCode();
             Label l0 = new Label();
             mv.visitLabel(l0);
@@ -84,7 +84,7 @@ public class SMCCTTextureDownload implements IClassTransformer {
                     INVOKESPECIAL,
                     Names.abstractTexture_.clas,
                     "getMultiTexID",
-                    "()Lshadersmodcore/client/MultiTexID;");
+                    "()Lcom/gtnewhorizons/angelica/client/MultiTexID;");
             mv.visitInsn(ARETURN);
             Label l3 = new Label();
             mv.visitLabel(l3);

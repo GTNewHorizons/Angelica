@@ -112,7 +112,7 @@ public class SMCCTTextureMap implements IClassTransformer {
                 SMCLog.finest("    %s", "loadRes");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadResource",
                         "(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")"
                                 + Names.iResource_.desc);
@@ -126,7 +126,7 @@ public class SMCCTTextureMap implements IClassTransformer {
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "allocateTextureMap",
                         "(IIIIF" + Names.stitcher_.desc + Names.textureMap_.desc + ")V");
                 state = 1;
@@ -135,13 +135,13 @@ public class SMCCTTextureMap implements IClassTransformer {
                 SMCLog.finest("    %s", "setSprite setIconName");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "setSprite",
                         "(" + Names.textureAtlasSpri_.desc + ")" + Names.textureAtlasSpri_.desc);
                 mv.visitMethodInsn(opcode, owner, name, desc);
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "setIconName",
                         "(Ljava/lang/String;)Ljava/lang/String;");
                 state = 0;
@@ -149,7 +149,7 @@ public class SMCCTTextureMap implements IClassTransformer {
             } else if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
                 SMCLog.finest("    %s", "uploadTexSubForLoadAtlas");
                 mv.visitMethodInsn(
-                        INVOKESTATIC, "shadersmodcore/client/ShadersTex", "uploadTexSubForLoadAtlas", "([[IIIIIZZ)V");
+                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "uploadTexSubForLoadAtlas", "([[IIIIIZZ)V");
                 return;
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
@@ -166,9 +166,9 @@ public class SMCCTTextureMap implements IClassTransformer {
             mv.visitCode();
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
-                    INVOKEVIRTUAL, Names.textureMap_.clas, "getMultiTexID", "()Lshadersmodcore/client/MultiTexID;");
+                    INVOKEVIRTUAL, Names.textureMap_.clas, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;");
             mv.visitFieldInsn(
-                    PUTSTATIC, "shadersmodcore/client/ShadersTex", "updatingTex", "Lshadersmodcore/client/MultiTexID;");
+                    PUTSTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "updatingTex", "Lcom/gtnewhorizons/angelica/client/MultiTexID;");
         }
 
         @Override
@@ -177,9 +177,9 @@ public class SMCCTTextureMap implements IClassTransformer {
                 mv.visitInsn(ACONST_NULL);
                 mv.visitFieldInsn(
                         PUTSTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "updatingTex",
-                        "Lshadersmodcore/client/MultiTexID;");
+                        "Lcom/gtnewhorizons/angelica/client/MultiTexID;");
             }
             mv.visitInsn(opcode);
         }

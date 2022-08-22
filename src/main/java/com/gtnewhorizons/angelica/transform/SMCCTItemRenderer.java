@@ -69,7 +69,7 @@ public class SMCCTItemRenderer implements IClassTransformer {
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
             if (opcode == PUTFIELD && Names.itemRenderer_itemToRender.equals(owner, name, desc)) {
                 mv.visitInsn(DUP);
-                mv.visitFieldInsn(PUTSTATIC, "shadersmodcore/client/Shaders", "itemToRender", Names.itemStack_.desc);
+                mv.visitFieldInsn(PUTSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "itemToRender", Names.itemStack_.desc);
             }
             mv.visitFieldInsn(opcode, owner, name, desc);
         }

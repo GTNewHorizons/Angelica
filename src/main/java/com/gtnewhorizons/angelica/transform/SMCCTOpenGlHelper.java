@@ -74,7 +74,7 @@ public class SMCCTOpenGlHelper implements IClassTransformer {
         public void visitCode() {
             mv.visitCode();
             mv.visitVarInsn(ILOAD, 0);
-            mv.visitFieldInsn(PUTSTATIC, "shadersmodcore/client/Shaders", "activeTexUnit", "I");
+            mv.visitFieldInsn(PUTSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "activeTexUnit", "I");
             SMCLog.finest("    set activeTexUnit");
         }
     }

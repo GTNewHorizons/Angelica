@@ -365,7 +365,7 @@ public class SMCCTTessellator implements IClassTransformer {
             mv.visitLineNumber(185, l0);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
-                    INVOKESTATIC, "shadersmodcore/client/ShadersTess", "draw", "(" + Names.tessellator_.desc + ")I");
+                    INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTess", "draw", "(" + Names.tessellator_.desc + ")I");
             mv.visitInsn(IRETURN);
             Label l1 = new Label();
             mv.visitLabel(l1);
@@ -405,7 +405,7 @@ public class SMCCTTessellator implements IClassTransformer {
             mv.visitVarInsn(DLOAD, 5);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/ShadersTess",
+                    "com/gtnewhorizons/angelica/client/ShadersTess",
                     "addVertex",
                     "(" + Names.tessellator_.desc + "DDD)V");
             Label l1 = new Label();

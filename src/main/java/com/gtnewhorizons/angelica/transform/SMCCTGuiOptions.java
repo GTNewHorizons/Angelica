@@ -154,7 +154,7 @@ public class SMCCTGuiOptions implements IClassTransformer {
                     Names.gameSettings_saveOptions.desc);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, Names.guiOptions_mc.clas, Names.guiOptions_mc.name, Names.guiOptions_mc.desc);
-            mv.visitTypeInsn(NEW, "shadersmodcore/client/GuiShaders");
+            mv.visitTypeInsn(NEW, "com/gtnewhorizons/angelica/client/GuiShaders");
             mv.visitInsn(DUP);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, 0);
@@ -165,7 +165,7 @@ public class SMCCTGuiOptions implements IClassTransformer {
                     Names.guiOptions_options.desc);
             mv.visitMethodInsn(
                     INVOKESPECIAL,
-                    "shadersmodcore/client/GuiShaders",
+                    "com/gtnewhorizons/angelica/client/GuiShaders",
                     "<init>",
                     "(" + Names.guiScreen_.desc + Names.gameSettings_.desc + ")V");
             mv.visitMethodInsn(

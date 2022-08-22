@@ -39,7 +39,7 @@ public class SMCCTTextureObject implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
-            if (name.equals("getMultiTexID") && desc.equals("()Lshadersmodcore/client/MultiTexID;")) {
+            if (name.equals("getMultiTexID") && desc.equals("()Lcom/gtnewhorizons/angelica/client/MultiTexID;")) {
                 return null;
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -50,7 +50,7 @@ public class SMCCTTextureObject implements IClassTransformer {
             MethodVisitor mv;
             // getMultiTexID
             mv = cv.visitMethod(
-                    ACC_PUBLIC + ACC_ABSTRACT, "getMultiTexID", "()Lshadersmodcore/client/MultiTexID;", null, null);
+                    ACC_PUBLIC + ACC_ABSTRACT, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
             mv.visitEnd();
             // end
             cv.visitEnd();

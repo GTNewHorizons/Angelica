@@ -71,7 +71,7 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
         public void visitCode() {
             // SMCLog.info("    insert code");
             mv.visitCode();
-            mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", "useEntityHurtFlash", "Z");
+            mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "useEntityHurtFlash", "Z");
             Label label1 = new Label();
             mv.visitJumpInsn(IFEQ, label1);
             mv.visitVarInsn(ALOAD, 1);
@@ -115,7 +115,7 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
                     Names.rendererLivingE_getColorMultiplier.clas,
                     Names.rendererLivingE_getColorMultiplier.name,
                     Names.rendererLivingE_getColorMultiplier.desc);
-            mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "setEntityHurtFlash", "(II)V");
+            mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setEntityHurtFlash", "(II)V");
             mv.visitLabel(label1);
             mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
             // SMCLog.info("    end insert");
@@ -160,9 +160,9 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
             if (opcode == INVOKEVIRTUAL) {
                 if (Names.rendererLivingE_renderEquippedItems.equals(owner, name, desc)) {
                     // SMCLog.info("    renderEquippedItems");
-                    mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "resetEntityHurtFlash", "()V");
+                    mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "resetEntityHurtFlash", "()V");
                     mv.visitMethodInsn(opcode, owner, name, desc);
-                    mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", "useEntityHurtFlash", "Z");
+                    mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "useEntityHurtFlash", "Z");
                     labelEndVH = new Label();
                     mv.visitJumpInsn(IFNE, labelEndVH);
                     state = 1;
@@ -176,10 +176,10 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
                 if (Names.equals("org/lwjgl/opengl/GL11", "glDepthFunc", "(I)V", owner, name, desc)) {
                     // SMCLog.info("    glDepthFunc");
                     if (state == 3) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "beginLivingDamage", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLivingDamage", "()V");
                         ++state;
                     } else if (state == 4) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "endLivingDamage", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endLivingDamage", "()V");
                         ++state;
                     }
                 } else if (Names.openGlHelper_setActiveTexture.equals(owner, name, desc)) {
@@ -187,12 +187,12 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
                     if (state == 1) {
                         ++state;
                     } else if (state == 2) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "disableLightmap", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableLightmap", "()V");
                         ++state;
                     } else if (state == 5) {
                         ++state;
                     } else if (state == 6) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "enableLightmap", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableLightmap", "()V");
                         ++state;
                     }
                 }
@@ -227,10 +227,10 @@ public class SMCCTRendererLivingEntity implements IClassTransformer {
                 pushedInt = 0;
                 if (opcode == INVOKESTATIC && owner.equals("org/lwjgl/opengl/GL11") && desc.equals("(I)V")) {
                     if (name.equals("glDisable")) {
-                        owner = "shadersmodcore/client/Shaders";
+                        owner = "com/gtnewhorizons/angelica/client/Shaders";
                         name = "sglDisableT2D";
                     } else if (name.equals("glEnable")) {
-                        owner = "shadersmodcore/client/Shaders";
+                        owner = "com/gtnewhorizons/angelica/client/Shaders";
                         name = "sglEnableT2D";
                     }
                 }

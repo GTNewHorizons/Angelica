@@ -55,7 +55,7 @@ public class SMCCTBlock implements IClassTransformer {
         public void visitLdcInsn(Object cst) {
             if (cst instanceof Float) {
                 if (((Float) cst).floatValue() == 0.2f) {
-                    mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", "blockAoLight", "F");
+                    mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "blockAoLight", "F");
                     SMCLog.info("   blockAoLight");
                     return;
                 }

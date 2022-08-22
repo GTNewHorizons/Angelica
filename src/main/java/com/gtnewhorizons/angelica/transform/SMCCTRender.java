@@ -58,7 +58,7 @@ public class SMCCTRender implements IClassTransformer {
         @Override
         public void visitCode() {
             mv.visitCode();
-            mv.visitFieldInsn(GETSTATIC, "shadersmodcore/client/Shaders", "shouldSkipDefaultShadow", "Z");
+            mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "shouldSkipDefaultShadow", "Z");
             Label l1 = new Label();
             mv.visitJumpInsn(IFEQ, l1);
             mv.visitInsn(RETURN);

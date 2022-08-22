@@ -97,7 +97,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (state == 2) {
                 if (Names.renderManager_instance.equals(owner, name, desc)) {
                     state = 3;
-                    mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "nextEntity", "()V");
+                    mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "nextEntity", "()V");
                 }
             }
             mv.visitFieldInsn(opcode, owner, name, desc);
@@ -108,18 +108,18 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             mv.visitMethodInsn(opcode, owner, name, desc);
             if (state == 1) {
                 state = 2;
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "beginEntities", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginEntities", "()V");
                 SMCLog.finest("    %s", "beginEntities");
             } else if (state == 4) {
                 state = 5;
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "endEntities", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endEntities", "()V");
                 SMCLog.finest("    %s", "endEntities");
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "beginBlockEntities", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockEntities", "()V");
                 SMCLog.finest("    %s", "beginTileEntities");
             } else if (state == 5) {
                 if (Names.entityRenderer_disableLightmap.equals(owner, name, desc)) {
                     state = 6;
-                    mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "endBlockEntities", "()V");
+                    mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockEntities", "()V");
                     SMCLog.finest("    %s", "endTileEntities");
                 }
             }
@@ -150,18 +150,18 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (owner.equals("org/lwjgl/opengl/GL11")) {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "enableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
                         SMCLog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "enableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
                         SMCLog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "disableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
                         SMCLog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "disableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
                         SMCLog.finest("    %s", "disableFog");
                     }
                 }
@@ -210,7 +210,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                         ++state;
                         mv.visitMethodInsn(
                                 INVOKESTATIC,
-                                "shadersmodcore/client/Shaders",
+                                "com/gtnewhorizons/angelica/client/Shaders",
                                 "setSkyColor",
                                 "(" + Names.vec3_.desc + ")V");
                         mv.visitVarInsn(ALOAD, lastVar);
@@ -220,7 +220,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                 case 1:
                     if (Names.renderGlobal_glSkyList.equals(owner, name)) {
                         ++state;
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "preSkyList", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preSkyList", "()V");
                         break;
                     }
                     break;
@@ -249,29 +249,29 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (owner.equals("org/lwjgl/opengl/GL11")) {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "enableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
                         SMCLog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "enableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
                         SMCLog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "disableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
                         SMCLog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "disableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
                         SMCLog.finest("    %s", "disableFog");
                     }
                 } else if (name.equals("glRotatef")) {
                     SMCLog.finest("    *%s %d", "glRotatef", state);
                     if (state == 3) {
                         ++state;
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "preCelestialRotate", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preCelestialRotate", "()V");
                         SMCLog.finest("    %s", "preCelestialRotate");
                     } else if (state == 4) {
                         ++state;
-                        mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/Shaders", "postCelestialRotate", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "postCelestialRotate", "()V");
                         SMCLog.finest("    %s", "postCelestialRotate");
                     }
                 }
@@ -298,7 +298,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                     if (opcode == SIPUSH && operand == GL11.GL_ALPHA_TEST) {
                         ++state;
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "shadersmodcore/client/Shaders", "endBlockDestroyProgress", "()V");
+                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockDestroyProgress", "()V");
                         SMCLog.finest("    %s", "endBlockDestroyProgress");
                     }
                     break;
@@ -314,7 +314,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                         ++state;
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "shadersmodcore/client/Shaders", "beginBlockDestroyProgress", "()V");
+                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockDestroyProgress", "()V");
                         SMCLog.finest("    %s", "beginBlockDestroyProgress");
                         return;
                     }

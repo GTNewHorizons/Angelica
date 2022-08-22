@@ -78,7 +78,7 @@ public class SMCCTTextureAtlasSprite implements IClassTransformer {
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/ShadersTex", "uploadTexSub", "([[IIIIIZZ)V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "uploadTexSub", "([[IIIIIZZ)V");
                 return;
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
@@ -97,7 +97,7 @@ public class SMCCTTextureAtlasSprite implements IClassTransformer {
             if (Names.iResourceManager_getResource.equals(owner, name, desc)) {
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadResource",
                         "(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")"
                                 + Names.iResource_.desc);
@@ -128,17 +128,17 @@ public class SMCCTTextureAtlasSprite implements IClassTransformer {
             if (Names.equals("java/awt/image/BufferedImage", "getRGB", "(IIII[III)[I", owner, name, desc)) {
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadAtlasSprite",
                         "(Ljava/awt/image/BufferedImage;IIII[III)[I");
                 return;
             } else if (Names.textureAtlasSpri_getFrameTextureData.equals(owner, name, desc)) {
-                mv.visitMethodInsn(INVOKESTATIC, "shadersmodcore/client/ShadersTex", "extractFrame", "([IIII)[I");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "extractFrame", "([IIII)[I");
                 return;
             } else if (Names.equals(Names.textureAtlasSpri_.clas, "fixTransparentColor", "([I)V", owner, name, desc)) {
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "fixTransparentColor",
                         "(" + Names.textureAtlasSpri_.desc + "[I)V");
                 return;
@@ -159,7 +159,7 @@ public class SMCCTTextureAtlasSprite implements IClassTransformer {
             mv.visitVarInsn(ILOAD, 3);
             mv.visitMethodInsn(
                     INVOKESTATIC,
-                    "shadersmodcore/client/ShadersTex",
+                    "com/gtnewhorizons/angelica/client/ShadersTex",
                     "uploadFrameTexture",
                     "(" + Names.textureAtlasSpri_.desc + "III)V");
             mv.visitInsn(RETURN);

@@ -72,7 +72,7 @@ public class SMCCTTextureDynamic implements IClassTransformer {
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "initDynamicTexture",
                         "(III" + Names.dynamicTexture_.desc + ")V");
                 return;
@@ -94,7 +94,7 @@ public class SMCCTTextureDynamic implements IClassTransformer {
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "updateDynamicTexture",
                         "(I[III" + Names.dynamicTexture_.desc + ")V");
                 return;

@@ -70,13 +70,13 @@ public class SMCCTTextureSimple implements IClassTransformer {
                         INVOKEVIRTUAL,
                         Names.simpleTexture_.clas,
                         "getMultiTexID",
-                        "()Lshadersmodcore/client/MultiTexID;");
+                        "()Lcom/gtnewhorizons/angelica/client/MultiTexID;");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
-                        "shadersmodcore/client/ShadersTex",
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadSimpleTexture",
                         "(ILjava/awt/image/BufferedImage;ZZ" + Names.iResourceManager_.desc
-                                + Names.resourceLocation_.desc + "Lshadersmodcore/client/MultiTexID;)I");
+                                + Names.resourceLocation_.desc + "Lcom/gtnewhorizons/angelica/client/MultiTexID;)I");
                 SMCLog.finer("    loadSimpleTexture");
                 return;
             }
