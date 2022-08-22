@@ -365,7 +365,10 @@ public class SMCCTTessellator implements IClassTransformer {
             mv.visitLineNumber(185, l0);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
-                    INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTess", "draw", "(" + Names.tessellator_.desc + ")I");
+                    INVOKESTATIC,
+                    "com/gtnewhorizons/angelica/client/ShadersTess",
+                    "draw",
+                    "(" + Names.tessellator_.desc + ")I");
             mv.visitInsn(IRETURN);
             Label l1 = new Label();
             mv.visitLabel(l1);
