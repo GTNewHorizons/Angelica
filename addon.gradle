@@ -1,0 +1,3 @@
+sourceSets {
+    compileStubs
+}
