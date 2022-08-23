@@ -11,11 +11,11 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTRenderGlobal implements IClassTransformer {
+public class ACTRenderGlobal implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -51,21 +51,21 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             // String remappedName = SMCRemap.remapper.mapMethodName(classname, name, desc);
             // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.renderGlobal_renderEntities.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderEntities(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderGlobal_sortAndRender.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVendisTexFog(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderGlobal_renderSky.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderSky(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderGlobal_drawBlockDamageTexture.equalsNameDesc(name, desc)
                     || name.equals("drawBlockDamageTexture")) // Optifine
             {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVdrawBlockDamageTexture(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderGlobal_drawSelectionBox.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVendisTexFog(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -109,20 +109,20 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (state == 1) {
                 state = 2;
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginEntities", "()V");
-                SMCLog.finest("    %s", "beginEntities");
+                ALog.finest("    %s", "beginEntities");
             } else if (state == 4) {
                 state = 5;
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endEntities", "()V");
-                SMCLog.finest("    %s", "endEntities");
+                ALog.finest("    %s", "endEntities");
                 mv.visitMethodInsn(
                         INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockEntities", "()V");
-                SMCLog.finest("    %s", "beginTileEntities");
+                ALog.finest("    %s", "beginTileEntities");
             } else if (state == 5) {
                 if (Names.entityRenderer_disableLightmap.equals(owner, name, desc)) {
                     state = 6;
                     mv.visitMethodInsn(
                             INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockEntities", "()V");
-                    SMCLog.finest("    %s", "endTileEntities");
+                    ALog.finest("    %s", "endTileEntities");
                 }
             }
         }
@@ -154,21 +154,21 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
-                        SMCLog.finest("    %s", "enableTexture2D");
+                        ALog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
-                        SMCLog.finest("    %s", "enableFog");
+                        ALog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
-                        SMCLog.finest("    %s", "disableTexture2D");
+                        ALog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
-                        SMCLog.finest("    %s", "disableFog");
+                        ALog.finest("    %s", "disableFog");
                     }
                 }
             }
@@ -258,29 +258,29 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
-                        SMCLog.finest("    %s", "enableTexture2D");
+                        ALog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
-                        SMCLog.finest("    %s", "enableFog");
+                        ALog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
-                        SMCLog.finest("    %s", "disableTexture2D");
+                        ALog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
-                        SMCLog.finest("    %s", "disableFog");
+                        ALog.finest("    %s", "disableFog");
                     }
                 } else if (name.equals("glRotatef")) {
-                    SMCLog.finest("    *%s %d", "glRotatef", state);
+                    ALog.finest("    *%s %d", "glRotatef", state);
                     if (state == 3) {
                         ++state;
                         mv.visitMethodInsn(
                                 INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preCelestialRotate", "()V");
-                        SMCLog.finest("    %s", "preCelestialRotate");
+                        ALog.finest("    %s", "preCelestialRotate");
                     } else if (state == 4) {
                         ++state;
                         mv.visitMethodInsn(
@@ -288,7 +288,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                                 "com/gtnewhorizons/angelica/client/Shaders",
                                 "postCelestialRotate",
                                 "()V");
-                        SMCLog.finest("    %s", "postCelestialRotate");
+                        ALog.finest("    %s", "postCelestialRotate");
                     }
                 }
             }
@@ -318,7 +318,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                                 "com/gtnewhorizons/angelica/client/Shaders",
                                 "endBlockDestroyProgress",
                                 "()V");
-                        SMCLog.finest("    %s", "endBlockDestroyProgress");
+                        ALog.finest("    %s", "endBlockDestroyProgress");
                     }
                     break;
             }
@@ -337,7 +337,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                                 "com/gtnewhorizons/angelica/client/Shaders",
                                 "beginBlockDestroyProgress",
                                 "()V");
-                        SMCLog.finest("    %s", "beginBlockDestroyProgress");
+                        ALog.finest("    %s", "beginBlockDestroyProgress");
                         return;
                     }
                     break;

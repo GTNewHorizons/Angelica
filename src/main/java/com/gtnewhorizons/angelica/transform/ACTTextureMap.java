@@ -10,11 +10,11 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTTextureMap implements IClassTransformer {
+public class ACTTextureMap implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -109,7 +109,7 @@ public class SMCCTTextureMap implements IClassTransformer {
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             // SMCLog.finest("    %s.%s%s",ownerM,nameM,descM);
             if (Names.iResourceManager_getResource.equals(owner, name, desc)) {
-                SMCLog.finest("    %s", "loadRes");
+                ALog.finest("    %s", "loadRes");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
                         "com/gtnewhorizons/angelica/client/ShadersTex",
@@ -121,7 +121,7 @@ public class SMCCTTextureMap implements IClassTransformer {
                     && Names.equals(Names.stitcher_.clas, "<init>", "(IIZII)V", owner, name, desc)) {
                 isStitcher = true;
             } else if (Names.textureUtil_allocateTextureMipmapAniso.equals(owner, name, desc)) {
-                SMCLog.finest("    %s", "allocateTextureMap");
+                ALog.finest("    %s", "allocateTextureMap");
                 mv.visitVarInsn(ALOAD, varStitcher);
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitMethodInsn(
@@ -132,7 +132,7 @@ public class SMCCTTextureMap implements IClassTransformer {
                 state = 1;
                 return;
             } else if (state == 1 && Names.textureAtlasSpri_getIconName.equals(owner, name, desc)) {
-                SMCLog.finest("    %s", "setSprite setIconName");
+                ALog.finest("    %s", "setSprite setIconName");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
                         "com/gtnewhorizons/angelica/client/ShadersTex",
@@ -147,7 +147,7 @@ public class SMCCTTextureMap implements IClassTransformer {
                 state = 0;
                 return;
             } else if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
-                SMCLog.finest("    %s", "uploadTexSubForLoadAtlas");
+                ALog.finest("    %s", "uploadTexSubForLoadAtlas");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
                         "com/gtnewhorizons/angelica/client/ShadersTex",

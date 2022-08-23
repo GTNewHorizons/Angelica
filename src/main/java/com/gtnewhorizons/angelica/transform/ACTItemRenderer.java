@@ -10,11 +10,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTItemRenderer implements IClassTransformer {
+public class ACTItemRenderer implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -47,13 +47,13 @@ public class SMCCTItemRenderer implements IClassTransformer {
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // SMCLog.info("  method %s.%s%s",classname,name,desc);
             if (Names.itemRenderer_updateEquipped.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVupdate(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.itemRenderer_renderItem.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderItem(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (renderItemIrt.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderItem(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);

@@ -14,7 +14,7 @@ jar {
     manifest {
         attributes([
             "Manifest-Version" : 1.0,
-            "TweakClass" : "com.gtnewhorizons.angelica.loading.SMCTweaker",
+            "TweakClass" : "com.gtnewhorizons.angelica.loading.ATweaker",
             "TweakOrder" : 1100,
         ])
     }

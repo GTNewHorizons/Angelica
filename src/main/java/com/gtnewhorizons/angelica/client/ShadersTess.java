@@ -4,7 +4,7 @@ import static org.lwjgl.opengl.ARBVertexShader.glDisableVertexAttribArrayARB;
 import static org.lwjgl.opengl.ARBVertexShader.glEnableVertexAttribArrayARB;
 import static org.lwjgl.opengl.ARBVertexShader.glVertexAttribPointerARB;
 
-import com.gtnewhorizons.angelica.transform.SMCLog;
+import com.gtnewhorizons.angelica.transform.ALog;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
@@ -23,7 +23,7 @@ public class ShadersTess {
         } else {
             tess.isDrawing = false;
             if (tess.drawMode == GL11.GL_QUADS && tess.vertexCount % 4 != 0) {
-                SMCLog.warning("%s", "bad vertexCount");
+                ALog.warning("%s", "bad vertexCount");
             }
             int voffset = 0;
             int realDrawMode = tess.drawMode;

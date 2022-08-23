@@ -6,14 +6,15 @@ import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTOpenGlHelper implements IClassTransformer {
+public class ACTRender implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -36,46 +37,33 @@ public class SMCCTOpenGlHelper implements IClassTransformer {
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
-        // boolean has_activeTexUnit = false;
-
-        //		@Override
-        //		public FieldVisitor visitField(int access, String name, String desc,
-        //				String signature, Object value) {
-        //			//if (name.equals("activeTexUnit")) {
-        //			//	has_activeTexUnit = true;
-        //			//}
-        //			return cv.visitField(access, name, desc, signature, value);
-        //		}
-
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // if (!has_activeTexUnit) {
-            //	has_activeTexUnit = true;
-            //	FieldVisitor fv = cv.visitField(ACC_PUBLIC + ACC_STATIC, "activeTexUnit", "I", null, null);
-            //	fv.visitEnd();
-            //	SMCLog.finest("    add field activeTexUnit");
-            // }
-
             // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
-            if (Names.openGlHelper_setActiveTexture.equalsNameDesc(name, desc)) {
-                // SMCLog.info("  patching");
-                return new MVsetActiveTexture(cv.visitMethod(access, name, desc, signature, exceptions));
+            if (Names.render_renderShadow.equalsNameDesc(name, desc)) {
+                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                return new MVrenderShadow(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
     }
 
-    private static class MVsetActiveTexture extends MethodVisitor {
-        public MVsetActiveTexture(MethodVisitor mv) {
+    private static class MVrenderShadow extends MethodVisitor {
+        // protected MethodVisitor mv;
+        public MVrenderShadow(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
+            // this.mv = mv;
         }
 
         @Override
         public void visitCode() {
             mv.visitCode();
-            mv.visitVarInsn(ILOAD, 0);
-            mv.visitFieldInsn(PUTSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "activeTexUnit", "I");
-            SMCLog.finest("    set activeTexUnit");
+            mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "shouldSkipDefaultShadow", "Z");
+            Label l1 = new Label();
+            mv.visitJumpInsn(IFEQ, l1);
+            mv.visitInsn(RETURN);
+            mv.visitLabel(l1);
+            ALog.finer("    conditionally skip default shadow");
         }
     }
 }

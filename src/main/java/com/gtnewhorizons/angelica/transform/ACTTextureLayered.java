@@ -10,11 +10,11 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTRender implements IClassTransformer {
+public class ACTTextureLayered implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -39,31 +39,44 @@ public class SMCCTRender implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+            // String descM = SMCNames.remapper.mapMethodDesc(desc);
             // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
-            if (Names.render_renderShadow.equalsNameDesc(name, desc)) {
+            if (Names.iTextureObject_loadTexture.equalsNameDesc(name, desc)) {
                 // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
-                return new MVrenderShadow(cv.visitMethod(access, name, desc, signature, exceptions));
+                return new MVloadTexture(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
     }
 
-    private static class MVrenderShadow extends MethodVisitor {
+    private static class MVloadTexture extends MethodVisitor {
         // protected MethodVisitor mv;
-        public MVrenderShadow(MethodVisitor mv) {
-            super(Opcodes.ASM4, mv);
-            // this.mv = mv;
-        }
-
-        @Override
-        public void visitCode() {
+        public MVloadTexture(MethodVisitor mv) {
+            super(Opcodes.ASM4);
+            // replace method body
             mv.visitCode();
-            mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "shouldSkipDefaultShadow", "Z");
-            Label l1 = new Label();
-            mv.visitJumpInsn(IFEQ, l1);
+            Label l0 = new Label();
+            mv.visitLabel(l0);
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitFieldInsn(
+                    GETFIELD,
+                    Names.layeredTexture_layeredTextureNames.clas,
+                    Names.layeredTexture_layeredTextureNames.name,
+                    Names.layeredTexture_layeredTextureNames.desc);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    "com/gtnewhorizons/angelica/client/ShadersTex",
+                    "loadLayeredTexture",
+                    "(" + Names.layeredTexture_.desc + Names.iResourceManager_.desc + "Ljava/util/List;)V");
             mv.visitInsn(RETURN);
-            mv.visitLabel(l1);
-            SMCLog.finer("    conditionally skip default shadow");
+            Label l2 = new Label();
+            mv.visitLabel(l2);
+            mv.visitLocalVariable("this", Names.layeredTexture_.desc, null, l0, l2, 0);
+            mv.visitLocalVariable("manager", Names.iResourceManager_.desc, null, l0, l2, 1);
+            mv.visitMaxs(3, 2);
+            mv.visitEnd();
         }
     }
 }
