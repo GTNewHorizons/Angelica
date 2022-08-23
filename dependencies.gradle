@@ -1,0 +1,5 @@
+
+dependencies {
+    compileOnly(sourceSets.compileStubs.output)
+    compileStubs(sourceSets.compileStubsStubs.output)
+}

@@ -1,0 +1,232 @@
+diff U3 net/minecraft/client/model/ModelRenderer.java net/minecraft/client/model/ModelRenderer.java
+--- net/minecraft/client/model/ModelRenderer.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/model/ModelRenderer.java	Sat Jul 12 03:12:44 2014
+@@ -305,4 +305,18 @@
+         this.textureHeight = (float)p_78787_2_;
+         return this;
+     }
++
++    public boolean getCompiled() {
++    	return compiled;
++    }
++    public int getDisplayList() {
++    	return displayList;
++    }
++    public void resetDisplayList() {
++    	if (this.compiled) {
++			GLAllocation.deleteDisplayLists(this.displayList);
++			this.displayList = 0;
++			this.compiled = false;
++		}
++    }
+ }
+\ No newline at end of file
+diff U3 net/minecraft/client/renderer/Tessellator.java net/minecraft/client/renderer/Tessellator.java
+--- net/minecraft/client/renderer/Tessellator.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/Tessellator.java	Sun Jul 06 21:01:03 2014
+@@ -24,70 +24,76 @@
+     public int textureID = 0;
+
+     /** The byte buffer used for GL allocation. */
+-    private static ByteBuffer byteBuffer = GLAllocation.createDirectByteBuffer(nativeBufferSize * 4);
++    public /*static*/ ByteBuffer byteBuffer = GLAllocation.createDirectByteBuffer(nativeBufferSize * 4);
+     /** The same memory as byteBuffer, but referenced as an integer buffer. */
+-    private static IntBuffer intBuffer = byteBuffer.asIntBuffer();
++    public /*static*/ IntBuffer intBuffer = byteBuffer.asIntBuffer();
+     /** The same memory as byteBuffer, but referenced as an float buffer. */
+-    private static FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
++    public /*static*/ FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
+     /** The same memory as byteBuffer, but referenced as an short buffer. */
+-    private static ShortBuffer shortBuffer = byteBuffer.asShortBuffer();
++    public /*static*/ ShortBuffer shortBuffer = byteBuffer.asShortBuffer();
+     /** Raw integer array. */
+-    private int[] rawBuffer;
++    public int[] rawBuffer;
+     /**
+      * The number of vertices to be drawn in the next draw call. Reset to 0 between draw calls.
+      */
+-    private int vertexCount;
++    public int vertexCount;
+     /** The first coordinate to be used for the texture. */
+-    private double textureU;
++    public double textureU;
+     /** The second coordinate to be used for the texture. */
+-    private double textureV;
+-    private int brightness;
++    public double textureV;
++    public int brightness;
+     /** The color (RGBA) value to be used for the following draw call. */
+-    private int color;
++    public int color;
+     /**
+      * Whether the current draw object for this tessellator has color values.
+      */
+-    private boolean hasColor;
++    public boolean hasColor;
+     /**
+      * Whether the current draw object for this tessellator has texture coordinates.
+      */
+-    private boolean hasTexture;
+-    private boolean hasBrightness;
++    public boolean hasTexture;
++    public boolean hasBrightness;
+     /**
+      * Whether the current draw object for this tessellator has normal values.
+      */
+-    private boolean hasNormals;
++    public boolean hasNormals;
+     /** The index into the raw buffer to be used for the next data. */
+-    private int rawBufferIndex;
++    public int rawBufferIndex;
+     /**
+      * The number of vertices manually added to the given draw call. This differs from vertexCount because it adds extra
+      * vertices when converting quads to triangles.
+      */
+-    private int addedVertices;
++    public int addedVertices;
+     /** Disables all color information for the following draw call. */
+     private boolean isColorDisabled;
+     /** The draw mode currently being used by the tessellator. */
+-    private int drawMode;
++    public int drawMode;
+     /**
+      * An offset to be applied along the x-axis for all vertices in this draw call.
+      */
+-    private double xOffset;
++    public double xOffset;
+     /**
+      * An offset to be applied along the y-axis for all vertices in this draw call.
+      */
+-    private double yOffset;
++    public double yOffset;
+     /**
+      * An offset to be applied along the z-axis for all vertices in this draw call.
+      */
+-    private double zOffset;
++    public double zOffset;
+     /** The normal to be applied to the face being drawn. */
+     private int normal;
+     /** The static instance of the Tessellator. */
+     public static final Tessellator instance = new Tessellator(2097152);
+     /** Whether this tessellator is currently in draw mode. */
+-    private boolean isDrawing;
++    public boolean isDrawing;
+     /** The size of the buffers used (in integers). */
+-    private int bufferSize;
++    public int bufferSize;
++	public float midTextureU;
++	public float midTextureV;
++	public float normalX;
++	public float normalY;
++	public float normalZ;
++	public float[] vertexPos = new float[16];
+     private static final String __OBFID = "CL_00000960";
+
+     private Tessellator(int p_i1250_1_)
+@@ -245,7 +251,7 @@
+     /**
+      * Clears the tessellator state in preparation for new drawing.
+      */
+-    private void reset()
++    public void reset()
+     {
+         this.vertexCount = 0;
+         this.byteBuffer.clear();
+diff U3 net/minecraft/client/renderer/entity/RendererLivingEntity.java net/minecraft/client/renderer/entity/RendererLivingEntity.java
+--- net/minecraft/client/renderer/entity/RendererLivingEntity.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/entity/RendererLivingEntity.java	Sun Jul 06 20:40:40 2014
+@@ -31,9 +31,9 @@
+ {
+     private static final Logger logger = LogManager.getLogger();
+     private static final ResourceLocation RES_ITEM_GLINT = new ResourceLocation("textures/misc/enchanted_item_glint.png");
+-    protected ModelBase mainModel;
++    public ModelBase mainModel;
+     /** The model to be used during the render passes. */
+-    protected ModelBase renderPassModel;
++    public ModelBase renderPassModel;
+     private static final String __OBFID = "CL_00001012";
+
+     public static float NAME_TAG_RANGE = 64.0f;
+diff U3 net/minecraft/client/renderer/texture/AbstractTexture.java net/minecraft/client/renderer/texture/AbstractTexture.java
+--- net/minecraft/client/renderer/texture/AbstractTexture.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/texture/AbstractTexture.java	Sun Jul 06 20:40:40 2014
+@@ -1,12 +1,14 @@
+ package net.minecraft.client.renderer.texture;
+
++import com.gtnewhorizons.angelica.client.MultiTexID;
+ import cpw.mods.fml.relauncher.Side;
+ import cpw.mods.fml.relauncher.SideOnly;
+
+ @SideOnly(Side.CLIENT)
+ public abstract class AbstractTexture implements ITextureObject
+ {
+-    protected int glTextureId = -1;
++    public int glTextureId = -1;
++	public MultiTexID multiTex;
+     private static final String __OBFID = "CL_00001047";
+
+     public int getGlTextureId()
+@@ -27,4 +29,10 @@
+             this.glTextureId = -1;
+         }
+     }
++
++	@Override
++	public MultiTexID getMultiTexID() {
++		// TODO Auto-generated method stub
++		return null;
++	}
+ }
+\ No newline at end of file
+diff U3 net/minecraft/client/renderer/texture/ITextureObject.java net/minecraft/client/renderer/texture/ITextureObject.java
+--- net/minecraft/client/renderer/texture/ITextureObject.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/texture/ITextureObject.java	Sun Jul 06 20:40:40 2014
+@@ -3,6 +3,8 @@
+ import cpw.mods.fml.relauncher.Side;
+ import cpw.mods.fml.relauncher.SideOnly;
+ import java.io.IOException;
++
++import com.gtnewhorizons.angelica.client.MultiTexID;
+ import net.minecraft.client.resources.IResourceManager;
+
+ @SideOnly(Side.CLIENT)
+@@ -11,4 +13,6 @@
+     void loadTexture(IResourceManager p_110551_1_) throws IOException;
+
+     int getGlTextureId();
++
++	MultiTexID getMultiTexID();
+ }
+\ No newline at end of file
+diff U3 net/minecraft/client/renderer/texture/TextureAtlasSprite.java net/minecraft/client/renderer/texture/TextureAtlasSprite.java
+--- net/minecraft/client/renderer/texture/TextureAtlasSprite.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/texture/TextureAtlasSprite.java	Sun Jul 06 20:40:40 2014
+@@ -24,7 +24,7 @@
+     protected List framesTextureData = Lists.newArrayList();
+     private AnimationMetadataSection animationMetadata;
+     protected boolean rotated;
+-    private boolean useAnisotropicFiltering;
++    public boolean useAnisotropicFiltering;
+     protected int originX;
+     protected int originY;
+     protected int width;
+diff U3 net/minecraft/client/renderer/texture/TextureMap.java net/minecraft/client/renderer/texture/TextureMap.java
+--- net/minecraft/client/renderer/texture/TextureMap.java	Sun Jul 06 20:27:14 2014
++++ net/minecraft/client/renderer/texture/TextureMap.java	Sun Jul 06 20:40:40 2014
+@@ -49,6 +49,7 @@
+     private int anisotropicFiltering = 1;
+     private final TextureAtlasSprite missingImage = new TextureAtlasSprite("missingno");
+     private static final String __OBFID = "CL_00001058";
++	public int atlasWidth, atlasHeight; // shadersmod
+
+     public TextureMap(int p_i1281_1_, String p_i1281_2_)
+     {
+@@ -292,7 +293,7 @@
+         ForgeHooksClient.onTextureStitchedPost(this);
+     }
+
+-    private ResourceLocation completeResourceLocation(ResourceLocation p_147634_1_, int p_147634_2_)
++    public ResourceLocation completeResourceLocation(ResourceLocation p_147634_1_, int p_147634_2_)
+     {
+         return p_147634_2_ == 0 ? new ResourceLocation(p_147634_1_.getResourceDomain(), String.format("%s/%s%s", new Object[] {this.basePath, p_147634_1_.getResourcePath(), ".png"})): new ResourceLocation(p_147634_1_.getResourceDomain(), String.format("%s/mipmaps/%s.%d%s", new Object[] {this.basePath, p_147634_1_.getResourcePath(), Integer.valueOf(p_147634_2_), ".png"}));
+     }
