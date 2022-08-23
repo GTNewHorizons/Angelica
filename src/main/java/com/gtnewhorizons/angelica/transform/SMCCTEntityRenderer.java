@@ -106,8 +106,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             if (Names.equals("org/lwjgl/opengl/GL11", "glClearColor", "(FFFF)V", owner, name, desc)) {
-                mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setClearColor", "(FFFF)V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setClearColor", "(FFFF)V");
                 return;
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
@@ -239,10 +238,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
             mv.visitVarInsn(FLOAD, 1);
             mv.visitVarInsn(LLOAD, 2);
             mv.visitMethodInsn(
-                    INVOKESTATIC,
-                    "com/gtnewhorizons/angelica/client/Shaders",
-                    "beginRender",
-                    "(" + Names.minecraft_.desc + "FJ)V");
+                    INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginRender", "(" + Names.minecraft_.desc + "FJ)V");
         }
 
         @Override
@@ -290,8 +286,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                         labelAfterUpdate = label;
                         labelEndUpdate = new Label();
                         mv.visitJumpInsn(opcode, label);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginUpdateChunks", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginUpdateChunks", "()V");
                         return;
                     }
                     break;
@@ -307,18 +302,15 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                         mv.visitJumpInsn(opcode, label);
                         mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isShadowPass", "Z");
                         mv.visitJumpInsn(IFNE, label);
-                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders",
-                        // "readCenterDepth",
+                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "readCenterDepth",
                         // "()V");
-                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders",
-                        // "beginHand", "()V");
+                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginHand", "()V");
                         //					mv.visitVarInsn(ALOAD, 0);
                         //					mv.visitVarInsn(FLOAD, 1);
                         //					mv.visitVarInsn(ILOAD, 13);
                         //					mv.visitMethodInsn(INVOKESPECIAL, Names.EntityRenderer_, Names.EntityRenderer_renderHand,
                         // Names.EntityRenderer_renderHand_desc);
-                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endHand",
-                        // "()V");
+                        //					mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endHand", "()V");
                         mv.visitVarInsn(ALOAD, 0);
                         mv.visitVarInsn(FLOAD, 1);
                         mv.visitVarInsn(ILOAD, 13);
@@ -328,10 +320,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                                 "renderHand1",
                                 "(" + Names.entityRenderer_.desc + "FI)V");
                         mv.visitMethodInsn(
-                                INVOKESTATIC,
-                                "com/gtnewhorizons/angelica/client/Shaders",
-                                "renderCompositeFinal",
-                                "()V");
+                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "renderCompositeFinal", "()V");
                         return;
                     }
                     break;
@@ -346,8 +335,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                     if (label == labelAfterUpdate) {
                         ++state;
                         mv.visitLabel(labelEndUpdate);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endUpdateChunks", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endUpdateChunks", "()V");
                         mv.visitLabel(label);
                         labelAfterUpdate = labelEndUpdate = null;
                         return;
@@ -420,8 +408,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 0:
                     if (Names.equals("org/lwjgl/opengl/GL11", "glViewport", "(IIII)V", owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setViewport", "(IIII)V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setViewport", "(IIII)V");
                         return;
                     }
                     break;
@@ -429,8 +416,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                     if (Names.equals("org/lwjgl/opengl/GL11", "glClear", "(I)V", owner, name, desc)) {
                         ++state;
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "clearRenderBuffer", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "clearRenderBuffer", "()V");
                         return;
                     }
                     break;
@@ -439,8 +425,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                         ++state;
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         mv.visitVarInsn(FLOAD, 1);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setCamera", "(F)V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setCamera", "(F)V");
                         return;
                     }
                     break;
@@ -457,8 +442,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 5:
                     if (Names.renderGlobal_renderSky.equals(owner, name, desc)) {
                         state = 8;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginSky", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginSky", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endSky", "()V");
                         return;
@@ -467,8 +451,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 6:
                     if (Names.renderGlobal_renderSky.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginSky", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginSky", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endSky", "()V");
                         return;
@@ -500,11 +483,9 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 12:
                     if (Names.renderGlobal_sortAndRender.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginTerrain", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginTerrain", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endTerrain", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endTerrain", "()V");
                         return;
                     }
                     break;
@@ -512,8 +493,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                     if (Names.effectRenderer_renderLitParticles.equals(owner, name, desc)) {
                         // vanilla or forge. not optfine
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLitParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLitParticles", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         return;
                     } else if (Names.equals("org/lwjgl/opengl/GL11", "glDisable", "(I)V", owner, name, desc)) {
@@ -525,11 +505,9 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 14: // vanilla or forge. not optfine
                     if (Names.effectRenderer_renderParticles.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginParticles", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endParticles", "()V");
                         return;
                     }
                     break;
@@ -542,11 +520,9 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 16:
                     if (Names.entityRenderer_renderRainSnow.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWeather", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWeather", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWeather", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWeather", "()V");
                         return;
                     }
                     break;
@@ -562,8 +538,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                                 "com/gtnewhorizons/angelica/client/ShadersRender",
                                 "renderHand0",
                                 "(" + Names.entityRenderer_.desc + "FI)V");
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preWater", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preWater", "()V");
                         return;
                     }
                 case 18:
@@ -571,20 +546,16 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 20:
                     if (Names.renderGlobal_sortAndRender.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWater", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWater", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWater", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWater", "()V");
                         return;
                     } else if (Names.equals(
                             Names.renderGlobal_.clas, "renderAllSortedRenderers", "(ID)I", owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWater", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginWater", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWater", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endWater", "()V");
                         return;
                     }
                     break;
@@ -606,16 +577,14 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                     if (Names.equals("org/lwjgl/opengl/GL11", "glDisable", "(I)V", owner, name, desc)) {
                         ++state;
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
                         return;
                     }
                     break;
                 case 24:
                     if (Names.effectRenderer_renderLitParticles.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLitParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLitParticles", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         return;
                     }
@@ -623,11 +592,9 @@ public class SMCCTEntityRenderer implements IClassTransformer {
                 case 25:
                     if (Names.effectRenderer_renderParticles.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginParticles", "()V");
                         mv.visitMethodInsn(opcode, owner, name, desc);
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endParticles", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endParticles", "()V");
                         return;
                     }
                     break;

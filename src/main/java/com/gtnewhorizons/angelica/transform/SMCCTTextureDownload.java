@@ -58,8 +58,7 @@ public class SMCCTTextureDownload implements IClassTransformer {
         public void visitEnd() {
             MethodVisitor mv;
             // getMultiTexID
-            mv = cv.visitMethod(
-                    ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
+            mv = cv.visitMethod(ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
             mv.visitCode();
             Label l0 = new Label();
             mv.visitLabel(l0);

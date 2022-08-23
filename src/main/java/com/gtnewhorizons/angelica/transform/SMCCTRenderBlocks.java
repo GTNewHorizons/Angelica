@@ -131,10 +131,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
                 ++state;
                 mv.visitVarInsn(ALOAD, var);
                 mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/Shaders",
-                        "pushEntity",
-                        "(" + Names.block_.desc + ")V");
+                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "pushEntity", "(" + Names.block_.desc + ")V");
             }
         }
 
@@ -155,8 +152,7 @@ public class SMCCTRenderBlocks implements IClassTransformer {
                 case 3:
                     if (Names.tessellator_addTranslation.equals(owner, name, desc)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
                     }
                     break;
             }

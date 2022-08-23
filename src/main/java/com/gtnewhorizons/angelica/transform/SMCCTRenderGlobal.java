@@ -114,14 +114,12 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                 state = 5;
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endEntities", "()V");
                 SMCLog.finest("    %s", "endEntities");
-                mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockEntities", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockEntities", "()V");
                 SMCLog.finest("    %s", "beginTileEntities");
             } else if (state == 5) {
                 if (Names.entityRenderer_disableLightmap.equals(owner, name, desc)) {
                     state = 6;
-                    mv.visitMethodInsn(
-                            INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockEntities", "()V");
+                    mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockEntities", "()V");
                     SMCLog.finest("    %s", "endTileEntities");
                 }
             }
@@ -152,22 +150,18 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (owner.equals("org/lwjgl/opengl/GL11")) {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
                         SMCLog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
                         SMCLog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
                         SMCLog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
                         SMCLog.finest("    %s", "disableFog");
                     }
                 }
@@ -226,8 +220,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                 case 1:
                     if (Names.renderGlobal_glSkyList.equals(owner, name)) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preSkyList", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preSkyList", "()V");
                         break;
                     }
                     break;
@@ -256,38 +249,29 @@ public class SMCCTRenderGlobal implements IClassTransformer {
             if (owner.equals("org/lwjgl/opengl/GL11")) {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
                         SMCLog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
                         SMCLog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
                         SMCLog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
                         SMCLog.finest("    %s", "disableFog");
                     }
                 } else if (name.equals("glRotatef")) {
                     SMCLog.finest("    *%s %d", "glRotatef", state);
                     if (state == 3) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preCelestialRotate", "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preCelestialRotate", "()V");
                         SMCLog.finest("    %s", "preCelestialRotate");
                     } else if (state == 4) {
                         ++state;
-                        mv.visitMethodInsn(
-                                INVOKESTATIC,
-                                "com/gtnewhorizons/angelica/client/Shaders",
-                                "postCelestialRotate",
-                                "()V");
+                        mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "postCelestialRotate", "()V");
                         SMCLog.finest("    %s", "postCelestialRotate");
                     }
                 }
@@ -314,10 +298,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                     if (opcode == SIPUSH && operand == GL11.GL_ALPHA_TEST) {
                         ++state;
                         mv.visitMethodInsn(
-                                INVOKESTATIC,
-                                "com/gtnewhorizons/angelica/client/Shaders",
-                                "endBlockDestroyProgress",
-                                "()V");
+                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockDestroyProgress", "()V");
                         SMCLog.finest("    %s", "endBlockDestroyProgress");
                     }
                     break;
@@ -333,10 +314,7 @@ public class SMCCTRenderGlobal implements IClassTransformer {
                         ++state;
                         mv.visitMethodInsn(opcode, owner, name, desc);
                         mv.visitMethodInsn(
-                                INVOKESTATIC,
-                                "com/gtnewhorizons/angelica/client/Shaders",
-                                "beginBlockDestroyProgress",
-                                "()V");
+                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockDestroyProgress", "()V");
                         SMCLog.finest("    %s", "beginBlockDestroyProgress");
                         return;
                     }

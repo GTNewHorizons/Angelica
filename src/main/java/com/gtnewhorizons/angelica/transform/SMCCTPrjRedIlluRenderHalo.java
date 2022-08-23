@@ -60,8 +60,7 @@ public class SMCCTPrjRedIlluRenderHalo implements IClassTransformer {
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             if (Names.equals("codechicken/lib/render/CCRenderState", "reset", "()V", owner, name, desc)) {
                 SMCLog.info("   beginHalo");
-                mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginProjectRedHalo", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginProjectRedHalo", "()V");
             }
             super.visitMethodInsn(opcode, owner, name, desc);
         }
@@ -82,8 +81,7 @@ public class SMCCTPrjRedIlluRenderHalo implements IClassTransformer {
             super.visitMethodInsn(opcode, owner, name, desc);
             if (Names.equals("org/lwjgl/opengl/GL11", "glDisable", "(I)V", owner, name, desc)) {
                 SMCLog.info("   endHalo");
-                mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endProjectRedHalo", "()V");
+                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endProjectRedHalo", "()V");
             }
         }
     }

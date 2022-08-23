@@ -50,11 +50,7 @@ public class SMCCTTextureObject implements IClassTransformer {
             MethodVisitor mv;
             // getMultiTexID
             mv = cv.visitMethod(
-                    ACC_PUBLIC + ACC_ABSTRACT,
-                    "getMultiTexID",
-                    "()Lcom/gtnewhorizons/angelica/client/MultiTexID;",
-                    null,
-                    null);
+                    ACC_PUBLIC + ACC_ABSTRACT, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
             mv.visitEnd();
             // end
             cv.visitEnd();
