@@ -137,11 +137,7 @@ import static org.lwjgl.opengl.GL30.glGenerateMipmap;
 import static org.lwjgl.util.glu.GLU.gluErrorString;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -1558,7 +1554,7 @@ public class Shaders {
         if (vertShader == 0) {
             return 0;
         }
-        String vertexCode = "";
+        StringBuilder vertexCode = new StringBuilder(1048576);
         String line;
 
         BufferedReader reader = null;
@@ -1577,16 +1573,11 @@ public class Shaders {
         if (reader != null)
             try {
                 while ((line = reader.readLine()) != null) {
-                    vertexCode += line + "\n";
-                    if (line.matches("attribute [_a-zA-Z0-9]+ mc_Entity.*")) {
-                        useEntityAttrib = true;
-                        progUseEntityAttrib = true;
-                    } else if (line.matches("attribute [_a-zA-Z0-9]+ mc_midTexCoord.*")) {
-                        useMidTexCoordAttrib = true;
-                        progUseMidTexCoordAttrib = true;
-                    } else if (line.matches(".*gl_MultiTexCoord3.*")) {
-                        useMultiTexCoord3Attrib = true;
-                    }
+
+                    if (preprocessIncludeDirective(line, vertexCode, false)) continue;
+
+                    vertexCode.append(line).append("\n");
+                    processVertShaderLine(line);
                 }
             } catch (Exception e) {
                 System.out.println("Couldn't read " + filename + "!");
@@ -1608,10 +1599,56 @@ public class Shaders {
         return vertShader;
     }
 
-    private static Pattern gbufferFormatPattern =
+    private static void processVertShaderLine(String line) {
+        if (line.matches("attribute [_a-zA-Z0-9]+ mc_Entity.*")) {
+            useEntityAttrib = true;
+            progUseEntityAttrib = true;
+        } else if (line.matches("attribute [_a-zA-Z0-9]+ mc_midTexCoord.*")) {
+            useMidTexCoordAttrib = true;
+            progUseMidTexCoordAttrib = true;
+        } else if (line.matches(".*gl_MultiTexCoord3.*")) {
+            useMultiTexCoord3Attrib = true;
+        }
+    }
+
+    private static final Pattern gbufferFormatPattern =
             Pattern.compile("[ \t]*const[ \t]*int[ \t]*(\\w+)Format[ \t]*=[ \t]*([RGBA81632F]*)[ \t]*;.*");
-    private static Pattern gbufferMipmapEnabledPattern =
+    private static final Pattern gbufferMipmapEnabledPattern =
             Pattern.compile("[ \t]*const[ \t]*bool[ \t]*(\\w+)MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*");
+
+    private static final Pattern INCLUDE_PATTERN = Pattern.compile("^\\s*#include\\s+\"([A-Za-z0-9_/\\.]+)\".*$");
+
+    // TODO: dirty non-recursive implementation, also does not support any includes referencing anything but shaders directory
+    private static boolean preprocessIncludeDirective(String line, StringBuilder code, boolean type) {
+        Matcher includePattern = INCLUDE_PATTERN.matcher(line);
+
+        if (includePattern.matches()) {
+            String path = includePattern.group(1);
+
+            InputStream inputStream = shaderPack.getResourceAsStream("/shaders" + path);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+            String l;
+            try {
+                while ((l = reader.readLine()) != null) {
+                    code.append(l).append("\n");
+                    // TODO: type is a dirty hack to get includes working for now, must be refactored
+                    if (type) {
+                        processFragShaderLine(line, path);
+                    } else {
+                        processVertShaderLine(line);
+                    }
+                }
+            } catch (IOException e) {
+                printChatAndLogError(e.getLocalizedMessage());
+                e.printStackTrace();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
 
     private static int createFragShader(String filename) {
         int fragShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
@@ -1621,7 +1658,7 @@ public class Shaders {
         StringBuilder fragCode = new StringBuilder(1048576);
         String line;
 
-        BufferedReader reader = null;
+        BufferedReader reader;
         try {
             reader = new BufferedReader(new InputStreamReader(shaderPack.getResourceAsStream(filename)));
         } catch (Exception e) {
@@ -1637,267 +1674,11 @@ public class Shaders {
         if (reader != null)
             try {
                 while ((line = reader.readLine()) != null) {
+
+                    if (preprocessIncludeDirective(line, fragCode, true)) continue;
+
                     fragCode.append(line).append('\n');
-                    if (line.matches("#version .*")) {
-
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadow;.*")) {
-                        if (usedShadowDepthBuffers < 1) usedShadowDepthBuffers = 1;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ watershadow;.*")) {
-                        waterShadowEnabled = true;
-                        if (usedShadowDepthBuffers < 2) usedShadowDepthBuffers = 2;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowtex0;.*")) {
-                        if (usedShadowDepthBuffers < 1) usedShadowDepthBuffers = 1;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowtex1;.*")) {
-                        if (usedShadowDepthBuffers < 2) usedShadowDepthBuffers = 2;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor;.*")) {
-                        if (usedShadowColorBuffers < 1) usedShadowColorBuffers = 1;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor0;.*")) {
-                        if (usedShadowColorBuffers < 1) usedShadowColorBuffers = 1;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor1;.*")) {
-                        if (usedShadowColorBuffers < 2) usedShadowColorBuffers = 2;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex0;.*")) {
-                        if (usedDepthBuffers < 1) usedDepthBuffers = 1;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex1;.*")) {
-                        if (usedDepthBuffers < 2) usedDepthBuffers = 2;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex2;.*")) {
-                        if (usedDepthBuffers < 3) usedDepthBuffers = 3;
-                    } else if (line.matches("uniform [ _a-zA-Z0-9]+ gdepth;.*")) {
-                        if (gbuffersFormat[1] == GL_RGBA) gbuffersFormat[1] = GL_RGBA32F;
-                    } else if (usedColorBuffers < 5 && line.matches("uniform [ _a-zA-Z0-9]+ gaux1;.*")) {
-                        usedColorBuffers = 5;
-                    } else if (usedColorBuffers < 6 && line.matches("uniform [ _a-zA-Z0-9]+ gaux2;.*")) {
-                        usedColorBuffers = 6;
-                    } else if (usedColorBuffers < 7 && line.matches("uniform [ _a-zA-Z0-9]+ gaux3;.*")) {
-                        usedColorBuffers = 7;
-                    } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ gaux4;.*")) {
-                        usedColorBuffers = 8;
-                    } else if (usedColorBuffers < 5 && line.matches("uniform [ _a-zA-Z0-9]+ colortex4;.*")) {
-                        usedColorBuffers = 5;
-                    } else if (usedColorBuffers < 6 && line.matches("uniform [ _a-zA-Z0-9]+ colortex5;.*")) {
-                        usedColorBuffers = 6;
-                    } else if (usedColorBuffers < 7 && line.matches("uniform [ _a-zA-Z0-9]+ colortex6;.*")) {
-                        usedColorBuffers = 7;
-                    } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ colortex7;.*")) {
-                        usedColorBuffers = 8;
-
-                    } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ centerDepthSmooth;.*")) {
-                        centerDepthSmoothEnabled = true;
-
-                        // Shadow resolution
-                    } else if (line.matches("/\\* SHADOWRES:[0-9]+ \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        System.out.println("Shadow map resolution: " + parts[2]);
-                        spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[2]);
-                        shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*int[ \t]*shadowMapResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Shadow map resolution: " + parts[1]);
-                        spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[1]);
-                        shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
-
-                    } else if (line.matches("/\\* SHADOWFOV:[0-9\\.]+ \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        System.out.println("Shadow map field of view: " + parts[2]);
-                        shadowMapFOV = Float.parseFloat(parts[2]);
-                        shadowMapIsOrtho = false;
-
-                        // Shadow distance
-                    } else if (line.matches("/\\* SHADOWHPL:[0-9\\.]+ \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        System.out.println("Shadow map half-plane: " + parts[2]);
-                        shadowMapHalfPlane = Float.parseFloat(parts[2]);
-                        shadowMapIsOrtho = true;
-
-                    } else if (line.matches("[ \t]*const[ \t]*float[ \t]*shadowDistance[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Shadow map distance: " + parts[1]);
-                        shadowMapHalfPlane = Float.parseFloat(parts[1]);
-                        shadowMapIsOrtho = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*float[ \t]*shadowIntervalSize[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Shadow map interval size: " + parts[1]);
-                        shadowIntervalSize = Float.parseFloat(parts[1]);
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*generateShadowMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("Generate shadow mipmap");
-                        Arrays.fill(shadowMipmapEnabled, true);
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*generateShadowColorMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("Generate shadow color mipmap");
-                        Arrays.fill(shadowColorMipmapEnabled, true);
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("Hardware shadow filtering enabled.");
-                        Arrays.fill(shadowHardwareFilteringEnabled, true);
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering0[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowHardwareFiltering0");
-                        shadowHardwareFilteringEnabled[0] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering1[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowHardwareFiltering1");
-                        shadowHardwareFilteringEnabled[1] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowtex0Mipmap");
-                        shadowMipmapEnabled[0] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowtex1Mipmap");
-                        shadowMipmapEnabled[1] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowcolor0Mipmap");
-                        shadowColorMipmapEnabled[0] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowcolor1Mipmap");
-                        shadowColorMipmapEnabled[1] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowtex0Nearest");
-                        shadowFilterNearest[0] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowtex1Nearest");
-                        shadowFilterNearest[1] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowcolor0Nearest");
-                        shadowColorFilterNearest[0] = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowcolor1Nearest");
-                        shadowColorFilterNearest[1] = true;
-
-                        // Wetness half life
-                    } else if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        System.out.println("Wetness halflife: " + parts[2]);
-                        wetnessHalfLife = Float.parseFloat(parts[2]);
-
-                    } else if (line.matches("[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Wetness halflife: " + parts[1]);
-                        wetnessHalfLife = Float.parseFloat(parts[1]);
-
-                        // Dryness halflife
-                    } else if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        System.out.println("Dryness halflife: " + parts[2]);
-                        drynessHalfLife = Float.parseFloat(parts[2]);
-
-                    } else if (line.matches("[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Dryness halflife: " + parts[1]);
-                        drynessHalfLife = Float.parseFloat(parts[1]);
-
-                        // Eye brightness halflife
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Eye brightness halflife: " + parts[1]);
-                        eyeBrightnessHalflife = Float.parseFloat(parts[1]);
-
-                        // Center depth halflife
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Center depth halflife: " + parts[1]);
-                        centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
-
-                        // Sun path rotation
-                    } else if (line.matches("[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Sun path rotation: " + parts[1]);
-                        sunPathRotation = Float.parseFloat(parts[1]);
-
-                        // Ambient occlusion level
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("AO Level: " + parts[1]);
-                        aoLevel = Float.parseFloat(parts[1]);
-                        blockAoLight = 1.0f - aoLevel;
-
-                        // super sampling
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        int ssaa = Integer.parseInt(parts[1]);
-                        if (ssaa > 1) {
-                            System.out.println("Super sampling level: " + ssaa + "x");
-                            superSamplingLevel = ssaa;
-                        } else {
-                            superSamplingLevel = 1;
-                        }
-
-                        // noise texture
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                        String[] parts = line.split("(=[ \t]*|;)");
-                        System.out.println("Noise texture enabled");
-                        System.out.println("Noise texture resolution: " + parts[1]);
-                        noiseTextureResolution = Integer.parseInt(parts[1]);
-                        noiseTextureEnabled = true;
-
-                    } else if (line.matches(
-                            "[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
-                        Matcher m = gbufferFormatPattern.matcher(line);
-                        m.matches();
-                        String name = m.group(1);
-                        String value = m.group(2);
-                        int bufferindex = getBufferIndexFromString(name);
-                        int format = getTextureFormatFromString(value);
-                        if (bufferindex >= 0 && format != 0) {
-                            gbuffersFormat[bufferindex] = format;
-                            System.out.format("%s format: %s\n", name, value);
-                        }
-                        // gaux4
-                    } else if (line.matches("/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
-                        System.out.println("gaux4 format : RGB32AF");
-                        gbuffersFormat[7] = GL_RGBA32F;
-                    } else if (line.matches("/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
-                        System.out.println("gaux4 format : RGB32F");
-                        gbuffersFormat[7] = GL_RGB32F;
-                    } else if (line.matches("/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
-                        System.out.println("gaux4 format : RGB16");
-                        gbuffersFormat[7] = GL_RGB16;
-
-                        // Mipmap stuff
-                    } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        if (filename.matches(".*composite[0-9]?.fsh") || filename.matches(".*final.fsh")) {
-                            Matcher m = gbufferMipmapEnabledPattern.matcher(line);
-                            m.matches();
-                            String name = m.group(1);
-                            // String value =m.group(2);
-                            int bufferindex = getBufferIndexFromString(name);
-                            if (bufferindex >= 0) {
-                                newCompositeMipmapSetting |= (1 << bufferindex);
-                                System.out.format("%s mipmap enabled for %s\n", name, filename);
-                            }
-                        }
-                    } else if (line.matches("/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
-                        String[] parts = line.split("(:| )", 4);
-                        newDrawBufSetting = parts[2];
-                    }
+                    processFragShaderLine(line, filename);
                 }
             } catch (Exception e) {
                 System.out.println("Couldn't read " + filename + "!");
@@ -1917,6 +1698,256 @@ public class Shaders {
         glCompileShaderARB(fragShader);
         printLogInfo(fragShader, filename);
         return fragShader;
+    }
+
+    // TODO: refactor this mess
+    private static void processFragShaderLine(String line, String filename) {
+        if (line.matches("#version .*")) {
+
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadow;.*")) {
+            if (usedShadowDepthBuffers < 1) usedShadowDepthBuffers = 1;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ watershadow;.*")) {
+            waterShadowEnabled = true;
+            if (usedShadowDepthBuffers < 2) usedShadowDepthBuffers = 2;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowtex0;.*")) {
+            if (usedShadowDepthBuffers < 1) usedShadowDepthBuffers = 1;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowtex1;.*")) {
+            if (usedShadowDepthBuffers < 2) usedShadowDepthBuffers = 2;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor;.*")) {
+            if (usedShadowColorBuffers < 1) usedShadowColorBuffers = 1;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor0;.*")) {
+            if (usedShadowColorBuffers < 1) usedShadowColorBuffers = 1;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadowcolor1;.*")) {
+            if (usedShadowColorBuffers < 2) usedShadowColorBuffers = 2;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex0;.*")) {
+            if (usedDepthBuffers < 1) usedDepthBuffers = 1;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex1;.*")) {
+            if (usedDepthBuffers < 2) usedDepthBuffers = 2;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ depthtex2;.*")) {
+            if (usedDepthBuffers < 3) usedDepthBuffers = 3;
+        } else if (line.matches("uniform [ _a-zA-Z0-9]+ gdepth;.*")) {
+            if (gbuffersFormat[1] == GL_RGBA) gbuffersFormat[1] = GL_RGBA32F;
+        } else if (usedColorBuffers < 5 && line.matches("uniform [ _a-zA-Z0-9]+ gaux1;.*")) {
+            usedColorBuffers = 5;
+        } else if (usedColorBuffers < 6 && line.matches("uniform [ _a-zA-Z0-9]+ gaux2;.*")) {
+            usedColorBuffers = 6;
+        } else if (usedColorBuffers < 7 && line.matches("uniform [ _a-zA-Z0-9]+ gaux3;.*")) {
+            usedColorBuffers = 7;
+        } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ gaux4;.*")) {
+            usedColorBuffers = 8;
+        } else if (usedColorBuffers < 5 && line.matches("uniform [ _a-zA-Z0-9]+ colortex4;.*")) {
+            usedColorBuffers = 5;
+        } else if (usedColorBuffers < 6 && line.matches("uniform [ _a-zA-Z0-9]+ colortex5;.*")) {
+            usedColorBuffers = 6;
+        } else if (usedColorBuffers < 7 && line.matches("uniform [ _a-zA-Z0-9]+ colortex6;.*")) {
+            usedColorBuffers = 7;
+        } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ colortex7;.*")) {
+            usedColorBuffers = 8;
+
+        } else if (usedColorBuffers < 8 && line.matches("uniform [ _a-zA-Z0-9]+ centerDepthSmooth;.*")) {
+            centerDepthSmoothEnabled = true;
+
+            // Shadow resolution
+        } else if (line.matches("/\\* SHADOWRES:[0-9]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            System.out.println("Shadow map resolution: " + parts[2]);
+            spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[2]);
+            shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
+
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*shadowMapResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Shadow map resolution: " + parts[1]);
+            spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[1]);
+            shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
+
+        } else if (line.matches("/\\* SHADOWFOV:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            System.out.println("Shadow map field of view: " + parts[2]);
+            shadowMapFOV = Float.parseFloat(parts[2]);
+            shadowMapIsOrtho = false;
+
+            // Shadow distance
+        } else if (line.matches("/\\* SHADOWHPL:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            System.out.println("Shadow map half-plane: " + parts[2]);
+            shadowMapHalfPlane = Float.parseFloat(parts[2]);
+            shadowMapIsOrtho = true;
+
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*shadowDistance[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Shadow map distance: " + parts[1]);
+            shadowMapHalfPlane = Float.parseFloat(parts[1]);
+            shadowMapIsOrtho = true;
+
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*shadowIntervalSize[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Shadow map interval size: " + parts[1]);
+            shadowIntervalSize = Float.parseFloat(parts[1]);
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*generateShadowMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("Generate shadow mipmap");
+            Arrays.fill(shadowMipmapEnabled, true);
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*generateShadowColorMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("Generate shadow color mipmap");
+            Arrays.fill(shadowColorMipmapEnabled, true);
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("Hardware shadow filtering enabled.");
+            Arrays.fill(shadowHardwareFilteringEnabled, true);
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering0[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowHardwareFiltering0");
+            shadowHardwareFilteringEnabled[0] = true;
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering1[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowHardwareFiltering1");
+            shadowHardwareFilteringEnabled[1] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowtex0Mipmap");
+            shadowMipmapEnabled[0] = true;
+
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowtex1Mipmap");
+            shadowMipmapEnabled[1] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowcolor0Mipmap");
+            shadowColorMipmapEnabled[0] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowcolor1Mipmap");
+            shadowColorMipmapEnabled[1] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowtex0Nearest");
+            shadowFilterNearest[0] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowtex1Nearest");
+            shadowFilterNearest[1] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowcolor0Nearest");
+            shadowColorFilterNearest[0] = true;
+
+        } else if (line.matches(
+                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            System.out.println("shadowcolor1Nearest");
+            shadowColorFilterNearest[1] = true;
+
+            // Wetness half life
+        } else if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            System.out.println("Wetness halflife: " + parts[2]);
+            wetnessHalfLife = Float.parseFloat(parts[2]);
+
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Wetness halflife: " + parts[1]);
+            wetnessHalfLife = Float.parseFloat(parts[1]);
+
+            // Dryness halflife
+        } else if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            System.out.println("Dryness halflife: " + parts[2]);
+            drynessHalfLife = Float.parseFloat(parts[2]);
+
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Dryness halflife: " + parts[1]);
+            drynessHalfLife = Float.parseFloat(parts[1]);
+
+            // Eye brightness halflife
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Eye brightness halflife: " + parts[1]);
+            eyeBrightnessHalflife = Float.parseFloat(parts[1]);
+
+            // Center depth halflife
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Center depth halflife: " + parts[1]);
+            centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
+
+            // Sun path rotation
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Sun path rotation: " + parts[1]);
+            sunPathRotation = Float.parseFloat(parts[1]);
+
+            // Ambient occlusion level
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("AO Level: " + parts[1]);
+            aoLevel = Float.parseFloat(parts[1]);
+            blockAoLight = 1.0f - aoLevel;
+
+            // super sampling
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            int ssaa = Integer.parseInt(parts[1]);
+            if (ssaa > 1) {
+                System.out.println("Super sampling level: " + ssaa + "x");
+                superSamplingLevel = ssaa;
+            } else {
+                superSamplingLevel = 1;
+            }
+
+            // noise texture
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            System.out.println("Noise texture enabled");
+            System.out.println("Noise texture resolution: " + parts[1]);
+            noiseTextureResolution = Integer.parseInt(parts[1]);
+            noiseTextureEnabled = true;
+
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
+            Matcher m = gbufferFormatPattern.matcher(line);
+            m.matches();
+            String name = m.group(1);
+            String value = m.group(2);
+            int bufferindex = getBufferIndexFromString(name);
+            int format = getTextureFormatFromString(value);
+            if (bufferindex >= 0 && format != 0) {
+                gbuffersFormat[bufferindex] = format;
+                System.out.format("%s format: %s\n", name, value);
+            }
+            // gaux4
+        } else if (line.matches("/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
+            System.out.println("gaux4 format : RGB32AF");
+            gbuffersFormat[7] = GL_RGBA32F;
+        } else if (line.matches("/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
+            System.out.println("gaux4 format : RGB32F");
+            gbuffersFormat[7] = GL_RGB32F;
+        } else if (line.matches("/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
+            System.out.println("gaux4 format : RGB16");
+            gbuffersFormat[7] = GL_RGB16;
+
+            // Mipmap stuff
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
+            if (filename.matches(".*composite[0-9]?.fsh") || filename.matches(".*final.fsh")) {
+                Matcher m = gbufferMipmapEnabledPattern.matcher(line);
+                m.matches();
+                String name = m.group(1);
+                // String value =m.group(2);
+                int bufferindex = getBufferIndexFromString(name);
+                if (bufferindex >= 0) {
+                    newCompositeMipmapSetting |= (1 << bufferindex);
+                    System.out.format("%s mipmap enabled for %s\n", name, filename);
+                }
+            }
+        } else if (line.matches("/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            newDrawBufSetting = parts[2];
+        }
     }
 
     private static boolean printLogInfo(int obj, String name) {
