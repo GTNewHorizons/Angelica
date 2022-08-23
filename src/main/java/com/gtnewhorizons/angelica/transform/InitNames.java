@@ -2,6 +2,6 @@ package com.gtnewhorizons.angelica.transform;
 
 public class InitNames {
     public static void init() {
-        new NamerMcf().setNames();
+        new NamerSrg().setNames();
     }
 }

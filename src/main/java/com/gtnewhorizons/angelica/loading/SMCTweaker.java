@@ -23,9 +23,9 @@ public class SMCTweaker implements ITweaker {
 
     @Override
     public void injectIntoClassLoader(LaunchClassLoader launchClassLoader) {
-        launchClassLoader.addTransformerExclusion("shadersmodcore.loading.");
-        launchClassLoader.addTransformerExclusion("shadersmodcore.transform.");
-        launchClassLoader.registerTransformer("shadersmodcore.transform.SMCClassTransformer");
+        launchClassLoader.addTransformerExclusion("com.gtnewhorizons.angelica.loading.");
+        launchClassLoader.addTransformerExclusion("com.gtnewhorizons.angelica.transform.");
+        launchClassLoader.registerTransformer("com.gtnewhorizons.angelica.transform.SMCClassTransformer");
     }
 
     @Override

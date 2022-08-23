@@ -1,6 +1,6 @@
 package net.minecraft.client.renderer;
 
-import net.minecraft.client.renderer.culling.Frustrum;
+import net.minecraft.client.renderer.culling.ICamera;
 
 public class WorldRenderer {
     public boolean isInFrustum;
@@ -9,5 +9,5 @@ public class WorldRenderer {
         return false;
     }
 
-    public void updateInFrustum(Frustrum frustrum) {}
+    public void updateInFrustum(ICamera frustrum) {}
 }

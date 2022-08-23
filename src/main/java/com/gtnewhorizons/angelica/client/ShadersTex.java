@@ -346,17 +346,19 @@ public class ShadersTex {
     public static BufferedImage readImage(ResourceLocation resLoc) {
         BufferedImage image = null;
         InputStream istr = null;
-        try {
-            istr = resManager.getResource(resLoc).getInputStream();
-            image = ImageIO.read(istr);
-        } catch (IOException e) {
-        }
-        if (istr != null) {
+        if (resManager != null) {
             try {
-                istr.close();
+                istr = resManager.getResource(resLoc).getInputStream();
+                image = ImageIO.read(istr);
             } catch (IOException e) {
             }
-            istr = null;
+            if (istr != null) {
+                try {
+                    istr.close();
+                } catch (IOException e) {
+                }
+                istr = null;
+            }
         }
         return image;
     }

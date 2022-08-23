@@ -1160,9 +1160,6 @@ public class Shaders {
                     + toStringYN(capabilities.OpenGL21) + "    3.0 = "
                     + toStringYN(capabilities.OpenGL30) + "    3.2 = "
                     + toStringYN(capabilities.OpenGL32));
-            if (!capabilities.OpenGL20) {
-                printChatAndLogError("[Shaders] No OpenGL 2.0.");
-            }
             if (!capabilities.OpenGL21) {
                 printChatAndLogError("[Shaders] No OpenGL 2.1.");
             }
@@ -1170,8 +1167,7 @@ public class Shaders {
                 printChatAndLogError("[Shaders] No EXT_framebuffer_object.");
             }
             if (!capabilities.OpenGL20 || !capabilities.GL_EXT_framebuffer_object) {
-                System.out.println("[Shaders] Your GPU is not compatible with the Shaders mod.");
-                System.exit(-1);
+                printChatAndLogError("[Shaders] Your GPU is not compatible with the Shaders mod.");
             }
 
             hasGlGenMipmap = capabilities.OpenGL30;

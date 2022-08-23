@@ -9,3 +9,13 @@ sourceSets {
         compileClasspath += configurations.compileStubs
     }
 }
+
+jar {
+    manifest {
+        attributes([
+            "Manifest-Version" : 1.0,
+            "TweakClass" : "com.gtnewhorizons.angelica.loading.SMCTweaker",
+            "TweakOrder" : 1100,
+        ])
+    }
+}

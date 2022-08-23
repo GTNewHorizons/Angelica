@@ -4,7 +4,7 @@ import java.util.List;
 
 public class ModelRenderer {
 
-    public static List childModels;
+    public List childModels;
 
     public void resetDisplayList() {}
 }
