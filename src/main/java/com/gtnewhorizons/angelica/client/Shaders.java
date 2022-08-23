@@ -1618,7 +1618,8 @@ public class Shaders {
 
     private static final Pattern INCLUDE_PATTERN = Pattern.compile("^\\s*#include\\s+\"([A-Za-z0-9_/\\.]+)\".*$");
 
-    // TODO: dirty non-recursive implementation, also does not support any includes referencing anything but shaders directory
+    // TODO: dirty non-recursive implementation, also does not support any includes referencing anything but shaders
+    // directory
     private static boolean preprocessIncludeDirective(String line, StringBuilder code, boolean type) {
         Matcher includePattern = INCLUDE_PATTERN.matcher(line);
 
