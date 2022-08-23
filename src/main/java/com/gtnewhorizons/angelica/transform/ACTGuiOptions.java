@@ -10,11 +10,11 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTGuiOptions implements IClassTransformer {
+public class ACTGuiOptions implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -104,7 +104,7 @@ public class SMCCTGuiOptions implements IClassTransformer {
                     mv.visitMethodInsn(INVOKESPECIAL, Names.guiButton_.clas, "<init>", "(IIIIILjava/lang/String;)V");
                     mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z");
                     mv.visitInsn(POP);
-                    SMCLog.finest("    add shaders button");
+                    ALog.finest("    add shaders button");
                 }
             }
         }
@@ -119,7 +119,7 @@ public class SMCCTGuiOptions implements IClassTransformer {
                         mv.visitInsn(POP);
                         mv.visitIntInsn(BIPUSH, 74);
                         mv.visitIntInsn(BIPUSH, 20);
-                        SMCLog.finest("    decrease language button size");
+                        ALog.finest("    decrease language button size");
                     }
                 }
             }
@@ -175,7 +175,7 @@ public class SMCCTGuiOptions implements IClassTransformer {
                     Names.minecraft_displayGuiScreen.desc);
             mv.visitLabel(l1);
             mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-            SMCLog.finest("    shaders button action");
+            ALog.finest("    shaders button action");
         }
     }
 }

@@ -11,11 +11,11 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 /** transformer for net.minecraft.client.renderer.EntityRenderer */
-public class SMCCTEntityRenderer implements IClassTransformer {
+public class ACTEntityRenderer implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -41,29 +41,29 @@ public class SMCCTEntityRenderer implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.entityRenderer_disableLightmap.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVdisableLightmap(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_enableLightmap.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVenableLightmap(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_updateFogColor.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVupdateFogColor(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_setFogColorBuffer.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVsetFogColorBuffer(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_setupFog.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVsetupFog(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_renderCloudsCheck.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderCloudsCheck(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_renderHand.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
                 return new MVrenderHand(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.entityRenderer_renderWorld.equalsNameDesc(name, desc)) {
-                SMCLog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderWorld(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -664,7 +664,7 @@ public class SMCCTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitEnd() {
-            if (state != stateEnd) SMCLog.severe("  state %d expect %d", state, stateEnd);
+            if (state != stateEnd) ALog.severe("  state %d expect %d", state, stateEnd);
             mv.visitEnd();
         }
     }

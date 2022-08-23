@@ -11,11 +11,11 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 /** transformer for net.minecraft.client.renderer.texture.AbstractTexture */
-public class SMCCTTextureAbstract implements IClassTransformer {
+public class ACTTextureAbstract implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);

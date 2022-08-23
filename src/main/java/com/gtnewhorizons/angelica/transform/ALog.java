@@ -12,7 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-public abstract class SMCLog {
+public abstract class ALog {
 
     private static class SMCFormatter extends Formatter {
         int tzOffset;

@@ -9,11 +9,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTSmartMoveModelRotationRenderer implements IClassTransformer {
+public class ACTSmartMoveModelRotationRenderer implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);

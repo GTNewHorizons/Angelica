@@ -9,13 +9,13 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTTextureCompass implements IClassTransformer {
+public class ACTBlock implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
-        ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+        ClassWriter cw = new ClassWriter(cr, 0);
         CVTransform cv = new CVTransform(cw);
         cr.accept(cv, 0);
         return cw.toByteArray();
@@ -31,20 +31,36 @@ public class SMCCTTextureCompass implements IClassTransformer {
         @Override
         public void visit(
                 int version, int access, String name, String signature, String superName, String[] interfaces) {
-            classname = name;
+            this.classname = name;
             // SMCLog.info(" class %s",name);
-            cv.visit(version, access, name, signature, superName, interfaces);
+            super.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
-            if (Names.textureCompass_updateCompass.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
-                return new SMCCTTextureAtlasSprite.MVanimation(
-                        cv.visitMethod(access, name, desc, signature, exceptions));
+            if (Names.block_getAoLight.equalsNameDesc(name, desc)) {
+                // SMCLog.info("  patching");
+                return new MVgetAoLight(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
+        }
+    }
+
+    private static class MVgetAoLight extends MethodVisitor {
+        public MVgetAoLight(MethodVisitor mv) {
+            super(Opcodes.ASM4, mv);
+        }
+
+        @Override
+        public void visitLdcInsn(Object cst) {
+            if (cst instanceof Float) {
+                if (((Float) cst).floatValue() == 0.2f) {
+                    mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "blockAoLight", "F");
+                    ALog.info("   blockAoLight");
+                    return;
+                }
+            }
+            mv.visitLdcInsn(cst);
         }
     }
 }

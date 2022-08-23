@@ -7,7 +7,7 @@ import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
-public class SMCTweaker implements ITweaker {
+public class ATweaker implements ITweaker {
     public List<String> args;
     public File gameDir;
     public File assetsDir;
@@ -25,7 +25,7 @@ public class SMCTweaker implements ITweaker {
     public void injectIntoClassLoader(LaunchClassLoader launchClassLoader) {
         launchClassLoader.addTransformerExclusion("com.gtnewhorizons.angelica.loading.");
         launchClassLoader.addTransformerExclusion("com.gtnewhorizons.angelica.transform.");
-        launchClassLoader.registerTransformer("com.gtnewhorizons.angelica.transform.SMCClassTransformer");
+        launchClassLoader.registerTransformer("com.gtnewhorizons.angelica.transform.AClassTransformer");
     }
 
     @Override

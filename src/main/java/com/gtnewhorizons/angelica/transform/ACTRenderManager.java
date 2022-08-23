@@ -9,13 +9,14 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class SMCCTItemBlock implements IClassTransformer {
+/** transformer for net.minecraft.client.renderer.Tessellator */
+public class ACTRenderManager implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
-        ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+        ClassWriter cw = new ClassWriter(cr, 0);
         CVTransform cv = new CVTransform(cw);
         cr.accept(cv, 0);
         return cw.toByteArray();
@@ -23,6 +24,7 @@ public class SMCCTItemBlock implements IClassTransformer {
 
     private static class CVTransform extends ClassVisitor {
         String classname;
+        boolean endFields = false;
 
         public CVTransform(ClassVisitor cv) {
             super(Opcodes.ASM4, cv);
@@ -38,8 +40,8 @@ public class SMCCTItemBlock implements IClassTransformer {
 
         @Override
         public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-            if (Names.itemBlock_block.name.equals(name)) {
-                access = access & ~(ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
+            if (Names.renderManager_entityRenderMap.name.equals(name)) {
+                access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
             }
             return cv.visitField(access, name, desc, signature, value);
         }

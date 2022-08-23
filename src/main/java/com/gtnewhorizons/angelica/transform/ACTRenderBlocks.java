@@ -13,11 +13,11 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodNode;
 
-public class SMCCTRenderBlocks implements IClassTransformer {
+public class ACTRenderBlocks implements IClassTransformer {
 
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
-        SMCLog.fine("transforming %s %s", par1, par2);
+        ALog.fine("transforming %s %s", par1, par2);
         ClassReader cr = new ClassReader(par3);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
