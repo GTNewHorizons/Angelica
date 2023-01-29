@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -24,6 +25,7 @@ public class ACTTextureAbstract implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
         boolean endFields = false;
 
@@ -32,8 +34,8 @@ public class ACTTextureAbstract implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -56,17 +58,21 @@ public class ACTTextureAbstract implements IClassTransformer {
                 FieldVisitor fv;
                 // multiTex
                 fv = cv.visitField(
-                        ACC_PUBLIC, "multiTex", "Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
+                        ACC_PUBLIC,
+                        "multiTex",
+                        "Lcom/gtnewhorizons/angelica/client/MultiTexID;",
+                        null,
+                        null);
                 fv.visitEnd();
             }
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.abstractTexture_deleteGlTexture.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s%s",classname,name,desc,nameM,descM);
+                // SMCLog.finer(" patching method %s.%s%s = %s%s",classname,name,desc,nameM,descM);
                 return new MVdeleteGlTexture(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (name.equals("getMultiTexID")
-                    && desc.equals("()Lcom/gtnewhorizons/angelica/client/MultiTexID;")) {
-                return null;
-            }
+            } else
+                if (name.equals("getMultiTexID") && desc.equals("()Lcom/gtnewhorizons/angelica/client/MultiTexID;")) {
+                    return null;
+                }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
 
@@ -75,7 +81,11 @@ public class ACTTextureAbstract implements IClassTransformer {
             MethodVisitor mv;
             // getMultiTexID
             mv = cv.visitMethod(
-                    ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
+                    ACC_PUBLIC,
+                    "getMultiTexID",
+                    "()Lcom/gtnewhorizons/angelica/client/MultiTexID;",
+                    null,
+                    null);
             mv.visitCode();
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(
@@ -92,6 +102,7 @@ public class ACTTextureAbstract implements IClassTransformer {
     }
 
     private static class MVdeleteGlTexture extends MethodVisitor {
+
         public MVdeleteGlTexture(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

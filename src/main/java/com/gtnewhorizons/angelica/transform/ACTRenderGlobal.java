@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.lwjgl.opengl.GL11;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -24,6 +25,7 @@ public class ACTRenderGlobal implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -31,8 +33,8 @@ public class ACTRenderGlobal implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -49,7 +51,7 @@ public class ACTRenderGlobal implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // String remappedName = SMCRemap.remapper.mapMethodName(classname, name, desc);
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.renderGlobal_renderEntities.equalsNameDesc(name, desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderEntities(cv.visitMethod(access, name, desc, signature, exceptions));
@@ -73,6 +75,7 @@ public class ACTRenderGlobal implements IClassTransformer {
     }
 
     private static class MVrenderEntities extends MethodVisitor {
+
         public MVrenderEntities(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -115,13 +118,19 @@ public class ACTRenderGlobal implements IClassTransformer {
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endEntities", "()V");
                 ALog.finest("    %s", "endEntities");
                 mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginBlockEntities", "()V");
+                        INVOKESTATIC,
+                        "com/gtnewhorizons/angelica/client/Shaders",
+                        "beginBlockEntities",
+                        "()V");
                 ALog.finest("    %s", "beginTileEntities");
             } else if (state == 5) {
                 if (Names.entityRenderer_disableLightmap.equals(owner, name, desc)) {
                     state = 6;
                     mv.visitMethodInsn(
-                            INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endBlockEntities", "()V");
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/Shaders",
+                            "endBlockEntities",
+                            "()V");
                     ALog.finest("    %s", "endTileEntities");
                 }
             }
@@ -130,6 +139,7 @@ public class ACTRenderGlobal implements IClassTransformer {
 
     /* detect glEnable or glDisable (TEXTURE_2D or FOG) */
     private static class MVendisTexFog extends MethodVisitor {
+
         public MVendisTexFog(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -153,21 +163,33 @@ public class ACTRenderGlobal implements IClassTransformer {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "enableTexture2D",
+                                "()V");
                         ALog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "enableFog",
+                                "()V");
                         ALog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "disableTexture2D",
+                                "()V");
                         ALog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "disableFog",
+                                "()V");
                         ALog.finest("    %s", "disableFog");
                     }
                 }
@@ -178,6 +200,7 @@ public class ACTRenderGlobal implements IClassTransformer {
 
     /* extends MVenableTF */
     private static class MVrenderSky extends MVendisTexFog {
+
         public MVrenderSky(MethodVisitor mv) {
             super(mv);
         }
@@ -227,7 +250,10 @@ public class ACTRenderGlobal implements IClassTransformer {
                     if (Names.renderGlobal_glSkyList.equals(owner, name)) {
                         ++state;
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preSkyList", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "preSkyList",
+                                "()V");
                         break;
                     }
                     break;
@@ -237,7 +263,7 @@ public class ACTRenderGlobal implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.info("    %s.%s%s",ownerM,nameM,descM);
+            // SMCLog.info(" %s.%s%s",ownerM,nameM,descM);
             switch (state) {
                 case 0:
                     if (owner.equals("Config") && name.equals("isSkyEnabled")) {
@@ -257,21 +283,33 @@ public class ACTRenderGlobal implements IClassTransformer {
                 if (name.equals("glEnable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableTexture2D", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "enableTexture2D",
+                                "()V");
                         ALog.finest("    %s", "enableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableFog", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "enableFog",
+                                "()V");
                         ALog.finest("    %s", "enableFog");
                     }
                 } else if (name.equals("glDisable")) {
                     if (lastInt == GL11.GL_TEXTURE_2D) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableTexture2D", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "disableTexture2D",
+                                "()V");
                         ALog.finest("    %s", "disableTexture2D");
                     } else if (lastInt == GL11.GL_FOG) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableFog", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "disableFog",
+                                "()V");
                         ALog.finest("    %s", "disableFog");
                     }
                 } else if (name.equals("glRotatef")) {
@@ -279,7 +317,10 @@ public class ACTRenderGlobal implements IClassTransformer {
                     if (state == 3) {
                         ++state;
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "preCelestialRotate", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "preCelestialRotate",
+                                "()V");
                         ALog.finest("    %s", "preCelestialRotate");
                     } else if (state == 4) {
                         ++state;
@@ -296,6 +337,7 @@ public class ACTRenderGlobal implements IClassTransformer {
     }
 
     private static class MVdrawBlockDamageTexture extends MethodVisitor {
+
         int state = 0;
 
         public MVdrawBlockDamageTexture(MethodVisitor mv) {

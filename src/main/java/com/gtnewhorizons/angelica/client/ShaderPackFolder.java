@@ -23,8 +23,7 @@ public class ShaderPackFolder implements IShaderPack {
             if (resFile != null) {
                 return new BufferedInputStream(new FileInputStream(resFile));
             }
-        } catch (Exception excp) {
-        }
+        } catch (Exception excp) {}
         return null;
     }
 }

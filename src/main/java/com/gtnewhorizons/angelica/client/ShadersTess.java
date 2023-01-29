@@ -4,14 +4,17 @@ import static org.lwjgl.opengl.ARBVertexShader.glDisableVertexAttribArrayARB;
 import static org.lwjgl.opengl.ARBVertexShader.glEnableVertexAttribArrayARB;
 import static org.lwjgl.opengl.ARBVertexShader.glVertexAttribPointerARB;
 
-import com.gtnewhorizons.angelica.transform.ALog;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
+
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
+
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+
+import com.gtnewhorizons.angelica.transform.ALog;
 
 public class ShadersTess {
 
@@ -103,12 +106,21 @@ public class ShadersTess {
         }
         if (Shaders.useMidTexCoordAttrib && tess.hasTexture) {
             glVertexAttribPointerARB(
-                    Shaders.midTexCoordAttrib, 2, false, vertexStride * 4, (FloatBuffer) tess.floatBuffer.position(12));
+                    Shaders.midTexCoordAttrib,
+                    2,
+                    false,
+                    vertexStride * 4,
+                    (FloatBuffer) tess.floatBuffer.position(12));
             glEnableVertexAttribArrayARB(Shaders.midTexCoordAttrib);
         }
         if (Shaders.useEntityAttrib) {
-            glVertexAttribPointerARB(Shaders.entityAttrib, 3, false, false, vertexStride * 4, (ShortBuffer)
-                    tess.shortBuffer.position(7 * 2));
+            glVertexAttribPointerARB(
+                    Shaders.entityAttrib,
+                    3,
+                    false,
+                    false,
+                    vertexStride * 4,
+                    (ShortBuffer) tess.shortBuffer.position(7 * 2));
             glEnableVertexAttribArrayARB(Shaders.entityAttrib);
         }
         // Shaders.checkGLError("preDrawArray");
@@ -158,7 +170,7 @@ public class ShadersTess {
         // Check if buffer is nearly full
         if (rbi >= tess.bufferSize - vertexStride * 4) {
             if (tess.bufferSize >= 0x1000000) {
-                // Max size reached.  Just draw.
+                // Max size reached. Just draw.
                 if (tess.addedVertices % 4 == 0) {
                     tess.draw();
                     tess.isDrawing = true;
@@ -195,28 +207,26 @@ public class ShadersTess {
                 float vnz = x1 * y2 - x2 * y1;
                 float lensq = vnx * vnx + vny * vny + vnz * vnz;
                 float mult = (lensq != 0.0) ? (float) (1f / Math.sqrt(lensq)) : 1f;
-                rawBuffer[rbi + (9 - vertexStride * 3)] = rawBuffer[rbi + (9 - vertexStride * 2)] =
-                        rawBuffer[rbi + (9 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalX = vnx * mult);
-                rawBuffer[rbi + (10 - vertexStride * 3)] = rawBuffer[rbi + (10 - vertexStride * 2)] =
-                        rawBuffer[rbi + (10 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalY = vny * mult);
-                rawBuffer[rbi + (11 - vertexStride * 3)] = rawBuffer[rbi + (11 - vertexStride * 2)] =
-                        rawBuffer[rbi + (11 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalZ = vnz * mult);
+                rawBuffer[rbi + (9 - vertexStride * 3)] = rawBuffer[rbi + (9 - vertexStride * 2)] = rawBuffer[rbi
+                        + (9 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalX = vnx * mult);
+                rawBuffer[rbi + (10 - vertexStride * 3)] = rawBuffer[rbi + (10 - vertexStride * 2)] = rawBuffer[rbi
+                        + (10 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalY = vny * mult);
+                rawBuffer[rbi + (11 - vertexStride * 3)] = rawBuffer[rbi + (11 - vertexStride * 2)] = rawBuffer[rbi
+                        + (11 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalZ = vnz * mult);
                 tess.hasNormals = true;
                 // mid UV
                 tess.midTextureU = (Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 3)])
-                                + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 2)])
-                                + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 1)])
-                                + (float) tess.textureU)
-                        / 4;
+                        + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 2)])
+                        + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 1)])
+                        + (float) tess.textureU) / 4;
                 tess.midTextureV = (Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 3)])
-                                + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 2)])
-                                + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 1)])
-                                + (float) tess.textureV)
-                        / 4;
-                rawBuffer[rbi + (12 - vertexStride * 3)] = rawBuffer[rbi + (12 - vertexStride * 2)] =
-                        rawBuffer[rbi + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureU);
-                rawBuffer[rbi + (13 - vertexStride * 3)] = rawBuffer[rbi + (13 - vertexStride * 2)] =
-                        rawBuffer[rbi + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureV);
+                        + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 2)])
+                        + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 1)])
+                        + (float) tess.textureV) / 4;
+                rawBuffer[rbi + (12 - vertexStride * 3)] = rawBuffer[rbi + (12 - vertexStride * 2)] = rawBuffer[rbi
+                        + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureU);
+                rawBuffer[rbi + (13 - vertexStride * 3)] = rawBuffer[rbi + (13 - vertexStride * 2)] = rawBuffer[rbi
+                        + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureV);
             }
         }
         // end normal and mid UV calculation

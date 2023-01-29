@@ -1,14 +1,15 @@
 package com.gtnewhorizons.angelica.transform;
 
-import com.gtnewhorizons.angelica.transform.Names.Clas;
-import com.gtnewhorizons.angelica.transform.Names.Fiel;
-import com.gtnewhorizons.angelica.transform.Names.Meth;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.gtnewhorizons.angelica.transform.Names.Clas;
+import com.gtnewhorizons.angelica.transform.Names.Fiel;
+import com.gtnewhorizons.angelica.transform.Names.Meth;
 
 public class NamerMcp extends NamerSrg {
 

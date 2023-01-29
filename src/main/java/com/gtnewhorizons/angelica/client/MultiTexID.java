@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client;
 
 public class MultiTexID {
+
     public int base;
     public int norm;
     public int spec;

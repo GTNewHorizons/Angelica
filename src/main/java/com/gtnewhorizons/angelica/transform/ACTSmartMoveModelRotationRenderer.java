@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -22,6 +23,7 @@ public class ACTSmartMoveModelRotationRenderer implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -29,8 +31,8 @@ public class ACTSmartMoveModelRotationRenderer implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -38,7 +40,7 @@ public class ACTSmartMoveModelRotationRenderer implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if ("resetDisplayList".equals(name) && "()V".equals(desc)) {
                 return null;
             }
@@ -57,12 +59,18 @@ public class ACTSmartMoveModelRotationRenderer implements IClassTransformer {
                 mv.visitInsn(ICONST_0);
                 // mv.visitFieldInsn(PUTFIELD, "net/smart/render/ModelRotationRenderer", "compiled", "Z");
                 mv.visitFieldInsn(
-                        PUTFIELD, "net/smart/render/ModelRotationRenderer", Names.modelRenderer_compiled.name, "Z");
+                        PUTFIELD,
+                        "net/smart/render/ModelRotationRenderer",
+                        Names.modelRenderer_compiled.name,
+                        "Z");
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitInsn(ICONST_0);
                 // mv.visitFieldInsn(PUTFIELD, "net/smart/render/ModelRotationRenderer", "displayList", "I");
                 mv.visitFieldInsn(
-                        PUTFIELD, "net/smart/render/ModelRotationRenderer", Names.modelRenderer_displayList.name, "I");
+                        PUTFIELD,
+                        "net/smart/render/ModelRotationRenderer",
+                        Names.modelRenderer_displayList.name,
+                        "I");
                 mv.visitInsn(RETURN);
                 mv.visitMaxs(2, 1);
                 mv.visitEnd();

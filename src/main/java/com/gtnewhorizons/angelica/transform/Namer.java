@@ -1,9 +1,10 @@
 package com.gtnewhorizons.angelica.transform;
 
+import java.util.ArrayList;
+
 import com.gtnewhorizons.angelica.transform.Names.Clas;
 import com.gtnewhorizons.angelica.transform.Names.Fiel;
 import com.gtnewhorizons.angelica.transform.Names.Meth;
-import java.util.ArrayList;
 
 public class Namer {
 

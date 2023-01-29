@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.lwjgl.opengl.GL11;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -23,6 +24,7 @@ public class ACTItemRenderer implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -32,12 +34,13 @@ public class ACTItemRenderer implements IClassTransformer {
         Names.Meth renderItemIrt = new Names.Meth(
                 Names.itemRenderer_,
                 "renderItem",
-                "(" + Names.entityLivingBase_.desc + Names.itemStack_.desc
+                "(" + Names.entityLivingBase_.desc
+                        + Names.itemStack_.desc
                         + "ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V");
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -45,7 +48,7 @@ public class ACTItemRenderer implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s",classname,name,desc);
+            // SMCLog.info(" method %s.%s%s",classname,name,desc);
             if (Names.itemRenderer_updateEquipped.equalsNameDesc(name, desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVupdate(cv.visitMethod(access, name, desc, signature, exceptions));
@@ -61,6 +64,7 @@ public class ACTItemRenderer implements IClassTransformer {
     }
 
     private static class MVupdate extends MethodVisitor {
+
         public MVupdate(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -70,13 +74,17 @@ public class ACTItemRenderer implements IClassTransformer {
             if (opcode == PUTFIELD && Names.itemRenderer_itemToRender.equals(owner, name, desc)) {
                 mv.visitInsn(DUP);
                 mv.visitFieldInsn(
-                        PUTSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "itemToRender", Names.itemStack_.desc);
+                        PUTSTATIC,
+                        "com/gtnewhorizons/angelica/client/Shaders",
+                        "itemToRender",
+                        Names.itemStack_.desc);
             }
             mv.visitFieldInsn(opcode, owner, name, desc);
         }
     }
 
     private static class MVrenderItem extends MethodVisitor {
+
         public MVrenderItem(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

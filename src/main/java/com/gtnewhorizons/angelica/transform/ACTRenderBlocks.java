@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -26,6 +27,7 @@ public class ACTRenderBlocks implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -33,8 +35,8 @@ public class ACTRenderBlocks implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -42,40 +44,43 @@ public class ACTRenderBlocks implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.renderBlocks_renderBlockByRenderType.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
                 return new MVrenBlkByRenType(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderBlocks_renderBlockFlowerPot.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
                 return new MVrenBlkFlowerPot(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderBlocks_renderStdBlockWithAOP.equalsNameDesc(name, desc)
                     || Names.renderBlocks_renderStdBlockWithAO.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
-                return new MVrenBlkWithAO(
-                        access,
-                        name,
-                        desc,
-                        signature,
-                        exceptions,
-                        cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.renderBlocks_renderStdBlockWithCM.equalsNameDesc(name, desc)
-                    || Names.renderBlocks_renderBlockCactusImpl.equalsNameDesc(name, desc)
-                    || Names.renderBlocks_renderBlockBed.equalsNameDesc(name, desc)
-                    || Names.renderBlocks_renderBlockFluids.equalsNameDesc(name, desc)
-                    || Names.renderBlocks_renderBlockDoor.equalsNameDesc(name, desc)
-                    || Names.renderBlocks_renderBlockSandFalling.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
-                return new MVrenBlkFVar(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.renderBlocks_renderPistonExtension.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
-                return new MVrenBlkPistonExt(cv.visitMethod(access, name, desc, signature, exceptions));
-            }
+                        // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
+                        return new MVrenBlkWithAO(
+                                access,
+                                name,
+                                desc,
+                                signature,
+                                exceptions,
+                                cv.visitMethod(access, name, desc, signature, exceptions));
+                    } else
+                if (Names.renderBlocks_renderStdBlockWithCM.equalsNameDesc(name, desc)
+                        || Names.renderBlocks_renderBlockCactusImpl.equalsNameDesc(name, desc)
+                        || Names.renderBlocks_renderBlockBed.equalsNameDesc(name, desc)
+                        || Names.renderBlocks_renderBlockFluids.equalsNameDesc(name, desc)
+                        || Names.renderBlocks_renderBlockDoor.equalsNameDesc(name, desc)
+                        || Names.renderBlocks_renderBlockSandFalling.equalsNameDesc(name, desc)) {
+                            // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
+                            return new MVrenBlkFVar(cv.visitMethod(access, name, desc, signature, exceptions));
+                        } else
+                    if (Names.renderBlocks_renderPistonExtension.equalsNameDesc(name, desc)) {
+                        // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
+                        return new MVrenBlkPistonExt(cv.visitMethod(access, name, desc, signature, exceptions));
+                    }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
     }
 
     private static class MVrenBlkByRenType extends MethodVisitor {
+
         public MVrenBlkByRenType(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -95,7 +100,7 @@ public class ACTRenderBlocks implements IClassTransformer {
                     "com/gtnewhorizons/angelica/client/Shaders",
                     "pushEntity",
                     "(" + Names.renderBlocks_.desc + Names.block_.desc + "III)V");
-            // SMCLog.info("    pushEntity");
+            // SMCLog.info(" pushEntity");
             ++nPatch;
         }
 
@@ -103,7 +108,7 @@ public class ACTRenderBlocks implements IClassTransformer {
         public void visitInsn(int opcode) {
             if (opcode == Opcodes.IRETURN) {
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
-                // SMCLog.info("    popEntity");
+                // SMCLog.info(" popEntity");
                 ++nPatch;
             }
             mv.visitInsn(opcode);
@@ -112,11 +117,12 @@ public class ACTRenderBlocks implements IClassTransformer {
         @Override
         public void visitEnd() {
             mv.visitEnd();
-            // SMCLog.info("    %d", nPatch);
+            // SMCLog.info(" %d", nPatch);
         }
     }
 
     private static class MVrenBlkFlowerPot extends MethodVisitor {
+
         public MVrenBlkFlowerPot(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -156,7 +162,10 @@ public class ACTRenderBlocks implements IClassTransformer {
                     if (Names.tessellator_addTranslation.equals(owner, name, desc)) {
                         ++state;
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "popEntity",
+                                "()V");
                     }
                     break;
             }
@@ -175,7 +184,7 @@ public class ACTRenderBlocks implements IClassTransformer {
                     "com/gtnewhorizons/angelica/client/Shaders",
                     "pushEntity",
                     "(" + Names.renderBlocks_.desc + Names.block_.desc + "III)V");
-            // SMCLog.info("    pushEntity");
+            // SMCLog.info(" pushEntity");
             ++nPatch;
         }
 
@@ -183,7 +192,7 @@ public class ACTRenderBlocks implements IClassTransformer {
         public void visitInsn(int opcode) {
             if (opcode == Opcodes.IRETURN) {
                 mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "popEntity", "()V");
-                // SMCLog.info("    popEntity");
+                // SMCLog.info(" popEntity");
                 ++nPatch;
             }
             mv.visitInsn(opcode);
@@ -192,24 +201,21 @@ public class ACTRenderBlocks implements IClassTransformer {
         @Override
         public void visitEnd() {
             mv.visitEnd();
-            // SMCLog.info("    %d", nPatch);
+            // SMCLog.info(" %d", nPatch);
         }
     }
 
-    static final String[] fieldsBlockLightLevel = {null, "blockLightLevel05", "blockLightLevel06", "blockLightLevel08"};
+    static final String[] fieldsBlockLightLevel = { null, "blockLightLevel05", "blockLightLevel06",
+            "blockLightLevel08" };
 
     private static class MVrenBlkWithAO extends MethodVisitor {
+
         MethodVisitor mv1;
         MethodNode mn;
         int nPatch = 0;
 
-        public MVrenBlkWithAO(
-                final int access,
-                final String name,
-                final String desc,
-                final String signature,
-                final String[] exceptions,
-                MethodVisitor mv) {
+        public MVrenBlkWithAO(final int access, final String name, final String desc, final String signature,
+                final String[] exceptions, MethodVisitor mv) {
             super(Opcodes.ASM4);
             super.mv = this.mn = new MethodNode(access, name, desc, signature, exceptions);
             this.mv1 = mv;
@@ -219,7 +225,7 @@ public class ACTRenderBlocks implements IClassTransformer {
         public void visitEnd() {
             mn.visitEnd();
             mn.accept(mv1);
-            // SMCLog.info("    %d", nPatch);
+            // SMCLog.info(" %d", nPatch);
         }
 
         @Override
@@ -265,7 +271,7 @@ public class ACTRenderBlocks implements IClassTransformer {
                 if (match2 != 0) {
                     String fieldName = fieldsBlockLightLevel[match2];
                     mn.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
-                    // SMCLog.info("    %s", fieldName);
+                    // SMCLog.info(" %s", fieldName);
                     ++nPatch;
                     return;
                 }
@@ -275,6 +281,7 @@ public class ACTRenderBlocks implements IClassTransformer {
     }
 
     private static class MVrenBlkFVar extends MethodVisitor {
+
         int nPatch = 0;
 
         public MVrenBlkFVar(MethodVisitor mv) {
@@ -296,7 +303,7 @@ public class ACTRenderBlocks implements IClassTransformer {
                 ++state;
                 String fieldName = fieldsBlockLightLevel[match1];
                 mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
-                // SMCLog.info("    %s", fieldName);
+                // SMCLog.info(" %s", fieldName);
                 ++nPatch;
                 return;
             }
@@ -306,11 +313,12 @@ public class ACTRenderBlocks implements IClassTransformer {
         @Override
         public void visitEnd() {
             mv.visitEnd();
-            // SMCLog.info("    %d", nPatch);
+            // SMCLog.info(" %d", nPatch);
         }
     }
 
     private static class MVrenBlkPistonExt extends MethodVisitor {
+
         int nPatch = 0;
 
         public MVrenBlkPistonExt(MethodVisitor mv) {
@@ -337,7 +345,7 @@ public class ACTRenderBlocks implements IClassTransformer {
             if (match1 != 0 && state == 1) {
                 String fieldName = fieldsBlockLightLevel[match1];
                 mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", fieldName, "F");
-                // SMCLog.info("    %s", fieldName);
+                // SMCLog.info(" %s", fieldName);
                 ++nPatch;
                 return;
             }
@@ -347,32 +355,32 @@ public class ACTRenderBlocks implements IClassTransformer {
         @Override
         public void visitEnd() {
             mv.visitEnd();
-            // SMCLog.info("    %d", nPatch);
+            // SMCLog.info(" %d", nPatch);
         }
     }
 
-    //	private static class MVNTransform extends MethodVisitor
-    //	{
-    //		protected MethodVisitor mv;
-    //		protected MethodNode mn;
-    //		public MVNTransform(MethodNode mn, MethodVisitor mv) {
-    //			super(Opcodes.ASM4);
-    //			super.mv = this.mn = mn;
-    //			this.mv = mv;
-    //		}
+    // private static class MVNTransform extends MethodVisitor
+    // {
+    // protected MethodVisitor mv;
+    // protected MethodNode mn;
+    // public MVNTransform(MethodNode mn, MethodVisitor mv) {
+    // super(Opcodes.ASM4);
+    // super.mv = this.mn = mn;
+    // this.mv = mv;
+    // }
     //
-    //		@Override
-    //		public void visitEnd() {
-    //			super.visitEnd();
-    //			Iterator<AbstractInsnNode> it = mn.instructions.iterator();
-    //			while (it.hasNext())
-    //			{
-    //				AbstractInsnNode node = it.next();
-    //				System.out.println(node.toString());
-    //			}
-    //			// send to target
-    //			mn.accept(mv);
-    //		}
-    //	}
+    // @Override
+    // public void visitEnd() {
+    // super.visitEnd();
+    // Iterator<AbstractInsnNode> it = mn.instructions.iterator();
+    // while (it.hasNext())
+    // {
+    // AbstractInsnNode node = it.next();
+    // System.out.println(node.toString());
+    // }
+    // // send to target
+    // mn.accept(mv);
+    // }
+    // }
 
 }

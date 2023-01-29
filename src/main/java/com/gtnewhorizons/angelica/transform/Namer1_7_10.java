@@ -158,17 +158,23 @@ public class Namer1_7_10 extends Namer {
         rendererLivingE_doRender = m(rendererLivingE_, "a", "(" + entityLivingBase_.desc + "DDDFF)V");
         rendererLivingE_renderEquippedItems = m(rendererLivingE_, "c", "(" + entityLivingBase_.desc + "F)V");
         rendererLivingE_getColorMultiplier = m(rendererLivingE_, "a", "(" + entityLivingBase_.desc + "FF)I");
-        rendererLivingE_renderLabel =
-                m(rendererLivingE_, "a", "(" + entityLivingBase_.desc + "DDDLjava/lang/String;FD)V");
+        rendererLivingE_renderLabel = m(
+                rendererLivingE_,
+                "a",
+                "(" + entityLivingBase_.desc + "DDDLjava/lang/String;FD)V");
         renderGlobal_renderEntities = m(renderGlobal_, "a", "(" + entityLivingBase_.desc + iCamera_.desc + "F)V");
         renderGlobal_renderSky = m(renderGlobal_, "a", "(F)V");
-        renderGlobal_drawBlockDamageTexture =
-                m(renderGlobal_, "a", "(" + tessellator_.desc + entityPlayer_.desc + "F)V");
+        renderGlobal_drawBlockDamageTexture = m(
+                renderGlobal_,
+                "a",
+                "(" + tessellator_.desc + entityPlayer_.desc + "F)V");
         renderGlobal_renderClouds = m(renderGlobal_, "b", "(F)V");
         renderGlobal_sortAndRender = m(renderGlobal_, "a", "(" + entityLivingBase_.desc + "ID)I");
         renderGlobal_clipRenderersByFrustum = m(renderGlobal_, "a", "(" + iCamera_.desc + "F)V");
-        renderGlobal_drawSelectionBox =
-                m(renderGlobal_, "a", "(" + entityPlayer_.desc + movingObjectPos_.desc + "IF)V");
+        renderGlobal_drawSelectionBox = m(
+                renderGlobal_,
+                "a",
+                "(" + entityPlayer_.desc + movingObjectPos_.desc + "IF)V");
         renderGlobal_renderAllRenderLists = m(renderGlobal_, "a", "(ID)V");
         stitcher_getCurrentWidth = m(stitcher_, "a", "()I");
         tessellator_sortQuad = m(tessellator_, "a", "(FFF)" + tessVertexState_.desc);

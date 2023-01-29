@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -23,6 +24,7 @@ public class ACTModelRenderer implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -30,40 +32,40 @@ public class ACTModelRenderer implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
-        //		@Override
-        //		public FieldVisitor visitField(int access, String name, String desc,
-        //				String signature, Object value) {
-        //			if (Names.modelRenderer_compiled.name.equals(name) ||
-        //				Names.modelRenderer_displayList.name.equals(name)) {
-        //				access = access & ~(ACC_PUBLIC|ACC_PRIVATE|ACC_PROTECTED) | ACC_PUBLIC;
-        //			}
-        //			return cv.visitField(access, name, desc, signature, value);
-        //		}
+        // @Override
+        // public FieldVisitor visitField(int access, String name, String desc,
+        // String signature, Object value) {
+        // if (Names.modelRenderer_compiled.name.equals(name) ||
+        // Names.modelRenderer_displayList.name.equals(name)) {
+        // access = access & ~(ACC_PUBLIC|ACC_PRIVATE|ACC_PROTECTED) | ACC_PUBLIC;
+        // }
+        // return cv.visitField(access, name, desc, signature, value);
+        // }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
-            //			if (Names.modelRenderer_render.equalsNameDesc(name, desc))
-            //			{
-            //				//SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
-            //				return new MVrender(
-            //						cv.visitMethod(access, name, desc, signature, exceptions));
-            //			}
-            //			else
-            //			if (Names.modelRenderer_renderWithRotation.equalsNameDesc(name, desc))
-            //			{
-            //				//SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,remappedName);
-            //				return new MVrender(
-            //						cv.visitMethod(access, name, desc, signature, exceptions));
-            //			}
-            //			else
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // if (Names.modelRenderer_render.equalsNameDesc(name, desc))
+            // {
+            // //SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
+            // return new MVrender(
+            // cv.visitMethod(access, name, desc, signature, exceptions));
+            // }
+            // else
+            // if (Names.modelRenderer_renderWithRotation.equalsNameDesc(name, desc))
+            // {
+            // //SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,remappedName);
+            // return new MVrender(
+            // cv.visitMethod(access, name, desc, signature, exceptions));
+            // }
+            // else
             if ("resetDisplayList".equals(name) && "()V".equals(desc)
                     || "getCompiled".equals(name) && "()Z".equals(desc)
                     || "getDisplayList".equals(name) && "()I".equals(desc)) {

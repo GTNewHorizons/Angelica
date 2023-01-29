@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 public class Names {
 
     public static class Name {
+
         String clas;
         String name;
         String desc;
@@ -26,6 +27,7 @@ public class Names {
     }
 
     public static class Type extends Name {
+
         public Type(String desc) {
             super("", "", desc);
         }
@@ -36,6 +38,7 @@ public class Names {
     }
 
     public static class Clas extends Type {
+
         public Clas(String name) {
             super(name, "L" + name + ";");
         }
@@ -46,6 +49,7 @@ public class Names {
     }
 
     public static class Fiel extends Name {
+
         public Fiel(Clas clas, String name, String desc) {
             super(clas.clas, name, desc);
         }
@@ -56,6 +60,7 @@ public class Names {
     }
 
     public static class Meth extends Name {
+
         public Meth(Clas clas, String name, String desc) {
             super(clas.clas, name, desc);
         }

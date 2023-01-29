@@ -3,11 +3,13 @@ package com.gtnewhorizons.angelica.loading;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
 public class ATweaker implements ITweaker {
+
     public List<String> args;
     public File gameDir;
     public File assetsDir;

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import net.minecraft.launchwrapper.IClassTransformer;
 
 public class AClassTransformer implements IClassTransformer {

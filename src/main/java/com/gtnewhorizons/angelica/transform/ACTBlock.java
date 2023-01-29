@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -22,6 +23,7 @@ public class ACTBlock implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -29,8 +31,8 @@ public class ACTBlock implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             this.classname = name;
             // SMCLog.info(" class %s",name);
             super.visit(version, access, name, signature, superName, interfaces);
@@ -39,7 +41,7 @@ public class ACTBlock implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.block_getAoLight.equalsNameDesc(name, desc)) {
-                // SMCLog.info("  patching");
+                // SMCLog.info(" patching");
                 return new MVgetAoLight(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -47,6 +49,7 @@ public class ACTBlock implements IClassTransformer {
     }
 
     private static class MVgetAoLight extends MethodVisitor {
+
         public MVgetAoLight(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

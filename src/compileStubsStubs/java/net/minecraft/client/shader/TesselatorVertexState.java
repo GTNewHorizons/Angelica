@@ -1,3 +1,4 @@
 package net.minecraft.client.shader;
 
-public class TesselatorVertexState {}
+public class TesselatorVertexState {
+}

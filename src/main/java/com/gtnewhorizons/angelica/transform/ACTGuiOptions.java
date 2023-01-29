@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -23,6 +24,7 @@ public class ACTGuiOptions implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -30,8 +32,8 @@ public class ACTGuiOptions implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             this.classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -39,13 +41,13 @@ public class ACTGuiOptions implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.guiOptions_initGui.equalsNameDesc(name, desc)) {
-                // SMCLog.info("  patching");
+                // SMCLog.info(" patching");
                 return new MVinitGui(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             if (Names.guiOptions_actionPerformed.equalsNameDesc(name, desc)) {
-                // SMCLog.info("  patching");
+                // SMCLog.info(" patching");
                 return new MVactionPerformed(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -53,6 +55,7 @@ public class ACTGuiOptions implements IClassTransformer {
     }
 
     private static class MVinitGui extends MethodVisitor {
+
         int state = 0;
 
         public MVinitGui(MethodVisitor mv) {
@@ -128,6 +131,7 @@ public class ACTGuiOptions implements IClassTransformer {
     }
 
     private static class MVactionPerformed extends MethodVisitor {
+
         public MVactionPerformed(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

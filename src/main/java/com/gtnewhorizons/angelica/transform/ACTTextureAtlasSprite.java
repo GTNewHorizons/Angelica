@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -25,6 +26,7 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -32,8 +34,8 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             cv.visit(version, access, name, signature, superName, interfaces);
         }
@@ -47,28 +49,30 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
             if (Names.textureAtlasSpri_updateAnimation.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVanimation(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("load")
                     && desc.equals("(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")Z")) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
-                return new MVload(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.textureAtlasSpri_loadSprite.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
-                return new MVloadSprite(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (name.equals("uploadFrameTexture") && desc.equals("(III)V")) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
-                return new MVuploadFrameTexture(cv.visitMethod(access, name, desc, signature, exceptions));
-            }
+                        // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                        return new MVload(cv.visitMethod(access, name, desc, signature, exceptions));
+                    } else
+                if (Names.textureAtlasSpri_loadSprite.equalsNameDesc(name, desc)) {
+                    // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                    return new MVloadSprite(cv.visitMethod(access, name, desc, signature, exceptions));
+                } else if (name.equals("uploadFrameTexture") && desc.equals("(III)V")) {
+                    // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                    return new MVuploadFrameTexture(cv.visitMethod(access, name, desc, signature, exceptions));
+                }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
     }
 
     // also used by clock and compass
     protected static class MVanimation extends MethodVisitor {
+
         // protected MethodVisitor mv;
         public MVanimation(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
@@ -79,7 +83,10 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
                 mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "uploadTexSub", "([[IIIIIZZ)V");
+                        INVOKESTATIC,
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
+                        "uploadTexSub",
+                        "([[IIIIIZZ)V");
                 return;
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
@@ -87,6 +94,7 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
     }
 
     private static class MVload extends MethodVisitor {
+
         // protected MethodVisitor mv;
         public MVload(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
@@ -100,7 +108,9 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
                         INVOKESTATIC,
                         "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadResource",
-                        "(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")"
+                        "(" + Names.iResourceManager_.desc
+                                + Names.resourceLocation_.desc
+                                + ")"
                                 + Names.iResource_.desc);
                 return;
             }
@@ -109,6 +119,7 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
     }
 
     private static class MVloadSprite extends MethodVisitor {
+
         // protected MethodVisitor mv;
         public MVloadSprite(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
@@ -135,7 +146,10 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
                 return;
             } else if (Names.textureAtlasSpri_getFrameTextureData.equals(owner, name, desc)) {
                 mv.visitMethodInsn(
-                        INVOKESTATIC, "com/gtnewhorizons/angelica/client/ShadersTex", "extractFrame", "([IIII)[I");
+                        INVOKESTATIC,
+                        "com/gtnewhorizons/angelica/client/ShadersTex",
+                        "extractFrame",
+                        "([IIII)[I");
                 return;
             } else if (Names.equals(Names.textureAtlasSpri_.clas, "fixTransparentColor", "([I)V", owner, name, desc)) {
                 mv.visitMethodInsn(
@@ -150,6 +164,7 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
     }
 
     private static class MVuploadFrameTexture extends MethodVisitor {
+
         public MVuploadFrameTexture(MethodVisitor mv) {
             super(Opcodes.ASM4, null);
             mv.visitCode();

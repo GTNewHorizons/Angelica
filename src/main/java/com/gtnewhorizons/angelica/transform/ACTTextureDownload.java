@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -24,6 +25,7 @@ public class ACTTextureDownload implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -31,8 +33,8 @@ public class ACTTextureDownload implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -40,14 +42,14 @@ public class ACTTextureDownload implements IClassTransformer {
 
         @Override
         public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-            // SMCLog.finest("  field %s %s %s %d", classname, name, desc, access);
+            // SMCLog.finest(" field %s %s %s %d", classname, name, desc, access);
             return super.visitField(access, name, desc, signature, value);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // String nameM = SMCRemap.remapper.mapMethodName(classname, name, desc);
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (name.equals("getMultiTexID")) {
                 return null;
             }
@@ -59,7 +61,11 @@ public class ACTTextureDownload implements IClassTransformer {
             MethodVisitor mv;
             // getMultiTexID
             mv = cv.visitMethod(
-                    ACC_PUBLIC, "getMultiTexID", "()Lcom/gtnewhorizons/angelica/client/MultiTexID;", null, null);
+                    ACC_PUBLIC,
+                    "getMultiTexID",
+                    "()Lcom/gtnewhorizons/angelica/client/MultiTexID;",
+                    null,
+                    null);
             mv.visitCode();
             Label l0 = new Label();
             mv.visitLabel(l0);

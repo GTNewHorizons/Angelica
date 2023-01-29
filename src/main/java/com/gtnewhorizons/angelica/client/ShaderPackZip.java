@@ -20,8 +20,7 @@ public class ShaderPackZip implements IShaderPack {
         if (packZipFile != null) {
             try {
                 packZipFile.close();
-            } catch (Exception excp) {
-            }
+            } catch (Exception excp) {}
             packZipFile = null;
         }
     }
@@ -31,8 +30,7 @@ public class ShaderPackZip implements IShaderPack {
         if (packZipFile == null) {
             try {
                 packZipFile = new ZipFile(packFile);
-            } catch (Exception excp) {
-            }
+            } catch (Exception excp) {}
         }
         if (packZipFile != null) {
             try {
@@ -40,8 +38,7 @@ public class ShaderPackZip implements IShaderPack {
                 if (entry != null) {
                     return packZipFile.getInputStream(entry);
                 }
-            } catch (Exception excp) {
-            }
+            } catch (Exception excp) {}
         }
         return null;
     }

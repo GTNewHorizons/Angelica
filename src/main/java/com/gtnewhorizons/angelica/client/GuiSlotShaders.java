@@ -1,10 +1,12 @@
 package com.gtnewhorizons.angelica.client;
 
 import java.util.ArrayList;
+
 import net.minecraft.client.gui.GuiSlot;
 import net.minecraft.client.renderer.Tessellator;
 
 class GuiSlotShaders extends GuiSlot {
+
     private ArrayList shaderslist;
 
     final GuiShaders shadersGui;
@@ -70,6 +72,9 @@ class GuiSlotShaders extends GuiSlot {
     /** drawSlot */
     protected void drawSlot(int par1, int par2, int par3, int par4, Tessellator par5, int par6, int par7) {
         this.shadersGui.drawCenteredString(
-                (String) this.shaderslist.get(par1), this.shadersGui.width / 4 + 10, par3 + 1, 0xffffff);
+                (String) this.shaderslist.get(par1),
+                this.shadersGui.width / 4 + 10,
+                par3 + 1,
+                0xffffff);
     }
 }

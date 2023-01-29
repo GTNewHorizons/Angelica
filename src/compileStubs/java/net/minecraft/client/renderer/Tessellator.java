@@ -4,9 +4,11 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+
 import net.minecraft.client.shader.TesselatorVertexState;
 
 public class Tessellator {
+
     private static int nativeBufferSize;
     private static int trivertsInBuffer;
     public static boolean renderingWorldRenderer;
@@ -139,8 +141,8 @@ public class Tessellator {
     /**
      * Adds a vertex specifying both x,y,z and the texture u,v for it.
      */
-    public void addVertexWithUV(
-            double p_78374_1_, double p_78374_3_, double p_78374_5_, double p_78374_7_, double p_78374_9_) {}
+    public void addVertexWithUV(double p_78374_1_, double p_78374_3_, double p_78374_5_, double p_78374_7_,
+            double p_78374_9_) {}
 
     /**
      * Adds a vertex with the specified x,y,z to the current draw call. It will trigger a draw() if the buffer gets

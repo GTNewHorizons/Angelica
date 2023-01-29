@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 public abstract class ALog {
 
     private static class SMCFormatter extends Formatter {
+
         int tzOffset;
 
         SMCFormatter() {
@@ -30,17 +31,14 @@ public abstract class ALog {
                     // .append(time/600000%6).append(time/60000%10)//.append(":")
                     // .append(time/10000%6).append(time/10000%10).append(".")
                     // .append(time/100%10).append(time/10%10).append(time%10).append(" ")
-                    .append(record.getLoggerName())
-                    .append(" ")
-                    .append(record.getLevel())
-                    .append("]")
-                    .append(record.getMessage())
-                    .append("\n");
+                    .append(record.getLoggerName()).append(" ").append(record.getLevel()).append("]")
+                    .append(record.getMessage()).append("\n");
             return sb.toString();
         }
     }
 
     private static class SMCLogger extends Logger {
+
         SMCLogger(String name) {
             super(name, null);
             setUseParentHandlers(false);
@@ -60,6 +58,7 @@ public abstract class ALog {
     }
 
     private static class SMCLevel extends Level {
+
         private SMCLevel(String name, int value) {
             super(name, value);
         }

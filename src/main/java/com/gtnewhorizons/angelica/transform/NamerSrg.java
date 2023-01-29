@@ -130,10 +130,14 @@ public class NamerSrg extends Namer {
         guiOptions_actionPerformed = m(guiOptions_, "func_146284_a", "(" + guiButton_.desc + ")V");
         guiOptions_initGui = m(guiOptions_, "func_73866_w_", "()V");
         iCamera_setPosition = m(iCamera_, "func_78547_a", "(DDD)V");
-        iResourceManager_getResource =
-                m(iResourceManager_, "func_110536_a", "(" + resourceLocation_.desc + ")" + iResource_.desc);
-        itemRenderer_renderItem =
-                m(itemRenderer_, "func_78443_a", "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");
+        iResourceManager_getResource = m(
+                iResourceManager_,
+                "func_110536_a",
+                "(" + resourceLocation_.desc + ")" + iResource_.desc);
+        itemRenderer_renderItem = m(
+                itemRenderer_,
+                "func_78443_a",
+                "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");
         itemRenderer_renderItemInFirstPerson = m(itemRenderer_, "func_78440_a", "(F)V");
         itemRenderer_renderOverlays = m(itemRenderer_, "func_78447_b", "(F)V");
         itemRenderer_updateEquipped = m(itemRenderer_, "func_78441_a", "()V");
@@ -145,8 +149,10 @@ public class NamerSrg extends Namer {
         render_renderShadow = m(render_, "func_76975_c", "(" + entity_.desc + "DDDFF)V");
         renderBlocks_renderBlockFluids = m(renderBlocks_, "func_147721_p", "(" + block_.desc + "III)Z");
         renderBlocks_renderStdBlockWithCM = m(renderBlocks_, "func_147736_d", "(" + block_.desc + "IIIFFF)Z");
-        renderBlocks_renderBlockSandFalling =
-                m(renderBlocks_, "func_147749_a", "(" + block_.desc + world_.desc + "IIII)V");
+        renderBlocks_renderBlockSandFalling = m(
+                renderBlocks_,
+                "func_147749_a",
+                "(" + block_.desc + world_.desc + "IIII)V");
         renderBlocks_renderStdBlockWithAO = m(renderBlocks_, "func_147751_a", "(" + block_.desc + "IIIFFF)Z");
         renderBlocks_renderBlockCactusImpl = m(renderBlocks_, "func_147754_e", "(" + block_.desc + "IIIFFF)Z");
         renderBlocks_renderBlockDoor = m(renderBlocks_, "func_147760_u", "(" + block_.desc + "III)Z");
@@ -161,18 +167,26 @@ public class NamerSrg extends Namer {
         rendererLivingE_doRender = m(rendererLivingE_, "func_76986_a", "(" + entityLivingBase_.desc + "DDDFF)V");
         rendererLivingE_renderEquippedItems = m(rendererLivingE_, "func_77029_c", "(" + entityLivingBase_.desc + "F)V");
         rendererLivingE_getColorMultiplier = m(rendererLivingE_, "func_77030_a", "(" + entityLivingBase_.desc + "FF)I");
-        rendererLivingE_renderLabel =
-                m(rendererLivingE_, "func_96449_a", "(" + entityLivingBase_.desc + "DDDLjava/lang/String;FD)V");
-        renderGlobal_renderEntities =
-                m(renderGlobal_, "func_147589_a", "(" + entityLivingBase_.desc + iCamera_.desc + "F)V");
+        rendererLivingE_renderLabel = m(
+                rendererLivingE_,
+                "func_96449_a",
+                "(" + entityLivingBase_.desc + "DDDLjava/lang/String;FD)V");
+        renderGlobal_renderEntities = m(
+                renderGlobal_,
+                "func_147589_a",
+                "(" + entityLivingBase_.desc + iCamera_.desc + "F)V");
         renderGlobal_renderSky = m(renderGlobal_, "func_72714_a", "(F)V");
-        renderGlobal_drawBlockDamageTexture =
-                m(renderGlobal_, "func_72717_a", "(" + tessellator_.desc + entityPlayer_.desc + "F)V");
+        renderGlobal_drawBlockDamageTexture = m(
+                renderGlobal_,
+                "func_72717_a",
+                "(" + tessellator_.desc + entityPlayer_.desc + "F)V");
         renderGlobal_renderClouds = m(renderGlobal_, "func_72718_b", "(F)V");
         renderGlobal_sortAndRender = m(renderGlobal_, "func_72719_a", "(" + entityLivingBase_.desc + "ID)I");
         renderGlobal_clipRenderersByFrustum = m(renderGlobal_, "func_72729_a", "(" + iCamera_.desc + "F)V");
-        renderGlobal_drawSelectionBox =
-                m(renderGlobal_, "func_72731_b", "(" + entityPlayer_.desc + movingObjectPos_.desc + "IF)V");
+        renderGlobal_drawSelectionBox = m(
+                renderGlobal_,
+                "func_72731_b",
+                "(" + entityPlayer_.desc + movingObjectPos_.desc + "IF)V");
         renderGlobal_renderAllRenderLists = m(renderGlobal_, "func_72733_a", "(ID)V");
         stitcher_getCurrentWidth = m(stitcher_, "func_110935_a", "()I");
         tessellator_sortQuad = m(tessellator_, "func_147564_a", "(FFF)" + tessVertexState_.desc);
@@ -186,16 +200,22 @@ public class NamerSrg extends Namer {
         textureAtlasSpri_getIconName = m(textureAtlasSpri_, "func_94215_i", "()Ljava/lang/String;");
         textureAtlasSpri_updateAnimation = m(textureAtlasSpri_, "func_94219_l", "()V");
         textureCompass_updateCompass = m(textureCompass_, "func_94241_a", "(" + world_.desc + "DDDZZ)V");
-        textureManager_onResourceManagerReload =
-                m(textureManager_, "func_110549_a", "(" + iResourceManager_.desc + ")V");
+        textureManager_onResourceManagerReload = m(
+                textureManager_,
+                "func_110549_a",
+                "(" + iResourceManager_.desc + ")V");
         textureManager_bindTexture = m(textureManager_, "func_110577_a", "(" + resourceLocation_.desc + ")V");
         textureMap_loadTextureAtlas = m(textureMap_, "func_110571_b", "(" + iResourceManager_.desc + ")V");
-        textureMap_getIconResLoc =
-                m(textureMap_, "func_147634_a", "(" + resourceLocation_.desc + "I)" + resourceLocation_.desc);
+        textureMap_getIconResLoc = m(
+                textureMap_,
+                "func_147634_a",
+                "(" + resourceLocation_.desc + "I)" + resourceLocation_.desc);
         textureMap_updateAnimations = m(textureMap_, "func_94248_c", "()V");
         textureUtil_uploadTexture = m(textureUtil_, "func_110988_a", "(I[III)V");
-        textureUtil_uploadTextureImageAllocate =
-                m(textureUtil_, "func_110989_a", "(ILjava/awt/image/BufferedImage;ZZ)I");
+        textureUtil_uploadTextureImageAllocate = m(
+                textureUtil_,
+                "func_110989_a",
+                "(ILjava/awt/image/BufferedImage;ZZ)I");
         textureUtil_allocateTexture = m(textureUtil_, "func_110991_a", "(III)V");
         textureUtil_allocateTextureMipmapAniso = m(textureUtil_, "func_147946_a", "(IIIIF)V");
         textureUtil_uploadTexSub = m(textureUtil_, "func_147955_a", "([[IIIIIZZ)V");

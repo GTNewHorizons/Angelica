@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -27,6 +28,7 @@ public class ACTTessellator implements IClassTransformer {
     private static boolean inputHasStaticBuffer = false;
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
         boolean endFields = false;
 
@@ -35,8 +37,8 @@ public class ACTTessellator implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -45,28 +47,26 @@ public class ACTTessellator implements IClassTransformer {
         @Override
         public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
             // SMCLog.fine("%x %s %s %s",access,desc,name,nameM);
-            if (name.equals("vertexPos")
-                    || name.equals("normalX")
+            if (name.equals("vertexPos") || name.equals("normalX")
                     || name.equals("normalY")
                     || name.equals("normalZ")
                     || name.equals("midTextureU")
                     || name.equals("midTextureV")) {
                 return null;
             } else if (((access & ACC_STATIC) != 0)
-                    && (Names.tessellator_byteBuffer.name.equals(name)
-                            || Names.tessellator_intBuffer.name.equals(name)
+                    && (Names.tessellator_byteBuffer.name.equals(name) || Names.tessellator_intBuffer.name.equals(name)
                             || Names.tessellator_floatBuffer.name.equals(name)
                             || Names.tessellator_shortBuffer.name.equals(name)
                             || Names.tessellator_vertexCount.name.equals(name)
                     // nameM.equals(Names.Tessellator_useVBO) ||
                     // nameM.equals(Names.Tessellator_vertexBuffers)
                     )) {
-                inputHasStaticBuffer = true;
-                // SMCLog.finest(" input has static buffer");
-                access = access & (~ACC_STATIC & ~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
-            } else {
-                access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
-            }
+                        inputHasStaticBuffer = true;
+                        // SMCLog.finest(" input has static buffer");
+                        access = access & (~ACC_STATIC & ~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
+                    } else {
+                        access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
+                    }
             return cv.visitField(access, name, desc, signature, value);
         }
 
@@ -88,31 +88,31 @@ public class ACTTessellator implements IClassTransformer {
                 fv = cv.visitField(ACC_PUBLIC, "midTextureV", "F", null, null);
                 fv.visitEnd();
             }
-            // SMCLog.fine("  method %s.%s%s = %s",classname,name,desc,nameM);
+            // SMCLog.fine(" method %s.%s%s = %s",classname,name,desc,nameM);
             if (name.equals("<clinit>")) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVclinit(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("<init>") && desc.equals("()V")) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVinit(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("<init>") && desc.equals("(I)V")) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVinitI(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_draw.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVdraw(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_reset.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
                 return new MVreset(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_addVertex.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVaddVertex(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_setNormal.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVsetNormal(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_sortQuad.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVsortQuad(cv.visitMethod(access, name, desc, signature, exceptions));
             } else {
                 access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
@@ -121,70 +121,53 @@ public class ACTTessellator implements IClassTransformer {
         }
     }
 
-    /*private static class MVclinit extends MethodVisitor
-    {
-    	public MVclinit(MethodVisitor mv) {
-    		super(Opcodes.ASM4, mv);
-    	}
-    }
-
-    private static class MVinit extends MethodVisitor
-    {
-    	public MVinit(MethodVisitor mv) {
-    		super(Opcodes.ASM4, mv);
-    	}
-
-    	@Override
-    	public void visitInsn(int opcode) {
-    		if (opcode == RETURN) {
-    			mv.visitVarInsn(ALOAD, 0);
-    			mv.visitIntInsn(BIPUSH, 16);
-    			mv.visitIntInsn(NEWARRAY, T_FLOAT);
-    			mv.visitFieldInsn(PUTFIELD, SMCNames.Tessellator_, "vertexPos", "[F");
-    		}
-    		mv.visitInsn(opcode);
-    	}
-    }*/
+    /*
+     * private static class MVclinit extends MethodVisitor { public MVclinit(MethodVisitor mv) { super(Opcodes.ASM4,
+     * mv); } } private static class MVinit extends MethodVisitor { public MVinit(MethodVisitor mv) {
+     * super(Opcodes.ASM4, mv); }
+     * @Override public void visitInsn(int opcode) { if (opcode == RETURN) { mv.visitVarInsn(ALOAD, 0);
+     * mv.visitIntInsn(BIPUSH, 16); mv.visitIntInsn(NEWARRAY, T_FLOAT); mv.visitFieldInsn(PUTFIELD,
+     * SMCNames.Tessellator_, "vertexPos", "[F"); } mv.visitInsn(opcode); } }
+     */
 
     private static class MVclinit extends MethodVisitor {
+
         public MVclinit(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest("     F %d %s.%s %s", opcode, ownerM, nameM, descM);
-            if (opcode == PUTSTATIC
-                    && (Names.tessellator_byteBuffer.equals(owner, name)
-                            || Names.tessellator_intBuffer.equals(owner, name)
-                            || Names.tessellator_floatBuffer.equals(owner, name)
-                            || Names.tessellator_shortBuffer.equals(owner, name)
-                            || Names.tessellator_vertexCount.equals(owner, name)
-                    // nameM.equals(Names.Tessellator_useVBO)||
-                    // nameM.equals(Names.Tessellator_vertexBuffers)
-                    )) {
+            // SMCLog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
+            if (opcode == PUTSTATIC && (Names.tessellator_byteBuffer.equals(owner, name)
+                    || Names.tessellator_intBuffer.equals(owner, name)
+                    || Names.tessellator_floatBuffer.equals(owner, name)
+                    || Names.tessellator_shortBuffer.equals(owner, name)
+                    || Names.tessellator_vertexCount.equals(owner, name)
+            // nameM.equals(Names.Tessellator_useVBO)||
+            // nameM.equals(Names.Tessellator_vertexBuffers)
+            )) {
                 mv.visitInsn(POP);
                 return;
-            } else if (opcode == GETSTATIC
-                    && (Names.tessellator_byteBuffer.equals(owner, name)
-                    // nameM.equals(Names.Tessellator_vertexBuffers)
-                    )) {
+            } else if (opcode == GETSTATIC && (Names.tessellator_byteBuffer.equals(owner, name)
+            // nameM.equals(Names.Tessellator_vertexBuffers)
+            )) {
                 mv.visitInsn(ACONST_NULL);
                 return;
                 // } else
                 // if (opcode==GETSTATIC && (
-                //		nameM.equals(Names.Tessellator_useVBO)
-                //		))
+                // nameM.equals(Names.Tessellator_useVBO)
+                // ))
                 // {
-                //	mv.visitInsn(ICONST_0);
-                //	return;
+                // mv.visitInsn(ICONST_0);
+                // return;
             }
             mv.visitFieldInsn(opcode, owner, name, desc);
         }
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest("     M %d %s.%s %s", opcode, ownerM, nameM, descM);
+            // SMCLog.finest(" M %d %s.%s %s", opcode, ownerM, nameM, descM);
             if (Names.glAllocation_createDirectByteBuffer.equals(owner, name, desc)) {
                 mv.visitInsn(POP);
                 mv.visitInsn(ACONST_NULL);
@@ -193,27 +176,39 @@ public class ACTTessellator implements IClassTransformer {
                 mv.visitInsn(POP);
                 mv.visitInsn(ACONST_NULL);
                 return;
-            } else if (Names.equals(
-                    "java/nio/ByteBuffer", "asIntBuffer", "()Ljava/nio/IntBuffer;", owner, name, desc)) {
-                mv.visitInsn(POP);
-                mv.visitInsn(ACONST_NULL);
-                return;
-            } else if (Names.equals(
-                    "java/nio/ByteBuffer", "asFloatBuffer", "()Ljava/nio/FloatBuffer;", owner, name, desc)) {
-                mv.visitInsn(POP);
-                mv.visitInsn(ACONST_NULL);
-                return;
-            } else if (Names.equals(
-                    "java/nio/ByteBuffer", "asShortBuffer", "()Ljava/nio/ShortBuffer;", owner, name, desc)) {
-                mv.visitInsn(POP);
-                mv.visitInsn(ACONST_NULL);
-                return;
-            }
+            } else
+                if (Names.equals("java/nio/ByteBuffer", "asIntBuffer", "()Ljava/nio/IntBuffer;", owner, name, desc)) {
+                    mv.visitInsn(POP);
+                    mv.visitInsn(ACONST_NULL);
+                    return;
+                } else if (Names.equals(
+                        "java/nio/ByteBuffer",
+                        "asFloatBuffer",
+                        "()Ljava/nio/FloatBuffer;",
+                        owner,
+                        name,
+                        desc)) {
+                            mv.visitInsn(POP);
+                            mv.visitInsn(ACONST_NULL);
+                            return;
+                        } else
+                    if (Names.equals(
+                            "java/nio/ByteBuffer",
+                            "asShortBuffer",
+                            "()Ljava/nio/ShortBuffer;",
+                            owner,
+                            name,
+                            desc)) {
+                                mv.visitInsn(POP);
+                                mv.visitInsn(ACONST_NULL);
+                                return;
+                            }
             mv.visitMethodInsn(opcode, owner, name, desc);
         }
     }
 
     private static class MVinit extends MethodVisitor {
+
         public MVinit(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -230,6 +225,7 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVinitI extends MethodVisitor {
+
         public MVinitI(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -273,7 +269,10 @@ public class ACTTessellator implements IClassTransformer {
                             Names.tessellator_byteBuffer.name,
                             Names.tessellator_byteBuffer.desc);
                     mv.visitMethodInsn(
-                            INVOKEVIRTUAL, "java/nio/ByteBuffer", "asFloatBuffer", "()Ljava/nio/FloatBuffer;");
+                            INVOKEVIRTUAL,
+                            "java/nio/ByteBuffer",
+                            "asFloatBuffer",
+                            "()Ljava/nio/FloatBuffer;");
                     mv.visitFieldInsn(
                             PUTFIELD,
                             Names.tessellator_floatBuffer.clas,
@@ -287,7 +286,10 @@ public class ACTTessellator implements IClassTransformer {
                             Names.tessellator_byteBuffer.name,
                             Names.tessellator_byteBuffer.desc);
                     mv.visitMethodInsn(
-                            INVOKEVIRTUAL, "java/nio/ByteBuffer", "asShortBuffer", "()Ljava/nio/ShortBuffer;");
+                            INVOKEVIRTUAL,
+                            "java/nio/ByteBuffer",
+                            "asShortBuffer",
+                            "()Ljava/nio/ShortBuffer;");
                     mv.visitFieldInsn(
                             PUTFIELD,
                             Names.tessellator_shortBuffer.clas,
@@ -357,6 +359,7 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVdraw extends MethodVisitor {
+
         public MVdraw(MethodVisitor mv) {
             super(Opcodes.ASM4, null);
             mv.visitCode();
@@ -379,13 +382,14 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVreset extends MethodVisitor {
+
         public MVreset(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest("     F %d %s.%s %s", opcode, ownerM, nameM, descM);
+            // SMCLog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
             if (opcode == GETSTATIC && Names.tessellator_byteBuffer.equals(owner, name)) {
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitFieldInsn(GETFIELD, owner, name, desc);
@@ -396,6 +400,7 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVaddVertex extends MethodVisitor {
+
         public MVaddVertex(MethodVisitor mv) {
             super(Opcodes.ASM4, null);
             mv.visitCode();
@@ -427,6 +432,7 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVsetNormal extends MethodVisitor {
+
         public MVsetNormal(MethodVisitor mv) {
             super(Opcodes.ASM4, null);
             mv.visitCode();
@@ -461,6 +467,7 @@ public class ACTTessellator implements IClassTransformer {
     }
 
     private static class MVsortQuad extends MethodVisitor {
+
         public MVsortQuad(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

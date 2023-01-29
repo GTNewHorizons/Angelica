@@ -149,6 +149,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
@@ -167,6 +168,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.Vec3;
+
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL11;
@@ -207,9 +209,9 @@ public class Shaders {
     private static float[] moonPosition = new float[4];
     private static float[] upPosition = new float[4];
 
-    private static float[] upPosModelView = new float[] {0.0F, 100.0F, 0.0F, 0.0F};
-    private static float[] sunPosModelView = new float[] {0.0F, 100.0F, 0.0F, 0.0F};
-    private static float[] moonPosModelView = new float[] {0.0F, -100.0F, 0.0F, 0.0F};
+    private static float[] upPosModelView = new float[] { 0.0F, 100.0F, 0.0F, 0.0F };
+    private static float[] sunPosModelView = new float[] { 0.0F, 100.0F, 0.0F, 0.0F };
+    private static float[] moonPosModelView = new float[] { 0.0F, -100.0F, 0.0F, 0.0F };
     private static float[] tempMat = new float[16];
 
     private static float clearColorR;
@@ -343,54 +345,33 @@ public class Shaders {
     public static final int ProgramCount = 22;
     public static final int MaxCompositePasses = 8;
 
-    private static final String[] programNames = new String[] {
-        "",
-        "gbuffers_basic",
-        "gbuffers_textured",
-        "gbuffers_textured_lit",
-        "gbuffers_skybasic",
-        "gbuffers_skytextured",
-        "gbuffers_terrain",
-        "gbuffers_water",
-        "gbuffers_entities",
-        "gbuffers_spidereyes",
-        "gbuffers_hand",
-        "gbuffers_weather",
-        "composite",
-        "composite1",
-        "composite2",
-        "composite3",
-        "composite4",
-        "composite5",
-        "composite6",
-        "composite7",
-        "final",
-        "shadow",
-    };
+    private static final String[] programNames = new String[] { "", "gbuffers_basic", "gbuffers_textured",
+            "gbuffers_textured_lit", "gbuffers_skybasic", "gbuffers_skytextured", "gbuffers_terrain", "gbuffers_water",
+            "gbuffers_entities", "gbuffers_spidereyes", "gbuffers_hand", "gbuffers_weather", "composite", "composite1",
+            "composite2", "composite3", "composite4", "composite5", "composite6", "composite7", "final", "shadow", };
 
-    private static final int[] programBackups = new int[] {
-        ProgramNone, // none
-        ProgramNone, // basic
-        ProgramBasic, // textured
-        ProgramTextured, // textured/lit
-        ProgramBasic, // skybasic
-        ProgramTextured, // skytextured
-        ProgramTexturedLit, // terrain
-        ProgramTerrain, // water
-        ProgramTexturedLit, // entities
-        ProgramTextured, // spidereyes
-        ProgramTexturedLit, // hand
-        ProgramTexturedLit, // weather
-        ProgramNone, // composite
-        ProgramNone, // composite1
-        ProgramNone, // composite2
-        ProgramNone, // composite3
-        ProgramNone, // composite4
-        ProgramNone, // composite5
-        ProgramNone, // composite6
-        ProgramNone, // composite7
-        ProgramNone, // final
-        ProgramNone, // shadow
+    private static final int[] programBackups = new int[] { ProgramNone, // none
+            ProgramNone, // basic
+            ProgramBasic, // textured
+            ProgramTextured, // textured/lit
+            ProgramBasic, // skybasic
+            ProgramTextured, // skytextured
+            ProgramTexturedLit, // terrain
+            ProgramTerrain, // water
+            ProgramTexturedLit, // entities
+            ProgramTextured, // spidereyes
+            ProgramTexturedLit, // hand
+            ProgramTexturedLit, // weather
+            ProgramNone, // composite
+            ProgramNone, // composite1
+            ProgramNone, // composite2
+            ProgramNone, // composite3
+            ProgramNone, // composite4
+            ProgramNone, // composite5
+            ProgramNone, // composite6
+            ProgramNone, // composite7
+            ProgramNone, // final
+            ProgramNone, // shadow
     };
 
     private static int[] programsID = new int[ProgramCount];
@@ -442,12 +423,11 @@ public class Shaders {
     // related to config
     public static final int texMinFilRange = 3;
     public static final int texMagFilRange = 2;
-    public static final String[] texMinFilDesc = {"Nearest", "Nearest-Nearest", "Nearest-Linear"};
-    public static final String[] texMagFilDesc = {"Nearest", "Linear"};
-    public static final int[] texMinFilValue = {
-        GL11.GL_NEAREST, GL11.GL_NEAREST_MIPMAP_NEAREST, GL11.GL_NEAREST_MIPMAP_LINEAR
-    };
-    public static final int[] texMagFilValue = {GL11.GL_NEAREST, GL11.GL_LINEAR};
+    public static final String[] texMinFilDesc = { "Nearest", "Nearest-Nearest", "Nearest-Linear" };
+    public static final String[] texMagFilDesc = { "Nearest", "Linear" };
+    public static final int[] texMinFilValue = { GL11.GL_NEAREST, GL11.GL_NEAREST_MIPMAP_NEAREST,
+            GL11.GL_NEAREST_MIPMAP_LINEAR };
+    public static final int[] texMagFilValue = { GL11.GL_NEAREST, GL11.GL_LINEAR };
 
     // shaderpack
     static IShaderPack shaderPack = null;
@@ -484,16 +464,13 @@ public class Shaders {
     private static int noiseTextureResolution = 256;
 
     // direct buffers
-    private static final int bigBufferSize = (16 * 12
-                    + MaxColorBuffers
-                    + MaxDepthBuffers
-                    + MaxShadowColorBuffers
-                    + MaxShadowDepthBuffers
-                    + MaxDrawBuffers * 8
-                    + MaxDrawBuffers * ProgramCount)
-            * 4;
-    private static final ByteBuffer bigBuffer =
-            (ByteBuffer) BufferUtils.createByteBuffer(bigBufferSize).limit(0);
+    private static final int bigBufferSize = (16 * 12 + MaxColorBuffers
+            + MaxDepthBuffers
+            + MaxShadowColorBuffers
+            + MaxShadowDepthBuffers
+            + MaxDrawBuffers * 8
+            + MaxDrawBuffers * ProgramCount) * 4;
+    private static final ByteBuffer bigBuffer = (ByteBuffer) BufferUtils.createByteBuffer(bigBufferSize).limit(0);
 
     private static final FloatBuffer previousProjection = nextFloatBuffer(16);
     private static final FloatBuffer projection = nextFloatBuffer(16);
@@ -569,212 +546,54 @@ public class Shaders {
     }
 
     /*
-    	static void checkForUpdate()
-    	{
-    		if (!shadersdir.exists()) shadersdir.mkdir();
-    		lastversion = version;
-    		int lastcheck = 0;
-    		File updatecheck = new File(shadersdir,"updatecheck.cfg");
-    		try
-    		{
-    			if (updatecheck.exists())
-    			{
-    				BufferedReader bufferedreader2 = new BufferedReader(new FileReader(updatecheck));
-
-    				for (String s = ""; (s = bufferedreader2.readLine()) != null;)
-    				{
-    					try
-    					{
-    						String as[] = s.split(":");
-    						int vv;
-    						if (as[0].equals("updateinterval"))
-    						{
-    							vv = Integer.parseInt(as[1]);
-    							if (vv < 0 || ( vv > 0 && vv < 24 ) || vv > 736)
-    							{
-    								System.out.println("[Shaders] Skipping bad option: updateinterval, range is: 0, 24-736");
-    							}
-    							else
-    							{
-    								updateinterval = vv;
-    							}
-    						}
-    						else if (as[0].equals("lastcheck"))
-    						{
-    							lastcheck = Integer.parseInt(as[1]);
-    						}
-    						else if (as[0].equals("lastversion"))
-    						{
-    							lastversion = Integer.parseInt(as[1]);
-    						}
-    					}
-    					catch (Exception exception1)
-    					{
-    						System.out.println("[Shaders] "+(new StringBuilder()).append("Skipping bad option: ").append(s).toString());
-    					}
-    				}
-    				bufferedreader2.close();
-    			}
-    		}
-    		catch(Exception ex){}
-
-    		if (updateinterval > 0)
-    		{
-    			try
-    			{
-    				if (lastversion > version)
-    				{
-    					updatenotify(versiontostring(lastversion));
-    					System.out.println("[Shaders] New version "+versiontostring(lastversion)+" of the GLSL Shaders OF mod is available, go to "+ siteurl +" to download.");
-    				}
-    				else
-    				{
-    					int currenthours = (int) (System.currentTimeMillis() / 3600000);
-    					if (currenthours - lastcheck > updateinterval )
-    					{
-    						System.out.println("[Shaders] Checking for updates. Last checked "+Integer.toString(currenthours - lastcheck)+" hours ago.");
-    						lastcheck = currenthours;
-    						try
-    						{
-    							URL url = new URL( updatecheckurl );
-    							HttpURLConnection.setFollowRedirects(true);
-    							HttpURLConnection uconn;
-    							uconn = (HttpURLConnection) url.openConnection();
-    							uconn.setConnectTimeout(2500);
-    							uconn.setReadTimeout(1500);
-    							try
-    							{
-    								uconn.connect();
-    							}
-    							catch (SocketTimeoutException excep)
-    							{
-    								System.out.println("[Shaders] Failed to connect to " + updatecheckurl);
-    								return;
-    							}
-
-    							BufferedReader bufferedreader2 = new BufferedReader(new InputStreamReader( uconn.getInputStream()));
-
-    							for (String s = ""; (s = bufferedreader2.readLine()) != null;)
-    							{
-    								try
-    								{
-    									String as[] = s.split(":");
-    									if (as[1].equals("lastversion"))
-    									{
-    										lastversion = Integer.parseInt(as[2]);
-    										break;
-    									}
-    								}
-    								catch (Exception exception1){}
-    							}
-    							bufferedreader2.close();
-    						}
-    						catch (Exception exception)
-    						{
-    							System.out.println("[Shaders] Failed to download " + updatecheckurl);
-    							return;
-    						}
-
-    						BufferedWriter bufferedwriter2 = new BufferedWriter(new FileWriter(updatecheck));
-    						bufferedwriter2.write("updateinterval:"+updateinterval);
-    						bufferedwriter2.newLine();
-    						bufferedwriter2.write("lastcheck:"+Integer.toString(lastcheck));
-    						bufferedwriter2.newLine();
-    						bufferedwriter2.write("lastversion:"+Integer.toString(lastversion));
-    						bufferedwriter2.newLine();
-    						bufferedwriter2.close();
-
-    						if (lastversion > version)
-    						{
-    							updatenotify(versiontostring(lastversion));
-    							System.out.println("[Shaders] New version "+versiontostring(lastversion)+" of the GLSL Shaders OF mod is available, go to "+ siteurl +" to download.");
-    						}
-    					}
-    				}
-    			}
-    			catch (Exception exception)
-    			{
-    				System.out.println("[Shaders] Failed to load GLSL Shaders update file.");
-    				exception.printStackTrace();
-    			}
-    		}
-    	}
-
-    	public static void updatenotify(String lastversion)
-    	{
-    		try
-    		{
-    			frame = new JFrame("GLSL Shaders OF mod update");
-    		}
-    		catch(Exception e)
-    		{
-    		return;
-    		}
-
-    		Color bgcolor=new Color(194,205,234);
-    		Color txcolor=new Color(50,50,50);
-    		frame.setLocation(20,20);
-    		JLabel label=new JLabel("New version of the GLSL Shaders OF mod is available! (v"+lastversion+") ");
-    		JPanel panel = new JPanel();
-    		panel.setBackground(bgcolor);
-    		label.setForeground(txcolor);
-    		label.setFont(new Font("Dialog", 1, 14));
-    		panel.add(label);
-
-    		if( java.awt.Desktop.isDesktopSupported() )
-    		{
-    			JButton button;
-    			final java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
-    			if( desktop.isSupported( java.awt.Desktop.Action.BROWSE ) )
-    			{
-    				button = new JButton("Download");
-    				button.setActionCommand("BPUPD");
-
-    			}
-    			else
-    			{
-    				button = new JButton("Copy URL to Clipboard");
-    				button.setActionCommand("CPURL");
-    			}
-    			button.setFont(new Font("Dialog", 1, 14));
-    			button.addActionListener(new ButtonListener());
-    			panel.add(button);
-    		}
-    		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-    		frame.getContentPane().add(panel);
-    		frame.pack();
-    		frame.setFocusableWindowState(false);
-    		frame.setVisible(true);
-    		frame.setFocusableWindowState(true);
-    	}
-
-    	static class ButtonListener implements ActionListener
-    	{
-    		ButtonListener()
-    		{
-    		}
-    		public void actionPerformed(ActionEvent e)
-    		{
-    			String cmd = e.getActionCommand();
-    			if (cmd == "BPUPD")
-    			{
-    				try
-    				{
-    					java.net.URI uri = new java.net.URI( siteurl );
-    					java.awt.Desktop.getDesktop().browse( uri );
-    					frame.dispose();
-    				}
-    				catch ( Exception exx ) {}
-    			}
-    			else if (cmd == "CPURL")
-    			{
-    				StringSelection ss = new StringSelection(siteurl);
-    				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
-    			}
-
-    		}
-    	}
-    */
+     * static void checkForUpdate() { if (!shadersdir.exists()) shadersdir.mkdir(); lastversion = version; int lastcheck
+     * = 0; File updatecheck = new File(shadersdir,"updatecheck.cfg"); try { if (updatecheck.exists()) { BufferedReader
+     * bufferedreader2 = new BufferedReader(new FileReader(updatecheck)); for (String s = ""; (s =
+     * bufferedreader2.readLine()) != null;) { try { String as[] = s.split(":"); int vv; if
+     * (as[0].equals("updateinterval")) { vv = Integer.parseInt(as[1]); if (vv < 0 || ( vv > 0 && vv < 24 ) || vv > 736)
+     * { System.out.println("[Shaders] Skipping bad option: updateinterval, range is: 0, 24-736"); } else {
+     * updateinterval = vv; } } else if (as[0].equals("lastcheck")) { lastcheck = Integer.parseInt(as[1]); } else if
+     * (as[0].equals("lastversion")) { lastversion = Integer.parseInt(as[1]); } } catch (Exception exception1) {
+     * System.out.println("[Shaders] "+(new StringBuilder()).append("Skipping bad option: ").append(s).toString()); } }
+     * bufferedreader2.close(); } } catch(Exception ex){} if (updateinterval > 0) { try { if (lastversion > version) {
+     * updatenotify(versiontostring(lastversion));
+     * System.out.println("[Shaders] New version "+versiontostring(lastversion)
+     * +" of the GLSL Shaders OF mod is available, go to "+ siteurl +" to download."); } else { int currenthours = (int)
+     * (System.currentTimeMillis() / 3600000); if (currenthours - lastcheck > updateinterval ) {
+     * System.out.println("[Shaders] Checking for updates. Last checked "+Integer.toString(currenthours -
+     * lastcheck)+" hours ago."); lastcheck = currenthours; try { URL url = new URL( updatecheckurl );
+     * HttpURLConnection.setFollowRedirects(true); HttpURLConnection uconn; uconn = (HttpURLConnection)
+     * url.openConnection(); uconn.setConnectTimeout(2500); uconn.setReadTimeout(1500); try { uconn.connect(); } catch
+     * (SocketTimeoutException excep) { System.out.println("[Shaders] Failed to connect to " + updatecheckurl); return;
+     * } BufferedReader bufferedreader2 = new BufferedReader(new InputStreamReader( uconn.getInputStream())); for
+     * (String s = ""; (s = bufferedreader2.readLine()) != null;) { try { String as[] = s.split(":"); if
+     * (as[1].equals("lastversion")) { lastversion = Integer.parseInt(as[2]); break; } } catch (Exception exception1){}
+     * } bufferedreader2.close(); } catch (Exception exception) { System.out.println("[Shaders] Failed to download " +
+     * updatecheckurl); return; } BufferedWriter bufferedwriter2 = new BufferedWriter(new FileWriter(updatecheck));
+     * bufferedwriter2.write("updateinterval:"+updateinterval); bufferedwriter2.newLine();
+     * bufferedwriter2.write("lastcheck:"+Integer.toString(lastcheck)); bufferedwriter2.newLine();
+     * bufferedwriter2.write("lastversion:"+Integer.toString(lastversion)); bufferedwriter2.newLine();
+     * bufferedwriter2.close(); if (lastversion > version) { updatenotify(versiontostring(lastversion));
+     * System.out.println("[Shaders] New version "+versiontostring(lastversion)
+     * +" of the GLSL Shaders OF mod is available, go to "+ siteurl +" to download."); } } } } catch (Exception
+     * exception) { System.out.println("[Shaders] Failed to load GLSL Shaders update file.");
+     * exception.printStackTrace(); } } } public static void updatenotify(String lastversion) { try { frame = new
+     * JFrame("GLSL Shaders OF mod update"); } catch(Exception e) { return; } Color bgcolor=new Color(194,205,234);
+     * Color txcolor=new Color(50,50,50); frame.setLocation(20,20); JLabel label=new
+     * JLabel("New version of the GLSL Shaders OF mod is available! (v"+lastversion+") "); JPanel panel = new JPanel();
+     * panel.setBackground(bgcolor); label.setForeground(txcolor); label.setFont(new Font("Dialog", 1, 14));
+     * panel.add(label); if( java.awt.Desktop.isDesktopSupported() ) { JButton button; final java.awt.Desktop desktop =
+     * java.awt.Desktop.getDesktop(); if( desktop.isSupported( java.awt.Desktop.Action.BROWSE ) ) { button = new
+     * JButton("Download"); button.setActionCommand("BPUPD"); } else { button = new JButton("Copy URL to Clipboard");
+     * button.setActionCommand("CPURL"); } button.setFont(new Font("Dialog", 1, 14)); button.addActionListener(new
+     * ButtonListener()); panel.add(button); } frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+     * frame.getContentPane().add(panel); frame.pack(); frame.setFocusableWindowState(false); frame.setVisible(true);
+     * frame.setFocusableWindowState(true); } static class ButtonListener implements ActionListener { ButtonListener() {
+     * } public void actionPerformed(ActionEvent e) { String cmd = e.getActionCommand(); if (cmd == "BPUPD") { try {
+     * java.net.URI uri = new java.net.URI( siteurl ); java.awt.Desktop.getDesktop().browse( uri ); frame.dispose(); }
+     * catch ( Exception exx ) {} } else if (cmd == "CPURL") { StringSelection ss = new StringSelection(siteurl);
+     * Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null); } } }
+     */
 
     public static void loadConfig() {
         System.out.println("[Shaders] Loading configuration.");
@@ -791,15 +610,13 @@ public class Shaders {
                 FileReader reader = new FileReader(configFile);
                 shadersConfig.load(reader);
                 reader.close();
-            } catch (Exception e) {
-            }
+            } catch (Exception e) {}
         }
 
         if (!configFile.exists()) {
             try {
                 storeConfig();
-            } catch (Exception e) {
-            }
+            } catch (Exception e) {}
         }
         String value = null;
         configNormalMap = Boolean.parseBoolean(shadersConfig.getProperty("normalMapEnabled", "true"));
@@ -845,8 +662,7 @@ public class Shaders {
             FileWriter writer = new FileWriter(configFile);
             shadersConfig.store(writer, null);
             writer.close();
-        } catch (Exception ex) {
-        }
+        } catch (Exception ex) {}
     }
 
     public static void setShaderPack(String par1name) {
@@ -872,8 +688,7 @@ public class Shaders {
                     } else if (packFile.isFile() && packName.toLowerCase().endsWith(".zip")) {
                         shaderPack = new ShaderPackZip(packName, packFile);
                     }
-                } catch (Exception e) {
-                }
+                } catch (Exception e) {}
             }
         }
         if (shaderPack != null) {
@@ -884,124 +699,124 @@ public class Shaders {
         }
     }
 
-    //	public static void loadShader0()
-    //	{
-    //		Set<String> shaderfiles = new HashSet<String>();
-    //		for (int si = 1; si < 10; si++)
-    //		{
-    //			shaderfiles.add(programNames[si]+".fsh");
-    //			shaderfiles.add(programNames[si]+".vsh");
-    //		}
+    // public static void loadShader0()
+    // {
+    // Set<String> shaderfiles = new HashSet<String>();
+    // for (int si = 1; si < 10; si++)
+    // {
+    // shaderfiles.add(programNames[si]+".fsh");
+    // shaderfiles.add(programNames[si]+".vsh");
+    // }
     //
-    //		try
-    //		{
+    // try
+    // {
     //
-    //			ZipInputStream inp = new ZipInputStream(new FileInputStream(currentshader));
-    //			System.out.println("[Shaders] Shader selected: " + currentshadername);
-    //			boolean found = false;
+    // ZipInputStream inp = new ZipInputStream(new FileInputStream(currentshader));
+    // System.out.println("[Shaders] Shader selected: " + currentshadername);
+    // boolean found = false;
     //
-    //			ZipEntry entry = inp.getNextEntry();
-    //			while(entry != null )
-    //			{
-    //				if (entry.isDirectory())
-    //				{
-    //					if (entry.getName().toLowerCase().contains("shaders/contents/files/shaders/"))
-    //					{
-    //						found = true;
-    //						break;
-    //					}
-    //				}
-    //				entry = inp.getNextEntry();
-    //			}
+    // ZipEntry entry = inp.getNextEntry();
+    // while(entry != null )
+    // {
+    // if (entry.isDirectory())
+    // {
+    // if (entry.getName().toLowerCase().contains("shaders/contents/files/shaders/"))
+    // {
+    // found = true;
+    // break;
+    // }
+    // }
+    // entry = inp.getNextEntry();
+    // }
     //
-    //			if (!found)
-    //			{
-    //				inp.close();
-    //				inp = new ZipInputStream(new FileInputStream(currentshader));
-    //				entry = inp.getNextEntry();
-    //				while(entry != null )
-    //				{
-    //					if (entry.isDirectory())
-    //					{
-    //						if (entry.getName().toLowerCase().contains("shaders/"))
-    //						{
-    //							found = true;
-    //							break;
-    //						}
-    //					}
-    //					entry = inp.getNextEntry();
-    //				}
-    //			}
+    // if (!found)
+    // {
+    // inp.close();
+    // inp = new ZipInputStream(new FileInputStream(currentshader));
+    // entry = inp.getNextEntry();
+    // while(entry != null )
+    // {
+    // if (entry.isDirectory())
+    // {
+    // if (entry.getName().toLowerCase().contains("shaders/"))
+    // {
+    // found = true;
+    // break;
+    // }
+    // }
+    // entry = inp.getNextEntry();
+    // }
+    // }
     //
-    //			if (!found)
-    //			{
-    //				inp.close();
-    //				inp = new ZipInputStream(new FileInputStream(currentshader));
-    //				entry = inp.getNextEntry();
-    //			}
+    // if (!found)
+    // {
+    // inp.close();
+    // inp = new ZipInputStream(new FileInputStream(currentshader));
+    // entry = inp.getNextEntry();
+    // }
     //
-    //			byte[] buf = new byte[1024];
-    //			int n;
-    //			String zipfile;
-    //			String zippath = "";
-    //			String zippathfile;
+    // byte[] buf = new byte[1024];
+    // int n;
+    // String zipfile;
+    // String zippath = "";
+    // String zippathfile;
     //
-    //			FileOutputStream fileoutputstream, fileoutputstream2;
-    //			boolean seusrc5tweak = false;
+    // FileOutputStream fileoutputstream, fileoutputstream2;
+    // boolean seusrc5tweak = false;
     //
-    //			while(entry != null && shaderfiles.size() > 0)
-    //			{
-    //				zipfile = new File(entry.getName()).getName();
-    //				if (shaderfiles.contains(zipfile) && !entry.isDirectory())
-    //				{
-    //					zippathfile = new File(entry.getName()).getPath();
-    //					if (shaderfiles.size() == 18)
-    //					{
-    //						zippath = zippathfile.substring(0,zippathfile.length()-zipfile.length());
-    //					}
-    //					if (zippathfile.equals(zippath+zipfile))
-    //					{
-    //						shaderfiles.remove(zipfile);
-    //						if (zipfile.equals("gbuffers_water.vsh") && entry.getCrc() == 2530345120L ) seusrc5tweak = true;
+    // while(entry != null && shaderfiles.size() > 0)
+    // {
+    // zipfile = new File(entry.getName()).getName();
+    // if (shaderfiles.contains(zipfile) && !entry.isDirectory())
+    // {
+    // zippathfile = new File(entry.getName()).getPath();
+    // if (shaderfiles.size() == 18)
+    // {
+    // zippath = zippathfile.substring(0,zippathfile.length()-zipfile.length());
+    // }
+    // if (zippathfile.equals(zippath+zipfile))
+    // {
+    // shaderfiles.remove(zipfile);
+    // if (zipfile.equals("gbuffers_water.vsh") && entry.getCrc() == 2530345120L ) seusrc5tweak = true;
     //
-    //						fileoutputstream = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator + zipfile);
-    //						while ((n = inp.read(buf, 0, 1024)) > -1) fileoutputstream.write(buf, 0, n);
-    //						fileoutputstream.close();
-    //						System.out.println("[Shaders] Shader loaded: " + zippathfile);
-    //					}
-    //				}
-    //				entry = inp.getNextEntry();
-    //			}
-    //			inp.close();
+    // fileoutputstream = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator + zipfile);
+    // while ((n = inp.read(buf, 0, 1024)) > -1) fileoutputstream.write(buf, 0, n);
+    // fileoutputstream.close();
+    // System.out.println("[Shaders] Shader loaded: " + zippathfile);
+    // }
+    // }
+    // entry = inp.getNextEntry();
+    // }
+    // inp.close();
     //
-    //			if (seusrc5tweak)
-    //			{
-    //				new File(shadersdir + File.separator + "temp" + File.separator + "gbuffers_water.fsh").delete();
-    //				new File(shadersdir + File.separator + "temp" + File.separator + "gbuffers_water.vsh").delete();
-    //				FileInputStream file = new FileInputStream(shadersdir + File.separator + "temp" + File.separator +
+    // if (seusrc5tweak)
+    // {
+    // new File(shadersdir + File.separator + "temp" + File.separator + "gbuffers_water.fsh").delete();
+    // new File(shadersdir + File.separator + "temp" + File.separator + "gbuffers_water.vsh").delete();
+    // FileInputStream file = new FileInputStream(shadersdir + File.separator + "temp" + File.separator +
     // "gbuffers_textured_lit.fsh");
-    //				FileOutputStream file2 = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator +
+    // FileOutputStream file2 = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator +
     // "gbuffers_water.fsh",false);
-    //				while ((n = file.read(buf, 0, 1024)) > -1) file2.write(buf, 0, n);
-    //				file.close();
-    //				file2.close();
-    //				file = new FileInputStream(shadersdir + File.separator + "temp" + File.separator +
+    // while ((n = file.read(buf, 0, 1024)) > -1) file2.write(buf, 0, n);
+    // file.close();
+    // file2.close();
+    // file = new FileInputStream(shadersdir + File.separator + "temp" + File.separator +
     // "gbuffers_textured_lit.vsh");
-    //				file2 = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator +
+    // file2 = new FileOutputStream(shadersdir + File.separator + "temp" + File.separator +
     // "gbuffers_water.vsh",false);
-    //				while ((n = file.read(buf, 0, 1024)) > -1) file2.write(buf, 0, n);
-    //				file.close();
-    //				file2.close();
-    //				System.out.println("[Shaders] Detected SEUS v10 RC5, copied gbuffers_textured_lit. to gbuffers_water.");
-    //			}
-    //		}
-    //		catch (Exception exc)
-    //		{}
+    // while ((n = file.read(buf, 0, 1024)) > -1) file2.write(buf, 0, n);
+    // file.close();
+    // file2.close();
+    // System.out.println("[Shaders] Detected SEUS v10 RC5, copied gbuffers_textured_lit. to gbuffers_water.");
+    // }
+    // }
+    // catch (Exception exc)
+    // {}
     //
-    //		isInitialized = false;
-    //		if (shaderfiles.size() == 18 ) System.out.println("[Shaders] No Shader found in: " + currentshadername);
-    //		else System.out.println("[Shaders] Shader loaded: " + currentshadername);
-    //	}
+    // isInitialized = false;
+    // if (shaderfiles.size() == 18 ) System.out.println("[Shaders] No Shader found in: " + currentshadername);
+    // else System.out.println("[Shaders] Shader loaded: " + currentshadername);
+    // }
 
     static ArrayList listofShaders() {
         ArrayList<String> list = new ArrayList();
@@ -1017,42 +832,28 @@ public class Shaders {
                     list.add(name);
                 }
             }
-        } catch (Exception e) {
-        }
+        } catch (Exception e) {}
         return list;
     }
 
     static String versiontostring(int vv) {
         String vs = Integer.toString(vv);
         return Integer.toString(Integer.parseInt(vs.substring(1, 3))) + "."
-                + Integer.toString(Integer.parseInt(vs.substring(3, 5))) + "."
+                + Integer.toString(Integer.parseInt(vs.substring(3, 5)))
+                + "."
                 + Integer.toString(Integer.parseInt(vs.substring(5)));
     }
 
     static void checkOptifine() {
         /*
-        try
-        {
-        	System.out.println("[Shaders] Required OptiFine version : " + ofVersion);
-        	String configVersion = (String)(Config.class.getDeclaredField("VERSION").get(null));
-        	System.out.println("[Shaders] Detected OptiFine version : "+ configVersion);
-        	if (configVersion.equals(ofVersion) )
-        	{
-        		System.out.println("[Shaders] ShadersMod loaded. version: " + versiontostring(version));
-        	}
-        	else
-        	{
-        		System.err.println("[Shaders] Wrong OptiFine version!");
-        		System.exit(-1);
-        	}
-        }
-        catch(Exception e)
-        {
-        	System.err.println("[Shaders] OptiFine missing or wrong version! Install OptiFine "+ofVersion+" first and then the ShadersMod!");
-        	System.exit(-1);
-        }
-        //Tessellator.shaders = true;
-        */
+         * try { System.out.println("[Shaders] Required OptiFine version : " + ofVersion); String configVersion =
+         * (String)(Config.class.getDeclaredField("VERSION").get(null));
+         * System.out.println("[Shaders] Detected OptiFine version : "+ configVersion); if
+         * (configVersion.equals(ofVersion) ) { System.out.println("[Shaders] ShadersMod loaded. version: " +
+         * versiontostring(version)); } else { System.err.println("[Shaders] Wrong OptiFine version!"); System.exit(-1);
+         * } } catch(Exception e) { System.err.println("[Shaders] OptiFine missing or wrong version! Install OptiFine "
+         * +ofVersion+" first and then the ShadersMod!"); System.exit(-1); } //Tessellator.shaders = true;
+         */
     }
 
     public static int checkFramebufferStatus(String location) {
@@ -1067,18 +868,21 @@ public class Shaders {
         if (errorCode != GL_NO_ERROR) {
             boolean skipPrint = false;
             // if (location.equals("updatechunks")) {
-            //	if (updateChunksErrorRecorded) {
-            //		skipPrint = true;
-            //	} else {
-            //		updateChunksErrorRecorded = true;
-            //	}
+            // if (updateChunksErrorRecorded) {
+            // skipPrint = true;
+            // } else {
+            // updateChunksErrorRecorded = true;
+            // }
             // }
             if (!skipPrint) {
                 if (errorCode == GL_INVALID_FRAMEBUFFER_OPERATION_EXT) {
                     int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
                     System.err.format(
                             "GL error 0x%04X: %s (Fb status 0x%04X) at %s\n",
-                            errorCode, gluErrorString(errorCode), status, location);
+                            errorCode,
+                            gluErrorString(errorCode),
+                            status,
+                            location);
                 } else {
                     System.err.format("GL error 0x%04X: %s at %s\n", errorCode, gluErrorString(errorCode), location);
                 }
@@ -1099,7 +903,12 @@ public class Shaders {
         int errorCode = glGetError();
         if (errorCode != GL_NO_ERROR) {
             System.err.format(
-                    "GL error 0x%04x: %s at %s %s %s\n", errorCode, gluErrorString(errorCode), location, info1, info2);
+                    "GL error 0x%04x: %s at %s %s %s\n",
+                    errorCode,
+                    gluErrorString(errorCode),
+                    location,
+                    info1,
+                    info2);
         }
         return errorCode;
     }
@@ -1112,14 +921,8 @@ public class Shaders {
 
     public static void printIntBuffer(String title, IntBuffer buf) {
         StringBuilder sb = new StringBuilder(128);
-        sb.append(title)
-                .append(" [pos ")
-                .append(buf.position())
-                .append(" lim ")
-                .append(buf.limit())
-                .append(" cap ")
-                .append(buf.capacity())
-                .append(" :");
+        sb.append(title).append(" [pos ").append(buf.position()).append(" lim ").append(buf.limit()).append(" cap ")
+                .append(buf.capacity()).append(" :");
         for (int lim = buf.limit(), i = 0; i < lim; ++i) sb.append(" ").append(buf.get(i));
         sb.append("]");
         System.out.println(sb);
@@ -1152,10 +955,14 @@ public class Shaders {
             mc = Minecraft.getMinecraft();
             checkGLError("Shaders.init pre");
             capabilities = GLContext.getCapabilities();
-            System.out.println("[Shaders] OpenGL 2.0 = " + toStringYN(capabilities.OpenGL20) + "    2.1 = "
-                    + toStringYN(capabilities.OpenGL21) + "    3.0 = "
-                    + toStringYN(capabilities.OpenGL30) + "    3.2 = "
-                    + toStringYN(capabilities.OpenGL32));
+            System.out.println(
+                    "[Shaders] OpenGL 2.0 = " + toStringYN(capabilities.OpenGL20)
+                            + "    2.1 = "
+                            + toStringYN(capabilities.OpenGL21)
+                            + "    3.0 = "
+                            + toStringYN(capabilities.OpenGL30)
+                            + "    3.2 = "
+                            + toStringYN(capabilities.OpenGL32));
             if (!capabilities.OpenGL21) {
                 printChatAndLogError("[Shaders] No OpenGL 2.1.");
             }
@@ -1216,7 +1023,9 @@ public class Shaders {
                     newColorAtmSetting = null;
                     newCompositeMipmapSetting = 0;
                     int pr = setupProgram(
-                            i, "/shaders/" + programNames[i] + ".vsh", "/shaders/" + programNames[i] + ".fsh");
+                            i,
+                            "/shaders/" + programNames[i] + ".vsh",
+                            "/shaders/" + programNames[i] + ".fsh");
                     programsID[i] = programsRef[i] = pr;
                     programsDrawBufSettings[i] = (pr != 0) ? newDrawBufSetting : null;
                     programsColorAtmSettings[i] = (pr != 0) ? newColorAtmSetting : null;
@@ -1284,7 +1093,7 @@ public class Shaders {
             }
 
             // if (programIDCopyDepth==0)
-            //	programIDCopyDepth = setupProgramCopyDepth();
+            // programIDCopyDepth = setupProgramCopyDepth();
 
             // TO DO: add color attachment option
             usedColorAttachs = usedColorBuffers;
@@ -1301,11 +1110,14 @@ public class Shaders {
             }
 
             if (usedDrawBuffers > maxDrawBuffers) {
-                printChatAndLogError("[Shaders] Not enough draw buffers! Requires " + usedDrawBuffers + ".  Has "
-                        + maxDrawBuffers + ".");
+                printChatAndLogError(
+                        "[Shaders] Not enough draw buffers! Requires " + usedDrawBuffers
+                                + ".  Has "
+                                + maxDrawBuffers
+                                + ".");
             }
             // if (usedColorBuffers > maxColorAttach) {
-            //	printChatAndLogError("[Shaders] Not enough color attachment! Requires "+ usedColorBuffers + ".  Has " +
+            // printChatAndLogError("[Shaders] Not enough color attachment! Requires "+ usedColorBuffers + ". Has " +
             // maxColorAttach + ".");
             // }
 
@@ -1362,8 +1174,7 @@ public class Shaders {
         ++numberResetDisplayList;
         System.out.println("Reset model renderers");
         if (Shaders.useMidTexCoordAttrib || Shaders.useMultiTexCoord3Attrib) {
-            Iterator<Render> it =
-                    RenderManager.instance.entityRenderMap.values().iterator();
+            Iterator<Render> it = RenderManager.instance.entityRenderMap.values().iterator();
             while (it.hasNext()) {
                 Render ren = it.next();
                 if (ren instanceof RendererLivingEntity) {
@@ -1392,16 +1203,16 @@ public class Shaders {
 
     public static void resetDisplayListModelRenderer(ModelRenderer mrr) {
         mrr.resetDisplayList();
-        //		if (mrr.compiled)
-        //		{
-        //			GLAllocation.deleteDisplayLists(mrr.displayList);
-        //			mrr.displayList = 0;
-        //			mrr.compiled = false;
-        //			if (mrr instanceof ModelRotationRenderer) {
-        //				ModelRotationRenderer mrt = (ModelRotationRenderer)mrr;
-        //				mrt.compiled = false;
-        //			}
-        //		}
+        // if (mrr.compiled)
+        // {
+        // GLAllocation.deleteDisplayLists(mrr.displayList);
+        // mrr.displayList = 0;
+        // mrr.compiled = false;
+        // if (mrr instanceof ModelRotationRenderer) {
+        // ModelRotationRenderer mrt = (ModelRotationRenderer)mrr;
+        // mrt.compiled = false;
+        // }
+        // }
         if (mrr.childModels != null) {
             for (int i = 0, n = mrr.childModels.size(); i < n; ++i) {
                 resetDisplayListModelRenderer((ModelRenderer) mrr.childModels.get(i));
@@ -1411,86 +1222,86 @@ public class Shaders {
 
     // ----------------------------------------
 
-    //	private static final String shaderCodeCopyDepthV =
-    //			"#version 120\n"+
-    //			"varying vec4 texcoord;\n"+
-    //			"void main()\n"+
-    //			"{\n"+
-    //			"    texcoord = gl_MultiTexCoord0;\n"+
-    //			"    gl_Position = ftransform();\n"+
-    //			"}\n"
-    //			;
-    //	private static final String shaderCodeCopyDepthF =
-    //	"#version 120\n"+
-    //	"varying vec4 texcoord;\n"+
-    //	"uniform sampler2D depthtex0;\n"+
-    //	"void main()\n"+
-    //	"{\n"+
-    //	"    gl_FragDepth = texture2D(depthtex0,texcoord.st).r;\n"+
-    //	"    gl_FragColor = texture2D(depthtex0,texcoord.st);\n"+
-    //	"}\n"
-    //	;
+    // private static final String shaderCodeCopyDepthV =
+    // "#version 120\n"+
+    // "varying vec4 texcoord;\n"+
+    // "void main()\n"+
+    // "{\n"+
+    // " texcoord = gl_MultiTexCoord0;\n"+
+    // " gl_Position = ftransform();\n"+
+    // "}\n"
+    // ;
+    // private static final String shaderCodeCopyDepthF =
+    // "#version 120\n"+
+    // "varying vec4 texcoord;\n"+
+    // "uniform sampler2D depthtex0;\n"+
+    // "void main()\n"+
+    // "{\n"+
+    // " gl_FragDepth = texture2D(depthtex0,texcoord.st).r;\n"+
+    // " gl_FragColor = texture2D(depthtex0,texcoord.st);\n"+
+    // "}\n"
+    // ;
     //
-    //	private static int setupProgramCopyDepth() {
-    //		int program = glCreateProgramObjectARB();
-    //		if (program !=0) {
-    //			int vShader = createVertShaderFromCode(shaderCodeCopyDepthV);
-    //			int fShader = createFragShaderFromCode(shaderCodeCopyDepthF);
-    //			if (vShader != 0 || fShader != 0) {
-    //				if (vShader != 0) {
-    //					glAttachObjectARB(program, vShader);
-    //				}
-    //				if (fShader != 0) {
-    //					glAttachObjectARB(program, fShader);
-    //				}
-    //				glLinkProgramARB(program);
-    //				if (vShader != 0) {
-    //					glDetachObjectARB(program, vShader);
-    //					glDeleteObjectARB(vShader);
-    //				}
-    //				if (fShader != 0) {
-    //					glDetachObjectARB(program, fShader);
-    //					glDeleteObjectARB(fShader);
-    //				}
-    //				int valid = glGetProgrami(program, GL_VALIDATE_STATUS); // glGetProgrami in LWJGL 3.0+
-    //				if (valid == GL_TRUE) {
-    //					System.out.println("Program copydepth created");
-    //				} else {
-    //					printChatAndLogError("[Shaders] Error : Invalid program copydepth");
-    //					glDeleteObjectARB(program);
-    //					program = 0;
-    //				}
-    //			} else {
-    //				glDeleteObjectARB(program);
-    //				program = 0;
-    //			}
-    //		}
-    //		return program;
-    //	}
-    //
-    //
-    //	private static int createVertShaderFromCode(String code) {
-    //		int vertShader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
-    //		if (vertShader == 0) {
-    //			return 0;
-    //		}
-    //		glShaderSourceARB(vertShader, code);
-    //		glCompileShaderARB(vertShader);
-    //		printLogInfo(vertShader,"copydepth vert");
-    //		return vertShader;
-    //	}
+    // private static int setupProgramCopyDepth() {
+    // int program = glCreateProgramObjectARB();
+    // if (program !=0) {
+    // int vShader = createVertShaderFromCode(shaderCodeCopyDepthV);
+    // int fShader = createFragShaderFromCode(shaderCodeCopyDepthF);
+    // if (vShader != 0 || fShader != 0) {
+    // if (vShader != 0) {
+    // glAttachObjectARB(program, vShader);
+    // }
+    // if (fShader != 0) {
+    // glAttachObjectARB(program, fShader);
+    // }
+    // glLinkProgramARB(program);
+    // if (vShader != 0) {
+    // glDetachObjectARB(program, vShader);
+    // glDeleteObjectARB(vShader);
+    // }
+    // if (fShader != 0) {
+    // glDetachObjectARB(program, fShader);
+    // glDeleteObjectARB(fShader);
+    // }
+    // int valid = glGetProgrami(program, GL_VALIDATE_STATUS); // glGetProgrami in LWJGL 3.0+
+    // if (valid == GL_TRUE) {
+    // System.out.println("Program copydepth created");
+    // } else {
+    // printChatAndLogError("[Shaders] Error : Invalid program copydepth");
+    // glDeleteObjectARB(program);
+    // program = 0;
+    // }
+    // } else {
+    // glDeleteObjectARB(program);
+    // program = 0;
+    // }
+    // }
+    // return program;
+    // }
     //
     //
-    //	private static int createFragShaderFromCode(String code) {
-    //		int fragShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
-    //		if (fragShader == 0) {
-    //			return 0;
-    //		}
-    //		glShaderSourceARB(fragShader, code);
-    //		glCompileShaderARB(fragShader);
-    //		printLogInfo(fragShader,"copydepth frag");
-    //		return fragShader;
-    //	}
+    // private static int createVertShaderFromCode(String code) {
+    // int vertShader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
+    // if (vertShader == 0) {
+    // return 0;
+    // }
+    // glShaderSourceARB(vertShader, code);
+    // glCompileShaderARB(vertShader);
+    // printLogInfo(vertShader,"copydepth vert");
+    // return vertShader;
+    // }
+    //
+    //
+    // private static int createFragShaderFromCode(String code) {
+    // int fragShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
+    // if (fragShader == 0) {
+    // return 0;
+    // }
+    // glShaderSourceARB(fragShader, code);
+    // glCompileShaderARB(fragShader);
+    // printLogInfo(fragShader,"copydepth frag");
+    // return fragShader;
+    // }
 
     private static int setupProgram(int program, String vShaderPath, String fShaderPath) {
         checkGLError("pre setupProgram");
@@ -1570,28 +1381,26 @@ public class Shaders {
             }
         }
 
-        if (reader != null)
-            try {
-                while ((line = reader.readLine()) != null) {
+        if (reader != null) try {
+            while ((line = reader.readLine()) != null) {
 
-                    if (preprocessIncludeDirective(line, vertexCode, false)) continue;
+                if (preprocessIncludeDirective(line, vertexCode, false)) continue;
 
-                    vertexCode.append(line).append("\n");
-                    processVertShaderLine(line);
-                }
-            } catch (Exception e) {
-                System.out.println("Couldn't read " + filename + "!");
-                e.printStackTrace();
-                glDeleteObjectARB(vertShader);
-                return 0;
+                vertexCode.append(line).append("\n");
+                processVertShaderLine(line);
             }
+        } catch (Exception e) {
+            System.out.println("Couldn't read " + filename + "!");
+            e.printStackTrace();
+            glDeleteObjectARB(vertShader);
+            return 0;
+        }
 
-        if (reader != null)
-            try {
-                reader.close();
-            } catch (Exception e) {
-                System.out.println("Couldn't close " + filename + "!");
-            }
+        if (reader != null) try {
+            reader.close();
+        } catch (Exception e) {
+            System.out.println("Couldn't close " + filename + "!");
+        }
 
         glShaderSourceARB(vertShader, vertexCode);
         glCompileShaderARB(vertShader);
@@ -1611,10 +1420,10 @@ public class Shaders {
         }
     }
 
-    private static final Pattern gbufferFormatPattern =
-            Pattern.compile("[ \t]*const[ \t]*int[ \t]*(\\w+)Format[ \t]*=[ \t]*([RGBA81632F]*)[ \t]*;.*");
-    private static final Pattern gbufferMipmapEnabledPattern =
-            Pattern.compile("[ \t]*const[ \t]*bool[ \t]*(\\w+)MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*");
+    private static final Pattern gbufferFormatPattern = Pattern
+            .compile("[ \t]*const[ \t]*int[ \t]*(\\w+)Format[ \t]*=[ \t]*([RGBA81632F]*)[ \t]*;.*");
+    private static final Pattern gbufferMipmapEnabledPattern = Pattern
+            .compile("[ \t]*const[ \t]*bool[ \t]*(\\w+)MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*");
 
     private static final Pattern INCLUDE_PATTERN = Pattern.compile("^\\s*#include\\s+\"([A-Za-z0-9_/\\.]+)\".*$");
 
@@ -1672,28 +1481,26 @@ public class Shaders {
             }
         }
 
-        if (reader != null)
-            try {
-                while ((line = reader.readLine()) != null) {
+        if (reader != null) try {
+            while ((line = reader.readLine()) != null) {
 
-                    if (preprocessIncludeDirective(line, fragCode, true)) continue;
+                if (preprocessIncludeDirective(line, fragCode, true)) continue;
 
-                    fragCode.append(line).append('\n');
-                    processFragShaderLine(line, filename);
-                }
-            } catch (Exception e) {
-                System.out.println("Couldn't read " + filename + "!");
-                e.printStackTrace();
-                glDeleteObjectARB(fragShader);
-                return 0;
+                fragCode.append(line).append('\n');
+                processFragShaderLine(line, filename);
             }
+        } catch (Exception e) {
+            System.out.println("Couldn't read " + filename + "!");
+            e.printStackTrace();
+            glDeleteObjectARB(fragShader);
+            return 0;
+        }
 
-        if (reader != null)
-            try {
-                reader.close();
-            } catch (Exception e) {
-                System.out.println("Couldn't close " + filename + "!");
-            }
+        if (reader != null) try {
+            reader.close();
+        } catch (Exception e) {
+            System.out.println("Couldn't close " + filename + "!");
+        }
 
         glShaderSourceARB(fragShader, fragCode);
         glCompileShaderARB(fragShader);
@@ -1805,150 +1612,216 @@ public class Shaders {
             System.out.println("shadowHardwareFiltering1");
             shadowHardwareFilteringEnabled[1] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowtex0Mipmap");
-            shadowMipmapEnabled[0] = true;
+        } else if (line
+                .matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                    System.out.println("shadowtex0Mipmap");
+                    shadowMipmapEnabled[0] = true;
 
-        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowtex1Mipmap");
-            shadowMipmapEnabled[1] = true;
+                } else
+            if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                System.out.println("shadowtex1Mipmap");
+                shadowMipmapEnabled[1] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowcolor0Mipmap");
-            shadowColorMipmapEnabled[0] = true;
+            } else if (line.matches(
+                    "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                        System.out.println("shadowcolor0Mipmap");
+                        shadowColorMipmapEnabled[0] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowcolor1Mipmap");
-            shadowColorMipmapEnabled[1] = true;
+                    } else
+                if (line.matches(
+                        "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                            System.out.println("shadowcolor1Mipmap");
+                            shadowColorMipmapEnabled[1] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowtex0Nearest");
-            shadowFilterNearest[0] = true;
+                        } else
+                    if (line.matches(
+                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                                System.out.println("shadowtex0Nearest");
+                                shadowFilterNearest[0] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowtex1Nearest");
-            shadowFilterNearest[1] = true;
+                            } else
+                        if (line.matches(
+                                "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                                    System.out.println("shadowtex1Nearest");
+                                    shadowFilterNearest[1] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowcolor0Nearest");
-            shadowColorFilterNearest[0] = true;
+                                } else
+                            if (line.matches(
+                                    "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                                        System.out.println("shadowcolor0Nearest");
+                                        shadowColorFilterNearest[0] = true;
 
-        } else if (line.matches(
-                "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowcolor1Nearest");
-            shadowColorFilterNearest[1] = true;
+                                    } else
+                                if (line.matches(
+                                        "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+                                            System.out.println("shadowcolor1Nearest");
+                                            shadowColorFilterNearest[1] = true;
 
-            // Wetness half life
-        } else if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
-            String[] parts = line.split("(:| )", 4);
-            System.out.println("Wetness halflife: " + parts[2]);
-            wetnessHalfLife = Float.parseFloat(parts[2]);
+                                            // Wetness half life
+                                        } else
+                                    if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
+                                        String[] parts = line.split("(:| )", 4);
+                                        System.out.println("Wetness halflife: " + parts[2]);
+                                        wetnessHalfLife = Float.parseFloat(parts[2]);
 
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Wetness halflife: " + parts[1]);
-            wetnessHalfLife = Float.parseFloat(parts[1]);
+                                    } else if (line.matches(
+                                            "[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                String[] parts = line.split("(=[ \t]*|;)");
+                                                System.out.println("Wetness halflife: " + parts[1]);
+                                                wetnessHalfLife = Float.parseFloat(parts[1]);
 
-            // Dryness halflife
-        } else if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
-            String[] parts = line.split("(:| )", 4);
-            System.out.println("Dryness halflife: " + parts[2]);
-            drynessHalfLife = Float.parseFloat(parts[2]);
+                                                // Dryness halflife
+                                            } else
+                                        if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
+                                            String[] parts = line.split("(:| )", 4);
+                                            System.out.println("Dryness halflife: " + parts[2]);
+                                            drynessHalfLife = Float.parseFloat(parts[2]);
 
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Dryness halflife: " + parts[1]);
-            drynessHalfLife = Float.parseFloat(parts[1]);
+                                        } else if (line.matches(
+                                                "[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                    String[] parts = line.split("(=[ \t]*|;)");
+                                                    System.out.println("Dryness halflife: " + parts[1]);
+                                                    drynessHalfLife = Float.parseFloat(parts[1]);
 
-            // Eye brightness halflife
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Eye brightness halflife: " + parts[1]);
-            eyeBrightnessHalflife = Float.parseFloat(parts[1]);
+                                                    // Eye brightness halflife
+                                                } else
+                                            if (line.matches(
+                                                    "[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                        String[] parts = line.split("(=[ \t]*|;)");
+                                                        System.out.println("Eye brightness halflife: " + parts[1]);
+                                                        eyeBrightnessHalflife = Float.parseFloat(parts[1]);
 
-            // Center depth halflife
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Center depth halflife: " + parts[1]);
-            centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
+                                                        // Center depth halflife
+                                                    } else
+                                                if (line.matches(
+                                                        "[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                            String[] parts = line.split("(=[ \t]*|;)");
+                                                            System.out.println("Center depth halflife: " + parts[1]);
+                                                            centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
 
-            // Sun path rotation
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Sun path rotation: " + parts[1]);
-            sunPathRotation = Float.parseFloat(parts[1]);
+                                                            // Sun path rotation
+                                                        } else
+                                                    if (line.matches(
+                                                            "[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                                String[] parts = line.split("(=[ \t]*|;)");
+                                                                System.out.println("Sun path rotation: " + parts[1]);
+                                                                sunPathRotation = Float.parseFloat(parts[1]);
 
-            // Ambient occlusion level
-        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("AO Level: " + parts[1]);
-            aoLevel = Float.parseFloat(parts[1]);
-            blockAoLight = 1.0f - aoLevel;
+                                                                // Ambient occlusion level
+                                                            } else
+                                                        if (line.matches(
+                                                                "[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                                    String[] parts = line.split("(=[ \t]*|;)");
+                                                                    System.out.println("AO Level: " + parts[1]);
+                                                                    aoLevel = Float.parseFloat(parts[1]);
+                                                                    blockAoLight = 1.0f - aoLevel;
 
-            // super sampling
-        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            int ssaa = Integer.parseInt(parts[1]);
-            if (ssaa > 1) {
-                System.out.println("Super sampling level: " + ssaa + "x");
-                superSamplingLevel = ssaa;
-            } else {
-                superSamplingLevel = 1;
-            }
+                                                                    // super sampling
+                                                                } else
+                                                            if (line.matches(
+                                                                    "[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                                        String[] parts = line.split("(=[ \t]*|;)");
+                                                                        int ssaa = Integer.parseInt(parts[1]);
+                                                                        if (ssaa > 1) {
+                                                                            System.out.println(
+                                                                                    "Super sampling level: " + ssaa
+                                                                                            + "x");
+                                                                            superSamplingLevel = ssaa;
+                                                                        } else {
+                                                                            superSamplingLevel = 1;
+                                                                        }
 
-            // noise texture
-        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-            String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Noise texture enabled");
-            System.out.println("Noise texture resolution: " + parts[1]);
-            noiseTextureResolution = Integer.parseInt(parts[1]);
-            noiseTextureEnabled = true;
+                                                                        // noise texture
+                                                                    } else
+                                                                if (line.matches(
+                                                                        "[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+                                                                            String[] parts = line.split("(=[ \t]*|;)");
+                                                                            System.out.println("Noise texture enabled");
+                                                                            System.out.println(
+                                                                                    "Noise texture resolution: "
+                                                                                            + parts[1]);
+                                                                            noiseTextureResolution = Integer
+                                                                                    .parseInt(parts[1]);
+                                                                            noiseTextureEnabled = true;
 
-        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
-            Matcher m = gbufferFormatPattern.matcher(line);
-            m.matches();
-            String name = m.group(1);
-            String value = m.group(2);
-            int bufferindex = getBufferIndexFromString(name);
-            int format = getTextureFormatFromString(value);
-            if (bufferindex >= 0 && format != 0) {
-                gbuffersFormat[bufferindex] = format;
-                System.out.format("%s format: %s\n", name, value);
-            }
-            // gaux4
-        } else if (line.matches("/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
-            System.out.println("gaux4 format : RGB32AF");
-            gbuffersFormat[7] = GL_RGBA32F;
-        } else if (line.matches("/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
-            System.out.println("gaux4 format : RGB32F");
-            gbuffersFormat[7] = GL_RGB32F;
-        } else if (line.matches("/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
-            System.out.println("gaux4 format : RGB16");
-            gbuffersFormat[7] = GL_RGB16;
+                                                                        } else
+                                                                    if (line.matches(
+                                                                            "[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
+                                                                                Matcher m = gbufferFormatPattern
+                                                                                        .matcher(line);
+                                                                                m.matches();
+                                                                                String name = m.group(1);
+                                                                                String value = m.group(2);
+                                                                                int bufferindex = getBufferIndexFromString(
+                                                                                        name);
+                                                                                int format = getTextureFormatFromString(
+                                                                                        value);
+                                                                                if (bufferindex >= 0 && format != 0) {
+                                                                                    gbuffersFormat[bufferindex] = format;
+                                                                                    System.out.format(
+                                                                                            "%s format: %s\n",
+                                                                                            name,
+                                                                                            value);
+                                                                                }
+                                                                                // gaux4
+                                                                            } else
+                                                                        if (line.matches(
+                                                                                "/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
+                                                                                    System.out.println(
+                                                                                            "gaux4 format : RGB32AF");
+                                                                                    gbuffersFormat[7] = GL_RGBA32F;
+                                                                                } else
+                                                                            if (line.matches(
+                                                                                    "/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
+                                                                                        System.out.println(
+                                                                                                "gaux4 format : RGB32F");
+                                                                                        gbuffersFormat[7] = GL_RGB32F;
+                                                                                    } else
+                                                                                if (line.matches(
+                                                                                        "/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
+                                                                                            System.out.println(
+                                                                                                    "gaux4 format : RGB16");
+                                                                                            gbuffersFormat[7] = GL_RGB16;
 
-            // Mipmap stuff
-        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
-            if (filename.matches(".*composite[0-9]?.fsh") || filename.matches(".*final.fsh")) {
-                Matcher m = gbufferMipmapEnabledPattern.matcher(line);
-                m.matches();
-                String name = m.group(1);
-                // String value =m.group(2);
-                int bufferindex = getBufferIndexFromString(name);
-                if (bufferindex >= 0) {
-                    newCompositeMipmapSetting |= (1 << bufferindex);
-                    System.out.format("%s mipmap enabled for %s\n", name, filename);
-                }
-            }
-        } else if (line.matches("/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
-            String[] parts = line.split("(:| )", 4);
-            newDrawBufSetting = parts[2];
-        }
+                                                                                            // Mipmap stuff
+                                                                                        } else
+                                                                                    if (line.matches(
+                                                                                            "[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
+                                                                                                if (filename.matches(
+                                                                                                        ".*composite[0-9]?.fsh")
+                                                                                                        || filename
+                                                                                                                .matches(
+                                                                                                                        ".*final.fsh")) {
+                                                                                                    Matcher m = gbufferMipmapEnabledPattern
+                                                                                                            .matcher(
+                                                                                                                    line);
+                                                                                                    m.matches();
+                                                                                                    String name = m
+                                                                                                            .group(1);
+                                                                                                    // String value
+                                                                                                    // =m.group(2);
+                                                                                                    int bufferindex = getBufferIndexFromString(
+                                                                                                            name);
+                                                                                                    if (bufferindex
+                                                                                                            >= 0) {
+                                                                                                        newCompositeMipmapSetting |= (1
+                                                                                                                << bufferindex);
+                                                                                                        System.out
+                                                                                                                .format(
+                                                                                                                        "%s mipmap enabled for %s\n",
+                                                                                                                        name,
+                                                                                                                        filename);
+                                                                                                    }
+                                                                                                }
+                                                                                            } else
+                                                                                        if (line.matches(
+                                                                                                "/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
+                                                                                                    String[] parts = line
+                                                                                                            .split(
+                                                                                                                    "(:| )",
+                                                                                                                    4);
+                                                                                                    newDrawBufSetting = parts[2];
+                                                                                                }
     }
 
     private static boolean printLogInfo(int obj, String name) {
@@ -2127,10 +2000,15 @@ public class Shaders {
         setProgramUniform3f("moonPosition", moonPosition[0], moonPosition[1], moonPosition[2]);
         setProgramUniform3f("upPosition", upPosition[0], upPosition[1], upPosition[2]);
         setProgramUniform3f(
-                "previousCameraPosition", (float) previousCameraPosition[0], (float) previousCameraPosition[1], (float)
-                        previousCameraPosition[2]);
+                "previousCameraPosition",
+                (float) previousCameraPosition[0],
+                (float) previousCameraPosition[1],
+                (float) previousCameraPosition[2]);
         setProgramUniform3f(
-                "cameraPosition", (float) cameraPosition[0], (float) cameraPosition[1], (float) cameraPosition[2]);
+                "cameraPosition",
+                (float) cameraPosition[0],
+                (float) cameraPosition[1],
+                (float) cameraPosition[2]);
         setProgramUniformMatrix4ARB("gbufferModelView", false, modelView);
         setProgramUniformMatrix4ARB("gbufferModelViewInverse", false, modelViewInverse);
         setProgramUniformMatrix4ARB("gbufferPreviousProjection", false, previousProjection);
@@ -2267,8 +2145,8 @@ public class Shaders {
             }
             // glDeleteRenderbuffersEXT(dfbDepthBuffer); dfbDepthBuffer = 0;
             // if (dfbRenderBuffers != null) {
-            //	glDeleteRenderbuffersEXT(dfbRenderBuffers);
-            //	fillIntBufferZero(dfbRenderBuffers);
+            // glDeleteRenderbuffersEXT(dfbRenderBuffers);
+            // fillIntBufferZero(dfbRenderBuffers);
             // }
             if (dfbDepthTextures != null) {
                 glDeleteTextures(dfbDepthTextures);
@@ -2319,7 +2197,7 @@ public class Shaders {
     private static void resize() {
         renderDisplayWidth = mc.displayWidth;
         renderDisplayHeight = mc.displayHeight;
-        // renderWidth  = mc.displayWidth * superSamplingLevel;
+        // renderWidth = mc.displayWidth * superSamplingLevel;
         // renderHeight = mc.displayHeight * superSamplingLevel;
         renderWidth = Math.round(renderDisplayWidth * configRenderResMul);
         renderHeight = Math.round(renderDisplayHeight * configRenderResMul);
@@ -2370,7 +2248,11 @@ public class Shaders {
         }
 
         glFramebufferTexture2DEXT(
-                GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, dfbDepthTextures.get(0), 0);
+                GL_FRAMEBUFFER_EXT,
+                GL_DEPTH_ATTACHMENT_EXT,
+                GL_TEXTURE_2D,
+                dfbDepthTextures.get(0),
+                0);
         glDrawBuffers(dfbDrawBuffers);
         glReadBuffer(GL_NONE);
         checkGLError("FT d");
@@ -2392,7 +2274,11 @@ public class Shaders {
                     GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
                     (ByteBuffer) null);
             glFramebufferTexture2DEXT(
-                    GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, dfbColorTextures.get(i), 0);
+                    GL_FRAMEBUFFER_EXT,
+                    GL_COLOR_ATTACHMENT0_EXT + i,
+                    GL_TEXTURE_2D,
+                    dfbColorTextures.get(i),
+                    0);
             checkGLError("FT c");
         }
 
@@ -2413,7 +2299,11 @@ public class Shaders {
                         GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
                         (ByteBuffer) null);
                 glFramebufferTexture2DEXT(
-                        GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, dfbColorTextures.get(i), 0);
+                        GL_FRAMEBUFFER_EXT,
+                        GL_COLOR_ATTACHMENT0_EXT + i,
+                        GL_TEXTURE_2D,
+                        dfbColorTextures.get(i),
+                        0);
                 checkGLError("FT c");
             }
             status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -2476,7 +2366,11 @@ public class Shaders {
                     (FloatBuffer) null);
         }
         glFramebufferTexture2DEXT(
-                GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, sfbDepthTextures.get(0), 0);
+                GL_FRAMEBUFFER_EXT,
+                GL_DEPTH_ATTACHMENT_EXT,
+                GL_TEXTURE_2D,
+                sfbDepthTextures.get(0),
+                0);
         checkGLError("FT sd");
 
         // color shadow
@@ -2498,7 +2392,11 @@ public class Shaders {
                     GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
                     (ByteBuffer) null);
             glFramebufferTexture2DEXT(
-                    GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, sfbColorTextures.get(i), 0);
+                    GL_FRAMEBUFFER_EXT,
+                    GL_COLOR_ATTACHMENT0_EXT + i,
+                    GL_TEXTURE_2D,
+                    sfbColorTextures.get(i),
+                    0);
             checkGLError("FT sc");
         }
 
@@ -2512,21 +2410,15 @@ public class Shaders {
         }
     }
 
-    /*public static void linkTextureNormalMap(int tex0, int tex2, int tex3)
-    {
-    	textureIdMap_n.put(tex0, tex2);
-    	textureIdMap_s.put(tex0, tex3);
-    	int[] ast0,ast2,ast3;
-    	if (tex0 < Tessellator.atlasSubTextures.length && (ast0 = Tessellator.atlasSubTextures[tex0]) != null)
-    	{
-    		if (tex2 < Tessellator.atlasSubTextures.length && (ast2 = Tessellator.atlasSubTextures[tex2]) != null)
-    			for (int it = 0, size = Math.min(ast0.length,ast2.length); it < size; ++it)
-    				textureIdMap_n.put(ast0[it], ast2[it]);
-    		if (tex3 < Tessellator.atlasSubTextures.length && (ast3 = Tessellator.atlasSubTextures[tex3]) != null)
-    			for (int it = 0, size = Math.min(ast0.length,ast3.length); it < size; ++it)
-    				textureIdMap_s.put(ast0[it], ast3[it]);
-    	}
-    }*/
+    /*
+     * public static void linkTextureNormalMap(int tex0, int tex2, int tex3) { textureIdMap_n.put(tex0, tex2);
+     * textureIdMap_s.put(tex0, tex3); int[] ast0,ast2,ast3; if (tex0 < Tessellator.atlasSubTextures.length && (ast0 =
+     * Tessellator.atlasSubTextures[tex0]) != null) { if (tex2 < Tessellator.atlasSubTextures.length && (ast2 =
+     * Tessellator.atlasSubTextures[tex2]) != null) for (int it = 0, size = Math.min(ast0.length,ast2.length); it <
+     * size; ++it) textureIdMap_n.put(ast0[it], ast2[it]); if (tex3 < Tessellator.atlasSubTextures.length && (ast3 =
+     * Tessellator.atlasSubTextures[tex3]) != null) for (int it = 0, size = Math.min(ast0.length,ast3.length); it <
+     * size; ++it) textureIdMap_s.put(ast0[it], ast3[it]); } }
+     */
 
     public static void beginRender(Minecraft minecraft, float f, long l) {
         if (isShadowPass) {
@@ -2555,8 +2447,8 @@ public class Shaders {
 
         systemTime = System.currentTimeMillis();
         if (lastSystemTime == 0) {
-            lastSystemTime =
-                    systemTime; // Initialize lastSystemTime on the first tick so that it is equal to current system
+            lastSystemTime = systemTime; // Initialize lastSystemTime on the first tick so that it is equal to current
+                                         // system
             // time
         }
         diffSystemTime = systemTime - lastSystemTime;
@@ -2570,8 +2462,8 @@ public class Shaders {
             float fadeScalar = diffSystemTime * 0.01f;
             // float temp1 = (float)Math.exp(Math.log(0.5)*diffWorldTime/((wetness < rainStrength)? drynessHalfLife :
             // wetnessHalfLife));
-            float temp1 = (float) Math.exp(
-                    Math.log(0.5) * fadeScalar / ((wetness < rainStrength) ? drynessHalfLife : wetnessHalfLife));
+            float temp1 = (float) Math
+                    .exp(Math.log(0.5) * fadeScalar / ((wetness < rainStrength) ? drynessHalfLife : wetnessHalfLife));
             wetness = wetness * (temp1) + rainStrength * (1 - temp1);
         }
 
@@ -2586,11 +2478,8 @@ public class Shaders {
             eyeBrightnessFadeY = eyeBrightnessFadeY * temp2 + (eyeBrightness >> 16) * (1 - temp2);
         }
 
-        isEyeInWater = (mc.gameSettings.thirdPersonView == 0
-                        && !mc.renderViewEntity.isPlayerSleeping()
-                        && mc.thePlayer.isInsideOfMaterial(Material.water))
-                ? 1
-                : 0;
+        isEyeInWater = (mc.gameSettings.thirdPersonView == 0 && !mc.renderViewEntity.isPlayerSleeping()
+                && mc.thePlayer.isInsideOfMaterial(Material.water)) ? 1 : 0;
 
         {
             Vec3 skyColorV = mc.theWorld.getSkyColor(mc.renderViewEntity, f);
@@ -2600,27 +2489,27 @@ public class Shaders {
         }
 
         // Determine average color
-        //		{
-        //			int searchWidth = renderWidth / 2;
-        //			int searchHeight = renderHeight / 2;
+        // {
+        // int searchWidth = renderWidth / 2;
+        // int searchHeight = renderHeight / 2;
         //
-        //			ByteBuffer colorByteBuffer = ByteBuffer.allocateDirect(searchWidth * searchHeight * 4 * 3);
-        //			glReadPixels((renderWidth / 2) - (searchWidth / 2), (renderHeight / 2) - (searchHeight / 2), searchWidth,
+        // ByteBuffer colorByteBuffer = ByteBuffer.allocateDirect(searchWidth * searchHeight * 4 * 3);
+        // glReadPixels((renderWidth / 2) - (searchWidth / 2), (renderHeight / 2) - (searchHeight / 2), searchWidth,
         // searchHeight, GL11.GL_RGB, GL11.GL_FLOAT, colorByteBuffer);
         //
-        //			colorByteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        // colorByteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         //
         //
-        //			float averageColor = 0.0f;
-        //			for (int i = 0; i < searchWidth; i++) {
-        //				for (int j = 0; j < searchHeight; j++) {
-        //					averageColor += colorByteBuffer.getFloat(i * 4 + (searchWidth * 4 * 3 * j));
-        //				}
-        //			}
+        // float averageColor = 0.0f;
+        // for (int i = 0; i < searchWidth; i++) {
+        // for (int j = 0; j < searchHeight; j++) {
+        // averageColor += colorByteBuffer.getFloat(i * 4 + (searchWidth * 4 * 3 * j));
+        // }
+        // }
         //
-        //			System.out.println("Color: " + averageColor / (searchWidth * searchHeight));
+        // System.out.println("Color: " + averageColor / (searchWidth * searchHeight));
         //
-        //		}
+        // }
 
         isRenderingWorld = true;
         isCompositeRendered = false;
@@ -2813,13 +2702,17 @@ public class Shaders {
         if (isShadowPass) {
             // No need to clear shadow depth 1. It will be overwritten.
             // if (waterShadowEnabled) {
-            //	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D,
+            // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D,
             // sfbDepthTextures.get(1), 0);
-            //	glClear(GL_DEPTH_BUFFER_BIT);
+            // glClear(GL_DEPTH_BUFFER_BIT);
             // }
             checkGLError("shadow clear pre");
             glFramebufferTexture2DEXT(
-                    GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, sfbDepthTextures.get(0), 0);
+                    GL_FRAMEBUFFER_EXT,
+                    GL_DEPTH_ATTACHMENT_EXT,
+                    GL_TEXTURE_2D,
+                    sfbDepthTextures.get(0),
+                    0);
             glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
             // printIntBuffer(programsDrawBuffers[ProgramShadow]);
             glDrawBuffers(programsDrawBuffers[ProgramShadow]);
@@ -2831,10 +2724,9 @@ public class Shaders {
         checkGLError("clear pre");
 
         /*
-        glDrawBuffers(dfbDrawBuffers);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        */
+         * glDrawBuffers(dfbDrawBuffers); glClearColor(0.0f, 0.0f, 0.0f, 0.0f); glClear(GL_COLOR_BUFFER_BIT |
+         * GL_DEPTH_BUFFER_BIT);
+         */
 
         glDrawBuffers(GL_COLOR_ATTACHMENT0_EXT);
         // glClearColor(clearColorR, clearColorG, clearColorB, 1.0f);
@@ -2903,8 +2795,9 @@ public class Shaders {
             float celestialAngle = mc.theWorld.getCelestialAngle(f);
             sunAngle = (celestialAngle < 0.75f) ? celestialAngle + 0.25f : celestialAngle - 0.75f;
             float angle = celestialAngle * (-360.0f);
-            float angleInterval =
-                    shadowAngleInterval > 0.0f ? (angle % shadowAngleInterval - (shadowAngleInterval * 0.5f)) : 0.0f;
+            float angleInterval = shadowAngleInterval > 0.0f
+                    ? (angle % shadowAngleInterval - (shadowAngleInterval * 0.5f))
+                    : 0.0f;
             if (sunAngle <= 0.5) {
                 // day time
                 glRotatef(angle - angleInterval, 0.0f, 0.0f, 1.0f);
@@ -2998,98 +2891,82 @@ public class Shaders {
 
         matIn.get(m);
 
-        inv[0] = m[5] * m[10] * m[15]
-                - m[5] * m[11] * m[14]
+        inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14]
                 - m[9] * m[6] * m[15]
                 + m[9] * m[7] * m[14]
                 + m[13] * m[6] * m[11]
                 - m[13] * m[7] * m[10];
-        inv[4] = -m[4] * m[10] * m[15]
-                + m[4] * m[11] * m[14]
+        inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14]
                 + m[8] * m[6] * m[15]
                 - m[8] * m[7] * m[14]
                 - m[12] * m[6] * m[11]
                 + m[12] * m[7] * m[10];
-        inv[8] = m[4] * m[9] * m[15]
-                - m[4] * m[11] * m[13]
+        inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13]
                 - m[8] * m[5] * m[15]
                 + m[8] * m[7] * m[13]
                 + m[12] * m[5] * m[11]
                 - m[12] * m[7] * m[9];
-        inv[12] = -m[4] * m[9] * m[14]
-                + m[4] * m[10] * m[13]
+        inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13]
                 + m[8] * m[5] * m[14]
                 - m[8] * m[6] * m[13]
                 - m[12] * m[5] * m[10]
                 + m[12] * m[6] * m[9];
-        inv[1] = -m[1] * m[10] * m[15]
-                + m[1] * m[11] * m[14]
+        inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14]
                 + m[9] * m[2] * m[15]
                 - m[9] * m[3] * m[14]
                 - m[13] * m[2] * m[11]
                 + m[13] * m[3] * m[10];
-        inv[5] = m[0] * m[10] * m[15]
-                - m[0] * m[11] * m[14]
+        inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14]
                 - m[8] * m[2] * m[15]
                 + m[8] * m[3] * m[14]
                 + m[12] * m[2] * m[11]
                 - m[12] * m[3] * m[10];
-        inv[9] = -m[0] * m[9] * m[15]
-                + m[0] * m[11] * m[13]
+        inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13]
                 + m[8] * m[1] * m[15]
                 - m[8] * m[3] * m[13]
                 - m[12] * m[1] * m[11]
                 + m[12] * m[3] * m[9];
-        inv[13] = m[0] * m[9] * m[14]
-                - m[0] * m[10] * m[13]
+        inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13]
                 - m[8] * m[1] * m[14]
                 + m[8] * m[2] * m[13]
                 + m[12] * m[1] * m[10]
                 - m[12] * m[2] * m[9];
-        inv[2] = m[1] * m[6] * m[15]
-                - m[1] * m[7] * m[14]
+        inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14]
                 - m[5] * m[2] * m[15]
                 + m[5] * m[3] * m[14]
                 + m[13] * m[2] * m[7]
                 - m[13] * m[3] * m[6];
-        inv[6] = -m[0] * m[6] * m[15]
-                + m[0] * m[7] * m[14]
+        inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14]
                 + m[4] * m[2] * m[15]
                 - m[4] * m[3] * m[14]
                 - m[12] * m[2] * m[7]
                 + m[12] * m[3] * m[6];
-        inv[10] = m[0] * m[5] * m[15]
-                - m[0] * m[7] * m[13]
+        inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13]
                 - m[4] * m[1] * m[15]
                 + m[4] * m[3] * m[13]
                 + m[12] * m[1] * m[7]
                 - m[12] * m[3] * m[5];
-        inv[14] = -m[0] * m[5] * m[14]
-                + m[0] * m[6] * m[13]
+        inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13]
                 + m[4] * m[1] * m[14]
                 - m[4] * m[2] * m[13]
                 - m[12] * m[1] * m[6]
                 + m[12] * m[2] * m[5];
-        inv[3] = -m[1] * m[6] * m[11]
-                + m[1] * m[7] * m[10]
+        inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10]
                 + m[5] * m[2] * m[11]
                 - m[5] * m[3] * m[10]
                 - m[9] * m[2] * m[7]
                 + m[9] * m[3] * m[6];
-        inv[7] = m[0] * m[6] * m[11]
-                - m[0] * m[7] * m[10]
+        inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10]
                 - m[4] * m[2] * m[11]
                 + m[4] * m[3] * m[10]
                 + m[8] * m[2] * m[7]
                 - m[8] * m[3] * m[6];
-        inv[11] = -m[0] * m[5] * m[11]
-                + m[0] * m[7] * m[9]
+        inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9]
                 + m[4] * m[1] * m[11]
                 - m[4] * m[3] * m[9]
                 - m[8] * m[1] * m[7]
                 + m[8] * m[3] * m[5];
-        inv[15] = m[0] * m[5] * m[10]
-                - m[0] * m[6] * m[9]
+        inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9]
                 - m[4] * m[1] * m[10]
                 + m[4] * m[2] * m[9]
                 + m[8] * m[1] * m[6]
@@ -3246,7 +3123,11 @@ public class Shaders {
 
         // set depth buffer
         glFramebufferTexture2DEXT(
-                GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, dfbDepthTextures.get(0), 0);
+                GL_FRAMEBUFFER_EXT,
+                GL_DEPTH_ATTACHMENT_EXT,
+                GL_TEXTURE_2D,
+                dfbDepthTextures.get(0),
+                0);
         // detach depth buffer
         // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, 0, 0);
 
@@ -3294,9 +3175,9 @@ public class Shaders {
         drawComposite();
 
         // Read gl_FragColor
-        //		ByteBuffer centerPixelColor = ByteBuffer.allocateDirect(3);
-        //		glReadPixels(renderWidth / 2, renderHeight / 2, 1, 1, GL11.GL_RGB, GL11.GL_BYTE, centerPixelColor);
-        //		System.out.println(centerPixelColor.get(0));
+        // ByteBuffer centerPixelColor = ByteBuffer.allocateDirect(3);
+        // glReadPixels(renderWidth / 2, renderHeight / 2, 1, 1, GL11.GL_RGB, GL11.GL_BYTE, centerPixelColor);
+        // System.out.println(centerPixelColor.get(0));
 
         // end
         checkGLError("renderCompositeFinal");
@@ -3426,13 +3307,13 @@ public class Shaders {
         popEntity();
     }
 
-    //	public static void beginSunMoon() {
-    //		useProgram(ProgramNone);
-    //	}
+    // public static void beginSunMoon() {
+    // useProgram(ProgramNone);
+    // }
 
-    //	public static void endSunMoon() {
-    //		useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
-    //	}
+    // public static void endSunMoon() {
+    // useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
+    // }
     public static void beginUpdateChunks() {
         // System.out.println("beginUpdateChunks");
         checkGLError("beginUpdateChunks1");
@@ -3631,26 +3512,26 @@ public class Shaders {
         }
     }
 
-    //	public static void beginWaterFancy() {
-    //		if (isRenderingWorld)
-    //		{
-    //			if (!isShadowPass) {
-    //				// program water
-    //				useProgram(Shaders.ProgramWater);
-    //				GL11.glEnable(GL11.GL_BLEND);
-    //				//setDrawBuffers(drawBuffersNone);
-    //			}
-    //		}
-    //	}
+    // public static void beginWaterFancy() {
+    // if (isRenderingWorld)
+    // {
+    // if (!isShadowPass) {
+    // // program water
+    // useProgram(Shaders.ProgramWater);
+    // GL11.glEnable(GL11.GL_BLEND);
+    // //setDrawBuffers(drawBuffersNone);
+    // }
+    // }
+    // }
     //
-    //	public static void midWaterFancy() {
-    //		if (isRenderingWorld)
-    //		{
-    //			if (!isShadowPass) {
-    //				setDrawBuffers(programsDrawBuffers[Shaders.ProgramWater]);
-    //			}
-    //		}
-    //	}
+    // public static void midWaterFancy() {
+    // if (isRenderingWorld)
+    // {
+    // if (!isShadowPass) {
+    // setDrawBuffers(programsDrawBuffers[Shaders.ProgramWater]);
+    // }
+    // }
+    // }
 
     public static void beginWater() {
         if (isRenderingWorld) {
@@ -3720,7 +3601,7 @@ public class Shaders {
         }
 
         // if (isShadowPass) {
-        //	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); // will be set to sbf in endHand()
+        // glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); // will be set to sbf in endHand()
         // }
     }
 
@@ -3731,7 +3612,7 @@ public class Shaders {
         // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, dfbDepthTexture, 0);
 
         // if (isShadowPass) {
-        //	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sfb); // was set to 0 in beginWeather()
+        // glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sfb); // was set to 0 in beginWeather()
         // }
     }
 
@@ -3902,15 +3783,15 @@ public class Shaders {
 
     public static void pushEntity(Block block) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] =
-                (block.blockRegistry.getIDForObject(block) & 0xFFFF) | (block.getRenderType() << 16);
+        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+                | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = 0;
     }
 
     public static void pushEntity(RenderBlocks rb, Block block, int x, int y, int z) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] =
-                (block.blockRegistry.getIDForObject(block) & 0xFFFF) | (block.getRenderType() << 16);
+        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+                | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = rb.blockAccess.getBlockMetadata(x, y, z);
     }
 

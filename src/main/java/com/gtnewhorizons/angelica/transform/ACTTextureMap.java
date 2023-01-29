@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -23,6 +24,7 @@ public class ACTTextureMap implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
         boolean endFields = false;
 
@@ -31,8 +33,8 @@ public class ACTTextureMap implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -60,14 +62,14 @@ public class ACTTextureMap implements IClassTransformer {
                 fv = cv.visitField(ACC_PUBLIC, "atlasHeight", "I", null, null);
                 fv.visitEnd();
             }
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.textureMap_getIconResLoc.equalsNameDesc(name, desc)) {
                 access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
             } else if (Names.textureMap_loadTextureAtlas.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVloadAtlas(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.textureMap_updateAnimations.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVanimation(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -75,6 +77,7 @@ public class ACTTextureMap implements IClassTransformer {
     }
 
     private static class MVloadAtlas extends MethodVisitor {
+
         // protected MethodVisitor mv;
         public MVloadAtlas(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
@@ -107,59 +110,63 @@ public class ACTTextureMap implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest("    %s.%s%s",ownerM,nameM,descM);
+            // SMCLog.finest(" %s.%s%s",ownerM,nameM,descM);
             if (Names.iResourceManager_getResource.equals(owner, name, desc)) {
                 ALog.finest("    %s", "loadRes");
                 mv.visitMethodInsn(
                         INVOKESTATIC,
                         "com/gtnewhorizons/angelica/client/ShadersTex",
                         "loadResource",
-                        "(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")"
+                        "(" + Names.iResourceManager_.desc
+                                + Names.resourceLocation_.desc
+                                + ")"
                                 + Names.iResource_.desc);
                 return;
             } else if (opcode == INVOKESPECIAL
                     && Names.equals(Names.stitcher_.clas, "<init>", "(IIZII)V", owner, name, desc)) {
-                isStitcher = true;
-            } else if (Names.textureUtil_allocateTextureMipmapAniso.equals(owner, name, desc)) {
-                ALog.finest("    %s", "allocateTextureMap");
-                mv.visitVarInsn(ALOAD, varStitcher);
-                mv.visitVarInsn(ALOAD, 0);
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/ShadersTex",
-                        "allocateTextureMap",
-                        "(IIIIF" + Names.stitcher_.desc + Names.textureMap_.desc + ")V");
-                state = 1;
-                return;
-            } else if (state == 1 && Names.textureAtlasSpri_getIconName.equals(owner, name, desc)) {
-                ALog.finest("    %s", "setSprite setIconName");
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/ShadersTex",
-                        "setSprite",
-                        "(" + Names.textureAtlasSpri_.desc + ")" + Names.textureAtlasSpri_.desc);
-                mv.visitMethodInsn(opcode, owner, name, desc);
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/ShadersTex",
-                        "setIconName",
-                        "(Ljava/lang/String;)Ljava/lang/String;");
-                state = 0;
-                return;
-            } else if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
-                ALog.finest("    %s", "uploadTexSubForLoadAtlas");
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/ShadersTex",
-                        "uploadTexSubForLoadAtlas",
-                        "([[IIIIIZZ)V");
-                return;
-            }
+                        isStitcher = true;
+                    } else
+                if (Names.textureUtil_allocateTextureMipmapAniso.equals(owner, name, desc)) {
+                    ALog.finest("    %s", "allocateTextureMap");
+                    mv.visitVarInsn(ALOAD, varStitcher);
+                    mv.visitVarInsn(ALOAD, 0);
+                    mv.visitMethodInsn(
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/ShadersTex",
+                            "allocateTextureMap",
+                            "(IIIIF" + Names.stitcher_.desc + Names.textureMap_.desc + ")V");
+                    state = 1;
+                    return;
+                } else if (state == 1 && Names.textureAtlasSpri_getIconName.equals(owner, name, desc)) {
+                    ALog.finest("    %s", "setSprite setIconName");
+                    mv.visitMethodInsn(
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/ShadersTex",
+                            "setSprite",
+                            "(" + Names.textureAtlasSpri_.desc + ")" + Names.textureAtlasSpri_.desc);
+                    mv.visitMethodInsn(opcode, owner, name, desc);
+                    mv.visitMethodInsn(
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/ShadersTex",
+                            "setIconName",
+                            "(Ljava/lang/String;)Ljava/lang/String;");
+                    state = 0;
+                    return;
+                } else if (Names.textureUtil_uploadTexSub.equals(owner, name, desc)) {
+                    ALog.finest("    %s", "uploadTexSubForLoadAtlas");
+                    mv.visitMethodInsn(
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/ShadersTex",
+                            "uploadTexSubForLoadAtlas",
+                            "([[IIIIIZZ)V");
+                    return;
+                }
             mv.visitMethodInsn(opcode, owner, name, desc);
         }
     }
 
     private static class MVanimation extends MethodVisitor {
+
         public MVanimation(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }

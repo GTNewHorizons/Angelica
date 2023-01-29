@@ -3,6 +3,7 @@ package net.minecraft.client.renderer;
 import net.minecraft.client.renderer.culling.ICamera;
 
 public class WorldRenderer {
+
     public boolean isInFrustum;
 
     public boolean skipAllRenderPasses() {

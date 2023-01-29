@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+
 import org.lwjgl.opengl.GL12;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -25,6 +26,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
     }
 
     private static class CVTransform extends ClassVisitor {
+
         String classname;
 
         public CVTransform(ClassVisitor cv) {
@@ -32,8 +34,8 @@ public class ACTRendererLivingEntity implements IClassTransformer {
         }
 
         @Override
-        public void visit(
-                int version, int access, String name, String signature, String superName, String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName,
+                String[] interfaces) {
             classname = name;
             // SMCLog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
@@ -50,12 +52,12 @@ public class ACTRendererLivingEntity implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info("  method %s.%s%s = %s",classname,name,desc,remappedName);
+            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.rendererLivingE_doRender.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVdoRenderLiving(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.rendererLivingE_renderLabel.equalsNameDesc(name, desc)) {
-                // SMCLog.finer("  patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVrenderLivingLabel(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -63,13 +65,14 @@ public class ACTRendererLivingEntity implements IClassTransformer {
     }
 
     private static class MVdoRenderLiving extends MethodVisitor {
+
         public MVdoRenderLiving(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
 
         @Override
         public void visitCode() {
-            // SMCLog.info("    insert code");
+            // SMCLog.info(" insert code");
             mv.visitCode();
             mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "useEntityHurtFlash", "Z");
             Label label1 = new Label();
@@ -99,7 +102,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
             mv.visitInsn(ICONST_0);
             mv.visitLabel(label4);
-            mv.visitFrame(Opcodes.F_SAME1, 0, null, 1, new Object[] {Opcodes.INTEGER});
+            mv.visitFrame(Opcodes.F_SAME1, 0, null, 1, new Object[] { Opcodes.INTEGER });
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, 1);
             mv.visitVarInsn(ALOAD, 1);
@@ -116,10 +119,13 @@ public class ACTRendererLivingEntity implements IClassTransformer {
                     Names.rendererLivingE_getColorMultiplier.name,
                     Names.rendererLivingE_getColorMultiplier.desc);
             mv.visitMethodInsn(
-                    INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "setEntityHurtFlash", "(II)V");
+                    INVOKESTATIC,
+                    "com/gtnewhorizons/angelica/client/Shaders",
+                    "setEntityHurtFlash",
+                    "(II)V");
             mv.visitLabel(label1);
             mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-            // SMCLog.info("    end insert");
+            // SMCLog.info(" end insert");
         }
 
         /** last SIPUSH operand */
@@ -144,9 +150,9 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             if (cst instanceof Integer) {
                 int icst = ((Integer) cst).intValue();
                 if (icst == GL12.GL_RESCALE_NORMAL) {
-                    // SMCLog.info("    rescale_normal");
+                    // SMCLog.info(" rescale_normal");
                     if (labelEndVH != null) {
-                        // SMCLog.info("    jump target");
+                        // SMCLog.info(" jump target");
                         mv.visitLabel(labelEndVH);
                         labelEndVH = null;
                     }
@@ -157,15 +163,21 @@ public class ACTRendererLivingEntity implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.info("    %s.%s%s",ownerM,nameM,descM);
+            // SMCLog.info(" %s.%s%s",ownerM,nameM,descM);
             if (opcode == INVOKEVIRTUAL) {
                 if (Names.rendererLivingE_renderEquippedItems.equals(owner, name, desc)) {
-                    // SMCLog.info("    renderEquippedItems");
+                    // SMCLog.info(" renderEquippedItems");
                     mv.visitMethodInsn(
-                            INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "resetEntityHurtFlash", "()V");
+                            INVOKESTATIC,
+                            "com/gtnewhorizons/angelica/client/Shaders",
+                            "resetEntityHurtFlash",
+                            "()V");
                     mv.visitMethodInsn(opcode, owner, name, desc);
                     mv.visitFieldInsn(
-                            GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "useEntityHurtFlash", "Z");
+                            GETSTATIC,
+                            "com/gtnewhorizons/angelica/client/Shaders",
+                            "useEntityHurtFlash",
+                            "Z");
                     labelEndVH = new Label();
                     mv.visitJumpInsn(IFNE, labelEndVH);
                     state = 1;
@@ -177,29 +189,41 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             //
             if (opcode == INVOKESTATIC) {
                 if (Names.equals("org/lwjgl/opengl/GL11", "glDepthFunc", "(I)V", owner, name, desc)) {
-                    // SMCLog.info("    glDepthFunc");
+                    // SMCLog.info(" glDepthFunc");
                     if (state == 3) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginLivingDamage", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "beginLivingDamage",
+                                "()V");
                         ++state;
                     } else if (state == 4) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endLivingDamage", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "endLivingDamage",
+                                "()V");
                         ++state;
                     }
                 } else if (Names.openGlHelper_setActiveTexture.equals(owner, name, desc)) {
-                    // SMCLog.info("    setActiveTexture");
+                    // SMCLog.info(" setActiveTexture");
                     if (state == 1) {
                         ++state;
                     } else if (state == 2) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "disableLightmap", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "disableLightmap",
+                                "()V");
                         ++state;
                     } else if (state == 5) {
                         ++state;
                     } else if (state == 6) {
                         mv.visitMethodInsn(
-                                INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "enableLightmap", "()V");
+                                INVOKESTATIC,
+                                "com/gtnewhorizons/angelica/client/Shaders",
+                                "enableLightmap",
+                                "()V");
                         ++state;
                     }
                 }
@@ -216,6 +240,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
     }
 
     private static class MVrenderLivingLabel extends MethodVisitor {
+
         public MVrenderLivingLabel(MethodVisitor mv) {
             super(Opcodes.ASM4, mv);
         }
@@ -246,28 +271,28 @@ public class ACTRendererLivingEntity implements IClassTransformer {
         }
     }
 
-    //	private static class MVNTransform extends MethodVisitor
-    //	{
-    //		protected MethodVisitor mv;
-    //		protected MethodNode mn;
-    //		public MVNTransform(MethodNode mn, MethodVisitor mv) {
-    //			super(Opcodes.ASM4);
-    //			super.mv = this.mn = mn;
-    //			this.mv = mv;
-    //		}
+    // private static class MVNTransform extends MethodVisitor
+    // {
+    // protected MethodVisitor mv;
+    // protected MethodNode mn;
+    // public MVNTransform(MethodNode mn, MethodVisitor mv) {
+    // super(Opcodes.ASM4);
+    // super.mv = this.mn = mn;
+    // this.mv = mv;
+    // }
     //
-    //		@Override
-    //		public void visitEnd() {
-    //			super.visitEnd();
-    //			Iterator<AbstractInsnNode> it = mn.instructions.iterator();
-    //			while (it.hasNext())
-    //			{
-    //				AbstractInsnNode node = it.next();
-    //				System.out.println(node.toString());
-    //			}
-    //			// send to target
-    //			mn.accept(mv);
-    //		}
-    //	}
+    // @Override
+    // public void visitEnd() {
+    // super.visitEnd();
+    // Iterator<AbstractInsnNode> it = mn.instructions.iterator();
+    // while (it.hasNext())
+    // {
+    // AbstractInsnNode node = it.next();
+    // System.out.println(node.toString());
+    // }
+    // // send to target
+    // mn.accept(mv);
+    // }
+    // }
 
 }

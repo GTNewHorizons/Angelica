@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client;
 
 import java.nio.IntBuffer;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockIce;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -10,6 +11,7 @@ import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
+
 import org.lwjgl.opengl.GL11;
 
 public class ShadersRender {
