@@ -14,8 +14,6 @@ import com.gtnewhorizons.angelica.mixins.Mixins;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions({ "com.gtnewhorizons.angelica.loading.",
-        "com.gtnewhorizons.angelica.transform." })
 @IFMLLoadingPlugin.SortingIndex(1100)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
