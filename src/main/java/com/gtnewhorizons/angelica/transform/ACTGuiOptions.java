@@ -35,19 +35,19 @@ public class ACTGuiOptions implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             this.classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.guiOptions_initGui.equalsNameDesc(name, desc)) {
-                // SMCLog.info(" patching");
+                // ALog.info(" patching");
                 return new MVinitGui(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             if (Names.guiOptions_actionPerformed.equalsNameDesc(name, desc)) {
-                // SMCLog.info(" patching");
+                // ALog.info(" patching");
                 return new MVactionPerformed(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);

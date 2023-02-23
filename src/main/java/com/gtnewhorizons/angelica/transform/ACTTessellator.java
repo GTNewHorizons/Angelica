@@ -1,9 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
-import static org.objectweb.asm.Opcodes.*;
-
 import net.minecraft.launchwrapper.IClassTransformer;
-
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -11,6 +8,34 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+
+import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
+import static org.objectweb.asm.Opcodes.ACC_PROTECTED;
+import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ACONST_NULL;
+import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.BIPUSH;
+import static org.objectweb.asm.Opcodes.DLOAD;
+import static org.objectweb.asm.Opcodes.FLOAD;
+import static org.objectweb.asm.Opcodes.GETFIELD;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.ICONST_4;
+import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.IMUL;
+import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.IRETURN;
+import static org.objectweb.asm.Opcodes.NEWARRAY;
+import static org.objectweb.asm.Opcodes.POP;
+import static org.objectweb.asm.Opcodes.PUTFIELD;
+import static org.objectweb.asm.Opcodes.PUTSTATIC;
+import static org.objectweb.asm.Opcodes.RETURN;
+import static org.objectweb.asm.Opcodes.T_FLOAT;
+import static org.objectweb.asm.Opcodes.T_INT;
 
 /** transformer for net.minecraft.client.renderer.Tessellator */
 public class ACTTessellator implements IClassTransformer {
@@ -40,13 +65,13 @@ public class ACTTessellator implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-            // SMCLog.fine("%x %s %s %s",access,desc,name,nameM);
+            // ALog.fine("%x %s %s %s",access,desc,name,nameM);
             if (name.equals("vertexPos") || name.equals("normalX")
                     || name.equals("normalY")
                     || name.equals("normalZ")
@@ -62,7 +87,7 @@ public class ACTTessellator implements IClassTransformer {
                     // nameM.equals(Names.Tessellator_vertexBuffers)
                     )) {
                         inputHasStaticBuffer = true;
-                        // SMCLog.finest(" input has static buffer");
+                        // ALog.finest(" input has static buffer");
                         access = access & (~ACC_STATIC & ~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
                     } else {
                         access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
@@ -88,31 +113,31 @@ public class ACTTessellator implements IClassTransformer {
                 fv = cv.visitField(ACC_PUBLIC, "midTextureV", "F", null, null);
                 fv.visitEnd();
             }
-            // SMCLog.fine(" method %s.%s%s = %s",classname,name,desc,nameM);
+            // ALog.fine(" method %s.%s%s = %s",classname,name,desc,nameM);
             if (name.equals("<clinit>")) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVclinit(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("<init>") && desc.equals("()V")) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVinit(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("<init>") && desc.equals("(I)V")) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVinitI(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_draw.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVdraw(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_reset.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
                 return new MVreset(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_addVertex.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVaddVertex(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_setNormal.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVsetNormal(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.tessellator_sortQuad.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVsortQuad(cv.visitMethod(access, name, desc, signature, exceptions));
             } else {
                 access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
@@ -138,7 +163,7 @@ public class ACTTessellator implements IClassTransformer {
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
+            // ALog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
             if (opcode == PUTSTATIC && (Names.tessellator_byteBuffer.equals(owner, name)
                     || Names.tessellator_intBuffer.equals(owner, name)
                     || Names.tessellator_floatBuffer.equals(owner, name)
@@ -167,7 +192,7 @@ public class ACTTessellator implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" M %d %s.%s %s", opcode, ownerM, nameM, descM);
+            // ALog.finest(" M %d %s.%s %s", opcode, ownerM, nameM, descM);
             if (Names.glAllocation_createDirectByteBuffer.equals(owner, name, desc)) {
                 mv.visitInsn(POP);
                 mv.visitInsn(ACONST_NULL);
@@ -389,7 +414,7 @@ public class ACTTessellator implements IClassTransformer {
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
+            // ALog.finest(" F %d %s.%s %s", opcode, ownerM, nameM, descM);
             if (opcode == GETSTATIC && Names.tessellator_byteBuffer.equals(owner, name)) {
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitFieldInsn(GETFIELD, owner, name, desc);

@@ -36,7 +36,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
@@ -265,7 +265,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         public void visitLdcInsn(Object cst) {
             if (cst instanceof String) {
                 String scst = (String) cst;
-                // SMCLog.finest(" %d Ldc %s", state, scst);
+                // ALog.finest(" %d Ldc %s", state, scst);
                 section = scst;
             }
             mv.visitLdcInsn(cst);
@@ -273,7 +273,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitIntInsn(int opcode, int operand) {
-            // SMCLog.finest(" %d Int %d %d", state ,opcode, operand);
+            // ALog.finest(" %d Int %d %d", state ,opcode, operand);
             // switch (state) {
             // case 23:
             // case 25:
@@ -289,7 +289,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitJumpInsn(int opcode, Label label) {
-            // SMCLog.finest(" %d, Jump %d", state, opcode);
+            // ALog.finest(" %d, Jump %d", state, opcode);
             switch (state) {
                 case 4:
                     if (opcode == IF_ICMPLT) {
@@ -380,7 +380,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
-            // SMCLog.finest(" %d, Frame",state);
+            // ALog.finest(" %d, Frame",state);
             switch (state) {
                 case 7: {
                     state = 8;
@@ -402,7 +402,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" %d F %d %s.%s %s", state, opcode, ownerM, nameM, descM);
+            // ALog.finest(" %d F %d %s.%s %s", state, opcode, ownerM, nameM, descM);
             switch (state) {
                 case 3:
                     if (Names.gameSettings_renderDistance.equals(owner, name)) {
@@ -437,7 +437,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" %d M %d %s.%s%s", state, opcode, ownerM, nameM, descM);
+            // ALog.finest(" %d M %d %s.%s%s", state, opcode, ownerM, nameM, descM);
             switch (state) {
                 case 0:
                     if (Names.equals("org/lwjgl/opengl/GL11", "glViewport", "(IIII)V", owner, name, desc)) {

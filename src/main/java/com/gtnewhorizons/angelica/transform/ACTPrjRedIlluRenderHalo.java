@@ -34,13 +34,13 @@ public class ACTPrjRedIlluRenderHalo implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             this.classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             super.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info(" %s%s",name,desc);
+            // ALog.info(" %s%s",name,desc);
             if ("prepareRenderState".equals(name) && "()V".equals(desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVprepare(cv.visitMethod(access, name, desc, signature, exceptions));

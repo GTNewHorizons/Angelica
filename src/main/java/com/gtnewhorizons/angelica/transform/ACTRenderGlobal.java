@@ -36,7 +36,7 @@ public class ACTRenderGlobal implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
@@ -51,7 +51,7 @@ public class ACTRenderGlobal implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // String remappedName = SMCRemap.remapper.mapMethodName(classname, name, desc);
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.renderGlobal_renderEntities.equalsNameDesc(name, desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderEntities(cv.visitMethod(access, name, desc, signature, exceptions));
@@ -263,7 +263,7 @@ public class ACTRenderGlobal implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.info(" %s.%s%s",ownerM,nameM,descM);
+            // ALog.info(" %s.%s%s",ownerM,nameM,descM);
             switch (state) {
                 case 0:
                     if (owner.equals("Config") && name.equals("isSkyEnabled")) {

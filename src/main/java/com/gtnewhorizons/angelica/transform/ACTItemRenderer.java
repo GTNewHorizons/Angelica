@@ -42,13 +42,13 @@ public class ACTItemRenderer implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info(" method %s.%s%s",classname,name,desc);
+            // ALog.info(" method %s.%s%s",classname,name,desc);
             if (Names.itemRenderer_updateEquipped.equalsNameDesc(name, desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVupdate(cv.visitMethod(access, name, desc, signature, exceptions));
