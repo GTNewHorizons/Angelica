@@ -204,7 +204,6 @@ public class Names {
     static Meth iTextureObject_loadTexture;
     static Meth iTextureObject_getGlTextureId;
     static Meth minecraft_displayGuiScreen;
-    static Meth minecraft_startGame;
     static Meth openGlHelper_setActiveTexture;
     static Meth render_renderShadow;
     static Meth renderBlocks_renderBlockFluids;

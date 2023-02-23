@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.transform;
 
+import net.minecraft.launchwrapper.IClassTransformer;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import net.minecraft.launchwrapper.IClassTransformer;
 
 public class AClassTransformer implements IClassTransformer {
 
@@ -22,7 +22,6 @@ public class AClassTransformer implements IClassTransformer {
         ctMap = new HashMap();
         put(Names.block_, new ACTBlock());
         put(Names.itemBlock_, new ACTItemBlock());
-        put(Names.minecraft_, new ACTMinecraft());
         put(Names.guiOptions_, new ACTGuiOptions());
         put(Names.modelRenderer_, new ACTModelRenderer());
         put(Names.openGlHelper_, new ACTOpenGlHelper());
@@ -55,7 +54,7 @@ public class AClassTransformer implements IClassTransformer {
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
         byte[] bytecode = par3;
-        // if (par2.startsWith("mrtjp")) SMCLog.info("**** [%s]", par2);
+        // if (par2.startsWith("mrtjp")) ALog.info("**** [%s]", par2);
         IClassTransformer ct = ctMap.get(par2);
         if (ct != null) {
             bytecode = ct.transform(par1, par2, bytecode);

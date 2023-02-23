@@ -144,7 +144,6 @@ public class NamerSrg extends Namer {
         iTextureObject_loadTexture = m(iTextureObject_, "func_110551_a", "(" + iResourceManager_.desc + ")V");
         iTextureObject_getGlTextureId = m(iTextureObject_, "func_110552_b", "()I");
         minecraft_displayGuiScreen = m(minecraft_, "func_147108_a", "(" + guiScreen_.desc + ")V");
-        minecraft_startGame = m(minecraft_, "func_71384_a", "()V");
         openGlHelper_setActiveTexture = m(openGlHelper_, "func_77473_a", "(I)V");
         render_renderShadow = m(render_, "func_76975_c", "(" + entity_.desc + "DDDFF)V");
         renderBlocks_renderBlockFluids = m(renderBlocks_, "func_147721_p", "(" + block_.desc + "III)Z");
