@@ -34,14 +34,14 @@ public class ACTBlock implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             this.classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             super.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.block_getAoLight.equalsNameDesc(name, desc)) {
-                // SMCLog.info(" patching");
+                // ALog.info(" patching");
                 return new MVgetAoLight(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);

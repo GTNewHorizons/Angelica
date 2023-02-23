@@ -36,20 +36,20 @@ public class ACTTextureDownload implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
         public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-            // SMCLog.finest(" field %s %s %s %d", classname, name, desc, access);
+            // ALog.finest(" field %s %s %s %d", classname, name, desc, access);
             return super.visitField(access, name, desc, signature, value);
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // String nameM = SMCRemap.remapper.mapMethodName(classname, name, desc);
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (name.equals("getMultiTexID")) {
                 return null;
             }

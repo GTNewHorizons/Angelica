@@ -1,8 +1,16 @@
 package com.gtnewhorizons.angelica.transform;
 
+import net.minecraft.launchwrapper.Launch;
+
 public class InitNames {
 
     public static void init() {
-        new NamerSrg().setNames();
+        final boolean obfuscated = !(Boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
+        ALog.info("Environment obfuscated: %s", obfuscated);
+        if (obfuscated) {
+            new NamerSrg().setNames();
+        } else {
+            new NamerMcp().setNames();
+        }
     }
 }

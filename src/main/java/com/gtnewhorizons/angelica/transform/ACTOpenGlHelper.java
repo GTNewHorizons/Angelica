@@ -34,7 +34,7 @@ public class ACTOpenGlHelper implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
@@ -55,12 +55,12 @@ public class ACTOpenGlHelper implements IClassTransformer {
             // has_activeTexUnit = true;
             // FieldVisitor fv = cv.visitField(ACC_PUBLIC + ACC_STATIC, "activeTexUnit", "I", null, null);
             // fv.visitEnd();
-            // SMCLog.finest(" add field activeTexUnit");
+            // ALog.finest(" add field activeTexUnit");
             // }
 
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.openGlHelper_setActiveTexture.equalsNameDesc(name, desc)) {
-                // SMCLog.info(" patching");
+                // ALog.info(" patching");
                 return new MVsetActiveTexture(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);

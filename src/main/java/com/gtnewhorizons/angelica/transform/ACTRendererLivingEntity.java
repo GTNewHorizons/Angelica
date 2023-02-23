@@ -37,7 +37,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
@@ -52,12 +52,12 @@ public class ACTRendererLivingEntity implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.rendererLivingE_doRender.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVdoRenderLiving(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.rendererLivingE_renderLabel.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVrenderLivingLabel(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -72,7 +72,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
 
         @Override
         public void visitCode() {
-            // SMCLog.info(" insert code");
+            // ALog.info(" insert code");
             mv.visitCode();
             mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "useEntityHurtFlash", "Z");
             Label label1 = new Label();
@@ -125,7 +125,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
                     "(II)V");
             mv.visitLabel(label1);
             mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-            // SMCLog.info(" end insert");
+            // ALog.info(" end insert");
         }
 
         /** last SIPUSH operand */
@@ -150,9 +150,9 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             if (cst instanceof Integer) {
                 int icst = ((Integer) cst).intValue();
                 if (icst == GL12.GL_RESCALE_NORMAL) {
-                    // SMCLog.info(" rescale_normal");
+                    // ALog.info(" rescale_normal");
                     if (labelEndVH != null) {
-                        // SMCLog.info(" jump target");
+                        // ALog.info(" jump target");
                         mv.visitLabel(labelEndVH);
                         labelEndVH = null;
                     }
@@ -163,10 +163,10 @@ public class ACTRendererLivingEntity implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.info(" %s.%s%s",ownerM,nameM,descM);
+            // ALog.info(" %s.%s%s",ownerM,nameM,descM);
             if (opcode == INVOKEVIRTUAL) {
                 if (Names.rendererLivingE_renderEquippedItems.equals(owner, name, desc)) {
-                    // SMCLog.info(" renderEquippedItems");
+                    // ALog.info(" renderEquippedItems");
                     mv.visitMethodInsn(
                             INVOKESTATIC,
                             "com/gtnewhorizons/angelica/client/Shaders",
@@ -189,7 +189,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             //
             if (opcode == INVOKESTATIC) {
                 if (Names.equals("org/lwjgl/opengl/GL11", "glDepthFunc", "(I)V", owner, name, desc)) {
-                    // SMCLog.info(" glDepthFunc");
+                    // ALog.info(" glDepthFunc");
                     if (state == 3) {
                         mv.visitMethodInsn(
                                 INVOKESTATIC,
@@ -206,7 +206,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
                         ++state;
                     }
                 } else if (Names.openGlHelper_setActiveTexture.equals(owner, name, desc)) {
-                    // SMCLog.info(" setActiveTexture");
+                    // ALog.info(" setActiveTexture");
                     if (state == 1) {
                         ++state;
                     } else if (state == 2) {

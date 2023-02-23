@@ -137,7 +137,13 @@ import static org.lwjgl.opengl.GL30.glGenerateMipmap;
 import static org.lwjgl.util.glu.GLU.gluErrorString;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -1879,7 +1885,7 @@ public class Shaders {
         if (isRenderingDfb) {
             setDrawBuffers(drawBuffers);
             checkGLError(programNames[program], " draw buffers = ", programsDrawBufSettings[program]);
-            // SMCLog.info("%s",programNames[program] + " draw buffers = " + programsDrawBufSettings[program]);
+            // ALog.info("%s",programNames[program] + " draw buffers = " + programsDrawBufSettings[program]);
         }
         activeCompositeMipmapSetting = programsCompositeMipmapSetting[program];
         uniformEntityHurt = glGetUniformLocationARB(programsID[activeProgram], "entityHurt");

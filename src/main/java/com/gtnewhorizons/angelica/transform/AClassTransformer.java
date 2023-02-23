@@ -5,6 +5,10 @@ import java.util.Map;
 
 import net.minecraft.launchwrapper.IClassTransformer;
 
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.tree.ClassNode;
+
 public class AClassTransformer implements IClassTransformer {
 
     Names names;
@@ -22,7 +26,6 @@ public class AClassTransformer implements IClassTransformer {
         ctMap = new HashMap();
         put(Names.block_, new ACTBlock());
         put(Names.itemBlock_, new ACTItemBlock());
-        put(Names.minecraft_, new ACTMinecraft());
         put(Names.guiOptions_, new ACTGuiOptions());
         put(Names.modelRenderer_, new ACTModelRenderer());
         put(Names.openGlHelper_, new ACTOpenGlHelper());
@@ -55,10 +58,18 @@ public class AClassTransformer implements IClassTransformer {
     @Override
     public byte[] transform(String par1, String par2, byte[] par3) {
         byte[] bytecode = par3;
-        // if (par2.startsWith("mrtjp")) SMCLog.info("**** [%s]", par2);
+        // if (par2.startsWith("mrtjp")) ALog.info("**** [%s]", par2);
         IClassTransformer ct = ctMap.get(par2);
         if (ct != null) {
             bytecode = ct.transform(par1, par2, bytecode);
+            // HACK: Fix stackframes
+            ClassNode node = new ClassNode();
+            ClassReader reader = new ClassReader(bytecode);
+            reader.accept(node, ClassReader.SKIP_FRAMES);
+            ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+            node.accept(writer);
+            bytecode = writer.toByteArray();
+            // END HACK
             int len1 = par3.length; // arg2!=null?arg2.length:0;
             int len2 = bytecode.length; // bytecode!=null?bytecode.length:0;
             ALog.fine(" %d (%+d)", len2, len2 - len1);

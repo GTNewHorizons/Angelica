@@ -49,21 +49,21 @@ public class ACTTextureAtlasSprite implements IClassTransformer {
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             access = access & ~(ACC_PRIVATE | ACC_PROTECTED) | ACC_PUBLIC;
             if (Names.textureAtlasSpri_updateAnimation.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVanimation(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (name.equals("load")
                     && desc.equals("(" + Names.iResourceManager_.desc + Names.resourceLocation_.desc + ")Z")) {
-                        // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                        // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                         return new MVload(cv.visitMethod(access, name, desc, signature, exceptions));
                     } else
                 if (Names.textureAtlasSpri_loadSprite.equalsNameDesc(name, desc)) {
-                    // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                    // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                     return new MVloadSprite(cv.visitMethod(access, name, desc, signature, exceptions));
                 } else if (name.equals("uploadFrameTexture") && desc.equals("(III)V")) {
-                    // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                    // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                     return new MVuploadFrameTexture(cv.visitMethod(access, name, desc, signature, exceptions));
                 }
             return cv.visitMethod(access, name, desc, signature, exceptions);

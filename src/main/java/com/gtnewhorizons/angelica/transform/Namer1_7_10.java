@@ -138,7 +138,6 @@ public class Namer1_7_10 extends Namer {
         iTextureObject_loadTexture = m(iTextureObject_, "a", "(" + iResourceManager_.desc + ")V");
         iTextureObject_getGlTextureId = m(iTextureObject_, "b", "()I");
         minecraft_displayGuiScreen = m(minecraft_, "a", "(" + guiScreen_.desc + ")V");
-        minecraft_startGame = m(minecraft_, "ag", "()V");
         openGlHelper_setActiveTexture = m(openGlHelper_, "j", "(I)V");
         render_renderShadow = m(render_, "c", "(" + entity_.desc + "DDDFF)V");
         renderBlocks_renderBlockFluids = m(renderBlocks_, "p", "(" + block_.desc + "III)Z");

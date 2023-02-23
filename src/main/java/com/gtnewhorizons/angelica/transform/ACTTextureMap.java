@@ -36,7 +36,7 @@ public class ACTTextureMap implements IClassTransformer {
         public void visit(int version, int access, String name, String signature, String superName,
                 String[] interfaces) {
             classname = name;
-            // SMCLog.info(" class %s",name);
+            // ALog.info(" class %s",name);
             cv.visit(version, access, name, signature, superName, interfaces);
         }
 
@@ -62,14 +62,14 @@ public class ACTTextureMap implements IClassTransformer {
                 fv = cv.visitField(ACC_PUBLIC, "atlasHeight", "I", null, null);
                 fv.visitEnd();
             }
-            // SMCLog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
+            // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
             if (Names.textureMap_getIconResLoc.equalsNameDesc(name, desc)) {
                 access = access & (~ACC_PRIVATE & ~ACC_PROTECTED) | ACC_PUBLIC;
             } else if (Names.textureMap_loadTextureAtlas.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVloadAtlas(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.textureMap_updateAnimations.equalsNameDesc(name, desc)) {
-                // SMCLog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
+                // ALog.finer(" patching method %s.%s%s = %s",classname,name,desc,nameM);
                 return new MVanimation(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -110,7 +110,7 @@ public class ACTTextureMap implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // SMCLog.finest(" %s.%s%s",ownerM,nameM,descM);
+            // ALog.finest(" %s.%s%s",ownerM,nameM,descM);
             if (Names.iResourceManager_getResource.equals(owner, name, desc)) {
                 ALog.finest("    %s", "loadRes");
                 mv.visitMethodInsn(

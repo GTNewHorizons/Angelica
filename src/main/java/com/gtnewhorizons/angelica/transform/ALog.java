@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.transform;
 
-import static java.util.logging.Level.*;
+import static java.util.logging.Level.ALL;
+import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.WARNING;
 
 import java.io.IOException;
 import java.util.Calendar;
@@ -37,9 +39,9 @@ public abstract class ALog {
         }
     }
 
-    private static class SMCLogger extends Logger {
+    private static class ALogger extends Logger {
 
-        SMCLogger(String name) {
+        ALogger(String name) {
             super(name, null);
             setUseParentHandlers(false);
             Formatter formatter = new SMCFormatter();
@@ -64,13 +66,13 @@ public abstract class ALog {
         }
     }
 
-    public static final String smcLogName = "SMC";
-    public static final Logger logger = new SMCLogger(smcLogName);
-    public static final Level SMCINFO = new SMCLevel("INF", 850);
-    public static final Level SMCCONFIG = new SMCLevel("CFG", 840);
-    public static final Level SMCFINE = new SMCLevel("FNE", 830);
-    public static final Level SMCFINER = new SMCLevel("FNR", 820);
-    public static final Level SMCFINEST = new SMCLevel("FNT", 810);
+    public static final String ALogName = "ANG";
+    public static final Logger logger = new ALogger(ALogName);
+    public static final Level ANGINFO = new SMCLevel("INF", 850);
+    public static final Level ANGCONFIG = new SMCLevel("CFG", 840);
+    public static final Level ANGFINE = new SMCLevel("FNE", 830);
+    public static final Level ANGFINER = new SMCLevel("FNR", 820);
+    public static final Level ANGFINEST = new SMCLevel("FNT", 810);
 
     public static void log(Level level, String format, Object... args) {
         if (logger.isLoggable(level)) logger.log(level, String.format(format, args));
@@ -85,22 +87,22 @@ public abstract class ALog {
     }
 
     public static void info(String format, Object... args) {
-        if (logger.isLoggable(SMCINFO)) logger.log(SMCINFO, String.format(format, args));
+        if (logger.isLoggable(ANGINFO)) logger.log(ANGINFO, String.format(format, args));
     }
 
     public static void config(String format, Object... args) {
-        if (logger.isLoggable(SMCCONFIG)) logger.log(SMCCONFIG, String.format(format, args));
+        if (logger.isLoggable(ANGCONFIG)) logger.log(ANGCONFIG, String.format(format, args));
     }
 
     public static void fine(String format, Object... args) {
-        if (logger.isLoggable(SMCFINE)) logger.log(SMCFINE, String.format(format, args));
+        if (logger.isLoggable(ANGFINE)) logger.log(ANGFINE, String.format(format, args));
     }
 
     public static void finer(String format, Object... args) {
-        if (logger.isLoggable(SMCFINER)) logger.log(SMCFINER, String.format(format, args));
+        if (logger.isLoggable(ANGFINER)) logger.log(ANGFINER, String.format(format, args));
     }
 
     public static void finest(String format, Object... args) {
-        if (logger.isLoggable(SMCFINEST)) logger.log(SMCFINEST, String.format(format, args));
+        if (logger.isLoggable(ANGFINEST)) logger.log(ANGFINEST, String.format(format, args));
     }
 }

@@ -15,8 +15,9 @@ public class NamerMcp extends NamerSrg {
 
     public void setNames() {
         setNamesSrg();
-        lookupReobfName("../conf/");
-        rename("../conf/");
+        final String confPath = System.getProperty("net.minecraftforge.gradle.GradleStart.csvDir", "../conf") + "/";
+        lookupReobfName(confPath);
+        rename(confPath);
     }
 
     public void rename(String confPath) {
@@ -68,7 +69,7 @@ public class NamerMcp extends NamerSrg {
 
     void lookupReobfName(String confPath) {
         Map<String, String> nameMap;
-        nameMap = loadReobfMap(confPath + "joined.srg");
+        nameMap = loadReobfMap(confPath + "packaged.srg");
         for (Clas c : ac) {
             String s = nameMap.get(c.name);
             System.out.printf("C %s %s\n", c.name, s);
