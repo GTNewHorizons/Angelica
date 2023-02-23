@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.transform;
 
-import net.minecraft.launchwrapper.IClassTransformer;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import net.minecraft.launchwrapper.IClassTransformer;
 
 public class AClassTransformer implements IClassTransformer {
 

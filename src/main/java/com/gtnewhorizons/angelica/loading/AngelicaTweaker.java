@@ -1,16 +1,17 @@
 package com.gtnewhorizons.angelica.loading;
 
-import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
-import com.gtnewhorizons.angelica.mixins.Mixins;
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizons.angelica.mixins.Mixins;
+import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({ "com.gtnewhorizons.angelica.loading.",
