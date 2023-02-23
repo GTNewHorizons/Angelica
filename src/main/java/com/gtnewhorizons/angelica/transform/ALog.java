@@ -1,5 +1,9 @@
 package com.gtnewhorizons.angelica.transform;
 
+import static java.util.logging.Level.ALL;
+import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.WARNING;
+
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.logging.ConsoleHandler;
@@ -9,10 +13,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
-import static java.util.logging.Level.ALL;
-import static java.util.logging.Level.SEVERE;
-import static java.util.logging.Level.WARNING;
 
 public abstract class ALog {
 
