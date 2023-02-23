@@ -1,4 +1,4 @@
-//version: 1676922328
+//version: 1677142954
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -73,7 +73,7 @@ plugins {
     id 'com.diffplug.spotless' version '6.7.2' apply false
     id 'com.modrinth.minotaur' version '2.+' apply false
     id 'com.matthewprenger.cursegradle' version '1.4.0' apply false
-    id 'com.gtnewhorizons.retrofuturagradle' version '1.2.1'
+    id 'com.gtnewhorizons.retrofuturagradle' version '1.2.2'
 }
 boolean settingsupdated = verifySettingsGradle()
 settingsupdated = verifyGitAttributes() || settingsupdated
@@ -466,8 +466,9 @@ repositories.configureEach { repo ->
 apply from: 'repositories.gradle'
 
 configurations {
+    runtimeClasspath.extendsFrom(runtimeOnlyNonPublishable)
+    testRuntimeClasspath.extendsFrom(runtimeOnlyNonPublishable)
     for (config in [compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath]) {
-        config.extendsFrom(runtimeOnlyNonPublishable)
         if (usesShadowedDependencies.toBoolean()) {
             config.extendsFrom(shadowImplementation)
             // TODO: remove Compile after all uses are refactored to Implementation
@@ -685,8 +686,13 @@ ext.java17Toolchain = (JavaToolchainSpec spec) -> {
     spec.vendor.set(JvmVendorSpec.matching("jetbrains"))
 }
 
-ext.java17DependenciesCfg = configurations.create("java17Dependencies")
-ext.java17PatchDependenciesCfg = configurations.create("java17PatchDependencies")
+ext.java17DependenciesCfg = configurations.create("java17Dependencies") {
+    extendsFrom(configurations.getByName("runtimeClasspath")) // Ensure consistent transitive dependency resolution
+    canBeConsumed = false
+}
+ext.java17PatchDependenciesCfg = configurations.create("java17PatchDependencies") {
+    canBeConsumed = false
+}
 
 dependencies {
     def lwjgl3ifyVersion = '1.1.28'
@@ -706,7 +712,7 @@ dependencies {
     java17PatchDependencies("org.ow2.asm:asm-util:${asmVersion}")
     java17PatchDependencies('org.ow2.asm:asm-deprecated:7.1')
     java17PatchDependencies("org.apache.commons:commons-lang3:3.12.0")
-    java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches")
+    java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches") {transitive = false}
 }
 
 ext.java17JvmArgs = [
