@@ -8,6 +8,8 @@ import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.spongepowered.asm.launch.GlobalProperties;
+import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.mixins.Mixins;
@@ -21,7 +23,11 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String[] getASMTransformerClass() {
-        return new String[] { "com.gtnewhorizons.angelica.transform.AClassTransformer" };
+        List<String> tweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
+        if (tweakClasses != null) {
+            tweakClasses.add(MixinCompatHackTweaker.class.getName());
+        }
+        return null;
     }
 
     @Override
