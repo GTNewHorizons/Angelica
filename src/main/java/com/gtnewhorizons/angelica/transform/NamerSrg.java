@@ -127,8 +127,6 @@ public class NamerSrg extends Namer {
         glAllocation_createDirectByteBuffer = m(glAllocation_, "func_74524_c", "(I)Ljava/nio/ByteBuffer;");
         glAllocation_createDirectIntBuffer = m(glAllocation_, "func_74527_f", "(I)Ljava/nio/IntBuffer;");
         glAllocation_deleteDisplayLists = m(glAllocation_, "func_74523_b", "(I)V");
-        guiOptions_actionPerformed = m(guiOptions_, "func_146284_a", "(" + guiButton_.desc + ")V");
-        guiOptions_initGui = m(guiOptions_, "func_73866_w_", "()V");
         iCamera_setPosition = m(iCamera_, "func_78547_a", "(DDD)V");
         iResourceManager_getResource = m(
                 iResourceManager_,

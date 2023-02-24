@@ -127,8 +127,6 @@ public class Namer1_7_10 extends Namer {
         glAllocation_createDirectByteBuffer = m(glAllocation_, "c", "(I)Ljava/nio/ByteBuffer;");
         glAllocation_createDirectIntBuffer = m(glAllocation_, "f", "(I)Ljava/nio/IntBuffer;");
         glAllocation_deleteDisplayLists = m(glAllocation_, "b", "(I)V");
-        guiOptions_actionPerformed = m(guiOptions_, "a", "(" + guiButton_.desc + ")V");
-        guiOptions_initGui = m(guiOptions_, "b", "()V");
         iCamera_setPosition = m(iCamera_, "a", "(DDD)V");
         iResourceManager_getResource = m(iResourceManager_, "a", "(" + resourceLocation_.desc + ")" + iResource_.desc);
         itemRenderer_renderItem = m(itemRenderer_, "a", "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");

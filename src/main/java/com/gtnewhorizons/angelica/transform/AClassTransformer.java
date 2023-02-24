@@ -26,7 +26,6 @@ public class AClassTransformer implements IClassTransformer {
         ctMap = new HashMap();
         put(Names.block_, new ACTBlock());
         put(Names.itemBlock_, new ACTItemBlock());
-        put(Names.guiOptions_, new ACTGuiOptions());
         put(Names.modelRenderer_, new ACTModelRenderer());
         put(Names.openGlHelper_, new ACTOpenGlHelper());
         put(Names.tessellator_, new ACTTessellator());
