@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.minecraft;
+package com.gtnewhorizons.angelica.mixins.early.StartShaders;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.IPlayerUsage;

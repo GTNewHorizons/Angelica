@@ -193,8 +193,6 @@ public class Names {
     static Meth glAllocation_createDirectByteBuffer;
     static Meth glAllocation_createDirectIntBuffer;
     static Meth glAllocation_deleteDisplayLists;
-    static Meth guiOptions_actionPerformed;
-    static Meth guiOptions_initGui;
     static Meth iCamera_setPosition;
     static Meth iResourceManager_getResource;
     static Meth itemRenderer_renderItem;

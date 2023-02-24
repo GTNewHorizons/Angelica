@@ -11,7 +11,12 @@ import cpw.mods.fml.relauncher.FMLLaunchHandler;
 public enum Mixins {
 
     ANGELICA_STARTUP(new Builder("Start Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("minecraft.MixinMinecraft").setApplyIf(() -> true));
+            .setPhase(Phase.EARLY).addMixinClasses("StartShaders.MixinMinecraft").setApplyIf(() -> true)),
+
+    ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses("ShadersButton.MixinGuiVideoSettings").setApplyIf(() -> true))
+
+    ;
 
     public final String name;
     public final List<String> mixinClasses;
