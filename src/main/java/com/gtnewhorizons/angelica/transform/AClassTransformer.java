@@ -24,13 +24,10 @@ public class AClassTransformer implements IClassTransformer {
         names = new Names();
         InitNames.init();
         ctMap = new HashMap();
-        put(Names.itemBlock_, new ACTItemBlock());
-        put(Names.modelRenderer_, new ACTModelRenderer());
-        put(Names.openGlHelper_, new ACTOpenGlHelper());
+        put(Names.itemBlock_, new ACTItemBlock()); // TODO - Access Related
         put(Names.tessellator_, new ACTTessellator());
-        put(Names.renderGlobal_, new ACTRenderGlobal());
+        put(Names.renderGlobal_, new ACTRenderGlobal()); // In Progress
         put(Names.entityRenderer_, new ACTEntityRenderer());
-        put(Names.render_, new ACTRender());
         put(Names.renderManager_, new ACTRenderManager());
         put(Names.rendererLivingE_, new ACTRendererLivingEntity());
         put(Names.renderDragon_, new ACTRenderSpider());

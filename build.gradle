@@ -403,6 +403,7 @@ minecraft {
             extraRunJvmArguments.addAll([
                 "-Dmixin.debug.countInjections=true",
                 "-Dmixin.debug.verbose=true",
+                "-Dmixin.dumpTargetOnFailure",
                 "-Dmixin.debug.export=true"
             ])
         }

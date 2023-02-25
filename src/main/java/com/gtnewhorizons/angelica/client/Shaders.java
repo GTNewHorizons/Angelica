@@ -180,6 +180,10 @@ import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GLContext;
+
+import com.gtnewhorizons.angelica.mixins.early.accessors.RendererEntityLivingAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.IModelRenderer;
+
 // import org.lwjgl.opengl.ARBVertexProgram;
 
 public class Shaders {
@@ -1186,8 +1190,8 @@ public class Shaders {
                 if (ren instanceof RendererLivingEntity) {
                     RendererLivingEntity rle = (RendererLivingEntity) ren;
                     // System.out.format("Reset %s\n", rle.toString());
-                    resetDisplayListModel(rle.mainModel);
-                    resetDisplayListModel(rle.renderPassModel);
+                    resetDisplayListModel(((RendererEntityLivingAccessor) rle).getMainModel());
+                    resetDisplayListModel(((RendererEntityLivingAccessor) rle).getRenderPassModel());
                 }
             }
         }
@@ -1208,7 +1212,7 @@ public class Shaders {
     }
 
     public static void resetDisplayListModelRenderer(ModelRenderer mrr) {
-        mrr.resetDisplayList();
+        ((IModelRenderer) mrr).resetDisplayList();
         // if (mrr.compiled)
         // {
         // GLAllocation.deleteDisplayLists(mrr.displayList);

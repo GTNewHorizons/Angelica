@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.ShadersButton;
+package com.gtnewhorizons.angelica.mixins.early.settings;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -22,7 +22,7 @@ abstract public class MixinGuiVideoSettings extends GuiScreen {
     private GameSettings guiGameSettings;
 
     @SuppressWarnings("unchecked")
-    @Inject(method = "Lnet/minecraft/client/gui/GuiVideoSettings;initGui()V", at = @At(value = "TAIL"))
+    @Inject(method = "initGui()V", at = @At(value = "TAIL"))
     private void angelica$addShadersButton(CallbackInfo ci) {
         // Add the Shaders Button to the bottom of Video Options
         final GuiButton shaderButton = new GuiButton(
@@ -35,9 +35,7 @@ abstract public class MixinGuiVideoSettings extends GuiScreen {
         this.buttonList.add(shaderButton);
     }
 
-    @Inject(
-            method = "Lnet/minecraft/client/gui/GuiVideoSettings;actionPerformed(Lnet/minecraft/client/gui/GuiButton;)V",
-            at = @At(value = "HEAD"))
+    @Inject(method = "actionPerformed(Lnet/minecraft/client/gui/GuiButton;)V", at = @At(value = "HEAD"))
     private void angelica$actionPerformed(GuiButton button, CallbackInfo ci) {
         if (button.id == SHADER_BUTTON_ID) {
             this.mc.gameSettings.saveOptions();

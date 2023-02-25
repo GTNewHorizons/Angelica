@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.StartShaders;
+package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.IPlayerUsage;
@@ -14,7 +14,7 @@ import com.gtnewhorizons.angelica.client.Shaders;
 public abstract class MixinMinecraft implements IPlayerUsage {
 
     @Inject(
-            method = "Lnet/minecraft/client/Minecraft;startGame()V",
+            method = "startGame()V",
             at = @At(
                     ordinal = 1,
                     shift = At.Shift.AFTER,
