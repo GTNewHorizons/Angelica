@@ -157,7 +157,6 @@ public class NamerSrg extends Namer {
         renderBlocks_renderBlockByRenderType = m(renderBlocks_, "func_147805_b", "(" + block_.desc + "III)Z");
         renderBlocks_renderBlockFlowerPot = m(renderBlocks_, "func_147752_a", "(" + blockFlowerPot_.desc + "III)Z");
         renderBlocks_renderStdBlockWithAOP = m(renderBlocks_, "func_147808_b", "(" + block_.desc + "IIIFFF)Z");
-        renderBlocks_renderPistonExtension = m(renderBlocks_, "func_147809_c", "(" + block_.desc + "IIIZ)Z");
         renderDragon_shouldRenderPass = m(renderDragon_, "func_77032_a", "(" + entityDragon_.desc + "IF)I");
         renderEnderman_shouldRenderPass = m(renderEnderman_, "func_77032_a", "(" + entityEnderman_.desc + "IF)I");
         renderSpider_shouldRenderPass = m(renderSpider_, "func_77032_a", "(" + entitySpider_.desc + "IF)I");

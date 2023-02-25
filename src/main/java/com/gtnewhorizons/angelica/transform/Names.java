@@ -214,7 +214,6 @@ public class Names {
     static Meth renderBlocks_renderBlockByRenderType;
     static Meth renderBlocks_renderBlockFlowerPot;
     static Meth renderBlocks_renderStdBlockWithAOP;
-    static Meth renderBlocks_renderPistonExtension;
     static Meth renderDragon_shouldRenderPass;
     static Meth renderEnderman_shouldRenderPass;
     static Meth renderSpider_shouldRenderPass;
