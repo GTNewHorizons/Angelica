@@ -11,17 +11,32 @@ import cpw.mods.fml.relauncher.FMLLaunchHandler;
 public enum Mixins {
 
     ANGELICA_STARTUP(new Builder("Start Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("StartShaders.MixinMinecraft").setApplyIf(() -> true)),
+            .setPhase(Phase.EARLY).addMixinClasses("shaders.MixinMinecraft").setApplyIf(() -> true)),
+
+    ANGELICA_ACCESSORS(new Builder("Angelica Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY)
+            .addMixinClasses(
+                    "accessors.ModelRendererAccessor",
+                    "accessors.RendererEntityLivingAccessor",
+                    "accessors.WorldRenderersAccessor")
+            .setApplyIf(() -> true)),
 
     ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("ShadersButton.MixinGuiVideoSettings").setApplyIf(() -> true)),
+            .setPhase(Phase.EARLY).addMixinClasses("settings.MixinGuiVideoSettings").setApplyIf(() -> true)),
 
     ANGELICA_LIGHTING(
             new Builder("Lighting").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
-                    .addMixinClasses("Lighting.MixinBlock", "Lighting.MixinRenderBlocks").setApplyIf(() -> true)),
+                    .addMixinClasses("lighting.MixinBlock", "lighting.MixinRenderBlocks").setApplyIf(() -> true)),
 
-    ANGELICA_RENDERER(new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("Renderer.MixinRenderBlocks").setApplyIf(() -> true))
+    ANGELICA_RENDERER(
+            new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
+                    .addMixinClasses(
+                            "renderer.MixinOpenGlHelper",
+                            "renderer.MixinEntityRender",
+                            "renderer.MixinRenderBlocks",
+                            "renderer.MixinRenderGlobal",
+                            "renderer.MixinModelRenderer")
+                    .setApplyIf(() -> true))
 
     ;
 

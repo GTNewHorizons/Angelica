@@ -52,13 +52,7 @@ public class ACTRenderGlobal implements IClassTransformer {
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             // String remappedName = SMCRemap.remapper.mapMethodName(classname, name, desc);
             // ALog.info(" method %s.%s%s = %s",classname,name,desc,remappedName);
-            if (Names.renderGlobal_renderEntities.equalsNameDesc(name, desc)) {
-                ALog.finer("  patch method %s.%s%s", classname, name, desc);
-                return new MVrenderEntities(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.renderGlobal_sortAndRender.equalsNameDesc(name, desc)) {
-                ALog.finer("  patch method %s.%s%s", classname, name, desc);
-                return new MVendisTexFog(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.renderGlobal_renderSky.equalsNameDesc(name, desc)) {
+            if (Names.renderGlobal_renderSky.equalsNameDesc(name, desc)) {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVrenderSky(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.renderGlobal_drawBlockDamageTexture.equalsNameDesc(name, desc)
@@ -66,74 +60,8 @@ public class ACTRenderGlobal implements IClassTransformer {
             {
                 ALog.finer("  patch method %s.%s%s", classname, name, desc);
                 return new MVdrawBlockDamageTexture(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.renderGlobal_drawSelectionBox.equalsNameDesc(name, desc)) {
-                ALog.finer("  patch method %s.%s%s", classname, name, desc);
-                return new MVendisTexFog(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
-        }
-    }
-
-    private static class MVrenderEntities extends MethodVisitor {
-
-        public MVrenderEntities(MethodVisitor mv) {
-            super(Opcodes.ASM4, mv);
-        }
-
-        int state = 0;
-
-        @Override
-        public void visitLdcInsn(Object cst) {
-            if (cst instanceof String) {
-                String scst = (String) cst;
-                if (scst.equals("entities")) {
-                    state = 1;
-                } else if (scst.equals("blockentities")) {
-                    state = 4;
-                }
-            }
-            mv.visitLdcInsn(cst);
-        }
-
-        @Override
-        public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            if (state == 2) {
-                if (Names.renderManager_instance.equals(owner, name, desc)) {
-                    state = 3;
-                    mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "nextEntity", "()V");
-                }
-            }
-            mv.visitFieldInsn(opcode, owner, name, desc);
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            mv.visitMethodInsn(opcode, owner, name, desc);
-            if (state == 1) {
-                state = 2;
-                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "beginEntities", "()V");
-                ALog.finest("    %s", "beginEntities");
-            } else if (state == 4) {
-                state = 5;
-                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "endEntities", "()V");
-                ALog.finest("    %s", "endEntities");
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/Shaders",
-                        "beginBlockEntities",
-                        "()V");
-                ALog.finest("    %s", "beginTileEntities");
-            } else if (state == 5) {
-                if (Names.entityRenderer_disableLightmap.equals(owner, name, desc)) {
-                    state = 6;
-                    mv.visitMethodInsn(
-                            INVOKESTATIC,
-                            "com/gtnewhorizons/angelica/client/Shaders",
-                            "endBlockEntities",
-                            "()V");
-                    ALog.finest("    %s", "endTileEntities");
-                }
-            }
         }
     }
 
@@ -149,7 +77,7 @@ public class ACTRenderGlobal implements IClassTransformer {
         @Override
         public void visitIntInsn(int opcode, int operand) {
             mv.visitIntInsn(opcode, operand);
-            if (opcode == SIPUSH && (operand == 3553 || operand == 2912)) {
+            if (opcode == SIPUSH && (operand == 3553 /* GL_TEXTURE_2D */ || operand == 2912 /* GL_FOG */ )) {
                 lastInt = operand;
             } else {
                 lastInt = 0;

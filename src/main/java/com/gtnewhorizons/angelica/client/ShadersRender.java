@@ -14,6 +14,8 @@ import net.minecraft.item.ItemBlock;
 
 import org.lwjgl.opengl.GL11;
 
+import com.gtnewhorizons.angelica.mixins.early.accessors.WorldRenderersAccessor;
+
 public class ShadersRender {
 
     public static void setFrustrumPosition(Frustrum frustrum, double x, double y, double z) {
@@ -22,18 +24,17 @@ public class ShadersRender {
 
     public static void clipRenderersByFrustrum(RenderGlobal renderGlobal, Frustrum frustrum, float par2) {
         Shaders.checkGLError("pre clip");
+        WorldRenderer[] worldRenderers = ((WorldRenderersAccessor) renderGlobal).getWorldRenderers();
         if (!Shaders.isShadowPass) {
-            WorldRenderer[] worldRenderers = renderGlobal.worldRenderers;
-            for (int i = 0; i < worldRenderers.length; ++i) {
-                if (!worldRenderers[i].skipAllRenderPasses()) {
-                    worldRenderers[i].updateInFrustum(frustrum);
+            for (WorldRenderer worldRenderer : worldRenderers) {
+                if (!worldRenderer.skipAllRenderPasses()) {
+                    worldRenderer.updateInFrustum(frustrum);
                 }
             }
         } else {
-            WorldRenderer[] worldRenderers = renderGlobal.worldRenderers;
-            for (int i = 0; i < worldRenderers.length; ++i) {
-                if (!worldRenderers[i].skipAllRenderPasses()) {
-                    worldRenderers[i].isInFrustum = true;
+            for (WorldRenderer worldRenderer : worldRenderers) {
+                if (!worldRenderer.skipAllRenderPasses()) {
+                    worldRenderer.isInFrustum = true;
                 }
             }
         }

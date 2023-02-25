@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.Lighting;
+package com.gtnewhorizons.angelica.mixins.early.lighting;
 
 import net.minecraft.block.Block;
 
@@ -11,9 +11,7 @@ import com.gtnewhorizons.angelica.client.Shaders;
 @Mixin(Block.class)
 public class MixinBlock {
 
-    @ModifyConstant(
-            method = "Lnet/minecraft/block/Block;getAmbientOcclusionLightValue()F",
-            constant = @Constant(floatValue = 0.2f))
+    @ModifyConstant(method = "getAmbientOcclusionLightValue()F", constant = @Constant(floatValue = 0.2f))
     public float angelica$blockAoLight(float constant) {
         return Shaders.blockAoLight;
     }
