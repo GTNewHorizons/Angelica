@@ -14,7 +14,14 @@ public enum Mixins {
             .setPhase(Phase.EARLY).addMixinClasses("StartShaders.MixinMinecraft").setApplyIf(() -> true)),
 
     ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("ShadersButton.MixinGuiVideoSettings").setApplyIf(() -> true))
+            .setPhase(Phase.EARLY).addMixinClasses("ShadersButton.MixinGuiVideoSettings").setApplyIf(() -> true)),
+
+    ANGELICA_LIGHTING(
+            new Builder("Lighting").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
+                    .addMixinClasses("Lighting.MixinBlock", "Lighting.MixinRenderBlocks").setApplyIf(() -> true)),
+
+    ANGELICA_RENDERER(new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses("Renderer.MixinRenderBlocks").setApplyIf(() -> true))
 
     ;
 

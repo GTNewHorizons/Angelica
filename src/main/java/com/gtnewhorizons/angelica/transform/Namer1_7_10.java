@@ -148,7 +148,6 @@ public class Namer1_7_10 extends Namer {
         renderBlocks_renderBlockByRenderType = m(renderBlocks_, "b", "(" + block_.desc + "III)Z");
         renderBlocks_renderBlockFlowerPot = m(renderBlocks_, "a", "(" + blockFlowerPot_.desc + "III)Z");
         renderBlocks_renderStdBlockWithAOP = m(renderBlocks_, "b", "(" + block_.desc + "IIIFFF)Z");
-        renderBlocks_renderPistonExtension = m(renderBlocks_, "c", "(" + block_.desc + "IIIZ)Z");
         renderDragon_shouldRenderPass = m(renderDragon_, "a", "(" + entityDragon_.desc + "IF)I");
         renderEnderman_shouldRenderPass = m(renderEnderman_, "a", "(" + entityEnderman_.desc + "IF)I");
         renderSpider_shouldRenderPass = m(renderSpider_, "a", "(" + entitySpider_.desc + "IF)I");
