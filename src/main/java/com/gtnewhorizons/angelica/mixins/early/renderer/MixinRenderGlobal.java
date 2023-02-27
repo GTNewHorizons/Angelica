@@ -1,17 +1,21 @@
 package com.gtnewhorizons.angelica.mixins.early.renderer;
 
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovingObjectPosition;
 
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.gtnewhorizon.mixinextras.injector.wrapoperation.Operation;
+import com.gtnewhorizon.mixinextras.injector.wrapoperation.WrapOperation;
 import com.gtnewhorizons.angelica.client.Shaders;
 
 @Mixin(RenderGlobal.class)
@@ -124,7 +128,7 @@ public class MixinRenderGlobal {
                     remap = false,
                     ordinal = 3,
                     shift = At.Shift.AFTER))
-    private void angelica$disableFog(CallbackInfoReturnable<Integer> cir) {
+    private void angelica$sortAndRenderDisableFog(CallbackInfoReturnable<Integer> cir) {
         Shaders.disableFog();
     }
 
@@ -136,8 +140,110 @@ public class MixinRenderGlobal {
                     remap = false,
                     ordinal = 2,
                     shift = At.Shift.AFTER))
-    private void angelica$enableFog(CallbackInfoReturnable<Integer> cir) {
+    private void angelica$sortAndRenderEnableFog(CallbackInfoReturnable<Integer> cir) {
         Shaders.enableFog();
+    }
+
+    // RenderSky
+    @WrapOperation(
+            method = "renderSky(F)V",
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false))
+    private void angelica$renderSkyDisable(int cap, Operation<Void> original) {
+        original.call(cap);
+
+        if (cap == GL11.GL_FOG) Shaders.disableFog();
+        else if (cap == GL11.GL_TEXTURE_2D) Shaders.disableTexture2D();
+    }
+
+    @WrapOperation(
+            method = "renderSky(F)V",
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false))
+    private void angelica$renderSkyEnable(int cap, Operation<Void> original) {
+        original.call(cap);
+        if (cap == GL11.GL_FOG) Shaders.enableFog();
+        else if (cap == GL11.GL_TEXTURE_2D) Shaders.enableTexture2D();
+    }
+
+    @Inject(
+            method = "renderSky(F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V",
+                    remap = false,
+                    ordinal = 0,
+                    shift = At.Shift.BEFORE,
+                    by = 2))
+    private void angelica$renderSkyPreSkyList(float p_72714_1_, CallbackInfo ci) {
+        Shaders.preSkyList();
+    }
+
+    @Inject(
+            method = "renderSky(F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F",
+                    ordinal = 1,
+                    shift = At.Shift.BY,
+                    by = -2))
+    private void angelica$renderSkyBeforeCelestialAngle(float p_72714_1_, CallbackInfo ci) {
+        Shaders.preCelestialRotate();
+    }
+
+    @Inject(
+            method = "renderSky(F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lorg/lwjgl/opengl/GL11;glRotatef(FFFF)V",
+                    remap = false,
+                    ordinal = 9,
+                    shift = At.Shift.AFTER))
+    private void angelica$renderSkyAfterCelestialAngle(float p_72714_1_, CallbackInfo ci) {
+        Shaders.postCelestialRotate();
+    }
+
+    // drawBlockDamageTexture
+
+    @WrapOperation(
+            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            remap = false,
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false))
+    private void angelica$drawBlockDamageTextureDisable(int cap, Operation<Void> original) {
+        original.call(cap);
+
+        if (cap == GL11.GL_TEXTURE_2D) Shaders.disableTexture2D();
+    }
+
+    @WrapOperation(
+            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            remap = false,
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false))
+    private void angelica$drawBlockDamageTextureSkyEnable(int cap, Operation<Void> original) {
+        original.call(cap);
+        if (cap == GL11.GL_TEXTURE_2D) Shaders.enableTexture2D();
+    }
+
+    @Inject(
+            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V",
+                    ordinal = 0,
+                    shift = At.Shift.BEFORE))
+    private void angelica$beginBlockDestroyProgress(Tessellator p_72717_1_, EntityLivingBase p_72717_2_,
+            float p_72717_3_, CallbackInfo ci) {
+        Shaders.beginBlockDestroyProgress();
+    }
+
+    @Inject(
+            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/Tessellator;setTranslation(DDD)V",
+                    ordinal = 1,
+                    shift = At.Shift.AFTER))
+    private void angelica$endBlockDestroyProgress(Tessellator p_72717_1_, EntityLivingBase p_72717_2_, float p_72717_3_,
+            CallbackInfo ci) {
+        Shaders.endBlockDestroyProgress();
     }
 
 }
