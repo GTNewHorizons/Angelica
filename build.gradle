@@ -1,4 +1,4 @@
-//version: 1677142954
+//version: 1679170051
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -73,7 +73,7 @@ plugins {
     id 'com.diffplug.spotless' version '6.7.2' apply false
     id 'com.modrinth.minotaur' version '2.+' apply false
     id 'com.matthewprenger.cursegradle' version '1.4.0' apply false
-    id 'com.gtnewhorizons.retrofuturagradle' version '1.2.2'
+    id 'com.gtnewhorizons.retrofuturagradle' version '1.2.3'
 }
 boolean settingsupdated = verifySettingsGradle()
 settingsupdated = verifyGitAttributes() || settingsupdated
@@ -153,7 +153,7 @@ java {
         } else {
             languageVersion.set(projectJavaVersion)
         }
-        vendor.set(JvmVendorSpec.ADOPTIUM)
+        vendor.set(JvmVendorSpec.AZUL)
     }
     if (!noPublishedSources) {
         withSourcesJar()
@@ -222,7 +222,7 @@ if (enableModernJavaSyntax.toBoolean()) {
 
         javaCompiler.set(javaToolchains.compilerFor {
             languageVersion.set(JavaLanguageVersion.of(17))
-            vendor.set(JvmVendorSpec.ADOPTIUM)
+            vendor.set(JvmVendorSpec.AZUL)
         })
     }
 }
@@ -403,7 +403,6 @@ minecraft {
             extraRunJvmArguments.addAll([
                 "-Dmixin.debug.countInjections=true",
                 "-Dmixin.debug.verbose=true",
-                "-Dmixin.dumpTargetOnFailure",
                 "-Dmixin.debug.export=true"
             ])
         }
@@ -514,14 +513,6 @@ repositories {
         url = "http://jenkins.usrv.eu:8081/nexus/content/groups/public/"
         allowInsecureProtocol = true
     }
-    if (usesMixins.toBoolean() || forceEnableMixins.toBoolean()) {
-        if (usesMixinDebug.toBoolean()) {
-            maven {
-                name = "Fabric Maven"
-                url = "https://maven.fabricmc.net/"
-            }
-        }
-    }
     maven {
         name 'sonatype'
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
@@ -560,26 +551,42 @@ repositories {
     }
 }
 
+def mixinProviderGroup = "io.github.legacymoddingmc"
+def mixinProviderModule = "unimixins"
+def mixinProviderVersion = "0.1.5"
+def mixinProviderSpec = "${mixinProviderGroup}:${mixinProviderModule}:${mixinProviderVersion}"
+
 dependencies {
     if (usesMixins.toBoolean()) {
         annotationProcessor('org.ow2.asm:asm-debug-all:5.0.3')
         annotationProcessor('com.google.guava:guava:24.1.1-jre')
         annotationProcessor('com.google.code.gson:gson:2.8.6')
-        annotationProcessor('com.gtnewhorizon:gtnhmixins:2.1.13:processor')
+        annotationProcessor(mixinProviderSpec)
         if (usesMixinDebug.toBoolean()) {
             runtimeOnlyNonPublishable('org.jetbrains:intellij-fernflower:1.2.1.16')
         }
     }
     if (usesMixins.toBoolean() || forceEnableMixins.toBoolean()) {
-        implementation('com.gtnewhorizon:gtnhmixins:2.1.13')
+        implementation(mixinProviderSpec)
     }
 }
 
 pluginManager.withPlugin('org.jetbrains.kotlin.kapt') {
     if (usesMixins.toBoolean()) {
         dependencies {
-            kapt('com.gtnewhorizon:gtnhmixins:2.1.13:processor')
+            kapt(mixinProviderSpec)
         }
+    }
+}
+
+// Replace old mixin mods with unimixins
+// https://docs.gradle.org/8.0.2/userguide/resolution_rules.html#sec:substitution_with_classifier
+configurations.all {
+    resolutionStrategy.dependencySubstitution {
+        substitute module('com.gtnewhorizon:gtnhmixins') using module(mixinProviderSpec) withoutClassifier() because("Unimixins replaces other mixin mods")
+        substitute module('com.github.GTNewHorizons:Mixingasm') using module(mixinProviderSpec) withoutClassifier() because("Unimixins replaces other mixin mods")
+        substitute module('com.github.GTNewHorizons:SpongePoweredMixin') using module(mixinProviderSpec) withoutClassifier() because("Unimixins replaces other mixin mods")
+        substitute module('com.github.GTNewHorizons:SpongeMixins') using module(mixinProviderSpec) withoutClassifier() because("Unimixins replaces other mixin mods")
     }
 }
 
@@ -696,13 +703,13 @@ ext.java17PatchDependenciesCfg = configurations.create("java17PatchDependencies"
 }
 
 dependencies {
-    def lwjgl3ifyVersion = '1.1.28'
+    def lwjgl3ifyVersion = '1.2.2'
     def asmVersion = '9.4'
     if (modId != 'lwjgl3ify') {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
     if (modId != 'hodgepodge') {
-        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.0.35')
+        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.1.0')
     }
 
     java17PatchDependencies('net.minecraft:launchwrapper:1.15') {transitive = false}
@@ -719,8 +726,8 @@ dependencies {
 ext.java17JvmArgs = [
     // Java 9+ support
     "--illegal-access=warn",
-    "-Dfile.encoding=UTF-8",
     "-Djava.security.manager=allow",
+    "-Dfile.encoding=UTF-8",
     "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
     "--add-opens", "java.base/java.net=ALL-UNNAMED",
     "--add-opens", "java.base/java.nio=ALL-UNNAMED",
@@ -731,6 +738,7 @@ ext.java17JvmArgs = [
     "--add-opens", "java.base/java.util=ALL-UNNAMED",
     "--add-opens", "java.base/jdk.internal.reflect=ALL-UNNAMED",
     "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
+    "--add-opens", "jdk.naming.dns/com.sun.jndi.dns=ALL-UNNAMED,java.naming",
     "--add-opens", "java.desktop/sun.awt.image=ALL-UNNAMED",
     "--add-modules", "jdk.dynalink",
     "--add-opens", "jdk.dynalink/jdk.dynalink.beans=ALL-UNNAMED",
@@ -1125,7 +1133,7 @@ if (modrinthProjectId.size() != 0 && System.getenv("MODRINTH_TOKEN") != null) {
         }
     }
     if (usesMixins.toBoolean()) {
-        addModrinthDep("required", "project", "gtnhmixins")
+        addModrinthDep("required", "project", "unimixins")
     }
     tasks.modrinth.dependsOn(build)
     tasks.publish.dependsOn(tasks.modrinth)
@@ -1169,7 +1177,7 @@ if (curseForgeProjectId.size() != 0 && System.getenv("CURSEFORGE_TOKEN") != null
         }
     }
     if (usesMixins.toBoolean()) {
-        addCurseForgeRelation("requiredDependency", "gtnhmixins")
+        addCurseForgeRelation("requiredDependency", "unimixins")
     }
     tasks.curseforge.dependsOn(build)
     tasks.publish.dependsOn(tasks.curseforge)
@@ -1204,7 +1212,7 @@ def addCurseForgeRelation(String type, String name) {
 
 // Updating
 
-def buildscriptGradleVersion = "8.0.1"
+def buildscriptGradleVersion = "8.0.2"
 
 tasks.named('wrapper', Wrapper).configure {
     gradleVersion = buildscriptGradleVersion
