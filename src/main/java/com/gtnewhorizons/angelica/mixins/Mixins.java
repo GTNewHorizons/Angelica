@@ -35,7 +35,9 @@ public enum Mixins {
                             "renderer.MixinEntityRender",
                             "renderer.MixinRenderBlocks",
                             "renderer.MixinRenderGlobal",
-                            "renderer.MixinModelRenderer")
+                            "renderer.MixinModelRenderer",
+                            "renderer.MixinTextureClock",
+                            "renderer.MixinTextureCompass")
                     .setApplyIf(() -> true))
 
     ;
