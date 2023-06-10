@@ -11,6 +11,7 @@ import net.minecraft.launchwrapper.LaunchClassLoader;
 
 import com.gtnewhorizons.angelica.transform.AClassTransformer;
 import com.gtnewhorizons.angelica.transform.ALog;
+
 import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
 
 public class MixinCompatHackTweaker implements ITweaker {
