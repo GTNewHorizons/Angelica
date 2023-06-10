@@ -35,7 +35,6 @@ public class MixinSimpleTexture extends AbstractTexture {
                     target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureImageAllocate(ILjava/awt/image/BufferedImage;ZZ)I",
                     remap = false))
     private int angelica$loadTexture(int textureID, BufferedImage bufferedImage, boolean flag, boolean flag1) {
-
         ShadersTex.loadSimpleTexture(
                 textureID,
                 bufferedImage,
