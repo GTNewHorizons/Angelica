@@ -3,6 +3,5 @@ dependencies {
     compileOnly(sourceSets.compileStubs.output)
     compileStubs(sourceSets.compileStubsStubs.output)
 
-    runtimeOnly("com.github.GTNewHorizons:Mixingasm:v0.2.4:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.3.32-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.3.55-GTNH:dev")
 }
