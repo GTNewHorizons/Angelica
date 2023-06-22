@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.TessellatorAccessor;
 import com.gtnewhorizons.angelica.transform.ALog;
 
 public class ShadersTess {
@@ -21,6 +22,7 @@ public class ShadersTess {
     public static final int vertexStride = 16;
 
     public static int draw(Tessellator tess) {
+        final TessellatorAccessor tessa = (TessellatorAccessor) tess;
         if (!tess.isDrawing) {
             throw new IllegalStateException("Not tesselating!");
         } else {
@@ -32,40 +34,42 @@ public class ShadersTess {
             int realDrawMode = tess.drawMode;
             while (voffset < tess.vertexCount) {
                 int vcount;
-                vcount = Math.min(tess.vertexCount - voffset, tess.byteBuffer.capacity() / (vertexStride * 4));
+                vcount = Math.min(
+                        tess.vertexCount - voffset,
+                        tessa.getAngelica$byteBuffer().capacity() / (vertexStride * 4));
                 if (realDrawMode == GL11.GL_QUADS) vcount = vcount / 4 * 4;
-                tess.floatBuffer.clear();
-                tess.shortBuffer.clear();
-                tess.intBuffer.clear();
-                tess.intBuffer.put(tess.rawBuffer, voffset * vertexStride, vcount * vertexStride);
-                tess.byteBuffer.position(0);
-                tess.byteBuffer.limit(vcount * (vertexStride * 4));
+                tessa.getAngelica$floatBuffer().clear();
+                tessa.getAngelica$shortBuffer().clear();
+                tessa.getAngelica$intBuffer().clear();
+                tessa.getAngelica$intBuffer().put(tess.rawBuffer, voffset * vertexStride, vcount * vertexStride);
+                tessa.getAngelica$byteBuffer().position(0);
+                tessa.getAngelica$byteBuffer().limit(vcount * (vertexStride * 4));
                 voffset += vcount;
 
                 if (tess.hasTexture) {
-                    tess.floatBuffer.position(3);
-                    GL11.glTexCoordPointer(2, (vertexStride * 4), tess.floatBuffer);
+                    tessa.getAngelica$floatBuffer().position(3);
+                    GL11.glTexCoordPointer(2, (vertexStride * 4), tessa.getAngelica$floatBuffer());
                     GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
                 }
                 if (tess.hasBrightness) {
                     OpenGlHelper.setClientActiveTexture(OpenGlHelper.lightmapTexUnit);
-                    tess.shortBuffer.position(6 * 2);
-                    GL11.glTexCoordPointer(2, (vertexStride * 4), tess.shortBuffer);
+                    tessa.getAngelica$shortBuffer().position(6 * 2);
+                    GL11.glTexCoordPointer(2, (vertexStride * 4), tessa.getAngelica$shortBuffer());
                     GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
                     OpenGlHelper.setClientActiveTexture(OpenGlHelper.defaultTexUnit);
                 }
                 if (tess.hasColor) {
-                    tess.byteBuffer.position(5 * 4);
-                    GL11.glColorPointer(4, true, (vertexStride * 4), tess.byteBuffer);
+                    tessa.getAngelica$byteBuffer().position(5 * 4);
+                    GL11.glColorPointer(4, true, (vertexStride * 4), tessa.getAngelica$byteBuffer());
                     GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
                 }
                 if (tess.hasNormals) {
-                    tess.floatBuffer.position(9);
-                    GL11.glNormalPointer((vertexStride * 4), tess.floatBuffer);
+                    tessa.getAngelica$floatBuffer().position(9);
+                    GL11.glNormalPointer((vertexStride * 4), tessa.getAngelica$floatBuffer());
                     GL11.glEnableClientState(GL11.GL_NORMAL_ARRAY);
                 }
-                tess.floatBuffer.position(0);
-                GL11.glVertexPointer(3, (vertexStride * 4), tess.floatBuffer);
+                tessa.getAngelica$floatBuffer().position(0);
+                GL11.glVertexPointer(3, (vertexStride * 4), tessa.getAngelica$floatBuffer());
                 ShadersTess.preDrawArray(tess);
 
                 GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
@@ -97,10 +101,11 @@ public class ShadersTess {
     }
 
     public static void preDrawArray(Tessellator tess) {
+        final TessellatorAccessor tessa = (TessellatorAccessor) tess;
         // Shaders.checkGLError("preDrawArray");
         if (Shaders.useMultiTexCoord3Attrib && tess.hasTexture) {
             GL13.glClientActiveTexture(GL13.GL_TEXTURE3);
-            GL11.glTexCoordPointer(2, (vertexStride * 4), (FloatBuffer) tess.floatBuffer.position(12));
+            GL11.glTexCoordPointer(2, (vertexStride * 4), (FloatBuffer) tessa.getAngelica$floatBuffer().position(12));
             GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
         }
@@ -110,7 +115,7 @@ public class ShadersTess {
                     2,
                     false,
                     vertexStride * 4,
-                    (FloatBuffer) tess.floatBuffer.position(12));
+                    (FloatBuffer) tessa.getAngelica$floatBuffer().position(12));
             glEnableVertexAttribArrayARB(Shaders.midTexCoordAttrib);
         }
         if (Shaders.useEntityAttrib) {
@@ -120,7 +125,7 @@ public class ShadersTess {
                     false,
                     false,
                     vertexStride * 4,
-                    (ShortBuffer) tess.shortBuffer.position(7 * 2));
+                    (ShortBuffer) tessa.getAngelica$shortBuffer().position(7 * 2));
             glEnableVertexAttribArrayARB(Shaders.entityAttrib);
         }
         // Shaders.checkGLError("preDrawArray");
@@ -162,6 +167,7 @@ public class ShadersTess {
     }
 
     public static void addVertex(Tessellator tess, double parx, double pary, double parz) {
+        final TessellatorAccessor tessa = (TessellatorAccessor) (Object) tess;
         int[] rawBuffer = tess.rawBuffer;
         int rbi = tess.rawBufferIndex;
         float fx = (float) (parx + tess.xOffset);
@@ -190,7 +196,7 @@ public class ShadersTess {
         // shaders mod calculate normal and mid UV
         if (tess.drawMode == 7) {
             int i = tess.addedVertices % 4;
-            float[] vertexPos = tess.vertexPos;
+            float[] vertexPos = tessa.getAngelica$vertexPos();
             vertexPos[i * 4 + 0] = fx;
             vertexPos[i * 4 + 1] = fy;
             vertexPos[i * 4 + 2] = fz;
@@ -207,26 +213,34 @@ public class ShadersTess {
                 float vnz = x1 * y2 - x2 * y1;
                 float lensq = vnx * vnx + vny * vny + vnz * vnz;
                 float mult = (lensq != 0.0) ? (float) (1f / Math.sqrt(lensq)) : 1f;
+                float normalX = vnx * mult;
+                float normalY = vny * mult;
+                float normalZ = vnz * mult;
+                tessa.setAngelica$normalX(normalX);
+                tessa.setAngelica$normalY(normalY);
+                tessa.setAngelica$normalZ(normalZ);
                 rawBuffer[rbi + (9 - vertexStride * 3)] = rawBuffer[rbi + (9 - vertexStride * 2)] = rawBuffer[rbi
-                        + (9 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalX = vnx * mult);
+                        + (9 - vertexStride * 1)] = Float.floatToRawIntBits(normalX);
                 rawBuffer[rbi + (10 - vertexStride * 3)] = rawBuffer[rbi + (10 - vertexStride * 2)] = rawBuffer[rbi
-                        + (10 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalY = vny * mult);
+                        + (10 - vertexStride * 1)] = Float.floatToRawIntBits(normalY);
                 rawBuffer[rbi + (11 - vertexStride * 3)] = rawBuffer[rbi + (11 - vertexStride * 2)] = rawBuffer[rbi
-                        + (11 - vertexStride * 1)] = Float.floatToRawIntBits(tess.normalZ = vnz * mult);
+                        + (11 - vertexStride * 1)] = Float.floatToRawIntBits(normalZ);
                 tess.hasNormals = true;
                 // mid UV
-                tess.midTextureU = (Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 3)])
-                        + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 2)])
-                        + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 1)])
-                        + (float) tess.textureU) / 4;
-                tess.midTextureV = (Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 3)])
-                        + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 2)])
-                        + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 1)])
-                        + (float) tess.textureV) / 4;
+                tessa.setAngelica$midTextureU(
+                        (Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 3)])
+                                + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 2)])
+                                + Float.intBitsToFloat(rawBuffer[rbi + (3 - vertexStride * 1)])
+                                + (float) tess.textureU) / 4);
+                tessa.setAngelica$midTextureV(
+                        (Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 3)])
+                                + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 2)])
+                                + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 1)])
+                                + (float) tess.textureV) / 4);
                 rawBuffer[rbi + (12 - vertexStride * 3)] = rawBuffer[rbi + (12 - vertexStride * 2)] = rawBuffer[rbi
-                        + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureU);
+                        + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.getAngelica$midTextureU());
                 rawBuffer[rbi + (13 - vertexStride * 3)] = rawBuffer[rbi + (13 - vertexStride * 2)] = rawBuffer[rbi
-                        + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tess.midTextureV);
+                        + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.getAngelica$midTextureV());
             }
         }
         // end normal and mid UV calculation
@@ -241,11 +255,11 @@ public class ShadersTess {
         rawBuffer[rbi + 6] = tess.brightness;
         rawBuffer[rbi + 7] = Shaders.getEntityData();
         rawBuffer[rbi + 8] = Shaders.getEntityData2();
-        rawBuffer[rbi + 9] = Float.floatToRawIntBits((float) tess.normalX);
-        rawBuffer[rbi + 10] = Float.floatToRawIntBits((float) tess.normalY);
-        rawBuffer[rbi + 11] = Float.floatToRawIntBits((float) tess.normalZ);
-        rawBuffer[rbi + 12] = Float.floatToRawIntBits((float) tess.midTextureU);
-        rawBuffer[rbi + 13] = Float.floatToRawIntBits((float) tess.midTextureV);
+        rawBuffer[rbi + 9] = Float.floatToRawIntBits((float) tessa.getAngelica$normalX());
+        rawBuffer[rbi + 10] = Float.floatToRawIntBits((float) tessa.getAngelica$normalY());
+        rawBuffer[rbi + 11] = Float.floatToRawIntBits((float) tessa.getAngelica$normalZ());
+        rawBuffer[rbi + 12] = Float.floatToRawIntBits((float) tessa.getAngelica$midTextureU());
+        rawBuffer[rbi + 13] = Float.floatToRawIntBits((float) ((TessellatorAccessor) tess).getAngelica$midTextureV());
 
         tess.rawBufferIndex = rbi += vertexStride;
         ++tess.vertexCount;
