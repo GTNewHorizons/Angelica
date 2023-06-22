@@ -18,7 +18,7 @@ public class MixinModelRenderer implements IModelRenderer {
     private int displayList;
 
     public void resetDisplayList() {
-        if (!compiled) {
+        if (!compiled && displayList != 0) {
             GLAllocation.deleteDisplayLists(displayList);
             displayList = 0;
             compiled = false;
