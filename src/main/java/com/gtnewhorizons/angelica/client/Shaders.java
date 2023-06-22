@@ -137,16 +137,16 @@ import static org.lwjgl.opengl.GL30.glGenerateMipmap;
 import static org.lwjgl.util.glu.GLU.gluErrorString;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
-import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -175,6 +175,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.Vec3;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL11;
@@ -1370,49 +1373,62 @@ public class Shaders {
         return programid;
     }
 
+    private static InputStream locateShaderStream(String path) {
+        try {
+            return shaderPack.getResourceAsStream(path);
+        } catch (Exception e) {
+            try {
+                return FileUtils.openInputStream(new File(path));
+            } catch (Exception e2) {
+                throw new RuntimeException("Could not locate shader input " + path, e);
+            }
+        }
+    }
+
+    private static String getPreprocessedShaderSources(String filename) {
+        filename = filename.replace('\\', '/');
+        int lastSlash = filename.lastIndexOf('/');
+        final String basename = (lastSlash == -1) ? "/" : filename.substring(0, lastSlash + 1);
+        try (InputStream is = locateShaderStream(filename)) {
+            if (is == null) {
+                throw new FileNotFoundException(filename);
+            }
+            String source = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r\n", "\n");
+            StringBuffer output = new StringBuffer(2 * source.length() + 64);
+
+            final Matcher includes = INCLUDE_PATTERN.matcher(source);
+            while (includes.find()) {
+                final String relPath = includes.group(1).replace('\\', '/');
+                final String path = relPath.startsWith("/") ? ("/shaders" + relPath) : (basename + relPath);
+                final String src = getPreprocessedShaderSources(path);
+                includes.appendReplacement(output, src);
+            }
+            includes.appendTail(output);
+            return output.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static int createVertShader(String filename) {
         int vertShader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
         if (vertShader == 0) {
             return 0;
         }
-        StringBuilder vertexCode = new StringBuilder(1048576);
-        String line;
-
-        BufferedReader reader = null;
+        String shaderSrc;
         try {
-            reader = new BufferedReader(new InputStreamReader(shaderPack.getResourceAsStream(filename)));
-        } catch (Exception e) {
-            try {
-                reader = new BufferedReader(new FileReader(new File(filename)));
-            } catch (Exception e2) {
-                // System.out.println("Couldn't open " + filename);
-                glDeleteObjectARB(vertShader);
-                return 0;
-            }
-        }
+            shaderSrc = getPreprocessedShaderSources(filename);
 
-        if (reader != null) try {
-            while ((line = reader.readLine()) != null) {
-
-                if (preprocessIncludeDirective(line, vertexCode, false)) continue;
-
-                vertexCode.append(line).append("\n");
+            for (String line : StringUtils.split(shaderSrc, '\n')) {
                 processVertShaderLine(line);
             }
         } catch (Exception e) {
-            System.out.println("Couldn't read " + filename + "!");
             e.printStackTrace();
             glDeleteObjectARB(vertShader);
             return 0;
         }
 
-        if (reader != null) try {
-            reader.close();
-        } catch (Exception e) {
-            System.out.println("Couldn't close " + filename + "!");
-        }
-
-        glShaderSourceARB(vertShader, vertexCode);
+        glShaderSourceARB(vertShader, shaderSrc);
         glCompileShaderARB(vertShader);
         printLogInfo(vertShader, filename);
         return vertShader;
@@ -1435,84 +1451,28 @@ public class Shaders {
     private static final Pattern gbufferMipmapEnabledPattern = Pattern
             .compile("[ \t]*const[ \t]*bool[ \t]*(\\w+)MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*");
 
-    private static final Pattern INCLUDE_PATTERN = Pattern.compile("^\\s*#include\\s+\"([A-Za-z0-9_/\\.]+)\".*$");
-
-    // TODO: dirty non-recursive implementation, also does not support any includes referencing anything but shaders
-    // directory
-    private static boolean preprocessIncludeDirective(String line, StringBuilder code, boolean type) {
-        Matcher includePattern = INCLUDE_PATTERN.matcher(line);
-
-        if (includePattern.matches()) {
-            String path = includePattern.group(1);
-
-            InputStream inputStream = shaderPack.getResourceAsStream("/shaders" + path);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-
-            String l;
-            try {
-                while ((l = reader.readLine()) != null) {
-                    code.append(l).append("\n");
-                    // TODO: type is a dirty hack to get includes working for now, must be refactored
-                    if (type) {
-                        processFragShaderLine(line, path);
-                    } else {
-                        processVertShaderLine(line);
-                    }
-                }
-            } catch (IOException e) {
-                printChatAndLogError(e.getLocalizedMessage());
-                e.printStackTrace();
-            }
-
-            return true;
-        }
-
-        return false;
-    }
+    private static final Pattern INCLUDE_PATTERN = Pattern
+            .compile("^\\s*#include\\s+\"([A-Za-z0-9_\\/\\.]+)\".*$", Pattern.MULTILINE | Pattern.UNIX_LINES);
 
     private static int createFragShader(String filename) {
         int fragShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
         if (fragShader == 0) {
             return 0;
         }
-        StringBuilder fragCode = new StringBuilder(1048576);
-        String line;
-
-        BufferedReader reader;
+        String shaderSrc;
         try {
-            reader = new BufferedReader(new InputStreamReader(shaderPack.getResourceAsStream(filename)));
-        } catch (Exception e) {
-            try {
-                reader = new BufferedReader(new FileReader(new File(filename)));
-            } catch (Exception e2) {
-                // System.out.println("Couldn't open " + filename);
-                glDeleteObjectARB(fragShader);
-                return 0;
-            }
-        }
+            shaderSrc = getPreprocessedShaderSources(filename);
 
-        if (reader != null) try {
-            while ((line = reader.readLine()) != null) {
-
-                if (preprocessIncludeDirective(line, fragCode, true)) continue;
-
-                fragCode.append(line).append('\n');
+            for (String line : StringUtils.split(shaderSrc, '\n')) {
                 processFragShaderLine(line, filename);
             }
         } catch (Exception e) {
-            System.out.println("Couldn't read " + filename + "!");
             e.printStackTrace();
             glDeleteObjectARB(fragShader);
             return 0;
         }
 
-        if (reader != null) try {
-            reader.close();
-        } catch (Exception e) {
-            System.out.println("Couldn't close " + filename + "!");
-        }
-
-        glShaderSourceARB(fragShader, fragCode);
+        glShaderSourceARB(fragShader, shaderSrc);
         glCompileShaderARB(fragShader);
         printLogInfo(fragShader, filename);
         return fragShader;
