@@ -191,11 +191,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            if (Names.equals("org/lwjgl/util/glu/Project", "gluPerspective", "(FFFF)V", owner, name, desc)) {
-                mv.visitMethodInsn(INVOKESTATIC, "com/gtnewhorizons/angelica/client/Shaders", "applyHandDepth", "()V");
-                mv.visitMethodInsn(opcode, owner, name, desc);
-                return;
-            } else if (Names.equals("org/lwjgl/opengl/GL11", "glPushMatrix", "()V", owner, name, desc)) {
+            if (Names.equals("org/lwjgl/opengl/GL11", "glPushMatrix", "()V", owner, name, desc)) {
                 mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isHandRendered", "Z");
                 mv.visitJumpInsn(IFNE, la1);
                 mv.visitMethodInsn(opcode, owner, name, desc);
@@ -204,26 +200,6 @@ public class ACTEntityRenderer implements IClassTransformer {
                 mv.visitMethodInsn(opcode, owner, name, desc);
                 mv.visitLabel(la1);
                 mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-                mv.visitFieldInsn(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isCompositeRendered", "Z");
-                mv.visitJumpInsn(IFNE, la2);
-                mv.visitInsn(RETURN);
-                mv.visitLabel(la2);
-                mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-                mv.visitVarInsn(ALOAD, 0);
-                mv.visitVarInsn(FLOAD, 1);
-                mv.visitInsn(F2D);
-                mv.visitMethodInsn(
-                        INVOKEVIRTUAL,
-                        Names.entityRenderer_disableLightmap.clas,
-                        Names.entityRenderer_disableLightmap.name,
-                        Names.entityRenderer_disableLightmap.desc);
-                return;
-            } else if (Names.itemRenderer_renderItemInFirstPerson.equals(owner, name, desc)) {
-                mv.visitMethodInsn(
-                        INVOKESTATIC,
-                        "com/gtnewhorizons/angelica/client/ShadersRender",
-                        "renderItemFP",
-                        "(" + Names.itemRenderer_.desc + "F)V");
                 return;
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
