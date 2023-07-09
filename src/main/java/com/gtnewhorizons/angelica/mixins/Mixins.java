@@ -33,6 +33,7 @@ public enum Mixins {
                     .addMixinClasses(
                             "renderer.MixinOpenGlHelper",
                             "renderer.MixinEntityRender",
+                            "renderer.MixinEntityRenderer",
                             "renderer.MixinRenderBlocks",
                             "renderer.MixinRenderGlobal",
                             "renderer.MixinModelRenderer",
