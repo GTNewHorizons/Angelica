@@ -38,8 +38,8 @@ public class NamerMcp extends NamerSrg {
         }
     }
 
-    Map loadNameMapCSV(String fileName) {
-        Map map = new HashMap();
+    Map<String, String> loadNameMapCSV(String fileName) {
+        Map<String, String> map = new HashMap<>();
         BufferedReader rd = null;
         try {
             rd = new BufferedReader(new FileReader(fileName));
@@ -84,8 +84,8 @@ public class NamerMcp extends NamerSrg {
         }
     }
 
-    Map loadReobfMap(String fileName) {
-        Map map = new HashMap();
+    Map<String, String> loadReobfMap(String fileName) {
+        Map<String, String> map = new HashMap<>();
         BufferedReader rd = null;
         try {
             rd = new BufferedReader(new FileReader(fileName));

@@ -23,7 +23,7 @@ public class AClassTransformer implements IClassTransformer {
     public AClassTransformer() {
         names = new Names();
         InitNames.init();
-        ctMap = new HashMap();
+        ctMap = new HashMap<>();
         put(Names.entityRenderer_, new ACTEntityRenderer());
         put(Names.renderManager_, new ACTRenderManager());
         put(Names.rendererLivingE_, new ACTRendererLivingEntity());

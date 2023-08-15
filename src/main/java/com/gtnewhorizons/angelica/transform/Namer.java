@@ -8,9 +8,9 @@ import com.gtnewhorizons.angelica.transform.Names.Meth;
 
 public class Namer {
 
-    ArrayList<Clas> ac = new ArrayList();
-    ArrayList<Fiel> af = new ArrayList();
-    ArrayList<Meth> am = new ArrayList();
+    ArrayList<Clas> ac = new ArrayList<>();
+    ArrayList<Fiel> af = new ArrayList<>();
+    ArrayList<Meth> am = new ArrayList<>();
 
     Clas c(String name) {
         Clas x = new Clas(name);

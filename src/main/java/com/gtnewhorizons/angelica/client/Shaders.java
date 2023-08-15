@@ -151,6 +151,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -831,8 +832,8 @@ public class Shaders {
     // else System.out.println("[Shaders] Shader loaded: " + currentshadername);
     // }
 
-    static ArrayList listofShaders() {
-        ArrayList<String> list = new ArrayList();
+    static List<String> listofShaders() {
+        List<String> list = new ArrayList<>();
         list.add(packNameNone);
         list.add(packNameDefault);
         try {
@@ -3753,14 +3754,14 @@ public class Shaders {
 
     public static void pushEntity(Block block) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = 0;
     }
 
     public static void pushEntity(RenderBlocks rb, Block block, int x, int y, int z) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = rb.blockAccess.getBlockMetadata(x, y, z);
     }

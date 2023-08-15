@@ -31,7 +31,6 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL30.*;
 
 public class ShadersTex {
 
@@ -42,7 +41,7 @@ public class ShadersTex {
     public static final int defBaseTexColor = 0x00000000;
     public static final int defNormTexColor = 0xFF7F7FFF;
     public static final int defSpecTexColor = 0x00000000;
-    public static Map<Integer, MultiTexID> multiTexMap = new HashMap();
+    public static Map<Integer, MultiTexID> multiTexMap = new HashMap<>();
     public static TextureMap updatingTextureMap = null;
     public static TextureAtlasSprite updatingSprite = null;
     public static MultiTexID updatingTex = null;
@@ -78,8 +77,8 @@ public class ShadersTex {
     }
 
     public static IntBuffer fillIntBuffer(int size, int value) {
-        int[] aint = getIntArray(size);
-        IntBuffer intBuf = getIntBuffer(size);
+        getIntArray(size);
+        getIntBuffer(size);
         Arrays.fill(intArray, 0, size, value);
         intBuffer.put(intArray, 0, size);
         return intBuffer;
@@ -439,7 +438,6 @@ public class ShadersTex {
     }
 
     public static void genMipmapAlpha(int[] aint, int offset, int width, int height) {
-        int minwh = Math.min(width, height);
         int level;
         int w1, w2, h1, h2, o1, o2;
         w1 = w2 = width;
@@ -491,7 +489,6 @@ public class ShadersTex {
     }
 
     public static void genMipmapSimple(int[] aint, int offset, int width, int height) {
-        int minwh = Math.min(width, height);
         int level;
         int w1, w2, h1, h2, o1, o2;
         w1 = w2 = width;
@@ -664,7 +661,7 @@ public class ShadersTex {
     }
 
     // not used
-    public static void updateAnimationTextureMap(TextureMap tex, List tasList) {
+    public static void updateAnimationTextureMap(TextureMap tex, List<TextureAtlasSprite> tasList) {
         Iterator<TextureAtlasSprite> iterator;
         MultiTexID multiTex = tex.getMultiTexID();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
@@ -883,7 +880,7 @@ public class ShadersTex {
                 | (((((color1 >>> 0) & 255) * factor1 + ((color2 >>> 0) & 255) * factor2) / 255) << 0);
     }
 
-    public static void loadLayeredTexture(LayeredTexture tex, IResourceManager manager, List list) {
+    public static void loadLayeredTexture(LayeredTexture tex, IResourceManager manager, List<String> list) {
         int width = 0;
         int height = 0;
         int size = 0;

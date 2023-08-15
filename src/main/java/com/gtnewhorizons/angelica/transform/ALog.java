@@ -61,6 +61,8 @@ public abstract class ALog {
 
     private static class SMCLevel extends Level {
 
+        private static final long serialVersionUID = -5778164268202347808L;
+
         private SMCLevel(String name, int value) {
             super(name, value);
         }
