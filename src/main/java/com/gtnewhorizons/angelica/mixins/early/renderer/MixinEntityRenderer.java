@@ -37,7 +37,6 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.BEFORE,
                     target = "Lnet/minecraft/client/settings/GameSettings;thirdPersonView:I",
                     ordinal = 1),
-
             cancellable = true)
     public void angelica$checkCompositeRendered(float p_78476_1_, int p_78476_2_, CallbackInfo ci) {
         if (!Shaders.isCompositeRendered) {
