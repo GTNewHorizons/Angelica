@@ -21,7 +21,6 @@ abstract public class MixinGuiVideoSettings extends GuiScreen {
     @Shadow
     private GameSettings guiGameSettings;
 
-    @SuppressWarnings("unchecked")
     @Inject(method = "initGui()V", at = @At(value = "TAIL"))
     private void angelica$addShadersButton(CallbackInfo ci) {
         // Add the Shaders Button to the bottom of Video Options

@@ -119,6 +119,7 @@ public abstract class MixinTessellator implements TessellatorAccessor {
     @Overwrite
     public TesselatorVertexState getVertexState(float x, float y, float z) {
         int[] tmpCopyBuffer = new int[this.rawBufferIndex];
+        @SuppressWarnings("unchecked")
         PriorityQueue<Integer> pQueue = new PriorityQueue<>(
                 this.rawBufferIndex,
                 new QuadComparator(

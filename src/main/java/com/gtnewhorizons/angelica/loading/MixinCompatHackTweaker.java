@@ -22,6 +22,7 @@ public class MixinCompatHackTweaker implements ITweaker {
         try {
             Field xformersField = lcl.getClass().getDeclaredField("transformers");
             xformersField.setAccessible(true);
+            @SuppressWarnings("unchecked")
             List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
             int terminalIndex;
             for (terminalIndex = 1; terminalIndex < xformers.size(); terminalIndex++) {
