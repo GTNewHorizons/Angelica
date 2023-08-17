@@ -32,7 +32,7 @@ public enum Mixins {
             new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
                     .addMixinClasses(
                             "renderer.MixinOpenGlHelper",
-                            "renderer.MixinEntityRender",
+                            "renderer.MixinRender",
                             "renderer.MixinEntityRenderer",
                             "renderer.MixinRenderBlocks",
                             "renderer.MixinRenderGlobal",

@@ -10,10 +10,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gtnewhorizons.angelica.client.Shaders;
 
 @Mixin(Render.class)
-public class MixinEntityRender {
+public class MixinRender {
 
     @Inject(method = "renderShadow(Lnet/minecraft/entity/Entity;DDDFF)V", at = @At("HEAD"), cancellable = true)
-    public void angelica$checkSkipShadow(CallbackInfo ci) {
+    private void angelica$checkSkipShadow(CallbackInfo ci) {
         if (Shaders.shouldSkipDefaultShadow) ci.cancel();
     }
 }
