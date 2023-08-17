@@ -78,7 +78,6 @@ public class Names {
     static Clas guiScreen_;
     static Clas modelRenderer_;
     static Clas worldClient_;
-    static Clas effectRenderer_;
     static Clas entityRenderer_;
     static Clas glAllocation_;
     static Clas itemRenderer_;
@@ -87,7 +86,6 @@ public class Names {
     static Clas renderGlobal_;
     static Clas tessellator_;
     static Clas worldRenderer_;
-    static Clas frustrum_;
     static Clas iCamera_;
     static Clas render_;
     static Clas renderDragon_;
@@ -129,9 +127,6 @@ public class Names {
 
     static Fiel entityLivingBase_deathTime;
     static Fiel entityLivingBase_hurtTime;
-    static Fiel entityRenderer_cameraZoom;
-    static Fiel entityRenderer_mc;
-    static Fiel gameSettings_renderDistance;
     static Fiel guiButton_id;
     static Fiel guiScreen_buttonList;
     static Fiel guiScreen_width;
@@ -175,25 +170,12 @@ public class Names {
     static Meth block_getAoLight;
     static Meth block_getBlockFromItem;
     static Meth dynamicTexture_updateDynamicTexture;
-    static Meth effectRenderer_renderLitParticles;
-    static Meth effectRenderer_renderParticles;
     static Meth entity_getBrightness;
-    static Meth entityRenderer_enableLightmap;
-    static Meth entityRenderer_updateFogColor;
-    static Meth entityRenderer_setupFog;
-    static Meth entityRenderer_setFogColorBuffer;
-    static Meth entityRenderer_renderWorld;
-    static Meth entityRenderer_renderRainSnow;
     static Meth entityRenderer_renderHand;
-    static Meth entityRenderer_setupCameraTransform;
-    static Meth entityRenderer_disableLightmap;
-    static Meth entityRenderer_renderCloudsCheck;
     static Meth gameSettings_saveOptions;
-    static Meth gameSettings_shouldRenderClouds;
     static Meth glAllocation_createDirectByteBuffer;
     static Meth glAllocation_createDirectIntBuffer;
     static Meth glAllocation_deleteDisplayLists;
-    static Meth iCamera_setPosition;
     static Meth iResourceManager_getResource;
     static Meth itemRenderer_renderItem;
     static Meth itemRenderer_renderItemInFirstPerson;
@@ -222,11 +204,7 @@ public class Names {
     static Meth rendererLivingE_getColorMultiplier;
     static Meth rendererLivingE_renderLabel;
     static Meth renderGlobal_renderEntities;
-    static Meth renderGlobal_renderSky;
     static Meth renderGlobal_drawBlockDamageTexture;
-    static Meth renderGlobal_renderClouds;
-    static Meth renderGlobal_sortAndRender;
-    static Meth renderGlobal_clipRenderersByFrustum;
     static Meth renderGlobal_drawSelectionBox;
     static Meth renderGlobal_renderAllRenderLists;
     static Meth stitcher_getCurrentWidth;
@@ -257,7 +235,6 @@ public class Names {
     static Meth modelRenderer_render;
     static Meth modelRenderer_renderWithRotation;
 
-    static Meth frustrum_setPosition;
     static Meth worldClient_getCelestialAngle;
     static Meth worldClient_getRainStrength;
 

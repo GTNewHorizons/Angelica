@@ -17,7 +17,6 @@ public class Namer1_7_10 extends Namer {
         guiScreen_ = c("bdw");
         modelRenderer_ = c("bix");
         worldClient_ = c("bjf");
-        effectRenderer_ = c("bkn");
         entityRenderer_ = c("blt");
         glAllocation_ = c("ban");
         itemRenderer_ = c("bly");
@@ -26,7 +25,6 @@ public class Namer1_7_10 extends Namer {
         renderGlobal_ = c("bma");
         tessellator_ = c("bmh");
         worldRenderer_ = c("blo");
-        frustrum_ = c("bmx");
         iCamera_ = c("bmv");
         render_ = c("bno");
         renderDragon_ = c("bnl");
@@ -68,9 +66,6 @@ public class Namer1_7_10 extends Namer {
 
         entityLivingBase_deathTime = f(entityLivingBase_, "aA", "I");
         entityLivingBase_hurtTime = f(entityLivingBase_, "ax", "I");
-        entityRenderer_cameraZoom = f(entityRenderer_, "af", "D");
-        entityRenderer_mc = f(entityRenderer_, "t", minecraft_.desc);
-        gameSettings_renderDistance = f(gameSettings_, "c", "I");
         guiButton_id = f(guiButton_, "k", "I");
         guiScreen_buttonList = f(guiScreen_, "n", "Ljava/util/List;");
         guiScreen_width = f(guiScreen_, "l", "I");
@@ -109,25 +104,12 @@ public class Namer1_7_10 extends Namer {
         block_getAoLight = m(block_, "I", "()F");
         block_getBlockFromItem = m(block_, "a", "(" + item_.desc + ")" + block_.desc);
         dynamicTexture_updateDynamicTexture = m(dynamicTexture_, "a", "()V");
-        effectRenderer_renderLitParticles = m(effectRenderer_, "b", "(" + entity_.desc + "F)V");
-        effectRenderer_renderParticles = m(effectRenderer_, "a", "(" + entity_.desc + "F)V");
         entity_getBrightness = m(entity_, "d", "(F)F");
-        entityRenderer_enableLightmap = m(entityRenderer_, "b", "(D)V");
-        entityRenderer_updateFogColor = m(entityRenderer_, "j", "(F)V");
-        entityRenderer_setupFog = m(entityRenderer_, "a", "(IF)V");
-        entityRenderer_setFogColorBuffer = m(entityRenderer_, "a", "(FFFF)Ljava/nio/FloatBuffer;");
-        entityRenderer_renderWorld = m(entityRenderer_, "a", "(FJ)V");
-        entityRenderer_renderRainSnow = m(entityRenderer_, "e", "(F)V");
         entityRenderer_renderHand = m(entityRenderer_, "b", "(FI)V");
-        entityRenderer_setupCameraTransform = m(entityRenderer_, "a", "(FI)V");
-        entityRenderer_disableLightmap = m(entityRenderer_, "a", "(D)V");
-        entityRenderer_renderCloudsCheck = m(entityRenderer_, "a", "(" + renderGlobal_.desc + "F)V");
         gameSettings_saveOptions = m(gameSettings_, "b", "()V");
-        gameSettings_shouldRenderClouds = m(gameSettings_, "d", "()Z");
         glAllocation_createDirectByteBuffer = m(glAllocation_, "c", "(I)Ljava/nio/ByteBuffer;");
         glAllocation_createDirectIntBuffer = m(glAllocation_, "f", "(I)Ljava/nio/IntBuffer;");
         glAllocation_deleteDisplayLists = m(glAllocation_, "b", "(I)V");
-        iCamera_setPosition = m(iCamera_, "a", "(DDD)V");
         iResourceManager_getResource = m(iResourceManager_, "a", "(" + resourceLocation_.desc + ")" + iResource_.desc);
         itemRenderer_renderItem = m(itemRenderer_, "a", "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");
         itemRenderer_renderItemInFirstPerson = m(itemRenderer_, "a", "(F)V");
@@ -159,14 +141,10 @@ public class Namer1_7_10 extends Namer {
                 "a",
                 "(" + entityLivingBase_.desc + "DDDLjava/lang/String;FD)V");
         renderGlobal_renderEntities = m(renderGlobal_, "a", "(" + entityLivingBase_.desc + iCamera_.desc + "F)V");
-        renderGlobal_renderSky = m(renderGlobal_, "a", "(F)V");
         renderGlobal_drawBlockDamageTexture = m(
                 renderGlobal_,
                 "a",
                 "(" + tessellator_.desc + entityPlayer_.desc + "F)V");
-        renderGlobal_renderClouds = m(renderGlobal_, "b", "(F)V");
-        renderGlobal_sortAndRender = m(renderGlobal_, "a", "(" + entityLivingBase_.desc + "ID)I");
-        renderGlobal_clipRenderersByFrustum = m(renderGlobal_, "a", "(" + iCamera_.desc + "F)V");
         renderGlobal_drawSelectionBox = m(
                 renderGlobal_,
                 "a",
@@ -204,7 +182,6 @@ public class Namer1_7_10 extends Namer {
         guiOptions_width = f(guiOptions_, guiScreen_width);
         guiOptions_height = f(guiOptions_, guiScreen_height);
         guiOptions_mc = f(guiOptions_, guiScreen_mc);
-        frustrum_setPosition = m(frustrum_, iCamera_setPosition);
         worldClient_getCelestialAngle = m(worldClient_, world_getCelestialAngle);
         worldClient_getRainStrength = m(worldClient_, world_getRainStrength);
     }
