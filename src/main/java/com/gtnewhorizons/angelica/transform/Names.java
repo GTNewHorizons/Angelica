@@ -177,10 +177,8 @@ public class Names {
     static Meth glAllocation_createDirectIntBuffer;
     static Meth glAllocation_deleteDisplayLists;
     static Meth iResourceManager_getResource;
-    static Meth itemRenderer_renderItem;
     static Meth itemRenderer_renderItemInFirstPerson;
     static Meth itemRenderer_renderOverlays;
-    static Meth itemRenderer_updateEquipped;
     static Meth iTextureObject_loadTexture;
     static Meth iTextureObject_getGlTextureId;
     static Meth minecraft_displayGuiScreen;

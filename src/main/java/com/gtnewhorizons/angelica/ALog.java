@@ -45,7 +45,7 @@ public abstract class ALog {
     }
 
     public static final Logger LOGGER;
-    
+
     static {
         LOGGER = Logger.getLogger("angelica");
         LOGGER.setUseParentHandlers(false);

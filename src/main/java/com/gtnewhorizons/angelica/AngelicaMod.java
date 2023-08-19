@@ -8,4 +8,5 @@ import cpw.mods.fml.common.Mod;
         version = Tags.VERSION,
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*")
-public class AngelicaMod {}
+public class AngelicaMod {
+}

@@ -114,13 +114,8 @@ public class NamerSrg extends Namer {
                 iResourceManager_,
                 "func_110536_a",
                 "(" + resourceLocation_.desc + ")" + iResource_.desc);
-        itemRenderer_renderItem = m(
-                itemRenderer_,
-                "func_78443_a",
-                "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");
         itemRenderer_renderItemInFirstPerson = m(itemRenderer_, "func_78440_a", "(F)V");
         itemRenderer_renderOverlays = m(itemRenderer_, "func_78447_b", "(F)V");
-        itemRenderer_updateEquipped = m(itemRenderer_, "func_78441_a", "()V");
         iTextureObject_loadTexture = m(iTextureObject_, "func_110551_a", "(" + iResourceManager_.desc + ")V");
         iTextureObject_getGlTextureId = m(iTextureObject_, "func_110552_b", "()I");
         minecraft_displayGuiScreen = m(minecraft_, "func_147108_a", "(" + guiScreen_.desc + ")V");

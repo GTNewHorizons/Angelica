@@ -111,10 +111,8 @@ public class Namer1_7_10 extends Namer {
         glAllocation_createDirectIntBuffer = m(glAllocation_, "f", "(I)Ljava/nio/IntBuffer;");
         glAllocation_deleteDisplayLists = m(glAllocation_, "b", "(I)V");
         iResourceManager_getResource = m(iResourceManager_, "a", "(" + resourceLocation_.desc + ")" + iResource_.desc);
-        itemRenderer_renderItem = m(itemRenderer_, "a", "(" + entityLivingBase_.desc + itemStack_.desc + "I)V");
         itemRenderer_renderItemInFirstPerson = m(itemRenderer_, "a", "(F)V");
         itemRenderer_renderOverlays = m(itemRenderer_, "b", "(F)V");
-        itemRenderer_updateEquipped = m(itemRenderer_, "a", "()V");
         iTextureObject_loadTexture = m(iTextureObject_, "a", "(" + iResourceManager_.desc + ")V");
         iTextureObject_getGlTextureId = m(iTextureObject_, "b", "()I");
         minecraft_displayGuiScreen = m(minecraft_, "a", "(" + guiScreen_.desc + ")V");
