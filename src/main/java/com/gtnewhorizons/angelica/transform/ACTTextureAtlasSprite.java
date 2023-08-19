@@ -12,6 +12,8 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import com.gtnewhorizons.angelica.ALog;
+
 /** transformer for net.minecraft.client.renderer.texture.TextureAtlasSprite */
 public class ACTTextureAtlasSprite implements IClassTransformer {
 

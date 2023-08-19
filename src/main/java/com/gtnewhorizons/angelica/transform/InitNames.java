@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.transform;
 
+import com.gtnewhorizons.angelica.ALog;
+
 import net.minecraft.launchwrapper.Launch;
 
 public class InitNames {

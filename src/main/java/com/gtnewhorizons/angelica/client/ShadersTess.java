@@ -14,8 +14,8 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import com.gtnewhorizons.angelica.ALog;
 import com.gtnewhorizons.angelica.mixins.interfaces.TessellatorAccessor;
-import com.gtnewhorizons.angelica.transform.ALog;
 
 public class ShadersTess {
 

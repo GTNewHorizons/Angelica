@@ -10,6 +10,8 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import com.gtnewhorizons.angelica.ALog;
+
 /** Transformer for {@link EntityRenderer} */
 public class ACTEntityRenderer implements IClassTransformer {
 

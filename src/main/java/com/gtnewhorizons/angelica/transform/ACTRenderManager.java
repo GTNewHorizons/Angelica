@@ -10,6 +10,8 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 
+import com.gtnewhorizons.angelica.ALog;
+
 /** transformer for net.minecraft.client.renderer.Tessellator */
 public class ACTRenderManager implements IClassTransformer {
 

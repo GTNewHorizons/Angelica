@@ -7,6 +7,7 @@ import java.util.Set;
 
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
+import com.gtnewhorizons.angelica.ALog;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 
 @LateMixin
@@ -30,7 +31,7 @@ public class AngelicaLateMixins implements ILateMixinLoader {
                 }
             }
         }
-        AngelicaTweaker.log.info("Not loading the following LATE mixins: {}", notLoading.toString());
+        ALog.info("Not loading the following LATE mixins: {}", notLoading.toString());
         return mixins;
     }
 

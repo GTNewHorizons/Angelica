@@ -11,6 +11,8 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import com.gtnewhorizons.angelica.ALog;
+
 public class ACTTextureMap implements IClassTransformer {
 
     @Override
