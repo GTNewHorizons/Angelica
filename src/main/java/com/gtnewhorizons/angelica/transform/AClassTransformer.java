@@ -39,8 +39,6 @@ public class AClassTransformer implements IClassTransformer {
         put(Names.textureMap_, new ACTTextureMap());
         put(Names.textureAtlasSpri_, new ACTTextureAtlasSprite());
         put(Names.textureManager_, new ACTTextureManager());
-        ctMap.put("mrtjp.projectred.illumination.RenderHalo$", new ACTPrjRedIlluRenderHalo());
-        ctMap.put("net.smart.render.ModelRotationRenderer", new ACTSmartMoveModelRotationRenderer());
     }
 
     @Override

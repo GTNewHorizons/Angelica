@@ -2,6 +2,9 @@
 dependencies {
     compileOnly(sourceSets.compileStubs.output)
     compileStubs(sourceSets.compileStubsStubs.output)
+    
+    compileOnly("com.github.GTNewHorizons:ProjectRed:4.7.12-GTNH:dev")
+    compileOnly(files("dependencies/SmartRender-1.7.10-2.1-dev.jar"))
 
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.3.55-GTNH:dev")
 }

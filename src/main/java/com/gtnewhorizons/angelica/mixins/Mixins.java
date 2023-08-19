@@ -30,7 +30,14 @@ public enum Mixins {
                     "renderer.MixinTextureClock",
                     "renderer.MixinTextureCompass",
                     "renderer.MixinSimpleTexture",
-                    "renderer.MixinTessellator"))
+                    "renderer.MixinTessellator")),
+
+    COMPAT_PR_ILLUMINATION(
+            new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
+                    .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),
+
+    COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
+            .addMixinClasses("compat.MixinModelRotationRenderer"))
 
     ;
 
