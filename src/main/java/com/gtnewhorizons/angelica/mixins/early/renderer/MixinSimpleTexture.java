@@ -20,11 +20,13 @@ import com.gtnewhorizons.angelica.client.ShadersTex;
 public class MixinSimpleTexture extends AbstractTexture {
 
     private IResourceManager passedResourceManager;
+
     @Shadow
     protected ResourceLocation textureLocation;
 
+    // TODO: Use @Local as soon as it exists in a stable version of MixinExtras
     @Inject(method = "loadTexture(Lnet/minecraft/client/resources/IResourceManager;)V", at = @At("HEAD"))
-    private void getResourceManager(IResourceManager p_110551_1_, CallbackInfo cbi) {
+    private void angelica$getResourceManager(IResourceManager p_110551_1_, CallbackInfo cbi) {
         passedResourceManager = p_110551_1_;
     }
 
@@ -33,7 +35,7 @@ public class MixinSimpleTexture extends AbstractTexture {
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureImageAllocate(ILjava/awt/image/BufferedImage;ZZ)I"))
-    private int angelica$loadTexture(int textureID, BufferedImage bufferedImage, boolean flag, boolean flag1) {
+    private int angelica$loadSimpleTexture(int textureID, BufferedImage bufferedImage, boolean flag, boolean flag1) {
         ShadersTex.loadSimpleTexture(
                 textureID,
                 bufferedImage,

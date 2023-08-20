@@ -160,102 +160,102 @@ public abstract class MixinTessellator implements TessellatorAccessor {
     }
 
     @Override
-    public ByteBuffer getAngelica$byteBuffer() {
+    public ByteBuffer angelica$getByteBuffer() {
         return angelica$byteBuffer;
     }
 
     @Override
-    public IntBuffer getAngelica$intBuffer() {
+    public IntBuffer angelica$getIntBuffer() {
         return angelica$intBuffer;
     }
 
     @Override
-    public FloatBuffer getAngelica$floatBuffer() {
+    public FloatBuffer angelica$getFloatBuffer() {
         return angelica$floatBuffer;
     }
 
     @Override
-    public ShortBuffer getAngelica$shortBuffer() {
+    public ShortBuffer angelica$getShortBuffer() {
         return angelica$shortBuffer;
     }
 
     @Override
-    public float[] getAngelica$vertexPos() {
+    public float[] angelica$getVertexPos() {
         return angelica$vertexPos;
     }
 
     @Override
-    public float getAngelica$normalX() {
+    public float angelica$getNormalX() {
         return angelica$normalX;
     }
 
     @Override
-    public float getAngelica$normalY() {
+    public float angelica$getNormalY() {
         return angelica$normalY;
     }
 
     @Override
-    public float getAngelica$normalZ() {
+    public float angelica$getNormalZ() {
         return angelica$normalZ;
     }
 
     @Override
-    public float getAngelica$midTextureU() {
+    public float angelica$getMidTextureU() {
         return angelica$midTextureU;
     }
 
     @Override
-    public float getAngelica$midTextureV() {
+    public float angelica$getMidTextureV() {
         return angelica$midTextureV;
     }
 
     @Override
-    public void setAngelica$byteBuffer(ByteBuffer angelica$byteBuffer) {
+    public void angelica$setByteBuffer(ByteBuffer angelica$byteBuffer) {
         this.angelica$byteBuffer = angelica$byteBuffer;
     }
 
     @Override
-    public void setAngelica$intBuffer(IntBuffer angelica$intBuffer) {
+    public void angelica$setIntBuffer(IntBuffer angelica$intBuffer) {
         this.angelica$intBuffer = angelica$intBuffer;
     }
 
     @Override
-    public void setAngelica$floatBuffer(FloatBuffer angelica$floatBuffer) {
+    public void angelica$setFloatBuffer(FloatBuffer angelica$floatBuffer) {
         this.angelica$floatBuffer = angelica$floatBuffer;
     }
 
     @Override
-    public void setAngelica$shortBuffer(ShortBuffer angelica$shortBuffer) {
+    public void angelica$setShortBuffer(ShortBuffer angelica$shortBuffer) {
         this.angelica$shortBuffer = angelica$shortBuffer;
     }
 
     @Override
-    public void setAngelica$vertexPos(float[] angelica$vertexPos) {
+    public void angelica$setVertexPos(float[] angelica$vertexPos) {
         this.angelica$vertexPos = angelica$vertexPos;
     }
 
     @Override
-    public void setAngelica$normalX(float angelica$normalX) {
+    public void angelica$setNormalX(float angelica$normalX) {
         this.angelica$normalX = angelica$normalX;
     }
 
     @Override
-    public void setAngelica$normalY(float angelica$normalY) {
+    public void angelica$setNormalY(float angelica$normalY) {
         this.angelica$normalY = angelica$normalY;
     }
 
     @Override
-    public void setAngelica$normalZ(float angelica$normalZ) {
+    public void angelica$setNormalZ(float angelica$normalZ) {
         this.angelica$normalZ = angelica$normalZ;
     }
 
     @Override
-    public void setAngelica$midTextureU(float angelica$midTextureU) {
+    public void angelica$setMidTextureU(float angelica$midTextureU) {
         this.angelica$midTextureU = angelica$midTextureU;
     }
 
     @Override
-    public void setAngelica$midTextureV(float angelica$midTextureV) {
+    public void angelica$setMidTextureV(float angelica$midTextureV) {
         this.angelica$midTextureV = angelica$midTextureV;
     }
 }

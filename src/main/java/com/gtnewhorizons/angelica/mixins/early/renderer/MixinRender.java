@@ -13,7 +13,7 @@ import com.gtnewhorizons.angelica.client.Shaders;
 public class MixinRender {
 
     @Inject(method = "renderShadow(Lnet/minecraft/entity/Entity;DDDFF)V", at = @At("HEAD"), cancellable = true)
-    private void angelica$checkSkipShadow(CallbackInfo ci) {
+    private void angelica$checkShouldSkipDefaultShadow(CallbackInfo ci) {
         if (Shaders.shouldSkipDefaultShadow) ci.cancel();
     }
 }

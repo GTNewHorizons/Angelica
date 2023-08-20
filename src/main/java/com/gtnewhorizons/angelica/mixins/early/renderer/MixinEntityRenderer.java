@@ -40,14 +40,14 @@ public abstract class MixinEntityRenderer {
     // renderHand
 
     @Inject(
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderHand(FI)V",
+            method = "renderHand(FI)V",
             at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/glu/Project;gluPerspective(FFFF)V", remap = false))
     private void angelica$applyHandDepth(CallbackInfo ci) {
         Shaders.applyHandDepth();
     }
 
     @Inject(
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderHand(FI)V",
+            method = "renderHand(FI)V",
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/client/settings/GameSettings;thirdPersonView:I",
@@ -61,7 +61,7 @@ public abstract class MixinEntityRenderer {
     }
 
     @Redirect(
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderHand(FI)V",
+            method = "renderHand(FI)V",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
@@ -71,28 +71,28 @@ public abstract class MixinEntityRenderer {
 
     // disableLightmap
 
-    @Inject(at = @At("RETURN"), method = "Lnet/minecraft/client/renderer/EntityRenderer;disableLightmap(D)V")
+    @Inject(at = @At("RETURN"), method = "disableLightmap(D)V")
     private void angelica$disableLightmap(CallbackInfo ci) {
         Shaders.disableLightmap();
     }
 
     // enableLightmap
 
-    @Inject(at = @At("RETURN"), method = "Lnet/minecraft/client/renderer/EntityRenderer;enableLightmap(D)V")
+    @Inject(at = @At("RETURN"), method = "enableLightmap(D)V")
     private void angelica$enableLightmap(CallbackInfo ci) {
         Shaders.enableLightmap();
     }
 
     // renderWorld
 
-    @Inject(at = @At("HEAD"), method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+    @Inject(at = @At("HEAD"), method = "renderWorld(FJ)V")
     private void angelica$beginRender(float p_78471_1_, long p_78471_2_, CallbackInfo ci) {
         Shaders.beginRender(this.mc, p_78471_1_, p_78471_2_);
     }
 
     @Redirect(
             at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glViewport(IIII)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$setViewport(int x, int y, int width, int height) {
         Shaders.setViewport(x, y, width, height);
     }
@@ -103,7 +103,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lorg/lwjgl/opengl/GL11;glClear(I)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(
                     from = @At(
                             args = "intValue=" + (GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT),
@@ -118,7 +118,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/EntityRenderer;setupCameraTransform(FI)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$setCamera(float p_78471_1_, long p_78471_2_, CallbackInfo ci) {
         Shaders.setCamera(p_78471_1_);
     }
@@ -128,7 +128,7 @@ public abstract class MixinEntityRenderer {
                     opcode = Opcodes.GETFIELD,
                     target = "Lnet/minecraft/client/settings/GameSettings;renderDistanceChunks:I",
                     value = "FIELD"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private int angelica$isShadowPass(GameSettings gameSettings) {
         // A better way would be replacing the if-expression completely but I don't know how. If you figure it how,
         // please let me (glowredman) know. Unless that happens, we just redirect the field access and return either 3
@@ -138,7 +138,7 @@ public abstract class MixinEntityRenderer {
 
     @Inject(
             at = @At(target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginSky(CallbackInfo ci) {
         Shaders.beginSky();
     }
@@ -148,14 +148,14 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$endSky(CallbackInfo ci) {
         Shaders.endSky();
     }
 
     @Redirect(
             at = @At(target = "Lnet/minecraft/client/renderer/culling/Frustrum;setPosition(DDD)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$setFrustrumPosition(Frustrum frustrum, double x, double y, double z) {
         ShadersRender.setFrustrumPosition(frustrum, x, y, z);
     }
@@ -164,7 +164,7 @@ public abstract class MixinEntityRenderer {
             at = @At(
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$clipRenderersByFrustrum(RenderGlobal renderGlobal, ICamera p_72729_1_, float p_72729_2_) {
         ShadersRender.clipRenderersByFrustrum(renderGlobal, (Frustrum) p_72729_1_, p_72729_2_);
     }
@@ -174,7 +174,7 @@ public abstract class MixinEntityRenderer {
                     ordinal = 7,
                     target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginUpdateChunks(CallbackInfo ci) {
         Shaders.beginUpdateChunks();
     }
@@ -186,7 +186,7 @@ public abstract class MixinEntityRenderer {
                     target = "Lnet/minecraft/entity/EntityLivingBase;posY:D",
                     value = "FIELD"),
             locals = LocalCapture.CAPTURE_FAILEXCEPTION,
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$endUpdateChunks(float p_78471_1_, long p_78471_2_, CallbackInfo ci,
             EntityLivingBase entitylivingbase, RenderGlobal renderglobal, EffectRenderer effectrenderer, double d0,
             double d1, double d2, int j) {
@@ -202,7 +202,7 @@ public abstract class MixinEntityRenderer {
                     ordinal = 0,
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginTerrain(CallbackInfo ci) {
         Shaders.beginTerrain();
     }
@@ -213,7 +213,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$endTerrain(CallbackInfo ci) {
         Shaders.endTerrain();
     }
@@ -222,7 +222,7 @@ public abstract class MixinEntityRenderer {
             at = @At(
                     target = "Lnet/minecraft/client/particle/EffectRenderer;renderLitParticles(Lnet/minecraft/entity/Entity;F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginLitParticles(CallbackInfo ci) {
         Shaders.beginLitParticles();
     }
@@ -231,7 +231,7 @@ public abstract class MixinEntityRenderer {
             at = @At(
                     target = "Lnet/minecraft/client/particle/EffectRenderer;renderParticles(Lnet/minecraft/entity/Entity;F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginParticles(CallbackInfo ci) {
         Shaders.beginParticles();
     }
@@ -241,14 +241,14 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/particle/EffectRenderer;renderParticles(Lnet/minecraft/entity/Entity;F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$endParticles(CallbackInfo ci) {
         Shaders.endParticles();
     }
 
     @Inject(
             at = @At(target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$beginWeather(CallbackInfo ci) {
         Shaders.beginWeather();
     }
@@ -258,7 +258,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$endWeather(CallbackInfo ci) {
         Shaders.endWeather();
     }
@@ -271,7 +271,7 @@ public abstract class MixinEntityRenderer {
                     target = "Lorg/lwjgl/opengl/GL11;glDepthMask(Z)V",
                     value = "INVOKE"),
             locals = LocalCapture.CAPTURE_FAILEXCEPTION,
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$renderHand0AndPreWater(float p_78471_1_, long p_78471_2_, CallbackInfo ci,
             EntityLivingBase entitylivingbase, RenderGlobal renderglobal, EffectRenderer effectrenderer, double d0,
             double d1, double d2, int j) {
@@ -283,7 +283,7 @@ public abstract class MixinEntityRenderer {
             at = @At(
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(from = @At(args = "stringValue=water", ordinal = 0, value = "CONSTANT")))
     private void angelica$beginWater(CallbackInfo ci) {
         Shaders.beginWater();
@@ -294,7 +294,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(from = @At(args = "stringValue=water", ordinal = 0, value = "CONSTANT")))
     private void angelica$endWater(CallbackInfo ci) {
         Shaders.endWater();
@@ -305,7 +305,7 @@ public abstract class MixinEntityRenderer {
                     opcode = Opcodes.GETFIELD,
                     target = "Lnet/minecraft/entity/EntityLivingBase;posY:D",
                     value = "FIELD"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(
                     from = @At(args = "stringValue=entities", value = "CONSTANT"),
                     to = @At(args = "stringValue=aboveClouds", value = "CONSTANT")))
@@ -318,7 +318,7 @@ public abstract class MixinEntityRenderer {
                     remap = false,
                     target = "Lnet/minecraftforge/client/ForgeHooksClient;renderFirstPersonHand(Lnet/minecraft/client/renderer/RenderGlobal;FI)Z",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private boolean angelica$isShadowPass(boolean renderFirstPersonHand) {
         return renderFirstPersonHand || Shaders.isShadowPass;
     }
@@ -326,7 +326,7 @@ public abstract class MixinEntityRenderer {
     @Inject(
             at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glClear(I)V", value = "INVOKE"),
             locals = LocalCapture.CAPTURE_FAILEXCEPTION,
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(from = @At(args = "stringValue=hand", value = "CONSTANT")))
     private void angelica$renderHand1AndRenderCompositeFinal(float p_78471_1_, long p_78471_2_, CallbackInfo ci,
             EntityLivingBase entitylivingbase, RenderGlobal renderglobal, EffectRenderer effectrenderer, double d0,
@@ -337,7 +337,7 @@ public abstract class MixinEntityRenderer {
 
     @Redirect(
             at = @At(target = "Lnet/minecraft/client/renderer/EntityRenderer;renderHand(FI)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V")
+            method = "renderWorld(FJ)V")
     private void angelica$renderFPOverlay(EntityRenderer thizz, float p_78476_1_, int p_78476_2_) {
         ShadersRender.renderFPOverlay(thizz, p_78476_1_, p_78476_2_);
     }
@@ -348,7 +348,7 @@ public abstract class MixinEntityRenderer {
                     ordinal = 0,
                     target = "Lnet/minecraft/client/renderer/EntityRenderer;mc:Lnet/minecraft/client/Minecraft;",
                     value = "FIELD"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderWorld(FJ)V",
+            method = "renderWorld(FJ)V",
             slice = @Slice(from = @At(args = "stringValue=hand", value = "CONSTANT")))
     private void angelica$endRender(CallbackInfo ci) {
         Shaders.endRender();
@@ -358,14 +358,14 @@ public abstract class MixinEntityRenderer {
 
     @Redirect(
             at = @At(target = "Lnet/minecraft/client/settings/GameSettings;shouldRenderClouds()Z", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
+            method = "renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
     private boolean angelica$shouldRenderClouds(GameSettings gameSettings) {
         return Shaders.shouldRenderClouds(gameSettings);
     }
 
     @Inject(
             at = @At(target = "Lnet/minecraft/client/renderer/RenderGlobal;renderClouds(F)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
+            method = "renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
     private void angelica$beginClouds(CallbackInfo ci) {
         Shaders.beginClouds();
     }
@@ -375,7 +375,7 @@ public abstract class MixinEntityRenderer {
                     shift = At.Shift.AFTER,
                     target = "Lnet/minecraft/client/renderer/RenderGlobal;renderClouds(F)V",
                     value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
+            method = "renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V")
     private void angelica$endClouds(CallbackInfo ci) {
         Shaders.endClouds();
     }
@@ -384,7 +384,7 @@ public abstract class MixinEntityRenderer {
 
     @Redirect(
             at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glClearColor(FFFF)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;updateFogColor(F)V")
+            method = "updateFogColor(F)V")
     private void angelica$setClearColor(float red, float green, float blue, float alpha) {
         Shaders.setClearColor(red, green, blue, alpha);
     }
@@ -393,16 +393,14 @@ public abstract class MixinEntityRenderer {
 
     @Redirect(
             at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glFogi(II)V", value = "INVOKE"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;setupFog(IF)V")
+            method = "setupFog(IF)V")
     private void angelica$sglFogi(int pname, int param) {
         Shaders.sglFogi(pname, param);
     }
 
     // setFogColorBuffer
 
-    @Inject(
-            at = @At("HEAD"),
-            method = "Lnet/minecraft/client/renderer/EntityRenderer;setFogColorBuffer(FFFF)Ljava/nio/FloatBuffer;")
+    @Inject(at = @At("HEAD"), method = "setFogColorBuffer(FFFF)Ljava/nio/FloatBuffer;")
     private void angelica$setFogColor(float red, float green, float blue, float alpha,
             CallbackInfoReturnable<FloatBuffer> cir) {
         Shaders.setFogColor(red, green, blue);

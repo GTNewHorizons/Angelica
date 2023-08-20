@@ -7,43 +7,43 @@ import java.nio.ShortBuffer;
 
 public interface TessellatorAccessor {
 
-    ByteBuffer getAngelica$byteBuffer();
+    ByteBuffer angelica$getByteBuffer();
 
-    IntBuffer getAngelica$intBuffer();
+    IntBuffer angelica$getIntBuffer();
 
-    FloatBuffer getAngelica$floatBuffer();
+    FloatBuffer angelica$getFloatBuffer();
 
-    ShortBuffer getAngelica$shortBuffer();
+    ShortBuffer angelica$getShortBuffer();
 
-    float[] getAngelica$vertexPos();
+    float[] angelica$getVertexPos();
 
-    float getAngelica$normalX();
+    float angelica$getNormalX();
 
-    float getAngelica$normalY();
+    float angelica$getNormalY();
 
-    float getAngelica$normalZ();
+    float angelica$getNormalZ();
 
-    float getAngelica$midTextureU();
+    float angelica$getMidTextureU();
 
-    float getAngelica$midTextureV();
+    float angelica$getMidTextureV();
 
-    void setAngelica$byteBuffer(ByteBuffer angelica$byteBuffer);
+    void angelica$setByteBuffer(ByteBuffer angelica$byteBuffer);
 
-    void setAngelica$intBuffer(IntBuffer angelica$intBuffer);
+    void angelica$setIntBuffer(IntBuffer angelica$intBuffer);
 
-    void setAngelica$floatBuffer(FloatBuffer angelica$floatBuffer);
+    void angelica$setFloatBuffer(FloatBuffer angelica$floatBuffer);
 
-    void setAngelica$shortBuffer(ShortBuffer angelica$shortBuffer);
+    void angelica$setShortBuffer(ShortBuffer angelica$shortBuffer);
 
-    void setAngelica$vertexPos(float[] angelica$vertexPos);
+    void angelica$setVertexPos(float[] angelica$vertexPos);
 
-    void setAngelica$normalX(float angelica$normalX);
+    void angelica$setNormalX(float angelica$normalX);
 
-    void setAngelica$normalY(float angelica$normalY);
+    void angelica$setNormalY(float angelica$normalY);
 
-    void setAngelica$normalZ(float angelica$normalZ);
+    void angelica$setNormalZ(float angelica$normalZ);
 
-    void setAngelica$midTextureU(float angelica$midTextureU);
+    void angelica$setMidTextureU(float angelica$midTextureU);
 
-    void setAngelica$midTextureV(float angelica$midTextureV);
+    void angelica$setMidTextureV(float angelica$midTextureV);
 }

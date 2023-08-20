@@ -16,7 +16,7 @@ public class MixinTextureCompass {
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureMipmap([[IIIIIZZ)V"))
-    private void angelica$updateCompass(int[][] data, int width, int height, int xoffset, int yoffset, boolean linear,
+    private void angelica$uploadTexSub(int[][] data, int width, int height, int xoffset, int yoffset, boolean linear,
             boolean clamp) {
         ShadersTex.uploadTexSub(data, width, height, xoffset, yoffset, linear, clamp);
     }
