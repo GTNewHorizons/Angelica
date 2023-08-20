@@ -64,8 +64,6 @@ public class NamerSrg extends Namer {
         iBlockAccess_ = c("net/minecraft/world/IBlockAccess");
         world_ = c("net/minecraft/world/World");
 
-        entityLivingBase_deathTime = f(entityLivingBase_, "field_70725_aQ", "I");
-        entityLivingBase_hurtTime = f(entityLivingBase_, "field_70737_aN", "I");
         guiButton_id = f(guiButton_, "field_146127_k", "I");
         guiScreen_buttonList = f(guiScreen_, "field_146292_n", "Ljava/util/List;");
         guiScreen_width = f(guiScreen_, "field_146294_l", "I");
@@ -104,7 +102,6 @@ public class NamerSrg extends Namer {
         block_getAoLight = m(block_, "func_149685_I", "()F");
         block_getBlockFromItem = m(block_, "func_149634_a", "(" + item_.desc + ")" + block_.desc);
         dynamicTexture_updateDynamicTexture = m(dynamicTexture_, "func_110564_a", "()V");
-        entity_getBrightness = m(entity_, "func_70013_c", "(F)F");
         entityRenderer_renderHand = m(entityRenderer_, "func_78476_b", "(FI)V");
         gameSettings_saveOptions = m(gameSettings_, "func_74303_b", "()V");
         glAllocation_createDirectByteBuffer = m(glAllocation_, "func_74524_c", "(I)Ljava/nio/ByteBuffer;");
@@ -139,7 +136,6 @@ public class NamerSrg extends Namer {
         renderSpider_shouldRenderPass = m(renderSpider_, "func_77032_a", "(" + entitySpider_.desc + "IF)I");
         rendererLivingE_doRender = m(rendererLivingE_, "func_76986_a", "(" + entityLivingBase_.desc + "DDDFF)V");
         rendererLivingE_renderEquippedItems = m(rendererLivingE_, "func_77029_c", "(" + entityLivingBase_.desc + "F)V");
-        rendererLivingE_getColorMultiplier = m(rendererLivingE_, "func_77030_a", "(" + entityLivingBase_.desc + "FF)I");
         rendererLivingE_renderLabel = m(
                 rendererLivingE_,
                 "func_96449_a",

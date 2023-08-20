@@ -16,9 +16,9 @@ import com.gtnewhorizons.angelica.ALog;
 public class ACTEntityRenderer implements IClassTransformer {
 
     @Override
-    public byte[] transform(String par1, String par2, byte[] par3) {
-        ALog.fine("transforming %s %s", par1, par2);
-        ClassReader cr = new ClassReader(par3);
+    public byte[] transform(String name, String transformedName, byte[] basicClass) {
+        ALog.fine("transforming %s %s", name, transformedName);
+        ClassReader cr = new ClassReader(basicClass);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
         cr.accept(cv, 0);
@@ -43,7 +43,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.entityRenderer_renderHand.equalsNameDesc(name, desc)) {
-                ALog.finer("  patch method %s.%s%s", classname, name, desc);
+                ALog.finer(" patching method %s.%s%s", classname, name, desc);
                 return new MVrenderHand(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);

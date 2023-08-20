@@ -125,8 +125,6 @@ public class Names {
     static Clas iBlockAccess_;
     static Clas world_;
 
-    static Fiel entityLivingBase_deathTime;
-    static Fiel entityLivingBase_hurtTime;
     static Fiel guiButton_id;
     static Fiel guiScreen_buttonList;
     static Fiel guiScreen_width;
@@ -170,7 +168,6 @@ public class Names {
     static Meth block_getAoLight;
     static Meth block_getBlockFromItem;
     static Meth dynamicTexture_updateDynamicTexture;
-    static Meth entity_getBrightness;
     static Meth entityRenderer_renderHand;
     static Meth gameSettings_saveOptions;
     static Meth glAllocation_createDirectByteBuffer;
@@ -199,7 +196,6 @@ public class Names {
     static Meth renderSpider_shouldRenderPass;
     static Meth rendererLivingE_doRender;
     static Meth rendererLivingE_renderEquippedItems;
-    static Meth rendererLivingE_getColorMultiplier;
     static Meth rendererLivingE_renderLabel;
     static Meth renderGlobal_renderEntities;
     static Meth renderGlobal_drawBlockDamageTexture;

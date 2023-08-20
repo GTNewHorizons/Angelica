@@ -13,7 +13,6 @@ import com.gtnewhorizons.angelica.ALog;
 
 public class AClassTransformer implements IClassTransformer {
 
-    Names names;
     /** map of class transformer */
     protected Map<String, IClassTransformer> ctMap;
 
@@ -21,9 +20,7 @@ public class AClassTransformer implements IClassTransformer {
         ctMap.put(clas.clas.replace('/', '.'), ct);
     }
 
-    // constructor
     public AClassTransformer() {
-        names = new Names();
         InitNames.init();
         ctMap = new HashMap<>();
         put(Names.entityRenderer_, new ACTEntityRenderer());
@@ -45,7 +42,6 @@ public class AClassTransformer implements IClassTransformer {
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         byte[] bytecode = basicClass;
-        // if (transformedName.startsWith("mrtjp")) ALog.info("**** [%s]", transformedName);
         IClassTransformer ct = ctMap.get(transformedName);
         if (ct != null) {
             bytecode = ct.transform(name, transformedName, bytecode);
@@ -57,9 +53,9 @@ public class AClassTransformer implements IClassTransformer {
             node.accept(writer);
             bytecode = writer.toByteArray();
             // END HACK
-            int len1 = basicClass.length; // basicClass!=null?basicClass.length:0;
-            int len2 = bytecode.length; // bytecode!=null?bytecode.length:0;
-            ALog.fine(" %d (%+d)", len2, len2 - len1);
+            int oldLength = basicClass.length;
+            int newLength = bytecode.length;
+            ALog.fine(" %d (%+d)", newLength, newLength - oldLength);
         }
         return bytecode;
     }

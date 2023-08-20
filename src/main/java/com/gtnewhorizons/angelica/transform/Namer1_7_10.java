@@ -64,8 +64,6 @@ public class Namer1_7_10 extends Namer {
         iBlockAccess_ = c("ahl");
         world_ = c("ahb");
 
-        entityLivingBase_deathTime = f(entityLivingBase_, "aA", "I");
-        entityLivingBase_hurtTime = f(entityLivingBase_, "ax", "I");
         guiButton_id = f(guiButton_, "k", "I");
         guiScreen_buttonList = f(guiScreen_, "n", "Ljava/util/List;");
         guiScreen_width = f(guiScreen_, "l", "I");
@@ -104,7 +102,6 @@ public class Namer1_7_10 extends Namer {
         block_getAoLight = m(block_, "I", "()F");
         block_getBlockFromItem = m(block_, "a", "(" + item_.desc + ")" + block_.desc);
         dynamicTexture_updateDynamicTexture = m(dynamicTexture_, "a", "()V");
-        entity_getBrightness = m(entity_, "d", "(F)F");
         entityRenderer_renderHand = m(entityRenderer_, "b", "(FI)V");
         gameSettings_saveOptions = m(gameSettings_, "b", "()V");
         glAllocation_createDirectByteBuffer = m(glAllocation_, "c", "(I)Ljava/nio/ByteBuffer;");
@@ -133,7 +130,6 @@ public class Namer1_7_10 extends Namer {
         renderSpider_shouldRenderPass = m(renderSpider_, "a", "(" + entitySpider_.desc + "IF)I");
         rendererLivingE_doRender = m(rendererLivingE_, "a", "(" + entityLivingBase_.desc + "DDDFF)V");
         rendererLivingE_renderEquippedItems = m(rendererLivingE_, "c", "(" + entityLivingBase_.desc + "F)V");
-        rendererLivingE_getColorMultiplier = m(rendererLivingE_, "a", "(" + entityLivingBase_.desc + "FF)I");
         rendererLivingE_renderLabel = m(
                 rendererLivingE_,
                 "a",
