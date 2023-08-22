@@ -11,8 +11,8 @@ import com.gtnewhorizons.angelica.mixins.early.renderer.MixinModelRenderer;
 public class MixinModelRotationRenderer extends MixinModelRenderer {
 
     @Override
-    public void resetDisplayList() {
-        super.resetDisplayList();
+    public void angelica$resetDisplayList() {
+        super.angelica$resetDisplayList();
         ((ModelRenderer) (Object) this).compiled = false;
         ((ModelRenderer) (Object) this).displayList = 0;
     }

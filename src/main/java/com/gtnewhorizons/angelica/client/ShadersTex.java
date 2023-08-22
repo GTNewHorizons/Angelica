@@ -103,7 +103,7 @@ public class ShadersTex {
     }
 
     public static MultiTexID getMultiTexID(AbstractTexture tex) {
-        MultiTexID multiTex = tex.multiTex;
+        MultiTexID multiTex = tex.angelica$multiTex;
         if (multiTex == null) {
             int baseTex = tex.getGlTextureId();
             multiTex = multiTexMap.get(Integer.valueOf(baseTex));
@@ -111,7 +111,7 @@ public class ShadersTex {
                 multiTex = new MultiTexID(baseTex, GL11.glGenTextures(), GL11.glGenTextures());
                 multiTexMap.put(baseTex, multiTex);
             }
-            tex.multiTex = multiTex;
+            tex.angelica$multiTex = multiTex;
         }
         return multiTex;
     }
@@ -122,9 +122,9 @@ public class ShadersTex {
             GL11.glDeleteTextures(texid);
             atex.glTextureId = -1;
         }
-        MultiTexID multiTex = atex.multiTex;
+        MultiTexID multiTex = atex.angelica$multiTex;
         if (multiTex != null) {
-            atex.multiTex = null;
+            atex.angelica$multiTex = null;
             multiTexMap.remove(Integer.valueOf(multiTex.base));
             GL11.glDeleteTextures(multiTex.norm);
             GL11.glDeleteTextures(multiTex.spec);
@@ -192,13 +192,13 @@ public class ShadersTex {
 
     public static void bindTexture(ITextureObject tex) {
         if (tex instanceof TextureMap) {
-            Shaders.atlasSizeX = ((TextureMap) tex).atlasWidth;
-            Shaders.atlasSizeY = ((TextureMap) tex).atlasHeight;
+            Shaders.atlasSizeX = ((TextureMap) tex).angelica$atlasWidth;
+            Shaders.atlasSizeY = ((TextureMap) tex).angelica$atlasHeight;
         } else {
             Shaders.atlasSizeX = 0;
             Shaders.atlasSizeY = 0;
         }
-        bindTextures(tex.getMultiTexID());
+        bindTextures(tex.angelica$getMultiTexID());
     }
 
     /** not used */
@@ -234,7 +234,7 @@ public class ShadersTex {
 
     // for Dynamic Texture
     public static void initDynamicTexture(int texID, int width, int height, DynamicTexture tex) {
-        MultiTexID multiTex = tex.getMultiTexID();
+        MultiTexID multiTex = tex.angelica$getMultiTexID();
         int[] aint = tex.getTextureData();
         int size = width * height;
         Arrays.fill(aint, size, size * 2, defNormTexColor);
@@ -288,8 +288,8 @@ public class ShadersTex {
                 height,
                 anisotropy);
         updatingTextureMap = tex;
-        tex.atlasWidth = width;
-        tex.atlasHeight = height;
+        tex.angelica$atlasWidth = width;
+        tex.angelica$atlasHeight = height;
         MultiTexID multiTex = getMultiTexID(tex);
         updatingTex = multiTex;
         TextureUtil.allocateTextureImpl(multiTex.base, mipmapLevels, width, height, anisotropy);
@@ -645,7 +645,7 @@ public class ShadersTex {
     }
 
     public static void updateDynamicTexture(int texID, int[] src, int width, int height, DynamicTexture tex) {
-        MultiTexID multiTex = tex.getMultiTexID();
+        MultiTexID multiTex = tex.angelica$getMultiTexID();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
         updateSubImage1(src, width, height, 0, 0, 1, defNormTexColor);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
@@ -669,7 +669,7 @@ public class ShadersTex {
     // not used
     public static void updateAnimationTextureMap(TextureMap tex, List<TextureAtlasSprite> tasList) {
         Iterator<TextureAtlasSprite> iterator;
-        MultiTexID multiTex = tex.getMultiTexID();
+        MultiTexID multiTex = tex.angelica$getMultiTexID();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
         for (iterator = tasList.iterator(); iterator.hasNext();) {
             TextureAtlasSprite tas = iterator.next();
@@ -922,7 +922,7 @@ public class ShadersTex {
             }
         }
         // init and upload
-        setupTexture(tex.getMultiTexID(), image, width, height, false, false);
+        setupTexture(tex.angelica$getMultiTexID(), image, width, height, false, false);
     }
 
     /* update block texture filter +/- items texture */
@@ -930,7 +930,7 @@ public class ShadersTex {
         TextureManager texman = Minecraft.getMinecraft().getTextureManager();
         ITextureObject texObj = texman.getTexture(TextureMap.locationBlocksTexture);
         if (texObj != null) {
-            MultiTexID multiTex = texObj.getMultiTexID();
+            MultiTexID multiTex = texObj.angelica$getMultiTexID();
             // base texture
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
             GL11.glTexParameteri(

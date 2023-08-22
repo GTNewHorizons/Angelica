@@ -1226,7 +1226,7 @@ public class Shaders {
     }
 
     public static void resetDisplayListModelRenderer(ModelRenderer mrr) {
-        ((IModelRenderer) mrr).resetDisplayList();
+        ((IModelRenderer) mrr).angelica$resetDisplayList();
         // if (mrr.compiled)
         // {
         // GLAllocation.deleteDisplayLists(mrr.displayList);
@@ -2642,7 +2642,7 @@ public class Shaders {
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, dfb);
         GL11.glViewport(0, 0, Shaders.renderWidth, Shaders.renderHeight);
         activeDrawBuffers = null;
-        ShadersTex.bindNSTextures(defaultTexture.getMultiTexID());
+        ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         useProgram(ProgramTextured);
 
         checkGLError("end beginRender");
@@ -3371,7 +3371,7 @@ public class Shaders {
         if (isRenderingWorld) {
             checkGLError("endBlockEntities");
             useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
-            ShadersTex.bindNSTextures(defaultTexture.getMultiTexID());
+            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         }
     }
 
@@ -3495,7 +3495,7 @@ public class Shaders {
                 checkGLError("copy depth");
                 glActiveTexture(GL_TEXTURE0);
             }
-            ShadersTex.bindNSTextures(defaultTexture.getMultiTexID()); // flat
+            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID()); // flat
         }
     }
 

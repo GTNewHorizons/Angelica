@@ -17,7 +17,7 @@ public class MixinModelRenderer implements IModelRenderer {
     @Shadow
     private int displayList;
 
-    public void resetDisplayList() {
+    public void angelica$resetDisplayList() {
         if (!compiled && displayList != 0) {
             GLAllocation.deleteDisplayLists(displayList);
             displayList = 0;
