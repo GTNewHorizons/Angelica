@@ -9,7 +9,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
-import com.gtnewhorizons.angelica.ALog;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 
 public class AClassTransformer implements IClassTransformer {
 
@@ -55,7 +55,7 @@ public class AClassTransformer implements IClassTransformer {
             // END HACK
             int oldLength = basicClass.length;
             int newLength = bytecode.length;
-            ALog.fine(" %d (%+d)", newLength, newLength - oldLength);
+            AngelicaTweaker.LOGGER.debug(" {} (+{})", newLength, newLength - oldLength);
         }
         return bytecode;
     }

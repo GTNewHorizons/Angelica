@@ -12,6 +12,8 @@ import net.minecraft.client.settings.GameSettings;
 
 import org.lwjgl.Sys;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+
 public class GuiShaders extends GuiScreen {
 
     /** This GUI's parent GUI. */
@@ -301,7 +303,7 @@ public class GuiShaders extends GuiScreen {
                     }
 
                     if (var8) {
-                        System.out.println("Opening via system class!");
+                        AngelicaTweaker.LOGGER.debug("Opening via system class!");
                         Sys.openURL("file://" + Shaders.shaderpacksdir.getAbsolutePath());
                     }
                     break;

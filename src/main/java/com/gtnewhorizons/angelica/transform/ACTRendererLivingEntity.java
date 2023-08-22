@@ -18,14 +18,14 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-import com.gtnewhorizons.angelica.ALog;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 
 /** Transformer for {@link RendererLivingEntity} */
 public class ACTRendererLivingEntity implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        ALog.fine("transforming %s %s", name, transformedName);
+        AngelicaTweaker.LOGGER.debug("transforming {} {}", name, transformedName);
         ClassReader cr = new ClassReader(basicClass);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -51,7 +51,7 @@ public class ACTRendererLivingEntity implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.rendererLivingE_doRender.equalsNameDesc(name, desc)) {
-                ALog.finer(" patching method %s.%s%s", classname, name, desc);
+                AngelicaTweaker.LOGGER.trace(" patching method {}.{}{}", classname, name, desc);
                 return new MVdoRenderLiving(cv.visitMethod(access, name, desc, signature, exceptions));
             } else if (Names.rendererLivingE_renderLabel.equalsNameDesc(name, desc)) {
                 ALog.finer(" patching method %s.%s%s", classname, name, desc);

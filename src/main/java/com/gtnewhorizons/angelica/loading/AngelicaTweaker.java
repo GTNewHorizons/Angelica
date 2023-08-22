@@ -6,11 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
-import com.gtnewhorizons.angelica.ALog;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
@@ -18,6 +19,8 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.SortingIndex(1100)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
+
+    public static final Logger LOGGER = LogManager.getLogger("angelica");
 
     @Override
     public String[] getASMTransformerClass() {
@@ -66,7 +69,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 }
             }
         }
-        ALog.info("Not loading the following EARLY mixins: {}", notLoading.toString());
+        LOGGER.info("Not loading the following EARLY mixins: {}", notLoading.toString());
         return mixins;
     }
 }

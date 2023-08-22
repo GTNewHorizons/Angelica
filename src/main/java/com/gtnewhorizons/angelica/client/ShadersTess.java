@@ -14,7 +14,7 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
-import com.gtnewhorizons.angelica.ALog;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.TessellatorAccessor;
 
 public class ShadersTess {
@@ -28,7 +28,7 @@ public class ShadersTess {
         } else {
             tess.isDrawing = false;
             if (tess.drawMode == GL11.GL_QUADS && tess.vertexCount % 4 != 0) {
-                ALog.warning("%s", "bad vertexCount");
+                AngelicaTweaker.LOGGER.warn("%s", "bad vertexCount");
             }
             int voffset = 0;
             int realDrawMode = tess.drawMode;
@@ -185,7 +185,7 @@ public class ShadersTess {
                 // Expand
                 tess.bufferSize *= 2;
                 tess.rawBuffer = rawBuffer = Arrays.copyOf(tess.rawBuffer, tess.bufferSize);
-                System.out.format("Expand tesselator buffer %d\n", tess.bufferSize);
+                AngelicaTweaker.LOGGER.trace("Expand tesselator buffer {}", tess.bufferSize);
             } else {
                 // Initialize
                 tess.bufferSize = 0x10000;

@@ -32,6 +32,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+
 public class ShadersTex {
 
     public static final int initialBufferSize = 1048576;
@@ -127,7 +129,7 @@ public class ShadersTex {
             GL11.glDeleteTextures(multiTex.norm);
             GL11.glDeleteTextures(multiTex.spec);
             if (multiTex.base != texid) {
-                System.err.println("Error : MultiTexID.base mismatch.");
+                AngelicaTweaker.LOGGER.warn("Error : MultiTexID.base mismatch.");
                 GL11.glDeleteTextures(multiTex.base);
             }
         }
@@ -278,9 +280,13 @@ public class ShadersTex {
     // for TextureMap
     public static void allocateTextureMap(int texID, int mipmapLevels, int width, int height, float anisotropy,
             Stitcher stitcher, TextureMap tex) {
-        System.out.println(
-                "allocateTextureMap " + tex
-                        .getTextureType() + " " + mipmapLevels + " " + width + " " + height + " " + anisotropy + " ");
+        AngelicaTweaker.LOGGER.trace(
+                "allocateTextureMap {} {} {} {} {}",
+                tex.getTextureType(),
+                mipmapLevels,
+                width,
+                height,
+                anisotropy);
         updatingTextureMap = tex;
         tex.atlasWidth = width;
         tex.atlasHeight = height;

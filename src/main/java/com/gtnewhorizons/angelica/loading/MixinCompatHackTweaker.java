@@ -9,7 +9,6 @@ import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
-import com.gtnewhorizons.angelica.ALog;
 import com.gtnewhorizons.angelica.transform.AClassTransformer;
 
 import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
@@ -31,7 +30,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 }
             }
             xformers.add(terminalIndex - 1, new AClassTransformer());
-            ALog.info("Hacked in asm class transformer in position %d", terminalIndex - 1);
+            AngelicaTweaker.LOGGER.info("Hacked in asm class transformer in position {}", terminalIndex - 1);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
