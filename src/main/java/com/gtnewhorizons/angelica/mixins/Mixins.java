@@ -22,6 +22,7 @@ public enum Mixins {
     ANGELICA_RENDERER(new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
                     "renderer.MixinAbstractTexture",
+                    "renderer.MixinDynamicTexture",
                     "renderer.MixinOpenGlHelper",
                     "renderer.MixinRender",
                     "renderer.MixinEntityRenderer",
