@@ -27,7 +27,6 @@ public class AClassTransformer implements IClassTransformer {
         put(Names.renderManager_, new ACTRenderManager());
         put(Names.rendererLivingE_, new ACTRendererLivingEntity());
         put(Names.textureDownload_, new ACTTextureDownload());
-        put(Names.abstractTexture_, new ACTTextureAbstract());
         put(Names.iTextureObject_, new ACTTextureObject());
         put(Names.layeredTexture_, new ACTTextureLayered());
         put(Names.dynamicTexture_, new ACTTextureDynamic());
