@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gtnewhorizons.angelica.client.GuiShaders;
 
 @Mixin(GuiVideoSettings.class)
-abstract public class MixinGuiVideoSettings extends GuiScreen {
+public abstract class MixinGuiVideoSettings extends GuiScreen {
 
     private static final int SHADER_BUTTON_ID = 190;
 

@@ -20,7 +20,7 @@ public class MixinRenderHalo {
         Shaders.beginProjectRedHalo();
     }
 
-    @Inject(at = @At("TAIL"), method = "prepareRenderState()V", remap = false)
+    @Inject(at = @At("TAIL"), method = "restoreRenderState()V", remap = false)
     private void angelica$endProjectRedHalo(CallbackInfo ci) {
         Shaders.endProjectRedHalo();
     }

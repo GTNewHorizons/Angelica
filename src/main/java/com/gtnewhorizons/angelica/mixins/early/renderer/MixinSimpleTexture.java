@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gtnewhorizons.angelica.client.ShadersTex;
 
 @Mixin(value = SimpleTexture.class)
-public class MixinSimpleTexture extends AbstractTexture {
+public abstract class MixinSimpleTexture extends AbstractTexture {
 
     private IResourceManager passedResourceManager;
 
