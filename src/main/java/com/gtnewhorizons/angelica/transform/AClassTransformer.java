@@ -31,7 +31,6 @@ public class AClassTransformer implements IClassTransformer {
         put(Names.layeredTexture_, new ACTTextureLayered());
         put(Names.dynamicTexture_, new ACTTextureDynamic());
         put(Names.textureMap_, new ACTTextureMap());
-        put(Names.textureAtlasSpri_, new ACTTextureAtlasSprite());
         put(Names.textureManager_, new ACTTextureManager());
     }
 

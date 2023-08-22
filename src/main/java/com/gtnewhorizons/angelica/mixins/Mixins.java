@@ -37,6 +37,7 @@ public enum Mixins {
                     "renderer.MixinTessellator",
                     "renderer.MixinItemRenderer",
                     "renderer.MixinRendererLivingEntity")),
+                    "renderer.MixinTextureAtlasSprite",
 
     COMPAT_PR_ILLUMINATION(
             new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
