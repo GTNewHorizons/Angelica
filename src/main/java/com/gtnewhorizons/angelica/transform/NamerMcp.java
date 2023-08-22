@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.transform.Names.Clas;
 import com.gtnewhorizons.angelica.transform.Names.Fiel;
 import com.gtnewhorizons.angelica.transform.Names.Meth;
@@ -72,15 +73,15 @@ public class NamerMcp extends NamerSrg {
         nameMap = loadReobfMap(confPath + "packaged.srg");
         for (Clas c : ac) {
             String s = nameMap.get(c.name);
-            System.out.printf("C %s %s\n", c.name, s);
+            AngelicaTweaker.LOGGER.trace("C {} {}", c.name, s);
         }
         for (Fiel f : af) {
             String s = nameMap.get(f.clas + "/" + f.name);
-            System.out.printf("F %s %s\n", f.name, s);
+            AngelicaTweaker.LOGGER.trace("F {} {}", f.name, s);
         }
         for (Meth m : am) {
             String s = nameMap.get(m.clas + "/" + m.name + m.desc);
-            System.out.printf("M %s %s\n", m.name, s);
+            AngelicaTweaker.LOGGER.trace("M {} {}", m.name, s);
         }
     }
 

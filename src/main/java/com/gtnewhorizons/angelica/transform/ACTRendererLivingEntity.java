@@ -2,14 +2,11 @@ package com.gtnewhorizons.angelica.transform;
 
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.IFNE;
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.SIPUSH;
 
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.launchwrapper.IClassTransformer;
 
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -53,9 +50,6 @@ public class ACTRendererLivingEntity implements IClassTransformer {
             if (Names.rendererLivingE_doRender.equalsNameDesc(name, desc)) {
                 AngelicaTweaker.LOGGER.trace(" patching method {}.{}{}", classname, name, desc);
                 return new MVdoRenderLiving(cv.visitMethod(access, name, desc, signature, exceptions));
-            } else if (Names.rendererLivingE_renderLabel.equalsNameDesc(name, desc)) {
-                ALog.finer(" patching method %s.%s%s", classname, name, desc);
-                return new MVrenderLivingLabel(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
         }
@@ -97,40 +91,6 @@ public class ACTRendererLivingEntity implements IClassTransformer {
                 labelEndVH = new Label();
                 mv.visitJumpInsn(IFNE, labelEndVH);
                 return;
-            }
-            mv.visitMethodInsn(opcode, owner, name, desc);
-        }
-    }
-
-    private static class MVrenderLivingLabel extends MethodVisitor {
-
-        private MVrenderLivingLabel(MethodVisitor mv) {
-            super(Opcodes.ASM4, mv);
-        }
-
-        private int pushedInt = 0;
-
-        @Override
-        public void visitIntInsn(int opcode, int operand) {
-            mv.visitIntInsn(opcode, operand);
-            if (opcode == SIPUSH && operand == GL11.GL_TEXTURE_2D) {
-                pushedInt = GL11.GL_TEXTURE_2D;
-            }
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            if (pushedInt == GL11.GL_TEXTURE_2D) {
-                pushedInt = 0;
-                if (opcode == INVOKESTATIC && owner.equals("org/lwjgl/opengl/GL11") && desc.equals("(I)V")) {
-                    if (name.equals("glDisable")) {
-                        owner = "com/gtnewhorizons/angelica/client/Shaders";
-                        name = "sglDisableT2D";
-                    } else if (name.equals("glEnable")) {
-                        owner = "com/gtnewhorizons/angelica/client/Shaders";
-                        name = "sglEnableT2D";
-                    }
-                }
             }
             mv.visitMethodInsn(opcode, owner, name, desc);
         }
