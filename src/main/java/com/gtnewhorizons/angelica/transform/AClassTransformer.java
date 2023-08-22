@@ -28,7 +28,6 @@ public class AClassTransformer implements IClassTransformer {
         put(Names.rendererLivingE_, new ACTRendererLivingEntity());
         put(Names.iTextureObject_, new ACTTextureObject());
         put(Names.textureMap_, new ACTTextureMap());
-        put(Names.textureManager_, new ACTTextureManager());
     }
 
     @Override

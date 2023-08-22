@@ -40,6 +40,7 @@ public enum Mixins {
                     "renderer.MixinTessellator",
                     "renderer.MixinItemRenderer",
                     "renderer.MixinTextureAtlasSprite",
+                    "renderer.MixinTextureManager",
                     "renderer.MixinThreadDownloadImageData")),
 
     COMPAT_PR_ILLUMINATION(
