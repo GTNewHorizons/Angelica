@@ -23,6 +23,7 @@ public enum Mixins {
             .setPhase(Phase.EARLY).addMixinClasses(
                     "renderer.MixinAbstractTexture",
                     "renderer.MixinDynamicTexture",
+                    "renderer.MixinITextureObject",
                     "renderer.MixinLayeredTexture",
                     "renderer.MixinOpenGlHelper",
                     "renderer.MixinRender",
