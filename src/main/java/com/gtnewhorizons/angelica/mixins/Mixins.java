@@ -28,6 +28,7 @@ public enum Mixins {
                     "renderer.MixinRenderBlocks",
                     "renderer.MixinRenderDragon",
                     "renderer.MixinRenderEnderman",
+                    "renderer.MixinRendererLivingEntity",
                     "renderer.MixinRenderGlobal",
                     "renderer.MixinModelRenderer",
                     "renderer.MixinTextureClock",
@@ -36,8 +37,8 @@ public enum Mixins {
                     "renderer.MixinSimpleTexture",
                     "renderer.MixinTessellator",
                     "renderer.MixinItemRenderer",
-                    "renderer.MixinRendererLivingEntity")),
                     "renderer.MixinTextureAtlasSprite",
+                    "renderer.MixinThreadDownloadImageData")),
 
     COMPAT_PR_ILLUMINATION(
             new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
