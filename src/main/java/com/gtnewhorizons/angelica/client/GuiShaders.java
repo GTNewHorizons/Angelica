@@ -12,6 +12,8 @@ import net.minecraft.client.settings.GameSettings;
 
 import org.lwjgl.Sys;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+
 public class GuiShaders extends GuiScreen {
 
     /** This GUI's parent GUI. */
@@ -50,7 +52,7 @@ public class GuiShaders extends GuiScreen {
      */
     public void initGui() {
         if (Shaders.shadersConfig == null) Shaders.loadConfig();
-        List buttonList = this.buttonList;
+        List<GuiButton> buttonList = this.buttonList;
         int width = this.width;
         int height = this.height;
         buttonList.add(
@@ -60,7 +62,7 @@ public class GuiShaders extends GuiScreen {
                         30,
                         160,
                         18,
-                        "NormapMap: " + toStringOnOff(Shaders.configNormalMap)));
+                        "NormalMap: " + toStringOnOff(Shaders.configNormalMap)));
         buttonList.add(
                 new GuiButton(
                         18,
@@ -290,7 +292,7 @@ public class GuiShaders extends GuiScreen {
                     boolean var8 = false;
 
                     try {
-                        Class var3 = Class.forName("java.awt.Desktop");
+                        Class<?> var3 = Class.forName("java.awt.Desktop");
                         Object var4 = var3.getMethod("getDesktop", new Class[0]).invoke((Object) null, new Object[0]);
                         var3.getMethod("browse", new Class[] { URI.class }).invoke(
                                 var4,
@@ -301,13 +303,12 @@ public class GuiShaders extends GuiScreen {
                     }
 
                     if (var8) {
-                        System.out.println("Opening via system class!");
+                        AngelicaTweaker.LOGGER.debug("Opening via system class!");
                         Sys.openURL("file://" + Shaders.shaderpacksdir.getAbsolutePath());
                     }
                     break;
 
                 case 6: /* Done */
-                    File confshader = new File(Shaders.shadersdir, "current.cfg");
                     try {
                         Shaders.storeConfig();
                     } catch (Exception ex) {}

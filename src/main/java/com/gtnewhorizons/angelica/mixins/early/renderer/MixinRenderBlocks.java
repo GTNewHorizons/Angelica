@@ -19,26 +19,24 @@ public class MixinRenderBlocks {
 
     // Block
     @Inject(method = "renderBlockByRenderType(Lnet/minecraft/block/Block;III)Z", at = @At("HEAD"))
-    private void angelica$injectShadersBlockPushEntity(Block block, int x, int y, int z,
-            CallbackInfoReturnable<Boolean> cir) {
+    private void angelica$pushEntityBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
         Shaders.pushEntity((RenderBlocks) ((Object) this), block, x, y, z);
     }
 
     @Inject(method = "renderBlockByRenderType(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
-    private void angelica$injectShadersPopEntityBlock(Block block, int x, int y, int z,
-            CallbackInfoReturnable<Boolean> cir) {
+    private void angelica$popEntityBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
         Shaders.popEntity();
     }
 
     // BlockFlowerPot
     @Inject(method = "renderBlockFlowerpot(Lnet/minecraft/block/BlockFlowerPot;III)Z", at = @At("HEAD"))
-    private void angelica$injectShadersFlowerpotPushEntity(BlockFlowerPot blockFlowerPot, int x, int y, int z,
+    private void angelica$pushEntityBlockFlowerPot(BlockFlowerPot blockFlowerPot, int x, int y, int z,
             CallbackInfoReturnable<Boolean> cir) {
         Shaders.pushEntity((RenderBlocks) ((Object) this), blockFlowerPot, x, y, z);
     }
 
     @Inject(method = "renderBlockFlowerpot(Lnet/minecraft/block/BlockFlowerPot;III)Z", at = @At("RETURN"))
-    private void angelica$injectShadersFlowerpotPopEntity(BlockFlowerPot blockFlowerPot, int x, int y, int z,
+    private void angelica$popEntityBlockFlowerPot(BlockFlowerPot blockFlowerPot, int x, int y, int z,
             CallbackInfoReturnable<Boolean> cir) {
         Shaders.popEntity();
     }
@@ -48,7 +46,7 @@ public class MixinRenderBlocks {
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/block/Block;getBlockFromItem(Lnet/minecraft/item/Item;)Lnet/minecraft/block/Block;"))
-    private Block angelica$injectShadersFlowerpotItemBlockPushEntity(Item itemIn, Operation<Block> original) {
+    private Block angelica$pushEntityFlowerInFlowerPot(Item itemIn, Operation<Block> original) {
         final Block block = original.call(itemIn);
         Shaders.pushEntity(block);
         return block;
@@ -61,7 +59,7 @@ public class MixinRenderBlocks {
                     target = "Lnet/minecraft/client/renderer/Tessellator;addTranslation(FFF)V",
                     shift = At.Shift.AFTER,
                     ordinal = 1))
-    private void angelica$injectShadersFlowerpotItemBlockPopEntity(BlockFlowerPot blockFlowerPot, int x, int y, int z,
+    private void angelica$popEntityFlowerInFlowerPot(BlockFlowerPot blockFlowerPot, int x, int y, int z,
             CallbackInfoReturnable<Boolean> cir) {
         Shaders.popEntity();
     }

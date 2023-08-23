@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.client.MultiTexID;
 
 public interface ITextureObject {
 
-    MultiTexID getMultiTexID();
+    MultiTexID angelica$getMultiTexID();
 
     int getGlTextureId();
 }

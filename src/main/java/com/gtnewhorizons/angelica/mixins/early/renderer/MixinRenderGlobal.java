@@ -49,13 +49,14 @@ public class MixinRenderGlobal {
                     target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V",
                     args = "ldc=blockentities",
                     shift = At.Shift.AFTER))
-    private void angelica$blockEntities(EntityLivingBase entity, ICamera camera, float p_147589_3_, CallbackInfo ci) {
+    private void angelica$endEntitiesAndBeginBlockEntities(EntityLivingBase entity, ICamera camera, float p_147589_3_,
+            CallbackInfo ci) {
         Shaders.endEntities();
         Shaders.beginBlockEntities();
     }
 
     @Inject(
-            method = "Lnet/minecraft/client/renderer/RenderGlobal;renderEntities(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/client/renderer/culling/ICamera;F)V",
+            method = "renderEntities(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/client/renderer/culling/ICamera;F)V",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/EntityRenderer;disableLightmap(D)V",
@@ -173,7 +174,7 @@ public class MixinRenderGlobal {
                     ordinal = 0,
                     shift = At.Shift.BEFORE,
                     by = 2))
-    private void angelica$renderSkyPreSkyList(float p_72714_1_, CallbackInfo ci) {
+    private void angelica$preSkyList(float p_72714_1_, CallbackInfo ci) {
         Shaders.preSkyList();
     }
 
@@ -185,7 +186,7 @@ public class MixinRenderGlobal {
                     ordinal = 1,
                     shift = At.Shift.BY,
                     by = -2))
-    private void angelica$renderSkyBeforeCelestialAngle(float p_72714_1_, CallbackInfo ci) {
+    private void angelica$preCelestialRotate(float p_72714_1_, CallbackInfo ci) {
         Shaders.preCelestialRotate();
     }
 
@@ -197,14 +198,14 @@ public class MixinRenderGlobal {
                     remap = false,
                     ordinal = 9,
                     shift = At.Shift.AFTER))
-    private void angelica$renderSkyAfterCelestialAngle(float p_72714_1_, CallbackInfo ci) {
+    private void angelica$postCelestialRotate(float p_72714_1_, CallbackInfo ci) {
         Shaders.postCelestialRotate();
     }
 
     // drawBlockDamageTexture
 
     @WrapOperation(
-            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            method = "drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
             remap = false,
             at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false))
     private void angelica$drawBlockDamageTextureDisable(int cap, Operation<Void> original) {
@@ -214,7 +215,7 @@ public class MixinRenderGlobal {
     }
 
     @WrapOperation(
-            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            method = "drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
             remap = false,
             at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false))
     private void angelica$drawBlockDamageTextureSkyEnable(int cap, Operation<Void> original) {
@@ -223,7 +224,7 @@ public class MixinRenderGlobal {
     }
 
     @Inject(
-            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            method = "drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V",
@@ -235,7 +236,7 @@ public class MixinRenderGlobal {
     }
 
     @Inject(
-            method = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
+            method = "drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/Tessellator;setTranslation(DDD)V",
