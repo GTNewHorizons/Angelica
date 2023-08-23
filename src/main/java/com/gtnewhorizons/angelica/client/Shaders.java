@@ -151,6 +151,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -184,14 +185,15 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GLContext;
 
-import com.gtnewhorizons.angelica.mixins.early.accessors.RendererEntityLivingAccessor;
+import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelRenderer;
 
 // import org.lwjgl.opengl.ARBVertexProgram;
 
 public class Shaders {
 
-    public static final String versionString = "2.3.18";
+    public static final String versionString = Tags.VERSION;
     public static final int versionNumber = 0x020312;
     public static final int buildNumber = 53;
 
@@ -609,11 +611,11 @@ public class Shaders {
      */
 
     public static void loadConfig() {
-        System.out.println("[Shaders] Loading configuration.");
+        AngelicaTweaker.LOGGER.info("[Shaders] Loading configuration.");
         try {
             if (!shaderpacksdir.exists()) shaderpacksdir.mkdir();
         } catch (Exception e) {
-            System.err.println("[Shaders] Failed openning shaderpacks directory.");
+            AngelicaTweaker.LOGGER.warn("[Shaders] Failed openning shaderpacks directory.");
         }
 
         shadersConfig = new Properties();
@@ -631,7 +633,6 @@ public class Shaders {
                 storeConfig();
             } catch (Exception e) {}
         }
-        String value = null;
         configNormalMap = Boolean.parseBoolean(shadersConfig.getProperty("normalMapEnabled", "true"));
         configSpecularMap = Boolean.parseBoolean(shadersConfig.getProperty("specularMapEnabled", "true"));
         configTweakBlockDamage = Boolean.parseBoolean(
@@ -655,7 +656,7 @@ public class Shaders {
     }
 
     public static void storeConfig() {
-        System.out.println("[Shaders] Save configuration.");
+        AngelicaTweaker.LOGGER.info("[Shaders] Save configuration.");
         shadersConfig.setProperty("normalMapEnabled", Boolean.toString(configNormalMap));
         shadersConfig.setProperty("specularMapEnabled", Boolean.toString(configSpecularMap));
         shadersConfig.setProperty("tweakBlockDamage", Boolean.toString(configTweakBlockDamage));
@@ -705,9 +706,9 @@ public class Shaders {
             }
         }
         if (shaderPack != null) {
-            System.out.println("[Shaders] Loaded shaderpack.");
+            AngelicaTweaker.LOGGER.info("[Shaders] Loaded shaderpack.");
         } else {
-            System.out.println("[Shaders] Did not load shaderpack.");
+            AngelicaTweaker.LOGGER.error("[Shaders] Did not load shaderpack.");
             shaderPack = new ShaderPackNone();
         }
     }
@@ -831,8 +832,8 @@ public class Shaders {
     // else System.out.println("[Shaders] Shader loaded: " + currentshadername);
     // }
 
-    static ArrayList listofShaders() {
-        ArrayList<String> list = new ArrayList();
+    static List<String> listofShaders() {
+        List<String> list = new ArrayList<>();
         list.add(packNameNone);
         list.add(packNameDefault);
         try {
@@ -872,7 +873,7 @@ public class Shaders {
     public static int checkFramebufferStatus(String location) {
         int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
         if (status != GL_FRAMEBUFFER_COMPLETE_EXT)
-            System.err.format("FramebufferStatus 0x%04X at %s\n", status, location);
+            AngelicaTweaker.LOGGER.error(String.format("FramebufferStatus 0x%04X at %s", status, location));
         return status;
     }
 
@@ -890,14 +891,16 @@ public class Shaders {
             if (!skipPrint) {
                 if (errorCode == GL_INVALID_FRAMEBUFFER_OPERATION_EXT) {
                     int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-                    System.err.format(
-                            "GL error 0x%04X: %s (Fb status 0x%04X) at %s\n",
-                            errorCode,
-                            gluErrorString(errorCode),
-                            status,
-                            location);
+                    AngelicaTweaker.LOGGER.error(
+                            String.format(
+                                    "GL error 0x%04X: %s (Fb status 0x%04X) at %s",
+                                    errorCode,
+                                    gluErrorString(errorCode),
+                                    status,
+                                    location));
                 } else {
-                    System.err.format("GL error 0x%04X: %s at %s\n", errorCode, gluErrorString(errorCode), location);
+                    AngelicaTweaker.LOGGER.error(
+                            String.format("GL error 0x%04X: %s at %s", errorCode, gluErrorString(errorCode), location));
                 }
             }
         }
@@ -907,7 +910,13 @@ public class Shaders {
     public static int checkGLError(String location, String info) {
         int errorCode = glGetError();
         if (errorCode != GL_NO_ERROR) {
-            System.err.format("GL error 0x%04x: %s at %s %s\n", errorCode, gluErrorString(errorCode), location, info);
+            AngelicaTweaker.LOGGER.error(
+                    String.format(
+                            "GL error 0x%04x: %s at %s %s",
+                            errorCode,
+                            gluErrorString(errorCode),
+                            location,
+                            info));
         }
         return errorCode;
     }
@@ -915,20 +924,21 @@ public class Shaders {
     public static int checkGLError(String location, String info1, String info2) {
         int errorCode = glGetError();
         if (errorCode != GL_NO_ERROR) {
-            System.err.format(
-                    "GL error 0x%04x: %s at %s %s %s\n",
-                    errorCode,
-                    gluErrorString(errorCode),
-                    location,
-                    info1,
-                    info2);
+            AngelicaTweaker.LOGGER.error(
+                    String.format(
+                            "GL error 0x%04x: %s at %s %s %s",
+                            errorCode,
+                            gluErrorString(errorCode),
+                            location,
+                            info1,
+                            info2));
         }
         return errorCode;
     }
 
     private static String printChatAndLogError(String str) {
         mc.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(str));
-        System.err.println(str);
+        AngelicaTweaker.LOGGER.error(str);
         return str;
     }
 
@@ -938,12 +948,12 @@ public class Shaders {
                 .append(buf.capacity()).append(" :");
         for (int lim = buf.limit(), i = 0; i < lim; ++i) sb.append(" ").append(buf.get(i));
         sb.append("]");
-        System.out.println(sb);
+        AngelicaTweaker.LOGGER.debug(sb.toString());
     }
 
     public static void startup(Minecraft mc) {
         Shaders.mc = mc;
-        System.out.println("ShadersMod version " + versionString);
+        AngelicaTweaker.LOGGER.info("Angelica version " + versionString);
         Shaders.loadConfig();
     }
 
@@ -968,7 +978,7 @@ public class Shaders {
             mc = Minecraft.getMinecraft();
             checkGLError("Shaders.init pre");
             capabilities = GLContext.getCapabilities();
-            System.out.println(
+            AngelicaTweaker.LOGGER.debug(
                     "[Shaders] OpenGL 2.0 = " + toStringYN(capabilities.OpenGL20)
                             + "    2.1 = "
                             + toStringYN(capabilities.OpenGL21)
@@ -996,9 +1006,10 @@ public class Shaders {
 
             int maxDrawBuffers = glGetInteger(GL_MAX_DRAW_BUFFERS);
             int maxColorAttach = glGetInteger(GL_MAX_COLOR_ATTACHMENTS_EXT);
-            System.out.println("[Shaders] GL_MAX_DRAW_BUFFERS = " + maxDrawBuffers);
-            System.out.println("[Shaders] GL_MAX_COLOR_ATTACHMENTS_EXT = " + maxColorAttach);
-            System.out.println("[Shaders] GL_MAX_TEXTURE_IMAGE_UNITS = " + glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS));
+            AngelicaTweaker.LOGGER.debug("[Shaders] GL_MAX_DRAW_BUFFERS = " + maxDrawBuffers);
+            AngelicaTweaker.LOGGER.debug("[Shaders] GL_MAX_COLOR_ATTACHMENTS_EXT = " + maxColorAttach);
+            AngelicaTweaker.LOGGER
+                    .debug("[Shaders] GL_MAX_TEXTURE_IMAGE_UNITS = " + glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS));
 
             usedColorBuffers = 4;
             usedDepthBuffers = 1;
@@ -1046,7 +1057,7 @@ public class Shaders {
                 }
             }
 
-            Map<String, IntBuffer> drawBuffersMap = new HashMap();
+            Map<String, IntBuffer> drawBuffersMap = new HashMap<>();
             for (int p = 0; p < ProgramCount; ++p) {
                 if (p == ProgramFinal) {
                     programsDrawBuffers[p] = null;
@@ -1185,7 +1196,7 @@ public class Shaders {
 
     public static void resetDisplayList() {
         ++numberResetDisplayList;
-        System.out.println("Reset model renderers");
+        AngelicaTweaker.LOGGER.debug("Reset model renderers");
         if (Shaders.useMidTexCoordAttrib || Shaders.useMultiTexCoord3Attrib) {
             Iterator<Render> it = RenderManager.instance.entityRenderMap.values().iterator();
             while (it.hasNext()) {
@@ -1193,29 +1204,29 @@ public class Shaders {
                 if (ren instanceof RendererLivingEntity) {
                     RendererLivingEntity rle = (RendererLivingEntity) ren;
                     // System.out.format("Reset %s\n", rle.toString());
-                    resetDisplayListModel(((RendererEntityLivingAccessor) rle).getMainModel());
-                    resetDisplayListModel(((RendererEntityLivingAccessor) rle).getRenderPassModel());
+                    resetDisplayListModel(rle.mainModel);
+                    resetDisplayListModel(rle.renderPassModel);
                 }
             }
         }
-        System.out.println("Reset world renderers");
+        AngelicaTweaker.LOGGER.debug("Reset world renderers");
         mc.renderGlobal.loadRenderers();
     }
 
     public static void resetDisplayListModel(ModelBase mbase) {
         if (mbase != null) {
-            Iterator it = mbase.boxList.iterator();
+            Iterator<ModelRenderer> it = mbase.boxList.iterator();
             while (it.hasNext()) {
-                Object obj = it.next();
-                if (obj instanceof ModelRenderer) {
-                    resetDisplayListModelRenderer((ModelRenderer) obj);
+                ModelRenderer obj = it.next();
+                if (obj != null) {
+                    resetDisplayListModelRenderer(obj);
                 }
             }
         }
     }
 
     public static void resetDisplayListModelRenderer(ModelRenderer mrr) {
-        ((IModelRenderer) mrr).resetDisplayList();
+        ((IModelRenderer) mrr).angelica$resetDisplayList();
         // if (mrr.compiled)
         // {
         // GLAllocation.deleteDisplayLists(mrr.displayList);
@@ -1359,7 +1370,7 @@ public class Shaders {
                 printLogInfo(programid, vShaderPath + "," + fShaderPath);
                 int valid = glGetProgrami(programid, GL_VALIDATE_STATUS);
                 if (valid == GL_TRUE) {
-                    System.out.println("Program " + programNames[program] + " loaded");
+                    AngelicaTweaker.LOGGER.debug("Program " + programNames[program] + " loaded");
                 } else {
                     printChatAndLogError("[Shaders] Error : Invalid program " + programNames[program]);
                     glDeleteObjectARB(programid);
@@ -1528,129 +1539,129 @@ public class Shaders {
             // Shadow resolution
         } else if (line.matches("/\\* SHADOWRES:[0-9]+ \\*/.*")) {
             String[] parts = line.split("(:| )", 4);
-            System.out.println("Shadow map resolution: " + parts[2]);
+            AngelicaTweaker.LOGGER.debug("Shadow map resolution: " + parts[2]);
             spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[2]);
             shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
 
         } else if (line.matches("[ \t]*const[ \t]*int[ \t]*shadowMapResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
             String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Shadow map resolution: " + parts[1]);
+            AngelicaTweaker.LOGGER.debug("Shadow map resolution: " + parts[1]);
             spShadowMapWidth = spShadowMapHeight = Integer.parseInt(parts[1]);
             shadowMapWidth = shadowMapHeight = Math.round(spShadowMapWidth * configShadowResMul);
 
         } else if (line.matches("/\\* SHADOWFOV:[0-9\\.]+ \\*/.*")) {
             String[] parts = line.split("(:| )", 4);
-            System.out.println("Shadow map field of view: " + parts[2]);
+            AngelicaTweaker.LOGGER.debug("Shadow map field of view: " + parts[2]);
             shadowMapFOV = Float.parseFloat(parts[2]);
             shadowMapIsOrtho = false;
 
             // Shadow distance
         } else if (line.matches("/\\* SHADOWHPL:[0-9\\.]+ \\*/.*")) {
             String[] parts = line.split("(:| )", 4);
-            System.out.println("Shadow map half-plane: " + parts[2]);
+            AngelicaTweaker.LOGGER.debug("Shadow map half-plane: " + parts[2]);
             shadowMapHalfPlane = Float.parseFloat(parts[2]);
             shadowMapIsOrtho = true;
 
         } else if (line.matches("[ \t]*const[ \t]*float[ \t]*shadowDistance[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
             String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Shadow map distance: " + parts[1]);
+            AngelicaTweaker.LOGGER.debug("Shadow map distance: " + parts[1]);
             shadowMapHalfPlane = Float.parseFloat(parts[1]);
             shadowMapIsOrtho = true;
 
         } else if (line.matches("[ \t]*const[ \t]*float[ \t]*shadowIntervalSize[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
             String[] parts = line.split("(=[ \t]*|;)");
-            System.out.println("Shadow map interval size: " + parts[1]);
+            AngelicaTweaker.LOGGER.debug("Shadow map interval size: " + parts[1]);
             shadowIntervalSize = Float.parseFloat(parts[1]);
 
         } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*generateShadowMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("Generate shadow mipmap");
+            AngelicaTweaker.LOGGER.debug("Generate shadow mipmap");
             Arrays.fill(shadowMipmapEnabled, true);
 
         } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*generateShadowColorMipmap[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("Generate shadow color mipmap");
+            AngelicaTweaker.LOGGER.debug("Generate shadow color mipmap");
             Arrays.fill(shadowColorMipmapEnabled, true);
 
         } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("Hardware shadow filtering enabled.");
+            AngelicaTweaker.LOGGER.debug("Hardware shadow filtering enabled.");
             Arrays.fill(shadowHardwareFilteringEnabled, true);
 
         } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering0[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowHardwareFiltering0");
+            AngelicaTweaker.LOGGER.debug("shadowHardwareFiltering0");
             shadowHardwareFilteringEnabled[0] = true;
 
         } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*shadowHardwareFiltering1[ \t]*=[ \t]*true[ \t]*;.*")) {
-            System.out.println("shadowHardwareFiltering1");
+            AngelicaTweaker.LOGGER.debug("shadowHardwareFiltering1");
             shadowHardwareFilteringEnabled[1] = true;
 
         } else if (line
                 .matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                    System.out.println("shadowtex0Mipmap");
+                    AngelicaTweaker.LOGGER.debug("shadowtex0Mipmap");
                     shadowMipmapEnabled[0] = true;
 
                 } else
             if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                System.out.println("shadowtex1Mipmap");
+                AngelicaTweaker.LOGGER.debug("shadowtex1Mipmap");
                 shadowMipmapEnabled[1] = true;
 
             } else if (line.matches(
                     "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        System.out.println("shadowcolor0Mipmap");
+                        AngelicaTweaker.LOGGER.debug("shadowcolor0Mipmap");
                         shadowColorMipmapEnabled[0] = true;
 
                     } else
                 if (line.matches(
                         "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                            System.out.println("shadowcolor1Mipmap");
+                            AngelicaTweaker.LOGGER.debug("shadowcolor1Mipmap");
                             shadowColorMipmapEnabled[1] = true;
 
                         } else
                     if (line.matches(
                             "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                System.out.println("shadowtex0Nearest");
+                                AngelicaTweaker.LOGGER.debug("shadowtex0Nearest");
                                 shadowFilterNearest[0] = true;
 
                             } else
                         if (line.matches(
                                 "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                    System.out.println("shadowtex1Nearest");
+                                    AngelicaTweaker.LOGGER.debug("shadowtex1Nearest");
                                     shadowFilterNearest[1] = true;
 
                                 } else
                             if (line.matches(
                                     "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                        System.out.println("shadowcolor0Nearest");
+                                        AngelicaTweaker.LOGGER.debug("shadowcolor0Nearest");
                                         shadowColorFilterNearest[0] = true;
 
                                     } else
                                 if (line.matches(
                                         "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                            System.out.println("shadowcolor1Nearest");
+                                            AngelicaTweaker.LOGGER.debug("shadowcolor1Nearest");
                                             shadowColorFilterNearest[1] = true;
 
                                             // Wetness half life
                                         } else
                                     if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
                                         String[] parts = line.split("(:| )", 4);
-                                        System.out.println("Wetness halflife: " + parts[2]);
+                                        AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[2]);
                                         wetnessHalfLife = Float.parseFloat(parts[2]);
 
                                     } else if (line.matches(
                                             "[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                 String[] parts = line.split("(=[ \t]*|;)");
-                                                System.out.println("Wetness halflife: " + parts[1]);
+                                                AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[1]);
                                                 wetnessHalfLife = Float.parseFloat(parts[1]);
 
                                                 // Dryness halflife
                                             } else
                                         if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
                                             String[] parts = line.split("(:| )", 4);
-                                            System.out.println("Dryness halflife: " + parts[2]);
+                                            AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[2]);
                                             drynessHalfLife = Float.parseFloat(parts[2]);
 
                                         } else if (line.matches(
                                                 "[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                     String[] parts = line.split("(=[ \t]*|;)");
-                                                    System.out.println("Dryness halflife: " + parts[1]);
+                                                    AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[1]);
                                                     drynessHalfLife = Float.parseFloat(parts[1]);
 
                                                     // Eye brightness halflife
@@ -1658,7 +1669,8 @@ public class Shaders {
                                             if (line.matches(
                                                     "[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                         String[] parts = line.split("(=[ \t]*|;)");
-                                                        System.out.println("Eye brightness halflife: " + parts[1]);
+                                                        AngelicaTweaker.LOGGER
+                                                                .debug("Eye brightness halflife: " + parts[1]);
                                                         eyeBrightnessHalflife = Float.parseFloat(parts[1]);
 
                                                         // Center depth halflife
@@ -1666,7 +1678,8 @@ public class Shaders {
                                                 if (line.matches(
                                                         "[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                             String[] parts = line.split("(=[ \t]*|;)");
-                                                            System.out.println("Center depth halflife: " + parts[1]);
+                                                            AngelicaTweaker.LOGGER
+                                                                    .debug("Center depth halflife: " + parts[1]);
                                                             centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
 
                                                             // Sun path rotation
@@ -1674,7 +1687,8 @@ public class Shaders {
                                                     if (line.matches(
                                                             "[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                                 String[] parts = line.split("(=[ \t]*|;)");
-                                                                System.out.println("Sun path rotation: " + parts[1]);
+                                                                AngelicaTweaker.LOGGER
+                                                                        .debug("Sun path rotation: " + parts[1]);
                                                                 sunPathRotation = Float.parseFloat(parts[1]);
 
                                                                 // Ambient occlusion level
@@ -1682,7 +1696,8 @@ public class Shaders {
                                                         if (line.matches(
                                                                 "[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                                     String[] parts = line.split("(=[ \t]*|;)");
-                                                                    System.out.println("AO Level: " + parts[1]);
+                                                                    AngelicaTweaker.LOGGER
+                                                                            .debug("AO Level: " + parts[1]);
                                                                     aoLevel = Float.parseFloat(parts[1]);
                                                                     blockAoLight = 1.0f - aoLevel;
 
@@ -1693,7 +1708,7 @@ public class Shaders {
                                                                         String[] parts = line.split("(=[ \t]*|;)");
                                                                         int ssaa = Integer.parseInt(parts[1]);
                                                                         if (ssaa > 1) {
-                                                                            System.out.println(
+                                                                            AngelicaTweaker.LOGGER.debug(
                                                                                     "Super sampling level: " + ssaa
                                                                                             + "x");
                                                                             superSamplingLevel = ssaa;
@@ -1706,8 +1721,9 @@ public class Shaders {
                                                                 if (line.matches(
                                                                         "[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
                                                                             String[] parts = line.split("(=[ \t]*|;)");
-                                                                            System.out.println("Noise texture enabled");
-                                                                            System.out.println(
+                                                                            AngelicaTweaker.LOGGER
+                                                                                    .debug("Noise texture enabled");
+                                                                            AngelicaTweaker.LOGGER.debug(
                                                                                     "Noise texture resolution: "
                                                                                             + parts[1]);
                                                                             noiseTextureResolution = Integer
@@ -1728,8 +1744,8 @@ public class Shaders {
                                                                                         value);
                                                                                 if (bufferindex >= 0 && format != 0) {
                                                                                     gbuffersFormat[bufferindex] = format;
-                                                                                    System.out.format(
-                                                                                            "%s format: %s\n",
+                                                                                    AngelicaTweaker.LOGGER.debug(
+                                                                                            "{} format: {}",
                                                                                             name,
                                                                                             value);
                                                                                 }
@@ -1737,20 +1753,21 @@ public class Shaders {
                                                                             } else
                                                                         if (line.matches(
                                                                                 "/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
-                                                                                    System.out.println(
+                                                                                    AngelicaTweaker.LOGGER.debug(
                                                                                             "gaux4 format : RGB32AF");
                                                                                     gbuffersFormat[7] = GL_RGBA32F;
                                                                                 } else
                                                                             if (line.matches(
                                                                                     "/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
-                                                                                        System.out.println(
+                                                                                        AngelicaTweaker.LOGGER.debug(
                                                                                                 "gaux4 format : RGB32F");
                                                                                         gbuffersFormat[7] = GL_RGB32F;
                                                                                     } else
                                                                                 if (line.matches(
                                                                                         "/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
-                                                                                            System.out.println(
-                                                                                                    "gaux4 format : RGB16");
+                                                                                            AngelicaTweaker.LOGGER
+                                                                                                    .debug(
+                                                                                                            "gaux4 format : RGB16");
                                                                                             gbuffersFormat[7] = GL_RGB16;
 
                                                                                             // Mipmap stuff
@@ -1776,9 +1793,9 @@ public class Shaders {
                                                                                                             >= 0) {
                                                                                                         newCompositeMipmapSetting |= (1
                                                                                                                 << bufferindex);
-                                                                                                        System.out
-                                                                                                                .format(
-                                                                                                                        "%s mipmap enabled for %s\n",
+                                                                                                        AngelicaTweaker.LOGGER
+                                                                                                                .debug(
+                                                                                                                        "{} mipmap enabled for {}",
                                                                                                                         name,
                                                                                                                         filename);
                                                                                                     }
@@ -1807,7 +1824,7 @@ public class Shaders {
             infoLog.get(infoBytes);
             if (infoBytes[length - 1] == 0) infoBytes[length - 1] = 10;
             String out = new String(infoBytes);
-            System.out.println("Info log: " + name + "\n" + out);
+            AngelicaTweaker.LOGGER.info("Info log: " + name + "\n" + out);
             return false;
         }
         return true;
@@ -2146,7 +2163,7 @@ public class Shaders {
                 noiseTexture = null;
             }
 
-            System.out.println("UNINIT");
+            AngelicaTweaker.LOGGER.trace("UNINIT");
 
             shadowPassInterval = 0;
             shouldSkipDefaultShadow = false;
@@ -2287,7 +2304,7 @@ public class Shaders {
         if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
             printChatAndLogError("Failed creating framebuffer! (Status " + status + ")");
         } else {
-            System.out.println("Framebuffer created.");
+            AngelicaTweaker.LOGGER.debug("Framebuffer created.");
         }
     }
 
@@ -2376,7 +2393,7 @@ public class Shaders {
         if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
             printChatAndLogError("Failed creating shadow framebuffer! (Status " + status + ")");
         } else {
-            System.out.println("Shadow framebuffer created.");
+            AngelicaTweaker.LOGGER.debug("Shadow framebuffer created.");
         }
     }
 
@@ -2625,7 +2642,7 @@ public class Shaders {
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, dfb);
         GL11.glViewport(0, 0, Shaders.renderWidth, Shaders.renderHeight);
         activeDrawBuffers = null;
-        ShadersTex.bindNSTextures(defaultTexture.getMultiTexID());
+        ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         useProgram(ProgramTextured);
 
         checkGLError("end beginRender");
@@ -3354,7 +3371,7 @@ public class Shaders {
         if (isRenderingWorld) {
             checkGLError("endBlockEntities");
             useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
-            ShadersTex.bindNSTextures(defaultTexture.getMultiTexID());
+            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         }
     }
 
@@ -3478,7 +3495,7 @@ public class Shaders {
                 checkGLError("copy depth");
                 glActiveTexture(GL_TEXTURE0);
             }
-            ShadersTex.bindNSTextures(defaultTexture.getMultiTexID()); // flat
+            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID()); // flat
         }
     }
 
@@ -3753,14 +3770,14 @@ public class Shaders {
 
     public static void pushEntity(Block block) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = 0;
     }
 
     public static void pushEntity(RenderBlocks rb, Block block, int x, int y, int z) {
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (block.blockRegistry.getIDForObject(block) & 0xFFFF)
+        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);
         entityData[entityDataIndex * 2 + 1] = rb.blockAccess.getBlockMetadata(x, y, z);
     }

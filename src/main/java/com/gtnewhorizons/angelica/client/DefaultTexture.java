@@ -11,6 +11,6 @@ public class DefaultTexture extends AbstractTexture {
 
     public void loadTexture(IResourceManager resourcemanager) {
         int[] aint = ShadersTex.createAIntImage(1, 0xFFFFFFFF);
-        ShadersTex.setupTexture(this.getMultiTexID(), aint, 1, 1, false, false);
+        ShadersTex.setupTexture(this.angelica$getMultiTexID(), aint, 1, 1, false, false);
     }
 }

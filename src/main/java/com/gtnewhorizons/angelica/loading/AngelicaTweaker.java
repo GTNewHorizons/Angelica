@@ -20,7 +20,7 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 @IFMLLoadingPlugin.SortingIndex(1100)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
-    public static final Logger log = LogManager.getLogger("AngelicaTweaker");
+    public static final Logger LOGGER = LogManager.getLogger("angelica");
 
     @Override
     public String[] getASMTransformerClass() {
@@ -69,7 +69,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 }
             }
         }
-        log.info("Not loading the following EARLY mixins: {}", notLoading.toString());
+        LOGGER.info("Not loading the following EARLY mixins: {}", notLoading.toString());
         return mixins;
     }
 }

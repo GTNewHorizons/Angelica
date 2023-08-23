@@ -6,7 +6,9 @@ public enum TargetedMod {
     FASTCRAFT("FastCraft", "fastcraft.Tweaker"),
     OPTIFINE("Optifine", "optifine.OptiFineForgeTweaker", "Optifine"),
     GTNHLIB("GTNHLib", "com.gtnewhorizon.gtnhlib.core.GTNHLibCore", "gtnhlib"),
-    LWJGL3IFY("lwjgl3ify", "me.eigenraven.lwjgl3ify.core.Lwjgl3ifyCoremod", "lwjgl3ify");
+    LWJGL3IFY("lwjgl3ify", "me.eigenraven.lwjgl3ify.core.Lwjgl3ifyCoremod", "lwjgl3ify"),
+    PROJECTRED_ILLUMINATION("ProjectRed Illumination", null, "ProjRed|Illumination"),
+    SMART_RENDER("Smart Render", null, "SmartRender");
 
     /** The "name" in the @Mod annotation */
     public final String modName;

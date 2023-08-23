@@ -11,37 +11,46 @@ import cpw.mods.fml.relauncher.FMLLaunchHandler;
 public enum Mixins {
 
     ANGELICA_STARTUP(new Builder("Start Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("shaders.MixinMinecraft").setApplyIf(() -> true)),
-
-    ANGELICA_ACCESSORS(new Builder("Angelica Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY)
-            .addMixinClasses(
-                    "accessors.ModelRendererAccessor",
-                    "accessors.RendererEntityLivingAccessor",
-                    "accessors.WorldRenderersAccessor")
-            .setApplyIf(() -> true)),
+            .setPhase(Phase.EARLY).addMixinClasses("shaders.MixinMinecraft")),
 
     ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("settings.MixinGuiVideoSettings").setApplyIf(() -> true)),
+            .setPhase(Phase.EARLY).addMixinClasses("settings.MixinGuiVideoSettings")),
 
-    ANGELICA_LIGHTING(
-            new Builder("Lighting").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
-                    .addMixinClasses("lighting.MixinBlock", "lighting.MixinRenderBlocks").setApplyIf(() -> true)),
+    ANGELICA_LIGHTING(new Builder("Lighting").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses("lighting.MixinBlock", "lighting.MixinRenderBlocks")),
 
-    ANGELICA_RENDERER(
-            new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
-                    .addMixinClasses(
-                            "renderer.MixinOpenGlHelper",
-                            "renderer.MixinEntityRender",
-                            "renderer.MixinEntityRenderer",
-                            "renderer.MixinRenderBlocks",
-                            "renderer.MixinRenderGlobal",
-                            "renderer.MixinModelRenderer",
-                            "renderer.MixinTextureClock",
-                            "renderer.MixinTextureCompass",
-                            "renderer.MixinSimpleTexture",
-                            "renderer.MixinTessellator")
-                    .setApplyIf(() -> true))
+    ANGELICA_RENDERER(new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses(
+                    "renderer.MixinAbstractTexture",
+                    "renderer.MixinDynamicTexture",
+                    "renderer.MixinEntityRenderer",
+                    "renderer.MixinItemRenderer",
+                    "renderer.MixinITextureObject",
+                    "renderer.MixinLayeredTexture",
+                    "renderer.MixinModelRenderer",
+                    "renderer.MixinOpenGlHelper",
+                    "renderer.MixinRender",
+                    "renderer.MixinRenderBlocks",
+                    "renderer.MixinRenderDragon",
+                    "renderer.MixinRenderEnderman",
+                    "renderer.MixinRendererLivingEntity",
+                    "renderer.MixinRenderGlobal",
+                    "renderer.MixinRenderSpider",
+                    "renderer.MixinSimpleTexture",
+                    "renderer.MixinTessellator",
+                    "renderer.MixinTextureAtlasSprite",
+                    "renderer.MixinTextureClock",
+                    "renderer.MixinTextureCompass",
+                    "renderer.MixinTextureManager",
+                    "renderer.MixinTextureMap",
+                    "renderer.MixinThreadDownloadImageData")),
+
+    COMPAT_PR_ILLUMINATION(
+            new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
+                    .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),
+
+    COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
+            .addMixinClasses("compat.MixinModelRotationRenderer"))
 
     ;
 
@@ -57,7 +66,7 @@ public enum Mixins {
 
         private final String name;
         private final List<String> mixinClasses = new ArrayList<>();
-        private Supplier<Boolean> applyIf;
+        private Supplier<Boolean> applyIf = () -> true;
         private Side side = Side.BOTH;
         private Phase phase = Phase.LATE;
         private final List<TargetedMod> targetedMods = new ArrayList<>();
