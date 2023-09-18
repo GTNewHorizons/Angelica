@@ -6,6 +6,7 @@ import net.minecraft.util.ResourceLocation;
 public class TextureMap extends AbstractTexture {
 
     public static ResourceLocation locationBlocksTexture;
+    public static ResourceLocation locationItemsTexture;
 
     public int angelica$atlasWidth;
     public int angelica$atlasHeight;
@@ -17,6 +18,8 @@ public class TextureMap extends AbstractTexture {
     }
 
     public void updateAnimations() {}
+    public void setAnisotropicFiltering(int p_147632_1_) {}
+    public void setMipmapLevels(int p_147633_1_) {}
 
     public int getTextureType() {
         return 0;
