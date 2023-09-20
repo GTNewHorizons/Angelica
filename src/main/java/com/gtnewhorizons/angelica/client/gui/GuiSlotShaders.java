@@ -1,11 +1,12 @@
-package com.gtnewhorizons.angelica.client;
+package com.gtnewhorizons.angelica.client.gui;
 
 import java.util.List;
 
+import com.gtnewhorizons.angelica.client.Shaders;
 import net.minecraft.client.gui.GuiSlot;
 import net.minecraft.client.renderer.Tessellator;
 
-class GuiSlotShaders extends GuiSlot {
+public class GuiSlotShaders extends GuiSlot {
 
     private List<String> shaderslist;
 

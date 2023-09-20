@@ -1,26 +1,66 @@
 package jss.notfine.gui;
 
+import jss.notfine.NotFine;
+import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiListExtended;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.client.settings.GameSettings;
 import org.lwjgl.input.Keyboard;
 
-import java.awt.event.KeyListener;
+import java.util.HashMap;
 
 public class GuiCustomMenu extends GuiScreen {
+    private static final HashMap<Class<?>, ISettingHandler> buttonHandlers = new HashMap<>();
     private final GuiScreen parentGuiScreen;
     private final MenuButtonLists buttonEnum;
     protected String screenTitle;
 
     private GuiListExtended optionsRowList;
 
+    static {
+        addButtonHandler(Settings.class, (xPosition, yPosition, setting) -> {
+            Settings customSetting = (Settings)setting;
+            if(customSetting.slider)
+                return (new GuiCustomSettingSlider(xPosition, yPosition, customSetting));
+            else
+                return (new GuiCustomSettingButton(xPosition, yPosition, customSetting));
+        });
+        addButtonHandler(GameSettings.Options.class, (xPosition, yPosition, setting) -> {
+            GameSettings.Options vanillaSetting = (GameSettings.Options)setting;
+            if (vanillaSetting.getEnumFloat())
+                return (new GuiVanillaSettingSlider(xPosition, yPosition, vanillaSetting));
+            else
+                return (new GuiVanillaSettingButton(xPosition, yPosition, vanillaSetting));
+        });
+        addButtonHandler(MenuButtonLists.class, (xPosition, yPosition, setting) -> {
+            MenuButtonLists menuType = (MenuButtonLists)setting;
+            return new GuiCustomMenuButton(xPosition, yPosition, menuType);
+        });
+    }
+
     public GuiCustomMenu(GuiScreen parentGuiScreen, MenuButtonLists buttonEnum) {
         this.parentGuiScreen = parentGuiScreen;
         this.screenTitle = buttonEnum.getTitleLabel();
         this.buttonEnum = buttonEnum;
+    }
+
+    public static void addButtonHandler(Class<?> cls, ISettingHandler handler) {
+        buttonHandlers.put(cls, handler);
+    }
+
+    public static GuiButton createButton(int xPosition, int yPosition, Enum<?> setting) {
+        if(setting == null) return null;
+
+        final ISettingHandler buttonHandler = buttonHandlers.get((setting).getDeclaringClass());
+        if (buttonHandler == null) {
+            NotFine.logger.debug("No handler for setting: " + setting.getClass().getName());
+            return null;
+        }
+        return buttonHandler.createButton(xPosition, yPosition, setting);
     }
 
     @Override
