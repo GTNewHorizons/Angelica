@@ -1,5 +1,6 @@
 package jss.notfine;
 
+import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -23,7 +24,7 @@ import org.apache.logging.log4j.Logger;
 public class NotFine {
     public static final String MODID = "notfine";
     public static final String NAME = "NotFine";
-    public static final String VERSION = "GRADLETOKEN_VERSION";
+    public static final String VERSION = Tags.VERSION;
     public static final Logger logger = LogManager.getLogger(NAME);
 
     @Mod.EventHandler

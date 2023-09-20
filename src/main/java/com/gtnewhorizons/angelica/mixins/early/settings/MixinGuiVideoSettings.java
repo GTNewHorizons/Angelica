@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.gtnewhorizons.angelica.client.GuiShaders;
+import com.gtnewhorizons.angelica.client.gui.GuiShaders;
 
 @Mixin(GuiVideoSettings.class)
 public abstract class MixinGuiVideoSettings extends GuiScreen {

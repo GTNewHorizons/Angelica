@@ -926,7 +926,7 @@ public class ShadersTex {
     }
 
     /* update block texture filter +/- items texture */
-    static void updateTextureMinMagFilter() {
+    public static void updateTextureMinMagFilter() {
         TextureManager texman = Minecraft.getMinecraft().getTextureManager();
         ITextureObject texObj = texman.getTexture(TextureMap.locationBlocksTexture);
         if (texObj != null) {

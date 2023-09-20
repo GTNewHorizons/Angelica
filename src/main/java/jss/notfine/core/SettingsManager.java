@@ -37,7 +37,7 @@ public class SettingsManager {
 
     public static void backgroundUpdated() {
         int value = (int)Settings.GUI_BACKGROUND.getValue();
-        if(value < 0 | value >= extraBackgrounds.length) {
+        if(value < 0 || value >= extraBackgrounds.length) {
             Gui.optionsBackground = defaultBackground;
         } else {
             Gui.optionsBackground = extraBackgrounds[(int)Settings.GUI_BACKGROUND.getValue()];

@@ -17,9 +17,11 @@ public class LoadMenuButtons {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGui(InitGuiEvent.Post event) {
         if(event.gui instanceof GuiOptions) {
+            // Hide the vanilla video settings button
             GuiButton videoSettings = ((List<GuiButton>)event.buttonList).stream().filter(button -> button.id == 101).findFirst().get();
             videoSettings.visible = false;
 
+            // and add the custom one
             event.buttonList.add(
                 new GuiCustomMenuButton(
                     videoSettings.xPosition, videoSettings.yPosition,

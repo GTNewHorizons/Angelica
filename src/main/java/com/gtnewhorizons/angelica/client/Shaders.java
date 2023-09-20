@@ -445,16 +445,16 @@ public class Shaders {
     public static final int[] texMagFilValue = { GL11.GL_NEAREST, GL11.GL_LINEAR };
 
     // shaderpack
-    static IShaderPack shaderPack = null;
-    static File currentshader;
-    static String currentshadername;
-    static String packNameNone = "(none)";
-    static String packNameDefault = "(internal)";
-    static String shaderpacksdirname = "shaderpacks";
-    static String optionsfilename = "optionsshaders.txt";
-    static File shadersdir = new File(Minecraft.getMinecraft().mcDataDir, "shaders");
-    static File shaderpacksdir = new File(Minecraft.getMinecraft().mcDataDir, shaderpacksdirname);
-    static File configFile = new File(Minecraft.getMinecraft().mcDataDir, optionsfilename);
+    public static IShaderPack shaderPack = null;
+    public static File currentshader;
+    public static String currentshadername;
+    public static String packNameNone = "(none)";
+    public static String packNameDefault = "(internal)";
+    public static String shaderpacksdirname = "shaderpacks";
+    public static String optionsfilename = "optionsshaders.txt";
+    public static File shadersdir = new File(Minecraft.getMinecraft().mcDataDir, "shaders");
+    public static File shaderpacksdir = new File(Minecraft.getMinecraft().mcDataDir, shaderpacksdirname);
+    public static File configFile = new File(Minecraft.getMinecraft().mcDataDir, optionsfilename);
 
     public static final boolean enableShadersOption = true;
     private static final boolean enableShadersDebug = true;
@@ -515,15 +515,6 @@ public class Shaders {
     static final IntBuffer drawBuffersColorAtt0 = nextIntBuffer(MaxDrawBuffers);
 
     static final IntBuffer[] drawBuffersBuffer = nextIntBufferArray(ProgramCount, MaxDrawBuffers);
-
-    // static final String ofVersion = "OptiFine_x.x.x_HD_U_xx";
-    // static final String ofVersion = Config.VERSION;
-
-    // static int lastversion = version;
-    // static int updateinterval = 48;
-    // public static final String siteurl = "http://glslshadersof.no-ip.org";
-    // public static final String updatecheckurl = "http:....../lastversion145.html";
-    // static JFrame frame;
 
     static {
         drawBuffersNone.limit(0);
@@ -832,7 +823,7 @@ public class Shaders {
     // else System.out.println("[Shaders] Shader loaded: " + currentshadername);
     // }
 
-    static List<String> listofShaders() {
+    public static List<String> listofShaders() {
         List<String> list = new ArrayList<>();
         list.add(packNameNone);
         list.add(packNameDefault);
@@ -858,17 +849,6 @@ public class Shaders {
                 + Integer.toString(Integer.parseInt(vs.substring(5)));
     }
 
-    static void checkOptifine() {
-        /*
-         * try { System.out.println("[Shaders] Required OptiFine version : " + ofVersion); String configVersion =
-         * (String)(Config.class.getDeclaredField("VERSION").get(null));
-         * System.out.println("[Shaders] Detected OptiFine version : "+ configVersion); if
-         * (configVersion.equals(ofVersion) ) { System.out.println("[Shaders] ShadersMod loaded. version: " +
-         * versiontostring(version)); } else { System.err.println("[Shaders] Wrong OptiFine version!"); System.exit(-1);
-         * } } catch(Exception e) { System.err.println("[Shaders] OptiFine missing or wrong version! Install OptiFine "
-         * +ofVersion+" first and then the ShadersMod!"); System.exit(-1); } //Tessellator.shaders = true;
-         */
-    }
 
     public static int checkFramebufferStatus(String location) {
         int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -1492,7 +1472,7 @@ public class Shaders {
     // TODO: refactor this mess
     private static void processFragShaderLine(String line, String filename) {
         if (line.matches("#version .*")) {
-
+            // Do nothing
         } else if (line.matches("uniform [ _a-zA-Z0-9]+ shadow;.*")) {
             if (usedShadowDepthBuffers < 1) usedShadowDepthBuffers = 1;
         } else if (line.matches("uniform [ _a-zA-Z0-9]+ watershadow;.*")) {
@@ -1593,222 +1573,156 @@ public class Shaders {
             AngelicaTweaker.LOGGER.debug("shadowHardwareFiltering1");
             shadowHardwareFilteringEnabled[1] = true;
 
-        } else if (line
-                .matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                    AngelicaTweaker.LOGGER.debug("shadowtex0Mipmap");
-                    shadowMipmapEnabled[0] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Mipmap|shadowtexMipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowtex0Mipmap");
+            shadowMipmapEnabled[0] = true;
 
-                } else
-            if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                AngelicaTweaker.LOGGER.debug("shadowtex1Mipmap");
-                shadowMipmapEnabled[1] = true;
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*(shadowtex1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowtex1Mipmap");
+            shadowMipmapEnabled[1] = true;
 
-            } else if (line.matches(
-                    "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                        AngelicaTweaker.LOGGER.debug("shadowcolor0Mipmap");
-                        shadowColorMipmapEnabled[0] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Mipmap|shadowColor0Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowcolor0Mipmap");
+            shadowColorMipmapEnabled[0] = true;
 
-                    } else
-                if (line.matches(
-                        "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                            AngelicaTweaker.LOGGER.debug("shadowcolor1Mipmap");
-                            shadowColorMipmapEnabled[1] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Mipmap|shadowColor1Mipmap)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowcolor1Mipmap");
+            shadowColorMipmapEnabled[1] = true;
 
-                        } else
-                    if (line.matches(
-                            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                AngelicaTweaker.LOGGER.debug("shadowtex0Nearest");
-                                shadowFilterNearest[0] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowtex0Nearest|shadowtexNearest|shadow0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowtex0Nearest");
+            shadowFilterNearest[0] = true;
 
-                            } else
-                        if (line.matches(
-                                "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                    AngelicaTweaker.LOGGER.debug("shadowtex1Nearest");
-                                    shadowFilterNearest[1] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowtex1Nearest|shadow1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowtex1Nearest");
+            shadowFilterNearest[1] = true;
 
-                                } else
-                            if (line.matches(
-                                    "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                        AngelicaTweaker.LOGGER.debug("shadowcolor0Nearest");
-                                        shadowColorFilterNearest[0] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor0Nearest|shadowColor0Nearest|shadowColor0MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowcolor0Nearest");
+            shadowColorFilterNearest[0] = true;
 
-                                    } else
-                                if (line.matches(
-                                        "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                            AngelicaTweaker.LOGGER.debug("shadowcolor1Nearest");
-                                            shadowColorFilterNearest[1] = true;
+        } else if (line.matches(
+            "[ \t]*const[ \t]*bool[ \t]*(shadowcolor1Nearest|shadowColor1Nearest|shadowColor1MinMagNearest)[ \t]*=[ \t]*true[ \t]*;.*")) {
+            AngelicaTweaker.LOGGER.debug("shadowcolor1Nearest");
+            shadowColorFilterNearest[1] = true;
 
-                                            // Wetness half life
-                                        } else
-                                    if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
-                                        String[] parts = line.split("(:| )", 4);
-                                        AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[2]);
-                                        wetnessHalfLife = Float.parseFloat(parts[2]);
+            // Wetness half life
+        } else if (line.matches("/\\* WETNESSHL:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[2]);
+            wetnessHalfLife = Float.parseFloat(parts[2]);
 
-                                    } else if (line.matches(
-                                            "[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                String[] parts = line.split("(=[ \t]*|;)");
-                                                AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[1]);
-                                                wetnessHalfLife = Float.parseFloat(parts[1]);
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*wetnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Wetness halflife: " + parts[1]);
+            wetnessHalfLife = Float.parseFloat(parts[1]);
 
-                                                // Dryness halflife
-                                            } else
-                                        if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
-                                            String[] parts = line.split("(:| )", 4);
-                                            AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[2]);
-                                            drynessHalfLife = Float.parseFloat(parts[2]);
+            // Dryness halflife
+        } else if (line.matches("/\\* DRYNESSHL:[0-9\\.]+ \\*/.*")) {
+            String[] parts = line.split("(:| )", 4);
+            AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[2]);
+            drynessHalfLife = Float.parseFloat(parts[2]);
 
-                                        } else if (line.matches(
-                                                "[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                    String[] parts = line.split("(=[ \t]*|;)");
-                                                    AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[1]);
-                                                    drynessHalfLife = Float.parseFloat(parts[1]);
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*drynessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Dryness halflife: " + parts[1]);
+            drynessHalfLife = Float.parseFloat(parts[1]);
 
-                                                    // Eye brightness halflife
-                                                } else
-                                            if (line.matches(
-                                                    "[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                        String[] parts = line.split("(=[ \t]*|;)");
-                                                        AngelicaTweaker.LOGGER
-                                                                .debug("Eye brightness halflife: " + parts[1]);
-                                                        eyeBrightnessHalflife = Float.parseFloat(parts[1]);
+            // Eye brightness halflife
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*eyeBrightnessHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Eye brightness halflife: " + parts[1]);
+            eyeBrightnessHalflife = Float.parseFloat(parts[1]);
 
-                                                        // Center depth halflife
-                                                    } else
-                                                if (line.matches(
-                                                        "[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                            String[] parts = line.split("(=[ \t]*|;)");
-                                                            AngelicaTweaker.LOGGER
-                                                                    .debug("Center depth halflife: " + parts[1]);
-                                                            centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
+            // Center depth halflife
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*centerDepthHalflife[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Center depth halflife: " + parts[1]);
+            centerDepthSmoothHalflife = Float.parseFloat(parts[1]);
 
-                                                            // Sun path rotation
-                                                        } else
-                                                    if (line.matches(
-                                                            "[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                                String[] parts = line.split("(=[ \t]*|;)");
-                                                                AngelicaTweaker.LOGGER
-                                                                        .debug("Sun path rotation: " + parts[1]);
-                                                                sunPathRotation = Float.parseFloat(parts[1]);
+            // Sun path rotation
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*sunPathRotation[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Sun path rotation: " + parts[1]);
+            sunPathRotation = Float.parseFloat(parts[1]);
 
-                                                                // Ambient occlusion level
-                                                            } else
-                                                        if (line.matches(
-                                                                "[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                                    String[] parts = line.split("(=[ \t]*|;)");
-                                                                    AngelicaTweaker.LOGGER
-                                                                            .debug("AO Level: " + parts[1]);
-                                                                    aoLevel = Float.parseFloat(parts[1]);
-                                                                    blockAoLight = 1.0f - aoLevel;
+            // Ambient occlusion level
+        } else if (line.matches("[ \t]*const[ \t]*float[ \t]*ambientOcclusionLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("AO Level: " + parts[1]);
+            aoLevel = Float.parseFloat(parts[1]);
+            blockAoLight = 1.0f - aoLevel;
 
-                                                                    // super sampling
-                                                                } else
-                                                            if (line.matches(
-                                                                    "[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                                        String[] parts = line.split("(=[ \t]*|;)");
-                                                                        int ssaa = Integer.parseInt(parts[1]);
-                                                                        if (ssaa > 1) {
-                                                                            AngelicaTweaker.LOGGER.debug(
-                                                                                    "Super sampling level: " + ssaa
-                                                                                            + "x");
-                                                                            superSamplingLevel = ssaa;
-                                                                        } else {
-                                                                            superSamplingLevel = 1;
-                                                                        }
+            // super sampling
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*superSamplingLevel[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            int ssaa = Integer.parseInt(parts[1]);
+            if (ssaa > 1) {
+                AngelicaTweaker.LOGGER.debug("Super sampling level: " + ssaa + "x");
+                superSamplingLevel = ssaa;
+            } else {
+                superSamplingLevel = 1;
+            }
 
-                                                                        // noise texture
-                                                                    } else
-                                                                if (line.matches(
-                                                                        "[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
-                                                                            String[] parts = line.split("(=[ \t]*|;)");
-                                                                            AngelicaTweaker.LOGGER
-                                                                                    .debug("Noise texture enabled");
-                                                                            AngelicaTweaker.LOGGER.debug(
-                                                                                    "Noise texture resolution: "
-                                                                                            + parts[1]);
-                                                                            noiseTextureResolution = Integer
-                                                                                    .parseInt(parts[1]);
-                                                                            noiseTextureEnabled = true;
+            // noise texture
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*noiseTextureResolution[ \t]*=[ \t]*-?[0-9.]+f?;.*")) {
+            String[] parts = line.split("(=[ \t]*|;)");
+            AngelicaTweaker.LOGGER.debug("Noise texture enabled");
+            AngelicaTweaker.LOGGER.debug("Noise texture resolution: " + parts[1]);
+            noiseTextureResolution = Integer.parseInt(parts[1]);
+            noiseTextureEnabled = true;
 
-                                                                        } else
-                                                                    if (line.matches(
-                                                                            "[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
-                                                                                Matcher m = gbufferFormatPattern
-                                                                                        .matcher(line);
-                                                                                m.matches();
-                                                                                String name = m.group(1);
-                                                                                String value = m.group(2);
-                                                                                int bufferindex = getBufferIndexFromString(
-                                                                                        name);
-                                                                                int format = getTextureFormatFromString(
-                                                                                        value);
-                                                                                if (bufferindex >= 0 && format != 0) {
-                                                                                    gbuffersFormat[bufferindex] = format;
-                                                                                    AngelicaTweaker.LOGGER.debug(
-                                                                                            "{} format: {}",
-                                                                                            name,
-                                                                                            value);
-                                                                                }
-                                                                                // gaux4
-                                                                            } else
-                                                                        if (line.matches(
-                                                                                "/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
-                                                                                    AngelicaTweaker.LOGGER.debug(
-                                                                                            "gaux4 format : RGB32AF");
-                                                                                    gbuffersFormat[7] = GL_RGBA32F;
-                                                                                } else
-                                                                            if (line.matches(
-                                                                                    "/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
-                                                                                        AngelicaTweaker.LOGGER.debug(
-                                                                                                "gaux4 format : RGB32F");
-                                                                                        gbuffersFormat[7] = GL_RGB32F;
-                                                                                    } else
-                                                                                if (line.matches(
-                                                                                        "/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
-                                                                                            AngelicaTweaker.LOGGER
-                                                                                                    .debug(
-                                                                                                            "gaux4 format : RGB16");
-                                                                                            gbuffersFormat[7] = GL_RGB16;
+        } else if (line.matches("[ \t]*const[ \t]*int[ \t]*\\w+Format[ \t]*=[ \t]*[RGBA81632F]*[ \t]*;.*")) {
+            Matcher m = gbufferFormatPattern.matcher(line);
+            m.matches();
+            String name = m.group(1);
+            String value = m.group(2);
+            int bufferindex = getBufferIndexFromString(name);
+            int format = getTextureFormatFromString(value);
+            if (bufferindex >= 0 && format != 0) {
+                gbuffersFormat[bufferindex] = format;
+                AngelicaTweaker.LOGGER.debug("{} format: {}", name, value);
+            }
+            // gaux4
+        } else if (line.matches("/\\* GAUX4FORMAT:RGBA32F \\*/.*")) {
+            AngelicaTweaker.LOGGER.debug("gaux4 format : RGB32AF");
+            gbuffersFormat[7] = GL_RGBA32F;
+        } else if (line.matches("/\\* GAUX4FORMAT:RGB32F \\*/.*")) {
+            AngelicaTweaker.LOGGER.debug("gaux4 format : RGB32F");
+            gbuffersFormat[7] = GL_RGB32F;
+        } else if (line.matches("/\\* GAUX4FORMAT:RGB16 \\*/.*")) {
+            AngelicaTweaker.LOGGER.debug("gaux4 format : RGB16");
+            gbuffersFormat[7] = GL_RGB16;
 
-                                                                                            // Mipmap stuff
-                                                                                        } else
-                                                                                    if (line.matches(
-                                                                                            "[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
-                                                                                                if (filename.matches(
-                                                                                                        ".*composite[0-9]?.fsh")
-                                                                                                        || filename
-                                                                                                                .matches(
-                                                                                                                        ".*final.fsh")) {
-                                                                                                    Matcher m = gbufferMipmapEnabledPattern
-                                                                                                            .matcher(
-                                                                                                                    line);
-                                                                                                    m.matches();
-                                                                                                    String name = m
-                                                                                                            .group(1);
-                                                                                                    // String value
-                                                                                                    // =m.group(2);
-                                                                                                    int bufferindex = getBufferIndexFromString(
-                                                                                                            name);
-                                                                                                    if (bufferindex
-                                                                                                            >= 0) {
-                                                                                                        newCompositeMipmapSetting |= (1
-                                                                                                                << bufferindex);
-                                                                                                        AngelicaTweaker.LOGGER
-                                                                                                                .debug(
-                                                                                                                        "{} mipmap enabled for {}",
-                                                                                                                        name,
-                                                                                                                        filename);
-                                                                                                    }
-                                                                                                }
-                                                                                            } else
-                                                                                        if (line.matches(
-                                                                                                "/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
-                                                                                                    String[] parts = line
-                                                                                                            .split(
-                                                                                                                    "(:| )",
-                                                                                                                    4);
-                                                                                                    newDrawBufSetting = parts[2];
-                                                                                                }
+            // Mipmap stuff
+        } else if (line.matches("[ \t]*const[ \t]*bool[ \t]*\\w+MipmapEnabled[ \t]*=[ \t]*true[ \t]*;.*")) {
+            if (filename.matches(".*composite[0-9]?.fsh") || filename.matches(".*final.fsh")) {
+                Matcher m = gbufferMipmapEnabledPattern.matcher(line);
+                m.matches();
+                String name = m.group(1);
+                // String value
+                // =m.group(2);
+                int bufferindex = getBufferIndexFromString(name);
+                if (bufferindex >= 0) {
+                    newCompositeMipmapSetting |= (1 << bufferindex);
+                    AngelicaTweaker.LOGGER.debug(
+                        "{} mipmap enabled for {}",
+                        name,
+                        filename);
+                }
+            }
+        } else if (line.matches("/\\* DRAWBUFFERS:[0-7N]* \\*/.*")) {
+            String[] parts = line.split(
+                "(:| )",
+                4);
+            newDrawBufSetting = parts[2];
+        }
     }
 
     private static boolean printLogInfo(int obj, String name) {

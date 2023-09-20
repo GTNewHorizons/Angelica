@@ -199,8 +199,7 @@ public abstract class MixinGameSettings {
     }
 
     @Shadow
-    public void saveOptions() {
-    }
+    public void saveOptions() {}
 
     @Shadow protected Minecraft mc;
 
