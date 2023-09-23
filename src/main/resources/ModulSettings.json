@@ -1,0 +1,2624 @@
+{
+	"Async": false,
+	"Base": true,
+	"Collection": true,
+	"Function": true,
+	"List": true,
+	"Map": true,
+	"Pair": true,
+	"PriorityQueue": true,
+	"Set": true,
+	"Boolean": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Byte": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": false,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Short": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": false,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Character": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": false,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Integer": {
+		"Enabled": true,
+		"Base": {
+			"Enabled": true
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": true,
+			"Function": {
+				"Enabled": true
+			},
+			"Map": {
+				"Enabled": true,
+				"AVLTreeMap": false,
+				"ArrayMap": true,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": true,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": true,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": true,
+			"IArray": true,
+			"Splititerators": true,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": true,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": true,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Long": {
+		"Enabled": true,
+		"Base": {
+			"Enabled": true
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": true,
+			"IArray": false,
+			"Splititerators": true,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": true,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": true,
+			"ImmutableSet": false,
+			"Implementations": true,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Float": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": false,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Double": {
+		"Enabled": false,
+		"Base": {
+			"Enabled": false
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": false,
+			"IArray": false,
+			"Splititerators": false,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": false,
+			"ArrayList": false,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": false,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": false,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": false,
+			"ImmutableSet": false,
+			"Implementations": false,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": false,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	},
+	"Object": {
+		"Enabled": true,
+		"Base": {
+			"Enabled": true
+		},
+		"Boolean": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Byte": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Short": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Character": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Integer": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Long": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Float": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Double": {
+			"Enabled": false,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": false,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": false,
+				"ImmutableMap": false,
+				"Implementations": false,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Object": {
+			"Enabled": true,
+			"Function": {
+				"Enabled": false
+			},
+			"Map": {
+				"Enabled": true,
+				"AVLTreeMap": false,
+				"ArrayMap": false,
+				"ConcurrentMap": false,
+				"CustomHashMap": false,
+				"EnumMap": false,
+				"HashMap": true,
+				"ImmutableMap": false,
+				"Implementations": true,
+				"LinkedCustomHashMap": false,
+				"LinkedEnumMap": false,
+				"LinkedHashMap": false,
+				"OrderedMap": false,
+				"RBTreeMap": false,
+				"SortedMap": false,
+				"Wrappers": false
+			},
+			"Pair": {
+				"Enabled": false,
+				"Immutable": false,
+				"Mutable": false
+			}
+		},
+		"Collection": {
+			"Enabled": true,
+			"IArray": false,
+			"Splititerators": true,
+			"Strategy": false,
+			"Streams": true
+		},
+		"PriorityQueue": {
+			"Enabled": false,
+			"ArrayPrioQueue": false,
+			"Dequeue": false,
+			"FiFoQueue": false,
+			"HeapQueue": false,
+			"Implementations": false,
+			"Wrappers": false
+		},
+		"List": {
+			"Enabled": true,
+			"ArrayList": true,
+			"CopyOnWriteList": false,
+			"ImmutableList": false,
+			"Implementations": true,
+			"LinkedList": false,
+			"Wrappers": false
+		},
+		"Set": {
+			"Enabled": true,
+			"AVLTreeSet": false,
+			"ArraySet": false,
+			"CustomHashSet": false,
+			"HashSet": true,
+			"ImmutableSet": false,
+			"Implementations": true,
+			"LinkedCustomHashSet": false,
+			"LinkedHashSet": false,
+			"OrderedSet": true,
+			"RBTreeSet": false,
+			"SortedSet": false,
+			"Wrappers": false
+		},
+		"Async": {
+			"Enabled": false
+		}
+	}
+}
