@@ -1,26 +1,21 @@
 package org.embeddedt.archaicfix.occlusion;
 
-import java.util.Iterator;
-import java.util.Set;
-
 import net.minecraft.util.EnumFacing;
+
+import java.util.Set;
 
 public class SetVisibility {
 
 	private static final int COUNT_FACES = EnumFacing.values().length;
 
 	public static long setManyVisible(long bitSet, Set<EnumFacing> faces) {
-		Iterator<EnumFacing> iterator = faces.iterator();
 
-		while (iterator.hasNext()) {
-			EnumFacing enumfacing = iterator.next();
-			Iterator<EnumFacing> iterator1 = faces.iterator();
+        for (EnumFacing enumfacing : faces) {
 
-			while (iterator1.hasNext()) {
-				EnumFacing enumfacing1 = iterator1.next();
-				bitSet = setVisible(bitSet, enumfacing, enumfacing1, true);
-			}
-		}
+            for (EnumFacing enumfacing1 : faces) {
+                bitSet = setVisible(bitSet, enumfacing, enumfacing1, true);
+            }
+        }
 		return bitSet;
 	}
 
@@ -41,7 +36,7 @@ public class SetVisibility {
 	}
 
 	public static boolean isVisible(long bitSet, EnumFacing from, EnumFacing to) {
-		return from == null || to == null ? true : (bitSet & (1L << (from.ordinal() + to.ordinal() * COUNT_FACES))) != 0;
+		return from == null || to == null || (bitSet & (1L << (from.ordinal() + to.ordinal() * COUNT_FACES))) != 0;
 	}
 
 	public static String toString(long bitSet) {
@@ -68,16 +63,14 @@ public class SetVisibility {
 			EnumFacing[] aenumfacing1 = EnumFacing.values();
 			int k = aenumfacing1.length;
 
-			for (int l = 0; l < k; ++l) {
-				EnumFacing enumfacing1 = aenumfacing1[l];
-
-				if (enumfacing == enumfacing1) {
-					stringbuilder.append("  ");
-				} else {
-					boolean flag = isVisible(bitSet, enumfacing, enumfacing1);
-					stringbuilder.append(' ').append(flag ? 'Y' : 'n');
-				}
-			}
+            for (EnumFacing enumfacing1 : aenumfacing1) {
+                if (enumfacing == enumfacing1) {
+                    stringbuilder.append("  ");
+                } else {
+                    boolean flag = isVisible(bitSet, enumfacing, enumfacing1);
+                    stringbuilder.append(' ').append(flag ? 'Y' : 'n');
+                }
+            }
 
 			stringbuilder.append('\n');
 		}

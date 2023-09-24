@@ -1,7 +1,5 @@
 package org.embeddedt.archaicfix.threadedupdates;
 
-import static org.embeddedt.archaicfix.ArchaicLogger.LOGGER;
-
 import com.google.common.base.Preconditions;
 import lombok.SneakyThrows;
 import net.minecraft.block.Block;
@@ -13,12 +11,20 @@ import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.shader.TesselatorVertexState;
 import net.minecraft.world.ChunkCache;
 import org.embeddedt.archaicfix.config.ArchaicConfig;
-import org.embeddedt.archaicfix.occlusion.IRenderGlobalListener;
-import org.embeddedt.archaicfix.occlusion.IRendererUpdateOrderProvider;
+import org.embeddedt.archaicfix.occlusion.interfaces.IRenderGlobalListener;
+import org.embeddedt.archaicfix.occlusion.interfaces.IRendererUpdateOrderProvider;
 import org.embeddedt.archaicfix.occlusion.OcclusionHelpers;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+
+import static org.embeddedt.archaicfix.ArchaicLogger.LOGGER;
 
 public class ThreadedChunkUpdateHelper implements IRenderGlobalListener {
 
@@ -287,7 +293,7 @@ public class ThreadedChunkUpdateHelper implements IRenderGlobalListener {
             LOGGER.trace(msg);
         }
     }
-    
+
     public static class UpdateTask {
         public boolean started;
         public boolean cancelled;

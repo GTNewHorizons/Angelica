@@ -1,5 +1,18 @@
 package org.embeddedt.archaicfix.helpers;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.relauncher.ReflectionHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.AbstractResourcePack;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.IResourcePack;
+import net.minecraft.client.resources.SimpleReloadableResourceManager;
+import net.minecraft.client.resources.data.IMetadataSection;
+import net.minecraft.client.resources.data.IMetadataSerializer;
+import org.apache.commons.io.filefilter.DirectoryFileFilter;
+
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -14,36 +27,21 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import cpw.mods.fml.relauncher.ReflectionHelper;
-import org.apache.commons.io.filefilter.DirectoryFileFilter;
-
-import com.google.common.base.Splitter;
-import com.google.common.collect.Lists;
-
-import cpw.mods.fml.common.Loader;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.AbstractResourcePack;
-import net.minecraft.client.resources.IResourceManager;
-import net.minecraft.client.resources.IResourcePack;
-import net.minecraft.client.resources.SimpleReloadableResourceManager;
-import net.minecraft.client.resources.data.IMetadataSection;
-import net.minecraft.client.resources.data.IMetadataSerializer;
-
 // Inspired by ResourceManagerHelper in fabric-resource-loader-v0
 
 public abstract class BuiltInResourcePack extends AbstractResourcePack {
-    
+
     private static final Splitter entryNameSplitter = Splitter.on('/').omitEmptyStrings().limit(5);
-    
+
     private String modid;
     private final String id;
     protected boolean enabled = true;
-    
+
     /**
      * <p>Register a built-in resource pack. This is a resource pack located in the JAR at {@code "resourcepacks/<id>"}.
-     * 
+     *
      * <p>The resource pack is "invisible", it will not show up in the resource pack GUI.
-     * 
+     *
      * @param id The name of the resource pack.
      */
     public static BuiltInResourcePack register(String id) {
@@ -51,7 +49,7 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
         inject(rp);
         return rp;
     }
-    
+
     private static BuiltInResourcePack of(File file, String modid, String id) {
         if(file.isDirectory()) {
             return new BuiltInFolderResourcePack(file, modid, id);
@@ -59,18 +57,18 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
             return new BuiltInFileResourcePack(file, modid, id);
         }
     }
-    
+
     public BuiltInResourcePack(File file, String modid, String id) {
         super(file);
         this.modid = modid;
         this.id = id;
     }
-    
+
     @Override
     public String getPackName() {
         return modid + "/" + id;
     }
-    
+
     @Override
     public IMetadataSection getPackMetadata(IMetadataSerializer p_135058_1_, String p_135058_2_) throws IOException {
         return null;
@@ -80,11 +78,11 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
     public BufferedImage getPackImage() throws IOException {
         return null;
     }
-    
+
     protected String getRootPath() {
         return "resourcepacks/" + id + "/";
     }
-    
+
     protected void addNamespaceIfLowerCase(Set<String> set, String ns) {
         if (!ns.equals(ns.toLowerCase())) {
             this.logNameNotLowercase(ns);
@@ -92,12 +90,12 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
             set.add(ns);
         }
     }
-    
+
     public BuiltInResourcePack setEnabled(boolean enabled) {
         this.enabled = enabled;
         return this;
     }
-    
+
     @SuppressWarnings("unchecked")
     private static void inject(IResourcePack resourcePack) {
         List defaultResourcePacks = ReflectionHelper.getPrivateValue(Minecraft.class, Minecraft.getMinecraft(), "defaultResourcePacks", "field_110449_ao");
@@ -107,11 +105,11 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
             ((SimpleReloadableResourceManager)resMan).reloadResourcePack(resourcePack);
         }
     }
-    
+
     private static class BuiltInFileResourcePack extends BuiltInResourcePack {
-        
+
         private final ZipFile zipFile;
-        
+
         public BuiltInFileResourcePack(File file, String modid, String id) {
             super(file, modid, id);
             try {
@@ -120,11 +118,11 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
                 throw new RuntimeException(e);
             }
         }
-        
+
         @Override
         public Set<String> getResourceDomains() {
             Set<String> domains = new HashSet<>();
-            
+
             Enumeration<? extends ZipEntry> en = zipFile.entries();
             while(en.hasMoreElements()) {
                 ZipEntry entry = en.nextElement();
@@ -137,7 +135,7 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
             }
             return domains;
         }
-        
+
         @Override
         protected InputStream getInputStreamByName(String name) throws IOException {
             return zipFile.getInputStream(zipFile.getEntry(getRootPath() + name));
@@ -147,9 +145,9 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
         protected boolean hasResourceName(String name) {
             return enabled && zipFile.getEntry(getRootPath() + name) != null;
         }
-        
+
     }
-    
+
     private static class BuiltInFolderResourcePack extends BuiltInResourcePack {
 
         public BuiltInFolderResourcePack(File file, String modid, String id) {
@@ -159,7 +157,7 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
         @Override
         public Set<String> getResourceDomains() {
             Set<String> domains = new HashSet<>();
-            
+
             File assetsDir = new File(this.resourcePackFile, getRootPath() + "assets/");
             if(assetsDir.isDirectory()) {
                 File[] files = assetsDir.listFiles((FileFilter)DirectoryFileFilter.DIRECTORY);
@@ -167,7 +165,7 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
                     addNamespaceIfLowerCase(domains, file.getName());
                 }
             }
-            
+
             return domains;
         }
 
@@ -180,7 +178,7 @@ public abstract class BuiltInResourcePack extends AbstractResourcePack {
         protected boolean hasResourceName(String name) {
             return enabled && new File(this.resourcePackFile, getRootPath() + "/" + name).isFile();
         }
-        
+
     }
-    
+
 }

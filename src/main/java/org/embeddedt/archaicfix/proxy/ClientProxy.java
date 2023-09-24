@@ -26,7 +26,7 @@ import org.embeddedt.archaicfix.config.ArchaicConfig;
 import org.embeddedt.archaicfix.helpers.BuiltInResourcePack;
 import org.embeddedt.archaicfix.helpers.SoundDeviceThread;
 import org.embeddedt.archaicfix.occlusion.OcclusionHelpers;
-import zone.rong.rongasm.api.LoliStringPool;
+import zone.rong.rongasm.api.StringPool;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
@@ -40,7 +40,7 @@ public class ClientProxy extends CommonProxy {
         Minecraft.memoryReserve = new byte[0];
         if(ArchaicConfig.enableOcclusionTweaks)
             OcclusionHelpers.init();
-        MinecraftForge.EVENT_BUS.register(new LoliStringPool.EventHandler());
+        MinecraftForge.EVENT_BUS.register(new StringPool.EventHandler());
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
         if(ArchaicConfig.modernizeTextures) {

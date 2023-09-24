@@ -4,7 +4,7 @@ import com.google.common.cache.CacheLoader;
 import net.minecraft.item.Item;
 import net.minecraft.item.crafting.CraftingManager;
 import net.minecraft.item.crafting.IRecipe;
-import org.embeddedt.archaicfix.ducks.IAcceleratedRecipe;
+import org.embeddedt.archaicfix.interfaces.IAcceleratedRecipe;
 
 import java.util.List;
 import java.util.Set;

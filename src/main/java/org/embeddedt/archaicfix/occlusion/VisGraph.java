@@ -1,11 +1,12 @@
 package org.embeddedt.archaicfix.occlusion;
 
+import lombok.Getter;
+import net.minecraft.util.EnumFacing;
+import org.embeddedt.archaicfix.occlusion.util.IntStack;
+
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.Set;
-
-import net.minecraft.util.EnumFacing;
-import org.embeddedt.archaicfix.occlusion.util.IntStack;
 
 public class VisGraph {
 
@@ -16,13 +17,13 @@ public class VisGraph {
 	public static final long ALL_VIS = 0xFFFFFFFFFFFFFFFFL;
 
 	static {
-		int var2 = 0;
+		int i = 0;
 
-		for (int var3 = 0; var3 < 16; ++var3) {
-			for (int var4 = 0; var4 < 16; ++var4) {
-				for (int var5 = 0; var5 < 16; ++var5) {
-					if (var3 == 0 || var3 == 15 || var4 == 0 || var4 == 15 || var5 == 0 || var5 == 15) {
-						EDGES[var2++] = getIndex(var3, var4, var5);
+		for (int x = 0; x < 16; ++x) {
+			for (int y = 0; y < 16; ++y) {
+				for (int z = 0; z < 16; ++z) {
+					if (x == 0 || x == 15 || y == 0 || y == 15 || z == 0 || z == 15) {
+						EDGES[i++] = getIndex(x, y, z);
 					}
 				}
 			}
@@ -38,22 +39,18 @@ public class VisGraph {
 	private final BitSet opaqueBlocks = new BitSet(4096);
 	private final BitSet visibleBlocks = new BitSet(4096);
 	private short transparentBlocks = 4096;
-	private boolean dirty = true, computedVis = true;
+	@Getter
+    private boolean dirty = true, computedVis = true;
 
 	/** Accessing this class's fields is slow, so we let the visibility value be referenced directly. */
-	private long[] visibility = new long[]{ALL_VIS};
+	private final long[] visibility = new long[]{ALL_VIS};
 
 	private static int getIndex(int x, int y, int z) {
 
 		return x << 0 | y << 8 | z << 4;
 	}
 
-	public boolean isDirty() {
-
-		return dirty;
-	}
-
-	public boolean isRenderDirty() {
+    public boolean isRenderDirty() {
 
 		if (isDirty()) {
 			return true;
@@ -98,14 +95,12 @@ public class VisGraph {
 			visibleBlocks.andNot(visibleBlocks);
 			visibleBlocks.or(opaqueBlocks);
 			IntStack linkedlist = new IntStack(1024, 512);
-			for (int j = 0; j < i; ++j) {
-				int k = edges[j];
-
-				if (!opaqueBlocks.get(k)) {
-					setvisibility = SetVisibility.setManyVisible(setvisibility, computeVisibleFacingsFrom(k, linkedlist));
-				}
-				linkedlist.setSize(0);
-			}
+            for (int k : edges) {
+                if (!opaqueBlocks.get(k)) {
+                    setvisibility = SetVisibility.setManyVisible(setvisibility, computeVisibleFacingsFrom(k, linkedlist));
+                }
+                linkedlist.setSize(0);
+            }
 		}
 
 		visibility[0] = setvisibility;
@@ -129,20 +124,19 @@ public class VisGraph {
 		blocks.set(index, true);
 
 		EnumFacing[] facings = EnumFacing.values();
-		int k = facings.length;
+		final int k = facings.length;
 		while (!linkedlist.isEmpty()) {
 			int j = linkedlist.poll();
 			addSides(j, enumset);
 
-			for (int l = 0; l < k; ++l) {
-				EnumFacing face = facings[l];
-				int i1 = stepTo(j, face);
+            for (EnumFacing face : facings) {
+                int i1 = stepTo(j, face);
 
-				if (i1 >= 0 && !blocks.get(i1)) {
-					blocks.set(i1, true);
-					linkedlist.add(i1);
-				}
-			}
+                if (i1 >= 0 && !blocks.get(i1)) {
+                    blocks.set(i1, true);
+                    linkedlist.add(i1);
+                }
+            }
 		}
 
 		return enumset;
@@ -177,46 +171,45 @@ public class VisGraph {
 
 	private int stepTo(int index, EnumFacing side) {
 
-		switch (side) {
-		case DOWN:
-			if ((index >> 8 & 15) == 0) {
-				return -1;
-			}
-
-			return index - Y_OFFSET;
-		case UP:
-			if ((index >> 8 & 15) == 15) {
-				return -1;
-			}
-
-			return index + Y_OFFSET;
-		case NORTH:
-			if ((index >> 4 & 15) == 0) {
-				return -1;
-			}
-
-			return index - Z_OFFSET;
-		case SOUTH:
-			if ((index >> 4 & 15) == 15) {
-				return -1;
-			}
-
-			return index + Z_OFFSET;
-		case EAST: /* WEST */
-			if ((index >> 0 & 15) == 0) {
-				return -1;
-			}
-
-			return index - X_OFFSET;
-		case WEST: /* EAST */
-			if ((index >> 0 & 15) == 15) {
-				return -1;
-			}
-
-			return index + X_OFFSET;
-		default:
-			return -1;
-		}
+        return switch (side) {
+            case DOWN -> {
+                if ((index >> 8 & 15) == 0) {
+                    yield -1;
+                }
+                yield index - Y_OFFSET;
+            }
+            case UP -> {
+                if ((index >> 8 & 15) == 15) {
+                    yield -1;
+                }
+                yield index + Y_OFFSET;
+            }
+            case NORTH -> {
+                if ((index >> 4 & 15) == 0) {
+                    yield -1;
+                }
+                yield index - Z_OFFSET;
+            }
+            case SOUTH -> {
+                if ((index >> 4 & 15) == 15) {
+                    yield -1;
+                }
+                yield index + Z_OFFSET;
+            }
+            case EAST -> {
+                if ((index >> 0 & 15) == 0) {
+                    yield -1;
+                }
+                yield index - X_OFFSET;
+            }
+            case WEST -> {
+                if ((index >> 0 & 15) == 15) {
+                    yield -1;
+                }
+                yield index + X_OFFSET;
+            }
+            default -> -1;
+        };
 	}
 
 }

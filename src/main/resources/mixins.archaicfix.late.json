@@ -1,9 +1,0 @@
-{
-  "required": true,
-  "minVersion": "0.7.11",
-  "package": "org.embeddedt.archaicfix.mixins",
-  "refmap": "mixins.archaicfix.refmap.json",
-  "target": "@env(DEFAULT)",
-  "compatibilityLevel": "JAVA_8"
-}
-

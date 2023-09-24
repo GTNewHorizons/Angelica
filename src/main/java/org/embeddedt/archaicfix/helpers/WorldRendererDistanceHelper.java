@@ -1,9 +1,7 @@
 package org.embeddedt.archaicfix.helpers;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.entity.Entity;
-import org.embeddedt.archaicfix.config.ArchaicConfig;
 
 public class WorldRendererDistanceHelper {
     /**

@@ -1,10 +1,5 @@
 package org.embeddedt.archaicfix.occlusion;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderGlobal;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.world.chunk.Chunk;
 import org.embeddedt.archaicfix.occlusion.util.IntStack;
 
 public class OcclusionHelpers {
@@ -27,7 +22,6 @@ public class OcclusionHelpers {
     public static IntStack deferredAreas = new IntStack(6 * 1024);
 
     public static synchronized void updateArea(int x, int y, int z, int x2, int y2, int z2) {
-
         // backwards so it's more logical to extract
         deferredAreas.add(z2);
         deferredAreas.add(y2);

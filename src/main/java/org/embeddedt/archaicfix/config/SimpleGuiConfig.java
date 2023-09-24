@@ -9,6 +9,6 @@ import net.minecraft.client.resources.I18n;
 @SideOnly(Side.CLIENT)
 public class SimpleGuiConfig extends GuiConfig {
     public SimpleGuiConfig(GuiScreen parent, Class<?> configClass, String modID, String modName) throws ConfigException {
-        super(parent, ConfigurationManager.getConfigElements(configClass), modID, false, false, modName + " Configuration", I18n.format("falsepatternlib.gui.config.description"));
+        super(parent, ConfigurationManager.getConfigElements(configClass), modID, false, false, modName + " Configuration");
     }
 }

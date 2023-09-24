@@ -1,12 +1,5 @@
 package org.embeddedt.archaicfix.occlusion;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import org.embeddedt.archaicfix.helpers.WorldRendererDistanceHelper;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiVideoSettings;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -22,12 +15,22 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
+import org.embeddedt.archaicfix.helpers.WorldRendererDistanceHelper;
+import org.embeddedt.archaicfix.occlusion.interfaces.ICulledChunk;
+import org.embeddedt.archaicfix.occlusion.interfaces.IRenderGlobalListener;
+import org.embeddedt.archaicfix.occlusion.interfaces.IRendererUpdateOrderProvider;
+import org.embeddedt.archaicfix.occlusion.interfaces.IWorldRenderer;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class OcclusionRenderer {
 
     private final Minecraft mc;
     private final RenderGlobal rg;
-    
+
     private Thread clientThread;
 
     private ArrayList<WorldRenderer> worldRenderersToUpdateList;
@@ -41,22 +44,22 @@ public class OcclusionRenderer {
     private int renderersNeedUpdate;
 
     private boolean resortUpdateList;
-    
+
     private IRendererUpdateOrderProvider rendererUpdateOrderProvider;
     private List<IRenderGlobalListener> eventListeners;
 
     /* Make sure other threads can see changes to this */
     private volatile boolean deferNewRenderUpdates;
-    
+
     public OcclusionRenderer(RenderGlobal renderGlobal) {
         this.rg = renderGlobal;
         this.mc = renderGlobal.mc;
     }
-    
+
     public RenderGlobal getRenderGlobal() {
         return rg;
     }
-    
+
     /**
      * If the update list is not queued for a full resort (e.g. when the player moves or renderers have their positions
      * changed), uses binary search to add the renderer in the update queue at the appropriate place. Otherwise,
@@ -71,7 +74,7 @@ public class OcclusionRenderer {
                 resortUpdateList = true;
                 return;
             }
-            if(worldRenderersToUpdateList.size() > 0) {
+            if(!worldRenderersToUpdateList.isEmpty()) {
                 double targetDistance = WorldRendererDistanceHelper.betterDistanceSquared(mc.renderViewEntity, wr);
                 int low = 0;
                 int high = worldRenderersToUpdateList.size() - 1;
@@ -97,7 +100,7 @@ public class OcclusionRenderer {
             }
         }
     }
-    
+
     public void handleOffthreadUpdate(int x1, int y1, int z1, int x2, int y2, int z2) {
         if(deferNewRenderUpdates || Thread.currentThread() != clientThread) {
             OcclusionHelpers.updateArea(x1, y1, z1, x2, y2, z2);
@@ -105,7 +108,7 @@ public class OcclusionRenderer {
             internalMarkBlockUpdate(x1, y1, z1, x2, y2, z2);
         }
     }
-    
+
     public void internalMarkBlockUpdate(int x1, int y1, int z1, int x2, int y2, int z2) {
         int xStart = MathHelper.bucketInt(x1, 16);
         int yStart = MathHelper.bucketInt(y1, 16);
@@ -137,12 +140,10 @@ public class OcclusionRenderer {
 
                     if (!worldrenderer.needsUpdate || (worldrenderer.isVisible && !((IWorldRenderer)worldrenderer).arch$isInUpdateList())) {
                         worldrenderer.markDirty();
-                        //if (worldrenderer.distanceToEntitySquared(mc.renderViewEntity) <= 2883.0F) {
-                            Chunk chunk = rg.theWorld.getChunkFromBlockCoords(worldrenderer.posX, worldrenderer.posZ);
-                            if (((ICulledChunk) chunk).getVisibility()[worldrenderer.posY >> 4].isRenderDirty()) {
-                                rebuild = true;
-                            }
-                        //}
+                        Chunk chunk = rg.theWorld.getChunkFromBlockCoords(worldrenderer.posX, worldrenderer.posZ);
+                        if (((ICulledChunk) chunk).getVisibility()[worldrenderer.posY >> 4].isRenderDirty()) {
+                            rebuild = true;
+                        }
                         addRendererToUpdateQueue(worldrenderer);
                     } else {
                         for(IRenderGlobalListener l : eventListeners) l.onDirtyRendererChanged(worldrenderer);
@@ -167,15 +168,13 @@ public class OcclusionRenderer {
     }
 
     public String getDebugInfoRenders() {
-        StringBuilder r = new StringBuilder(3 + 4 + 1 + 4 + 1 + 6 + 5 + 4 + 5 + 4 + 5 + 4 + 5 + 4 + 5 + 3 + 5 + 3 + 5 + 4);
-        r.append("C: ").append(rg.renderersBeingRendered).append('/').append(rg.renderersLoaded).append('/').append(rg.worldRenderers.length);
-        r.append(". F: ").append(rg.renderersBeingClipped);
-        r.append(", O: ").append(rg.renderersBeingOccluded);
-        r.append(", E: ").append(rg.renderersSkippingRenderPass);
-        r.append(", I: ").append(rg.dummyRenderInt);
-        r.append("; U: ").append(renderersNeedUpdate);
-        r.append(", N: ").append(rg.worldRenderersToUpdate.size());
-        return r.toString();
+        return "C: " + rg.renderersBeingRendered + '/' + rg.renderersLoaded + '/' + rg.worldRenderers.length
+            + ". F: " + rg.renderersBeingClipped
+            + ", O: " + rg.renderersBeingOccluded
+            + ", E: " + rg.renderersSkippingRenderPass
+            + ", I: " + rg.dummyRenderInt
+            + "; U: " + renderersNeedUpdate
+            + ", N: " + rg.worldRenderersToUpdate.size();
     }
 
     public void initBetterLists() {
@@ -206,7 +205,7 @@ public class OcclusionRenderer {
             throw new AssertionError("Transformer applied to the wrong List.clear method");
         }
     }
-    
+
     private static int fixPos(int pos, int amt) {
         int r = Math.floorDiv(pos, 16) % amt;
         if(r < 0) {
@@ -214,7 +213,7 @@ public class OcclusionRenderer {
         }
         return r;
     }
-    
+
     public WorldRenderer getRenderer(int x, int y, int z) {
         if ((y - 15) > rg.maxBlockY || y < rg.minBlockY || (x - 15) > rg.maxBlockX || x < rg.minBlockX || (z - 15) > rg.maxBlockZ || z < rg.minBlockZ)
             return null;
@@ -242,7 +241,7 @@ public class OcclusionRenderer {
         rendererUpdateOrderProvider.prepare(worldRenderersToUpdateList);
         for (int c = 0; updates < updateLimit && rendererUpdateOrderProvider.hasNext(worldRenderersToUpdateList); ++c) {
             WorldRenderer worldrenderer = rendererUpdateOrderProvider.next(worldRenderersToUpdateList);
-            
+
             ((IWorldRenderer)worldrenderer).arch$setInUpdateList(false);
 
             if (!(worldrenderer.isInFrustum & worldrenderer.isVisible) && !OcclusionHelpers.DEBUG_LAZY_CHUNK_UPDATES) {
@@ -273,7 +272,7 @@ public class OcclusionRenderer {
 
     public void performCullingUpdates(EntityLivingBase view, boolean p_72716_2_) {
         rg.theWorld.theProfiler.startSection("deferred_updates");
-        while(OcclusionHelpers.deferredAreas.size() > 0) {
+        while(!OcclusionHelpers.deferredAreas.isEmpty()) {
             OcclusionHelpers.processUpdate(this);
         }
         rg.theWorld.theProfiler.endStartSection("rebuild");
@@ -312,15 +311,15 @@ public class OcclusionRenderer {
         }
 
         rg.theWorld.theProfiler.endStartSection("scan");
-        int yaw = MathHelper.floor_float(view.rotationYaw + 45) >> 4;
-        int pitch = MathHelper.floor_float(view.rotationPitch + 45) >> 4;
+//        int yaw = MathHelper.floor_float(view.rotationYaw + 45) >> 4;
+//        int pitch = MathHelper.floor_float(view.rotationPitch + 45) >> 4;
         if (OcclusionHelpers.worker.dirty || cameraRotated || OcclusionHelpers.DEBUG_ALWAYS_RUN_OCCLUSION) {
             OcclusionHelpers.worker.run(true);
             PreviousActiveRenderInfo.update();
         }
         rg.theWorld.theProfiler.endSection();
     }
-    
+
     public void resetLoadedRenderers() {
         if(rg.theWorld != null) {
             rg.renderersLoaded = 0;
@@ -333,7 +332,7 @@ public class OcclusionRenderer {
             OcclusionHelpers.worker.dirty = true;
         }
     }
-    
+
     public void updateRendererNeighbors() {
         if(rg.worldRenderers == null) return;
         for(int i = 0; i < rg.worldRenderers.length; i++) {
@@ -354,7 +353,7 @@ public class OcclusionRenderer {
             }
         }
     }
-    
+
     public void pushWorkerRenderer(WorldRenderer wr) {
         if(!(mc.theWorld.getChunkFromBlockCoords(wr.posX, wr.posZ) instanceof EmptyChunk))
             addRendererToUpdateQueue(wr);
@@ -376,7 +375,7 @@ public class OcclusionRenderer {
         }
     }
 
-    public void runWorker(int p_72722_1_, int p_72722_2_, int p_72722_3_) {
+    public void runWorker(int x, int y, int z) {
         updateRendererNeighbors();
         OcclusionHelpers.worker.run(true);
     }
@@ -450,8 +449,8 @@ public class OcclusionRenderer {
         CameraInfo cam = CameraInfo.getInstance();
 
         RenderList[] allRenderLists = rg.allRenderLists;
-        for (int i = 0; i < allRenderLists.length; ++i) {
-            allRenderLists[i].resetList();
+        for (RenderList allRenderList : allRenderLists) {
+            allRenderList.resetList();
         }
 
         int loopStart = start;
@@ -470,8 +469,7 @@ public class OcclusionRenderer {
             int renderersNotInitialized = 0, renderersBeingClipped = 0, renderersBeingOccluded = 0;
             int renderersBeingRendered = 0, renderersSkippingRenderPass = 0, renderersNeedUpdate = 0;
             WorldRenderer[] worldRenderers = rg.worldRenderers;
-            for (int i = 0, e = worldRenderers.length; i < e; ++i) {
-                WorldRenderer rend = worldRenderers[i];
+            for (WorldRenderer rend : worldRenderers) {
                 if (!rend.isInitialized) {
                     ++renderersNotInitialized;
                 } else if (!rend.isInFrustum) {
@@ -561,7 +559,7 @@ public class OcclusionRenderer {
             OcclusionHelpers.worker.dirtyFrustumRenderers = 0;
         }
     }
-    
+
     public void arch$setRendererUpdateOrderProvider(IRendererUpdateOrderProvider orderProvider) {
         this.rendererUpdateOrderProvider = orderProvider;
     }
@@ -573,7 +571,7 @@ public class OcclusionRenderer {
     private static double distanceSquared(double x1, double y1, double z1, double x2, double y2, double z2) {
         return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2) + Math.pow(z2 - z1, 2);
     }
-    
+
     private static boolean isChunkEmpty(Chunk chunk) {
         return chunk == null || chunk.isEmpty();
     }
