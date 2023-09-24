@@ -1,6 +1,7 @@
 package org.embeddedt.archaicfix.occlusion;
 
 import net.minecraft.client.renderer.WorldRenderer;
+import org.embeddedt.archaicfix.occlusion.interfaces.IRendererUpdateOrderProvider;
 
 import java.util.List;
 

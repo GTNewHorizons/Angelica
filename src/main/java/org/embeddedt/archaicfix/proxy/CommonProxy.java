@@ -2,7 +2,7 @@ package org.embeddedt.archaicfix.proxy;
 
 import ca.fxco.memoryleakfix.MemoryLeakFix;
 import org.embeddedt.archaicfix.config.ArchaicConfig;
-import zone.rong.rongasm.api.LoliHelpers;
+import zone.rong.rongasm.api.RongHelpers;
 
 public class CommonProxy {
     public void preinit() {
@@ -13,6 +13,6 @@ public class CommonProxy {
         if(ArchaicConfig.clearMixinCache)
             MemoryLeakFix.forceLoadAllMixinsAndClearSpongePoweredCache();
         if(ArchaicConfig.clearLaunchLoaderCache)
-            LoliHelpers.cleanupLaunchClassLoader();
+            RongHelpers.cleanupLaunchClassLoader();
     }
 }

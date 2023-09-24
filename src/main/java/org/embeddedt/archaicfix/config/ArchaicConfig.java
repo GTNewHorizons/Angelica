@@ -2,13 +2,13 @@ package org.embeddedt.archaicfix.config;
 
 @Config(modid = "archaicfix")
 public class ArchaicConfig {
-    @Config.Comment("Enables the 1.8-style occlusion culling originally developed by CoFHTweaks. Not compatible with OptiFine or FastCraft.")
-    @Config.DefaultBoolean(false)
+    @Config.Comment("Enables the 1.8-style occlusion culling originally developed by CoFHTweaks.")
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableOcclusionTweaks;
 
     @Config.Comment("EXPERIMENTAL: Enables multi-threaded chunk updating. At the moment it only works if enableOcclusionTweaks is turned on.")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableThreadedChunkUpdates;
 
@@ -29,40 +29,16 @@ public class ArchaicConfig {
     @Config.DefaultBoolean(false)
     public static boolean enableNewButtonAppearance;
 
-    @Config.Comment("Use a faster and asynchronous implementation of creative search.")
-    @Config.DefaultBoolean(true)
-    public static boolean asyncCreativeSearch;
-
     @Config.Comment("Cap the integrated server render distance at a minimum of 8 chunks, and adjust despawn ranges so mobs will always despawn properly on low render distances.")
     @Config.DefaultBoolean(true)
     public static boolean fixMobSpawnsAtLowRenderDist;
-
-    @Config.Comment("Replace the regional difficulty calculation with a TMCW-style one that increases with playtime, not time per chunk.")
-    @Config.DefaultBoolean(false)
-    public static boolean betterRegionalDifficulty;
 
     @Config.Comment("Allow 65000 block updates to be performed per tick, rather than 1000.")
     @Config.DefaultBoolean(true)
     public static boolean increaseBlockUpdateLimit;
 
-    @Config.Comment("EXPERIMENTAL: Cache matching crafting recipes to avoid needing to scan the whole list each time.")
-    @Config.DefaultBoolean(false)
-    public static boolean cacheRecipes;
 
-    @Config.Comment("Disable spawn chunks")
-    @Config.DefaultBoolean(false)
-    public static boolean disableSpawnChunks;
-
-    @Config.Comment("Reduce lag caused by item entities")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean itemLagReduction;
-
-    @Config.Comment("Increase the amount of armor mobs wear on average. From TMCW.")
-    @Config.DefaultBoolean(false)
-    public static boolean increaseMobArmor;
-
-    @Config.Comment("Increase the maximum render distance if OptiFine and FastCraft are not installed.")
+    @Config.Comment("Increase the maximum render distance.")
     @Config.DefaultBoolean(false)
     public static boolean raiseMaxRenderDistance;
 
@@ -71,10 +47,6 @@ public class ArchaicConfig {
     @Config.RangeInt(min = 16, max = 128)
     public static int newMaxRenderDistance;
 
-    @Config.Comment("EXPERIMENTAL: Replace the Thaumcraft hashing implementation. This really hasn't been tested and probably breaks everything.")
-    @Config.DefaultBoolean(false)
-    public static boolean betterThaumcraftHashing;
-
     @Config.Comment("Log when cascading worldgen occurs.")
     @Config.DefaultBoolean(true)
     public static boolean logCascadingWorldgen;
@@ -82,10 +54,6 @@ public class ArchaicConfig {
     @Config.Comment("Print a stacktrace when cascading worldgen occurs. Use only for development as this will add more lag in game.")
     @Config.DefaultBoolean(false)
     public static boolean logCascadingWorldgenStacktrace;
-
-    @Config.Comment("Fix instances of cascading worldgen in Mekanism.")
-    @Config.DefaultBoolean(true)
-    public static boolean fixMekanismCascadingWorldgen;
 
     @Config.Comment("Fix instances of cascading worldgen in vanilla Minecraft. Turn this option off if you require 100% seed parity.")
     @Config.DefaultBoolean(true)
@@ -131,14 +99,6 @@ public class ArchaicConfig {
     @Config.DefaultStringList({ "Wither", "EnderDragon" })
     public static String[] optimizeEntityTickingIgnoreList;
 
-    @Config.Comment("Disable OptiFine's version checker.")
-    @Config.DefaultBoolean(true)
-    public static boolean disableOFVersionCheck;
-
-    @Config.Comment("Fix TileEntity unloading being laggy.")
-    @Config.DefaultBoolean(true)
-    public static boolean fixTEUnloadLag;
-
     @Config.Comment("Attempt to fix hanging in SP when logging in.")
     @Config.DefaultBoolean(true)
     public static boolean fixLoginRaceCondition;
@@ -178,10 +138,6 @@ public class ArchaicConfig {
     @Config.Comment("When true, dropped items will always render as though fancy graphics are enabled.")
     @Config.DefaultBoolean(false)
     public static boolean forceFancyItems;
-
-    @Config.Comment("Disable Food Plus' update message.")
-    @Config.DefaultBoolean(true)
-    public static boolean disableFoodPlusUpdates;
 
     @Config.Comment("Add the Let's Encrypt root certificates to the default trust store.")
     @Config.DefaultBoolean(false)

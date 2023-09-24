@@ -1,7 +1,5 @@
 package org.embeddedt.archaicfix.occlusion;
 
-import static org.embeddedt.archaicfix.occlusion.OcclusionHelpers.DEBUG_PRINT_QUEUE_ITERATIONS;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -10,6 +8,7 @@ import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MathHelper;
+import org.embeddedt.archaicfix.occlusion.interfaces.IWorldRenderer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,13 +16,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.embeddedt.archaicfix.occlusion.OcclusionHelpers.DEBUG_PRINT_QUEUE_ITERATIONS;
+
 public class OcclusionWorker {
 
     public OcclusionWorker() {
-
-        /*for (int i = 0; i < fStack.length; ++i) {
-            fStack[i] = new Frustrum();
-        }//*/
     }
 
     public void setWorld(RenderGlobal rg, WorldClient world) {
@@ -54,11 +51,11 @@ public class OcclusionWorker {
     private RenderGlobal getRender() {
         return getExtendedRender().getRenderGlobal();
     }
-    
+
     private OcclusionRenderer getExtendedRender() {
         return OcclusionHelpers.renderer;
     }
-    
+
     public void run(boolean immediate) {
         frame++;
         queue.clear();
@@ -161,12 +158,12 @@ public class OcclusionWorker {
             int level = viewY > 5 ? 250 : 5;
             center = extendedRender.getRenderer(viewX, level, viewZ);
             if (center != null) {
-                StepDirection pos = viewY < 5 ? StepDirection.UP : StepDirection.DOWN;
                 {
                     CullInfo ci = ((IWorldRenderer) center).arch$getCullInfo();
                     ci.init(StepDirection.NONE, (byte) 0);
                     queue.add(ci);
                 }
+
                 boolean allNull = false;
                 theWorld.theProfiler.startSection("gather_world");
                 for (int size = 1; !allNull; ++size) {
@@ -266,8 +263,7 @@ public class OcclusionWorker {
                 StepDirection[] bias = DIRECTIONS_BIAS[i];
                 int j = 0, xor = pos.ordinal() & 1;
                 switch (pos) {
-                    case DOWN:
-                    case UP:
+                    case DOWN, UP:
                         bias[j++] = pos;
                         bias[j++] = DIRECTIONS[NORTH.ordinal() ^ xor];
                         bias[j++] = DIRECTIONS[SOUTH.ordinal() ^ xor];
@@ -275,8 +271,7 @@ public class OcclusionWorker {
                         bias[j++] = DIRECTIONS[WEST.ordinal() ^ xor];
                         bias[j++] = pos.getOpposite();
                         break;
-                    case WEST:
-                    case EAST:
+                    case WEST, EAST:
                         bias[j++] = pos;
                         bias[j++] = DIRECTIONS[NORTH.ordinal() ^ xor];
                         bias[j++] = DIRECTIONS[SOUTH.ordinal() ^ xor];
@@ -284,8 +279,7 @@ public class OcclusionWorker {
                         bias[j++] = DIRECTIONS[DOWN.ordinal() ^ xor];
                         bias[j++] = pos.getOpposite();
                         break;
-                    case NORTH:
-                    case SOUTH:
+                    case NORTH, SOUTH:
                         bias[j++] = pos;
                         bias[j++] = DIRECTIONS[EAST.ordinal() ^ xor];
                         bias[j++] = DIRECTIONS[WEST.ordinal() ^ xor];
@@ -293,8 +287,7 @@ public class OcclusionWorker {
                         bias[j++] = DIRECTIONS[DOWN.ordinal() ^ xor];
                         bias[j++] = pos.getOpposite();
                         break;
-                    case NONE:
-                    case NONE_opp:
+                    case NONE, NONE_opp:
                         break;
                 }
             }

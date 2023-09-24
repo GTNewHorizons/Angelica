@@ -4,6 +4,7 @@ import cpw.mods.fml.client.config.ConfigGuiType;
 import cpw.mods.fml.client.config.GuiConfigEntries;
 import cpw.mods.fml.client.config.GuiEditArrayEntries;
 import cpw.mods.fml.client.config.IConfigElement;
+
 import java.util.List;
 import java.util.regex.Pattern;
 

@@ -1,7 +1,5 @@
 package org.embeddedt.archaicfix.block;
 
-import net.minecraft.block.Block;
-
 public class ThreadedBlockData {
     public double minX = 0;
     public double minY = 0;

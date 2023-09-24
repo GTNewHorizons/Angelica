@@ -1,23 +1,14 @@
 package org.embeddedt.archaicfix.occlusion;
 
 import lombok.Getter;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ActiveRenderInfo;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.util.vector.Matrix4f;
-import org.lwjgl.util.vector.Vector3f;
-import org.lwjgl.util.vector.Vector4f;
-
-import java.nio.FloatBuffer;
 
 public class CameraInfo {
 
     @Getter
-    private static CameraInfo instance = new CameraInfo();
+    private static final CameraInfo instance = new CameraInfo();
 
     /** The transformed eye position, which takes the third person camera offset into account. */
     @Getter

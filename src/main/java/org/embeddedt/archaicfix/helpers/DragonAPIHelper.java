@@ -2,7 +2,6 @@ package org.embeddedt.archaicfix.helpers;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 

@@ -1,13 +1,14 @@
 package org.embeddedt.archaicfix.helpers;
 
-import gnu.trove.map.hash.TIntObjectHashMap;
-import lombok.var;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Provides a facility to iterate over a subset of the accelerated ore dictionary.
