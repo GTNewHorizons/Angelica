@@ -64,12 +64,7 @@ public abstract class MixinRenderItem {
 
     @Redirect(
         method = "renderDroppedItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/util/IIcon;IFFFFI)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/item/ItemStack;hasEffect(I)Z"
-        ),
-        remap = false
-    )
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;hasEffect(I)Z"), remap = false)
     private boolean notFine$toggleGlint(ItemStack stack, int pass) {
         return Settings.MODE_GLINT_WORLD.isValueBase() && stack.hasEffect(pass);
     }

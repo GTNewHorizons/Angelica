@@ -58,9 +58,9 @@ public class MixinRenderGlobal {
     // Texture 2D
     @Inject(
             method = "sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
-            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false, ordinal = 0, shift = At.Shift.AFTER), expect = 1)
-    private void angelica$sortandRenderDisableTexture2D(EntityLivingBase p_72719_1_, int p_72719_2_, double p_72719_3_,
-            CallbackInfoReturnable<Integer> cir) {
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false, ordinal = 0, shift = At.Shift.AFTER), expect = 0)
+    private void angelica$sortandRenderDisableTexture2D(EntityLivingBase p_72719_1_, int p_72719_2_, double p_72719_3_, CallbackInfoReturnable<Integer> cir) {
+        // Note: Conflicts with OcclusionRenderer
         Shaders.disableTexture2D();
     }
 
@@ -73,8 +73,9 @@ public class MixinRenderGlobal {
 
     @Inject(
             method = "sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
-            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false, ordinal = 0, shift = At.Shift.AFTER))
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false, ordinal = 0, shift = At.Shift.AFTER), expect = 0)
     private void angelica$sortAndRenderEnableTexture2D(CallbackInfoReturnable<Integer> cir) {
+        // Note: Conflicts with OcclusionRenderer
         Shaders.enableTexture2D();
     }
 
@@ -89,15 +90,17 @@ public class MixinRenderGlobal {
     // Fog
     @Inject(
             method = "sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
-            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false, ordinal = 3, shift = At.Shift.AFTER))
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", remap = false, ordinal = 3, shift = At.Shift.AFTER), expect = 0)
     private void angelica$sortAndRenderDisableFog(CallbackInfoReturnable<Integer> cir) {
+        // Note: Conflicts with OcclusionRenderer
         Shaders.disableFog();
     }
 
     @Inject(
             method = "sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
-            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false, ordinal = 2, shift = At.Shift.AFTER))
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", remap = false, ordinal = 2, shift = At.Shift.AFTER), expect = 0)
     private void angelica$sortAndRenderEnableFog(CallbackInfoReturnable<Integer> cir) {
+        // Note: Conflicts with OcclusionRenderer
         Shaders.enableFog();
     }
 

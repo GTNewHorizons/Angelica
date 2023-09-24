@@ -7,8 +7,8 @@ public class ArchaicConfig {
     @Config.RequiresMcRestart
     public static boolean enableOcclusionTweaks;
 
-    @Config.Comment("EXPERIMENTAL: Enables multi-threaded chunk updating. At the moment it only works if enableOcclusionTweaks is turned on.")
-    @Config.DefaultBoolean(true)
+    @Config.Comment("EXPERIMENTAL: Enables multi-threaded chunk updating. At the moment it only works if enableOcclusionTweaks is turned on.  Doesn't currently work with Shaders")
+    @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableThreadedChunkUpdates;
 
@@ -66,10 +66,6 @@ public class ArchaicConfig {
     @Config.Comment("Clean up LaunchClassLoader cache.")
     @Config.DefaultBoolean(true)
     public static boolean clearLaunchLoaderCache;
-
-    @Config.Comment("Only show GT6 tooltip data when Shift is pressed.")
-    @Config.DefaultBoolean(true)
-    public static boolean hideGT6TooltipDataBehindKey;
 
     @Config.Comment("Fix the 'TickNextTick list out of synch' error.")
     @Config.DefaultBoolean(true)

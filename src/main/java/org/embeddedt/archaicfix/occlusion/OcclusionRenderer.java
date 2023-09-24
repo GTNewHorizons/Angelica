@@ -386,8 +386,7 @@ public class OcclusionRenderer {
 
         rg.theWorld.theProfiler.startSection("sortchunks");
 
-        if (this.mc.gameSettings.renderDistanceChunks != rg.renderDistanceChunks && !(this.mc.currentScreen instanceof GuiVideoSettings))
-        {
+        if (this.mc.gameSettings.renderDistanceChunks != rg.renderDistanceChunks && !(this.mc.currentScreen instanceof GuiVideoSettings)) {
             rg.loadRenderers();
         }
 
@@ -400,7 +399,7 @@ public class OcclusionRenderer {
                 rg.worldRenderersCheckIndex = (rg.worldRenderersCheckIndex + 1) % rg.renderersLoaded;
                 WorldRenderer rend = sortedWorldRenderers[rg.worldRenderersCheckIndex];
 
-                if ((rend.isInFrustum & rend.isVisible) & (rend.needsUpdate || !rend.isInitialized) & !(this.mc.theWorld.getChunkFromBlockCoords(rend.posX, rend.posZ) instanceof EmptyChunk)) {
+                if ((rend.isInFrustum && rend.isVisible) && (rend.needsUpdate || !rend.isInitialized) && !(this.mc.theWorld.getChunkFromBlockCoords(rend.posX, rend.posZ) instanceof EmptyChunk)) {
                     addRendererToUpdateQueue(rend);
                 }
             }
