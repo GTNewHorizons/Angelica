@@ -38,6 +38,14 @@ dependencies {
     compileOnly(sourceSets.compileStubs.output)
     compileStubs(sourceSets.compileStubsStubs.output)
 
+    // Iris Shaders
+    implementation('org.jetbrains:annotations:24.0.1')
+    implementation("it.unimi.dsi:fastutil:8.2.1")
+    implementation("org.joml:joml:1.10.5")
+    implementation("org.anarres:jcpp:1.4.14")
+    compileOnly "org.apache.ant:ant:1.8.2"
+
+
     compileOnly("com.github.GTNewHorizons:ProjectRed:4.7.12-GTNH:dev")
     compileOnly(files("dependencies/SmartRender-1.7.10-2.1-dev.jar"))
 
@@ -52,6 +60,7 @@ dependencies {
 
 
     // ArchaicFix Deps
+    implementation("com.github.Speiger:Primitive-Collections:0.9.0")
     compileOnly("curse.maven:chickenchunks-229316:2233250")
     compileOnly "thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev"
     compileOnly('curse.maven:cofh-core-69162:2388751')

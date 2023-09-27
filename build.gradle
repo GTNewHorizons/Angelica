@@ -1,4 +1,4 @@
-//version: 1692122114
+//version: 1695474595
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -89,6 +89,23 @@ def out = services.get(StyledTextOutputFactory).create('an-output')
 def projectJavaVersion = JavaLanguageVersion.of(8)
 
 boolean disableSpotless = project.hasProperty("disableSpotless") ? project.disableSpotless.toBoolean() : false
+boolean disableCheckstyle = project.hasProperty("disableCheckstyle") ? project.disableCheckstyle.toBoolean() : false
+
+final String CHECKSTYLE_CONFIG = """
+<!DOCTYPE module PUBLIC
+  "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+  "http://www.puppycrawl.com/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <module name="TreeWalker">
+    <!-- Use CHECKSTYLE:OFF and CHECKSTYLE:ON comments to suppress checkstyle lints in a block -->
+    <module name="SuppressionCommentFilter"/>
+    <module name="AvoidStarImport">
+      <!-- Allow static wildcard imports for cases like Opcodes and LWJGL classes, these don't get created accidentally by the IDE -->
+      <property name="allowStaticMemberImports" value="true"/>
+    </module>
+  </module>
+</module>
+"""
 
 checkPropertyExists("modName")
 checkPropertyExists("modId")
@@ -138,6 +155,17 @@ project.extensions.add(com.diffplug.blowdryer.Blowdryer, "Blowdryer", com.diffpl
 if (!disableSpotless) {
     apply plugin: 'com.diffplug.spotless'
     apply from: Blowdryer.file('spotless.gradle')
+}
+
+if (!disableCheckstyle) {
+    apply plugin: 'checkstyle'
+    tasks.named("checkstylePatchedMc") { enabled = false }
+    tasks.named("checkstyleMcLauncher") { enabled = false }
+    tasks.named("checkstyleIdeVirtualMain") { enabled = false }
+    tasks.named("checkstyleInjectedTags") { enabled = false }
+    checkstyle {
+        config = resources.text.fromString(CHECKSTYLE_CONFIG)
+    }
 }
 
 String javaSourceDir = "src/main/java/"
@@ -600,15 +628,10 @@ repositories {
         }
         maven {
             name = "ic2"
-            url = "https://maven.ic2.player.to/"
-            metadataSources {
-                mavenPom()
-                artifact()
+            url = getURL("https://maven.ic2.player.to/", "https://maven2.ic2.player.to/")
+            content {
+                includeGroup "net.industrial-craft"
             }
-        }
-        maven {
-            name = "ic2-mirror"
-            url = "https://maven2.ic2.player.to/"
             metadataSources {
                 mavenPom()
                 artifact()
@@ -770,23 +793,14 @@ ext.java17PatchDependenciesCfg = configurations.create("java17PatchDependencies"
 }
 
 dependencies {
-    def lwjgl3ifyVersion = '1.4.0'
-    def asmVersion = '9.4'
+    def lwjgl3ifyVersion = '1.5.0'
     if (modId != 'lwjgl3ify') {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
     if (modId != 'hodgepodge') {
-        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.2.26')
+        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.3.5')
     }
 
-    java17PatchDependencies('net.minecraft:launchwrapper:1.17.2') {transitive = false}
-    java17PatchDependencies("org.ow2.asm:asm:${asmVersion}")
-    java17PatchDependencies("org.ow2.asm:asm-commons:${asmVersion}")
-    java17PatchDependencies("org.ow2.asm:asm-tree:${asmVersion}")
-    java17PatchDependencies("org.ow2.asm:asm-analysis:${asmVersion}")
-    java17PatchDependencies("org.ow2.asm:asm-util:${asmVersion}")
-    java17PatchDependencies('org.ow2.asm:asm-deprecated:7.1')
-    java17PatchDependencies("org.apache.commons:commons-lang3:3.12.0")
     java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches") {transitive = false}
 }
 
@@ -1574,6 +1588,25 @@ def getSecondaryArtifacts() {
     if (!noPublishedSources) secondaryArtifacts += [sourcesJar]
     if (apiPackage) secondaryArtifacts += [apiJar]
     return secondaryArtifacts
+}
+
+def getURL(String main, String fallback) {
+    return pingURL(main, 10000) ? main : fallback
+}
+
+// credit: https://stackoverflow.com/a/3584332
+def pingURL(String url, int timeout) {
+    url = url.replaceFirst("^https", "http") // Otherwise an exception may be thrown on invalid SSL certificates.
+    try {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection()
+        connection.setConnectTimeout(timeout)
+        connection.setReadTimeout(timeout)
+        connection.setRequestMethod("HEAD")
+        int responseCode = connection.getResponseCode()
+        return 200 <= responseCode && responseCode <= 399
+    } catch (IOException ignored) {
+        return false
+    }
 }
 
 // For easier scripting of things that require variables defined earlier in the buildscript

@@ -15,6 +15,7 @@ import jss.notfine.gui.MenuButtonLists;
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*")
 public class AngelicaMod {
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         if (event.getSide() == Side.CLIENT) {

@@ -123,22 +123,15 @@ public class LightingHooks {
     }
 
     private static EnumFacing getOpposite(EnumFacing in) {
-        switch(in) {
-            case NORTH:
-                return EnumFacing.SOUTH;
-            case SOUTH:
-                return EnumFacing.NORTH;
-            case EAST:
-                return EnumFacing.WEST;
-            case WEST:
-                return EnumFacing.EAST;
-            case DOWN:
-                return EnumFacing.UP;
-            case UP:
-                return EnumFacing.DOWN;
-            default:
-                throw new IllegalArgumentException();
-        }
+        return switch (in) {
+            case NORTH -> EnumFacing.SOUTH;
+            case SOUTH -> EnumFacing.NORTH;
+            case EAST -> EnumFacing.WEST;
+            case WEST -> EnumFacing.EAST;
+            case DOWN -> EnumFacing.UP;
+            case UP -> EnumFacing.DOWN;
+            default -> throw new IllegalArgumentException();
+        };
     }
 
     private static AxisDirection getAxisDirection(EnumFacing in) {

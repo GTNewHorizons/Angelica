@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -11,8 +13,13 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
+import net.minecraft.client.Minecraft;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.embeddedt.archaicfix.config.ArchaicConfig;
 import org.embeddedt.archaicfix.config.ConfigException;
 import org.embeddedt.archaicfix.config.ConfigurationManager;
@@ -30,9 +37,18 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     public static final Logger LOGGER = LogManager.getLogger("angelica");
 
+//    public static boolean ENABLE_SPAM = false; // Enable for more spam
+    public static boolean ENABLE_SPAM = true;
+
     static {
         try {
+            // ArchaicFix Config
             ConfigurationManager.registerConfig(ArchaicConfig.class);
+            LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+            Configuration config = ctx.getConfiguration();
+            LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+            loggerConfig.setLevel(Level.DEBUG);
+            ctx.updateLoggers();
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
