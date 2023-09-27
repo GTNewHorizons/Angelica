@@ -20,7 +20,7 @@
         "id_miner",
         "daxnitro"
       ],
-      "credits": "Based on daxnitro's GLSL Shaders Mod.",
+      "credits": "Based on daxnitro's GLSL Shaders Mod.  Includes backported code from Oculus and Iris",
       "logoFile": "",
       "screenshots": [],
       "parent": "",

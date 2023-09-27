@@ -17,7 +17,7 @@ public class ACTEntityRenderer implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        AngelicaTweaker.LOGGER.debug("transforming %s %s", name, transformedName);
+        AngelicaTweaker.LOGGER.debug("transforming {} {}", name, transformedName);
         ClassReader cr = new ClassReader(basicClass);
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         CVTransform cv = new CVTransform(cw);
@@ -43,7 +43,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
             if (Names.entityRenderer_renderHand.equalsNameDesc(name, desc)) {
-                AngelicaTweaker.LOGGER.trace(" patching method %s.%s%s", classname, name, desc);
+                AngelicaTweaker.LOGGER.trace(" patching method {}.{}{}", classname, name, desc);
                 return new MVrenderHand(cv.visitMethod(access, name, desc, signature, exceptions));
             }
             return cv.visitMethod(access, name, desc, signature, exceptions);
@@ -63,11 +63,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         public void visitMethodInsn(int opcode, String owner, String name, String desc) {
             // Wraps the code from GL11.glPushMatrix() to GL11.glPopMatrix() in an if(!Shaders.isHandRendered) check
             if (Names.equals("org/lwjgl/opengl/GL11", "glPushMatrix", "()V", owner, name, desc)) {
-                mv.visitFieldInsn(
-                        Opcodes.GETSTATIC,
-                        "com/gtnewhorizons/angelica/client/Shaders",
-                        "isHandRendered",
-                        "Z");
+                mv.visitFieldInsn(Opcodes.GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isHandRendered", "Z");
                 mv.visitJumpInsn(Opcodes.IFNE, label);
                 mv.visitMethodInsn(opcode, owner, name, desc);
                 return;

@@ -247,19 +247,18 @@ public class GuiShaders extends GuiScreen {
                         default:
                             break;
                     }
-                    boolean var8 = false;
+                    boolean openViaSystemClass = false;
 
                     try {
-                        Class<?> var3 = Class.forName("java.awt.Desktop");
-                        Object var4 = var3.getMethod("getDesktop").invoke((Object) null);
-                        var3.getMethod("browse", URI.class).invoke(
-                                var4, (new File(mc.mcDataDir, Shaders.shaderpacksdirname)).toURI());
+                        Class<?> aClass = Class.forName("java.awt.Desktop");
+                        Object getDesktop = aClass.getMethod("getDesktop").invoke((Object) null);
+                        aClass.getMethod("browse", URI.class).invoke(getDesktop, (new File(mc.mcDataDir, Shaders.shaderpacksdirname)).toURI());
                     } catch (Throwable var5) {
                         var5.printStackTrace();
-                        var8 = true;
+                        openViaSystemClass = true;
                     }
 
-                    if (var8) {
+                    if (openViaSystemClass) {
                         AngelicaTweaker.LOGGER.debug("Opening via system class!");
                         Sys.openURL("file://" + Shaders.shaderpacksdir.getAbsolutePath());
                     }
