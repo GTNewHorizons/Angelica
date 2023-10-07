@@ -1,17 +1,30 @@
 package com.gtnewhorizons.angelica.mixins;
 
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import cpw.mods.fml.relauncher.FMLLaunchHandler;
-
 public enum Mixins {
 
     ANGELICA_STARTUP(new Builder("Start Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("shaders.MixinMinecraft")),
+            .setPhase(Phase.EARLY).addMixinClasses(
+                "shaders.MixinMinecraft",
+                "shaders.MixinGameSettings",
+                "shaders.MixinGuiMainMenu",
+                "shaders.MixinInitRenderer")
+            ),
+
+    ANGELICA_ACCESSORS(new Builder("Angelica Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses(
+                "accessors.MinecraftAccessor",
+                "accessors.EntityRendererAccessor",
+                "accessors.SimpleTextureAccessor",
+                "accessors.TextureAtlasSpriteAccessor"
+            )),
 
     ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses("settings.MixinGuiVideoSettings")),
@@ -45,6 +58,10 @@ public enum Mixins {
                     "renderer.MixinTextureMap",
                     "renderer.MixinThreadDownloadImageData")),
 
+    ANGELICA_TEXTURE(new Builder("Texture").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses(
+
+            )),
     COMPAT_PR_ILLUMINATION(
             new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
                     .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),

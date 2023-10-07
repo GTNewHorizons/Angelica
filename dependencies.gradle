@@ -43,6 +43,7 @@ dependencies {
     implementation("it.unimi.dsi:fastutil:8.2.1")
     implementation("org.joml:joml:1.10.5")
     implementation("org.anarres:jcpp:1.4.14")
+    implementation("io.github.douira:glsl-transformer:1.0.0")
     compileOnly "org.apache.ant:ant:1.8.2"
 
 
