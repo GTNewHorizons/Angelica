@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.client;
 
-import java.nio.ByteBuffer;
-
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+
+import java.nio.ByteBuffer;
 
 /**
  *
@@ -25,16 +25,7 @@ public class HFNoiseTexture {
 
         // GL13.glActiveTexture(GL13.GL_TEXTURE0 + this.textureUnit);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texID);
-        GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                GL11.GL_RGB,
-                width,
-                height,
-                0,
-                GL11.GL_RGB,
-                GL11.GL_UNSIGNED_BYTE,
-                data);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGB, width, height, 0, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, data);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
