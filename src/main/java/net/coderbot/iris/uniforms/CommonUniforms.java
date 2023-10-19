@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.client.Shaders;
 import com.gtnewhorizons.angelica.mixins.early.accessors.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -7,14 +8,10 @@ import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.PackDirectives;
-import net.coderbot.iris.texture.TextureInfoCache;
-import net.coderbot.iris.texture.TextureInfoCache.TextureInfo;
-import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.coderbot.iris.uniforms.transforms.SmoothedVec2f;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -28,8 +25,6 @@ import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
 import org.joml.Vector4i;
-
-import java.util.Objects;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
@@ -61,33 +56,37 @@ public final class CommonUniforms {
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
 		//       but we do. How will custom uniforms depending on atlasSize work?
 		uniforms.uniform2i("atlasSize", () -> {
-			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
-
-			AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
-			if (texture instanceof TextureAtlas) {
-				TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-				return new Vector2i(info.getWidth(), info.getHeight());
-			}
-
-			return ZERO_VECTOR_2i;
+            return new Vector2i(Shaders.atlasSizeX, Shaders.atlasSizeY);
+//			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
+//
+//			AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
+//			if (texture instanceof TextureAtlas) {
+//				TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+//				return new Vector2i(info.getWidth(), info.getHeight());
+//			}
+//
+//			return ZERO_VECTOR_2i;
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
-		uniforms.uniform2i("gtextureSize", () -> {
-			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
-
-			TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-			return new Vector2i(info.getWidth(), info.getHeight());
-
-		}, StateUpdateNotifiers.bindTextureNotifier);
+        // TODO: gTextureSize
+//		uniforms.uniform2i("gtextureSize", () -> {
+//			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
+//
+//			TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+//			return new Vector2i(info.getWidth(), info.getHeight());
+//
+//		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
-			GlStateManager.BlendState blend = GlStateManagerAccessor.getBLEND();
-
-			if (((BooleanStateAccessor) blend.mode).isEnabled()) {
-				return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
-			} else {
-				return ZERO_VECTOR_4i;
-			}
+            return ZERO_VECTOR_4i;
+            // TODO: blendFunc
+//			GlStateManager.BlendState blend = GlStateManagerAccessor.getBLEND();
+//
+//			if (((BooleanStateAccessor) blend.mode).isEnabled()) {
+//				return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
+//			} else {
+//				return ZERO_VECTOR_4i;
+//			}
 		}, StateUpdateNotifiers.blendFuncNotifier);
 
 		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), StateUpdateNotifiers.phaseChangeNotifier);
@@ -100,9 +99,9 @@ public final class CommonUniforms {
 
 		SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
-		uniforms
+        uniforms
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
-			.uniform1f(PER_FRAME, "eyeAltitude", () -> Objects.requireNonNull(client.getCameraEntity()).getEyeY())
+			.uniform1f(PER_FRAME, "eyeAltitude", Shaders::getEyePosY) // Objects.requireNonNull(client.getCameraEntity()).getEyeY())
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
 			.uniform1f(PER_FRAME, "nightVision", CommonUniforms::getNightVision)

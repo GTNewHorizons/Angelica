@@ -32,7 +32,7 @@ public class SimplePBRLoader implements PBRTextureLoader<SimpleTexture> {
 
 		SimpleTexture pbrTexture = new SimpleTexture(pbrImageLocation);
 		try {
-			pbrTexture.load(resourceManager);
+			pbrTexture.loadTexture(resourceManager);
 		} catch (IOException e) {
 			return null;
 		}

@@ -1,7 +1,6 @@
 package net.coderbot.iris.config;
 
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gui.option.IrisVideoSettings;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -137,13 +136,14 @@ public class IrisConfig {
 		enableShaders = !"false".equals(properties.getProperty("enableShaders"));
 		enableDebugOptions = "true".equals(properties.getProperty("enableDebugOptions"));
 		disableUpdateMessage = "true".equals(properties.getProperty("disableUpdateMessage"));
-		try {
-			IrisVideoSettings.shadowDistance = Integer.parseInt(properties.getProperty("maxShadowRenderDistance", "32"));
-		} catch (NumberFormatException e) {
-			Iris.logger.error("Shadow distance setting reset; value is invalid.");
-			IrisVideoSettings.shadowDistance = 32;
-			save();
-		}
+        // TODO: GUI
+//		try {
+//			IrisVideoSettings.shadowDistance = Integer.parseInt(properties.getProperty("maxShadowRenderDistance", "32"));
+//		} catch (NumberFormatException e) {
+//			Iris.logger.error("Shadow distance setting reset; value is invalid.");
+//			IrisVideoSettings.shadowDistance = 32;
+//			save();
+//		}
 
 		if (shaderPackName != null) {
 			if (shaderPackName.equals("(internal)") || shaderPackName.isEmpty()) {
@@ -163,7 +163,8 @@ public class IrisConfig {
 		properties.setProperty("enableShaders", enableShaders ? "true" : "false");
 		properties.setProperty("enableDebugOptions", enableDebugOptions ? "true" : "false");
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
-		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
+//		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
+		properties.setProperty("maxShadowRenderDistance", String.valueOf(32));
 		// NB: This uses ISO-8859-1 with unicode escapes as the encoding
 		try (OutputStream os = Files.newOutputStream(propertiesPath)) {
 			properties.store(os, COMMENT);

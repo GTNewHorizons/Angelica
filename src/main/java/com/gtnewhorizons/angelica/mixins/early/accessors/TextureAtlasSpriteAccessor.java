@@ -31,7 +31,8 @@ public interface TextureAtlasSpriteAccessor {
     @Accessor("tickCounter")
     void setSubFrame(int subFrame);
 
-//
+
+    //
 //    @Invoker("upload")
 //    void callUpload(int frameIndex);
 }

@@ -1,5 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
+import lombok.Getter;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelFormat;
@@ -15,8 +16,10 @@ public class RenderTarget {
 	private final InternalTextureFormat internalFormat;
 	private final PixelFormat format;
 	private final PixelType type;
-	private int width;
-	private int height;
+	@Getter
+    private int width;
+	@Getter
+    private int height;
 
 	private boolean isValid;
 	private final int mainTexture;
@@ -94,15 +97,7 @@ public class RenderTarget {
 		return altTexture;
 	}
 
-	public int getWidth() {
-		return width;
-	}
-
-	public int getHeight() {
-		return height;
-	}
-
-	public void destroy() {
+    public void destroy() {
 		requireValid();
 		isValid = false;
         GL11.glDeleteTextures(mainTexture);

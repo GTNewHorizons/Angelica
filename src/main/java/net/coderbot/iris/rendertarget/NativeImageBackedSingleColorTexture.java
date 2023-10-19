@@ -1,5 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
+import net.coderbot.iris.compat.mojang.NativeImage;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 
 public class NativeImageBackedSingleColorTexture extends DynamicTexture {

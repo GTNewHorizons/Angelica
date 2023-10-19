@@ -2,6 +2,10 @@ package net.coderbot.batchedentityrendering.impl;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.coderbot.iris.compat.mojang.BufferBuilder;
+import net.coderbot.iris.compat.mojang.BufferSource;
+import net.coderbot.iris.compat.mojang.RenderType;
+import net.coderbot.iris.compat.mojang.VertexConsumer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OldFullyBufferedMultiBufferSource extends MultiBufferSource.BufferSource {
+public class OldFullyBufferedMultiBufferSource extends BufferSource {
 	private final Map<RenderType, BufferBuilder> bufferBuilders;
 	private final Object2IntMap<RenderType> unused;
 	private final Set<BufferBuilder> activeBuffers;

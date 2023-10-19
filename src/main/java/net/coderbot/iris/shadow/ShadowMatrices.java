@@ -1,5 +1,6 @@
 package net.coderbot.iris.shadow;
 
+import net.coderbot.iris.compat.mojang.PoseStack;
 import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
@@ -47,13 +48,14 @@ public class ShadowMatrices {
 			skyAngle = shadowAngle - 0.25f;
 		}
 
-		target.last().normal().setIdentity();
-		target.last().pose().setIdentity();
+		target.last().normal().identity();
+		target.last().pose().identity();
 
-		target.last().pose().multiply(Matrix4f.createTranslateMatrix(0.0f, 0.0f, -100.0f));
-		target.mulPose(Vector3f.XP.rotationDegrees(90.0F));
-		target.mulPose(Vector3f.ZP.rotationDegrees(skyAngle * -360.0f));
-		target.mulPose(Vector3f.XP.rotationDegrees(sunPathRotation));
+        // TODO: Render
+//		target.last().pose().multiply(Matrix4f.createTranslateMatrix(0.0f, 0.0f, -100.0f));
+//		target.mulPose(Vector3f.XP.rotationDegrees(90.0F));
+//		target.mulPose(Vector3f.ZP.rotationDegrees(skyAngle * -360.0f));
+//		target.mulPose(Vector3f.XP.rotationDegrees(sunPathRotation));
 	}
 
 	public static void snapModelViewToGrid(PoseStack target, float shadowIntervalSize, double cameraX, double cameraY, double cameraZ) {
@@ -84,7 +86,8 @@ public class ShadowMatrices {
 		offsetY -= halfIntervalSize;
 		offsetZ -= halfIntervalSize;
 
-		target.last().pose().multiply(Matrix4f.createTranslateMatrix(offsetX, offsetY, offsetZ));
+        // TODO: Render
+//		target.last().pose().multiply(Matrix4f.createTranslateMatrix(offsetX, offsetY, offsetZ));
 	}
 
 	public static void createModelViewMatrix(PoseStack target, float shadowAngle, float shadowIntervalSize,
@@ -162,7 +165,8 @@ public class ShadowMatrices {
 
 		private static float[] toFloatArray(Matrix4f matrix4f) {
 			FloatBuffer buffer = FloatBuffer.allocate(16);
-			matrix4f.store(buffer);
+            // TODO: Render
+//			matrix4f.store(buffer);
 
 			return buffer.array();
 		}

@@ -1,9 +1,14 @@
 package net.coderbot.iris.pipeline;
 
 import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.compat.mojang.Camera;
+import net.coderbot.iris.compat.mojang.GameRenderer;
+import net.coderbot.iris.compat.mojang.InteractionHand;
+import net.coderbot.iris.compat.mojang.PoseStack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import org.joml.Matrix4f;
@@ -21,35 +26,45 @@ public class HandRenderer {
         final PoseStack.Pose pose = poseStack.last();
 
 		// We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
-		Matrix4f scaleMatrix = Matrix4f.createScaleMatrix(1F, 1F, DEPTH);
-		scaleMatrix.multiply(gameRenderer.getProjectionMatrix(camera, tickDelta, false));
-		gameRenderer.resetProjectionMatrix(scaleMatrix);
+        Matrix4f scaleMatrix = new Matrix4f().scale(1F, 1F, DEPTH);
+        // TODO: ProjectionMatrix
+//        scaleMatrix.multiply(gameRenderer.getProjectionMatrix(camera, tickDelta, false));
+//		scaleMatrix.mul(projectionMatrix);
+//        RenderSystem.matrixMode(5889);
+//        RenderSystem.loadIdentity();
+//        RenderSystem.multMatrix(arg);
+//        RenderSystem.matrixMode(5888);
 
-		pose.pose().setIdentity();
-        pose.normal().setIdentity();
+		pose.pose().identity();
+        pose.normal().identity();
 
-		((GameRendererAccessor) gameRenderer).invokeBobHurt(poseStack, tickDelta);
+		gameRenderer.invokeBobHurt(poseStack, tickDelta);
 
-		if (Minecraft.getMinecraft().gameSettings.bobView) {
-			((GameRendererAccessor) gameRenderer).invokeBobView(poseStack, tickDelta);
+		if (Minecraft.getMinecraft().gameSettings.viewBobbing) {
+			gameRenderer.invokeBobView(poseStack, tickDelta);
 		}
 	}
 
 	private boolean canRender(Camera camera, GameRenderer gameRenderer) {
-		return !(!((GameRendererAccessor) gameRenderer).getRenderHand()
+		return !(!gameRenderer.getRenderHand()
 				|| camera.isDetached()
-					|| !(camera.getEntity() instanceof Player)
-						|| ((GameRendererAccessor)gameRenderer).getPanoramicMode()
-							|| Minecraft.getMinecraft().gameSettings.hideGui
-								|| (camera.getEntity() instanceof LivingEntity && ((LivingEntity)camera.getEntity()).isSleeping())
-									|| Minecraft.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR);
+					|| !(camera.getEntity() instanceof EntityPlayer)
+						|| gameRenderer.getPanoramicMode()
+							|| Minecraft.getMinecraft().gameSettings.hideGUI
+								|| (camera.getEntity() instanceof EntityLiving && ((EntityLiving)camera.getEntity()).isPlayerSleeping())
+                                    // TODO: SPECTATOR
+									/*|| Minecraft.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR*/);
 	}
 
 	public boolean isHandTranslucent(InteractionHand hand) {
-        Item item = Minecraft.getMinecraft().thePlayer.getItemBySlot(hand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND).getItem();
+        // TODO: Offhand
+//        Item item = Minecraft.getMinecraft().thePlayer.getItemBySlot(hand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND).getItem();
+        Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
 
 		if (item instanceof ItemBlock itemBlock) {
-			return ItemBlockRenderTypes.getChunkRenderType(itemBlock.getBlock().defaultBlockState()) == RenderType.translucent();
+            // TODO: RenderType
+//			return ItemBlockRenderTypes.getChunkRenderType(itemBlock.getBlock().defaultBlockState()) == RenderType.translucent();
+            return false;
 		}
 
 		return false;
@@ -70,17 +85,18 @@ public class HandRenderer {
 
 		poseStack.pushPose();
 
-		Minecraft.getMinecraft().mcProfiler.push("iris_hand");
+		Minecraft.getMinecraft().mcProfiler.startSection("iris_hand");
 
 		setupGlState(gameRenderer, camera, poseStack, tickDelta);
 
 		renderingSolid = true;
-
-		Minecraft.getMinecraft().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getMinecraft().thePlayer, Minecraft.getMinecraft().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
+        // TODO: Hand
+//		Minecraft.getMinecraft().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getMinecraft().thePlayer, Minecraft.getMinecraft().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
 
 		Minecraft.getMinecraft().mcProfiler.endSection();
 
-		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
+        // TODO: ProjectionMatrix
+//		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
 		poseStack.popPose();
 
@@ -108,13 +124,15 @@ public class HandRenderer {
 
 		setupGlState(gameRenderer, camera, poseStack, tickDelta);
 
-		Minecraft.getMinecraft().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getMinecraft().thePlayer, Minecraft.getMinecraft().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
+        // TODO: Hand
+//		Minecraft.getMinecraft().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getMinecraft().thePlayer, Minecraft.getMinecraft().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
 
 		poseStack.popPose();
 
 		Minecraft.getMinecraft().mcProfiler.endSection();
 
-		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
+        // TODO: ProjectionMatrix
+//		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
 		bufferSource.endBatch();
 

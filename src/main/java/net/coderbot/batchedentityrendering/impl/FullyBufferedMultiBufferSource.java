@@ -2,6 +2,10 @@ package net.coderbot.batchedentityrendering.impl;
 
 import net.coderbot.batchedentityrendering.impl.ordering.GraphTranslucencyRenderOrderManager;
 import net.coderbot.batchedentityrendering.impl.ordering.RenderOrderManager;
+import net.coderbot.iris.compat.mojang.BufferBuilder;
+import net.coderbot.iris.compat.mojang.BufferSource;
+import net.coderbot.iris.compat.mojang.RenderType;
+import net.coderbot.iris.compat.mojang.VertexConsumer;
 import net.coderbot.iris.fantastic.WrappingMultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.Profiler;
@@ -15,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class FullyBufferedMultiBufferSource extends MultiBufferSource.BufferSource implements MemoryTrackingBuffer, Groupable, WrappingMultiBufferSource {
+public class FullyBufferedMultiBufferSource extends BufferSource implements MemoryTrackingBuffer, Groupable, WrappingMultiBufferSource {
 	private static final int NUM_BUFFERS = 32;
 
 	private final RenderOrderManager renderOrderManager;
@@ -144,7 +148,7 @@ public class FullyBufferedMultiBufferSource extends MultiBufferSource.BufferSour
 		// Disable explicit flushing
 	}
 
-	public MultiBufferSource.BufferSource getUnflushableWrapper() {
+	public BufferSource getUnflushableWrapper() {
 		return unflushableWrapper;
 	}
 
@@ -213,7 +217,7 @@ public class FullyBufferedMultiBufferSource extends MultiBufferSource.BufferSour
 	/**
 	 * A wrapper that prevents callers from explicitly flushing anything.
 	 */
-	private static class UnflushableWrapper extends MultiBufferSource.BufferSource implements Groupable {
+	private static class UnflushableWrapper extends BufferSource implements Groupable {
 		private final FullyBufferedMultiBufferSource wrapped;
 
 		UnflushableWrapper(FullyBufferedMultiBufferSource wrapped) {

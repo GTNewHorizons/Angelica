@@ -16,7 +16,9 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.opengl.GL11;
@@ -81,13 +83,14 @@ public class CustomTextureManager {
 			ownedTextures.add(texture);
 
 			return texture::getGlTextureId;
-		} else if (textureData instanceof CustomTextureData.LightmapMarker) {
-			// Special code path for the light texture. While shader packs hardcode the primary light texture, it's
-			// possible that a mod will create a different light texture, so this code path is robust to that.
-			return () ->
-				((LightTextureAccessor) Minecraft.getMinecraft().gameRenderer.lightTexture())
-					.getLightTexture().getId();
-		} else if (textureData instanceof CustomTextureData.ResourceData) {
+		}
+        // TODO: Iris
+//        else if (textureData instanceof CustomTextureData.LightmapMarker) {
+//			// Special code path for the light texture. While shader packs hardcode the primary light texture, it's
+//			// possible that a mod will create a different light texture, so this code path is robust to that.
+//			return () -> ((LightTextureAccessor) Minecraft.getMinecraft().gameRenderer.lightTexture()).getLightTexture().getId();
+//		}
+        else if (textureData instanceof CustomTextureData.ResourceData) {
 			CustomTextureData.ResourceData resourceData = (CustomTextureData.ResourceData) textureData;
 			String namespace = resourceData.getNamespace();
 			String location = resourceData.getLocation();
@@ -112,17 +115,17 @@ public class CustomTextureManager {
 				//     reloads. Re-fetching the texture from the TextureManager every time is the most robust approach for
 				//     now.
 				return () -> {
-					AbstractTexture texture = textureManager.getTexture(textureLocation);
+					ITextureObject texture = textureManager.getTexture(textureLocation);
 
 					// TODO: Should we give something else if the texture isn't there? This will need some thought
-					return texture != null ? texture.getId() : MissingTextureAtlasSprite.getTexture().getId();
+					return texture != null ? texture.getGlTextureId() : TextureUtil.missingTexture.getGlTextureId();
 				};
 			} else {
 				location = location.substring(0, extensionIndex - pbrType.getSuffix().length()) + location.substring(extensionIndex);
 				ResourceLocation textureLocation = new ResourceLocation(namespace, location);
 
 				return () -> {
-					AbstractTexture texture = textureManager.getTexture(textureLocation);
+                    ITextureObject texture = textureManager.getTexture(textureLocation);
 
 					if (texture != null) {
 						int id = texture.getGlTextureId();
@@ -150,7 +153,8 @@ public class CustomTextureManager {
 						return pbrTexture.getGlTextureId();
 					}
 
-					return MissingTextureAtlasSprite.getTexture().getId();
+//					return MissingTextureAtlasSprite.getTexture().getId();
+                    return TextureUtil.missingTexture.getGlTextureId();
 				};
 			}
 		} else {
@@ -171,6 +175,7 @@ public class CustomTextureManager {
 	}
 
 	public void destroy() {
-		ownedTextures.forEach(AbstractTexture::close);
+        // TODO :Iris
+//		ownedTextures.forEach(AbstractTexture::close);
 	}
 }

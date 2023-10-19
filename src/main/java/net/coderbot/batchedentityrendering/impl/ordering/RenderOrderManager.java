@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import net.minecraft.client.renderer.RenderType;
+import net.coderbot.iris.compat.mojang.RenderType;
 
 public interface RenderOrderManager {
     void begin(RenderType type);

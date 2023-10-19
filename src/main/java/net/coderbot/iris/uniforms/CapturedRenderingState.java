@@ -28,7 +28,7 @@ public class CapturedRenderingState {
 	}
 
 	public void setGbufferModelView(Matrix4f gbufferModelView) {
-		this.gbufferModelView = gbufferModelView.copy();
+		this.gbufferModelView = new Matrix4f(gbufferModelView);
 	}
 
 	public Matrix4f getGbufferProjection() {
@@ -36,7 +36,7 @@ public class CapturedRenderingState {
 	}
 
 	public void setGbufferProjection(Matrix4f gbufferProjection) {
-		this.gbufferProjection = gbufferProjection.copy();
+		this.gbufferProjection = new Matrix4f(gbufferProjection);
 	}
 
 	public Vector3d getFogColor() {

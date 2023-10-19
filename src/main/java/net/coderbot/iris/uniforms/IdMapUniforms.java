@@ -1,12 +1,14 @@
 package net.coderbot.iris.uniforms;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import net.coderbot.iris.compat.mojang.InteractionHand;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.irisshaders.iris.api.v0.item.IrisItemLightProvider;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
@@ -67,15 +69,16 @@ public final class IdMapUniforms {
 		}
 
 		public void update() {
-			LocalPlayer player = Minecraft.getMinecraft().thePlayer;
+			EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 
 			if (player == null) {
 				// Not valid when the player doesn't exist
 				invalidate();
 				return;
 			}
-
-			ItemStack heldStack = player.getItemInHand(hand);
+//			ItemStack heldStack = player.getItemInHand(hand);
+            // TODO: Offhand
+			ItemStack heldStack = player.getHeldItem();
 
 			if (heldStack == null) {
 				invalidate();
@@ -89,8 +92,8 @@ public final class IdMapUniforms {
 				return;
 			}
 
-			ResourceLocation heldItemId = Registry.ITEM.getKey(heldItem);
-			intID = itemIdMap.applyAsInt(new NamespacedId(heldItemId.getNamespace(), heldItemId.getPath()));
+			ResourceLocation heldItemId = new ResourceLocation(Item.itemRegistry.getNameForObject(heldItem));
+			intID = itemIdMap.applyAsInt(new NamespacedId(heldItemId.getResourceDomain(), heldItemId.getResourcePath()));
 
 			IrisItemLightProvider lightProvider = (IrisItemLightProvider) heldItem;
 			lightValue = lightProvider.getLightEmission(Minecraft.getMinecraft().thePlayer, heldStack);
@@ -102,8 +105,10 @@ public final class IdMapUniforms {
 			lightColor = lightProvider.getLightColor(Minecraft.getMinecraft().thePlayer, heldStack);
 		}
 
-		private IrisItemLightProvider applyOldHandLighting(@NotNull LocalPlayer player, IrisItemLightProvider existing) {
-			ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
+		private IrisItemLightProvider applyOldHandLighting(@NotNull EntityPlayer player, IrisItemLightProvider existing) {
+            // TODO: Offhand
+//			ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
+			ItemStack offHandStack = null;
 
 			if (offHandStack == null) {
 				return existing;

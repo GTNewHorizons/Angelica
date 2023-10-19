@@ -7,10 +7,9 @@ import com.google.gson.JsonParseException;
 import com.google.gson.stream.JsonReader;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.features.FeatureFlags;
-import net.coderbot.iris.gui.FeatureMissingErrorScreen;
-import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.shaderpack.include.AbsolutePackPath;
 import net.coderbot.iris.shaderpack.include.IncludeGraph;
 import net.coderbot.iris.shaderpack.include.IncludeProcessor;
@@ -25,8 +24,6 @@ import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.coderbot.iris.shaderpack.texture.TextureFilteringData;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.irisshaders.iris.api.v0.IrisApi;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.I18n;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
@@ -56,12 +53,17 @@ public class ShaderPack {
 	private final ProgramSet nether;
 	private final ProgramSet end;
 
-	private final IdMap idMap;
-	private final LanguageMap languageMap;
-	private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
+	@Getter
+    private final IdMap idMap;
+	@Getter
+    private final LanguageMap languageMap;
+	@Getter
+    private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
 	private final CustomTextureData customNoiseTexture;
-	private final ShaderPackOptions shaderPackOptions;
-	private final OptionMenuContainer menuContainer;
+	@Getter
+    private final ShaderPackOptions shaderPackOptions;
+	@Getter
+    private final OptionMenuContainer menuContainer;
 
 	private final ProfileSet.ProfileResult profile;
 	private final String profileInfo;
@@ -124,10 +126,11 @@ public class ShaderPack {
 		List<String> invalidFeatureFlags = invalidFlagList.stream().map(FeatureFlags::getHumanReadableName).collect(Collectors.toList());
 
 		if (!invalidFeatureFlags.isEmpty()) {
-			if (Minecraft.getMinecraft().screen instanceof ShaderPackScreen) {
-				Minecraft.getMinecraft().setScreen(new FeatureMissingErrorScreen(Minecraft.getMinecraft().screen, I18n.format("iris.unsupported.pack"), I18n.format("iris.unsupported.pack.description", FeatureFlags.getInvalidStatus(invalidFlagList), invalidFeatureFlags.stream()
-					.collect(Collectors.joining(", ", ": ", ".")))));
-			}
+            // TODO: GUI
+//			if (Minecraft.getMinecraft().screen instanceof ShaderPackScreen) {
+//				Minecraft.getMinecraft().setScreen(new FeatureMissingErrorScreen(Minecraft.getMinecraft().screen, I18n.format("iris.unsupported.pack"), I18n.format("iris.unsupported.pack.description", FeatureFlags.getInvalidStatus(invalidFlagList), invalidFeatureFlags.stream()
+//					.collect(Collectors.joining(", ", ": ", ".")))));
+//			}
 			IrisApi.getInstance().getConfig().setShadersEnabledAndApply(false);
 		}
 
@@ -348,23 +351,14 @@ public class ShaderPack {
 	}
 
 	public ProgramSet getProgramSet(DimensionId dimension) {
-		ProgramSet overrides;
+		ProgramSet overrides = switch (dimension) {
+            case OVERWORLD -> overworld;
+            case NETHER -> nether;
+            case END -> end;
+            default -> throw new IllegalArgumentException("Unknown dimension " + dimension);
+        };
 
-		switch (dimension) {
-			case OVERWORLD:
-				overrides = overworld;
-				break;
-			case NETHER:
-				overrides = nether;
-				break;
-			case END:
-				overrides = end;
-				break;
-			default:
-				throw new IllegalArgumentException("Unknown dimension " + dimension);
-		}
-
-		// NB: If a dimension overrides directory is present, none of the files from the parent directory are "merged"
+        // NB: If a dimension overrides directory is present, none of the files from the parent directory are "merged"
 		//     into the override. Rather, we act as if the overrides directory contains a completely different set of
 		//     shader programs unrelated to that of the base shader pack.
 		//
@@ -379,27 +373,8 @@ public class ShaderPack {
 		}
 	}
 
-	public IdMap getIdMap() {
-		return idMap;
-	}
-
-	public EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> getCustomTextureDataMap() {
-		return customTextureDataMap;
-	}
-
-	public Optional<CustomTextureData> getCustomNoiseTexture() {
+    public Optional<CustomTextureData> getCustomNoiseTexture() {
 		return Optional.ofNullable(customNoiseTexture);
 	}
 
-	public LanguageMap getLanguageMap() {
-		return languageMap;
-	}
-
-	public ShaderPackOptions getShaderPackOptions() {
-		return shaderPackOptions;
-	}
-
-	public OptionMenuContainer getMenuContainer() {
-		return menuContainer;
-	}
 }

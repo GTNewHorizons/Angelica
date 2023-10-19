@@ -1,5 +1,9 @@
 package net.coderbot.iris.pipeline;
 
+import net.coderbot.iris.compat.mojang.BufferBuilder;
+import net.coderbot.iris.compat.mojang.DefaultVertexFormat;
+import net.coderbot.iris.compat.mojang.VertexBuffer;
+import net.coderbot.iris.compat.mojang.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -49,7 +53,8 @@ public class HorizonRenderer {
 			this.buffer.close();
 		}
 
-		BufferBuilder buffer = Tesselator.getInstance().getBuilder();
+//		BufferBuilder buffer = Tesselator.getInstance().getBuilder();
+		BufferBuilder buffer = new BufferBuilder();
 
 		// Build the horizon quads into a buffer
 		buffer.begin(GL11.GL_QUADS, DefaultVertexFormat.POSITION);

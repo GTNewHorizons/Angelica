@@ -1,11 +1,11 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.client.Shaders;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.Vec3;
 import org.joml.Math;
 
 // These expressions are copied directly from BSL and Complementary.
@@ -14,7 +14,8 @@ import org.joml.Math;
 // mostly working under Iris.
 public class HardcodedCustomUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
-	private static Biome storedBiome;
+    // TODO: Biome
+//	private static Biome storedBiome;
 
 	public static void addHardcodedCustomUniforms(UniformHolder holder, FrameUpdateNotifier updateNotifier) {
 		updateNotifier.addListener(() -> {
@@ -105,7 +106,8 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getEyeInCave() {
-		if (client.getCameraEntity().getEyeY() < 5.0) {
+//		if (client.getCameraEntity().getEyeY() < 5.0) {
+		if (Shaders.getEyePosY() < 5.0) {
 			return 1.0f - getEyeSkyBrightness() / 240F;
 		}
 		return 0.0f;
@@ -180,9 +182,10 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getRawPrecipitation() {
-		if (storedBiome == null) {
-			return 0;
-		}
+        // TODO: Biome
+//		if (storedBiome == null) {
+//			return 0;
+//		}
 				return 0;
 //		Biome.Precipitation precipitation = storedBiome.getPrecipitation();
 //        return switch (precipitation) {

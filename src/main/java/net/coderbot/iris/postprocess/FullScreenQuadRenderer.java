@@ -1,6 +1,7 @@
 package net.coderbot.iris.postprocess;
 
 import net.coderbot.iris.gl.IrisRenderSystem;
+import net.coderbot.iris.compat.mojang.DefaultVertexFormat;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 

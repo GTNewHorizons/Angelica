@@ -146,7 +146,9 @@ public class Iris {
     //	public void onKeyInput(InputEvent.KeyInputEvent event) {
     //		handleKeybinds(Minecraft.getMinecraft());
     //	}
-
+    public static void identifyCapabilities() {
+        capabilities = GLContext.getCapabilities();
+    }
     /**
      * Called once RenderSystem#initRenderer has completed. This means that we can safely access OpenGL.
      */
@@ -156,7 +158,6 @@ public class Iris {
                 + " Trying to avoid a crash but this is an odd state.");
             return;
         }
-        capabilities = GLContext.getCapabilities();
 
         setDebug(irisConfig.areDebugOptionsEnabled());
 

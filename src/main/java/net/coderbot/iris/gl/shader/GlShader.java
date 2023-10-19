@@ -29,7 +29,9 @@ public class GlShader extends GlResource {
 
     private static int createShader(ShaderType type, String name, String src) {
 		int handle = GL20.glCreateShader(type.id);
-		ShaderWorkarounds.safeShaderSource(handle, src);
+        // TODO: Iris
+//		ShaderWorkarounds.safeShaderSource(handle, src);
+        GL20.glShaderSource(handle, src + '\0');
 		GL20.glCompileShader(handle);
 
 		GLDebug.nameObject(KHRDebug.GL_SHADER, handle, name + "(" + type.name().toLowerCase(Locale.ROOT) + ")");

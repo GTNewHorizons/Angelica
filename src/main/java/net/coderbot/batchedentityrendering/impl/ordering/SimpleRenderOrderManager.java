@@ -1,5 +1,6 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
+import net.coderbot.iris.compat.mojang.RenderType;
 
 import java.util.LinkedHashSet;
 

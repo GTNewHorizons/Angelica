@@ -1,12 +1,13 @@
 package net.coderbot.iris.pipeline;
 
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.compat.mojang.Camera;
+import net.coderbot.iris.compat.mojang.LevelRenderer;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
-import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL20;
 
 import java.util.List;
@@ -24,12 +25,13 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	@Override
 	public void beginLevelRendering() {
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
-		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        // TODO: Iris
+//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
 		GL20.glUseProgram(0);
 	}
 
 	@Override
-	public void renderShadows(LevelRendererAccessor levelRenderer, Camera camera) {
+	public void renderShadows(LevelRenderer levelRenderer, Camera camera) {
 		// stub: nothing to do here
 	}
 

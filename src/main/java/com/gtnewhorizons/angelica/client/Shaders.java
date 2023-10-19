@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.client.shaders.shaderpack.ShaderPack;
 import com.gtnewhorizons.angelica.client.shaders.shaderpack.option.values.MutableOptionValues;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelRenderer;
+import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
@@ -182,6 +183,7 @@ public class Shaders {
     private static int eyeBrightness = 0;
     private static float eyeBrightnessFadeX = 0;
     private static float eyeBrightnessFadeY = 0;
+    @Getter
     private static float eyePosY = 0;
     private static float centerDepth = 0;
     private static float centerDepthSmooth = 0;
@@ -192,6 +194,7 @@ public class Shaders {
     private static boolean updateChunksErrorRecorded = false;
 
     private static boolean lightmapEnabled = false;
+    @Getter
     private static boolean fogEnabled = true;
 
     public static int entityAttrib = 10;
@@ -207,8 +210,8 @@ public class Shaders {
     public static int uniformEntityFlash = -1;
     public static boolean useEntityHurtFlash;
 
-    private static double[] previousCameraPosition = new double[3];
-    private static double[] cameraPosition = new double[3];
+    private static final double[] previousCameraPosition = new double[3];
+    private static final double[] cameraPosition = new double[3];
 
     // Shadow stuff
 
@@ -260,39 +263,76 @@ public class Shaders {
     public static final int ProgramTexturedLit = 3;
     public static final int ProgramSkyBasic = 4;
     public static final int ProgramSkyTextured = 5;
-    public static final int ProgramTerrain = 6;
-    public static final int ProgramWater = 7;
-    public static final int ProgramEntities = 8;
-    public static final int ProgramSpiderEyes = 9;
-    public static final int ProgramHand = 10;
-    public static final int ProgramWeather = 11;
-    public static final int ProgramComposite = 12;
-    public static final int ProgramComposite1 = 13;
-    public static final int ProgramComposite2 = 14;
-    public static final int ProgramComposite3 = 15;
-    public static final int ProgramComposite4 = 16;
-    public static final int ProgramComposite5 = 17;
-    public static final int ProgramComposite6 = 18;
-    public static final int ProgramComposite7 = 19;
-    public static final int ProgramFinal = 20;
-    public static final int ProgramShadow = 21;
-    public static final int ProgramCount = 22;
+    public static final int ProgramClouds = 6;
+    public static final int ProgramTerrain = 7;
+    public static final int ProgramTerrainSolid = 8;
+    public static final int ProgramTerrainCutoutMip = 9;
+    public static final int ProgramTerrainCutout = 10;
+    public static final int ProgramDamagedBlock = 11;
+    public static final int ProgramWater = 12;
+    public static final int ProgramBlock = 13;
+    public static final int ProgramBeaconBeam = 14;
+    public static final int ProgramItem = 15;
+    public static final int ProgramEntities = 16;
+    public static final int ProgramArmorGlint = 17;
+    public static final int ProgramSpiderEyes = 18;
+    public static final int ProgramHand = 19;
+    public static final int ProgramWeather = 20;
+    public static final int ProgramComposite = 21;
+    public static final int ProgramComposite1 = 22;
+    public static final int ProgramComposite2 = 23;
+    public static final int ProgramComposite3 = 24;
+    public static final int ProgramComposite4 = 25;
+    public static final int ProgramComposite5 = 26;
+    public static final int ProgramComposite6 = 27;
+    public static final int ProgramComposite7 = 28;
+    public static final int ProgramFinal = 29;
+    public static final int ProgramShadow = 30;
+    public static final int ProgramShadowSolid = 31;
+    public static final int ProgramShadowCutout = 32;
+    public static final int ProgramDeferred = 33;
+    public static final int ProgramDeferred1 = 34;
+    public static final int ProgramDeferred2 = 35;
+    public static final int ProgramDeferred3 = 36;
+    public static final int ProgramDeferred4 = 37;
+    public static final int ProgramDeferred5 = 38;
+    public static final int ProgramDeferred6 = 39;
+    public static final int ProgramDeferred7 = 40;
+    public static final int ProgramHandWater = 41;
+    public static final int ProgramDeferredLast = 42;
+    public static final int ProgramCompositeLast = 43;
+    public static final int ProgramCount = 44;
     public static final int MaxCompositePasses = 8;
+    public static final int MaxDeferredPasses = 8;
 
     private static final String[] programNames = new String[] { "", "gbuffers_basic", "gbuffers_textured",
-            "gbuffers_textured_lit", "gbuffers_skybasic", "gbuffers_skytextured", "gbuffers_terrain", "gbuffers_water",
-            "gbuffers_entities", "gbuffers_spidereyes", "gbuffers_hand", "gbuffers_weather", "composite", "composite1",
-            "composite2", "composite3", "composite4", "composite5", "composite6", "composite7", "final", "shadow", };
+            "gbuffers_textured_lit", "gbuffers_skybasic", "gbuffers_skytextured", "gbuffers_clouds", "gbuffers_terrain",
+            "gbuffers_terrain_solid", "gbuffers_terrain_cutout_mip", "gbuffers_terrain_cutout", "gbuffers_damagedblock", "gbuffers_water",
+            "gbuffers_block", "gbuffers_beaconbeam", "gbuffers_item", "gbuffers_entities", "gbuffers_armor_glint", "gbuffers_spidereyes",
+            "gbuffers_hand", "gbuffers_weather", "composite", "composite1", "composite2", "composite3", "composite4", "composite5",
+            "composite6", "composite7", "final", "shadow", "shadow_solid", "shadow_cutout", "deferred", "deferred1", "deferred2", "deferred3",
+            "deferred4", "deferred5", "deferred6", "deferred7", "gbuffers_hand_water", "deferred_last", "composite_last"
+            };
 
-    private static final int[] programBackups = new int[] { ProgramNone, // none
+    private static final int[] programBackups = new int[] {
+            ProgramNone, // none
             ProgramNone, // basic
             ProgramBasic, // textured
             ProgramTextured, // textured/lit
             ProgramBasic, // skybasic
             ProgramTextured, // skytextured
+            ProgramTextured, // clouds
             ProgramTexturedLit, // terrain
+            ProgramTerrain, // terrain solid
+            ProgramTerrain, // terrain solid cutout mip
+            ProgramTerrain, // terrain solid cutout
+            ProgramTerrain, // block damage
             ProgramTerrain, // water
+            ProgramTerrain, // block
+            ProgramTextured, // beacon beam
+            ProgramTexturedLit, // item
             ProgramTexturedLit, // entities
+            ProgramTextured, // armor glint
             ProgramTextured, // spidereyes
             ProgramTexturedLit, // hand
             ProgramTexturedLit, // weather
@@ -306,6 +346,20 @@ public class Shaders {
             ProgramNone, // composite7
             ProgramNone, // final
             ProgramNone, // shadow
+            ProgramShadow, // shadow solid
+            ProgramShadow, // shadow solid cutout
+            ProgramNone, // deferred
+            ProgramNone, // deferred1
+            ProgramNone, // deferred2
+            ProgramNone, // deferred3
+            ProgramNone, // deferred4
+            ProgramNone, // deferred5
+            ProgramNone, // deferred6
+            ProgramNone, // deferred7
+            ProgramHand, // hand water
+            ProgramNone, // deferred last
+            ProgramNone, // composite last
+
     };
 
     private static final int[] programsID = new int[ProgramCount];
@@ -388,6 +442,10 @@ public class Shaders {
     public static float sunPathRotation = 0.0f;
     public static float shadowAngleInterval = 0.0f;
     public static int fogMode = 0;
+    public static float fogDensity = 0;
+    public static float fogStart = 0;
+    public static float fogEnd = 0;
+
     public static float fogColorR, fogColorG, fogColorB;
     public static float shadowIntervalSize = 2.0f;
     public static int terrainIconSize = 16;
@@ -1396,11 +1454,19 @@ public class Shaders {
             case ProgramTexturedLit:
             case ProgramSkyBasic:
             case ProgramSkyTextured:
+            case ProgramClouds:
             case ProgramTerrain:
+            case ProgramTerrainSolid:
+            case ProgramTerrainCutoutMip:
+            case ProgramTerrainCutout:
+            case ProgramDamagedBlock:
             case ProgramWater:
+            case ProgramBlock:
             case ProgramEntities:
+            case ProgramSpiderEyes:
             case ProgramHand:
             case ProgramWeather:
+            case ProgramHandWater:
                 normalMapEnabled = true;
                 setProgramUniform1i("texture", 0);
                 setProgramUniform1i("lightmap", 1);
@@ -1426,6 +1492,16 @@ public class Shaders {
             case ProgramComposite6:
             case ProgramComposite7:
             case ProgramFinal:
+            case ProgramDeferred:
+            case ProgramDeferred1:
+            case ProgramDeferred2:
+            case ProgramDeferred3:
+            case ProgramDeferred4:
+            case ProgramDeferred5:
+            case ProgramDeferred6:
+            case ProgramDeferred7:
+            case ProgramDeferredLast:
+            case ProgramCompositeLast:
                 normalMapEnabled = false;
                 setProgramUniform1i("gcolor", 0);
                 setProgramUniform1i("gdepth", 1);
@@ -1457,6 +1533,8 @@ public class Shaders {
                 setProgramUniform1i("noisetex", 15);
                 break;
             case ProgramShadow:
+            case ProgramShadowSolid:
+            case ProgramShadowCutout:
                 setProgramUniform1i("tex", 0);
                 setProgramUniform1i("texture", 0);
                 setProgramUniform1i("lightmap", 1);
@@ -1505,16 +1583,8 @@ public class Shaders {
         setProgramUniform3f("sunPosition", sunPosition[0], sunPosition[1], sunPosition[2]);
         setProgramUniform3f("moonPosition", moonPosition[0], moonPosition[1], moonPosition[2]);
         setProgramUniform3f("upPosition", upPosition[0], upPosition[1], upPosition[2]);
-        setProgramUniform3f(
-                "previousCameraPosition",
-                (float) previousCameraPosition[0],
-                (float) previousCameraPosition[1],
-                (float) previousCameraPosition[2]);
-        setProgramUniform3f(
-                "cameraPosition",
-                (float) cameraPosition[0],
-                (float) cameraPosition[1],
-                (float) cameraPosition[2]);
+        setProgramUniform3f("previousCameraPosition", (float) previousCameraPosition[0], (float) previousCameraPosition[1], (float) previousCameraPosition[2]);
+        setProgramUniform3f("cameraPosition", (float) cameraPosition[0], (float) cameraPosition[1], (float) cameraPosition[2]);
         setProgramUniformMatrix4ARB("gbufferModelView", false, modelView);
         setProgramUniformMatrix4ARB("gbufferModelViewInverse", false, modelViewInverse);
         setProgramUniformMatrix4ARB("gbufferPreviousProjection", false, previousProjection);
@@ -1742,12 +1812,7 @@ public class Shaders {
             GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, renderWidth, renderHeight, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
         }
 
-        glFramebufferTexture2DEXT(
-                GL_FRAMEBUFFER_EXT,
-                GL_DEPTH_ATTACHMENT_EXT,
-                GL11.GL_TEXTURE_2D,
-                dfbDepthTextures.get(0),
-                0);
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, dfbDepthTextures.get(0), 0);
         GL20.glDrawBuffers(dfbDrawBuffers);
         GL11.glReadBuffer(GL11.GL_NONE);
         checkGLError("FT d");
@@ -2359,13 +2424,24 @@ public class Shaders {
         GL11.glEnd();
     }
 
+    public static void renderDeferred() {
+        checkGLError("pre-renderDeferred");
+        renderComposites(ProgramDeferred, 8, false);
+        //OF: mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
+    }
+
     public static void renderCompositeFinal() {
+        checkGLError("pre-renderCompositeFinal");
+        renderComposites(ProgramComposite, 8, true);
+    }
+
+    public static void renderComposites(int programBase, int programCount, boolean renderFinal) {
         if (isShadowPass) {
             // useProgram(ProgramNone);
             return;
         }
 
-        checkGLError("pre-renderCompositeFinal");
+
         GL11.glPushMatrix();
         GL11.glLoadIdentity();
         GL11.glMatrixMode(GL11.GL_PROJECTION);
@@ -2438,12 +2514,7 @@ public class Shaders {
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
         // set depth buffer
-        glFramebufferTexture2DEXT(
-                GL_FRAMEBUFFER_EXT,
-                GL_DEPTH_ATTACHMENT_EXT,
-                GL11.GL_TEXTURE_2D,
-                dfbDepthTextures.get(0),
-                0);
+        glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, dfbDepthTextures.get(0), 0);
         // detach depth buffer
         // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, 0, 0);
 
@@ -2451,10 +2522,10 @@ public class Shaders {
         GL20.glDrawBuffers(dfbDrawBuffers);
         checkGLError("pre-composite");
 
-        for (int i = 0; i < MaxCompositePasses; ++i) {
-            if (programsID[ProgramComposite + i] != 0) {
-                useProgram(ProgramComposite + i);
-                checkGLError(programNames[ProgramComposite + i]);
+        for (int i = 0; i < programCount; ++i) {
+            if (programsID[programBase + i] != 0) {
+                useProgram(programBase + i);
+                checkGLError(programNames[programBase + i]);
                 if (activeCompositeMipmapSetting != 0) genCompositeMipmap();
                 drawComposite();
             }
@@ -2463,11 +2534,32 @@ public class Shaders {
         // reattach depth buffer
         // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, dfbDepthTexture, 0);
 
+        // final
+        if(renderFinal) {
+            renderFinal();
+        }
+
+        isCompositeRendered = true;
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        GL11.glDepthMask(true);
+
+        // GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPopMatrix();
+
+        useProgram(ProgramNone);
+    }
+
+    private static void renderFinal() {
         // final render target
         isRenderingDfb = false;
+        mc.getFramebuffer().bindFramebuffer(true);
         // glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
         // GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
-        mc.getFramebuffer().bindFramebuffer(true);
         if (EntityRenderer.anaglyphEnable) {
             boolean maskR = (EntityRenderer.anaglyphField != 0);
             GL11.glColorMask(maskR, !maskR, !maskR, true);
@@ -2483,7 +2575,6 @@ public class Shaders {
         GL11.glDepthFunc(GL11.GL_ALWAYS);
         GL11.glDepthMask(false);
 
-        // final
         checkGLError("pre-final");
         useProgram(ProgramFinal);
         checkGLError("final");
@@ -2497,20 +2588,8 @@ public class Shaders {
 
         // end
         checkGLError("renderCompositeFinal");
-        isCompositeRendered = true;
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glDepthMask(true);
-
-        // GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glPopMatrix();
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glPopMatrix();
-
-        useProgram(ProgramNone);
     }
+
 
     public static void endRender() {
         if (isShadowPass) {
@@ -3022,6 +3101,21 @@ public class Shaders {
         }
     }
 
+    public static void sglFogf(int pname, float param) {
+        GL11.glFogf(pname, param);
+        switch (pname) {
+            case GL11.GL_FOG_DENSITY:
+                fogDensity = param;
+                break;
+            case GL11.GL_FOG_START:
+                fogStart = param;
+                break;
+            case GL11.GL_FOG_END:
+                fogEnd = param;
+                break;
+        }
+    }
+
     public static void enableLightmap() {
         lightmapEnabled = true;
         if (activeProgram == ProgramTextured) {
@@ -3070,6 +3164,9 @@ public class Shaders {
     }
 
     public static void pushEntity(Block block) {
+        final int metadata = 0;
+        // BlockAliases.getMappedBlockId
+        final int blockId = Block.blockRegistry.getIDForObject(block);
         entityDataIndex++;
         entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);
@@ -3077,6 +3174,9 @@ public class Shaders {
     }
 
     public static void pushEntity(RenderBlocks rb, Block block, int x, int y, int z) {
+        final int metadata = rb.blockAccess.getBlockMetadata(x, y, z);
+        // BlockAliases.getMappedBlockId(
+        final int blockId = Block.blockRegistry.getIDForObject(block);
         entityDataIndex++;
         entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
                 | (block.getRenderType() << 16);

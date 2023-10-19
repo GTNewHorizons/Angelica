@@ -1,18 +1,6 @@
 package com.gtnewhorizons.angelica.client;
 
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import javax.imageio.ImageIO;
-
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -26,13 +14,22 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
-
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class ShadersTex {
 
@@ -211,16 +208,8 @@ public class ShadersTex {
         Shaders.checkGLError("pre allocTexStorage");
         int level;
         for (level = 0; (width >> level) > 0 && (height >> level) > 0 /* && level<=maxLevel */; ++level) {
-            GL11.glTexImage2D(
-                    GL11.GL_TEXTURE_2D,
-                    level,
-                    GL11.GL_RGBA,
-                    (width >> level),
-                    (height >> level),
-                    0,
-                    GL12.GL_BGRA,
-                    GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                    (IntBuffer) null);
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA, (width >> level), (height >> level), 0,
+                GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, (IntBuffer) null);
         }
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, level - 1);
         Shaders.checkGLError("allocTexStorage");
@@ -280,13 +269,7 @@ public class ShadersTex {
     // for TextureMap
     public static void allocateTextureMap(int texID, int mipmapLevels, int width, int height, float anisotropy,
             Stitcher stitcher, TextureMap tex) {
-        AngelicaTweaker.LOGGER.trace(
-                "allocateTextureMap {} {} {} {} {}",
-                tex.getTextureType(),
-                mipmapLevels,
-                width,
-                height,
-                anisotropy);
+        AngelicaTweaker.LOGGER.trace("allocateTextureMap {} {} {} {} {}", tex.getTextureType(), mipmapLevels, width, height, anisotropy);
         updatingTextureMap = tex;
         tex.angelica$atlasWidth = width;
         tex.angelica$atlasHeight = height;
@@ -383,11 +366,7 @@ public class ShadersTex {
                 for (y = 0; y < cw; ++y) {
                     for (x = 0; x < cw; ++x) {
                         int ppos = y * 2 * pw + x * 2;
-                        aintc[y * cw + x] = blend4Simple(
-                                aintp[ppos],
-                                aintp[ppos + 1],
-                                aintp[ppos + pw],
-                                aintp[ppos + pw + 1]);
+                        aintc[y * cw + x] = blend4Simple(aintp[ppos], aintp[ppos + 1], aintp[ppos + pw], aintp[ppos + pw + 1]);
                     }
                 }
             }
@@ -575,16 +554,7 @@ public class ShadersTex {
             int lsize = lw * lh;
             intBuf.clear();
             intBuf.put(aint, offset, lsize).position(0).limit(lsize);
-            GL11.glTexSubImage2D(
-                    GL11.GL_TEXTURE_2D,
-                    level,
-                    px,
-                    py,
-                    lw,
-                    lh,
-                    GL12.GL_BGRA,
-                    GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                    intBuf);
+            GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, level, px, py, lw, lh, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
             offset += lsize;
             lw /= 2;
             lh /= 2;
@@ -616,16 +586,7 @@ public class ShadersTex {
             int lsize = lw * lh;
             intBuf.clear();
             intBuf.put(src[level], 0 /* offset */, lsize).position(0).limit(lsize);
-            GL11.glTexSubImage2D(
-                    GL11.GL_TEXTURE_2D,
-                    level,
-                    px,
-                    py,
-                    lw,
-                    lh,
-                    GL12.GL_BGRA,
-                    GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                    intBuf);
+            GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, level, px, py, lw, lh, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
             // offset += lsize;
             lw /= 2;
             lh /= 2;
@@ -697,16 +658,7 @@ public class ShadersTex {
         intBuf.clear();
         intBuf.put(src, 0, size).position(0).limit(size);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
-        GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                GL11.GL_RGBA,
-                width,
-                height,
-                0,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wraptype);
@@ -714,16 +666,7 @@ public class ShadersTex {
         //
         intBuf.put(src, size, size).position(0).limit(size);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                GL11.GL_RGBA,
-                width,
-                height,
-                0,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wraptype);
@@ -731,16 +674,7 @@ public class ShadersTex {
         //
         intBuf.put(src, size * 2, size).position(0).limit(size);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
-        GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                GL11.GL_RGBA,
-                width,
-                height,
-                0,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mmfilter);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wraptype);
@@ -763,16 +697,7 @@ public class ShadersTex {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexSubImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                posX,
-                posY,
-                width,
-                height,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, posX, posY, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         if (src.length == size * 3) {
             intBuf.clear();
             intBuf.put(src, size, size).position(0);
@@ -783,16 +708,7 @@ public class ShadersTex {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexSubImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                posX,
-                posY,
-                width,
-                height,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, posX, posY, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         if (src.length == size * 3) {
             intBuf.clear();
             intBuf.put(src, size * 2, size);
@@ -803,16 +719,7 @@ public class ShadersTex {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexSubImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                posX,
-                posY,
-                width,
-                height,
-                GL12.GL_BGRA,
-                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                intBuf);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, posX, posY, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, intBuf);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
     }
 
@@ -825,26 +732,13 @@ public class ShadersTex {
 
     public static void loadNSMap(IResourceManager manager, ResourceLocation location, int width, int height,
             int[] aint) {
-        if (Shaders.configNormalMap) ShadersTex.loadNSMap1(
-                manager,
-                getNSMapLocation(location, "n"),
-                width,
-                height,
-                aint,
-                width * height,
-                defNormTexColor);
-        if (Shaders.configSpecularMap) ShadersTex.loadNSMap1(
-                manager,
-                getNSMapLocation(location, "s"),
-                width,
-                height,
-                aint,
-                width * height * 2,
-                defSpecTexColor);
+        if (Shaders.configNormalMap)
+            ShadersTex.loadNSMap1(manager, getNSMapLocation(location, "n"), width, height, aint, width * height, defNormTexColor);
+        if (Shaders.configSpecularMap)
+            ShadersTex.loadNSMap1(manager, getNSMapLocation(location, "s"), width, height, aint, width * height * 2, defSpecTexColor);
     }
 
-    public static void loadNSMap1(IResourceManager manager, ResourceLocation location, int width, int height,
-            int[] aint, int offset, int defaultColor) {
+    public static void loadNSMap1(IResourceManager manager, ResourceLocation location, int width, int height, int[] aint, int offset, int defaultColor) {
         boolean good = false;
         try {
             IResource res = manager.getResource(location);
@@ -933,35 +827,17 @@ public class ShadersTex {
             MultiTexID multiTex = texObj.angelica$getMultiTexID();
             // base texture
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MIN_FILTER,
-                    Shaders.texMinFilValue[Shaders.configTexMinFilB]);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MAG_FILTER,
-                    Shaders.texMagFilValue[Shaders.configTexMagFilB]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilB]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilB]);
             // norm texture
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MIN_FILTER,
-                    Shaders.texMinFilValue[Shaders.configTexMinFilN]);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MAG_FILTER,
-                    Shaders.texMagFilValue[Shaders.configTexMagFilN]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilN]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilN]);
 
             // spec texture
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MIN_FILTER,
-                    Shaders.texMinFilValue[Shaders.configTexMinFilS]);
-            GL11.glTexParameteri(
-                    GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MAG_FILTER,
-                    Shaders.texMagFilValue[Shaders.configTexMagFilS]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilS]);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilS]);
 
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         }

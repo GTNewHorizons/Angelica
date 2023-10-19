@@ -6,6 +6,8 @@ import com.google.common.primitives.Ints;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.compat.mojang.Camera;
+import net.coderbot.iris.compat.mojang.LevelRenderer;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
 import net.coderbot.iris.gbuffer_overrides.matching.RenderCondition;
@@ -28,7 +30,6 @@ import net.coderbot.iris.postprocess.BufferFlipper;
 import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
-import net.coderbot.iris.rendertarget.Blaze3dRenderTargetExt;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
@@ -164,14 +165,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		this.packDirectives = programs.getPackDirectives();
 
-		RenderTarget mainTarget = Minecraft.getMinecraft().getMainRenderTarget();
+        // TODO: IRIS
+//		RenderTarget mainTarget = Minecraft.getMinecraft().getMainRenderTarget();
+		RenderTarget mainTarget = null;
 
-		int depthTextureId = mainTarget.getDepthTextureId();
+		int depthTextureId = 0; //mainTarget.getDepthTextureId();
 		int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		this.renderTargets = new RenderTargets(mainTarget.width, mainTarget.height, depthTextureId,
-			((Blaze3dRenderTargetExt) mainTarget).iris$getDepthBufferVersion(),
+		this.renderTargets = new RenderTargets(/*mainTarget.width, mainTarget.height,*/ 0, 0, depthTextureId,
+			0 /*((Blaze3dRenderTargetExt) mainTarget).iris$getDepthBufferVersion()*/,
 			depthBufferFormat, programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
 
 		this.sunPathRotation = programs.getPackDirectives().getSunPathRotation();
@@ -190,8 +193,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			forcedShadowRenderDistanceChunks = OptionalInt.empty();
 		}
 
-		BlockRenderingSettings.INSTANCE.setBlockStateIds(
-				BlockMaterialMapping.createBlockStateIdMap(programs.getPack().getIdMap().getBlockProperties()));
+        // TODO: BlockStateIdMap
+		BlockRenderingSettings.INSTANCE.setBlockStateIds(BlockMaterialMapping.createBlockStateIdMap(programs.getPack().getIdMap().getBlockProperties()));
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
 
 		BlockRenderingSettings.INSTANCE.setEntityIds(programs.getPack().getIdMap().getEntityIdMap());
@@ -526,7 +529,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			case TERRAIN_CUTOUT_MIPPED:
 				return RenderCondition.TERRAIN_OPAQUE;
 			case ENTITIES:
-				if (GlStateManagerAccessor.getBLEND().srcRgb == GlStateManager.SourceFactor.SRC_ALPHA.value && GlStateManagerAccessor.getBLEND().dstRgb == GlStateManager.SourceFactor.ONE_MINUS_SRC_ALPHA.value && GlStateManagerAccessor.getBLEND().srcAlpha == GlStateManager.SourceFactor.ONE.value && GlStateManagerAccessor.getBLEND().dstAlpha == GlStateManager.SourceFactor.ONE_MINUS_SRC_ALPHA.value) {
+                if (true /*GlStateManagerAccessor.getBLEND().srcRgb == GlStateManager.SourceFactor.SRC_ALPHA.value
+                    && GlStateManagerAccessor.getBLEND().dstRgb == GlStateManager.SourceFactor.ONE_MINUS_SRC_ALPHA.value
+                    && GlStateManagerAccessor.getBLEND().srcAlpha == GlStateManager.SourceFactor.ONE.value
+                    && GlStateManagerAccessor.getBLEND().dstAlpha == GlStateManager.SourceFactor.ONE_MINUS_SRC_ALPHA.value*/) {
 					return RenderCondition.ENTITIES_TRANSLUCENT;
 				} else {
 					return RenderCondition.ENTITIES;
@@ -761,8 +767,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (shadowViewport) {
 				GL11.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
 			} else {
-				RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-				GL11.glViewport(0, 0, main.width, main.height);
+//				RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
+				GL11.glViewport(0, 0, /*main.getWidth(), main.getHeight()*/0,0);
 			}
 
 			if (program != null && !sodiumTerrainRendering) {
@@ -832,7 +838,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, 0);
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, 0);
 
-		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(false);
+//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(false);
 
 		// Destroy our render targets
 		//
@@ -847,7 +853,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		// Destroy custom textures and the static samplers (normals, specular, and noise)
 		customTextureManager.destroy();
-		whitePixel.releaseId();
+//		whitePixel.releaseId();
 	}
 
 	private static void destroyPasses(ProgramTable<Pass> table) {
@@ -910,15 +916,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		}
 
-		RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-		Blaze3dRenderTargetExt mainExt = (Blaze3dRenderTargetExt) main;
+//		RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
+//		Blaze3dRenderTargetExt mainExt = (Blaze3dRenderTargetExt) main;
 
-		int depthTextureId = main.getDepthTextureId();
-		int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
-		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
+//		int depthTextureId = main.getDepthTextureId();
+//		int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
+//		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		boolean changed = renderTargets.resizeIfNeeded(mainExt.iris$getDepthBufferVersion(), depthTextureId, main.width,
-			main.height, depthBufferFormat, packDirectives);
+		boolean changed = true;//renderTargets.resizeIfNeeded(mainExt.iris$getDepthBufferVersion(), depthTextureId, main.width,
+//			main.height, depthBufferFormat, packDirectives);
 
 		if (changed) {
 			prepareRenderer.recalculateSizes();
@@ -955,7 +961,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		// Reset framebuffer and viewport
-		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
@@ -1033,8 +1039,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		deferredRenderer.renderAll();
 
-		RenderSystem.enableBlend();
-		RenderSystem.enableAlphaTest();
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
 
 		// note: we are careful not to touch the lightmap texture unit or overlay color texture unit here,
 		// so we don't need to do anything to restore them if needed.
@@ -1049,7 +1055,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public void renderShadows(LevelRendererAccessor levelRenderer, Camera playerCamera) {
+	public void renderShadows(LevelRenderer levelRenderer, Camera playerCamera) {
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
@@ -1130,9 +1136,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// while rendering the sky.
 		//
 		// A lot of dimension mods touch sky rendering, FabricSkyboxes injects at HEAD and cancels, etc.
-		DimensionSpecialEffects.SkyType skyType = Minecraft.getMinecraft().theWorld.effects().skyType();
+//		DimensionSpecialEffects.SkyType skyType = Minecraft.getMinecraft().theWorld.effects().skyType();
 
-		if (skyType == DimensionSpecialEffects.SkyType.NORMAL) {
+		if (true/*skyType == DimensionSpecialEffects.SkyType.NORMAL*/) {
             GL11.glDisable(GL11.GL_TEXTURE_2D);
 			GL11.glDepthMask(false);
 
@@ -1254,8 +1260,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void onBindTexture(int id) {
 		if (shouldBindPBR && isRenderingWorld) {
 			PBRTextureHolder pbrHolder = PBRTextureManager.INSTANCE.getOrLoadHolder(id);
-			currentNormalTexture = pbrHolder.getNormalTexture().getId();
-			currentSpecularTexture = pbrHolder.getSpecularTexture().getId();
+			currentNormalTexture = pbrHolder.getNormalTexture().getGlTextureId();
+			currentSpecularTexture = pbrHolder.getSpecularTexture().getGlTextureId();
 
 			TextureFormat textureFormat = TextureFormatLoader.getFormat();
 			if (textureFormat != null) {

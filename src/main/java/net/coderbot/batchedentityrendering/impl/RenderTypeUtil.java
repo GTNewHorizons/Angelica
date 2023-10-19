@@ -1,5 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
+import net.coderbot.iris.compat.mojang.RenderType;
 import org.lwjgl.opengl.GL11;
 
 public class RenderTypeUtil {

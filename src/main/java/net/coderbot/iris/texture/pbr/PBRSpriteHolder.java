@@ -26,11 +26,12 @@ public class PBRSpriteHolder {
 	}
 
 	public void close() {
-		if (normalSprite != null) {
-			normalSprite.close();
-		}
-		if (specularSprite != null) {
-			specularSprite.close();
-		}
+        // TODO: AutoClosable
+//		if (normalSprite != null) {
+//			normalSprite.close();
+//		}
+//		if (specularSprite != null) {
+//			specularSprite.close();
+//		}
 	}
 }

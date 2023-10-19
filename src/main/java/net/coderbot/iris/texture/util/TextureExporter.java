@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture.util;
 
+import net.coderbot.iris.compat.mojang.NativeImage;
 import net.minecraft.client.Minecraft;
 import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.opengl.GL11;
@@ -15,7 +16,7 @@ public class TextureExporter {
 		}
 	}
 
-	public static void exportTexture(String directory, String filename, int textureId, int level, int width, int height) {
+	public static void exportTexture(String directory, String filename, int textureId, int level, int width, int height)  {
 		NativeImage nativeImage = new NativeImage(width, height, false);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
 		nativeImage.downloadTexture(level, false);
@@ -24,14 +25,8 @@ public class TextureExporter {
 		dir.mkdirs();
 		File file = new File(dir, filename);
 
-		Util.ioPool().execute(() -> {
-			try {
-				nativeImage.writeToFile(file);
-			} catch (Exception var7) {
-				//
-			} finally {
-				nativeImage.close();
-			}
-		});
+        try {
+            nativeImage.writeToFile(file);
+        } catch (Exception ignored) {}
 	}
 }

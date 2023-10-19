@@ -208,14 +208,17 @@ public class CompositeRenderer {
         GL11.glDisable(GL11.GL_ALPHA_TEST);
 
 		FullScreenQuadRenderer.INSTANCE.begin();
-
+        final Minecraft mc = Minecraft.getMinecraft();
 		for (Pass renderPass : passes) {
 			boolean ranCompute = false;
 			for (ComputeProgram computeProgram : renderPass.computes) {
 				if (computeProgram != null) {
 					ranCompute = true;
-					com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-					computeProgram.dispatch(main.width, main.height);
+
+                    // TODO: Iris
+//					com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
+//					computeProgram.dispatch(main.width, main.height);
+					computeProgram.dispatch(mc.displayWidth, mc.displayHeight);
 				}
 			}
 
@@ -251,7 +254,8 @@ public class CompositeRenderer {
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.
-		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        // TODO: Iris
+//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
 		GL20.glUseProgram(0);

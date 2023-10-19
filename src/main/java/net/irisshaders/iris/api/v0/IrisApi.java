@@ -2,9 +2,6 @@ package net.irisshaders.iris.api.v0;
 
 import net.coderbot.iris.apiimpl.IrisApiV0Impl;
 
-import java.nio.ByteBuffer;
-import java.util.function.IntFunction;
-
 /**
  * The entry point to the Iris API, major version 0. This is currently the latest
  * version of the API.
@@ -97,12 +94,4 @@ public interface IrisApi {
 	 * @since API v0.0
 	 */
 	IrisApiConfig getConfig();
-
-	/**
-	 * Gets a text vertex sink to render into.
-	 * @param maxQuadCount Maximum amount of quads that will be rendered with this sink
-	 * @param bufferProvider An IntFunction that can provide a {@code ByteBuffer} with at minimum the bytes provided by the input parameter
-	 * @since API 0.1
-	 */
-	IrisTextVertexSink createTextVertexSink(int maxQuadCount, IntFunction<ByteBuffer> bufferProvider);
 }

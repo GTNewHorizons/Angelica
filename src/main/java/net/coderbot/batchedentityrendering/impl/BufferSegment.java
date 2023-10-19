@@ -1,14 +1,16 @@
 package net.coderbot.batchedentityrendering.impl;
 
+import net.coderbot.iris.compat.mojang.DrawState;
+import net.coderbot.iris.compat.mojang.RenderType;
 
 import java.nio.ByteBuffer;
 
 public class BufferSegment {
     private final ByteBuffer slice;
-    private final BufferBuilder.DrawState drawState;
+    private final DrawState drawState;
     private final RenderType type;
 
-    public BufferSegment(ByteBuffer slice, BufferBuilder.DrawState drawState, RenderType type) {
+    public BufferSegment(ByteBuffer slice, DrawState drawState, RenderType type) {
         this.slice = slice;
         this.drawState = drawState;
         this.type = type;
@@ -18,7 +20,7 @@ public class BufferSegment {
         return slice;
     }
 
-    public BufferBuilder.DrawState getDrawState() {
+    public DrawState getDrawState() {
         return drawState;
     }
 
