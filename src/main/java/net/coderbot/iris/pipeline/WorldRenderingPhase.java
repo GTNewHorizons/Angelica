@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import net.coderbot.iris.compat.mojang.RenderType;
 
 public enum WorldRenderingPhase {
 	NONE,

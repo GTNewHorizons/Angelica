@@ -2,7 +2,9 @@ package net.coderbot.iris.block_rendering;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.coderbot.iris.compat.mojang.RenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.minecraft.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -11,7 +13,8 @@ public class BlockRenderingSettings {
 	public static final BlockRenderingSettings INSTANCE = new BlockRenderingSettings();
 
 	private boolean reloadRequired;
-	private Object2IntMap<BlockState> blockStateIds;
+    // TODO: BlockStateIdMap
+	private Object2IntMap<Object> blockStateIds;
 	private Map<Block, RenderType> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
 	private float ambientOcclusionLevel;
@@ -37,8 +40,9 @@ public class BlockRenderingSettings {
 		reloadRequired = false;
 	}
 
+    // TODO: BlockStateIdMap
 	@Nullable
-	public Object2IntMap<BlockState> getBlockStateIds() {
+	public Object2IntMap<Object> getBlockStateIds() {
 		return blockStateIds;
 	}
 
@@ -53,7 +57,8 @@ public class BlockRenderingSettings {
 		return entityIds;
 	}
 
-	public void setBlockStateIds(Object2IntMap<BlockState> blockStateIds) {
+    // TODO: BlockStateIdMap
+	public void setBlockStateIds(Object2IntMap<Object> blockStateIds) {
 		if (this.blockStateIds != null && this.blockStateIds.equals(blockStateIds)) {
 			return;
 		}

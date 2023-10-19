@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinInitRenderer {
     @Inject(method = "initializeTextures", at = @At("RETURN"))
     private static void angelica$initializeRenderer(CallbackInfo ci) {
+        Iris.identifyCapabilities();
         GLDebug.initRenderer();
         IrisRenderSystem.initRenderer();
         Iris.onRenderSystemInit();

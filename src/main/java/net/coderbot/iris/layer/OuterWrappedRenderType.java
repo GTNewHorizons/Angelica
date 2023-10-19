@@ -1,6 +1,8 @@
 package net.coderbot.iris.layer;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
+import net.coderbot.iris.compat.mojang.RenderStateShard;
+import net.coderbot.iris.compat.mojang.RenderType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -83,6 +85,8 @@ public class OuterWrappedRenderType extends RenderType implements WrappableRende
 	}
 
 	private static boolean shouldSortOnUpload(RenderType type) {
-		return ((RenderTypeAccessor) type).shouldSortOnUpload();
+        return true;
+        // TODO: Iris
+//		return ((RenderTypeAccessor) type).shouldSortOnUpload();
 	}
 }

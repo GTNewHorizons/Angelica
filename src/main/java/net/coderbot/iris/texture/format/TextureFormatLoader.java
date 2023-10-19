@@ -32,7 +32,8 @@ public class TextureFormatLoader {
 
 	@Nullable
 	private static TextureFormat loadFormat(IResourceManager resourceManager) {
-		try (IResource resource = resourceManager.getResource(LOCATION)) {
+		try {
+            IResource resource = resourceManager.getResource(LOCATION);
 			Properties properties = new Properties();
 			properties.load(resource.getInputStream());
 			String format = properties.getProperty("format");

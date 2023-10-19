@@ -1,7 +1,6 @@
 package net.coderbot.iris.texture.pbr.loader;
 
 import net.minecraft.client.renderer.texture.AbstractTexture;
-import net.minecraft.client.renderer.texture.SimpleTexture;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -10,10 +9,11 @@ import java.util.Map;
 public class PBRTextureLoaderRegistry {
 	public static final PBRTextureLoaderRegistry INSTANCE = new PBRTextureLoaderRegistry();
 
-	static {
-		INSTANCE.register(SimpleTexture.class, new SimplePBRLoader());
-		INSTANCE.register(TextureAtlas.class, new AtlasPBRLoader());
-	}
+// TODO: PBR
+//	static {
+//		INSTANCE.register(SimpleTexture.class, new SimplePBRLoader());
+//		INSTANCE.register(TextureAtlas.class, new AtlasPBRLoader());
+//	}
 
 	private final Map<Class<?>, PBRTextureLoader<?>> loaderMap = new HashMap<>();
 

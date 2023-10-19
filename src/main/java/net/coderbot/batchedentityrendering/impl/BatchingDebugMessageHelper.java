@@ -9,8 +9,7 @@ public class BatchingDebugMessageHelper {
 			int effectivenessTimes10 = renderTypes * 1000 / drawCalls;
 			float effectiveness = effectivenessTimes10 / 10.0F;
 
-			return drawCalls + " draw calls / " + renderTypes + " render types = "
-					+ effectiveness + "% effective";
+			return drawCalls + " draw calls / " + renderTypes + " render types = " + effectiveness + "% effective";
 		} else {
 			return "(no draw calls)";
 		}

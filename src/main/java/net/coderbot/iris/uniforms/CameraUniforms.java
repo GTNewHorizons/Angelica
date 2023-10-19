@@ -1,9 +1,9 @@
 package net.coderbot.iris.uniforms;
 
-import net.coderbot.iris.JomlConversions;
+import com.gtnewhorizons.angelica.client.Shaders;
 import net.coderbot.iris.gl.uniform.UniformHolder;
-import org.joml.Vector3d;
 import net.minecraft.client.Minecraft;
+import org.joml.Vector3d;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
@@ -29,11 +29,12 @@ public class CameraUniforms {
 
 	private static int getRenderDistanceInBlocks() {
 		// TODO: Should we ask the game renderer for this?
-		return client.options.renderDistance * 16;
+		return client.gameSettings.renderDistanceChunks * 16;
 	}
 
 	public static Vector3d getUnshiftedCameraPosition() {
-		return JomlConversions.fromVec3(client.gameRenderer.getMainCamera().getPosition());
+        return Shaders.getCameraPosition();
+//		return JomlConversions.fromVec3(client.gameRenderer.getMainCamera().getPosition());
 	}
 
 	static class CameraPositionTracker {

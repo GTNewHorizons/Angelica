@@ -13,7 +13,6 @@ import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
-import net.minecraft.client.Minecraft;
 import org.apache.commons.io.IOUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -93,7 +92,8 @@ public class CenterDepthSampler {
 		DepthCopyStrategy.fastest(false).copy(this.framebuffer, texture, null, altTexture, 1, 1);
 
 		//Reset viewport
-		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        // TODO: Iris
+//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
 	}
 
 	public void setupColorTexture(int texture, InternalTextureFormat format) {

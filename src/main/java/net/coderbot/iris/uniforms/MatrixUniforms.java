@@ -21,7 +21,7 @@ public final class MatrixUniforms {
 		// We need to audit Mojang's linear algebra.
 		addMatrix(uniforms, "Projection", CapturedRenderingState.INSTANCE::getGbufferProjection);
 		addShadowMatrix(uniforms, "ModelView", () ->
-				ShadowRenderer.createShadowModelView(directives.getSunPathRotation(), directives.getShadowDirectives().getIntervalSize()).last().pose().copy());
+				ShadowRenderer.createShadowModelView(directives.getSunPathRotation(), directives.getShadowDirectives().getIntervalSize()).last().pose());
 		addShadowArrayMatrix(uniforms, "Projection", () -> ShadowMatrices.createOrthoMatrix(directives.getShadowDirectives().getDistance()));
 	}
 
@@ -54,16 +54,11 @@ public final class MatrixUniforms {
 		@Override
 		public Matrix4f get() {
 			// PERF: Don't copy + allocate this matrix every time?
-			Matrix4f copy = parent.get().copy();
+            final Matrix4f copy = new Matrix4f(parent.get());
 
-			FloatBuffer buffer = FloatBuffer.allocate(16);
-			copy.store(buffer);
-			buffer.rewind();
+			copy.invert();
 
-			Matrix4f matrix4f = new Matrix4f(buffer);
-			matrix4f.invert();
-
-			return matrix4f;
+			return copy;
 		}
 	}
 
@@ -80,7 +75,7 @@ public final class MatrixUniforms {
 			buffer.put(parent.get());
 			buffer.rewind();
 
-			Matrix4f matrix4f = new Matrix4f(buffer);
+            final Matrix4f matrix4f = new Matrix4f(buffer);
 			matrix4f.invert();
 
 			return matrix4f;
@@ -99,8 +94,8 @@ public final class MatrixUniforms {
 		@Override
 		public Matrix4f get() {
 			// PERF: Don't copy + allocate these matrices every time?
-			Matrix4f copy = parent.get().copy();
-			Matrix4f previous = this.previous.copy();
+			final Matrix4f copy = new Matrix4f(parent.get());
+            final Matrix4f previous = new Matrix4f(this.previous);
 
 			this.previous = copy;
 

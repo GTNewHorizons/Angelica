@@ -1,8 +1,9 @@
 package net.coderbot.iris.rendertarget;
 
+import net.coderbot.iris.compat.mojang.NativeImage;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import org.lwjgl.opengl.GL11;
 
-import java.util.Objects;
 import java.util.Random;
 
 public class NativeImageBackedNoiseTexture extends DynamicTexture {
@@ -26,10 +27,10 @@ public class NativeImageBackedNoiseTexture extends DynamicTexture {
 	}
 
 	@Override
-	public void upload() {
-		NativeImage image = Objects.requireNonNull(getPixels());
+    public void updateDynamicTexture() {
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        super.updateDynamicTexture();
+    }
 
-		bind();
-		image.upload(0, 0, 0, 0, 0, image.getWidth(), image.getHeight(), true, false, false, false);
-	}
 }

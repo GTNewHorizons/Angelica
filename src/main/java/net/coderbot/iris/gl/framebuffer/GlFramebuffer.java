@@ -92,16 +92,16 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void bindAsDrawBuffer() {
-		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30C.GL_DRAW_FRAMEBUFFER, getGlId());
+		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
 	}
 
 	protected void destroyInternal() {
-		GlStateManager._glDeleteFramebuffers(getGlId());
+		OpenGlHelper.func_153184_g/*glDeleteFramebuffers*/(getGlId());
 	}
 
 	public boolean isComplete() {
 		bind();
-		int status = GlStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+		int status = OpenGlHelper.func_153167_i/*glCheckFramebufferStatus*/(GL30.GL_FRAMEBUFFER);
 
 		return status == GL30.GL_FRAMEBUFFER_COMPLETE;
 	}

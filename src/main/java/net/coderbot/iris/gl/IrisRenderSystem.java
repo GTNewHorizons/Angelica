@@ -40,11 +40,7 @@ public class IrisRenderSystem {
 			Iris.logger.info("DSA support not detected.");
 		}
 
-		if (Iris.capabilities.OpenGL45 || Iris.capabilities.GL_ARB_multi_bind) {
-			hasMultibind = true;
-		} else {
-			hasMultibind = false;
-		}
+        hasMultibind = Iris.capabilities.OpenGL45 || Iris.capabilities.GL_ARB_multi_bind;
 
 		supportsCompute = supportsCompute();
 	}

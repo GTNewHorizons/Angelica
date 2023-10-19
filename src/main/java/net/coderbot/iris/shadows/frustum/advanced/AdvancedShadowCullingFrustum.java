@@ -1,6 +1,7 @@
 package net.coderbot.iris.shadows.frustum.advanced;
 
 import net.coderbot.iris.shadows.frustum.BoxCuller;
+import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.util.AxisAlignedBB;
 import org.joml.Math;
 import org.joml.Matrix4f;
@@ -27,7 +28,7 @@ import org.joml.Vector4f;
  * are not sensitive to the specific internal ordering of planes and corners, in order to avoid potential bugs at the
  * cost of slightly more computations.</p>
  */
-public class AdvancedShadowCullingFrustum extends Frustum {
+public class AdvancedShadowCullingFrustum extends Frustrum {
 	private static final int MAX_CLIPPING_PLANES = 13;
 
 	/**
@@ -71,9 +72,6 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 
 	public AdvancedShadowCullingFrustum(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVectorFromOrigin,
 										BoxCuller boxCuller) {
-		// We're overriding all of the methods, don't pass any matrices down.
-		super(new com.mojang.math.Matrix4f(), new com.mojang.math.Matrix4f());
-
 		this.shadowLightVectorFromOrigin = shadowLightVectorFromOrigin;
 		BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes(playerView, playerProjection);
 
@@ -267,7 +265,7 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 
 	// Note: These functions are copied & modified from the vanilla Frustum class.
 	@Override
-	public void prepare(double cameraX, double cameraY, double cameraZ) {
+	public void setPosition(double cameraX, double cameraY, double cameraZ) {
 		if (this.boxCuller != null) {
 			boxCuller.setPosition(cameraX, cameraY, cameraZ);
 		}
@@ -278,7 +276,7 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 	}
 
 	@Override
-	public boolean isVisible(AxisAlignedBB aabb) {
+	public boolean isBoundingBoxInFrustum(AxisAlignedBB aabb) {
 		if (boxCuller != null && boxCuller.isCulled(aabb)) {
 			return false;
 		}

@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.client.Shaders;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 
@@ -10,29 +11,29 @@ public class FogUniforms {
 
 	public static void addFogUniforms(DynamicUniformHolder uniforms) {
 		uniforms.uniform1i("fogMode", () -> {
-			GlStateManager.FogState fog = GlStateManagerAccessor.getFOG();
+            if(!Shaders.isFogEnabled())  return 0;
 
-			if (!((BooleanStateAccessor) fog.enable).isEnabled()) {
-				return 0;
-			}
+            return Shaders.fogMode;
 
-			return GlStateManagerAccessor.getFOG().mode;
+//			GlStateManager.FogState fog = GlStateManagerAccessor.getFOG();
+//			if (!((BooleanStateAccessor) fog.enable).isEnabled()) { return 0; }
+//			return GlStateManagerAccessor.getFOG().mode;
 		}, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogModeNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogDensity", () -> GlStateManagerAccessor.getFOG().density, listener -> {
+		uniforms.uniform1f("fogDensity", () -> Shaders.fogDensity/*GlStateManagerAccessor.getFOG().density*/, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogDensityNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogStart", () -> GlStateManagerAccessor.getFOG().start, listener -> {
+		uniforms.uniform1f("fogStart", () -> Shaders.fogStart/*GlStateManagerAccessor.getFOG().start*/, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogStartNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogEnd", () -> GlStateManagerAccessor.getFOG().end, listener -> {
+		uniforms.uniform1f("fogEnd", () -> Shaders.fogEnd/*GlStateManagerAccessor.getFOG().end*/, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogEndNotifier.setListener(listener);
 		});

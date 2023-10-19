@@ -1,5 +1,7 @@
 package net.coderbot.iris.pipeline;
 
+import net.coderbot.iris.compat.mojang.Camera;
+import net.coderbot.iris.compat.mojang.LevelRenderer;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
@@ -11,7 +13,7 @@ import java.util.OptionalInt;
 
 public interface WorldRenderingPipeline {
 	void beginLevelRendering();
-	void renderShadows(LevelRendererAccessor levelRenderer, Camera camera);
+	void renderShadows(LevelRenderer levelRenderer, Camera camera);
 	void addDebugText(List<String> messages);
 	OptionalInt getForcedShadowRenderDistanceChunksForDisplay();
 

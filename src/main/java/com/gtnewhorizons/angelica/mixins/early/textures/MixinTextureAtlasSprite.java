@@ -10,8 +10,20 @@ public abstract class MixinTextureAtlasSprite  {
     @Shadow
     private AnimationMetadataSection animationMetadata;
 
+    @Shadow
+    protected int frameCounter;
+
     public boolean isAnimation() {
         return animationMetadata != null && animationMetadata.getFrameCount() > 1;
     }
 
+    public int getFrame() {
+        return frameCounter;
+    }
+
+    public void callUpload(int frameIndex) {}
+
+    public AnimationMetadataSection getMetadata() {
+        return animationMetadata;
+    }
 }

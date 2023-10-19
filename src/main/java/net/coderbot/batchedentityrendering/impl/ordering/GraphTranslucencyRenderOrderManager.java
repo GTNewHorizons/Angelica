@@ -10,6 +10,7 @@ import de.odysseus.ithaka.digraph.util.fas.SimpleFeedbackArcSetProvider;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
+import net.coderbot.iris.compat.mojang.RenderType;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -37,8 +38,8 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
             type = ((WrappableRenderType) type).unwrap();
         }
 
-        if (type instanceof BlendingStateHolder) {
-            return ((BlendingStateHolder) type).getTransparencyType();
+        if (type instanceof BlendingStateHolder blendingState) {
+            return blendingState.getTransparencyType();
         }
 
         // Default to "generally transparent" if we can't figure it out.

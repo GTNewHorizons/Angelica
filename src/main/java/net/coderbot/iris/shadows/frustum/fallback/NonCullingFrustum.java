@@ -1,12 +1,10 @@
 package net.coderbot.iris.shadows.frustum.fallback;
 
+import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.util.AxisAlignedBB;
-import org.joml.Matrix4f;
 
-public class NonCullingFrustum extends Frustum {
-	public NonCullingFrustum() {
-		super(new Matrix4f(), new Matrix4f());
-	}
+
+public class NonCullingFrustum extends Frustrum {
 
 	// for Sodium
 	public boolean fastAabbTest(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
@@ -22,7 +20,7 @@ public class NonCullingFrustum extends Frustum {
 	}
 
 	@Override
-	public boolean isVisible(AxisAlignedBB aabb) {
+	public boolean isBoundingBoxInFrustum(AxisAlignedBB aabb) {
 		return true;
 	}
 }

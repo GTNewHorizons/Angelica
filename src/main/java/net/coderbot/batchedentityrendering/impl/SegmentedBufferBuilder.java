@@ -1,5 +1,11 @@
 package net.coderbot.batchedentityrendering.impl;
 
+import net.coderbot.iris.compat.mojang.BufferBuilder;
+import net.coderbot.iris.compat.mojang.DrawState;
+import net.coderbot.iris.compat.mojang.MultiBufferSource;
+import net.coderbot.iris.compat.mojang.RenderType;
+import net.coderbot.iris.compat.mojang.VertexConsumer;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -65,10 +71,10 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
         List<BufferSegment> segments = new ArrayList<>(usedTypes.size());
 
         for (RenderType type : usedTypes) {
-            Pair<BufferBuilder.DrawState, ByteBuffer> pair = buffer.popNextBuffer();
+            Pair<DrawState, ByteBuffer> pair = buffer.popNextBuffer();
 
-            BufferBuilder.DrawState drawState = pair.getFirst();
-            ByteBuffer slice = pair.getSecond();
+            DrawState drawState = pair.getLeft();
+            ByteBuffer slice = pair.getRight();
 
             segments.add(new BufferSegment(slice, drawState, type));
         }
@@ -79,7 +85,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
     }
 
     private static boolean shouldSortOnUpload(RenderType type) {
-        return ((RenderTypeAccessor) type).shouldSortOnUpload();
+        return type.shouldSortOnUpload();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
+import net.coderbot.iris.compat.mojang.BufferBuilder;
 
 public class BufferSegmentRenderer {
     private final BufferBuilder fakeBufferBuilder;
@@ -24,7 +25,8 @@ public class BufferSegmentRenderer {
      */
     public void drawInner(BufferSegment segment) {
         fakeBufferBuilderExt.setupBufferSlice(segment.getSlice(), segment.getDrawState());
-        BufferUploader.end(fakeBufferBuilder);
+        // TODO: BufferUploader
+//        BufferUploader.end(fakeBufferBuilder);
         fakeBufferBuilderExt.teardownBufferSlice();
     }
 }

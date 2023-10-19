@@ -1,9 +1,10 @@
 package net.coderbot.iris.texture.util;
 
+import net.coderbot.iris.compat.mojang.NativeImage;
 
 public class ImageManipulationUtil {
 	public static NativeImage scaleNearestNeighbor(NativeImage image, int newWidth, int newHeight) {
-		NativeImage scaled = new NativeImage(image.format(), newWidth, newHeight, false);
+		NativeImage scaled = new NativeImage(image.getFormat(), newWidth, newHeight, false);
 		float xScale = (float) newWidth / image.getWidth();
 		float yScale = (float) newHeight / image.getHeight();
 		for (int y = 0; y < newHeight; ++y) {
@@ -17,7 +18,7 @@ public class ImageManipulationUtil {
 	}
 
 	public static NativeImage scaleBilinear(NativeImage image, int newWidth, int newHeight) {
-		NativeImage scaled = new NativeImage(image.format(), newWidth, newHeight, false);
+		NativeImage scaled = new NativeImage(image.getFormat(), newWidth, newHeight, false);
 		float xScale = (float) newWidth / image.getWidth();
 		float yScale = (float) newHeight / image.getHeight();
 		for (int y = 0; y < newHeight; ++y) {

@@ -1,10 +1,10 @@
 package net.coderbot.iris.texture.pbr;
 
-import com.gtnewhorizons.angelica.mixins.early.accessors.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.early.textures.MixinTextureAtlasSprite;
+import net.coderbot.iris.compat.mojang.AutoClosableAbstractTexture;
+import net.coderbot.iris.compat.mojang.TextureAtlas;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
-import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
@@ -19,7 +19,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class PBRAtlasTexture extends AbstractTexture {
+public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	protected final TextureAtlas atlasTexture;
 	protected final PBRType type;
 	protected final ResourceLocation id;
@@ -29,7 +29,9 @@ public class PBRAtlasTexture extends AbstractTexture {
 	public PBRAtlasTexture(TextureAtlas atlasTexture, PBRType type) {
 		this.atlasTexture = atlasTexture;
 		this.type = type;
-		id = type.appendToFileLocation(atlasTexture.location());
+//		id = type.appendToFileLocation(atlasTexture.location());
+
+        id = type.appendToFileLocation(new ResourceLocation("stuff", getType().name()));
 	}
 
 	public PBRType getType() {
@@ -41,8 +43,9 @@ public class PBRAtlasTexture extends AbstractTexture {
 	}
 
 	public void addSprite(TextureAtlasSprite sprite) {
-        // Wants location
-		sprites.put(sprite.getName(), sprite);
+        // TODO: PBR - Wants location
+//		sprites.put(sprite.getName(), sprite);
+		sprites.put(new ResourceLocation("stuff", sprite.getIconName()), sprite);
 		if (((MixinTextureAtlasSprite) (Object)sprite).isAnimation()) {
 			animatedSprites.add(sprite);
 		}
@@ -60,17 +63,17 @@ public class PBRAtlasTexture extends AbstractTexture {
 
 	public void upload(int atlasWidth, int atlasHeight, int mipLevel) {
 		int glId = getGlTextureId();
-		TextureUtil.prepareImage(glId, mipLevel, atlasWidth, atlasHeight);
+//		TextureUtil.prepareImage(glId, mipLevel, atlasWidth, atlasHeight);
 		TextureManipulationUtil.fillWithColor(glId, mipLevel, type.getDefaultValue());
 
 		for (TextureAtlasSprite sprite : sprites.values()) {
 			try {
 				uploadSprite(sprite);
 			} catch (Throwable throwable) {
-				CrashReport crashReport = CrashReport.forThrowable(throwable, "Stitching texture atlas");
-				CrashReportCategory crashReportCategory = crashReport.addCategory("Texture being stitched together");
-				crashReportCategory.setDetail("Atlas path", id);
-				crashReportCategory.setDetail("Sprite", sprite);
+				CrashReport crashReport = CrashReport.makeCrashReport(throwable, "Stitching texture atlas");
+				CrashReportCategory crashReportCategory = crashReport.makeCategory("Texture being stitched together");
+				crashReportCategory.addCrashSection("Atlas path", id);
+				crashReportCategory.addCrashSection("Sprite", sprite);
 				throw new ReportedException(crashReport);
 			}
 		}
@@ -103,26 +106,27 @@ public class PBRAtlasTexture extends AbstractTexture {
 
 	protected void uploadSprite(TextureAtlasSprite sprite) {
 		if (((MixinTextureAtlasSprite) (Object)sprite).isAnimation()) {
-			TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
-			AnimationMetadataSection metadata = accessor.getMetadata();
+            MixinTextureAtlasSprite mixinSprite = ((MixinTextureAtlasSprite) (Object) sprite);
+			AnimationMetadataSection metadata = mixinSprite.getMetadata();
 
 			int frameCount = sprite.getFrameCount();
-			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
+			for (int frame = mixinSprite.getFrame(); frame >= 0; frame--) {
 				int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
-					accessor.callUpload(frameIndex);
+					mixinSprite.callUpload(frameIndex);
 					return;
 				}
 			}
 		}
 
-		sprite.uploadFirstFrame();
+//		sprite.uploadFirstFrame();
 	}
 
 	public void cycleAnimationFrames() {
 		bind();
 		for (TextureAtlasSprite sprite : animatedSprites) {
-			sprite.cycleFrames();
+//			sprite.cycleFrames();
+            sprite.updateAnimation();
 		}
 	}
 
@@ -141,7 +145,7 @@ public class PBRAtlasTexture extends AbstractTexture {
 		}
 	}
 
-//	@Override
+	@Override
 	public void load(IResourceManager manager) {
 	}
 }

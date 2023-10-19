@@ -15,7 +15,6 @@ import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
-import net.coderbot.iris.rendertarget.Blaze3dRenderTargetExt;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
@@ -93,8 +92,9 @@ public class FinalPassRenderer {
 		// passes that write to framebuffers).
 		this.baseline = renderTargets.createGbufferFramebuffer(flippedBuffers, new int[] {0});
 		this.colorHolder = new GlFramebuffer();
-		this.lastColorTextureId = Minecraft.getMinecraft().getMainRenderTarget().getColorTextureId();
-		this.lastColorTextureVersion = ((Blaze3dRenderTargetExt) Minecraft.getMinecraft().getMainRenderTarget()).iris$getColorBufferVersion();
+        // TODO: Iris
+		this.lastColorTextureId = 0; //Minecraft.getMinecraft().getMainRenderTarget().getColorTextureId();
+		this.lastColorTextureVersion = 0; //((Blaze3dRenderTargetExt) Minecraft.getMinecraft().getMainRenderTarget()).iris$getColorBufferVersion();
 		this.colorHolder.addColorAttachment(0, lastColorTextureId);
 
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
@@ -151,9 +151,9 @@ public class FinalPassRenderer {
         GL11.glDisable(GL11.GL_ALPHA_TEST);
 		GL11.glDepthMask(false);
 
-		final com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-		final int baseWidth = main.width;
-		final int baseHeight = main.height;
+        final Minecraft mc = Minecraft.getMinecraft();
+		final int baseWidth = mc.displayWidth;
+		final int baseHeight = mc.displayHeight;
 
 		// Note that since DeferredWorldRenderingPipeline uses the depth texture of the main Minecraft framebuffer,
 		// we'll be writing to that depth buffer directly automatically and won't need to futz around with copying
@@ -168,11 +168,13 @@ public class FinalPassRenderer {
 		//
 		// This is not a concern for depthtex1 / depthtex2 since the copy call extracts the depth values, and the
 		// shader pack only ever uses them to read the depth values.
-		if (((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion() != lastColorTextureVersion || main.getColorTextureId() != lastColorTextureId) {
-			lastColorTextureVersion = ((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion();
-			this.lastColorTextureId = main.getColorTextureId();
-			colorHolder.addColorAttachment(0, lastColorTextureId);
-		}
+
+        // TODO: Iris
+//		if (((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion() != lastColorTextureVersion || main.getColorTextureId() != lastColorTextureId) {
+//			lastColorTextureVersion = ((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion();
+//			this.lastColorTextureId = main.getColorTextureId();
+//			colorHolder.addColorAttachment(0, lastColorTextureId);
+//		}
 
 		if (this.finalPass != null) {
 			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead
@@ -215,7 +217,8 @@ public class FinalPassRenderer {
 			// https://stackoverflow.com/a/23994979/18166885
 			this.baseline.bindAsReadBuffer();
 
-			IrisRenderSystem.copyTexSubImage2D(main.getColorTextureId(), GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
+            // TODO: Iris
+			IrisRenderSystem.copyTexSubImage2D(0/*main.getColorTextureId()*/, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
 
 		GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -242,7 +245,8 @@ public class FinalPassRenderer {
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.
-		main.bindWrite(true);
+        // TODO: Iris
+//		main.bindWrite(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
 		GL20.glUseProgram(0);

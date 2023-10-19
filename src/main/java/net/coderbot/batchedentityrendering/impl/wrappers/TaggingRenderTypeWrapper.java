@@ -1,6 +1,7 @@
 package net.coderbot.batchedentityrendering.impl.wrappers;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
+import net.coderbot.iris.compat.mojang.RenderType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -61,6 +62,8 @@ public class TaggingRenderTypeWrapper extends RenderType implements WrappableRen
     }
 
     private static boolean shouldSortOnUpload(RenderType type) {
-        return ((RenderTypeAccessor) type).shouldSortOnUpload();
+        return true;
+        // TODO: Iris
+//        return ((RenderTypeAccessor) type).shouldSortOnUpload();
     }
 }
