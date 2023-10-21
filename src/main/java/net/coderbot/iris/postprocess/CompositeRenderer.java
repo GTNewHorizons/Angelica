@@ -254,8 +254,7 @@ public class CompositeRenderer {
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.
-        // TODO: Iris
-//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
 		GL20.glUseProgram(0);
