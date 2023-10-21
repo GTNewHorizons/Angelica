@@ -1,5 +1,5 @@
 # Angelica
-The little Angel that supports shaders while saving your fps from a certain death -boubou
+The little Angle that supports shaders while saving your fps from a certain death -boubou
 
 Not yet in an usable state
 
