@@ -310,8 +310,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 						return null;
 					} else if (source == null) {
 						// still need the custom framebuffer, viewport, and blend mode behavior
-						GlFramebuffer shadowFb =
-							shadowTargetsSupplier.get().createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] {0});
+						GlFramebuffer shadowFb = shadowTargetsSupplier.get().createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] {0});
 						return new Pass(null, shadowFb, shadowFb, null,
 							BlendModeOverride.OFF, Collections.emptyList(), true);
 					}
@@ -764,8 +763,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (shadowViewport) {
 				GL11.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
 			} else {
-//				RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-				GL11.glViewport(0, 0, /*main.getWidth(), main.getHeight()*/0,0);
+                final Minecraft mc = Minecraft.getMinecraft();
+				GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 			}
 
 			if (program != null && !sodiumTerrainRendering) {
@@ -835,7 +834,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, 0);
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, 0);
 
-//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(false);
+        Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
 
 		// Destroy our render targets
 		//
@@ -958,7 +957,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		// Reset framebuffer and viewport
-//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {

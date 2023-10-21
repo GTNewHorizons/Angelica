@@ -8,6 +8,7 @@ import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL20;
 
 import java.util.List;
@@ -25,8 +26,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	@Override
 	public void beginLevelRendering() {
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
-        // TODO: Iris
-//		Minecraft.getMinecraft().getMainRenderTarget().bindWrite(true);
+        Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 		GL20.glUseProgram(0);
 	}
 
