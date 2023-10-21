@@ -4,10 +4,6 @@
 package com.gtnewhorizons.angelica.client;
 
 import com.gtnewhorizons.angelica.Tags;
-import com.gtnewhorizons.angelica.client.shaders.config.ShadersConfig;
-import com.gtnewhorizons.angelica.client.shaders.gl.shader.StandardMacros;
-import com.gtnewhorizons.angelica.client.shaders.shaderpack.ShaderPack;
-import com.gtnewhorizons.angelica.client.shaders.shaderpack.option.values.MutableOptionValues;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelRenderer;
 import lombok.Getter;
@@ -41,6 +37,8 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
+import org.joml.Vector3d;
+
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -48,30 +46,16 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
-import java.util.zip.ZipException;
 
 import static org.lwjgl.opengl.ARBFragmentShader.GL_FRAGMENT_SHADER_ARB;
 import static org.lwjgl.opengl.ARBShaderObjects.GL_OBJECT_INFO_LOG_LENGTH_ARB;
@@ -212,6 +196,11 @@ public class Shaders {
 
     private static final double[] previousCameraPosition = new double[3];
     private static final double[] cameraPosition = new double[3];
+
+
+    public static Vector3d getCameraPosition() {
+        return new Vector3d(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+    }
 
     // Shadow stuff
 
@@ -3168,19 +3157,17 @@ public class Shaders {
         // BlockAliases.getMappedBlockId
         final int blockId = Block.blockRegistry.getIDForObject(block);
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
-                | (block.getRenderType() << 16);
-        entityData[entityDataIndex * 2 + 1] = 0;
+        entityData[entityDataIndex * 2] = (blockId & 0xFFFF) | (block.getRenderType() << 16);
+        entityData[entityDataIndex * 2 + 1] = metadata;
     }
 
     public static void pushEntity(RenderBlocks rb, Block block, int x, int y, int z) {
         final int metadata = rb.blockAccess.getBlockMetadata(x, y, z);
-        // BlockAliases.getMappedBlockId(
+        // BlockAliases.getMappedBlockId
         final int blockId = Block.blockRegistry.getIDForObject(block);
         entityDataIndex++;
-        entityData[entityDataIndex * 2] = (Block.blockRegistry.getIDForObject(block) & 0xFFFF)
-                | (block.getRenderType() << 16);
-        entityData[entityDataIndex * 2 + 1] = rb.blockAccess.getBlockMetadata(x, y, z);
+        entityData[entityDataIndex * 2] = (blockId & 0xFFFF) | (block.getRenderType() << 16);
+        entityData[entityDataIndex * 2 + 1] = metadata;
     }
 
     public static void popEntity() {

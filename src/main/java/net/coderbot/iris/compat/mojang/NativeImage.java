@@ -1,7 +1,7 @@
 package net.coderbot.iris.compat.mojang;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -69,7 +69,7 @@ public class NativeImage extends BufferedImage {
         try {
             ImageIO.write(this, "png", file);
         } catch(IOException ioexception) {
-            AngelicaTweaker.LOGGER.info("[TextureDump] Unable to write: ", ioexception);
+            Iris.logger.info("[TextureDump] Unable to write: ", ioexception);
         }
     }
     public static int combine(int i, int j, int k, int l) {

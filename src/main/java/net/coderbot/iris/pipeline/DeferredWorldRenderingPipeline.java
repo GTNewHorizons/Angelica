@@ -31,7 +31,6 @@ import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
-import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -165,15 +164,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		this.packDirectives = programs.getPackDirectives();
 
-        // TODO: IRIS
-//		RenderTarget mainTarget = Minecraft.getMinecraft().getMainRenderTarget();
-		RenderTarget mainTarget = null;
+        Minecraft mc = Minecraft.getMinecraft();
 
 		int depthTextureId = 0; //mainTarget.getDepthTextureId();
 		int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		this.renderTargets = new RenderTargets(/*mainTarget.width, mainTarget.height,*/ 0, 0, depthTextureId,
+		this.renderTargets = new RenderTargets(mc.displayWidth, mc.displayHeight, depthTextureId,
 			0 /*((Blaze3dRenderTargetExt) mainTarget).iris$getDepthBufferVersion()*/,
 			depthBufferFormat, programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
 

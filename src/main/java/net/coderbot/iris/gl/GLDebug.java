@@ -5,7 +5,6 @@
 
 package net.coderbot.iris.gl;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
@@ -73,21 +72,24 @@ public final class GLDebug {
      */
 	public static int setupDebugMessageCallback() {
         if (Iris.capabilities.OpenGL43 || Iris.capabilities.GL_KHR_debug) {
-			AngelicaTweaker.LOGGER.info("[GL] Using KHR_debug for error logging.");
+			Iris.logger.info("[GL] Using KHR_debug for error logging.");
+            GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
+            GL11.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
             KHRDebug.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             KHRDebug.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
             KHRDebug.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
             KHRDebug.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
             KHRDebug.glDebugMessageCallback(new KHRDebugCallback());
 
-			if (Iris.capabilities.OpenGL30 && (GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & 2) == 0) {
-				AngelicaTweaker.LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
+			if (Iris.capabilities.OpenGL30 && (GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & GL43.GL_CONTEXT_FLAG_DEBUG_BIT) == 0) {
+				Iris.logger.warn("[GL] Warning: A non-debug context may not produce any debug output.");
                 GL11.glDisable(GL43.GL_DEBUG_OUTPUT);
 				return 2;
 			}
 			return 1;
 		} else if (Iris.capabilities.GL_ARB_debug_output) {
-			AngelicaTweaker.LOGGER.info("[GL] Using ARB_debug_output for error logging.");
+			Iris.logger.info("[GL] Using ARB_debug_output for error logging.");
 
 			ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
 			ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
@@ -96,7 +98,7 @@ public final class GLDebug {
 			glDebugMessageCallbackARB(new ARBDebugOutputCallback());
 			return 1;
 		} else if (Iris.capabilities.GL_AMD_debug_output) {
-			AngelicaTweaker.LOGGER.info("[GL] Using AMD_debug_output for error logging.");
+			Iris.logger.info("[GL] Using AMD_debug_output for error logging.");
 
 			AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
 			AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
@@ -105,7 +107,7 @@ public final class GLDebug {
 			AMDDebugOutput.glDebugMessageCallbackAMD(new AMDDebugOutputCallback());
 			return 1;
 		} else {
-			AngelicaTweaker.LOGGER.info("[GL] No debug output implementation is available, cannot return debug info.");
+			Iris.logger.info("[GL] No debug output implementation is available, cannot return debug info.");
 			return 0;
 		}
 	}
@@ -127,7 +129,7 @@ public final class GLDebug {
 			AMDDebugOutput.glDebugMessageCallbackAMD(null);
 			return 1;
 		} else {
-			AngelicaTweaker.LOGGER.info("[GL] No debug output implementation is available, cannot disable debug info.");
+			Iris.logger.info("[GL] No debug output implementation is available, cannot disable debug info.");
 			return 0;
 		}
 	}

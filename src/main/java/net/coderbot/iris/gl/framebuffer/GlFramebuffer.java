@@ -7,9 +7,12 @@ import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.minecraft.client.renderer.OpenGlHelper;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+
+import java.nio.IntBuffer;
 
 public class GlFramebuffer extends GlResource {
 	private final Int2IntMap attachments;
@@ -49,12 +52,13 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void noDrawBuffers() {
-		IrisRenderSystem.drawBuffers(getGlId(), new int[] { GL11.GL_NONE });
+        IntBuffer buffer = BufferUtils.createIntBuffer(1);
+        buffer.put(GL11.GL_NONE);
+		IrisRenderSystem.drawBuffers(getGlId(), buffer);
 	}
 
 	public void drawBuffers(int[] buffers) {
-		int[] glBuffers = new int[buffers.length];
-		int index = 0;
+        IntBuffer glBuffers = BufferUtils.createIntBuffer(buffers.length);
 
 		if (buffers.length > maxDrawBuffers) {
 			throw new IllegalArgumentException("Cannot write to more than " + maxDrawBuffers + " draw buffers on this GPU");
@@ -64,8 +68,7 @@ public class GlFramebuffer extends GlResource {
 			if (buffer >= maxColorAttachments) {
 				throw new IllegalArgumentException("Only " + maxColorAttachments + " color attachments are supported on this GPU, but an attempt was made to write to a color attachment with index " + buffer);
 			}
-
-			glBuffers[index++] = GL30.GL_COLOR_ATTACHMENT0 + buffer;
+            glBuffers.put(GL30.GL_COLOR_ATTACHMENT0 + buffer);
 		}
 
 		IrisRenderSystem.drawBuffers(getGlId(), glBuffers);

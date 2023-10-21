@@ -190,14 +190,14 @@ public class ProgramUniforms {
 					continue;
 				}
 
-				int size = sizeType.get(0);
-				int type = sizeType.get(1);
+				final int size = sizeType.get(0);
+				final int type = sizeType.get(1);
 
 				UniformType provided = uniformNames.get(name);
-				UniformType expected = getExpectedType(type);
+                final UniformType expected = getExpectedType(type);
 
 				if (provided == null && !name.startsWith("gl_")) {
-					String typeName = getTypeName(type);
+                    final String typeName = getTypeName(type);
 
 					if (isSampler(type) || isImage(type)) {
 						// don't print a warning, samplers and images are managed elsewhere.
@@ -205,7 +205,7 @@ public class ProgramUniforms {
 						continue;
 					}
 
-					UniformType externalProvided = externalUniformNames.get(name);
+                    final UniformType externalProvided = externalUniformNames.get(name);
 
 					if (externalProvided != null) {
 						if (externalProvided != expected) {
