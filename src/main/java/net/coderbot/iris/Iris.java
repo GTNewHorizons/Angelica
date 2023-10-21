@@ -56,7 +56,7 @@ public class Iris {
      */
     public static final String MODNAME = "Angelica";
 
-    public static final IrisLogging logger = new IrisLogging(MODNAME);
+    public static final IrisLogging logger = new IrisLogging(MODNAME + "Shaders");
 
     private static Path shaderpacksDirectory;
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
@@ -122,7 +122,7 @@ public class Iris {
         try {
             irisConfig.initialize();
         } catch (IOException e) {
-            logger.error("Failed to initialize Oculus configuration, default values will be used instead");
+            logger.error("Failed to initialize Angelica configuration, default values will be used instead");
             logger.error("", e);
         }
 
@@ -239,7 +239,7 @@ public class Iris {
         }
 
         if (!irisConfig.areShadersEnabled()) {
-            logger.info("Shaders are disabled because enableShaders is set to false in oculus.properties");
+            logger.info("Shaders are disabled because enableShaders is set to false in shaders.properties");
 
             setShadersDisabled();
 

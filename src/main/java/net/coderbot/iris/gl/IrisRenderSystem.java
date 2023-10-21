@@ -136,7 +136,7 @@ public class IrisRenderSystem {
         return GL20.glGetShaderInfoLog(shader, GL20.glGetShaderi(shader, GL20.GL_INFO_LOG_LENGTH));
     }
 
-	public static void drawBuffers(int framebuffer, int[] buffers) {
+	public static void drawBuffers(int framebuffer, IntBuffer buffers) {
 		dsaState.drawBuffers(framebuffer, buffers);
 	}
 
@@ -266,7 +266,7 @@ public class IrisRenderSystem {
 
 		void readBuffer(int framebuffer, int buffer);
 
-		void drawBuffers(int framebuffer, int[] buffers);
+		void drawBuffers(int framebuffer, IntBuffer buffers);
 
 		int getTexParameteri(int texture, int target, int pname);
 
@@ -316,8 +316,8 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public void drawBuffers(int framebuffer, int[] buffers) {
-			ARBDirectStateAccess.glNamedFramebufferDrawBuffers(framebuffer, IntBuffer.wrap(buffers));
+		public void drawBuffers(int framebuffer, IntBuffer buffers) {
+			ARBDirectStateAccess.glNamedFramebufferDrawBuffers(framebuffer, buffers);
 		}
 
 		@Override
@@ -399,9 +399,9 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public void drawBuffers(int framebuffer, int[] buffers) {
+		public void drawBuffers(int framebuffer, IntBuffer buffers) {
 			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
-			GL20.glDrawBuffers(IntBuffer.wrap(buffers));
+			GL20.glDrawBuffers(buffers);
 		}
 
 		@Override

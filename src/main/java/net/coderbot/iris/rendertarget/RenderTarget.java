@@ -6,6 +6,7 @@ import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelFormat;
 import net.coderbot.iris.gl.texture.PixelType;
 import org.joml.Vector2i;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -37,11 +38,11 @@ public class RenderTarget {
 		this.width = builder.width;
 		this.height = builder.height;
 
-		int[] textures = new int[2];
-        GL11.glGenTextures(IntBuffer.wrap(textures));
+        IntBuffer textures = BufferUtils.createIntBuffer(2);
+        GL11.glGenTextures(textures);
 
-		this.mainTexture = textures[0];
-		this.altTexture = textures[1];
+		this.mainTexture = textures.get(0);
+		this.altTexture = textures.get(1);
 
 		boolean isPixelFormatInteger = builder.internalFormat.getPixelFormat().isInteger();
 		setupTexture(mainTexture, builder.width, builder.height, !isPixelFormatInteger);
