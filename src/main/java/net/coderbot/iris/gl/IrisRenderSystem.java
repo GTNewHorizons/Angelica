@@ -152,11 +152,11 @@ public class IrisRenderSystem {
 		GL11.glReadPixels(x, y, width, height, format, type, FloatBuffer.wrap(pixels));
 	}
 
-	public static void bufferData(int target, float[] data, int usage) {
-		GL15.glBufferData(target, FloatBuffer.wrap(data), usage);
+	public static void bufferData(int target, FloatBuffer data, int usage) {
+		GL15.glBufferData(target, data, usage);
 	}
 
-	public static int bufferStorage(int target, float[] data, int usage) {
+	public static int bufferStorage(int target, FloatBuffer data, int usage) {
 		return dsaState.bufferStorage(target, data, usage);
 	}
 
@@ -274,7 +274,7 @@ public class IrisRenderSystem {
 
 		void bindTextureToUnit(int unit, int texture);
 
-		int bufferStorage(int target, float[] data, int usage);
+		int bufferStorage(int target, FloatBuffer data, int usage);
 
 		void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter);
 
@@ -340,9 +340,9 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public int bufferStorage(int target, float[] data, int usage) {
+		public int bufferStorage(int target, FloatBuffer data, int usage) {
             int buffer = GL45.glCreateBuffers();
-            GL45.glNamedBufferData(buffer, FloatBuffer.wrap(data), usage);
+            GL45.glNamedBufferData(buffer, data, usage);
 			return buffer;
 		}
 
@@ -425,7 +425,7 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public int bufferStorage(int target, float[] data, int usage) {
+		public int bufferStorage(int target, FloatBuffer data, int usage) {
 			int buffer = GL15.glGenBuffers();
 			GL15.glBindBuffer(target, buffer);
 			bufferData(target, data, usage);

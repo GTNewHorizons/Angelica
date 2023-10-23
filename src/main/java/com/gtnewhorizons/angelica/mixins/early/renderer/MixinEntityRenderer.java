@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.renderer;
 
-import com.gtnewhorizon.mixinextras.injector.ModifyExpressionValue;
 import com.gtnewhorizons.angelica.client.Shaders;
 import com.gtnewhorizons.angelica.client.ShadersRender;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -76,8 +76,8 @@ public abstract class MixinEntityRenderer {
     // renderWorld
 
     @Inject(at = @At("HEAD"), method = "renderWorld(FJ)V")
-    private void angelica$beginRender(float p_78471_1_, long p_78471_2_, CallbackInfo ci) {
-        Shaders.beginRender(this.mc, p_78471_1_, p_78471_2_);
+    private void angelica$beginRender(float renderPartialTicks, long tickDelta, CallbackInfo ci) {
+        Shaders.beginRender(this.mc, renderPartialTicks, tickDelta);
     }
 
     @Redirect(

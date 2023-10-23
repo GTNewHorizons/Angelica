@@ -28,6 +28,7 @@ import net.minecraft.util.Vec3;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL11;
@@ -37,8 +38,6 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
-import org.joml.Vector3d;
-
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -93,7 +92,6 @@ import static org.lwjgl.opengl.EXTFramebufferObject.glDeleteFramebuffersEXT;
 import static org.lwjgl.opengl.EXTFramebufferObject.glFramebufferTexture2DEXT;
 import static org.lwjgl.opengl.EXTFramebufferObject.glGenFramebuffersEXT;
 import static org.lwjgl.util.glu.GLU.gluErrorString;
-import static org.lwjgl.util.glu.GLU.gluPerspective;
 
 public class Shaders {
 
@@ -647,6 +645,7 @@ public class Shaders {
     }
 
     public static int checkGLError(String location) {
+        if (true) return 0;
         int errorCode = GL11.glGetError();
         if (errorCode != GL11.GL_NO_ERROR) {
             boolean skipPrint = false;
@@ -716,6 +715,7 @@ public class Shaders {
     }
 
     public static void init() {
+        if (true) return;
         if (isInitialized) {
             return;
         }
@@ -925,6 +925,7 @@ public class Shaders {
     }
 
     public static void resetDisplayList() {
+        if (true) return;
         ++numberResetDisplayList;
         AngelicaTweaker.LOGGER.debug("Reset model renderers");
         if (Shaders.useMidTexCoordAttrib || Shaders.useMultiTexCoord3Attrib) {
@@ -941,6 +942,7 @@ public class Shaders {
     }
 
     public static void resetDisplayListModel(ModelBase mbase) {
+        if (true) return;
         if (mbase != null) {
             for (ModelRenderer obj : mbase.boxList) {
                 if (obj != null) {
@@ -951,6 +953,7 @@ public class Shaders {
     }
 
     public static void resetDisplayListModelRenderer(ModelRenderer mrr) {
+        if (true) return;
         ((IModelRenderer) mrr).angelica$resetDisplayList();
 
         if (mrr.childModels != null) {
@@ -963,6 +966,7 @@ public class Shaders {
     // ----------------------------------------
 
       private static int setupProgram(int program, String vShaderPath, String fShaderPath) {
+      if (true) return 0;
         checkGLError("pre setupProgram");
         int programid = glCreateProgramObjectARB();
         checkGLError("create");
@@ -1061,6 +1065,7 @@ public class Shaders {
     }
 
     private static int createVertShader(String filename) {
+        if (true) return 0;
         int vertShader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
         if (vertShader == 0) {
             return 0;
@@ -1104,6 +1109,7 @@ public class Shaders {
             .compile("^\\s*#include\\s+\"([A-Za-z0-9_\\/\\.]+)\".*$", Pattern.MULTILINE | Pattern.UNIX_LINES);
 
     private static int createFragShader(String filename) {
+        if (true) return 0;
         int fragShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
         if (fragShader == 0) {
             return 0;
@@ -1397,6 +1403,7 @@ public class Shaders {
     }
 
     public static void setDrawBuffers(IntBuffer drawBuffers) {
+        if (true) return;
         if (activeDrawBuffers != drawBuffers) {
             // printIntBuffer("setDrawBuffers", drawBuffers);
             activeDrawBuffers = drawBuffers;
@@ -1407,6 +1414,7 @@ public class Shaders {
     }
 
     public static void useProgram(int program) {
+        if (true) return;
         // System.out.println((new StringBuilder(32)).append("useProgram ").append(programNames[program]));
         Shaders.checkGLError("pre-useProgram");
         if (isShadowPass) {
@@ -1602,6 +1610,7 @@ public class Shaders {
     }
 
     public static void setProgramUniform1i(String name, int x) {
+        if (true) return;
         int gp = programsID[activeProgram];
         if (gp != GL11.GL_NONE) {
             int uniform = glGetUniformLocationARB(gp, name);
@@ -1611,6 +1620,7 @@ public class Shaders {
     }
 
     public static void setProgramUniform2i(String name, int x, int y) {
+        if (true) return;
         int gp = programsID[activeProgram];
         if (gp != GL11.GL_NONE) {
             int uniform = glGetUniformLocationARB(gp, name);
@@ -1620,6 +1630,7 @@ public class Shaders {
     }
 
     public static void setProgramUniform1f(String name, float x) {
+        if (true) return;
         int gp = programsID[activeProgram];
         if (gp != GL11.GL_NONE) {
             int uniform = glGetUniformLocationARB(gp, name);
@@ -1629,6 +1640,7 @@ public class Shaders {
     }
 
     public static void setProgramUniform3f(String name, float x, float y, float z) {
+        if (true) return;
         int gp = programsID[activeProgram];
         if (gp != GL11.GL_NONE) {
             int uniform = glGetUniformLocationARB(gp, name);
@@ -1638,6 +1650,7 @@ public class Shaders {
     }
 
     public static void setProgramUniformMatrix4ARB(String name, boolean transpose, FloatBuffer matrix) {
+        if (true) return;
         int gp = programsID[activeProgram];
         if (gp != GL11.GL_NONE && matrix != null) {
             int uniform = glGetUniformLocationARB(gp, name);
@@ -1687,6 +1700,7 @@ public class Shaders {
     }
 
     public static void uninit() {
+        if (true) return;
         if (!isInitialized) {
             return;
         }
@@ -1775,6 +1789,7 @@ public class Shaders {
     }
 
     private static void setupFrameBuffer() {
+        if (true) return;
         if (dfb != 0) {
             glDeleteFramebuffersEXT(dfb);
             GL11.glDeleteTextures(dfbDepthTextures);
@@ -1843,6 +1858,7 @@ public class Shaders {
     }
 
     private static void setupShadowFrameBuffer() {
+        if (true) return;
         if (usedShadowDepthBuffers == 0) {
             return;
         }
@@ -1904,6 +1920,8 @@ public class Shaders {
     }
 
     public static void beginRender(Minecraft minecraft, float f, long l) {
+        if (true)        return;
+
         if (isShadowPass) {
             return;
         }
@@ -1930,9 +1948,7 @@ public class Shaders {
 
         systemTime = System.currentTimeMillis();
         if (lastSystemTime == 0) {
-            lastSystemTime = systemTime; // Initialize lastSystemTime on the first tick so that it is equal to current
-                                         // system
-            // time
+            lastSystemTime = systemTime; // Initialize lastSystemTime on the first tick so that it is equal to current system time
         }
         diffSystemTime = systemTime - lastSystemTime;
         lastSystemTime = systemTime;
@@ -1943,10 +1959,8 @@ public class Shaders {
         rainStrength = minecraft.theWorld.getRainStrength(f);
         {
             float fadeScalar = diffSystemTime * 0.01f;
-            // float temp1 = (float)Math.exp(Math.log(0.5)*diffWorldTime/((wetness < rainStrength)? drynessHalfLife :
-            // wetnessHalfLife));
-            float temp1 = (float) Math
-                    .exp(Math.log(0.5) * fadeScalar / ((wetness < rainStrength) ? drynessHalfLife : wetnessHalfLife));
+            // float temp1 = (float)Math.exp(Math.log(0.5)*diffWorldTime/((wetness < rainStrength)? drynessHalfLife : wetnessHalfLife));
+            float temp1 = (float) Math.exp(Math.log(0.5) * fadeScalar / ((wetness < rainStrength) ? drynessHalfLife : wetnessHalfLife));
             wetness = wetness * (temp1) + rainStrength * (1 - temp1);
         }
 
@@ -2123,6 +2137,8 @@ public class Shaders {
     }
 
     public static void setViewport(int vx, int vy, int vw, int vh) {
+        GL11.glViewport(vx, vy, vw, vh);
+        if (true) return;
         GL11.glColorMask(true, true, true, true);
         if (isShadowPass) {
             GL11.glViewport(0, 0, shadowMapWidth, shadowMapHeight);
@@ -2156,6 +2172,7 @@ public class Shaders {
     }
 
     public static void clearRenderBuffer() {
+        if (true) return;
         if (isShadowPass) {
             checkGLError("shadow clear pre");
             glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, sfbDepthTextures.get(0), 0); GL11.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -2215,22 +2232,22 @@ public class Shaders {
         modelViewInverse.position(0);
 
         if (isShadowPass) {
-            GL11.glViewport(0, 0, shadowMapWidth, shadowMapHeight);
-
-            GL11.glMatrixMode(GL11.GL_PROJECTION);
-            GL11.glLoadIdentity();
-
-            if (shadowMapIsOrtho) {
-                GL11.glOrtho( -shadowMapHalfPlane, shadowMapHalfPlane, -shadowMapHalfPlane, shadowMapHalfPlane, 0.05f, 256.0f);
-            } else {
-                // just backwards compatibility. it's only used when SHADOWFOV is set in the shaders.
-                gluPerspective(shadowMapFOV, (float) shadowMapWidth / (float) shadowMapHeight, 0.05f, 256.0f);
-            }
-
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            GL11.glLoadIdentity();
-            GL11.glTranslatef(0.0f, 0.0f, -100.0f);
-            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+//            GL11.glViewport(0, 0, shadowMapWidth, shadowMapHeight);
+//
+//            GL11.glMatrixMode(GL11.GL_PROJECTION);
+//            GL11.glLoadIdentity();
+//
+//            if (shadowMapIsOrtho) {
+//                GL11.glOrtho( -shadowMapHalfPlane, shadowMapHalfPlane, -shadowMapHalfPlane, shadowMapHalfPlane, 0.05f, 256.0f);
+//            } else {
+//                // just backwards compatibility. it's only used when SHADOWFOV is set in the shaders.
+//                gluPerspective(shadowMapFOV, (float) shadowMapWidth / (float) shadowMapHeight, 0.05f, 256.0f);
+//            }
+//
+//            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+//            GL11.glLoadIdentity();
+//            GL11.glTranslatef(0.0f, 0.0f, -100.0f);
+//            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
             float celestialAngle = mc.theWorld.getCelestialAngle(f);
             sunAngle = (celestialAngle < 0.75f) ? celestialAngle + 0.25f : celestialAngle - 0.75f;
             float angle = celestialAngle * (-360.0f);
@@ -2239,21 +2256,21 @@ public class Shaders {
                     : 0.0f;
             if (sunAngle <= 0.5) {
                 // day time
-                GL11.glRotatef(angle - angleInterval, 0.0f, 0.0f, 1.0f);
-                GL11.glRotatef(sunPathRotation, 1.0f, 0.0f, 0.0f); // rotate
+//                GL11.glRotatef(angle - angleInterval, 0.0f, 0.0f, 1.0f);
+//                GL11.glRotatef(sunPathRotation, 1.0f, 0.0f, 0.0f); // rotate
                 shadowAngle = sunAngle;
             } else {
                 // night time
-                GL11.glRotatef(angle + 180.0f - angleInterval, 0.0f, 0.0f, 1.0f);
-                GL11.glRotatef(sunPathRotation, 1.0f, 0.0f, 0.0f); // rotate
+//                GL11.glRotatef(angle + 180.0f - angleInterval, 0.0f, 0.0f, 1.0f);
+//                GL11.glRotatef(sunPathRotation, 1.0f, 0.0f, 0.0f); // rotate
                 shadowAngle = sunAngle - 0.5f;
             }
-            if (shadowMapIsOrtho) {
-                // reduces jitter
-                float trans = shadowIntervalSize;
-                float trans2 = trans / 2.0f;
-                GL11.glTranslatef((float) x % trans - trans2, (float) y % trans - trans2, (float) z % trans - trans2);
-            }
+//            if (shadowMapIsOrtho) {
+//                // reduces jitter
+//                float trans = shadowIntervalSize;
+//                float trans2 = trans / 2.0f;
+//                GL11.glTranslatef((float) x % trans - trans2, (float) y % trans - trans2, (float) z % trans - trans2);
+//            }
 
             GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, (FloatBuffer) shadowProjection.position(0));
             invertMat4x((FloatBuffer) shadowProjection.position(0), (FloatBuffer) shadowProjectionInverse.position(0));
@@ -2265,16 +2282,16 @@ public class Shaders {
             shadowModelView.position(0);
             shadowModelViewInverse.position(0);
 
-            setProgramUniformMatrix4ARB("gbufferProjection", false, projection);
-            setProgramUniformMatrix4ARB("gbufferProjectionInverse", false, projectionInverse);
-            setProgramUniformMatrix4ARB("gbufferPreviousProjection", false, previousProjection);
-            setProgramUniformMatrix4ARB("gbufferModelView", false, modelView);
-            setProgramUniformMatrix4ARB("gbufferModelViewInverse", false, modelViewInverse);
-            setProgramUniformMatrix4ARB("gbufferPreviousModelView", false, previousModelView);
-            setProgramUniformMatrix4ARB("shadowProjection", false, shadowProjection);
-            setProgramUniformMatrix4ARB("shadowProjectionInverse", false, shadowProjectionInverse);
-            setProgramUniformMatrix4ARB("shadowModelView", false, shadowModelView);
-            setProgramUniformMatrix4ARB("shadowModelViewInverse", false, shadowModelViewInverse);
+//            setProgramUniformMatrix4ARB("gbufferProjection", false, projection);
+//            setProgramUniformMatrix4ARB("gbufferProjectionInverse", false, projectionInverse);
+//            setProgramUniformMatrix4ARB("gbufferPreviousProjection", false, previousProjection);
+//            setProgramUniformMatrix4ARB("gbufferModelView", false, modelView);
+//            setProgramUniformMatrix4ARB("gbufferModelViewInverse", false, modelViewInverse);
+//            setProgramUniformMatrix4ARB("gbufferPreviousModelView", false, previousModelView);
+//            setProgramUniformMatrix4ARB("shadowProjection", false, shadowProjection);
+//            setProgramUniformMatrix4ARB("shadowProjectionInverse", false, shadowProjectionInverse);
+//            setProgramUniformMatrix4ARB("shadowModelView", false, shadowModelView);
+//            setProgramUniformMatrix4ARB("shadowModelViewInverse", false, shadowModelViewInverse);
 
             // Also render player shadow
             mc.gameSettings.thirdPersonView = 1;
@@ -2286,7 +2303,7 @@ public class Shaders {
 
     public static void preCelestialRotate() {
         Shaders.setUpPosition();
-        GL11.glRotatef(Shaders.sunPathRotation * 1.0f, 0.0f, 0.0f, 1.0f);
+//        GL11.glRotatef(Shaders.sunPathRotation * 1.0f, 0.0f, 0.0f, 1.0f);
         checkGLError("preCelestialRotate");
     }
 
@@ -2362,6 +2379,7 @@ public class Shaders {
     }
 
     public static void genCompositeMipmap() {
+        if (true) return;
         if (hasGlGenMipmap) {
             if ((activeCompositeMipmapSetting & (1 << 0)) != 0) {
                 GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -2400,6 +2418,7 @@ public class Shaders {
     }
 
     public static void drawComposite() {
+        if (true) return;
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glBegin(GL11.GL_QUADS);
         GL11.glTexCoord2f(0.0f, 0.0f);
@@ -2415,16 +2434,19 @@ public class Shaders {
 
     public static void renderDeferred() {
         checkGLError("pre-renderDeferred");
+        if (true) return;
         renderComposites(ProgramDeferred, 8, false);
         //OF: mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
     }
 
     public static void renderCompositeFinal() {
+        if (true) return;
         checkGLError("pre-renderCompositeFinal");
         renderComposites(ProgramComposite, 8, true);
     }
 
     public static void renderComposites(int programBase, int programCount, boolean renderFinal) {
+        if (true) return;
         if (isShadowPass) {
             // useProgram(ProgramNone);
             return;
@@ -2546,6 +2568,7 @@ public class Shaders {
     private static void renderFinal() {
         // final render target
         isRenderingDfb = false;
+        if (true) return;
         mc.getFramebuffer().bindFramebuffer(true);
         // glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
         // GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
@@ -2581,6 +2604,7 @@ public class Shaders {
 
 
     public static void endRender() {
+        if (true) return;
         if (isShadowPass) {
             // useProgram(ProgramNone);
             checkGLError("shadow endRender");
@@ -2601,6 +2625,7 @@ public class Shaders {
     public static void beginSky() {
         isRenderingSky = true;
         fogEnabled = true;
+        if (true) return;
         setDrawBuffers(dfbDrawBuffers);
         useProgram(ProgramSkyTextured);
         pushEntity(-2, 0);
@@ -2610,10 +2635,12 @@ public class Shaders {
         skyColorR = (float) v3color.xCoord;
         skyColorG = (float) v3color.yCoord;
         skyColorB = (float) v3color.zCoord;
+        if (true) return;
         setProgramUniform3f("skyColor", skyColorR, skyColorG, skyColorB);
     }
 
     public static void drawHorizon() {
+        if (true) return;
         Tessellator tess = Tessellator.instance;
         float farDistance = mc.gameSettings.renderDistanceChunks * 16;
         double xzq = farDistance * 0.9238;
@@ -2674,6 +2701,7 @@ public class Shaders {
     }
 
     public static void preSkyList() {
+        if (true) return;
         GL11.glColor3f(fogColorR, fogColorG, fogColorB);
         // GL11.glColor3f(0f, 1f, 0f);
         // GL11.glDisable(GL11.GL_FOG);
@@ -2686,6 +2714,7 @@ public class Shaders {
 
     public static void endSky() {
         isRenderingSky = false;
+        if (true) return;
         setDrawBuffers(dfbDrawBuffers);
         useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
         popEntity();
@@ -2699,6 +2728,7 @@ public class Shaders {
     // useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
     // }
     public static void beginUpdateChunks() {
+        if (true) return;
         // System.out.println("beginUpdateChunks");
         checkGLError("beginUpdateChunks1");
         checkFramebufferStatus("beginUpdateChunks1");
@@ -2710,6 +2740,7 @@ public class Shaders {
     }
 
     public static void endUpdateChunks() {
+        if (true) return;
         // System.out.println("endUpdateChunks");
         checkGLError("endUpdateChunks1");
         checkFramebufferStatus("endUpdateChunks1");
@@ -2726,17 +2757,20 @@ public class Shaders {
     }
 
     public static void beginClouds() {
+        if (true) return;
         fogEnabled = true;
         pushEntity(-3, 0);
         useProgram(ProgramTextured);
     }
 
     public static void endClouds() {
+        if (true) return;
         disableFog();
         popEntity();
     }
 
     public static void beginTerrain() {
+        if (true) return;
         if (isRenderingWorld) {
             if (isShadowPass) {
                 GL11.glDisable(GL11.GL_CULL_FACE);
@@ -2748,6 +2782,7 @@ public class Shaders {
     }
 
     public static void endTerrain() {
+        if (true) return;
         if (isRenderingWorld) {
             if (isShadowPass) {
                 GL11.glEnable(GL11.GL_CULL_FACE);
@@ -2758,6 +2793,7 @@ public class Shaders {
     }
 
     public static void beginBlockEntities() {
+        if (true) return;
         if (isRenderingWorld) {
             checkGLError("beginBlockEntities");
             useProgram(Shaders.ProgramTerrain);
@@ -2765,6 +2801,7 @@ public class Shaders {
     }
 
     public static void endBlockEntities() {
+        if (true) return;
         if (isRenderingWorld) {
             checkGLError("endBlockEntities");
             useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
@@ -2773,6 +2810,7 @@ public class Shaders {
     }
 
     public static void beginBlockDestroyProgress() {
+        if (true) return;
         if (isRenderingWorld) {
             useProgram(ProgramTerrain);
             if (Shaders.configTweakBlockDamage) {
@@ -2784,6 +2822,7 @@ public class Shaders {
     }
 
     public static void endBlockDestroyProgress() {
+        if (true) return;
         if (isRenderingWorld) {
             GL11.glDepthMask(true);
             useProgram(ProgramTexturedLit);
@@ -2791,6 +2830,7 @@ public class Shaders {
     }
 
     public static void beginEntities() {
+        if (true) return;
         if (isRenderingWorld) {
             useProgram(ProgramEntities);
             if (programsID[activeProgram] != 0) {
@@ -2804,12 +2844,14 @@ public class Shaders {
     }
 
     public static void nextEntity() {
+        if (true) return;
         if (isRenderingWorld) {
             useProgram(ProgramEntities);
         }
     }
 
     public static void beginSpiderEyes() {
+        if (true) return;
         if (isRenderingWorld) {
             useProgram(ProgramSpiderEyes);
             if (programsID[ProgramSpiderEyes] == programsID[ProgramTextured]) {
@@ -2820,12 +2862,14 @@ public class Shaders {
     }
 
     public static void endEntities() {
+        if (true) return;
         if (isRenderingWorld) {
             useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
         }
     }
 
     public static void setEntityHurtFlash(int hurt, int flash) {
+        if (true) return;
         if (useEntityHurtFlash && isRenderingWorld && !isShadowPass) {
             if (uniformEntityHurt != -1) glUniform1iARB(uniformEntityHurt, hurt);
             if (uniformEntityFlash != -1) glUniform1iARB(uniformEntityFlash, flash >> 24);
@@ -2834,10 +2878,12 @@ public class Shaders {
     }
 
     public static void resetEntityHurtFlash() {
+        if (true) return;
         setEntityHurtFlash(0, 0);
     }
 
     public static void beginLivingDamage() {
+        if (true) return;
         if (isRenderingWorld) {
             ShadersTex.bindTexture(defaultTexture);
             if (!isShadowPass) {
@@ -2848,6 +2894,7 @@ public class Shaders {
     }
 
     public static void endLivingDamage() {
+        if (true) return;
         if (isRenderingWorld) {
             if (!isShadowPass) {
                 // useProgram(ProgramEntities);
@@ -2857,23 +2904,27 @@ public class Shaders {
     }
 
     public static void beginLitParticles() {
+        if (true) return;
         // GL11.glDepthMask(false);
         Tessellator.instance.setNormal(0f, 0f, 0f);
         useProgram(ProgramTexturedLit);
     }
 
     public static void beginParticles() {
+        if (true) return;
         // GL11.glDepthMask(false);
         Tessellator.instance.setNormal(0f, 0f, 0f);
         useProgram(ProgramTextured);
     }
 
     public static void endParticles() {
+        if (true) return;
         Tessellator.instance.setNormal(0f, 0f, 0f);
         useProgram(ProgramTexturedLit);
     }
 
     public static void preWater() {
+        if (true) return;
         if (isShadowPass) {
             if (usedShadowDepthBuffers >= 2) {
                 // copy depth buffer to shadowtex1
@@ -2897,6 +2948,7 @@ public class Shaders {
     }
 
     public static void beginWater() {
+        if (true) return;
         if (isRenderingWorld) {
             if (!isShadowPass) {
                 // program water
@@ -2910,6 +2962,7 @@ public class Shaders {
     }
 
     public static void endWater() {
+        if (true) return;
         if (isRenderingWorld) {
             if (isShadowPass) {
                 // glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D,
@@ -2923,6 +2976,7 @@ public class Shaders {
     }
 
     public static void readCenterDepth() {
+        if (true) return;
         if (!isShadowPass) {
             // Read depth buffer at center of screen for DOF
             if (centerDepthSmoothEnabled) {
@@ -2939,6 +2993,7 @@ public class Shaders {
     }
 
     public static void beginWeather() {
+        if (true) return;
         if (!isShadowPass) {
             if (usedDepthBuffers >= 3) {
                 // copy depth buffer to depthtex2
@@ -2962,6 +3017,7 @@ public class Shaders {
     }
 
     public static void endWeather() {
+        if (true) return;
         // GL11.glDepthMask(true);
         GL11.glDisable(GL11.GL_BLEND);
         useProgram(ProgramTexturedLit);
@@ -2973,20 +3029,24 @@ public class Shaders {
     }
 
     public static void beginProjectRedHalo() {
+        if (true) return;
         useProgram(ProgramBasic);
     }
 
     public static void endProjectRedHalo() {
+        if (true) return;
         useProgram(ProgramTexturedLit);
     }
 
     public static void applyHandDepth() {
+        if (true) return;
         if (Shaders.configHandDepthMul != 1.0) {
             GL11.glScaled(1.0, 1.0, Shaders.configHandDepthMul);
         }
     }
 
     public static void beginHand() {
+        if (true) return;
         // GL11.glEnable(GL11.GL_BLEND);
         // GL11.glDisable(GL11.GL_BLEND);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
@@ -3000,6 +3060,7 @@ public class Shaders {
     }
 
     public static void endHand() {
+        if (true) return;
         // GL11.glDisable(GL11.GL_BLEND);
         checkGLError("pre endHand");
         checkFramebufferStatus("pre endHand");
@@ -3013,12 +3074,14 @@ public class Shaders {
     }
 
     public static void beginFPOverlay() {
+        if (true) return;
         // GL11.glDisable(GL11.GL_BLEND);
         // GL11.glEnable(GL11.GL_BLEND);
         // GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     public static void endFPOverlay() {
+        if (true) return;
         // GL11.glDisable(GL11.GL_BLEND);
     }
 
@@ -3057,6 +3120,7 @@ public class Shaders {
     }
 
     public static void enableTexture2D() {
+        if (true) return;
         if (isRenderingSky) {
             useProgram(ProgramSkyTextured);
         } else if (activeProgram == ProgramBasic) {
@@ -3065,6 +3129,7 @@ public class Shaders {
     }
 
     public static void disableTexture2D() {
+        if (true) return;
         if (isRenderingSky) {
             useProgram(ProgramSkyBasic);
         } else if (activeProgram == ProgramTextured || activeProgram == ProgramTexturedLit) {
@@ -3073,11 +3138,13 @@ public class Shaders {
     }
 
     public static void enableFog() {
+        if (true) return;
         fogEnabled = true;
         setProgramUniform1i("fogMode", fogMode);
     }
 
     public static void disableFog() {
+        if (true) return;
         fogEnabled = false;
         setProgramUniform1i("fogMode", 0);
     }
@@ -3107,6 +3174,7 @@ public class Shaders {
 
     public static void enableLightmap() {
         lightmapEnabled = true;
+        if (true) return;
         if (activeProgram == ProgramTextured) {
             useProgram(ProgramTexturedLit);
         }
@@ -3114,6 +3182,7 @@ public class Shaders {
 
     public static void disableLightmap() {
         lightmapEnabled = false;
+        if (true) return;
         if (activeProgram == ProgramTexturedLit) {
             useProgram(ProgramTextured);
         }

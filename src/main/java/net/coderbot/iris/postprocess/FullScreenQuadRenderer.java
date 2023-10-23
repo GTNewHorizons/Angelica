@@ -2,8 +2,11 @@ package net.coderbot.iris.postprocess;
 
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.compat.mojang.DefaultVertexFormat;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
+
+import java.nio.FloatBuffer;
 
 /**
  * Renders a full-screen textured quad to the screen. Used in composite / deferred rendering.
@@ -67,20 +70,16 @@ public class FullScreenQuadRenderer {
 	 * Creates and uploads a vertex buffer containing a single full-screen quad
 	 */
 	private static int createQuad() {
-		float[] vertices = new float[] {
-			// Vertex 0: Top right corner
-			1.0F, 1.0F, 0.0F,
-			1.0F, 1.0F,
-			// Vertex 1: Top left corner
-			0.0F, 1.0F, 0.0F,
-			0.0F, 1.0F,
-			// Vertex 2: Bottom right corner
-			1.0F, 0.0F, 0.0F,
-			1.0F, 0.0F,
-			// Vertex 3: Bottom left corner
-			0.0F, 0.0F, 0.0F,
-			0.0F, 0.0F
-		};
+        FloatBuffer vertices = BufferUtils.createFloatBuffer(20);
+        vertices.put(new float[] {
+                // Vertex 0: Top right corner
+                1.0F, 1.0F, 0.0F, 1.0F, 1.0F,
+                // Vertex 1: Top left corner
+                0.0F, 1.0F, 0.0F, 0.0F, 1.0F,
+                // Vertex 2: Bottom right corner
+                1.0F, 0.0F, 0.0F, 1.0F, 0.0F,
+                // Vertex 3: Bottom left corner
+                0.0F, 0.0F, 0.0F, 0.0F, 0.0F }).rewind();
 
 		return IrisRenderSystem.bufferStorage(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
 	}
