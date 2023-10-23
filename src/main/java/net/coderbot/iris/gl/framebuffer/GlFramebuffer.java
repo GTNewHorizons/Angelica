@@ -59,18 +59,17 @@ public class GlFramebuffer extends GlResource {
 
 	public void drawBuffers(int[] buffers) {
         IntBuffer glBuffers = BufferUtils.createIntBuffer(buffers.length);
+        int index = 0;
 
 		if (buffers.length > maxDrawBuffers) {
 			throw new IllegalArgumentException("Cannot write to more than " + maxDrawBuffers + " draw buffers on this GPU");
 		}
-
 		for (int buffer : buffers) {
 			if (buffer >= maxColorAttachments) {
 				throw new IllegalArgumentException("Only " + maxColorAttachments + " color attachments are supported on this GPU, but an attempt was made to write to a color attachment with index " + buffer);
 			}
-            glBuffers.put(GL30.GL_COLOR_ATTACHMENT0 + buffer);
+            glBuffers.put(index++, GL30.GL_COLOR_ATTACHMENT0 + buffer);
 		}
-
 		IrisRenderSystem.drawBuffers(getGlId(), glBuffers);
 	}
 

@@ -390,6 +390,7 @@ public class Iris {
     }
 
     private static void setDebug(boolean enable) {
+        if (true) return;
         int success;
         if (enable) {
             success = GLDebug.setupDebugMessageCallback();
