@@ -1,6 +1,7 @@
 package net.coderbot.iris.rendertarget;
 
 import com.google.common.collect.ImmutableSet;
+import lombok.Getter;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
@@ -8,17 +9,24 @@ import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import org.joml.Vector2i;
+import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.lwjgl.opengl.EXTFramebufferObject.GL_DEPTH_ATTACHMENT_EXT;
+import static org.lwjgl.opengl.EXTFramebufferObject.GL_FRAMEBUFFER_EXT;
+
 public class RenderTargets {
 	private final RenderTarget[] targets;
 	private int currentDepthTexture;
 	private DepthBufferFormat currentDepthFormat;
 
+    @Getter
+    private final ColorTexture colorTexture;
+    private final DepthTexture depthTexture;
 	private final DepthTexture noTranslucents;
 	private final DepthTexture noHand;
 	private final GlFramebuffer depthSourceFb;
@@ -36,7 +44,7 @@ public class RenderTargets {
 
 	private int cachedDepthBufferVersion;
 
-	public RenderTargets(int width, int height, int depthTexture, int depthBufferVersion, DepthBufferFormat depthFormat, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
+	public RenderTargets(int width, int height, int depthBufferVersion, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
 		targets = new RenderTarget[renderTargets.size()];
 
 		renderTargets.forEach((index, settings) -> {
@@ -46,9 +54,16 @@ public class RenderTargets {
 					.setInternalFormat(settings.getInternalFormat())
 					.setPixelFormat(settings.getInternalFormat().getPixelFormat()).build();
 		});
+        // TODO: currentDepthFormat... :hmmm: -- NEED GL_TEXTURE_INTERNAL_FORMAT ??
+		this.currentDepthFormat = DepthBufferFormat.DEPTH;
+        this.depthTexture = new DepthTexture(width, height, currentDepthFormat);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture.getTextureId());
+        EXTFramebufferObject.glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, depthTexture.getTextureId(), 0);
 
-		this.currentDepthTexture = depthTexture;
-		this.currentDepthFormat = depthFormat;
+        this.colorTexture = new ColorTexture(width, height);
+
+
+		this.currentDepthTexture = depthTexture.getTextureId();
 		this.copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
 
 		this.cachedWidth = width;
@@ -85,6 +100,7 @@ public class RenderTargets {
 			target.destroy();
 		}
 
+        depthTexture.destroy();
 		noTranslucents.destroy();
 		noHand.destroy();
 	}
@@ -109,48 +125,18 @@ public class RenderTargets {
 		return noHand;
 	}
 
-	public boolean resizeIfNeeded(int newDepthBufferVersion, int newDepthTextureId, int newWidth, int newHeight, DepthBufferFormat newDepthFormat, PackDirectives packDirectives) {
-		boolean recreateDepth = false;
+	public boolean resizeIfNeeded(int newDepthBufferVersion, int newWidth, int newHeight, PackDirectives packDirectives) {
 		if (cachedDepthBufferVersion != newDepthBufferVersion) {
-			recreateDepth = true;
-			currentDepthTexture = newDepthTextureId;
+            this.depthTexture.resize(newWidth, newHeight, currentDepthFormat);
 			cachedDepthBufferVersion = newDepthBufferVersion;
 		}
 
 		boolean sizeChanged = newWidth != cachedWidth || newHeight != cachedHeight;
-		boolean depthFormatChanged = newDepthFormat != currentDepthFormat;
 
-		if (depthFormatChanged) {
-			currentDepthFormat = newDepthFormat;
-			// Might need a new copy strategy
-			copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
-		}
-
-		if (recreateDepth) {
-			// Re-attach the depth textures with the new depth texture ID, since Minecraft re-creates
-			// the depth texture when resizing its render targets.
-			//
-			// I'm not sure if our framebuffers holding on to the old depth texture between frames
-			// could be a concern, in the case of resizing and similar. I think it should work
-			// based on what I've seen of the spec, though - it seems like deleting a texture
-			// automatically detaches it from its framebuffers.
-			for (GlFramebuffer framebuffer : ownedFramebuffers) {
-				if (framebuffer == noHandDestFb || framebuffer == noTranslucentsDestFb) {
-					// NB: Do not change the depth attachment of these framebuffers
-					// as it is intentionally different
-					continue;
-				}
-
-				if (framebuffer.hasDepthAttachment()) {
-					framebuffer.addDepthAttachment(newDepthTextureId);
-				}
-			}
-		}
-
-		if (depthFormatChanged || sizeChanged)  {
+		if (sizeChanged)  {
 			// Reallocate depth buffers
-			noTranslucents.resize(newWidth, newHeight, newDepthFormat);
-			noHand.resize(newWidth, newHeight, newDepthFormat);
+			noTranslucents.resize(newWidth, newHeight, currentDepthFormat);
+			noHand.resize(newWidth, newHeight, currentDepthFormat);
 			this.translucentDepthDirty = true;
 			this.handDepthDirty = true;
 		}
@@ -188,8 +174,7 @@ public class RenderTargets {
 			depthSourceFb.bindAsReadBuffer();
 			IrisRenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 		} else {
-			copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(),
-				getCurrentWidth(), getCurrentHeight());
+			copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(), getCurrentWidth(), getCurrentHeight());
 		}
 	}
 
@@ -235,10 +220,9 @@ public class RenderTargets {
 		GlFramebuffer framebuffer = new GlFramebuffer();
 		ownedFramebuffers.add(framebuffer);
 
-		framebuffer.addDepthAttachment(currentDepthTexture);
+//		framebuffer.addDepthAttachment(currentDepthTexture);
 
-		// NB: Before OpenGL 3.0, all framebuffers are required to have a color
-		// attachment no matter what.
+		// NB: Before OpenGL 3.0, all framebuffers are required to have a color attachment no matter what.
 		framebuffer.addColorAttachment(0, get(0).getMainTexture());
 		framebuffer.noDrawBuffers();
 
@@ -254,7 +238,7 @@ public class RenderTargets {
 
 		GlFramebuffer framebuffer =  createColorFramebuffer(stageWritesToMain, drawBuffers);
 
-		framebuffer.addDepthAttachment(currentDepthTexture);
+//		framebuffer.addDepthAttachment(currentDepthTexture);
 
 		return framebuffer;
 	}
@@ -276,7 +260,7 @@ public class RenderTargets {
 	public GlFramebuffer createColorFramebufferWithDepth(ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers) {
 		GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
 
-		framebuffer.addDepthAttachment(currentDepthTexture);
+//		framebuffer.addDepthAttachment(currentDepthTexture);
 
 		return framebuffer;
 	}

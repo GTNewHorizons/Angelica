@@ -2210,12 +2210,12 @@ public class Shaders {
         checkGLError("clear");
     }
 
-    public static void setCamera(float f) {
+    public static void setCamera(float tickDelta) {
         EntityLivingBase viewEntity = mc.renderViewEntity;
 
-        double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * f;
-        double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * f;
-        double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * f;
+        double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * tickDelta;
+        double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * tickDelta;
+        double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * tickDelta;
 
         cameraPosition[0] = x;
         cameraPosition[1] = y;
@@ -2248,7 +2248,7 @@ public class Shaders {
 //            GL11.glLoadIdentity();
 //            GL11.glTranslatef(0.0f, 0.0f, -100.0f);
 //            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-            float celestialAngle = mc.theWorld.getCelestialAngle(f);
+            float celestialAngle = mc.theWorld.getCelestialAngle(tickDelta);
             sunAngle = (celestialAngle < 0.75f) ? celestialAngle + 0.25f : celestialAngle - 0.75f;
             float angle = celestialAngle * (-360.0f);
             float angleInterval = shadowAngleInterval > 0.0f
@@ -2282,22 +2282,13 @@ public class Shaders {
             shadowModelView.position(0);
             shadowModelViewInverse.position(0);
 
-//            setProgramUniformMatrix4ARB("gbufferProjection", false, projection);
-//            setProgramUniformMatrix4ARB("gbufferProjectionInverse", false, projectionInverse);
-//            setProgramUniformMatrix4ARB("gbufferPreviousProjection", false, previousProjection);
-//            setProgramUniformMatrix4ARB("gbufferModelView", false, modelView);
-//            setProgramUniformMatrix4ARB("gbufferModelViewInverse", false, modelViewInverse);
-//            setProgramUniformMatrix4ARB("gbufferPreviousModelView", false, previousModelView);
-//            setProgramUniformMatrix4ARB("shadowProjection", false, shadowProjection);
-//            setProgramUniformMatrix4ARB("shadowProjectionInverse", false, shadowProjectionInverse);
-//            setProgramUniformMatrix4ARB("shadowModelView", false, shadowModelView);
-//            setProgramUniformMatrix4ARB("shadowModelViewInverse", false, shadowModelViewInverse);
-
             // Also render player shadow
             mc.gameSettings.thirdPersonView = 1;
             checkGLError("setCamera");
             return;
         }
+
+
         checkGLError("setCamera");
     }
 

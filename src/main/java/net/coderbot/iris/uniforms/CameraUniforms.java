@@ -1,6 +1,5 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.client.Shaders;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import org.joml.Vector3d;
@@ -33,8 +32,7 @@ public class CameraUniforms {
 	}
 
 	public static Vector3d getUnshiftedCameraPosition() {
-        return Shaders.getCameraPosition();
-//		return JomlConversions.fromVec3(client.gameRenderer.getMainCamera().getPosition());
+        return CapturedRenderingState.INSTANCE.getCameraPosition();
 	}
 
 	static class CameraPositionTracker {

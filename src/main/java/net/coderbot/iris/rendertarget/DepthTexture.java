@@ -9,7 +9,7 @@ import org.lwjgl.opengl.GL12;
 public class DepthTexture extends GlResource {
 	public DepthTexture(int width, int height, DepthBufferFormat format) {
 		super(IrisRenderSystem.createTexture(GL11.GL_TEXTURE_2D));
-		int texture = getGlId();
+		final int texture = getGlId();
 
 		resize(width, height, format);
 

@@ -112,7 +112,7 @@ public class IrisRenderSystem {
 		return GL20.glGetUniformLocation(programId, name);
 	}
 
-	public static void texParameteriv(int texture, int target, int pname, int[] params) {
+	public static void texParameteriv(int texture, int target, int pname, IntBuffer params) {
 		dsaState.texParameteriv(texture, target, pname, params);
 	}
 
@@ -262,7 +262,7 @@ public class IrisRenderSystem {
 
 		void texParameteri(int texture, int target, int pname, int param);
 		void texParameterf(int texture, int target, int pname, float param);
-		void texParameteriv(int texture, int target, int pname, int[] params);
+		void texParameteriv(int texture, int target, int pname, IntBuffer params);
 
 		void readBuffer(int framebuffer, int buffer);
 
@@ -306,8 +306,8 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public void texParameteriv(int texture, int target, int pname, int[] params) {
-			ARBDirectStateAccess.glTextureParameter(texture, pname, IntBuffer.wrap(params));
+		public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
+			ARBDirectStateAccess.glTextureParameter(texture, pname, params);
 		}
 
 		@Override
@@ -387,9 +387,9 @@ public class IrisRenderSystem {
 		}
 
 		@Override
-		public void texParameteriv(int texture, int target, int pname, int[] params) {
+		public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
 			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			GL11.glTexParameter(target, pname, IntBuffer.wrap(params));
+			GL11.glTexParameter(target, pname, params);
 		}
 
 		@Override

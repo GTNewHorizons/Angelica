@@ -15,6 +15,7 @@ import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
@@ -48,7 +49,7 @@ public class FinalPassRenderer {
 	private final ImmutableList<SwapPass> swapPasses;
 	private final GlFramebuffer baseline;
 	private final GlFramebuffer colorHolder;
-	private int lastColorTextureId;
+	private int colorTextureId;
 	private int lastColorTextureVersion;
 	private final IntSupplier noiseTexture;
 	private final FrameUpdateNotifier updateNotifier;
@@ -61,7 +62,7 @@ public class FinalPassRenderer {
 							 CenterDepthSampler centerDepthSampler,
 							 Supplier<ShadowRenderTargets> shadowTargetsSupplier,
 							 Object2ObjectMap<String, IntSupplier> customTextureIds,
-							 ImmutableSet<Integer> flippedAtLeastOnce) {
+							 ImmutableSet<Integer> flippedAtLeastOnce, int colorTextureId) {
 		this.updateNotifier = updateNotifier;
 		this.centerDepthSampler = centerDepthSampler;
 		this.customTextureIds = customTextureIds;
@@ -92,10 +93,9 @@ public class FinalPassRenderer {
 		// passes that write to framebuffers).
 		this.baseline = renderTargets.createGbufferFramebuffer(flippedBuffers, new int[] {0});
 		this.colorHolder = new GlFramebuffer();
-        // TODO: Iris
-		this.lastColorTextureId = 0; //Minecraft.getMinecraft().getMainRenderTarget().getColorTextureId();
-		this.lastColorTextureVersion = 0; //((Blaze3dRenderTargetExt) Minecraft.getMinecraft().getMainRenderTarget()).iris$getColorBufferVersion();
-		this.colorHolder.addColorAttachment(0, lastColorTextureId);
+        this.colorTextureId = colorTextureId;
+		this.lastColorTextureVersion = ((IRenderTargetExt)Minecraft.getMinecraft()).iris$getColorBufferVersion();
+		this.colorHolder.addColorAttachment(0, this.colorTextureId);
 
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
 		// This works for the most part, but it's not perfect. A better approach would be creating secondary
@@ -169,16 +169,14 @@ public class FinalPassRenderer {
 		// This is not a concern for depthtex1 / depthtex2 since the copy call extracts the depth values, and the
 		// shader pack only ever uses them to read the depth values.
 
-        // TODO: Iris
-//		if (((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion() != lastColorTextureVersion || main.getColorTextureId() != lastColorTextureId) {
-//			lastColorTextureVersion = ((Blaze3dRenderTargetExt) main).iris$getColorBufferVersion();
-//			this.lastColorTextureId = main.getColorTextureId();
-//			colorHolder.addColorAttachment(0, lastColorTextureId);
-//		}
+		if (((IRenderTargetExt)mc).iris$getColorBufferVersion() != lastColorTextureVersion) {
+			lastColorTextureVersion = ((IRenderTargetExt)mc).iris$getColorBufferVersion();
+//			colorHolder.addColorAttachment(0, colorTextureId);
+            throw new RuntimeException("Color buffer changed during frame!");
+		}
 
 		if (this.finalPass != null) {
-			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead
-			// of just copying the color buffer.
+			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead of just copying the color buffer.
 
 			colorHolder.bind();
 

@@ -1,18 +1,42 @@
 package net.coderbot.iris.uniforms;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.EntityLivingBase;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
+import org.joml.Vector4d;
+import org.joml.Vector4i;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+
+import java.nio.FloatBuffer;
 
 public class CapturedRenderingState {
 	public static final CapturedRenderingState INSTANCE = new CapturedRenderingState();
 
 	private static final Vector3d ZERO_VECTOR_3d = new Vector3d();
 
+    private final FloatBuffer modelViewBuffer = BufferUtils.createFloatBuffer(16);
 	private Matrix4f gbufferModelView;
-	private Matrix4f gbufferProjection;
+    private final FloatBuffer shadowModelViewBuffer = BufferUtils.createFloatBuffer(16);
+    private Matrix4f shadowModelView;
+    private final FloatBuffer projectionBuffer = BufferUtils.createFloatBuffer(16);
+    private Matrix4f gbufferProjection;
+    private final FloatBuffer shadowProjectionBuffer = BufferUtils.createFloatBuffer(16);
+    private Matrix4f shadowProjection;
 	private Vector3d fogColor;
+    private Vector4d clearColor;
+
+    @Getter
+    private Vector3d cameraPosition = new Vector3d();
+
+    @Getter
+    @Setter
+    private boolean blendEnabled;
+    private Vector4i blendFunc;
 	private float tickDelta;
 	private int currentRenderedBlockEntity;
 	private Runnable blockEntityIdListener = null;
@@ -27,16 +51,8 @@ public class CapturedRenderingState {
 		return gbufferModelView;
 	}
 
-	public void setGbufferModelView(Matrix4f gbufferModelView) {
-		this.gbufferModelView = new Matrix4f(gbufferModelView);
-	}
-
 	public Matrix4f getGbufferProjection() {
 		return gbufferProjection;
-	}
-
-	public void setGbufferProjection(Matrix4f gbufferProjection) {
-		this.gbufferProjection = new Matrix4f(gbufferProjection);
 	}
 
 	public Vector3d getFogColor() {
@@ -50,6 +66,10 @@ public class CapturedRenderingState {
 	public void setFogColor(float red, float green, float blue) {
 		fogColor = new Vector3d(red, green, blue);
 	}
+
+    public void setClearColor(float red, float green, float blue, float alpha) {
+        clearColor = new Vector4d(red, green, blue, alpha);
+    }
 
 	public void setTickDelta(float tickDelta) {
 		this.tickDelta = tickDelta;
@@ -90,4 +110,41 @@ public class CapturedRenderingState {
 	public int getCurrentRenderedEntity() {
 		return currentRenderedEntity;
 	}
+
+    public void setBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        blendFunc = new Vector4i(srcRgb, dstRgb, srcAlpha, dstAlpha);
+    }
+
+    public Vector4i getBlendFunc() {
+        return blendFunc;
+    }
+
+    public void setCamera(float tickDelta) {
+        final Minecraft mc = Minecraft.getMinecraft();
+        final EntityLivingBase viewEntity = mc.renderViewEntity;
+
+        final double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * tickDelta;
+        final double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * tickDelta;
+        final double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * tickDelta;
+        cameraPosition = new Vector3d(x, y, z);
+
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, (FloatBuffer) projectionBuffer.position(0));
+        gbufferProjection = new Matrix4f((FloatBuffer)projectionBuffer.position(0));
+
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, (FloatBuffer) modelViewBuffer.position(0));
+        gbufferModelView = new Matrix4f((FloatBuffer)modelViewBuffer.position(0));
+     }
+
+     public void setCameraShadow(float tickDelta) {
+        final Minecraft mc = Minecraft.getMinecraft();
+        setCamera(tickDelta);
+
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, (FloatBuffer) shadowProjectionBuffer.position(0));
+        shadowProjection = new Matrix4f((FloatBuffer)shadowProjectionBuffer.position(0));
+
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, (FloatBuffer) shadowModelViewBuffer.position(0));
+        shadowModelView = new Matrix4f((FloatBuffer)shadowModelViewBuffer.position(0));
+
+
+     }
 }
