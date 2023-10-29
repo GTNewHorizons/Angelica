@@ -21,10 +21,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-
-import java.nio.FloatBuffer;
 
 @Mixin(EntityRenderer.class)
 public abstract class MixinEntityRenderer {
@@ -94,12 +91,6 @@ public abstract class MixinEntityRenderer {
                     to = @At(args = "intValue=" + GL11.GL_CULL_FACE, ordinal = 1, value = "CONSTANT")))
     private void angelica$clearRenderBuffer(CallbackInfo ci) {
         Shaders.clearRenderBuffer();
-    }
-
-    @Inject(at = @At(shift = At.Shift.AFTER, target = "Lnet/minecraft/client/renderer/EntityRenderer;setupCameraTransform(FI)V", value = "INVOKE"),
-            method = "renderWorld(FJ)V")
-    private void angelica$setCamera(float p_78471_1_, long p_78471_2_, CallbackInfo ci) {
-        Shaders.setCamera(p_78471_1_);
     }
 
     @Redirect(at = @At(opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/settings/GameSettings;renderDistanceChunks:I", value = "FIELD"),
@@ -280,29 +271,6 @@ public abstract class MixinEntityRenderer {
         Shaders.endClouds();
     }
 
-    // updateFogColor
 
-    @Redirect(at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glClearColor(FFFF)V", value = "INVOKE"), method = "updateFogColor(F)V")
-    private void angelica$setClearColor(float red, float green, float blue, float alpha) {
-        Shaders.setClearColor(red, green, blue, alpha);
-    }
 
-    // setupFog
-
-    @Redirect(at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glFogi(II)V", value = "INVOKE"), method = "setupFog(IF)V")
-    private void angelica$sglFogi(int pname, int param) {
-        Shaders.sglFogi(pname, param);
-    }
-
-    @Redirect(at = @At(remap = false, target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V", value = "INVOKE"), method = "setupFog(IF)V")
-    private void angelica$sglFogf(int pname, float param) {
-        Shaders.sglFogf(pname, param);
-    }
-
-    // setFogColorBuffer
-
-    @Inject(at = @At("HEAD"), method = "setFogColorBuffer(FFFF)Ljava/nio/FloatBuffer;")
-    private void angelica$setFogColor(float red, float green, float blue, float alpha, CallbackInfoReturnable<FloatBuffer> cir) {
-        Shaders.setFogColor(red, green, blue);
-    }
 }

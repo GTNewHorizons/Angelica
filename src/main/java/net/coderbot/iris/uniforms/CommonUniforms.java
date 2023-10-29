@@ -78,15 +78,10 @@ public final class CommonUniforms {
 //		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
+            if(CapturedRenderingState.INSTANCE.isBlendEnabled()) {
+                return CapturedRenderingState.INSTANCE.getBlendFunc();
+            }
             return ZERO_VECTOR_4i;
-            // TODO: blendFunc
-//			GlStateManager.BlendState blend = GlStateManagerAccessor.getBLEND();
-//
-//			if (((BooleanStateAccessor) blend.mode).isEnabled()) {
-//				return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
-//			} else {
-//				return ZERO_VECTOR_4i;
-//			}
 		}, StateUpdateNotifiers.blendFuncNotifier);
 
 		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), StateUpdateNotifiers.phaseChangeNotifier);

@@ -22,7 +22,9 @@ public class MatrixUniform extends Uniform {
 	@Override
 	public void update() {
         final Matrix4f newValue = value.get();
-
+        if( newValue == null ){
+            throw new RuntimeException("MatrixUniform value is null");
+        }
         if (!newValue.equals(cachedValue)) {
             cachedValue = new Matrix4f(newValue);
 

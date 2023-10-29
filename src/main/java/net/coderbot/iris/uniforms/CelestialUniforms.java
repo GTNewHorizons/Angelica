@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import net.coderbot.iris.JomlConversions;
+import net.coderbot.iris.compat.mojang.Constants;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -15,9 +15,8 @@ import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
  * @see <a href="https://github.com/IrisShaders/ShaderDoc/blob/master/uniforms.md#celestial-bodies">Uniforms: Celestial bodies</a>
  */
 public final class CelestialUniforms {
-    final static float DEGREES_TO_RADIANS = (float)Math.PI / 180.0F;
 
-	private final float sunPathRotation;
+    private final float sunPathRotation;
 
 	public CelestialUniforms(float sunPathRotation) {
 		this.sunPathRotation = sunPathRotation;
@@ -78,8 +77,8 @@ public final class CelestialUniforms {
 
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.
-        celestial.rotateY(-90.F * DEGREES_TO_RADIANS);
-        celestial.rotateZ(sunPathRotation * DEGREES_TO_RADIANS);
+        celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
+        celestial.rotateZ(sunPathRotation * Constants.DEGREES_TO_RADIANS);
         celestial.rotateX(getSkyAngle() * 360.0F);
 
         celestial.transform(position);
@@ -93,8 +92,8 @@ public final class CelestialUniforms {
         Matrix4f celestial = new Matrix4f(CapturedRenderingState.INSTANCE.getGbufferModelView());
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.
-        celestial.rotateY(-90.F * DEGREES_TO_RADIANS);
-        celestial.rotateZ(sunPathRotation * DEGREES_TO_RADIANS);
+        celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
+        celestial.rotateZ(sunPathRotation * Constants.DEGREES_TO_RADIANS);
         celestial.rotateX(getSkyAngle() * 360.0F);
 
         position = celestial.transform(position);
@@ -110,7 +109,7 @@ public final class CelestialUniforms {
 
 		// Apply the fixed -90.0F degrees rotation to mirror the same transformation in renderSky.
 		// But, notably, skip the rotation by the skyAngle.
-        preCelestial.rotateY(-90.F * DEGREES_TO_RADIANS);
+        preCelestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
 
 		// Use this matrix to transform the vector.
         upVector = preCelestial.transform(upVector);
