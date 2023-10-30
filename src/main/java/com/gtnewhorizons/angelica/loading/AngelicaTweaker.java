@@ -28,9 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions({
-    "org.lwjglx", "org.lwjgl", "org.lwjgl.input", "org.lwjglx.input", "org.lwjglx.debug", "me.eigenraven.lwjgl3ify", "com.gtnewhorizons.angelica.transform.IrisTransformer",
-})
+@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.IrisTransformer")
 @IFMLLoadingPlugin.SortingIndex(1100)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
