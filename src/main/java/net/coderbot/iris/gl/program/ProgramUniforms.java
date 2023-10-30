@@ -271,6 +271,10 @@ public class ProgramUniforms {
 		@Override
 		public Builder addDynamicUniform(Uniform uniform, ValueUpdateNotifier notifier) {
 			Objects.requireNonNull(uniform);
+            if(notifier == null){
+                Iris.logger.info("notifier is null: " + uniform.getLocation());
+            }
+
 			Objects.requireNonNull(notifier);
 
 			dynamic.put(locations.get(uniform.getLocation()), uniform);

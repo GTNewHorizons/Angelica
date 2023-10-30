@@ -20,7 +20,8 @@ public enum Mixins {
     IRIS_RENDERING(new Builder("Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
                 "shaders.MixinEntityRenderer",
-                "shaders.MixinItem"
+                "shaders.MixinItem",
+                "shaders.MixinOpenGlHelper"
             )
         ),
 
