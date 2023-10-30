@@ -34,8 +34,7 @@ public class ACTEntityRenderer implements IClassTransformer {
         }
 
         @Override
-        public void visit(int version, int access, String name, String signature, String superName,
-                String[] interfaces) {
+        public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
             classname = name;
             cv.visit(version, access, name, signature, superName, interfaces);
         }

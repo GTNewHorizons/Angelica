@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
+import com.gtnewhorizons.angelica.transform.IrisTransformer;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -27,13 +28,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
+@IFMLLoadingPlugin.TransformerExclusions({
+    "org.lwjglx", "org.lwjgl", "org.lwjgl.input", "org.lwjglx.input", "org.lwjglx.debug", "me.eigenraven.lwjgl3ify", "com.gtnewhorizons.angelica.transform.IrisTransformer",
+})
 @IFMLLoadingPlugin.SortingIndex(1100)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
-
-//    public static boolean ENABLE_SPAM = false; // Enable for more spam
-    public static boolean ENABLE_SPAM = true;
 
     static {
         try {
@@ -51,11 +52,14 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String[] getASMTransformerClass() {
-        List<String> tweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
-        if (tweakClasses != null) {
-            tweakClasses.add(MixinCompatHackTweaker.class.getName());
+        // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
+        List<String> mixinTweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
+        if (mixinTweakClasses != null) {
+            mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
         }
-        return null;
+
+        // Return any others here
+        return new String[] { IrisTransformer.class.getName() };
     }
 
     @Override
