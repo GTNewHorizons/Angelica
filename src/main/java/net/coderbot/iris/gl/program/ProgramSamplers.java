@@ -46,7 +46,7 @@ public class ProgramSamplers {
 
 		// We need to keep the active texture intact, since if we mess it up
 		// in the middle of RenderType setup, bad things will happen.
-		int activeTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+		int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
 
 		for (SamplerBinding samplerBinding : samplerBindings) {
 			samplerBinding.update();
