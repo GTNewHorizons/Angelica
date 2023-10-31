@@ -8,7 +8,6 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,7 +26,6 @@ public class MixinEntityRenderer {
     @Unique private static Runnable fogStartListener;
     @Unique private static Runnable fogEndListener;
     @Unique private static Runnable fogDensityListener;
-    @Unique private static Runnable blendFuncListener;
     @Unique private WorldRenderingPipeline pipeline;
 
 
@@ -86,29 +84,6 @@ public class MixinEntityRenderer {
 
         pipeline.beginLevelRendering();
     }
-    // Blend
-
-    @Redirect(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/OpenGlHelper;glBlendFunc(IIII)V"))
-    private void iris$glBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        OpenGlHelper.glBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
-        CapturedRenderingState.INSTANCE.setBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
-
-    }
-    @Redirect(method="renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V"))
-    private void iris$glEnable(int cap) {
-        GL11.glEnable(cap);
-        if (cap == GL11.GL_BLEND) {
-            CapturedRenderingState.INSTANCE.setBlendEnabled(true);
-        }
-    }
-
-    @Redirect(method="renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V"))
-    private void iris$glDisable(int cap) {
-        GL11.glDisable(cap);
-        if (cap == GL11.GL_BLEND) {
-            CapturedRenderingState.INSTANCE.setBlendEnabled(false);
-        }
-    }
 
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
     private void iris$endLevelRender(float tickDelta, long limitTime, CallbackInfo callback) {
@@ -157,7 +132,6 @@ public class MixinEntityRenderer {
         StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
         StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
         StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
-        StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
     }
 
 }

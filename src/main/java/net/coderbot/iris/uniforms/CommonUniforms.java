@@ -1,6 +1,8 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.client.Shaders;
+import com.gtnewhorizons.angelica.glsm.BlendState;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.early.accessors.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -78,8 +80,9 @@ public final class CommonUniforms {
 //		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
-            if(CapturedRenderingState.INSTANCE.isBlendEnabled()) {
-                return CapturedRenderingState.INSTANCE.getBlendFunc();
+            final BlendState blend = GLStateManager.getBlend();
+            if(blend.mode.isEnabled()) {
+                return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
             }
             return ZERO_VECTOR_4i;
 		}, StateUpdateNotifiers.blendFuncNotifier);

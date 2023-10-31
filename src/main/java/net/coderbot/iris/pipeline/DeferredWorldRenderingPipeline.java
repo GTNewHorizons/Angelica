@@ -3,7 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
-import net.coderbot.iris.rendertarget.IRenderTargetExt;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -30,6 +30,7 @@ import net.coderbot.iris.postprocess.BufferFlipper;
 import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
+import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
@@ -62,7 +63,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
-import org.joml.Vector4i;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
@@ -507,8 +507,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			case TERRAIN_SOLID, TERRAIN_CUTOUT, TERRAIN_CUTOUT_MIPPED:
 				return RenderCondition.TERRAIN_OPAQUE;
 			case ENTITIES:
-                final Vector4i blendFunc = CapturedRenderingState.INSTANCE.getBlendFunc();
-                if (blendFunc.x == SRC_ALPHA && blendFunc.y == ONE_MINUS_SRC_ALPHA && blendFunc.z == ONE && blendFunc.w == ONE_MINUS_SRC_ALPHA) {
+                if (GLStateManager.getBlend().srcRgb == SRC_ALPHA &&
+                    GLStateManager.getBlend().srcAlpha == ONE_MINUS_SRC_ALPHA &&
+                    GLStateManager.getBlend().dstRgb == ONE &&
+                    GLStateManager.getBlend().dstAlpha == ONE_MINUS_SRC_ALPHA)
+                {
 					return RenderCondition.ENTITIES_TRANSLUCENT;
 				} else {
 					return RenderCondition.ENTITIES;

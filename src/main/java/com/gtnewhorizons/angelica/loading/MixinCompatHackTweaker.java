@@ -1,17 +1,17 @@
 package com.gtnewhorizons.angelica.loading;
 
-import java.io.File;
-import java.lang.reflect.Field;
-import java.util.List;
-
+import com.gtnewhorizons.angelica.transform.AClassTransformer;
+import com.gtnewhorizons.angelica.transform.GLStateManagerTransformer;
+import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
-import com.gtnewhorizons.angelica.transform.AClassTransformer;
+import java.io.File;
+import java.lang.reflect.Field;
+import java.util.List;
 
-import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
 
 public class MixinCompatHackTweaker implements ITweaker {
 
@@ -29,8 +29,19 @@ public class MixinCompatHackTweaker implements ITweaker {
                     break;
                 }
             }
-            xformers.add(terminalIndex - 1, new AClassTransformer());
-            AngelicaTweaker.LOGGER.info("Hacked in asm class transformer in position {}", terminalIndex - 1);
+
+            try {
+                Class.forName("me.eigenraven.lwjgl3ify.core.LwjglRedirectTransformer");
+                AngelicaTweaker.LOGGER.info("LwjglRedirectTransformer found, injecting before it");
+                terminalIndex -= 2;
+
+            } catch(Exception ignored) {
+                AngelicaTweaker.LOGGER.info("LwjglRedirectTransformer not found, injecting near the end");
+                terminalIndex -= 1;
+            }
+
+            xformers.add(terminalIndex, new AClassTransformer());
+            AngelicaTweaker.LOGGER.info("Hacked in asm class transformer in position {}", terminalIndex);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -48,6 +59,8 @@ public class MixinCompatHackTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
+        // Run after Mixins, but hopefully before LWJGl3ify
+        Launch.classLoader.registerTransformer(GLStateManagerTransformer.class.getName());
         return new String[0];
     }
 }
