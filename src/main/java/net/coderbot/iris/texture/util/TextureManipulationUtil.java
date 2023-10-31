@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture.util;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -28,7 +29,7 @@ public class TextureManipulationUtil {
 				(rgba >> 8 & 0xFF) / 255.0f,
 				(rgba & 0xFF) / 255.0f
 		);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
 		for (int level = 0; level <= maxLevel; ++level) {
 			int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 			int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
@@ -45,7 +46,7 @@ public class TextureManipulationUtil {
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, previousFramebufferId);
 		GL11.glClearColor(previousClearColor[0], previousClearColor[1], previousClearColor[2], previousClearColor[3]);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
 		GL11.glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
 	}
 }

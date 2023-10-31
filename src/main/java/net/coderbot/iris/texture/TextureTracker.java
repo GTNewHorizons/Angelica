@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
@@ -8,8 +9,6 @@ import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
 
 public class TextureTracker {
 	public static final TextureTracker INSTANCE = new TextureTracker();
@@ -40,7 +39,7 @@ public class TextureTracker {
 		if (lockBindCallback) {
 			return;
 		}
-		if (GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE) == 0) {
+		if (GLStateManager.getActiveTexture() == 0) {
 			lockBindCallback = true;
 			if (bindTextureListener != null) {
 				bindTextureListener.run();

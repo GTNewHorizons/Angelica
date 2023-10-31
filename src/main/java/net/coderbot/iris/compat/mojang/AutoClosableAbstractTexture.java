@@ -1,5 +1,6 @@
 package net.coderbot.iris.compat.mojang;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.resources.IResourceManager;
 import org.lwjgl.opengl.GL11;
@@ -15,6 +16,6 @@ public abstract class AutoClosableAbstractTexture extends AbstractTexture implem
 
     // TODO: Is this needed?
     public void bind() {
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, getGlTextureId());
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, getGlTextureId());
     }
 }

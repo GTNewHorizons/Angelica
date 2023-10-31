@@ -1,5 +1,6 @@
 package net.coderbot.iris.postprocess;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.compat.mojang.DefaultVertexFormat;
 import org.lwjgl.BufferUtils;
@@ -50,7 +51,7 @@ public class FullScreenQuadRenderer {
 	}
 
 	public void renderQuad() {
-        GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
+        GLStateManager.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	@SuppressWarnings("deprecation")

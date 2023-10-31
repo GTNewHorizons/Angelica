@@ -1,6 +1,7 @@
 package net.coderbot.iris.postprocess;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -42,7 +43,7 @@ public class CenterDepthSampler {
 		InternalTextureFormat format = Iris.capabilities.OpenGL32 ? InternalTextureFormat.R32F : InternalTextureFormat.RGB16;
 		setupColorTexture(texture, format);
 		setupColorTexture(altTexture, format);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
 		this.framebuffer.addColorAttachment(0, texture);
 		ProgramBuilder builder;
@@ -114,8 +115,8 @@ public class CenterDepthSampler {
 	}
 
 	public void destroy() {
-		GL11.glDeleteTextures(texture);
-		GL11.glDeleteTextures(altTexture);
+		GLStateManager.glDeleteTextures(texture);
+		GLStateManager.glDeleteTextures(altTexture);
 		framebuffer.destroy();
 		program.destroy();
 		destroyed = true;

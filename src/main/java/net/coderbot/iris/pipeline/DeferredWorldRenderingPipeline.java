@@ -198,13 +198,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(true);
 
 		// Don't clobber anything in texture unit 0. It probably won't cause issues, but we're just being cautious here.
-		GL13.glActiveTexture(GL13.GL_TEXTURE2);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
 
 		customTextureManager = new CustomTextureManager(programs.getPackDirectives(), programs.getPack().getCustomTextureDataMap(), programs.getPack().getCustomNoiseTexture());
 
 		whitePixel = new NativeImageBackedSingleColorTexture(255, 255, 255, 255);
 
-		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
 		this.flippedBeforeShadow = ImmutableSet.of();
 
@@ -853,7 +853,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private void prepareRenderTargets() {
 		// Make sure we're using texture unit 0 for this.
-		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
 		if (shadowRenderTargets != null) {
