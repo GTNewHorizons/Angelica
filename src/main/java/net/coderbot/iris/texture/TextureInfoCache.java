@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
@@ -79,11 +80,11 @@ public class TextureInfoCache {
 			int previousTextureBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 
 			// Bind this texture and grab the parameter from it.
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, id);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
 			int parameter = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, pname);
 
 			// Make sure to re-bind the previous texture to avoid issues.
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
 
 			return parameter;
 		}

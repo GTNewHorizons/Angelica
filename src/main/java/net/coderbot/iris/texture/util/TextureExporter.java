@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture.util;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.compat.mojang.NativeImage;
 import net.minecraft.client.Minecraft;
 import org.apache.commons.io.FilenameUtils;
@@ -18,7 +19,7 @@ public class TextureExporter {
 
 	public static void exportTexture(String directory, String filename, int textureId, int level, int width, int height)  {
 		NativeImage nativeImage = new NativeImage(width, height, false);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
 		nativeImage.downloadTexture(level, false);
 
 		File dir = new File(Minecraft.getMinecraft().mcDataDir, directory);

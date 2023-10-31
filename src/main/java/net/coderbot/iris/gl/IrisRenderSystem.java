@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.jetbrains.annotations.Nullable;
@@ -64,8 +65,8 @@ public class IrisRenderSystem {
 	}
 
 	public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
@@ -370,25 +371,25 @@ public class IrisRenderSystem {
 	public static class DSAUnsupported implements DSAAccess {
 		@Override
 		public void generateMipmaps(int texture, int target) {
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			GL30.glGenerateMipmap(target);
 		}
 
 		@Override
 		public void texParameteri(int texture, int target, int pname, int param) {
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			GL11.glTexParameteri(target, pname, param);
 		}
 
 		@Override
 		public void texParameterf(int texture, int target, int pname, float param) {
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			GL11.glTexParameterf(target, pname, param);
 		}
 
 		@Override
 		public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			GL11.glTexParameter(target, pname, params);
 		}
 
@@ -406,22 +407,22 @@ public class IrisRenderSystem {
 
 		@Override
 		public int getTexParameteri(int texture, int target, int pname) {
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			return GL11.glGetTexParameteri(target, pname);
 		}
 
 		@Override
 		public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
 			int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
 			GL11.glCopyTexSubImage2D(target, i, i1, i2, i3, i4, width, height);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
 		}
 
 		@Override
 		public void bindTextureToUnit(int unit, int texture) {
-			GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 		}
 
 		@Override
@@ -457,7 +458,7 @@ public class IrisRenderSystem {
 		@Override
 		public int createTexture(int target) {
 			int texture = GL11.glGenTextures();
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			return texture;
 		}
 	}
@@ -473,8 +474,8 @@ public class IrisRenderSystem {
 			}
 		} else {
 			for (int binding : bindings) {
-				GL13.glActiveTexture(startingTexture);
-				GL11.glBindTexture(GL11.GL_TEXTURE_2D, binding);
+				GLStateManager.glActiveTexture(startingTexture);
+				GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, binding);
 				startingTexture++;
 			}
 		}

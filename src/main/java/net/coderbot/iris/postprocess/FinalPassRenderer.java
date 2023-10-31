@@ -2,6 +2,7 @@ package net.coderbot.iris.postprocess;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.IrisRenderSystem;
@@ -191,7 +192,7 @@ public class FinalPassRenderer {
 			IrisRenderSystem.memoryBarrier(40);
 
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
-				GL13.glActiveTexture(GL13.GL_TEXTURE0);
+				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
 				for (int index : finalPass.mipmappedBuffers) {
 					setupMipmapping(renderTargets.get(index), finalPass.stageReadsFromAlt.contains(index));
@@ -219,7 +220,7 @@ public class FinalPassRenderer {
 			IrisRenderSystem.copyTexSubImage2D(0/*main.getColorTextureId()*/, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
 
-		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
 		for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
 			// Reset mipmapping states at the end of the frame.
@@ -237,7 +238,7 @@ public class FinalPassRenderer {
 			// Also note that RenderTargets already calls readBuffer(0) for us.
 			swapPass.from.bind();
 
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
             GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
 
@@ -252,11 +253,11 @@ public class FinalPassRenderer {
 		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work properly
-			GL13.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
-		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	public void recalculateSwapPassSize() {
@@ -305,7 +306,7 @@ public class FinalPassRenderer {
 		IrisRenderSystem.texParameteri(target.getMainTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 		IrisRenderSystem.texParameteri(target.getAltTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	// TODO: Don't just copy this from DeferredWorldRenderingPipeline

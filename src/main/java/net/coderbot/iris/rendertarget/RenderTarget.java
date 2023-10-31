@@ -1,5 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
@@ -50,7 +51,7 @@ public class RenderTarget {
 
 		// Clean up after ourselves
 		// This is strictly defensive to ensure that other buggy code doesn't tamper with our textures
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	private void setupTexture(int texture, int width, int height, boolean allowsLinear) {
@@ -101,8 +102,8 @@ public class RenderTarget {
     public void destroy() {
 		requireValid();
 		isValid = false;
-        GL11.glDeleteTextures(mainTexture);
-        GL11.glDeleteTextures(altTexture);
+        GLStateManager.glDeleteTextures(mainTexture);
+        GLStateManager.glDeleteTextures(altTexture);
 	}
 
 	private void requireValid() {

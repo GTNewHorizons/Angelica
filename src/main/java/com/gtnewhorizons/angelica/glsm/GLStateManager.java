@@ -5,23 +5,33 @@ import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
+import com.gtnewhorizons.angelica.glsm.states.TextureState;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.stream.IntStream;
 
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
     // GLStateManager State Trackers
+    @Getter
+    private static int activeTexture;
+
     @Getter
     private static final BlendState Blend = new BlendState();
     @Getter
@@ -32,56 +42,26 @@ public class GLStateManager {
     private static final BooleanState Cull = new BooleanState(GL11.GL_CULL_FACE);
     @Getter
     private static final AlphaState Alpha = new AlphaState();
+    @Getter
+    private static final TextureState[] Textures;
 
     // Iris Listeners
     private static Runnable blendFuncListener;
 
     static {
         StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
+        Textures = (TextureState[]) IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
     }
 
 
     // LWJGL Overrides
-
-    public static void glBindTexture(int target, int texture) {
-        // Iris
-        TextureTracker.INSTANCE.onBindTexture(texture);
-        GL11.glBindTexture(target, texture);
-    }
-
-    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-        // Iris
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-    }
-    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        // Iris
-        TextureInfoCache.INSTANCE.onTexImage2D(
-            target, level, internalformat, width, height, border, format, type,
-            pixels != null ? pixels.asIntBuffer() : (IntBuffer) null
-        );
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-    }
-
-    public static void glDeleteTextures(int id) {
-        // Iris
-        iris$onDeleteTexture(id);
-        GL11.glDeleteTextures(id);
-    }
-    public static void glDeleteTextures(IntBuffer ids) {
-        // Iris
-        for(int id: ids.array()) {
-            iris$onDeleteTexture(id);
-        }
-        GL11.glDeleteTextures(ids);
-    }
-
     public static void glEnable(int cap) {
         switch(cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
             case GL11.GL_DEPTH_TEST -> Depth.mode.enable();
             case GL11.GL_CULL_FACE -> Cull.enable();
+            case GL11.GL_TEXTURE_2D -> enableTexture();
             default -> GL11.glEnable(cap);
         }
     }
@@ -93,6 +73,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> disableBlend();
             case GL11.GL_DEPTH_TEST -> Depth.mode.disable();
             case GL11.GL_CULL_FACE -> Cull.disable();
+            case GL11.GL_TEXTURE_2D -> disableTexture();
             default -> GL11.glDisable(cap);
         }
     }
@@ -210,6 +191,99 @@ public class GLStateManager {
         Alpha.function = function;
         Alpha.reference = reference;
         GL11.glAlphaFunc(function, reference);
+    }
+
+    // Textures
+    public static void glActiveTexture(int texture) {
+        final int newTexture = texture - GL13.GL_TEXTURE0;
+        if (activeTexture != newTexture) {
+            activeTexture = newTexture;
+            GL13.glActiveTexture(texture);
+        }
+    }
+
+    public static void glBindTexture(int target, int texture) {
+        if(Textures[activeTexture].binding != texture) {
+            Textures[activeTexture].binding = texture;
+            GL11.glBindTexture(target, texture);
+            TextureTracker.INSTANCE.onBindTexture(texture);
+        }
+    }
+
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+        // Iris
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        // Iris
+        TextureInfoCache.INSTANCE.onTexImage2D(
+            target, level, internalformat, width, height, border, format, type,
+            pixels != null ? pixels.asIntBuffer() : (IntBuffer) null
+        );
+        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+
+    public static void glDeleteTextures(int id) {
+        // Iris
+        iris$onDeleteTexture(id);
+        GL11.glDeleteTextures(id);
+    }
+    public static void glDeleteTextures(IntBuffer ids) {
+        // Iris
+        for(int id: ids.array()) {
+            iris$onDeleteTexture(id);
+        }
+        GL11.glDeleteTextures(ids);
+    }
+
+    public static void enableTexture() {
+        // Iris
+        boolean updatePipeline = false;
+        if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.albedoSampler = true;
+            updatePipeline = true;
+        } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.lightmapSampler = true;
+            updatePipeline = true;
+        } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.overlaySampler = true;
+            updatePipeline = true;
+        }
+
+        if(updatePipeline) {
+            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+        }
+
+        Textures[activeTexture].mode.enable();
+    }
+
+    public static void disableTexture() {
+        // Iris
+        boolean updatePipeline = false;
+        if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.albedoSampler = false;
+            updatePipeline = true;
+        } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.lightmapSampler = false;
+            updatePipeline = true;
+        } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+            StateTracker.INSTANCE.overlaySampler = false;
+            updatePipeline = true;
+        }
+
+        if(updatePipeline) {
+            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+        }
+
+        Textures[activeTexture].mode.disable();
+    }
+
+    public static void glDrawArrays(int mode, int first, int count) {
+        // Iris -- TODO: This doesn't seem to work and is related to matchPass()
+//        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+
+        GL11.glDrawArrays(mode, first, count);
     }
 
 

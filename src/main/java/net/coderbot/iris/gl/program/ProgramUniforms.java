@@ -258,11 +258,6 @@ public class ProgramUniforms {
 					dynamic.remove(name);
 				}
 			}
-            // iterate over perFrame and print each uniform
-            Iris.logger.info("UNIFORMS");
-            for (Map.Entry<String, Uniform> entry : perFrame.entrySet()) {
-                Iris.logger.debug("[" + this.name + "] perFrame uniform: " + entry.getKey() + " " + entry.getValue().getLocation());
-            }
 
 			return new ProgramUniforms(ImmutableList.copyOf(once.values()), ImmutableList.copyOf(perTick.values()), ImmutableList.copyOf(perFrame.values()),
 					ImmutableList.copyOf(dynamic.values()), ImmutableList.copyOf(notifiersToReset));

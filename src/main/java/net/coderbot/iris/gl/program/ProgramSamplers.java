@@ -2,6 +2,7 @@ package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.sampler.SamplerBinding;
@@ -9,7 +10,6 @@ import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 import java.util.ArrayList;
@@ -46,13 +46,13 @@ public class ProgramSamplers {
 
 		// We need to keep the active texture intact, since if we mess it up
 		// in the middle of RenderType setup, bad things will happen.
-		int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+		int activeTexture = GLStateManager.getActiveTexture();
 
 		for (SamplerBinding samplerBinding : samplerBindings) {
 			samplerBinding.update();
 		}
 
-		GL13.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
 	}
 
 	public void removeListeners() {
