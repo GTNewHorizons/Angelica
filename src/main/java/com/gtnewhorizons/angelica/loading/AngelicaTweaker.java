@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
-import com.gtnewhorizons.angelica.transform.IrisTransformer;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -28,8 +27,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.IrisTransformer")
-@IFMLLoadingPlugin.SortingIndex(1100)
+@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.GLStateManagerTransformer")
+@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
@@ -57,7 +56,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         }
 
         // Return any others here
-        return new String[] { IrisTransformer.class.getName() };
+        return null;
     }
 
     @Override

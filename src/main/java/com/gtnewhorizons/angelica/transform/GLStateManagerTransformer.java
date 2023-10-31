@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -14,22 +15,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class IrisTransformer implements IClassTransformer {
+public class GLStateManagerTransformer implements IClassTransformer {
     /*
      * Redirects a subset of GL11 calls to GLStateManager
      *  NOTE: Still need to verify compatibility with Mixins and Lwjgl3ify
      */
-    public static final String GLStateTrackerClass = "com.gtnewhorizons.angelica.client.GLStateManager";
-    private static final String GLStateTracker = GLStateTrackerClass.replace(".", "/");
-    private static final String GL11Class = "org.lwjgl.opengl.GL11";
-    private static final String GL11 = GL11Class.replace(".", "/");
+    public static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
+    private static final String GL11 = "org/lwjgl/opengl/GL11";
+    private static final String GL14 = "org/lwjgl/opengl/GL14";
+    private static final String ExtBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
 
-    private static final Set<String> EnabledRedirects = Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures");
+    public static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
+         GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable")
+        ,GL14, Sets.newHashSet("glBlendFuncSeparate")
+        ,ExtBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
+    );
+
 
     private static final List<String> TransformerExclusions = new ArrayList<>(Arrays.asList(
-        GLStateTrackerClass, "org.lwjgl", "com.gtnewhorizons.angelica.transform", "me.eigenraven.lwjgl3ify")
+        "org.lwjgl", "com.gtnewhorizons.angelica.glsm.", "com.gtnewhorizons.angelica.transform", "me.eigenraven.lwjgl3ify")
     );
     public static int remaps = 0, calls = 0;
 
@@ -45,7 +52,7 @@ public class IrisTransformer implements IClassTransformer {
             }
         }
 
-        ClassReader reader = new ClassReader(basicClass);
+        final ClassReader reader = new ClassReader(basicClass);
         Set<Method> eligibleMethods = findEligibleMethods(reader);
         if (eligibleMethods.isEmpty()) {
             return basicClass;
@@ -62,8 +69,10 @@ public class IrisTransformer implements IClassTransformer {
                 return new MethodVisitor(Opcodes.ASM9, mv) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-                        if (owner.equals(GL11) && EnabledRedirects.contains(name)) {
-                            AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}{} to GLStateManager.{}{}", className, name, desc, name, desc);
+                        final Set<String> redirects = EnabledRedirects.get(owner);
+                        if (redirects != null && redirects.contains(name)) {
+                            final String shortOwner = owner.substring(owner.lastIndexOf("/")+1);
+                            AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
                             owner = GLStateTracker;
                             remaps++;
                         }
@@ -84,7 +93,8 @@ public class IrisTransformer implements IClassTransformer {
                 return new MethodVisitor(Opcodes.ASM9) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-                        if (owner.equals(GL11) && EnabledRedirects.contains(name)) {
+                        final Set<String> redirects = EnabledRedirects.get(owner);
+                        if(redirects != null && redirects.contains(name)) {
                             eligibleMethods.add(new Method(methodName, methodDesc));
                         }
                     }

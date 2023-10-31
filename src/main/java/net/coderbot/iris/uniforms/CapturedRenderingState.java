@@ -1,14 +1,12 @@
 package net.coderbot.iris.uniforms;
 
 import lombok.Getter;
-import lombok.Setter;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector4d;
-import org.joml.Vector4i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -33,10 +31,6 @@ public class CapturedRenderingState {
     @Getter
     private Vector3d cameraPosition = new Vector3d();
 
-    @Getter
-    @Setter
-    private boolean blendEnabled;
-    private Vector4i blendFunc;
 	private float tickDelta;
 	private int currentRenderedBlockEntity;
 	private Runnable blockEntityIdListener = null;
@@ -110,14 +104,6 @@ public class CapturedRenderingState {
 	public int getCurrentRenderedEntity() {
 		return currentRenderedEntity;
 	}
-
-    public void setBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        blendFunc = new Vector4i(srcRgb, dstRgb, srcAlpha, dstAlpha);
-    }
-
-    public Vector4i getBlendFunc() {
-        return blendFunc;
-    }
 
     public void setCamera(float tickDelta) {
         final Minecraft mc = Minecraft.getMinecraft();
