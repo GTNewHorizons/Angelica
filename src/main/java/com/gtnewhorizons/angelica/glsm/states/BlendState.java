@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.glsm;
+package com.gtnewhorizons.angelica.glsm.states;
 
 import org.lwjgl.opengl.GL11;
 
@@ -10,5 +10,4 @@ public class BlendState {
     public int srcAlpha = GL11.GL_ONE;
     public int dstAlpha = GL11.GL_ZERO;
 
-    BlendState() {}
 }

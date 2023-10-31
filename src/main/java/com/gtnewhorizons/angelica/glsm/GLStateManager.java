@@ -1,7 +1,14 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.states.AlphaState;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import com.gtnewhorizons.angelica.glsm.states.BooleanState;
+import com.gtnewhorizons.angelica.glsm.states.DepthState;
+import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
 import lombok.Getter;
+import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
@@ -17,6 +24,14 @@ public class GLStateManager {
     // GLStateManager State Trackers
     @Getter
     private static final BlendState Blend = new BlendState();
+    @Getter
+    private static final DepthState Depth = new DepthState();
+    @Getter
+    private static final GLColorMask ColorMask = new GLColorMask();
+    @Getter
+    private static final BooleanState Cull = new BooleanState(GL11.GL_CULL_FACE);
+    @Getter
+    private static final AlphaState Alpha = new AlphaState();
 
     // Iris Listeners
     private static Runnable blendFuncListener;
@@ -63,7 +78,10 @@ public class GLStateManager {
 
     public static void glEnable(int cap) {
         switch(cap) {
+            case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
+            case GL11.GL_DEPTH_TEST -> Depth.mode.enable();
+            case GL11.GL_CULL_FACE -> Cull.enable();
             default -> GL11.glEnable(cap);
         }
     }
@@ -71,7 +89,10 @@ public class GLStateManager {
 
     public static void glDisable(int cap) {
         switch (cap) {
+            case GL11.GL_ALPHA_TEST -> disableAlphaTest();
             case GL11.GL_BLEND -> disableBlend();
+            case GL11.GL_DEPTH_TEST -> Depth.mode.disable();
+            case GL11.GL_CULL_FACE -> Cull.disable();
             default -> GL11.glDisable(cap);
         }
     }
@@ -125,6 +146,72 @@ public class GLStateManager {
         // Iris
         if (blendFuncListener != null) blendFuncListener.run();
     }
+
+    public static void glDepthFunc(int func) {
+        if(func != Depth.func) {
+            Depth.func = func;
+            GL11.glDepthFunc(func);
+        }
+    }
+
+    public static void glDepthMask(boolean mask) {
+        // Iris
+        if (DepthColorStorage.isDepthColorLocked()) {
+            DepthColorStorage.deferDepthEnable(mask);
+            return;
+        }
+
+        if(mask != Depth.mask) {
+            Depth.mask = mask;
+            GL11.glDepthMask(mask);
+        }
+    }
+
+    public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
+        // Iris
+        if (DepthColorStorage.isDepthColorLocked()) {
+            DepthColorStorage.deferColorMask(red, green, blue, alpha);
+            return;
+        }
+        if(red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
+            ColorMask.red = red;
+            ColorMask.green = green;
+            ColorMask.blue = blue;
+            ColorMask.alpha = alpha;
+            GL11.glColorMask(red, green, blue, alpha);
+        }
+    }
+
+    // ALPHA
+    public static void enableAlphaTest() {
+        // Iris
+        if (AlphaTestStorage.isAlphaTestLocked()) {
+            AlphaTestStorage.deferAlphaTestToggle(true);
+            return;
+        }
+        Alpha.mode.enable();
+    }
+
+    public static void disableAlphaTest() {
+        // Iris
+        if (AlphaTestStorage.isAlphaTestLocked()) {
+            AlphaTestStorage.deferAlphaTestToggle(false);
+            return;
+        }
+        Alpha.mode.disable();
+    }
+
+    public static void glAlphaFunc(int function, float reference) {
+        // Iris
+        if (AlphaTestStorage.isAlphaTestLocked()) {
+            AlphaTestStorage.deferAlphaFunc(function, reference);
+            return;
+        }
+        Alpha.function = function;
+        Alpha.reference = reference;
+        GL11.glAlphaFunc(function, reference);
+    }
+
 
     // Iris Functions
 
