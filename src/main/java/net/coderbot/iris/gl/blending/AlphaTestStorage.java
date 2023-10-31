@@ -1,30 +1,31 @@
 package net.coderbot.iris.gl.blending;
 
-import org.lwjgl.opengl.GL11;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.AlphaState;
+import lombok.Getter;
 
 public class AlphaTestStorage {
 	private static boolean originalAlphaTestEnable;
 	private static AlphaTest originalAlphaTest;
-	private static boolean alphaTestLocked;
+	@Getter
+    private static boolean alphaTestLocked;
 
-	public static boolean isAlphaTestLocked() {
-		return alphaTestLocked;
-	}
-
-	public static void overrideAlphaTest(AlphaTest override) {
+    public static void overrideAlphaTest(AlphaTest override) {
 		if (!alphaTestLocked) {
+            final AlphaState alphaState = GLStateManager.getAlpha();
+
 			// Only save the previous state if the alpha test wasn't already locked
-			originalAlphaTestEnable = GL11.glGetBoolean(GL11.GL_ALPHA_TEST);
-			originalAlphaTest = new AlphaTest(AlphaTestFunction.fromGlId(GL11.glGetInteger(GL11.GL_ALPHA_TEST_FUNC)).orElse(AlphaTestFunction.ALWAYS), GL11.glGetInteger(GL11.GL_ALPHA_TEST_REF));
+			originalAlphaTestEnable = alphaState.mode.isEnabled();
+			originalAlphaTest = new AlphaTest(AlphaTestFunction.fromGlId(alphaState.function).orElse(AlphaTestFunction.ALWAYS), alphaState.reference);
 		}
 
 		alphaTestLocked = false;
 
 		if (override == null) {
-            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GLStateManager.disableAlphaTest();
 		} else {
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
-            GL11.glAlphaFunc(override.getFunction().getGlId(), override.getReference());
+            GLStateManager.enableAlphaTest();
+            GLStateManager.glAlphaFunc(override.getFunction().getGlId(), override.getReference());
 		}
 
 		alphaTestLocked = true;
@@ -46,11 +47,11 @@ public class AlphaTestStorage {
 		alphaTestLocked = false;
 
 		if (originalAlphaTestEnable) {
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            GLStateManager.enableAlphaTest();
 		} else {
-            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GLStateManager.disableAlphaTest();
 		}
 
-        GL11.glAlphaFunc(originalAlphaTest.getFunction().getGlId(), originalAlphaTest.getReference());
+        GLStateManager.glAlphaFunc(originalAlphaTest.getFunction().getGlId(), originalAlphaTest.getReference());
 	}
 }

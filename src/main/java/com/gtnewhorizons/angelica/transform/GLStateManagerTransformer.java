@@ -29,7 +29,8 @@ public class GLStateManagerTransformer implements IClassTransformer {
     private static final String ExtBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
 
     public static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
-         GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable")
+         GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
+            "glColorMask", "glAlphaFunc")
         ,GL14, Sets.newHashSet("glBlendFuncSeparate")
         ,ExtBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
     );

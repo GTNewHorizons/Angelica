@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.glsm;
+package com.gtnewhorizons.angelica.glsm.states;
 
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;

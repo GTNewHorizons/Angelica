@@ -3,14 +3,15 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(OpenGlHelper.class)
 public class MixinOpenGlHelper {
-    private static int iris$drawFramebuffer = 0;
-    private static int iris$readFramebuffer = 0;
+    @Unique private static int iris$drawFramebuffer = 0;
+    @Unique private static int iris$readFramebuffer = 0;
 
     @Inject(method="func_153171_g", at=@At("HEAD"), cancellable=true)
     private static void iris$avoidRedundantBind(int target, int framebuffer, CallbackInfo ci) {

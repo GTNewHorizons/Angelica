@@ -1,7 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.client.Shaders;
-import com.gtnewhorizons.angelica.glsm.BlendState;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.early.accessors.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
