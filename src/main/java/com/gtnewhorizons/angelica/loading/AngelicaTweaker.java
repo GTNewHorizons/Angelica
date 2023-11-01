@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -104,6 +105,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     }
 
     private List<String> getNotFineMixins(Set<String> loadedCoreMods) {
+        if(FMLLaunchHandler.side().isServer())
+            return Collections.emptyList();
+
         final List<String> mixins = new ArrayList<>();
         mixins.add("notfine.clouds.MixinEntityRenderer");
         mixins.add("notfine.clouds.MixinGameSettings");

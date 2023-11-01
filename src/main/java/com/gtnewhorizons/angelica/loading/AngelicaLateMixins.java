@@ -1,12 +1,5 @@
 package com.gtnewhorizons.angelica.loading;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
@@ -18,11 +11,23 @@ import cpw.mods.fml.common.versioning.ArtifactVersion;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import cpw.mods.fml.common.versioning.InvalidVersionSpecificationException;
 import cpw.mods.fml.common.versioning.VersionRange;
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.coreMods;
 
 @LateMixin
 public class AngelicaLateMixins implements ILateMixinLoader {
+
+    public static final String TWILIGHT_FOREST = "TwilightForest";
+    public static final String THAUMCRAFT = "Thaumcraft";
+    public static final String WITCHERY = "witchery";
 
     @Override
     public String getMixinConfig() {
@@ -49,21 +54,24 @@ public class AngelicaLateMixins implements ILateMixinLoader {
     }
 
     private List<String> getNotFineMixins(Set<String> loadedMods) {
+        if(FMLLaunchHandler.side().isServer())
+            return Collections.emptyList();
+
         final List<String> mixins = new ArrayList<>();
 
-        if(loadedMods.contains("Thaumcraft")) {
+        if(loadedMods.contains(THAUMCRAFT)) {
             mixins.add("leaves.thaumcraft.MixinBlockMagicalLeaves");
         }
 
-        if(loadedMods.contains("TwilightForest")) {
+        if(loadedMods.contains(TWILIGHT_FOREST)) {
             mixins.add("leaves.twilightforest.MixinBlockTFLeaves");
             mixins.add("leaves.twilightforest.MixinBlockTFLeaves3");
 
             //Non-GTNH Twilight Forest builds will break horribly with this mixin.
             boolean modernBuild = false;
             try {
-                ArtifactVersion accepted = new DefaultArtifactVersion("TwilightForest", VersionRange.createFromVersionSpec("[2.3.8.18,)"));
-                ModContainer mc = Loader.instance().getIndexedModList().get("TwilightForest");
+                ArtifactVersion accepted = new DefaultArtifactVersion(TWILIGHT_FOREST, VersionRange.createFromVersionSpec("[2.3.8.18,)"));
+                ModContainer mc = Loader.instance().getIndexedModList().get(TWILIGHT_FOREST);
                 if(mc != null) modernBuild = accepted.containsVersion(mc.getProcessedVersion());
             } catch (InvalidVersionSpecificationException ignored) {}
 
@@ -72,7 +80,7 @@ public class AngelicaLateMixins implements ILateMixinLoader {
             }
         }
 
-        if(loadedMods.contains("witchery")) {
+        if(loadedMods.contains(WITCHERY)) {
             mixins.add("leaves.witchery.MixinBlockWitchLeaves");
         }
         return mixins;
