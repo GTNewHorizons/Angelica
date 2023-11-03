@@ -23,7 +23,6 @@ public class ColorTexture extends GlResource {
 		TextureUploadHelper.resetTextureUploadState();
 		IrisRenderSystem.texImage2D(texture, GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0, GL11.GL_RGBA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, (ByteBuffer) null);
 
-        // TODO: Message: GL_INVALID_OPERATION error generated. Cannot modify the default framebuffer object.
         EXTFramebufferObject.glFramebufferTexture2DEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT, GL11.GL_TEXTURE_2D, texture, 0);
 	}
 

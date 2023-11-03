@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.ComputeProgram;
@@ -32,6 +31,7 @@ import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.shader.Framebuffer;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -51,27 +51,26 @@ public class FinalPassRenderer {
 	private final ImmutableList<SwapPass> swapPasses;
 	private final GlFramebuffer baseline;
 	private final GlFramebuffer colorHolder;
-	private int colorTextureId;
+	private int lastColorTextureId;
 	private int lastColorTextureVersion;
 	private final IntSupplier noiseTexture;
 	private final FrameUpdateNotifier updateNotifier;
 	private final CenterDepthSampler centerDepthSampler;
 	private final Object2ObjectMap<String, IntSupplier> customTextureIds;
 
-	// TODO: The length of this argument list is getting a bit ridiculous
+    // TODO: The length of this argument list is getting a bit ridiculous
 	public FinalPassRenderer(ProgramSet pack, RenderTargets renderTargets, IntSupplier noiseTexture,
 							 FrameUpdateNotifier updateNotifier, ImmutableSet<Integer> flippedBuffers,
 							 CenterDepthSampler centerDepthSampler,
 							 Supplier<ShadowRenderTargets> shadowTargetsSupplier,
 							 Object2ObjectMap<String, IntSupplier> customTextureIds,
-							 ImmutableSet<Integer> flippedAtLeastOnce, int colorTextureId) {
+							 ImmutableSet<Integer> flippedAtLeastOnce) {
 		this.updateNotifier = updateNotifier;
 		this.centerDepthSampler = centerDepthSampler;
 		this.customTextureIds = customTextureIds;
 
 		final PackRenderTargetDirectives renderTargetDirectives = pack.getPackDirectives().getRenderTargetDirectives();
-		final Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargetSettings =
-				renderTargetDirectives.getRenderTargetSettings();
+		final Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargetSettings = renderTargetDirectives.getRenderTargetSettings();
 
 		this.noiseTexture = noiseTexture;
 		this.renderTargets = renderTargets;
@@ -93,18 +92,19 @@ public class FinalPassRenderer {
 		// up with whatever was written last (since we're reading from these framebuffers) instead of trying to create
 		// a framebuffer with color attachments different from what was written last (as we do with normal composite
 		// passes that write to framebuffers).
+        final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 		this.baseline = renderTargets.createGbufferFramebuffer(flippedBuffers, new int[] {0});
 		this.colorHolder = new GlFramebuffer();
-        this.colorTextureId = colorTextureId;
-		this.lastColorTextureVersion = ((IRenderTargetExt)Minecraft.getMinecraft()).iris$getColorBufferVersion();
-		this.colorHolder.addColorAttachment(0, this.colorTextureId);
+        this.lastColorTextureId = main.framebufferTexture;
+		this.lastColorTextureVersion = ((IRenderTargetExt)main).iris$getColorBufferVersion();
+		this.colorHolder.addColorAttachment(0, lastColorTextureId);
 
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
 		// This works for the most part, but it's not perfect. A better approach would be creating secondary
 		// framebuffers for every other frame, but that would be a lot more complex...
 		ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
 
-		flippedBuffers.forEach((i) -> {
+		flippedBuffers.forEach(i -> {
 			int target = i;
 
 			if (buffersToBeCleared.contains(target)) {
@@ -149,13 +149,13 @@ public class FinalPassRenderer {
 	}
 
 	public void renderFinalPass() {
-		GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
-		GL11.glDepthMask(false);
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.glDepthMask(false);
 
-        final Minecraft mc = Minecraft.getMinecraft();
-		final int baseWidth = mc.displayWidth;
-		final int baseHeight = mc.displayHeight;
+        final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
+		final int baseWidth = main.framebufferWidth;
+		final int baseHeight = main.framebufferHeight;
 
 		// Note that since DeferredWorldRenderingPipeline uses the depth texture of the main Minecraft framebuffer,
 		// we'll be writing to that depth buffer directly automatically and won't need to futz around with copying
@@ -170,11 +170,10 @@ public class FinalPassRenderer {
 		//
 		// This is not a concern for depthtex1 / depthtex2 since the copy call extracts the depth values, and the
 		// shader pack only ever uses them to read the depth values.
-
-		if (((IRenderTargetExt)mc).iris$getColorBufferVersion() != lastColorTextureVersion) {
-			lastColorTextureVersion = ((IRenderTargetExt)mc).iris$getColorBufferVersion();
-			colorHolder.addColorAttachment(0, colorTextureId);
-            Iris.logger.info("Color buffer changed during frame!");
+		if (((IRenderTargetExt)main).iris$getColorBufferVersion() != lastColorTextureVersion) {
+			lastColorTextureVersion = ((IRenderTargetExt)main).iris$getColorBufferVersion();
+			this.lastColorTextureId = main.framebufferTexture;
+			colorHolder.addColorAttachment(0, lastColorTextureId);
 		}
 
 		if (this.finalPass != null) {
@@ -217,8 +216,7 @@ public class FinalPassRenderer {
 			// https://stackoverflow.com/a/23994979/18166885
 			this.baseline.bindAsReadBuffer();
 
-            // TODO: Iris
-			IrisRenderSystem.copyTexSubImage2D(0/*main.getColorTextureId()*/, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
+			IrisRenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -245,8 +243,7 @@ public class FinalPassRenderer {
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.
-        // TODO: Iris
-//		main.bindWrite(true);
+        main.bindFramebuffer(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
 		GL20.glUseProgram(0);

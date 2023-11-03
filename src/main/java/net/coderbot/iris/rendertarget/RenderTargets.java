@@ -10,15 +10,11 @@ import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import org.joml.Vector2i;
-import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static org.lwjgl.opengl.EXTFramebufferObject.GL_DEPTH_ATTACHMENT_EXT;
-import static org.lwjgl.opengl.EXTFramebufferObject.GL_FRAMEBUFFER_EXT;
 
 public class RenderTargets {
 	private final RenderTarget[] targets;
@@ -26,8 +22,6 @@ public class RenderTargets {
 	private DepthBufferFormat currentDepthFormat;
 
     @Getter
-    private final ColorTexture colorTexture;
-    private final DepthTexture depthTexture;
 	private final DepthTexture noTranslucents;
 	private final DepthTexture noHand;
 	private final GlFramebuffer depthSourceFb;
@@ -45,7 +39,7 @@ public class RenderTargets {
 
 	private int cachedDepthBufferVersion;
 
-	public RenderTargets(int width, int height, int depthBufferVersion, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
+	public RenderTargets(int width, int height,  int depthTexture, int depthBufferVersion, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
         targets = new RenderTarget[renderTargets.size()];
 
 		renderTargets.forEach((index, settings) -> {
@@ -57,15 +51,7 @@ public class RenderTargets {
 		});
         // TODO: currentDepthFormat... :hmmm: -- NEED GL_TEXTURE_INTERNAL_FORMAT ??
 		this.currentDepthFormat = DepthBufferFormat.DEPTH;
-        this.depthTexture = new DepthTexture(width, height, currentDepthFormat);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture.getTextureId());
-
-        // TODO: Message: GL_INVALID_OPERATION error generated. Cannot modify the default framebuffer object.
-        EXTFramebufferObject.glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, depthTexture.getTextureId(), 0);
-        this.colorTexture = new ColorTexture(width, height);
-
-
-		this.currentDepthTexture = depthTexture.getTextureId();
+		this.currentDepthTexture = depthTexture;
 		this.copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
 
 		this.cachedWidth = width;
@@ -102,7 +88,6 @@ public class RenderTargets {
 			target.destroy();
 		}
 
-        depthTexture.destroy();
 		noTranslucents.destroy();
 		noHand.destroy();
 	}
@@ -127,35 +112,65 @@ public class RenderTargets {
 		return noHand;
 	}
 
-	public boolean resizeIfNeeded(int newDepthBufferVersion, int newWidth, int newHeight, PackDirectives packDirectives) {
-		if (cachedDepthBufferVersion != newDepthBufferVersion) {
-            this.depthTexture.resize(newWidth, newHeight, currentDepthFormat);
-			cachedDepthBufferVersion = newDepthBufferVersion;
-		}
+    public boolean resizeIfNeeded(int newDepthBufferVersion, int newDepthTextureId, int newWidth, int newHeight, DepthBufferFormat newDepthFormat, PackDirectives packDirectives) {
+        boolean recreateDepth = false;
+        if (cachedDepthBufferVersion != newDepthBufferVersion) {
+            recreateDepth = true;
+            currentDepthTexture = newDepthTextureId;
+            cachedDepthBufferVersion = newDepthBufferVersion;
+        }
 
-		boolean sizeChanged = newWidth != cachedWidth || newHeight != cachedHeight;
+        boolean sizeChanged = newWidth != cachedWidth || newHeight != cachedHeight;
+        boolean depthFormatChanged = newDepthFormat != currentDepthFormat;
 
-		if (sizeChanged)  {
-			// Reallocate depth buffers
-			noTranslucents.resize(newWidth, newHeight, currentDepthFormat);
-			noHand.resize(newWidth, newHeight, currentDepthFormat);
-			this.translucentDepthDirty = true;
-			this.handDepthDirty = true;
-		}
+        if (depthFormatChanged) {
+            currentDepthFormat = newDepthFormat;
+            // Might need a new copy strategy
+            copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
+        }
 
-		if (sizeChanged) {
-			cachedWidth = newWidth;
-			cachedHeight = newHeight;
+        if (recreateDepth) {
+            // Re-attach the depth textures with the new depth texture ID, since Minecraft re-creates
+            // the depth texture when resizing its render targets.
+            //
+            // I'm not sure if our framebuffers holding on to the old depth texture between frames
+            // could be a concern, in the case of resizing and similar. I think it should work
+            // based on what I've seen of the spec, though - it seems like deleting a texture
+            // automatically detaches it from its framebuffers.
+            for (GlFramebuffer framebuffer : ownedFramebuffers) {
+                if (framebuffer == noHandDestFb || framebuffer == noTranslucentsDestFb) {
+                    // NB: Do not change the depth attachment of these framebuffers
+                    // as it is intentionally different
+                    continue;
+                }
 
-			for (int i = 0; i < targets.length; i++) {
-				targets[i].resize(packDirectives.getTextureScaleOverride(i, newWidth, newHeight));
-			}
+                if (framebuffer.hasDepthAttachment()) {
+                    framebuffer.addDepthAttachment(newDepthTextureId);
+                }
+            }
+        }
 
-			fullClearRequired = true;
-		}
+        if (depthFormatChanged || sizeChanged)  {
+            // Reallocate depth buffers
+            noTranslucents.resize(newWidth, newHeight, newDepthFormat);
+            noHand.resize(newWidth, newHeight, newDepthFormat);
+            this.translucentDepthDirty = true;
+            this.handDepthDirty = true;
+        }
 
-		return sizeChanged;
-	}
+        if (sizeChanged) {
+            cachedWidth = newWidth;
+            cachedHeight = newHeight;
+
+            for (int i = 0; i < targets.length; i++) {
+                targets[i].resize(packDirectives.getTextureScaleOverride(i, newWidth, newHeight));
+            }
+
+            fullClearRequired = true;
+        }
+
+        return sizeChanged;
+    }
 
 	public void copyPreTranslucentDepth() {
 		if (translucentDepthDirty) {
