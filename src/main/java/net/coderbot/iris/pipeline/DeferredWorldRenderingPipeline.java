@@ -23,6 +23,7 @@ import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
@@ -59,6 +60,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.shader.Framebuffer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -167,9 +169,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		this.packDirectives = programs.getPackDirectives();
 
-        Minecraft mc = Minecraft.getMinecraft();
+        final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
-		this.renderTargets = new RenderTargets(mc.displayWidth, mc.displayHeight, ((IRenderTargetExt)mc).iris$getDepthBufferVersion(),
+
+		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, main.depthBuffer,
+            ((IRenderTargetExt)main).iris$getDepthBufferVersion(),
 			programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
 
 		this.sunPathRotation = programs.getPackDirectives().getSunPathRotation();
@@ -245,7 +249,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.finalPassRenderer = new FinalPassRenderer(programs, renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, flipper.snapshot(),
 				centerDepthSampler, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				this.compositeRenderer.getFlippedAtLeastOnceFinal(), getRenderTargets().getColorTexture().getTextureId());
+				this.compositeRenderer.getFlippedAtLeastOnceFinal());
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
 		ProgramId[] ids = new ProgramId[] {
@@ -884,10 +888,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		}
 
-        final Minecraft mc = Minecraft.getMinecraft();
+        final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
-		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)mc).iris$getDepthBufferVersion(), mc.displayWidth,
-            mc.displayHeight, packDirectives);
+		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), main.depthBuffer, main.framebufferWidth,
+            main.framebufferHeight, DepthBufferFormat.DEPTH, packDirectives);
 
 		if (changed) {
 			prepareRenderer.recalculateSizes();

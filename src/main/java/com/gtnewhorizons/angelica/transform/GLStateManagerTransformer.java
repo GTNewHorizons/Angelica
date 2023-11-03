@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassVisitor;
@@ -76,8 +77,10 @@ public class GLStateManagerTransformer implements IClassTransformer {
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
                         final Set<String> redirects = EnabledRedirects.get(owner);
                         if (redirects != null && redirects.contains(name)) {
-                            final String shortOwner = owner.substring(owner.lastIndexOf("/")+1);
-                            AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
+                            if(IrisLogging.ENABLE_SPAM) {
+                                final String shortOwner = owner.substring(owner.lastIndexOf("/") + 1);
+                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
+                            }
                             owner = GLStateTracker;
                             remaps++;
                         }
