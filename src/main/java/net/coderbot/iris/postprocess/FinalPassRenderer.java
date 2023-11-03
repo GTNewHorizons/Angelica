@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.ComputeProgram;
@@ -172,8 +173,8 @@ public class FinalPassRenderer {
 
 		if (((IRenderTargetExt)mc).iris$getColorBufferVersion() != lastColorTextureVersion) {
 			lastColorTextureVersion = ((IRenderTargetExt)mc).iris$getColorBufferVersion();
-//			colorHolder.addColorAttachment(0, colorTextureId);
-            throw new RuntimeException("Color buffer changed during frame!");
+			colorHolder.addColorAttachment(0, colorTextureId);
+            Iris.logger.info("Color buffer changed during frame!");
 		}
 
 		if (this.finalPass != null) {

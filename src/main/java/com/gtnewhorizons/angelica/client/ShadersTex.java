@@ -223,6 +223,7 @@ public class ShadersTex {
 
     // for Dynamic Texture
     public static void initDynamicTexture(int texID, int width, int height, DynamicTexture tex) {
+        // TODO: PBR
         MultiTexID multiTex = tex.angelica$getMultiTexID();
         int[] aint = tex.getTextureData();
         int size = width * height;
@@ -237,6 +238,7 @@ public class ShadersTex {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
 
+        // This seems PBR related...
         // norm texture
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
         allocTexStorage(width, height, 0);
@@ -374,8 +376,8 @@ public class ShadersTex {
         return data;
     }
 
-    public static void uploadTexSub(int[][] data, int width, int height, int xoffset, int yoffset, boolean linear,
-            boolean clamp) {
+    public static void uploadTexSub(int[][] data, int width, int height, int xoffset, int yoffset, boolean linear, boolean clamp) {
+        // TODO: Mipmap
         TextureUtil.uploadTextureMipmap(data, width, height, xoffset, yoffset, linear, clamp);
     }
 
@@ -606,6 +608,7 @@ public class ShadersTex {
     }
 
     public static void updateDynamicTexture(int texID, int[] src, int width, int height, DynamicTexture tex) {
+        // TODO: PBR
         MultiTexID multiTex = tex.angelica$getMultiTexID();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
         updateSubImage1(src, width, height, 0, 0, 1, defNormTexColor);
@@ -760,6 +763,7 @@ public class ShadersTex {
      */
     public static int loadSimpleTexture(int textureID, BufferedImage bufferedimage, boolean linear, boolean clamp,
             IResourceManager resourceManager, ResourceLocation location, MultiTexID multiTex) {
+        // TODO: PBR
         int width = bufferedimage.getWidth();
         int height = bufferedimage.getHeight();
         int size = width * height;

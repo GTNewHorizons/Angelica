@@ -5,7 +5,7 @@ import net.smart.render.ModelRotationRenderer;
 
 import org.spongepowered.asm.mixin.Mixin;
 
-import com.gtnewhorizons.angelica.mixins.early.renderer.MixinModelRenderer;
+import com.gtnewhorizons.angelica.mixins.early.shadersmod.renderer.MixinModelRenderer;
 
 @Mixin(ModelRotationRenderer.class)
 public class MixinModelRotationRenderer extends MixinModelRenderer {

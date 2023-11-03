@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms;
 import com.gtnewhorizons.angelica.client.Shaders;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.early.accessors.EntityRendererAccessor;
+import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import net.coderbot.iris.gl.uniform.UniformHolder;

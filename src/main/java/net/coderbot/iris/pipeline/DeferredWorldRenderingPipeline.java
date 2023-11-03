@@ -325,7 +325,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 			});
 		});
-
 		if (shadowRenderTargets == null && shadowDirectives.isShadowEnabled() == OptionalBoolean.TRUE) {
 			shadowRenderTargets = new ShadowRenderTargets(shadowMapResolution, shadowDirectives);
 		}
@@ -398,8 +397,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			return builder.build();
 		};
-
-		IntFunction<ProgramImages> createShadowTerrainImages = (programId) -> {
+        IntFunction<ProgramImages> createShadowTerrainImages = (programId) -> {
 			ProgramImages.Builder builder = ProgramImages.builder(programId);
 
 			IrisImages.addRenderTargetImages(builder, () -> flippedAfterPrepare, renderTargets);
@@ -410,8 +408,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			return builder.build();
 		};
-
-		this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
+        this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
 			shadowRenderer == null ? null : createShadowTerrainImages);
 	}
@@ -569,13 +566,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private Pass createDefaultPass() {
-		GlFramebuffer framebufferBeforeTranslucents;
-		GlFramebuffer framebufferAfterTranslucents;
+		final GlFramebuffer framebufferBeforeTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, new int[] {0});
+		final GlFramebuffer framebufferAfterTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, new int[] {0});
 
-		framebufferBeforeTranslucents =
-			renderTargets.createGbufferFramebuffer(flippedAfterPrepare, new int[] {0});
-		framebufferAfterTranslucents =
-			renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, new int[] {0});
 
 		return new Pass(null, framebufferBeforeTranslucents, framebufferAfterTranslucents, null,
 			null, Collections.emptyList(), false);
@@ -650,14 +643,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		if (shadow) {
 			// Always add both draw buffers on the shadow pass.
-			framebufferBeforeTranslucents =
-				shadowTargetsSupplier.get().createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] { 0, 1 });
+			framebufferBeforeTranslucents = shadowTargetsSupplier.get().createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] { 0, 1 });
 			framebufferAfterTranslucents = framebufferBeforeTranslucents;
 		} else {
-			framebufferBeforeTranslucents =
-				renderTargets.createGbufferFramebuffer(flippedAfterPrepare, programDirectives.getDrawBuffers());
-			framebufferAfterTranslucents =
-				renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, programDirectives.getDrawBuffers());
+			framebufferBeforeTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, programDirectives.getDrawBuffers());
+			framebufferAfterTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, programDirectives.getDrawBuffers());
 		}
 
 		builder.bindAttributeLocation(11, "mc_Entity");

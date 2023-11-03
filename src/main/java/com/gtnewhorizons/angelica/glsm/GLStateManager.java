@@ -18,6 +18,7 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
@@ -199,6 +200,13 @@ public class GLStateManager {
         if (activeTexture != newTexture) {
             activeTexture = newTexture;
             GL13.glActiveTexture(texture);
+        }
+    }
+    public static void glActiveTextureARB(int texture) {
+        final int newTexture = texture - GL13.GL_TEXTURE0;
+        if (activeTexture != newTexture) {
+            activeTexture = newTexture;
+            ARBMultitexture.glActiveTextureARB(texture);
         }
     }
 

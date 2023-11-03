@@ -46,7 +46,7 @@ public class RenderTargets {
 	private int cachedDepthBufferVersion;
 
 	public RenderTargets(int width, int height, int depthBufferVersion, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
-		targets = new RenderTarget[renderTargets.size()];
+        targets = new RenderTarget[renderTargets.size()];
 
 		renderTargets.forEach((index, settings) -> {
 			// TODO: Handle mipmapping?
@@ -59,8 +59,9 @@ public class RenderTargets {
 		this.currentDepthFormat = DepthBufferFormat.DEPTH;
         this.depthTexture = new DepthTexture(width, height, currentDepthFormat);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture.getTextureId());
-        EXTFramebufferObject.glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, depthTexture.getTextureId(), 0);
 
+        // TODO: Message: GL_INVALID_OPERATION error generated. Cannot modify the default framebuffer object.
+        EXTFramebufferObject.glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL11.GL_TEXTURE_2D, depthTexture.getTextureId(), 0);
         this.colorTexture = new ColorTexture(width, height);
 
 
@@ -221,7 +222,7 @@ public class RenderTargets {
 		GlFramebuffer framebuffer = new GlFramebuffer();
 		ownedFramebuffers.add(framebuffer);
 
-//		framebuffer.addDepthAttachment(currentDepthTexture);
+		framebuffer.addDepthAttachment(currentDepthTexture);
 
 		// NB: Before OpenGL 3.0, all framebuffers are required to have a color attachment no matter what.
 		framebuffer.addColorAttachment(0, get(0).getMainTexture());
@@ -236,10 +237,8 @@ public class RenderTargets {
 		}
 
 		ImmutableSet<Integer> stageWritesToMain = invert(stageWritesToAlt, drawBuffers);
-
-		GlFramebuffer framebuffer =  createColorFramebuffer(stageWritesToMain, drawBuffers);
-
-//		framebuffer.addDepthAttachment(currentDepthTexture);
+        GlFramebuffer framebuffer =  createColorFramebuffer(stageWritesToMain, drawBuffers);
+        framebuffer.addDepthAttachment(currentDepthTexture);
 
 		return framebuffer;
 	}
@@ -259,9 +258,8 @@ public class RenderTargets {
 	}
 
 	public GlFramebuffer createColorFramebufferWithDepth(ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers) {
-		GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
-
-//		framebuffer.addDepthAttachment(currentDepthTexture);
+        GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
+        framebuffer.addDepthAttachment(currentDepthTexture);
 
 		return framebuffer;
 	}
@@ -271,8 +269,8 @@ public class RenderTargets {
 			throw new IllegalArgumentException("Framebuffer must have at least one color buffer");
 		}
 
-		GlFramebuffer framebuffer = new GlFramebuffer();
-		ownedFramebuffers.add(framebuffer);
+        GlFramebuffer framebuffer = new GlFramebuffer();
+        ownedFramebuffers.add(framebuffer);
 
 		int[] actualDrawBuffers = new int[drawBuffers.length];
 
@@ -290,10 +288,10 @@ public class RenderTargets {
 			int textureId = stageWritesToMain.contains(drawBuffers[i]) ? target.getMainTexture() : target.getAltTexture();
 
 			framebuffer.addColorAttachment(i, textureId);
-		}
+        }
 
 		framebuffer.drawBuffers(actualDrawBuffers);
-		framebuffer.readBuffer(0);
+        framebuffer.readBuffer(0);
 
 		if (!framebuffer.isComplete()) {
 			throw new IllegalStateException("Unexpected error while creating framebuffer");

@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.pbr.loader;
 
-import com.gtnewhorizons.angelica.mixins.early.accessors.SimpleTextureAccessor;
+import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.SimpleTextureAccessor;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.SimpleTexture;

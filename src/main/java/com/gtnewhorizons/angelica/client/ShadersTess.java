@@ -1,21 +1,19 @@
 package com.gtnewhorizons.angelica.client;
 
-import static org.lwjgl.opengl.ARBVertexShader.glDisableVertexAttribArrayARB;
-import static org.lwjgl.opengl.ARBVertexShader.glEnableVertexAttribArrayARB;
-import static org.lwjgl.opengl.ARBVertexShader.glVertexAttribPointerARB;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.mixins.interfaces.TessellatorAccessor;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
 
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
-
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
-
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import com.gtnewhorizons.angelica.mixins.interfaces.TessellatorAccessor;
+import static org.lwjgl.opengl.ARBVertexShader.glDisableVertexAttribArrayARB;
+import static org.lwjgl.opengl.ARBVertexShader.glEnableVertexAttribArrayARB;
+import static org.lwjgl.opengl.ARBVertexShader.glVertexAttribPointerARB;
 
 public class ShadersTess {
 
@@ -219,12 +217,12 @@ public class ShadersTess {
                 tessa.angelica$setNormalX(normalX);
                 tessa.angelica$setNormalY(normalY);
                 tessa.angelica$setNormalZ(normalZ);
-                rawBuffer[rbi + (9 - vertexStride * 3)] = rawBuffer[rbi + (9 - vertexStride * 2)] = rawBuffer[rbi
-                        + (9 - vertexStride * 1)] = Float.floatToRawIntBits(normalX);
-                rawBuffer[rbi + (10 - vertexStride * 3)] = rawBuffer[rbi + (10 - vertexStride * 2)] = rawBuffer[rbi
-                        + (10 - vertexStride * 1)] = Float.floatToRawIntBits(normalY);
-                rawBuffer[rbi + (11 - vertexStride * 3)] = rawBuffer[rbi + (11 - vertexStride * 2)] = rawBuffer[rbi
-                        + (11 - vertexStride * 1)] = Float.floatToRawIntBits(normalZ);
+                rawBuffer[rbi + (9 - vertexStride * 3)] = rawBuffer[rbi + (9 - vertexStride * 2)] =
+                    rawBuffer[rbi + (9 - vertexStride * 1)] = Float.floatToRawIntBits(normalX);
+                rawBuffer[rbi + (10 - vertexStride * 3)] = rawBuffer[rbi + (10 - vertexStride * 2)] =
+                    rawBuffer[rbi + (10 - vertexStride * 1)] = Float.floatToRawIntBits(normalY);
+                rawBuffer[rbi + (11 - vertexStride * 3)] = rawBuffer[rbi + (11 - vertexStride * 2)] =
+                    rawBuffer[rbi + (11 - vertexStride * 1)] = Float.floatToRawIntBits(normalZ);
                 tess.hasNormals = true;
                 // mid UV
                 tessa.angelica$setMidTextureU(
@@ -237,10 +235,10 @@ public class ShadersTess {
                                 + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 2)])
                                 + Float.intBitsToFloat(rawBuffer[rbi + (4 - vertexStride * 1)])
                                 + (float) tess.textureV) / 4);
-                rawBuffer[rbi + (12 - vertexStride * 3)] = rawBuffer[rbi + (12 - vertexStride * 2)] = rawBuffer[rbi
-                        + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.angelica$getMidTextureU());
-                rawBuffer[rbi + (13 - vertexStride * 3)] = rawBuffer[rbi + (13 - vertexStride * 2)] = rawBuffer[rbi
-                        + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.angelica$getMidTextureV());
+                rawBuffer[rbi + (12 - vertexStride * 3)] = rawBuffer[rbi + (12 - vertexStride * 2)] =
+                    rawBuffer[rbi + (12 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.angelica$getMidTextureU());
+                rawBuffer[rbi + (13 - vertexStride * 3)] = rawBuffer[rbi + (13 - vertexStride * 2)] =
+                    rawBuffer[rbi + (13 - vertexStride * 1)] = Float.floatToRawIntBits(tessa.angelica$getMidTextureV());
             }
         }
         // end normal and mid UV calculation

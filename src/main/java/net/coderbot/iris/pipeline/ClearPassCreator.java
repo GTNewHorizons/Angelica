@@ -70,8 +70,7 @@ public class ClearPassCreator {
 					// No need to clear the depth buffer, since we're using Minecraft's depth buffer.
 					clearPasses.add(new ClearPass(clearInfo.getColor(), clearInfo::getWidth, clearInfo::getHeight,
 						renderTargets.createClearFramebuffer(true, clearBuffers), GL11.GL_COLOR_BUFFER_BIT));
-
-					clearPasses.add(new ClearPass(clearInfo.getColor(), clearInfo::getWidth, clearInfo::getHeight,
+                    clearPasses.add(new ClearPass(clearInfo.getColor(), clearInfo::getWidth, clearInfo::getHeight,
 						renderTargets.createClearFramebuffer(false, clearBuffers), GL11.GL_COLOR_BUFFER_BIT));
 				}
 			});

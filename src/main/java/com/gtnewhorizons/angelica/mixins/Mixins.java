@@ -10,14 +10,14 @@ import java.util.function.Supplier;
 
 public enum Mixins {
 
-    ANGELICA_STARTUP(new Builder("Start Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+    IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
-                "shaders.MixinMinecraft",
-                "shaders.MixinGameSettings",
-                "shaders.MixinGuiMainMenu",
-                "shaders.MixinInitRenderer")
+                "shaders.startup.MixinMinecraft",
+                "shaders.startup.MixinGameSettings",
+                "shaders.startup.MixinGuiMainMenu",
+                "shaders.startup.MixinInitRenderer")
             ),
-    IRIS_RENDERING(new Builder("Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+    IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
                 "shaders.MixinEntityRenderer",
                 "shaders.MixinItem",
@@ -25,57 +25,27 @@ public enum Mixins {
             )
         ),
 
-
-    ANGELICA_ACCESSORS(new Builder("Angelica Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+    IRIS_ACCESSORS(new Builder("Iris Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
-                "accessors.MinecraftAccessor",
-                "accessors.EntityRendererAccessor",
-                "accessors.SimpleTextureAccessor",
-                "accessors.TextureAtlasSpriteAccessor"
+                "shaders.accessors.MinecraftAccessor",
+                "shaders.accessors.EntityRendererAccessor",
+                "shaders.accessors.SimpleTextureAccessor",
+                "shaders.accessors.TextureAtlasSpriteAccessor"
             )),
 
-    ANGELICA_SHADERS_BUTTON(new Builder("Add Shaders Button").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("settings.MixinGuiVideoSettings")),
-
-    ANGELICA_LIGHTING(new Builder("Lighting").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses("lighting.MixinBlock", "lighting.MixinRenderBlocks")),
-
-    ANGELICA_RENDERER(new Builder("Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses(
-                    "renderer.MixinAbstractTexture",
-                    "renderer.MixinDynamicTexture",
-                    "renderer.MixinEntityRenderer",
-                    "renderer.MixinItemRenderer",
-                    "renderer.MixinITextureObject",
-                    "renderer.MixinLayeredTexture",
-                    "renderer.MixinModelRenderer",
-                    "renderer.MixinOpenGlHelper",
-                    "renderer.MixinRender",
-                    "renderer.MixinRenderBlocks",
-                    "renderer.MixinRenderDragon",
-                    "renderer.MixinRenderEnderman",
-                    "renderer.MixinRendererLivingEntity",
-                    "renderer.MixinRenderGlobal",
-                    "renderer.MixinRenderSpider",
-                    "renderer.MixinSimpleTexture",
-                    "renderer.MixinTessellator",
-                    "renderer.MixinTextureAtlasSprite",
-                    "renderer.MixinTextureClock",
-                    "renderer.MixinTextureCompass",
-                    "renderer.MixinTextureManager",
-                    "renderer.MixinTextureMap",
-                    "renderer.MixinThreadDownloadImageData")),
 
     ANGELICA_TEXTURE(new Builder("Texture").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
 
             )),
-    COMPAT_PR_ILLUMINATION(
-            new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
-                    .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),
 
-    COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
-            .addMixinClasses("compat.MixinModelRotationRenderer"))
+    // TODO: Iris
+//    SHADERSMOD_COMPAT_PR_ILLUMINATION(
+//            new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
+//                    .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),
+//
+//    SHADERSMOD_COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
+//            .addMixinClasses("compat.MixinModelRotationRenderer"))
 
     ;
 
