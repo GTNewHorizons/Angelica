@@ -27,14 +27,16 @@ public class GLStateManagerTransformer implements IClassTransformer {
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
-    private static final String ExtBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
+    private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
+    private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
 
     public static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
          GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
             "glColorMask", "glAlphaFunc", "glDrawArrays")
         ,GL13, Sets.newHashSet("glActiveTexture")
         ,GL14, Sets.newHashSet("glBlendFuncSeparate")
-        ,ExtBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
+        ,EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
+        ,ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
     );
 
 

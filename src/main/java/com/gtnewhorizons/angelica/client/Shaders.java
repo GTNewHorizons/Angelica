@@ -645,7 +645,6 @@ public class Shaders {
     }
 
     public static int checkGLError(String location) {
-        if (true) return 0;
         int errorCode = GL11.glGetError();
         if (errorCode != GL11.GL_NO_ERROR) {
             boolean skipPrint = false;
