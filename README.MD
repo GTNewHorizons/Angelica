@@ -10,4 +10,4 @@ Not yet in an usable state
 * Includes backported code from [Occulus](https://github.com/Asek3/Oculus) and [Iris](https://github.com/IrisShaders/Iris) under the LGPL
 * eigenraven and vlaetansky for getting the original ShaderMod compiling again
 * eigenraven, Caedis, glowredman, and mitchej123 for the conversion of ASM to Mixin
-
+* JellySquid & the CaffeineMC team, for making Sodium in the first place and embeddedt for [Embeddium](https://github.com/embeddedt/embeddium/commit/dc59ca357c25beefd6288f0d1d40b4cd8e670ab8) under the [LGPL 3.0](https://github.com/embeddedt/embeddium/blob/16.x/forge/LICENSE) and select files under the LGPL-2.1
