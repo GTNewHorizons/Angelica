@@ -63,6 +63,17 @@
       "dependencies": [
         "required-after:gtnhmixins@[2.0.0,)"
       ]
+    },
+    {
+      "modid": "embeddium",
+      "name": "Embeddium",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "authorList": [
+        "embeddedt",
+        "NanoLive",
+        "CaffeineMC"
+      ]
     }
   ]
 }
