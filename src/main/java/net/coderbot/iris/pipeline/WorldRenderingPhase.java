@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 
 public enum WorldRenderingPhase {
 	NONE,

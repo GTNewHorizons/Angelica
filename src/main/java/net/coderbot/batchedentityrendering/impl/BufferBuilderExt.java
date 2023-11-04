@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import net.coderbot.iris.compat.mojang.DrawState;
+import com.gtnewhorizons.angelica.compat.mojang.DrawState;
 
 import java.nio.ByteBuffer;
 

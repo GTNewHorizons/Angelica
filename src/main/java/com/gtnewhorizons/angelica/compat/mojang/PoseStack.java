@@ -1,4 +1,4 @@
-package net.coderbot.iris.compat.mojang;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.Queues;
 import org.joml.Matrix3f;
@@ -52,6 +52,35 @@ public class PoseStack {
         lv.normal.rotateZ(f);
     }
 
+
+    public void scale(float f, float g, float h) {
+        final Pose lv = (Pose)this.poseStack.getLast();
+        lv.pose.scale(f, g, h);
+
+        if (f == g && g == h) {
+            if (f > 0.0F) {
+                return;
+            }
+
+            lv.normal.scale(-1.0F);
+        }
+        float i = 1.0F / f;
+        float j = 1.0F / g;
+        float k = 1.0F / h;
+        float l = invSqrt(i * j * k);
+        lv.normal.scale(l * i, l * j, l * k);
+
+    }
+
+
+    private static float invSqrt(float x) {
+        float xhalf = 0.5f * x;
+        int i = Float.floatToIntBits(x);
+        i = 0x5f3759df - (i >> 1);
+        x = Float.intBitsToFloat(i);
+        x *= (1.5f - xhalf * x * x);
+        return x;
+    }
 
     public static final class Pose {
         private final Matrix4f pose;

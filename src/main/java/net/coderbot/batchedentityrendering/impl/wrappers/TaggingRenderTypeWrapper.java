@@ -1,7 +1,7 @@
 package net.coderbot.batchedentityrendering.impl.wrappers;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;

@@ -1,8 +1,8 @@
 package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.mixins.early.textures.MixinTextureAtlasSprite;
-import net.coderbot.iris.compat.mojang.AutoClosableAbstractTexture;
-import net.coderbot.iris.compat.mojang.TextureAtlas;
+import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
+import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;

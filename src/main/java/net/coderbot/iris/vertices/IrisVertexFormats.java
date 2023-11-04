@@ -1,9 +1,9 @@
 package net.coderbot.iris.vertices;
 
 import com.google.common.collect.ImmutableList;
-import net.coderbot.iris.compat.mojang.DefaultVertexFormat;
-import net.coderbot.iris.compat.mojang.VertexFormat;
-import net.coderbot.iris.compat.mojang.VertexFormatElement;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
 
 public class IrisVertexFormats {
 	public static final VertexFormatElement ENTITY_ELEMENT;

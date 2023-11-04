@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import net.coderbot.iris.compat.mojang.Constants;
+import com.gtnewhorizons.angelica.compat.mojang.Constants;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;

@@ -1,10 +1,10 @@
 package net.coderbot.iris.pipeline;
 
 import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
-import net.coderbot.iris.compat.mojang.Camera;
-import net.coderbot.iris.compat.mojang.GameRenderer;
-import net.coderbot.iris.compat.mojang.InteractionHand;
-import net.coderbot.iris.compat.mojang.PoseStack;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.GameRenderer;
+import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
+import com.gtnewhorizons.angelica.compat.mojang.PoseStack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLiving;

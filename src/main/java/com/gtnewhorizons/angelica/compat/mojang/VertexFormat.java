@@ -1,4 +1,4 @@
-package net.coderbot.iris.compat.mojang;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;

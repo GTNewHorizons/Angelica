@@ -1,10 +1,10 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import net.coderbot.iris.compat.mojang.BufferBuilder;
-import net.coderbot.iris.compat.mojang.DrawState;
-import net.coderbot.iris.compat.mojang.MultiBufferSource;
-import net.coderbot.iris.compat.mojang.RenderType;
-import net.coderbot.iris.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.DrawState;
+import com.gtnewhorizons.angelica.compat.mojang.MultiBufferSource;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
