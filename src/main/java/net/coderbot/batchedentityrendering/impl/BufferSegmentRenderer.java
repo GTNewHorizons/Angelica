@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import net.coderbot.iris.compat.mojang.BufferBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
 
 public class BufferSegmentRenderer {
     private final BufferBuilder fakeBufferBuilder;

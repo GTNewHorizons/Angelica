@@ -1,7 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import net.coderbot.iris.compat.mojang.InteractionHand;
+import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.shaderpack.IdMap;

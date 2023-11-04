@@ -1,6 +1,6 @@
 package net.coderbot.iris.layer;
 
-import net.coderbot.iris.compat.mojang.RenderStateShard;
+import com.gtnewhorizons.angelica.compat.mojang.RenderStateShard;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 
 public final class EntityRenderStateShard extends RenderStateShard {

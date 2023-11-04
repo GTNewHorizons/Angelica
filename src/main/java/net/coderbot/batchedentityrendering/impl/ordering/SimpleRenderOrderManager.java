@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 
 import java.util.LinkedHashSet;
 

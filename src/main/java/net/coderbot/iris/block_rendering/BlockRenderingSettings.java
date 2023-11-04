@@ -2,7 +2,7 @@ package net.coderbot.iris.block_rendering;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import org.jetbrains.annotations.Nullable;

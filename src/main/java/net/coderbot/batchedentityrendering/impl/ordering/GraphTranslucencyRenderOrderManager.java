@@ -10,7 +10,7 @@ import de.odysseus.ithaka.digraph.util.fas.SimpleFeedbackArcSetProvider;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 
 import java.util.ArrayList;
 import java.util.EnumMap;

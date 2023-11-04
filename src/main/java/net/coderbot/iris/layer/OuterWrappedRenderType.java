@@ -1,8 +1,8 @@
 package net.coderbot.iris.layer;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import net.coderbot.iris.compat.mojang.RenderStateShard;
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderStateShard;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;

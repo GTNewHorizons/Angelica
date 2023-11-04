@@ -1,4 +1,4 @@
-package net.coderbot.iris.compat.mojang;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.coderbot.batchedentityrendering.impl.BufferBuilderExt;
 import org.apache.commons.lang3.tuple.Pair;

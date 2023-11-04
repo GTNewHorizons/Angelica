@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.pbr.loader;
 
-import net.coderbot.iris.compat.mojang.TextureAtlas;
+import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
 import net.coderbot.iris.texture.mipmap.ChannelMipmapGenerator;
 import net.coderbot.iris.texture.mipmap.LinearBlendFunction;
 import net.minecraft.client.resources.IResourceManager;

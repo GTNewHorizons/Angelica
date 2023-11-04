@@ -1,11 +1,11 @@
 package net.coderbot.iris.shadow;
 
-import net.coderbot.iris.compat.mojang.PoseStack;
+import com.gtnewhorizons.angelica.compat.mojang.PoseStack;
 import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
 
-import static net.coderbot.iris.compat.mojang.Constants.DEGREES_TO_RADIANS;
+import static com.gtnewhorizons.angelica.compat.mojang.Constants.DEGREES_TO_RADIANS;
 
 public class ShadowMatrices {
 	private static final float NEAR = 0.05f;

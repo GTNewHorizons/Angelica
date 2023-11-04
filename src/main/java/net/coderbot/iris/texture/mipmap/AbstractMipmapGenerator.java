@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.mipmap;
 
-import net.coderbot.iris.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 
 public abstract class AbstractMipmapGenerator implements CustomMipmapGenerator {
 	@Override

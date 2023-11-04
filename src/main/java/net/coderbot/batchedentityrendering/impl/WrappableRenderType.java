@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import net.coderbot.iris.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderType;
 
 public interface WrappableRenderType {
 	/**

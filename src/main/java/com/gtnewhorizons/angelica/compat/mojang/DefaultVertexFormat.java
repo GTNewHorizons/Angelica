@@ -1,8 +1,8 @@
-package net.coderbot.iris.compat.mojang;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
-import net.coderbot.iris.compat.mojang.VertexFormatElement.Type;
-import net.coderbot.iris.compat.mojang.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Type;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Usage;
 
 public class DefaultVertexFormat {
 
