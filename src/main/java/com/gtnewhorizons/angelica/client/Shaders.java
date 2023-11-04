@@ -2082,19 +2082,13 @@ public class Shaders {
                     if (shadowMipmapEnabled[0]) {
                         GL13.glActiveTexture(GL13.GL_TEXTURE4);
                         GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-                        GL11.glTexParameteri(
-                                GL11.GL_TEXTURE_2D,
-                                GL11.GL_TEXTURE_MIN_FILTER,
-                                shadowFilterNearest[0] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
+                        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, shadowFilterNearest[0] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
                     }
                     if (usedShadowDepthBuffers >= 2) {
                         if (shadowMipmapEnabled[1]) {
                             GL13.glActiveTexture(GL13.GL_TEXTURE5);
                             GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-                            GL11.glTexParameteri(
-                                    GL11.GL_TEXTURE_2D,
-                                    GL11.GL_TEXTURE_MIN_FILTER,
-                                    shadowFilterNearest[1] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
+                            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, shadowFilterNearest[1] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
                         }
                     }
                     GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -2103,19 +2097,13 @@ public class Shaders {
                     if (shadowColorMipmapEnabled[0]) {
                         GL13.glActiveTexture(GL13.GL_TEXTURE13);
                         GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-                        GL11.glTexParameteri(
-                                GL11.GL_TEXTURE_2D,
-                                GL11.GL_TEXTURE_MIN_FILTER,
-                                shadowColorFilterNearest[0] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
+                        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, shadowColorFilterNearest[0] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
                     }
                     if (usedShadowColorBuffers >= 2) {
                         if (shadowColorMipmapEnabled[1]) {
                             GL13.glActiveTexture(GL13.GL_TEXTURE14);
                             GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-                            GL11.glTexParameteri(
-                                    GL11.GL_TEXTURE_2D,
-                                    GL11.GL_TEXTURE_MIN_FILTER,
-                                    shadowColorFilterNearest[1] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
+                            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, shadowColorFilterNearest[1] ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
                         }
                     }
                     GL13.glActiveTexture(GL13.GL_TEXTURE0);
