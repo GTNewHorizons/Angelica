@@ -12,10 +12,10 @@ import java.util.HashSet;
 @Mixin(BlockUpdateHandler$.class)
 public class MixinBlockUpdateHandler {
     @Redirect(method = "getActiveChunkSet", at = @At(value = "INVOKE", target = "Ljava/util/HashSet;add(Ljava/lang/Object;)Z"), remap = false)
-    private boolean addChunkIfLoaded(HashSet chunkSet, Object o, World world) {
+    private boolean addChunkIfLoaded(HashSet<ChunkCoordIntPair> chunkSet, Object o, World world) {
         ChunkCoordIntPair pair = (ChunkCoordIntPair)o;
         if(world.getChunkProvider().chunkExists(pair.chunkXPos, pair.chunkZPos))
-            return chunkSet.add(o);
+            return chunkSet.add(pair);
         return false;
     }
 }

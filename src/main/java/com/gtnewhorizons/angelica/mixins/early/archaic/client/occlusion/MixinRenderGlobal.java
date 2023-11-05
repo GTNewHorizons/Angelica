@@ -54,12 +54,12 @@ public abstract class MixinRenderGlobal {
     }
 
     @Redirect(method = "loadRenderers", at = @At(value = "INVOKE", target = "Ljava/util/List;clear()V", ordinal = 0))
-    private void clearRendererUpdateQueue(List instance) {
+    private void clearRendererUpdateQueue(List<WorldRenderer> instance) {
         OcclusionHelpers.renderer.clearRendererUpdateQueue(instance);
     }
 
     @Redirect(method = { "loadRenderers", "markRenderersForNewPosition" }, at = @At(value = "INVOKE", target = "Ljava/util/List;add(Ljava/lang/Object;)Z", ordinal = 0))
-    private boolean sortAndAddRendererUpdateQueue(List instance, Object renderer) {
+    private boolean sortAndAddRendererUpdateQueue(List<WorldRenderer> instance, Object renderer) {
         return OcclusionHelpers.renderer.sortAndAddRendererUpdateQueue(instance, renderer);
     }
 
@@ -123,7 +123,6 @@ public abstract class MixinRenderGlobal {
      * @reason occlusion culling
      */
     @Overwrite
-    @SuppressWarnings("unchecked")
     public int renderSortedRenderers(int start, int end, int pass, double tick) {
         return OcclusionHelpers.renderer.sortAndRender(start, end, pass, tick);
     }

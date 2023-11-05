@@ -18,7 +18,7 @@ public abstract class MixinTessellator_Debug {
     }
 
     @Inject(method = {"getVertexState", "draw"}, at = @At("HEAD"))
-    private void verifyThreadIsCorrect(CallbackInfoReturnable cir) {
+    private void verifyThreadIsCorrect(CallbackInfoReturnable<?> cir) {
         verifyThreadIsCorrect();
     }
 

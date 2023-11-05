@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.archaic.common.lighting;
 
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.IChunkProvider;
@@ -17,7 +18,7 @@ import java.util.Set;
 
 @Mixin(value = World.class, priority = 999)
 public abstract class MixinWorld_Lighting implements ILightingEngineProvider {
-    @Shadow protected Set activeChunkSet;
+    @Shadow protected Set<ChunkCoordIntPair> activeChunkSet;
 
     @Shadow public abstract IChunkProvider getChunkProvider();
 

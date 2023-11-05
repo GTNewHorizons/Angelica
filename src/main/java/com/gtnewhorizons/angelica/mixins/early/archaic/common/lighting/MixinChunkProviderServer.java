@@ -14,7 +14,7 @@ import java.util.Set;
 
 @Mixin(ChunkProviderServer.class)
 public abstract class MixinChunkProviderServer {
-    @Shadow private Set chunksToUnload;
+    @Shadow private Set<Long> chunksToUnload;
 
     @Shadow public WorldServer worldObj;
 
