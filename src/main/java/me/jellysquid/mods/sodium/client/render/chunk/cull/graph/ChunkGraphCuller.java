@@ -1,19 +1,19 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
+import cofh.lib.util.helpers.MathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.chunk.ChunkOcclusionData;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,7 +47,7 @@ public class ChunkGraphCuller implements ChunkCuller {
             ChunkGraphNode node = queue.getNode(i);
             short cullData = node.computeQueuePop();
 
-            for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+            for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
                 if (useOcclusionCulling && (cullData & (1 << dir.ordinal())) == 0) {
                     continue;
                 }
@@ -73,7 +73,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     private void initSearch(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {
         this.activeFrame = frame;
         this.frustum = frustum;
-        this.useOcclusionCulling = MinecraftClient.getInstance().chunkCullingEnabled;
+        this.useOcclusionCulling = Minecraft.getMinecraft().chunkCullingEnabled;
 
         this.visible.clear();
 
@@ -127,7 +127,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     }
 
 
-    private void bfsEnqueue(ChunkGraphNode parent, ChunkGraphNode node, Direction flow, short parentalData) {
+    private void bfsEnqueue(ChunkGraphNode parent, ChunkGraphNode node, ForgeDirection flow, short parentalData) {
         if (node.getLastVisibleFrame() == this.activeFrame) {
             node.updateCullingState(flow, parentalData);
             return;
@@ -145,7 +145,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     }
 
     private void connectNeighborNodes(ChunkGraphNode node) {
-        for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
             ChunkGraphNode adj = this.findAdjacentNode(node, dir);
 
             if (adj != null) {
@@ -157,7 +157,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     }
 
     private void disconnectNeighborNodes(ChunkGraphNode node) {
-        for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
             ChunkGraphNode adj = node.getConnectedNode(dir);
 
             if (adj != null) {
@@ -168,8 +168,8 @@ public class ChunkGraphCuller implements ChunkCuller {
         }
     }
 
-    private ChunkGraphNode findAdjacentNode(ChunkGraphNode node, Direction dir) {
-        return this.getNode(node.getChunkX() + dir.getOffsetX(), node.getChunkY() + dir.getOffsetY(), node.getChunkZ() + dir.getOffsetZ());
+    private ChunkGraphNode findAdjacentNode(ChunkGraphNode node, ForgeDirection dir) {
+        return this.getNode(node.getChunkX() + dir.offsetX, node.getChunkY() + dir.offsetY, node.getChunkZ() + dir.offsetZ);
     }
 
     private ChunkGraphNode getNode(int x, int y, int z) {

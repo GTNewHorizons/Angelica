@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.gl.arena.GlBufferArena;
@@ -35,10 +34,11 @@ import me.jellysquid.mods.sodium.client.render.chunk.region.ChunkRegion;
 import me.jellysquid.mods.sodium.client.render.chunk.region.ChunkRegionManager;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkRenderShaderBackend;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderBindingPoints;
-import net.minecraft.util.Formatting;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.Util;
-import org.lwjgl.opengl.GL20C;
+import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -186,14 +186,10 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
     private GlTessellation createRegionTessellation(CommandList commandList, GlBuffer buffer) {
         return commandList.createTessellation(GlPrimitiveType.QUADS, new TessellationBinding[] {
                 new TessellationBinding(buffer, new GlVertexAttributeBinding[] {
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION,
-                                this.vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR,
-                                this.vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.TEX_COORD,
-                                this.vertexFormat.getAttribute(ChunkMeshAttribute.TEXTURE)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.LIGHT_COORD,
-                                this.vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT))
+                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, this.vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
+                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, this.vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
+                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.TEX_COORD, this.vertexFormat.getAttribute(ChunkMeshAttribute.TEXTURE)),
+                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.LIGHT_COORD, this.vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT))
                 }, false),
                 new TessellationBinding(this.uniformBuffer, new GlVertexAttributeBinding[] {
                         new GlVertexAttributeBinding(ChunkShaderBindingPoints.MODEL_OFFSET,
@@ -224,18 +220,17 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
             commandList.uploadData(this.commandBuffer, this.commandClientBufferBuilder.getBuffer());
         }
 
-        long pointer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBufferAddress() : 0L;
+        final ByteBuffer buffer =  this.commandBuffer == null ? this.commandClientBufferBuilder.getBuffer() : null;
 
         for (ChunkRegion<?> region : this.pendingBatches) {
             ChunkDrawCallBatcher batch = region.getDrawBatcher();
 
             if (!batch.isEmpty()) {
 	            try (DrawCommandList drawCommandList = commandList.beginTessellating(region.getTessellation())) {
-	                drawCommandList.multiDrawArraysIndirect(pointer, batch.getCount(), 0 /* tightly packed */);
+	                drawCommandList.multiDrawArraysIndirect(buffer, batch.getCount(), 0 /* tightly packed */);
 	            }
             }
 
-            pointer += batch.getArrayLength();
         }
 
         this.pendingBatches.clear();
@@ -329,7 +324,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
 
             for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
                 if ((visible & mask) != 0) {
-                    long part = state.getModelPart(i);
+                    final long part = state.getModelPart(i);
 
                     batch.addIndirectDrawCall(BufferSlice.unpackStart(part), BufferSlice.unpackLength(part), index, 1);
                 }
@@ -400,12 +395,12 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
     private static boolean isWindowsIntelDriver() {
         // We only care about Windows
         // The open-source drivers on Linux are not known to have driver bugs with indirect command buffers
-        if (Util.getOperatingSystem() != Util.OperatingSystem.WINDOWS) {
+        if (Util.getOSType() != Util.EnumOS.WINDOWS) {
             return false;
         }
 
         // Check to see if the GPU vendor is Intel
-        return Objects.equals(GlStateManager.getString(GL20C.GL_VENDOR), INTEL_VENDOR_NAME);
+        return Objects.equals(GL11.glGetString(GL11.GL_VENDOR), INTEL_VENDOR_NAME);
     }
 
     /**
@@ -418,7 +413,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
             return false;
         }
 
-        String version = GlStateManager.getString(GL20C.GL_VERSION);
+        final String version = GL11.glGetString(GL11.GL_VERSION);
 
         // The returned version string may be null in the case of an error
         if (version == null) {
@@ -446,8 +441,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
     public List<String> getDebugStrings() {
         List<String> list = new ArrayList<>();
         list.add(String.format("Active Buffers: %s", this.bufferManager.getAllocatedRegionCount()));
-        list.add(String.format("Submission Mode: %s", this.commandBuffer != null ?
-                Formatting.AQUA + "Buffer" : Formatting.LIGHT_PURPLE + "Client Memory"));
+        list.add(String.format("Submission Mode: %s", this.commandBuffer != null ? EnumChatFormatting.AQUA + "Buffer" : EnumChatFormatting.LIGHT_PURPLE + "Client Memory"));
 
         return list;
     }

@@ -1,10 +1,11 @@
 package me.jellysquid.mods.sodium.client.gl.state;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import me.jellysquid.mods.sodium.client.gl.array.GlVertexArray;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBuffer;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBufferTarget;
-import org.lwjgl.opengl.GL30C;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL30;
 
 import java.util.Arrays;
 
@@ -29,7 +30,7 @@ public class GlStateTracker {
         int prevBuffer = this.bufferState[target.ordinal()];
 
         if (prevBuffer == UNASSIGNED_HANDLE) {
-            this.bufferRestoreState[target.ordinal()] = GlStateManager.getInteger(target.getBindingParameter());
+            this.bufferRestoreState[target.ordinal()] = GL11.glGetInteger(target.getBindingParameter());
         }
 
         this.bufferState[target.ordinal()] = buffer;
@@ -45,7 +46,7 @@ public class GlStateTracker {
         int prevArray = this.vertexArrayState;
 
         if (prevArray == UNASSIGNED_HANDLE) {
-            this.vertexArrayRestoreState = GlStateManager.getInteger(GL30C.GL_VERTEX_ARRAY_BINDING);
+            this.vertexArrayRestoreState = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         }
 
         this.vertexArrayState = array;
@@ -55,15 +56,13 @@ public class GlStateTracker {
 
     public void applyRestoreState() {
         for (int i = 0; i < GlBufferTarget.COUNT; i++) {
-            if (this.bufferState[i] != this.bufferRestoreState[i] &&
-                    this.bufferRestoreState[i] != UNASSIGNED_HANDLE) {
-            	GlStateManager.bindBuffers(GlBufferTarget.VALUES[i].getTargetParameter(), this.bufferRestoreState[i]);
+            if (this.bufferState[i] != this.bufferRestoreState[i] && this.bufferRestoreState[i] != UNASSIGNED_HANDLE) {
+            	GL15.glBindBuffer(GlBufferTarget.VALUES[i].getTargetParameter(), this.bufferRestoreState[i]);
             }
         }
 
-        if (this.vertexArrayState != this.vertexArrayRestoreState &&
-                this.vertexArrayRestoreState != UNASSIGNED_HANDLE) {
-            GL30C.glBindVertexArray(this.vertexArrayRestoreState);
+        if (this.vertexArrayState != this.vertexArrayRestoreState && this.vertexArrayRestoreState != UNASSIGNED_HANDLE) {
+            GL30.glBindVertexArray(this.vertexArrayRestoreState);
         }
     }
 

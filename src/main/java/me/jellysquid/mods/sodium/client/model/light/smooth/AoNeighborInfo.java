@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * The neighbor information for each face of a block, used when performing smooth lighting in order to calculate
  * the occlusion of each corner.
  */
 enum AoNeighborInfo {
-    DOWN(new Direction[] { Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH }, 0.5F) {
+    DOWN(new ForgeDirection[] { ForgeDirection.WEST, ForgeDirection.EAST, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.5F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -37,7 +37,7 @@ enum AoNeighborInfo {
             return y;
         }
     },
-    UP(new Direction[] { Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH }, 1.0F) {
+    UP(new ForgeDirection[] { ForgeDirection.EAST, ForgeDirection.WEST, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 1.0F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -67,7 +67,7 @@ enum AoNeighborInfo {
             return 1.0f - y;
         }
     },
-    NORTH(new Direction[] { Direction.UP, Direction.DOWN, Direction.EAST, Direction.WEST }, 0.8F) {
+    NORTH(new ForgeDirection[] { ForgeDirection.UP, ForgeDirection.DOWN, ForgeDirection.EAST, ForgeDirection.WEST }, 0.8F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = 1.0f - x;
@@ -97,7 +97,7 @@ enum AoNeighborInfo {
             return z;
         }
     },
-    SOUTH(new Direction[] { Direction.WEST, Direction.EAST, Direction.DOWN, Direction.UP }, 0.8F) {
+    SOUTH(new ForgeDirection[] { ForgeDirection.WEST, ForgeDirection.EAST, ForgeDirection.DOWN, ForgeDirection.UP }, 0.8F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = y;
@@ -127,7 +127,7 @@ enum AoNeighborInfo {
             return 1.0f - z;
         }
     },
-    WEST(new Direction[] { Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH }, 0.6F) {
+    WEST(new ForgeDirection[] { ForgeDirection.UP, ForgeDirection.DOWN, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.6F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -157,7 +157,7 @@ enum AoNeighborInfo {
             return x;
         }
     },
-    EAST(new Direction[] { Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH }, 0.6F) {
+    EAST(new ForgeDirection[] { ForgeDirection.DOWN, ForgeDirection.UP, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.6F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -192,7 +192,7 @@ enum AoNeighborInfo {
      * The direction of each corner block from this face, which can be retrieved by offsetting the position of the origin
      * block by the direction vector.
      */
-    public final Direction[] faces;
+    public final ForgeDirection[] faces;
 
     /**
      * The constant brightness modifier for this face. This data exists to emulate the results of the OpenGL lighting
@@ -200,7 +200,7 @@ enum AoNeighborInfo {
      */
     public final float strength;
 
-    AoNeighborInfo(Direction[] directions, float strength) {
+    AoNeighborInfo(ForgeDirection[] directions, float strength) {
         this.faces = directions;
         this.strength = strength;
     }
@@ -243,7 +243,7 @@ enum AoNeighborInfo {
     /**
      * @return Returns the {@link AoNeighborInfo} which corresponds with the specified direction
      */
-    public static AoNeighborInfo get(Direction direction) {
+    public static AoNeighborInfo get(ForgeDirection direction) {
         return VALUES[direction.getId()];
     }
 }

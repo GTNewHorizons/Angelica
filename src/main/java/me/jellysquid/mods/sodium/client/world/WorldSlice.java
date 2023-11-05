@@ -1,5 +1,14 @@
 package me.jellysquid.mods.sodium.client.world;
 
+import com.gtnewhorizons.angelica.compat.mojang.Biome;
+import com.gtnewhorizons.angelica.compat.mojang.BiomeAccess;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
+import com.gtnewhorizons.angelica.compat.mojang.LightType;
+import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeCache;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeColorCache;
@@ -8,20 +17,14 @@ import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
 import me.jellysquid.mods.sodium.client.world.cloned.PackedIntegerArrayExtended;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.util.collection.PackedIntegerArray;
-import net.minecraft.util.math.*;
-import net.minecraft.world.BlockRenderView;
-import net.minecraft.world.LightType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.init.Blocks;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.source.BiomeAccess;
-import net.minecraft.world.chunk.light.LightingProvider;
-import net.minecraft.world.level.ColorResolver;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.gen.structure.StructureBoundingBox;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.Map;
 
@@ -62,7 +65,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     private static final int SECTION_TABLE_ARRAY_SIZE = TABLE_LENGTH * TABLE_LENGTH * TABLE_LENGTH;
 
     // Fallback BlockState to use if none were available in the array
-    private static final BlockState NULL_BLOCK_STATE = Blocks.AIR.getDefaultState();
+    private static final BlockState NULL_BLOCK_STATE = Blocks.air.getDefaultState();
 
     // The world this slice has copied data from
     private final World world;
@@ -94,8 +97,8 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     private ChunkSectionPos origin;
 
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
-        WorldChunk chunk = world.getChunk(origin.getX(), origin.getZ());
-        ChunkSection section = chunk.getSectionArray()[origin.getY()];
+        Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
+        ChunkSection section = chunk.getSectionArray()[origin.y];
 
         // If the chunk section is absent or empty, simply terminate now. There will never be anything in this chunk
         // section to render, so we need to signal that a chunk render task shouldn't created. This saves a considerable
@@ -104,7 +107,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
             return null;
         }
 
-        BlockBox volume = new BlockBox(origin.getMinX() - NEIGHBOR_BLOCK_RADIUS,
+        StructureBoundingBox volume = new StructureBoundingBox(origin.getMinX() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMinY() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMinZ() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMaxX() + NEIGHBOR_BLOCK_RADIUS,
@@ -112,13 +115,13 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
                 origin.getMaxZ() + NEIGHBOR_BLOCK_RADIUS);
 
         // The min/max bounds of the chunks copied by this slice
-        final int minChunkX = origin.getX() - NEIGHBOR_CHUNK_RADIUS;
-        final int minChunkY = origin.getY() - NEIGHBOR_CHUNK_RADIUS;
-        final int minChunkZ = origin.getZ() - NEIGHBOR_CHUNK_RADIUS;
+        final int minChunkX = origin.x - NEIGHBOR_CHUNK_RADIUS;
+        final int minChunkY = origin.y - NEIGHBOR_CHUNK_RADIUS;
+        final int minChunkZ = origin.z - NEIGHBOR_CHUNK_RADIUS;
 
-        final int maxChunkX = origin.getX() + NEIGHBOR_CHUNK_RADIUS;
-        final int maxChunkY = origin.getY() + NEIGHBOR_CHUNK_RADIUS;
-        final int maxChunkZ = origin.getZ() + NEIGHBOR_CHUNK_RADIUS;
+        final int maxChunkX = origin.x + NEIGHBOR_CHUNK_RADIUS;
+        final int maxChunkY = origin.y + NEIGHBOR_CHUNK_RADIUS;
+        final int maxChunkZ = origin.z + NEIGHBOR_CHUNK_RADIUS;
 
         ClonedChunkSection[] sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
 
@@ -162,9 +165,9 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
         this.biomeColorCaches.clear();
 
-        this.baseX = (this.origin.getX() - NEIGHBOR_CHUNK_RADIUS) << 4;
-        this.baseY = (this.origin.getY() - NEIGHBOR_CHUNK_RADIUS) << 4;
-        this.baseZ = (this.origin.getZ() - NEIGHBOR_CHUNK_RADIUS) << 4;
+        this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;
+        this.baseY = (this.origin.y - NEIGHBOR_CHUNK_RADIUS) << 4;
+        this.baseZ = (this.origin.z - NEIGHBOR_CHUNK_RADIUS) << 4;
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
@@ -179,7 +182,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         }
     }
 
-    private void unpackBlockData(BlockState[] states, ClonedChunkSection section, BlockBox box) {
+    private void unpackBlockData(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
         if (this.origin.equals(section.getPosition()))  {
             this.unpackBlockDataZ(states, section);
         } else {
@@ -187,7 +190,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         }
     }
 
-    private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, BlockBox box) {
+    private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
         PackedIntegerArray intArray = section.getBlockData();
         ClonedPalette<BlockState> palette = section.getBlockPalette();
 
@@ -232,7 +235,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     @Override
     public BlockState getBlockState(BlockPos pos) {
-        return this.getBlockState(pos.getX(), pos.getY(), pos.getZ());
+        return this.getBlockState(pos.x, pos.y, pos.z);
     }
 
     public BlockState getBlockState(int x, int y, int z) {
@@ -251,12 +254,11 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     @Override
     public FluidState getFluidState(BlockPos pos) {
-        return this.getBlockState(pos)
-                .getFluidState();
+        return this.getBlockState(pos).getFluidState();
     }
 
     @Override
-    public float getBrightness(Direction direction, boolean shaded) {
+    public float getBrightness(ForgeDirection direction, boolean shaded) {
         return this.world.getBrightness(direction, shaded);
     }
 
@@ -266,11 +268,11 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     }
 
     @Override
-    public BlockEntity getBlockEntity(BlockPos pos) {
-        return this.getBlockEntity(pos.getX(), pos.getY(), pos.getZ());
+    public TileEntity getBlockEntity(BlockPos pos) {
+        return this.getBlockEntity(pos.x, pos.y, pos.z);
     }
 
-    public BlockEntity getBlockEntity(int x, int y, int z) {
+    public TileEntity getBlockEntity(int x, int y, int z) {
         int relX = x - this.baseX;
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
@@ -301,9 +303,9 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     @Override
     public int getLightLevel(LightType type, BlockPos pos) {
-        int relX = pos.getX() - this.baseX;
-        int relY = pos.getY() - this.baseY;
-        int relZ = pos.getZ() - this.baseZ;
+        int relX = pos.x - this.baseX;
+        int relY = pos.y - this.baseY;
+        int relZ = pos.z - this.baseZ;
 
         return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
                 .getLightLevel(type, relX & 15, relY & 15, relZ & 15);
@@ -349,7 +351,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
         BiomeCache cache = this.biomeCaches[index];
         return cache != null ? cache
-                .getBiome(this, x, relY >> 4, z) : MinecraftClient.getInstance().world.getBiome(new BlockPos(x, y, z));
+                .getBiome(this, x, relY >> 4, z) : Minecraft.getMinecraft().theWorld.getBiome(new BlockPos(x, y, z));
     }
 
     public ChunkSectionPos getOrigin() {

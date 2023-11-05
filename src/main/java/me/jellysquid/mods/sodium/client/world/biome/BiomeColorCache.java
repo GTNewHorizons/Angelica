@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.world.biome;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.level.ColorResolver;
+import net.minecraft.client.Minecraft;
 
 import java.util.Arrays;
 
@@ -30,7 +30,7 @@ public class BiomeColorCache {
     public BiomeColorCache(ColorResolver resolver, WorldSlice slice) {
         this.resolver = resolver;
         this.slice = slice;
-        this.radius = MinecraftClient.getInstance().options.biomeBlendRadius;
+        this.radius = Minecraft.getMinecraft().options.biomeBlendRadius;
 
         ChunkSectionPos origin = this.slice.getOrigin();
 
@@ -51,14 +51,14 @@ public class BiomeColorCache {
     }
 
     public int getBlendedColor(BlockPos pos) {
-        int x2 = pos.getX() - this.blendedColorsMinX;
-        int z2 = pos.getZ() - this.blendedColorsMinZ;
+        int x2 = pos.x - this.blendedColorsMinX;
+        int z2 = pos.z - this.blendedColorsMinZ;
 
         int index = (x2 * BLENDED_COLORS_DIM) + z2;
         int color = this.blendedColors[index];
 
         if (color == -1) {
-            this.blendedColors[index] = color = this.calculateBlendedColor(pos.getX(), pos.getZ());
+            this.blendedColors[index] = color = this.calculateBlendedColor(pos.x, pos.getZ());
         }
 
         return color;

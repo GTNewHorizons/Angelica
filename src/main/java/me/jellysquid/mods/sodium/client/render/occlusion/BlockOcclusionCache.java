@@ -1,13 +1,12 @@
 package me.jellysquid.mods.sodium.client.render.occlusion;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.BlockView;
+import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
+import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
 import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.function.BooleanBiFunction;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.BlockView;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class BlockOcclusionCache {
     private static final byte UNCACHED_VALUE = (byte) 127;
@@ -28,9 +27,9 @@ public class BlockOcclusionCache {
      * @param facing The facing direction of the side to check
      * @return True if the block side facing {@param dir} is not occluded, otherwise false
      */
-    public boolean shouldDrawSide(BlockState selfState, BlockView view, BlockPos pos, Direction facing) {
+    public boolean shouldDrawSide(BlockState selfState, BlockView view, BlockPos pos, ForgeDirection facing) {
         BlockPos.Mutable adjPos = this.cpos;
-        adjPos.set(pos.getX() + facing.getOffsetX(), pos.getY() + facing.getOffsetY(), pos.getZ() + facing.getOffsetZ());
+        adjPos.set(pos.x + facing.offsetX, pos.y + facing.offsetY, pos.z + facing.offsetZ);
 
         BlockState adjState = view.getBlockState(adjPos);
 
@@ -80,7 +79,8 @@ public class BlockOcclusionCache {
             return cached == 1;
         }
 
-        boolean ret = VoxelShapes.matchesAnywhere(selfShape, adjShape, BooleanBiFunction.ONLY_FIRST);
+        // TODO: Sodium
+        boolean ret = VoxelShapes.matchesAnywhere(selfShape, adjShape, null /*BooleanBiFunction.ONLY_FIRST*/);
 
         this.map.put(cache.copy(), (byte) (ret ? 1 : 0));
 

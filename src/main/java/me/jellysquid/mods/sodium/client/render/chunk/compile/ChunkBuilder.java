@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
+import cofh.lib.util.helpers.MathHelper;
+import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import me.jellysquid.mods.sodium.client.compat.forge.ForgeBlockRenderer;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -18,13 +19,12 @@ import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
 import me.jellysquid.mods.sodium.common.util.collections.DequeDrain;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -52,7 +52,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
     private ClonedChunkSectionCache sectionCache;
 
     private World world;
-    private Vec3d cameraPosition = Vec3d.ZERO;
+    private Vector3d cameraPosition = new Vector3d();
     private BlockRenderPassManager renderPassManager;
 
     private final int limitThreads;
@@ -86,7 +86,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             throw new IllegalStateException("Threads are still alive while in the STOPPED state");
         }
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getMinecraft();
 
         for (int i = 0; i < this.limitThreads; i++) {
             ChunkBuildBuffers buffers = new ChunkBuildBuffers(this.vertexType, this.renderPassManager);
@@ -186,13 +186,13 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * Sets the current camera position of the player used for task prioritization.
      */
     public void setCameraPosition(double x, double y, double z) {
-        this.cameraPosition = new Vec3d(x, y, z);
+        this.cameraPosition = new Vector3d(x, y, z);
     }
 
     /**
      * Returns the current camera position of the player used for task prioritization.
      */
-    public Vec3d getCameraPosition() {
+    public Vector3d getCameraPosition() {
         return this.cameraPosition;
     }
 
@@ -210,7 +210,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * @param world The world instance
      * @param renderPassManager The render pass manager used for the world
      */
-    public void init(ClientWorld world, BlockRenderPassManager renderPassManager) {
+    public void init(WorldClient world, BlockRenderPassManager renderPassManager) {
         if (world == null) {
             throw new NullPointerException("World is null");
         }

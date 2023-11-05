@@ -1,9 +1,10 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer;
 
+import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.LineVertexSink;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
-import net.minecraft.client.render.VertexConsumer;
+
 
 public class LineVertexWriterFallback extends VertexWriterFallback implements LineVertexSink {
     public LineVertexWriterFallback(VertexConsumer consumer) {

@@ -1,9 +1,9 @@
 package net.coderbot.iris.layer;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderStateShard;
+import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 
-public final class BlockEntityRenderStateShard extends RenderStateShard {
+public final class BlockEntityRenderStateShard extends RenderPhase {
 	private static final BlockEntityRenderStateShard UNIDENTIFIED = new BlockEntityRenderStateShard(-1);
 
 	private final int entityId;

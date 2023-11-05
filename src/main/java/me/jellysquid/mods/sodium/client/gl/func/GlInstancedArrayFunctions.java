@@ -1,14 +1,14 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
 import org.lwjgl.opengl.ARBInstancedArrays;
-import org.lwjgl.opengl.GL33C;
-import org.lwjgl.opengl.GLCapabilities;
+import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.GL33;
 
 public enum GlInstancedArrayFunctions {
     CORE {
         @Override
         public void glVertexAttribDivisor(int index, int divisor) {
-            GL33C.glVertexAttribDivisor(index, divisor);
+            GL33.glVertexAttribDivisor(index, divisor);
         }
     },
     ARB {
@@ -24,7 +24,7 @@ public enum GlInstancedArrayFunctions {
         }
     };
 
-    public static GlInstancedArrayFunctions load(GLCapabilities capabilities) {
+    public static GlInstancedArrayFunctions load(ContextCapabilities capabilities) {
         if (capabilities.OpenGL33) {
             return CORE;
         } else if (capabilities.GL_ARB_instanced_arrays) {

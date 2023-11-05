@@ -1,17 +1,17 @@
 package net.coderbot.batchedentityrendering.impl.wrappers;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.Optional;
 
-public class TaggingRenderTypeWrapper extends RenderType implements WrappableRenderType {
+public class TaggingRenderTypeWrapper extends RenderLayer implements WrappableRenderType {
     private final int tag;
-    private final RenderType wrapped;
+    private final RenderLayer wrapped;
 
-    public TaggingRenderTypeWrapper(String name, RenderType wrapped, int tag) {
+    public TaggingRenderTypeWrapper(String name, RenderLayer wrapped, int tag) {
         super(name, wrapped.format(), wrapped.mode(), wrapped.bufferSize(),
                 wrapped.affectsCrumbling(), shouldSortOnUpload(wrapped), wrapped::setupRenderState, wrapped::clearRenderState);
 
@@ -20,12 +20,12 @@ public class TaggingRenderTypeWrapper extends RenderType implements WrappableRen
     }
 
     @Override
-    public RenderType unwrap() {
+    public RenderLayer unwrap() {
         return this.wrapped;
     }
 
     @Override
-    public Optional<RenderType> outline() {
+    public Optional<RenderLayer> outline() {
         return this.wrapped.outline();
     }
 
@@ -61,7 +61,7 @@ public class TaggingRenderTypeWrapper extends RenderType implements WrappableRen
         return "tagged(" +tag+ "):" + this.wrapped.toString();
     }
 
-    private static boolean shouldSortOnUpload(RenderType type) {
+    private static boolean shouldSortOnUpload(RenderLayer type) {
         return true;
         // TODO: Iris
 //        return ((RenderTypeAccessor) type).shouldSortOnUpload();

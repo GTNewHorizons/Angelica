@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
@@ -13,9 +14,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheLocal;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
-import net.minecraft.client.util.GlAllocationUtils;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import org.joml.Vector3d;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -30,9 +29,9 @@ public class ChunkRenderTranslucencySortTask<T extends ChunkGraphicsState> exten
 
     private final ChunkRenderContainer<T> render;
     private final BlockPos offset;
-    private final Vec3d camera;
+    private final Vector3d camera;
 
-    public ChunkRenderTranslucencySortTask(ChunkRenderContainer<T> render, BlockPos offset, Vec3d camera) {
+    public ChunkRenderTranslucencySortTask(ChunkRenderContainer<T> render, BlockPos offset, Vector3d camera) {
         this.render = render;
         this.offset = offset;
         this.camera = camera;

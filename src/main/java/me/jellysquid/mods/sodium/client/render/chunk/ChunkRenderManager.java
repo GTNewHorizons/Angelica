@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -30,15 +32,11 @@ import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Vector3d;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -82,10 +80,10 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private final ChunkRenderList<T>[] chunkRenderLists = new ChunkRenderList[BlockRenderPass.COUNT];
     private final ObjectList<ChunkRenderContainer<T>> tickableChunks = new ObjectArrayList<>();
 
-    private final ObjectList<BlockEntity> visibleBlockEntities = new ObjectArrayList<>();
+    private final ObjectList<TileEntity> visibleBlockEntities = new ObjectArrayList<>();
 
     private final SodiumWorldRenderer renderer;
-    private final ClientWorld world;
+    private final WorldClient world;
 
     private final ChunkCuller culler;
     private final boolean useBlockFaceCulling;
@@ -104,7 +102,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean alwaysDeferChunkUpdates;
 
-    public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, BlockRenderPassManager renderPassManager, ClientWorld world, int renderDistance) {
+    public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, BlockRenderPassManager renderPassManager, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
         this.world = world;
@@ -136,7 +134,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void setup(Camera camera) {
-        Vec3d cameraPos = camera.getPos();
+        Vector3d cameraPos = camera.getPos();
 
         this.cameraX = (float) cameraPos.x;
         this.cameraY = (float) cameraPos.y;
@@ -290,7 +288,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addEntitiesToRenderLists(ChunkRenderContainer<T> render) {
-        Collection<BlockEntity> blockEntities = render.getData().getBlockEntities();
+        Collection<TileEntity> blockEntities = render.getData().getBlockEntities();
 
         if (!blockEntities.isEmpty()) {
             this.visibleBlockEntities.addAll(blockEntities);
@@ -330,7 +328,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         }
     }
 
-    public Collection<BlockEntity> getVisibleBlockEntities() {
+    public Collection<TileEntity> getVisibleBlockEntities() {
         return this.visibleBlockEntities;
     }
 
@@ -400,7 +398,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void connectNeighborColumns(ChunkRenderColumn<T> column) {
-        for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
             ChunkRenderColumn<T> adj = this.getAdjacentColumn(column, dir);
 
             if (adj != null) {
@@ -412,7 +410,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void disconnectNeighborColumns(ChunkRenderColumn<T> column) {
-        for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
             ChunkRenderColumn<T> adj = column.getAdjacentColumn(dir);
 
             if (adj != null) {
@@ -423,8 +421,8 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         }
     }
 
-    private ChunkRenderColumn<T> getAdjacentColumn(ChunkRenderColumn<T> column, Direction dir) {
-        return this.getColumn(column.getX() + dir.getOffsetX(), column.getZ() + dir.getOffsetZ());
+    private ChunkRenderColumn<T> getAdjacentColumn(ChunkRenderColumn<T> column, ForgeDirection dir) {
+        return this.getColumn(column.getX() + dir.offsetX, column.getZ() + dir.offsetZ);
     }
 
     private ChunkRenderColumn<T> getColumn(int x, int z) {
@@ -572,7 +570,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void scheduleRebuildOffThread(int x, int y, int z, boolean important) {
-        MinecraftClient.getInstance().submit(() -> this.scheduleRebuild(x, y, z, important));
+        Minecraft.getMinecraft().submit(() -> this.scheduleRebuild(x, y, z, important));
     }
 
     public void scheduleRebuild(int x, int y, int z, boolean important) {

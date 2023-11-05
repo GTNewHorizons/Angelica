@@ -1,12 +1,12 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 public interface RenderOrderManager {
-    void begin(RenderType type);
+    void begin(RenderLayer type);
     void startGroup();
     boolean maybeStartGroup();
     void endGroup();
     void reset();
-    Iterable<RenderType> getRenderOrder();
+    Iterable<RenderLayer> getRenderOrder();
 }

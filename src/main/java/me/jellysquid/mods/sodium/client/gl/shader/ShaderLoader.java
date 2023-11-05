@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
+import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
-import net.minecraft.util.Identifier;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -23,7 +23,7 @@ public class ShaderLoader {
      * @return An OpenGL shader object compiled with the given user defines
      */
     public static GlShader loadShader(RenderDevice device, ShaderType type, Identifier name, ShaderConstants constants) {
-        return new GlShader(device, type, name, getShaderSource(getShaderPath(name)), constants);
+        return new GlShader(device, type, name, getShaderSource(getShaderPath(name, type)), constants);
     }
 
     /**
@@ -31,11 +31,11 @@ public class ShaderLoader {
      */
     @Deprecated
     public static GlShader loadShader(RenderDevice device, ShaderType type, Identifier name, List<String> constants) {
-        return new GlShader(device, type, name, getShaderSource(getShaderPath(name)), ShaderConstants.fromStringList(constants));
+        return new GlShader(device, type, name, getShaderSource(getShaderPath(name, type)), ShaderConstants.fromStringList(constants));
     }
 
-    private static String getShaderPath(Identifier name) {
-        return String.format("/assets/%s/shaders/%s", name.getNamespace(), name.getPath());
+    private static String getShaderPath(Identifier name, ShaderType type) {
+        return String.format("/assets/sodium/shaders/%s.%s.glsl", name.getName(), type == ShaderType.VERTEX ? "v" : "f");
     }
 
     private static String getShaderSource(String path) {

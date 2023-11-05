@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderBounds;
@@ -7,9 +9,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.texture.SpriteUtil;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
+
 
 import java.lang.reflect.Array;
 import java.util.concurrent.CompletableFuture;
@@ -189,7 +189,7 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
      * time before this render is drawn if {@link ChunkRenderContainer#isTickable()} is true.
      */
     public void tick() {
-        for (Sprite sprite : this.data.getAnimatedSprites()) {
+        for (TextureAtlasSprite sprite : this.data.getAnimatedSprites()) {
             SpriteUtil.markSpriteActive(sprite);
         }
     }

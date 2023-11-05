@@ -1,12 +1,12 @@
 package me.jellysquid.mods.sodium.client.util.math;
 
 import me.jellysquid.mods.sodium.client.util.Norm3b;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Matrix3f;
-import net.minecraft.util.math.Matrix4f;
+import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
 
 public class MatrixUtil {
-    public static int computeNormal(Matrix3f normalMatrix, Direction facing) {
+    public static int computeNormal(Matrix3f normalMatrix, ForgeDirection facing) {
         return ((Matrix3fExtended) (Object) normalMatrix).computeNormal(facing);
     }
 

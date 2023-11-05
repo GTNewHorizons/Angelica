@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 public enum WorldRenderingPhase {
 	NONE,
@@ -28,16 +28,16 @@ public enum WorldRenderingPhase {
 	WORLD_BORDER,
 	HAND_TRANSLUCENT;
 
-	public static WorldRenderingPhase fromTerrainRenderType(RenderType renderType) {
-		if (renderType == RenderType.solid()) {
+	public static WorldRenderingPhase fromTerrainRenderType(RenderLayer renderType) {
+		if (renderType == RenderLayer.solid()) {
 			return WorldRenderingPhase.TERRAIN_SOLID;
-		} else if (renderType == RenderType.cutout()) {
+		} else if (renderType == RenderLayer.cutout()) {
 			return WorldRenderingPhase.TERRAIN_CUTOUT;
-		} else if (renderType == RenderType.cutoutMipped()) {
+		} else if (renderType == RenderLayer.cutoutMipped()) {
 			return WorldRenderingPhase.TERRAIN_CUTOUT_MIPPED;
-		} else if (renderType == RenderType.translucent()) {
+		} else if (renderType == RenderLayer.translucent()) {
 			return WorldRenderingPhase.TERRAIN_TRANSLUCENT;
-		} else if (renderType == RenderType.tripwire()) {
+		} else if (renderType == RenderLayer.tripwire()) {
 			return WorldRenderingPhase.TRIPWIRE;
 		} else {
 			throw new IllegalStateException("Illegal render type!");

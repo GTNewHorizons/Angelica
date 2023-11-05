@@ -3,7 +3,7 @@ package net.coderbot.batchedentityrendering.impl;
 import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
 import com.gtnewhorizons.angelica.compat.mojang.DrawState;
 import com.gtnewhorizons.angelica.compat.mojang.MultiBufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -15,8 +15,8 @@ import java.util.Objects;
 
 public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTrackingBuffer {
     private final BufferBuilder buffer;
-    private final List<RenderType> usedTypes;
-    private RenderType currentType;
+    private final List<RenderLayer> usedTypes;
+    private RenderLayer currentType;
 
     public SegmentedBufferBuilder() {
         // 2 MB initial allocation
@@ -27,7 +27,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
     }
 
     @Override
-    public VertexConsumer getBuffer(RenderType renderType) {
+    public VertexConsumer getBuffer(RenderLayer renderType) {
         if (!Objects.equals(currentType, renderType)) {
             if (currentType != null) {
                 if (shouldSortOnUpload(currentType)) {
@@ -70,7 +70,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
 
         List<BufferSegment> segments = new ArrayList<>(usedTypes.size());
 
-        for (RenderType type : usedTypes) {
+        for (RenderLayer type : usedTypes) {
             Pair<DrawState, ByteBuffer> pair = buffer.popNextBuffer();
 
             DrawState drawState = pair.getLeft();
@@ -84,7 +84,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
         return segments;
     }
 
-    private static boolean shouldSortOnUpload(RenderType type) {
+    private static boolean shouldSortOnUpload(RenderLayer type) {
         return type.shouldSortOnUpload();
     }
 

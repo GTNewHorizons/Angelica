@@ -1,20 +1,13 @@
 package me.jellysquid.mods.sodium.client.world;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.BlockRenderView;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.LightType;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.chunk.light.LightingProvider;
-import net.minecraft.world.level.ColorResolver;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
+import com.rwtema.extrautils.block.Box;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Vector3d;
 
 import javax.annotation.Nullable;
 import java.util.function.BiFunction;
@@ -34,7 +27,7 @@ public class WorldSliceLocal implements BlockRenderView {
     }
 
     @Override
-    public float getBrightness(Direction direction, boolean shaded) {
+    public float getBrightness(ForgeDirection direction, boolean shaded) {
         return view.getBrightness(direction, shaded);
     }
 
@@ -65,7 +58,7 @@ public class WorldSliceLocal implements BlockRenderView {
 
     @Override
     @Nullable
-    public BlockEntity getBlockEntity(BlockPos pos) {
+    public TileEntity getBlockEntity(BlockPos pos) {
         return view.getBlockEntity(pos);
     }
 
@@ -106,7 +99,7 @@ public class WorldSliceLocal implements BlockRenderView {
 
     @Override
     @Nullable
-    public BlockHitResult raycastBlock(Vec3d start, Vec3d end, BlockPos pos, VoxelShape shape, BlockState state) {
+    public BlockHitResult raycastBlock(Vector3d start, Vector3d end, BlockPos pos, VoxelShape shape, BlockState state) {
         return view.raycastBlock(start, end, pos, shape, state);
     }
 

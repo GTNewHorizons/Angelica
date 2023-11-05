@@ -31,6 +31,7 @@ public class GlShader extends GlResource {
 		int handle = GL20.glCreateShader(type.id);
         // TODO: Iris
 //		ShaderWorkarounds.safeShaderSource(handle, src);
+        // TODO: ShaderWorkaround
         GL20.glShaderSource(handle, src + '\0');
 		GL20.glCompileShader(handle);
 

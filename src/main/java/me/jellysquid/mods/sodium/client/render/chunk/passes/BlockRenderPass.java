@@ -1,14 +1,14 @@
 package me.jellysquid.mods.sodium.client.render.chunk.passes;
 
-import net.minecraft.client.render.RenderLayer;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 // TODO: Move away from using an enum, make this extensible
 public enum BlockRenderPass {
-    SOLID(RenderLayer.getSolid(), false),
-    CUTOUT(RenderLayer.getCutout(), false),
-    CUTOUT_MIPPED(RenderLayer.getCutoutMipped(), false),
-    TRANSLUCENT(RenderLayer.getTranslucent(), true),
-    TRIPWIRE(RenderLayer.getTripwire(), true);
+    SOLID(RenderLayer.solid(), false),
+    CUTOUT(RenderLayer.cutout(), false),
+    CUTOUT_MIPPED(RenderLayer.cutoutMipped(), false),
+    TRANSLUCENT(RenderLayer.translucent(), true),
+    TRIPWIRE(RenderLayer.tripwire(), true);
 
     public static final BlockRenderPass[] VALUES = BlockRenderPass.values();
     public static final int COUNT = VALUES.length;

@@ -69,13 +69,13 @@ public class HorizonRenderer {
 
 	private void buildQuad(VertexConsumer consumer, double x1, double z1, double x2, double z2) {
 		consumer.vertex(x1, BOTTOM, z1);
-		consumer.endVertex();
+		consumer.next();
 		consumer.vertex(x1, TOP, z1);
-		consumer.endVertex();
+		consumer.next();
 		consumer.vertex(x2, TOP, z2);
-		consumer.endVertex();
+		consumer.next();
 		consumer.vertex(x2, BOTTOM, z2);
-		consumer.endVertex();
+		consumer.next();
 	}
 
 	private void buildHalf(VertexConsumer consumer, double adjacent, double opposite, boolean invert) {
@@ -117,13 +117,13 @@ public class HorizonRenderer {
 		for (int x = -radius; x <= radius; x += 64) {
 			for (int z = -radius; z <= radius; z += 64) {
 				consumer.vertex(x + 64, BOTTOM, z);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x, BOTTOM, z);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x, BOTTOM, z + 64);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x + 64, BOTTOM, z + 64);
-				consumer.endVertex();
+				consumer.next();
 			}
 		}
 	}
@@ -135,13 +135,13 @@ public class HorizonRenderer {
 		for (int x = -radius; x <= radius; x += 64) {
 			for (int z = -radius; z <= radius; z += 64) {
 				consumer.vertex(x + 64, TOP, z);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x + 64, TOP, z + 64);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x, TOP, z + 64);
-				consumer.endVertex();
+				consumer.next();
 				consumer.vertex(x, TOP, z);
-				consumer.endVertex();
+				consumer.next();
 			}
 		}
 	}

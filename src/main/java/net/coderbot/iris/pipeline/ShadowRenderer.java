@@ -9,9 +9,9 @@ import net.coderbot.iris.Iris;
 import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.LevelRenderer;
-import com.gtnewhorizons.angelica.compat.mojang.PoseStack;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.mojang.RenderBuffers;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -135,7 +135,7 @@ public class ShadowRenderer {
 		this.packHasVoxelization = packHasVoxelization || usesImages;
 	}
 
-	public static PoseStack createShadowModelView(float sunPathRotation, float intervalSize) {
+	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Determine the camera position
 		Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
@@ -144,7 +144,7 @@ public class ShadowRenderer {
 		double cameraZ = cameraPos.z;
 
 		// Set up our modelview matrix stack
-		PoseStack modelView = new PoseStack();
+		MatrixStack modelView = new MatrixStack();
 		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
 
 		return modelView;
@@ -265,7 +265,7 @@ public class ShadowRenderer {
 
 			if (distance <= 0 || distance > Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
+					+ " blocks (capped by getNormal render distance)";
 				cullingInfo = "disabled " + reason;
 				return holder.setInfo(new NonCullingFrustum(), distanceInfo, cullingInfo);
 			} else {
@@ -289,7 +289,7 @@ public class ShadowRenderer {
 
 			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
+					+ " blocks (capped by getNormal render distance)";
 				boxCuller = null;
 			} else {
 				distanceInfo = distance + " blocks " + setter;
@@ -347,7 +347,7 @@ public class ShadowRenderer {
 		targets.copyPreTranslucentDepth();
 	}
 
-	private void renderEntities(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderEntities(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -386,7 +386,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderPlayerEntity(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderPlayerEntity(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -423,7 +423,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderBlockEntities(BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum) {
+	private void renderBlockEntities(BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum) {
 		profiler.startSection("build blockentities");
 
 		int shadowBlockEntities = 0;
@@ -471,9 +471,9 @@ public class ShadowRenderer {
 		visibleTileEntities = new ArrayList<>();
 
 		// Create our camera
-		PoseStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
+		MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
         // TODO: Render
-//		MODELVIEW = modelView.last().pose().copy();
+//		MODELVIEW = modelView.peek().getModel().copy();
 		float[] projMatrix;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
@@ -540,9 +540,9 @@ public class ShadowRenderer {
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
-			levelRenderer.invokeRenderChunkLayer(RenderType.solid(), modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(RenderType.cutout(), modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(RenderType.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
+			levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
+			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
+			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		profiler.endStartSection("entities");
@@ -601,10 +601,10 @@ public class ShadowRenderer {
 		profiler.endStartSection("translucent terrain");
 
 		// TODO: Prevent these calls from scheduling translucent sorting...
-		// It doesn't matter a ton, since this just means that they won't be sorted in the normal rendering pass.
+		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-			levelRenderer.invokeRenderChunkLayer(RenderType.translucent(), modelView, cameraX, cameraY, cameraZ);
+			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.

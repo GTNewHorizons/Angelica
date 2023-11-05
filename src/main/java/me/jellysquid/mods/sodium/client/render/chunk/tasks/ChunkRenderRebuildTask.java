@@ -1,7 +1,13 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
+import com.gtnewhorizons.angelica.compat.forge.IModelData;
+import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderType;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.rwtema.extrautils.ChunkPos;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import me.jellysquid.mods.sodium.client.compat.FlywheelCompat;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBuildBuffers;
@@ -14,25 +20,10 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
-import net.minecraft.block.BlockRenderType;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.chunk.ChunkOcclusionDataBuilder;
-import net.minecraft.client.render.model.BakedModel;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.client.ForgeHooksClient;
-import net.minecraftforge.client.model.ModelDataManager;
-import net.minecraftforge.client.model.data.EmptyModelData;
-import net.minecraftforge.client.model.data.IModelData;
+import org.joml.Vector3d;
 
 import java.util.Map;
 
@@ -52,7 +43,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private final Map<BlockPos, IModelData> modelDataMap;
 
-    private Vec3d camera;
+    private Vector3d camera;
 
     private final boolean translucencySorting;
 
@@ -60,13 +51,13 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         this.render = render;
         this.offset = offset;
         this.context = context;
-        this.camera = Vec3d.ZERO;
+        this.camera = new Vector3d();
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
 
-        this.modelDataMap = ModelDataManager.getModelData(MinecraftClient.getInstance().world, new ChunkPos(ChunkSectionPos.getSectionCoord(this.render.getOriginX()), ChunkSectionPos.getSectionCoord(this.render.getOriginZ())));
+        this.modelDataMap = ModelDataManager.getModelData(Minecraft.getMinecraft().world, new ChunkPos(ChunkSectionPos.getSectionCoord(this.render.getOriginX()), ChunkSectionPos.getSectionCoord(this.render.getOriginZ())));
     }
 
-    public ChunkRenderRebuildTask<T> withCameraPosition(Vec3d camera) {
+    public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
         this.camera = camera;
         return this;
     }
@@ -106,7 +97,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     // TODO: commit this separately
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
-                    buffers.setRenderOffset(pos.getX() - renderOffset.getX(), pos.getY() - renderOffset.getY(), pos.getZ() - renderOffset.getZ());
+                    buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
                     if (blockState.getRenderType() == BlockRenderType.MODEL) {
                     for (RenderLayer layer : RenderLayer.getBlockLayers()) {
@@ -117,8 +108,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 	                        ForgeHooksClient.setRenderLayer(layer);
                             IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
 
-	                        BakedModel model = cache.getBlockModels()
-	                                .getModel(blockState);
+	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 
 	                        long seed = blockState.getRenderingSeed(pos);
 
@@ -146,15 +136,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     }
 
                     if (blockState.hasTileEntity()) {
-                        BlockEntity entity = slice.getBlockEntity(pos);
+                        TileEntity entity = slice.getBlockEntity(pos);
 
                         if (entity != null) {
-                            BlockEntityRenderer<BlockEntity> renderer = BlockEntityRenderDispatcher.INSTANCE.get(entity);
+                            BlockEntityRenderer<TileEntity> renderer = BlockEntityRenderDispatcher.INSTANCE.get(entity);
 
                             if (renderer != null) {
-                                if (!FlywheelCompat.isSkipped(entity))
-                                    renderData.addBlockEntity(entity, !renderer.rendersOutsideBoundingBox(entity));
-
                                 bounds.addBlock(relX, relY, relZ);
                             }
                         }

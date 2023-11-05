@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
 import org.lwjgl.opengl.ARBVertexArrayObject;
-import org.lwjgl.opengl.GL30C;
-import org.lwjgl.opengl.GLCapabilities;
+import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.GL30;
 
 /**
  * Requires OpenGL 3.0+ or the ARB_vertex_array_object extension.
@@ -11,17 +11,17 @@ public enum GlVertexArrayFunctions {
     BASE {
         @Override
         public void glBindVertexArray(int id) {
-            GL30C.glBindVertexArray(id);
+            GL30.glBindVertexArray(id);
         }
 
         @Override
         public int glGenVertexArrays() {
-            return GL30C.glGenVertexArrays();
+            return GL30.glGenVertexArrays();
         }
 
         @Override
         public void glDeleteVertexArrays(int id) {
-            GL30C.glDeleteVertexArrays(id);
+            GL30.glDeleteVertexArrays(id);
         }
     },
     ARB {
@@ -57,7 +57,7 @@ public enum GlVertexArrayFunctions {
         }
     };
 
-    static GlVertexArrayFunctions load(GLCapabilities capabilities) {
+    static GlVertexArrayFunctions load(ContextCapabilities capabilities) {
         if (capabilities.OpenGL30) {
             return BASE;
         } else if (capabilities.GL_ARB_vertex_array_object) {

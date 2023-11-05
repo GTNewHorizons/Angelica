@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
 import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 
 import java.util.ArrayList;
@@ -17,13 +17,13 @@ import java.util.Map;
 import java.util.Set;
 
 public class OldFullyBufferedMultiBufferSource extends BufferSource {
-	private final Map<RenderType, BufferBuilder> bufferBuilders;
-	private final Object2IntMap<RenderType> unused;
+	private final Map<RenderLayer, BufferBuilder> bufferBuilders;
+	private final Object2IntMap<RenderLayer> unused;
 	private final Set<BufferBuilder> activeBuffers;
 	private boolean flushed;
 
-	private final Set<RenderType> typesThisFrame;
-	private final List<RenderType> typesInOrder;
+	private final Set<RenderLayer> typesThisFrame;
+	private final List<RenderLayer> typesInOrder;
 
 	public OldFullyBufferedMultiBufferSource() {
 		super(new BufferBuilder(0), Collections.emptyMap());
@@ -37,7 +37,7 @@ public class OldFullyBufferedMultiBufferSource extends BufferSource {
 		this.typesInOrder = new ArrayList<>();
 	}
 
-	private TransparencyType getTransparencyType(RenderType type) {
+	private TransparencyType getTransparencyType(RenderLayer type) {
 		while (type instanceof WrappableRenderType) {
 			type = ((WrappableRenderType) type).unwrap();
 		}
@@ -51,7 +51,7 @@ public class OldFullyBufferedMultiBufferSource extends BufferSource {
 	}
 
 	@Override
-	public VertexConsumer getBuffer(RenderType renderType) {
+	public VertexConsumer getBuffer(RenderLayer renderType) {
 		flushed = false;
 
 		BufferBuilder buffer = bufferBuilders.computeIfAbsent(renderType, type -> new BufferBuilder(type.bufferSize()));
@@ -84,7 +84,7 @@ public class OldFullyBufferedMultiBufferSource extends BufferSource {
 			return;
 		}
 
-		List<RenderType> removedTypes = new ArrayList<>();
+		List<RenderLayer> removedTypes = new ArrayList<>();
 
 		unused.forEach((unusedType, unusedCount) -> {
 			if (unusedCount < 10) {
@@ -101,14 +101,14 @@ public class OldFullyBufferedMultiBufferSource extends BufferSource {
 			}
 		});
 
-		for (RenderType removed : removedTypes) {
+		for (RenderLayer removed : removedTypes) {
 			unused.removeInt(removed);
 		}
 
 		// Make sure translucent types are rendered after non-translucent ones.
 		typesInOrder.sort(Comparator.comparing(this::getTransparencyType));
 
-		for (RenderType type : typesInOrder) {
+		for (RenderLayer type : typesInOrder) {
 			drawInternal(type);
 		}
 
@@ -119,11 +119,11 @@ public class OldFullyBufferedMultiBufferSource extends BufferSource {
 	}
 
 	@Override
-	public void endBatch(RenderType type) {
+	public void endBatch(RenderLayer type) {
 		// Disable explicit flushing
 	}
 
-	private void drawInternal(RenderType type) {
+	private void drawInternal(RenderLayer type) {
 		BufferBuilder buffer = bufferBuilders.get(type);
 
 		if (buffer == null) {

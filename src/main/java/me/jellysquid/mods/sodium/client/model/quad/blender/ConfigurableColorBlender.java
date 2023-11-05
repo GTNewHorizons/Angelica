@@ -1,22 +1,22 @@
 package me.jellysquid.mods.sodium.client.model.quad.blender;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.color.block.BlockColorProvider;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockRenderView;
+import net.minecraft.client.Minecraft;
 
 class ConfigurableColorBlender implements BiomeColorBlender {
     private final BiomeColorBlender defaultBlender;
     private final BiomeColorBlender smoothBlender;
 
-    public ConfigurableColorBlender(MinecraftClient client) {
+    public ConfigurableColorBlender(Minecraft client) {
         this.defaultBlender = new FlatBiomeColorBlender();
         this.smoothBlender = isSmoothBlendingEnabled(client) ? new SmoothBiomeColorBlender() : this.defaultBlender;
     }
 
-    private static boolean isSmoothBlendingEnabled(MinecraftClient client) {
+    private static boolean isSmoothBlendingEnabled(Minecraft client) {
         return client.options.biomeBlendRadius > 0;
     }
 

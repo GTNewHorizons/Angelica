@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -11,13 +13,10 @@ import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderBackend;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.Identifier;
 
 import java.util.EnumMap;
 
-public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState>
-        implements ChunkRenderBackend<T> {
+public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> implements ChunkRenderBackend<T> {
     private final EnumMap<ChunkFogMode, ChunkProgram> programs = new EnumMap<>(ChunkFogMode.class);
 
     protected final ChunkVertexType vertexType;
@@ -31,14 +30,12 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState>
     }
 
     private ChunkProgram createShader(RenderDevice device, ChunkFogMode fogMode, GlVertexFormat<ChunkMeshAttribute> vertexFormat) {
-        GlShader vertShader = ShaderLoader.loadShader(device, ShaderType.VERTEX,
-                new Identifier("sodium", "chunk_gl20.v.glsl"), fogMode.getDefines());
+        GlShader vertShader = ShaderLoader.loadShader(device, ShaderType.VERTEX, new Identifier("chunk_gl20"), fogMode.getDefines());
 
-        GlShader fragShader = ShaderLoader.loadShader(device, ShaderType.FRAGMENT,
-                new Identifier("sodium", "chunk_gl20.f.glsl"), fogMode.getDefines());
+        GlShader fragShader = ShaderLoader.loadShader(device, ShaderType.FRAGMENT, new Identifier("chunk_gl20"), fogMode.getDefines());
 
         try {
-            return GlProgram.builder(new Identifier("sodium", "chunk_shader"))
+            return GlProgram.builder(new Identifier("chunk_shader"))
                     .attachShader(vertShader)
                     .attachShader(fragShader)
                     .bindAttribute("a_Pos", ChunkShaderBindingPoints.POSITION)

@@ -3,7 +3,7 @@ package net.coderbot.batchedentityrendering.impl.ordering;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -11,7 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 public class TranslucencyRenderOrderManager implements RenderOrderManager {
-    private final EnumMap<TransparencyType, LinkedHashSet<RenderType>> renderTypes;
+    private final EnumMap<TransparencyType, LinkedHashSet<RenderLayer>> renderTypes;
 
     public TranslucencyRenderOrderManager() {
         renderTypes = new EnumMap<>(TransparencyType.class);
@@ -21,7 +21,7 @@ public class TranslucencyRenderOrderManager implements RenderOrderManager {
         }
     }
 
-    private static TransparencyType getTransparencyType(RenderType type) {
+    private static TransparencyType getTransparencyType(RenderLayer type) {
         while (type instanceof WrappableRenderType) {
             type = ((WrappableRenderType) type).unwrap();
         }
@@ -34,7 +34,7 @@ public class TranslucencyRenderOrderManager implements RenderOrderManager {
         return TransparencyType.GENERAL_TRANSPARENT;
     }
 
-    public void begin(RenderType type) {
+    public void begin(RenderLayer type) {
         renderTypes.get(getTransparencyType(type)).add(type);
     }
 
@@ -58,16 +58,16 @@ public class TranslucencyRenderOrderManager implements RenderOrderManager {
         });
     }
 
-    public Iterable<RenderType> getRenderOrder() {
+    public Iterable<RenderLayer> getRenderOrder() {
         int layerCount = 0;
 
-        for (LinkedHashSet<RenderType> set : renderTypes.values()) {
+        for (LinkedHashSet<RenderLayer> set : renderTypes.values()) {
             layerCount += set.size();
         }
 
-        List<RenderType> allRenderTypes = new ArrayList<>(layerCount);
+        List<RenderLayer> allRenderTypes = new ArrayList<>(layerCount);
 
-        for (LinkedHashSet<RenderType> set : renderTypes.values()) {
+        for (LinkedHashSet<RenderLayer> set : renderTypes.values()) {
             allRenderTypes.addAll(set);
         }
 

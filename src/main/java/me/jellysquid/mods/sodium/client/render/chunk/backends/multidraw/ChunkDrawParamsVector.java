@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
 
@@ -20,7 +19,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
     }
 
     public static ChunkDrawParamsVector create(int capacity) {
-        return SodiumClientMod.isDirectMemoryAccessEnabled() ? new UnsafeChunkDrawCallVector(capacity) : new NioChunkDrawCallVector(capacity);
+        return new NioChunkDrawCallVector(capacity);
     }
 
     public abstract void pushChunkDrawParams(float x, float y, float z);
@@ -30,49 +29,10 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
     }
 
     protected void growBuffer() {
+        ByteBuffer oldBuffer = this.buffer;
         this.capacity = this.capacity * 2;
-        this.buffer = MemoryUtil.memRealloc(this.buffer, this.capacity * this.stride);
-    }
-
-    public static class UnsafeChunkDrawCallVector extends ChunkDrawParamsVector {
-        private long basePointer;
-        private long writePointer;
-
-        public UnsafeChunkDrawCallVector(int capacity) {
-            super(capacity);
-
-            this.basePointer = MemoryUtil.memAddress(this.buffer);
-        }
-
-        @Override
-        public void pushChunkDrawParams(float x, float y, float z) {
-            if (this.count++ >= this.capacity) {
-                this.growBuffer();
-            }
-
-            MemoryUtil.memPutFloat(this.writePointer    , x);
-            MemoryUtil.memPutFloat(this.writePointer + 4, y);
-            MemoryUtil.memPutFloat(this.writePointer + 8, z);
-
-            this.writePointer += this.stride;
-        }
-
-        @Override
-        protected void growBuffer() {
-            super.growBuffer();
-
-            long offset = this.writePointer - this.basePointer;
-
-            this.basePointer = MemoryUtil.memAddress(this.buffer);
-            this.writePointer = this.basePointer + offset;
-        }
-
-        @Override
-        public void reset() {
-            super.reset();
-
-            this.writePointer = this.basePointer;
-        }
+        this.buffer = BufferUtils.createByteBuffer(this.capacity * this.stride);
+        buffer.put(oldBuffer.rewind());
     }
 
     public static class NioChunkDrawCallVector extends ChunkDrawParamsVector {

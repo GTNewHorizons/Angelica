@@ -2,11 +2,13 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.coderbot.batchedentityrendering.impl.BufferBuilderExt;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
+// This is the Tessellator - TODO: Merge/Overwrite
 public class BufferBuilder implements VertexConsumer, BufferBuilderExt {
     private ByteBuffer buffer;
     private List<DrawState> vertexCounts;
@@ -37,8 +39,38 @@ public class BufferBuilder implements VertexConsumer, BufferBuilderExt {
         return null;
     }
 
+    @NotNull
     @Override
-    public void endVertex() {
+    public VertexConsumer color(int r, int g, int b, int a) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public VertexConsumer texture(float u, float v) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public VertexConsumer overlay(int u, int v) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public VertexConsumer light(int u, int v) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public VertexConsumer normal(float x, float y, float z) {
+        return null;
+    }
+
+    @Override
+    public void next() {
 
     }
 

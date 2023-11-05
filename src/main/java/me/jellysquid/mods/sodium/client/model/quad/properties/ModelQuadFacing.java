@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.quad.properties;
 
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public enum ModelQuadFacing {
     UP,
@@ -14,7 +14,7 @@ public enum ModelQuadFacing {
     public static final ModelQuadFacing[] VALUES = ModelQuadFacing.values();
     public static final int COUNT = VALUES.length;
 
-    public static ModelQuadFacing fromDirection(Direction dir) {
+    public static ModelQuadFacing fromDirection(ForgeDirection dir) {
         switch (dir) {
             case DOWN:
                 return DOWN;
@@ -32,7 +32,7 @@ public enum ModelQuadFacing {
                 return UNASSIGNED;
         }
     }
-    
+
     public ModelQuadFacing getOpposite() {
         switch (this) {
             case UP:

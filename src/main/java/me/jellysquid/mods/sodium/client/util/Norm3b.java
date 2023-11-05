@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.util;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3f;
-import net.minecraft.util.math.Vec3i;
+import cofh.lib.util.helpers.MathHelper;
+import org.joml.Vector3f;
+import org.joml.Vector3i;
 
 /**
- * Provides some utilities for working with packed normal vectors. Each normal component provides 8 bits of
+ * Provides some utilities for working with packed getNormal vectors. Each getNormal component provides 8 bits of
  * precision in the range of [-1.0,1.0].
  *
  * | 32        | 24        | 16        | 8          |
@@ -14,7 +14,7 @@ import net.minecraft.util.math.Vec3i;
  */
 public class Norm3b {
     /**
-     * The maximum value of a normal's vector component.
+     * The maximum value of a getNormal's vector component.
      */
     private static final float COMPONENT_RANGE = 127.0f;
 
@@ -24,20 +24,20 @@ public class Norm3b {
      */
     private static final float NORM = 1.0f / COMPONENT_RANGE;
 
-    static int pack(Vec3i norm) {
-        return pack(norm.getX(), norm.getY(), norm.getZ());
+    static int pack(Vector3i norm) {
+        return pack(norm.x, norm.y, norm.z);
     }
 
-    public static int pack(Vec3f dir) {
-        return pack(dir.getX(), dir.getY(), dir.getZ());
+    public static int pack(Vector3f dir) {
+        return pack(dir.x, dir.y, dir.z);
     }
 
     /**
      * Packs the specified vector components into a 32-bit integer in XYZ ordering with the 8 bits of padding at the
      * end.
-     * @param x The x component of the normal's vector
-     * @param y The y component of the normal's vector
-     * @param z The z component of the normal's vector
+     * @param x The x component of the getNormal's vector
+     * @param y The y component of the getNormal's vector
+     * @param z The z component of the getNormal's vector
      */
     public static int pack(float x, float y, float z) {
         int normX = encode(x);
@@ -57,24 +57,24 @@ public class Norm3b {
     }
 
     /**
-     * Unpacks the x-component of the packed normal, denormalizing it to a float in the range of -1.0..1.0.
-     * @param norm The packed normal
+     * Unpacks the x-component of the packed getNormal, denormalizing it to a float in the range of -1.0..1.0.
+     * @param norm The packed getNormal
      */
     public static float unpackX(int norm) {
         return ((byte) (norm & 0xFF)) * NORM;
     }
 
     /**
-     * Unpacks the y-component of the packed normal, denormalizing it to a float in the range of -1.0..1.0.
-     * @param norm The packed normal
+     * Unpacks the y-component of the packed getNormal, denormalizing it to a float in the range of -1.0..1.0.
+     * @param norm The packed getNormal
      */
     public static float unpackY(int norm) {
         return ((byte) ((norm >> 8) & 0xFF)) * NORM;
     }
 
     /**
-     * Unpacks the z-component of the packed normal, denormalizing it to a float in the range of -1.0..1.0.
-     * @param norm The packed normal
+     * Unpacks the z-component of the packed getNormal, denormalizing it to a float in the range of -1.0..1.0.
+     * @param norm The packed getNormal
      */
     public static float unpackZ(int norm) {
         return ((byte) ((norm >> 16) & 0xFF)) * NORM;

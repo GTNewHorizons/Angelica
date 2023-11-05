@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
-import org.lwjgl.opengl.GL20C;
+import org.joml.Vector3f;
+import org.lwjgl.opengl.GL20;
 
 /**
  * These shader implementations try to remain compatible with the deprecated fixed function pipeline by manually
@@ -38,8 +39,9 @@ public abstract class ChunkShaderFogComponent {
 
         @Override
         public void setup() {
-            GL20C.glUniform4fv(this.uFogColor, FogHelper.getFogColor());
-            GL20C.glUniform1f(this.uFogDensity, FogHelper.getFogDensity());
+            final Vector3f fogColor = FogHelper.getFogColor();
+            GL20.glUniform4f(this.uFogColor, FogHelper.getFogColor());
+            GL20.glUniform1f(this.uFogDensity, FogHelper.getFogDensity());
         }
     }
 
