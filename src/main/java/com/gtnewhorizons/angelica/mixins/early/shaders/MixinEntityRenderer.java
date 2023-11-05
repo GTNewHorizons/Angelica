@@ -17,6 +17,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+
 import java.nio.FloatBuffer;
 
 @Mixin(EntityRenderer.class)
@@ -26,7 +29,6 @@ public class MixinEntityRenderer {
     @Unique private static Runnable fogStartListener;
     @Unique private static Runnable fogEndListener;
     @Unique private static Runnable fogDensityListener;
-    @Unique private WorldRenderingPipeline pipeline;
 
 
     private void sglFogf(int pname, float param) {
@@ -67,25 +69,25 @@ public class MixinEntityRenderer {
 
 
     @Inject(at = @At("HEAD"), method = "renderWorld(FJ)V")
-    private void iris$beginRender(float tickDelta, long startTime, CallbackInfo ci) {
+    private void iris$beginRender(float tickDelta, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         CapturedRenderingState.INSTANCE.setTickDelta(tickDelta);
         SystemTimeUniforms.COUNTER.beginFrame();
         SystemTimeUniforms.TIMER.beginFrame(startTime);
 
         Program.unbind();
 
-        pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+        pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension()));
 
-        pipeline.beginLevelRendering();
+        pipeline.get().beginLevelRendering();
     }
 
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
-    private void iris$endLevelRender(float tickDelta, long limitTime, CallbackInfo callback) {
+    private void iris$endLevelRender(float tickDelta, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // TODO: Iris
 //        HandRenderer.INSTANCE.renderTranslucent(poseStack, tickDelta, camera, gameRenderer, pipeline);
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
-        pipeline.finalizeLevelRendering();
-        pipeline = null;
+        pipeline.get().finalizeLevelRendering();
+        pipeline.set(null);
         Program.unbind();
     }
 
