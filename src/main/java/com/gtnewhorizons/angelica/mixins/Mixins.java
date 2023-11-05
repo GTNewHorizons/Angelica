@@ -12,13 +12,13 @@ public enum Mixins {
 
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
-                "shaders.startup.MixinFramebuffer",
                 "shaders.startup.MixinGameSettings",
                 "shaders.startup.MixinGuiMainMenu",
                 "shaders.startup.MixinInitRenderer")
             ),
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
+                "shaders.startup.MixinFramebuffer",
                 "shaders.MixinEntityRenderer",
                 "shaders.MixinItem",
                 "shaders.MixinOpenGlHelper"

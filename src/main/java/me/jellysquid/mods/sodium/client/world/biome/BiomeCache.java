@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.world.biome;
 
+import com.gtnewhorizons.angelica.compat.mojang.Biome;
+import com.gtnewhorizons.angelica.compat.mojang.BiomeAccess;
+import com.gtnewhorizons.angelica.compat.mojang.BiomeAccessType;
 import me.jellysquid.mods.sodium.client.world.ClientWorldExtended;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.source.BiomeAccess;
-import net.minecraft.world.biome.source.BiomeAccessType;
 
 import java.util.Arrays;
 

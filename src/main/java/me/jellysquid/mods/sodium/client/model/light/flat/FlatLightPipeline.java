@@ -1,15 +1,14 @@
 package me.jellysquid.mods.sodium.client.model.light.flat;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockRenderView;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.Arrays;
 
@@ -28,7 +27,7 @@ public class FlatLightPipeline implements LightPipeline {
     }
 
     @Override
-    public void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, Direction cullFace, Direction face, boolean shade) {
+    public void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade) {
         int lightmap;
 
         // To match vanilla behavior, use the cull face if it exists/is available
@@ -56,7 +55,7 @@ public class FlatLightPipeline implements LightPipeline {
      * behind tinted glass. {@link LightDataAccess} cannot efficiently store lightmaps computed with
      * inconsistent values so this method exists to mirror vanilla behavior as closely as possible.
      */
-    private int getOffsetLightmap(BlockPos pos, Direction face) {
+    private int getOffsetLightmap(BlockPos pos, ForgeDirection face) {
         int lightmap = LightDataAccess.unpackLM(this.lightCache.get(pos, face));
         // If the block light is not 15 (max)...
         if ((lightmap & 0xF0) != 0xF0) {

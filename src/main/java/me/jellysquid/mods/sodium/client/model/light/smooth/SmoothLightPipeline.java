@@ -1,13 +1,14 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
+import com.google.common.math.DoubleMath;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import net.minecraftforge.common.util.ForgeDirection;
+
 
 /**
  * A light pipeline which produces smooth interpolated lighting and ambient occlusion for model quads. This
@@ -36,6 +37,7 @@ import net.minecraft.util.math.MathHelper;
  *   unnecessary computation
  */
 public class SmoothLightPipeline implements LightPipeline {
+    public static final double TOLERANCE = 1.0E-5F;
     /**
      * The cache which light data will be accessed from.
      */
@@ -65,7 +67,7 @@ public class SmoothLightPipeline implements LightPipeline {
     }
 
     @Override
-    public void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, Direction cullFace, Direction face, boolean shade) {
+    public void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade) {
         this.updateCachedData(pos.asLong());
 
         int flags = quad.getFlags();
@@ -97,7 +99,7 @@ public class SmoothLightPipeline implements LightPipeline {
      * have two contributing sides.
      * Flags: IS_ALIGNED, !IS_PARTIAL
      */
-    private void applyAlignedFullFace(AoNeighborInfo neighborInfo, BlockPos pos, Direction dir, QuadLightData out) {
+    private void applyAlignedFullFace(AoNeighborInfo neighborInfo, BlockPos pos, ForgeDirection dir, QuadLightData out) {
         AoFaceData faceData = this.getCachedFaceData(pos, dir, true);
         neighborInfo.mapCorners(faceData.lm, faceData.ao, out.lm, out.br);
     }
@@ -106,7 +108,7 @@ public class SmoothLightPipeline implements LightPipeline {
      * Calculates the light data for a grid-aligned quad that does not cover the entire block volume's face.
      * Flags: IS_ALIGNED, IS_PARTIAL
      */
-    private void applyAlignedPartialFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, Direction dir, QuadLightData out) {
+    private void applyAlignedPartialFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, ForgeDirection dir, QuadLightData out) {
         for (int i = 0; i < 4; i++) {
             // Clamp the vertex positions to the block's boundaries to prevent weird errors in lighting
             float cx = clamp(quad.getX(i));
@@ -120,13 +122,13 @@ public class SmoothLightPipeline implements LightPipeline {
     }
 
     /**
-     * This method is the same as {@link #applyNonParallelFace(AoNeighborInfo, ModelQuadView, BlockPos, Direction,
+     * This method is the same as {@link #applyNonParallelFace(AoNeighborInfo, ModelQuadView, BlockPos, ForgeDirection,
      * QuadLightData)} but with the check for a depth of approximately 0 removed. If the quad is parallel but not
      * aligned, all of its vertices will have the same depth and this depth must be approximately greater than 0,
      * meaning the check for 0 will always return false.
      * Flags: !IS_ALIGNED, IS_PARALLEL
      */
-    private void applyParallelFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, Direction dir, QuadLightData out) {
+    private void applyParallelFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, ForgeDirection dir, QuadLightData out) {
         for (int i = 0; i < 4; i++) {
             // Clamp the vertex positions to the block's boundaries to prevent weird errors in lighting
             float cx = clamp(quad.getX(i));
@@ -140,7 +142,7 @@ public class SmoothLightPipeline implements LightPipeline {
 
             // If the quad is approximately grid-aligned (not inset) to the other side of the block, avoid unnecessary
             // computation by treating it is as aligned
-            if (MathHelper.approximatelyEquals(depth, 1.0F)) {
+            if (DoubleMath.fuzzyEquals(depth, 1.0F, TOLERANCE)) {
                 this.applyAlignedPartialFaceVertex(pos, dir, weights, i, out, false);
             } else {
                 // Blend the occlusion factor between the blocks directly beside this face and the blocks above it
@@ -153,7 +155,7 @@ public class SmoothLightPipeline implements LightPipeline {
     /**
      * Flags: !IS_ALIGNED, !IS_PARALLEL
      */
-    private void applyNonParallelFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, Direction dir, QuadLightData out) {
+    private void applyNonParallelFace(AoNeighborInfo neighborInfo, ModelQuadView quad, BlockPos pos, ForgeDirection dir, QuadLightData out) {
         for (int i = 0; i < 4; i++) {
             // Clamp the vertex positions to the block's boundaries to prevent weird errors in lighting
             float cx = clamp(quad.getX(i));
@@ -166,9 +168,9 @@ public class SmoothLightPipeline implements LightPipeline {
             float depth = neighborInfo.getDepth(cx, cy, cz);
 
             // If the quad is approximately grid-aligned (not inset), avoid unnecessary computation by treating it is as aligned
-            if (MathHelper.approximatelyEquals(depth, 0.0F)) {
+            if (DoubleMath.fuzzyEquals(depth, 0.0F, TOLERANCE)) {
                 this.applyAlignedPartialFaceVertex(pos, dir, weights, i, out, true);
-            } else if (MathHelper.approximatelyEquals(depth, 1.0F)) {
+            } else if (DoubleMath.fuzzyEquals(depth, 1.0F, TOLERANCE)) {
                 this.applyAlignedPartialFaceVertex(pos, dir, weights, i, out, false);
             } else {
                 // Blend the occlusion factor between the blocks directly beside this face and the blocks above it
@@ -178,7 +180,7 @@ public class SmoothLightPipeline implements LightPipeline {
         }
     }
 
-    private void applyAlignedPartialFaceVertex(BlockPos pos, Direction dir, float[] w, int i, QuadLightData out, boolean offset) {
+    private void applyAlignedPartialFaceVertex(BlockPos pos, ForgeDirection dir, float[] w, int i, QuadLightData out, boolean offset) {
         AoFaceData faceData = this.getCachedFaceData(pos, dir, offset);
 
         if (!faceData.hasUnpackedLightData()) {
@@ -193,7 +195,7 @@ public class SmoothLightPipeline implements LightPipeline {
         out.lm[i] = getLightMapCoord(sl, bl);
     }
 
-    private void applyInsetPartialFaceVertex(BlockPos pos, Direction dir, float n1d, float n2d, float[] w, int i, QuadLightData out) {
+    private void applyInsetPartialFaceVertex(BlockPos pos, ForgeDirection dir, float n1d, float n2d, float[] w, int i, QuadLightData out) {
         AoFaceData n1 = this.getCachedFaceData(pos, dir, false);
 
         if (!n1.hasUnpackedLightData()) {
@@ -215,7 +217,7 @@ public class SmoothLightPipeline implements LightPipeline {
         out.lm[i] = getLightMapCoord(sl, bl);
     }
 
-    private void applySidedBrightness(QuadLightData out, Direction face, boolean shade) {
+    private void applySidedBrightness(QuadLightData out, ForgeDirection face, boolean shade) {
         float brightness = this.lightCache.getWorld().getBrightness(face, shade);
         float[] br = out.br;
 
@@ -227,7 +229,7 @@ public class SmoothLightPipeline implements LightPipeline {
     /**
      * Returns the cached data for a given facing or calculates it if it hasn't been cached.
      */
-    private AoFaceData getCachedFaceData(BlockPos pos, Direction face, boolean offset) {
+    private AoFaceData getCachedFaceData(BlockPos pos, ForgeDirection face, boolean offset) {
         AoFaceData data = this.cachedFaceData[offset ? face.ordinal() : face.ordinal() + 6];
 
         if (!data.hasLightData()) {

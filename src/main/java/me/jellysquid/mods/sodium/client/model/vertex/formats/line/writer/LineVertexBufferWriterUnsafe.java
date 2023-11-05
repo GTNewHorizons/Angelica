@@ -4,7 +4,6 @@ import me.jellysquid.mods.sodium.client.model.vertex.VanillaVertexTypes;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.LineVertexSink;
-import org.lwjgl.system.MemoryUtil;
 
 public class LineVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe implements LineVertexSink {
     public LineVertexBufferWriterUnsafe(VertexBufferView backingBuffer) {

@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.util;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.system.MemoryUtil;
+
 
 import java.nio.IntBuffer;
 
@@ -10,14 +11,14 @@ import java.nio.IntBuffer;
  * uses {@link GL20#glMultiDrawArrays(int, IntBuffer, IntBuffer)} and should be compatible on any relevant platform.
  */
 public class GlMultiDrawBatch {
-    private final IntBuffer bufIndices;
-    private final IntBuffer bufLen;
+    private IntBuffer bufIndices;
+    private IntBuffer bufLen;
     private int count;
     private boolean isBuilding;
 
     public GlMultiDrawBatch(int capacity) {
-        this.bufIndices = MemoryUtil.memAllocInt(capacity);
-        this.bufLen = MemoryUtil.memAllocInt(capacity);
+        this.bufIndices = BufferUtils.createIntBuffer(capacity);
+        this.bufLen = BufferUtils.createIntBuffer(capacity);
     }
 
     public IntBuffer getIndicesBuffer() {
@@ -58,7 +59,10 @@ public class GlMultiDrawBatch {
     }
 
     public void delete() {
-    	MemoryUtilHelper.memFree(this.bufIndices);
-        MemoryUtilHelper.memFree(this.bufLen);
+        this.bufIndices.clear();
+        this.bufLen.clear();
+
+        this.bufIndices = null;
+        this.bufLen = null;
     }
 }

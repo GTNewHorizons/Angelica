@@ -1,17 +1,17 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 import java.util.LinkedHashSet;
 
 public class SimpleRenderOrderManager implements RenderOrderManager {
-    private final LinkedHashSet<RenderType> renderTypes;
+    private final LinkedHashSet<RenderLayer> renderTypes;
 
     public SimpleRenderOrderManager() {
         renderTypes = new LinkedHashSet<>();
     }
 
-    public void begin(RenderType type) {
+    public void begin(RenderLayer type) {
         renderTypes.add(type);
     }
 
@@ -33,7 +33,7 @@ public class SimpleRenderOrderManager implements RenderOrderManager {
         renderTypes.clear();
     }
 
-    public Iterable<RenderType> getRenderOrder() {
+    public Iterable<RenderLayer> getRenderOrder() {
         return renderTypes;
     }
 }

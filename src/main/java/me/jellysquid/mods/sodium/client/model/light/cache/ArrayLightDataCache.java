@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.light.cache;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.BlockRenderView;
 
 import java.util.Arrays;
 

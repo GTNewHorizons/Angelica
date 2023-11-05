@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.model.quad.blender;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.color.block.BlockColorProvider;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockRenderView;
 
 import java.util.Arrays;
 

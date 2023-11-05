@@ -1,8 +1,8 @@
 package net.coderbot.iris.layer;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderStateShard;
+import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
 
-public class IsEntityRenderStateShard extends RenderStateShard {
+public class IsEntityRenderStateShard extends RenderPhase {
 	public static final IsEntityRenderStateShard INSTANCE = new IsEntityRenderStateShard();
 
 	private IsEntityRenderStateShard() {

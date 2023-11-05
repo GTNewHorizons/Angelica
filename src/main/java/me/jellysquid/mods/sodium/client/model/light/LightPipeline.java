@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * Light pipelines allow model quads for any location in the world to be lit using various backends, including fluids
- * and block entities. 
+ * and block entities.
  */
 public interface LightPipeline {
     /**
@@ -18,5 +18,5 @@ public interface LightPipeline {
      * @param face The pre-computed facing vector of the quad
      * @param shade True if the block is shaded by ambient occlusion
      */
-	void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, Direction cullFace, Direction face, boolean shade);
+	void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
 }

@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.WorldRenderer;
+import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * The light data cache is used to make accessing the light data and occlusion properties of blocks cheaper. The data
@@ -25,24 +25,20 @@ public abstract class LightDataAccess {
     private final BlockPos.Mutable pos = new BlockPos.Mutable();
     protected BlockRenderView world;
 
-    public long get(int x, int y, int z, Direction d1, Direction d2) {
-        return this.get(x + d1.getOffsetX() + d2.getOffsetX(),
-                y + d1.getOffsetY() + d2.getOffsetY(),
-                z + d1.getOffsetZ() + d2.getOffsetZ());
+    public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
+        return this.get(x + d1.offsetX + d2.offsetX, y + d1.offsetY + d2.offsetY, z + d1.offsetZ + d2.offsetZ);
     }
 
-    public long get(int x, int y, int z, Direction dir) {
-        return this.get(x + dir.getOffsetX(),
-                y + dir.getOffsetY(),
-                z + dir.getOffsetZ());
+    public long get(int x, int y, int z, ForgeDirection dir) {
+        return this.get(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
     }
 
-    public long get(BlockPos pos, Direction dir) {
-        return this.get(pos.getX(), pos.getY(), pos.getZ(), dir);
+    public long get(BlockPos pos, ForgeDirection dir) {
+        return this.get(pos.x, pos.y, pos.z, dir);
     }
 
     public long get(BlockPos pos) {
-        return this.get(pos.getX(), pos.getY(), pos.getZ());
+        return this.get(pos.x, pos.y, pos.getZ());
     }
 
     /**
@@ -102,7 +98,7 @@ public abstract class LightDataAccess {
     public static boolean unpackFC(long word) {
         return ((word >>> 58) & 0b1) != 0;
     }
-    
+
     public static long packLM(int lm) {
         return (long) lm & 0xFFFFFFFFL;
     }

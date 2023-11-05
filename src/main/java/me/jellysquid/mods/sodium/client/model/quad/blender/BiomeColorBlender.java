@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.model.quad.blender;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.color.block.BlockColorProvider;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockRenderView;
+import net.minecraft.client.Minecraft;
 
 public interface BiomeColorBlender {
     /**
@@ -22,8 +22,8 @@ public interface BiomeColorBlender {
      */
     int[] getColors(BlockColorProvider colorizer, BlockRenderView world, BlockState state, BlockPos origin,
                     ModelQuadView quad);
-    
-    static BiomeColorBlender create(MinecraftClient client) {
+
+    static BiomeColorBlender create(Minecraft client) {
         return new ConfigurableColorBlender(client);
     }
 }

@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
-import net.minecraft.util.math.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 
 public class ChunkRenderBounds {
     public static final ChunkRenderBounds ALWAYS_FALSE = new ChunkRenderBounds(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY,

@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.quad.blender;
 
-import net.minecraft.state.State;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+
 
 public interface BlockColorSettings<T> {
     /**

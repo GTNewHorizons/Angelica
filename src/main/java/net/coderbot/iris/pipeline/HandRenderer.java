@@ -4,7 +4,7 @@ import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
-import com.gtnewhorizons.angelica.compat.mojang.PoseStack;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLiving;
@@ -22,8 +22,8 @@ public class HandRenderer {
 
 	public static final float DEPTH = 0.125F;
 
-	private void setupGlState(GameRenderer gameRenderer, Camera camera, PoseStack poseStack, float tickDelta) {
-        final PoseStack.Pose pose = poseStack.last();
+	private void setupGlState(GameRenderer gameRenderer, Camera camera, MatrixStack poseStack, float tickDelta) {
+        final MatrixStack.Entry pose = poseStack.peek();
 
 		// We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
         Matrix4f scaleMatrix = new Matrix4f().scale(1F, 1F, DEPTH);
@@ -35,8 +35,8 @@ public class HandRenderer {
 //        RenderSystem.multMatrix(arg);
 //        RenderSystem.matrixMode(5888);
 
-		pose.pose().identity();
-        pose.normal().identity();
+		pose.getModel().identity();
+        pose.getNormal().identity();
 
 		gameRenderer.invokeBobHurt(poseStack, tickDelta);
 
@@ -74,7 +74,7 @@ public class HandRenderer {
 		return isHandTranslucent(InteractionHand.MAIN_HAND) || isHandTranslucent(InteractionHand.OFF_HAND);
 	}
 
-	public void renderSolid(PoseStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
+	public void renderSolid(MatrixStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
 		if (!canRender(camera, gameRenderer) || !IrisApi.getInstance().isShaderPackInUse()) {
 			return;
 		}
@@ -109,7 +109,7 @@ public class HandRenderer {
 		ACTIVE = false;
 	}
 
-	public void renderTranslucent(PoseStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
+	public void renderTranslucent(MatrixStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
 		if (!canRender(camera, gameRenderer) || !isAnyHandTranslucent() || !IrisApi.getInstance().isShaderPackInUse()) {
 			return;
 		}

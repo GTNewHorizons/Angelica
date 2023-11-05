@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
+import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
+import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
 import com.gtnewhorizons.angelica.glsm.states.TextureState;
 import lombok.Getter;
@@ -37,6 +39,10 @@ public class GLStateManager {
     private static final BlendState Blend = new BlendState();
     @Getter
     private static final DepthState Depth = new DepthState();
+    @Getter
+    private static final FogState Fog = new FogState();
+    @Getter
+    private static final Color4 Color = new Color4();
     @Getter
     private static final GLColorMask ColorMask = new GLColorMask();
     @Getter
@@ -147,6 +153,22 @@ public class GLStateManager {
             Depth.mask = mask;
             GL11.glDepthMask(mask);
         }
+    }
+    public static void glColor4f(float red, float green, float blue, float alpha) {
+        if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+            Color.red = red;
+            Color.green = green;
+            Color.blue = blue;
+            Color.alpha = alpha;
+            GL11.glColor4f(red, green, blue, alpha);
+        }
+    }
+
+    public static void clearCurrentColor() {
+        Color.red = -1.0F;
+        Color.green = -1.0F;
+        Color.blue = -1.0F;
+        Color.alpha = -1.0F;
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {

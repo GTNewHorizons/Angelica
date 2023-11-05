@@ -6,9 +6,9 @@ public class BufferSource implements MultiBufferSource {
 
     public <V, K> BufferSource(BufferBuilder bufferBuilder, Map<K,V> kvMap) {}
 
-    public VertexConsumer getBuffer(RenderType renderType) {
+    public VertexConsumer getBuffer(RenderLayer renderType) {
         return null;
     }
     public void endBatch() {}
-    public void endBatch(RenderType type) {}
+    public void endBatch(RenderLayer type) {}
 }

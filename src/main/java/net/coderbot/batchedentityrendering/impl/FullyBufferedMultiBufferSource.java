@@ -4,7 +4,7 @@ import net.coderbot.batchedentityrendering.impl.ordering.GraphTranslucencyRender
 import net.coderbot.batchedentityrendering.impl.ordering.RenderOrderManager;
 import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
 import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import net.coderbot.iris.fantastic.WrappingMultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -27,14 +27,14 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 	/**
 	 * An LRU cache mapping RenderType objects to a relevant buffer.
 	 */
-	private final LinkedHashMap<RenderType, Integer> affinities;
+	private final LinkedHashMap<RenderLayer, Integer> affinities;
 	private int drawCalls;
 	private int renderTypes;
 
 	private final BufferSegmentRenderer segmentRenderer;
 	private final UnflushableWrapper unflushableWrapper;
-	private final List<Function<RenderType, RenderType>> wrappingFunctionStack;
-	private Function<RenderType, RenderType> wrappingFunction = null;
+	private final List<Function<RenderLayer, RenderLayer>> wrappingFunctionStack;
+	private Function<RenderLayer, RenderLayer> wrappingFunction = null;
 
 	public FullyBufferedMultiBufferSource() {
 		super(new BufferBuilder(0), Collections.emptyMap());
@@ -56,7 +56,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 	}
 
 	@Override
-	public VertexConsumer getBuffer(RenderType renderType) {
+	public VertexConsumer getBuffer(RenderLayer renderType) {
 		if (wrappingFunction != null) {
 			renderType = wrappingFunction.apply(renderType);
 		}
@@ -70,8 +70,8 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 			} else {
 				// We remove the element from the map that is used least-frequently.
 				// With how we've configured our LinkedHashMap, that is the first element.
-				Iterator<Map.Entry<RenderType, Integer>> iterator = affinities.entrySet().iterator();
-				Map.Entry<RenderType, Integer> evicted = iterator.next();
+				Iterator<Map.Entry<RenderLayer, Integer>> iterator = affinities.entrySet().iterator();
+				Map.Entry<RenderLayer, Integer> evicted = iterator.next();
 				iterator.remove();
 
 				// The previous type is no longer associated with this buffer ...
@@ -93,7 +93,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 
 		profiler.startSection("collect");
 
-		Map<RenderType, List<BufferSegment>> typeToSegment = new HashMap<>();
+		Map<RenderLayer, List<BufferSegment>> typeToSegment = new HashMap<>();
 
 		for (SegmentedBufferBuilder builder : builders) {
 			List<BufferSegment> segments = builder.getSegments();
@@ -105,11 +105,11 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 
 		profiler.endStartSection("resolve ordering");
 
-		Iterable<RenderType> renderOrder = renderOrderManager.getRenderOrder();
+		Iterable<RenderLayer> renderOrder = renderOrderManager.getRenderOrder();
 
 		profiler.endStartSection("draw buffers");
 
-		for (RenderType type : renderOrder) {
+		for (RenderLayer type : renderOrder) {
 			type.setupRenderState();
 
 			renderTypes += 1;
@@ -144,7 +144,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 	}
 
 	@Override
-	public void endBatch(RenderType type) {
+	public void endBatch(RenderLayer type) {
 		// Disable explicit flushing
 	}
 
@@ -190,7 +190,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 	}
 
 	@Override
-	public void pushWrappingFunction(Function<RenderType, RenderType> wrappingFunction) {
+	public void pushWrappingFunction(Function<RenderLayer, RenderLayer> wrappingFunction) {
 		if (this.wrappingFunction != null) {
 			this.wrappingFunctionStack.add(this.wrappingFunction);
 		}
@@ -227,7 +227,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 		}
 
 		@Override
-		public VertexConsumer getBuffer(RenderType renderType) {
+		public VertexConsumer getBuffer(RenderLayer renderType) {
 			return wrapped.getBuffer(renderType);
 		}
 
@@ -237,7 +237,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 		}
 
 		@Override
-		public void endBatch(RenderType type) {
+		public void endBatch(RenderLayer type) {
 			// Disable explicit flushing
 		}
 

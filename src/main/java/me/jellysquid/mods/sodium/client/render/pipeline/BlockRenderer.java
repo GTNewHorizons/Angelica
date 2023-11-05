@@ -1,10 +1,15 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import codechicken.lib.render.block.ICCBlockRenderer;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import me.jellysquid.mods.sodium.client.compat.ccl.CCLCompat;
-import me.jellysquid.mods.sodium.client.compat.ccl.SinkingVertexBuilder;
-import me.jellysquid.mods.sodium.client.compat.forge.ForgeBlockRenderer;
+import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
+import com.gtnewhorizons.angelica.compat.forge.IModelData;
+import com.gtnewhorizons.angelica.compat.forge.SinkingVertexBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
+import com.gtnewhorizons.angelica.compat.mojang.BakedQuad;
+import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -22,18 +27,9 @@ import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import me.jellysquid.mods.sodium.client.world.biome.BlockColorsExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.color.block.BlockColorProvider;
-import net.minecraft.client.render.model.BakedModel;
-import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.BlockRenderView;
-import net.minecraftforge.client.model.data.IModelData;
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.Random;
@@ -55,7 +51,7 @@ public class BlockRenderer {
 
     private final boolean useAmbientOcclusion;
 
-    public BlockRenderer(MinecraftClient client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
+    public BlockRenderer(Minecraft client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
         this.blockColors = (BlockColorsExtended) client.getBlockColors();
         this.biomeColorBlender = biomeColorBlender;
 
@@ -68,31 +64,15 @@ public class BlockRenderer {
     public boolean renderModel(BlockRenderView world, BlockState state, BlockPos pos, BakedModel model, ChunkModelBuffers buffers, boolean cull, long seed, IModelData modelData) {
         LightMode mode = this.getLightingMode(state, model, world, pos);
         LightPipeline lighter = this.lighters.getLighter(mode);
-        Vec3d offset = state.getModelOffset(world, pos);
+        Vector3d offset = state.getModelOffset(world, pos);
 
         boolean rendered = false;
 
         modelData = model.getModelData(world, pos, state, modelData);
 
-        if(SodiumClientMod.cclLoaded) {
-	        final MatrixStack mStack = new MatrixStack();
-	        final SinkingVertexBuilder builder = SinkingVertexBuilder.getInstance();
-	        for (final ICCBlockRenderer renderer : CCLCompat.getCustomRenderers(world, pos)) {
-	            if (renderer.canHandleBlock(world, pos, state)) {
-	                mStack.isEmpty();
-
-	                builder.reset();
-	                rendered = renderer.renderBlock(state, pos, world, mStack, builder, random, modelData);
-	                builder.flush(buffers);
-
-	                return rendered;
-	            }
-	        }
-        }
-
         if(ForgeBlockRenderer.useForgeLightingPipeline()) {
             MatrixStack mStack;
-            if(offset != Vec3d.ZERO) {
+            if(offset != Vector3d.ZERO) {
                 mStack = new MatrixStack();
                 mStack.translate(offset.x, offset.y, offset.z);
             } else
@@ -104,7 +84,7 @@ public class BlockRenderer {
             return rendered;
         }
 
-        for (Direction dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
             this.random.setSeed(seed);
 
             List<BakedQuad> sided = model.getQuads(state, dir, this.random, modelData);
@@ -133,8 +113,8 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vec3d offset,
-                                ChunkModelBuffers buffers, List<BakedQuad> quads, Direction cullFace) {
+    private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vector3d offset,
+                                ChunkModelBuffers buffers, List<BakedQuad> quads, ForgeDirection cullFace) {
     	ModelQuadFacing facing = cullFace == null ? ModelQuadFacing.UNASSIGNED : ModelQuadFacing.fromDirection(cullFace);
         BlockColorProvider colorizer = null;
 
@@ -161,7 +141,7 @@ public class BlockRenderer {
         sink.flush();
     }
 
-    private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vec3d offset,
+    private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vector3d offset,
                             BlockColorProvider colorProvider, BakedQuad bakedQuad, QuadLightData light, ChunkRenderData.Builder renderData) {
         ModelQuadView src = (ModelQuadView) bakedQuad;
 
@@ -190,7 +170,7 @@ public class BlockRenderer {
             sink.writeQuad(x, y, z, color, u, v, lm);
         }
 
-        Sprite sprite = src.rubidium$getSprite();
+        TextureAtlasSprite sprite = src.rubidium$getSprite();
 
         if (sprite != null) {
             renderData.addSprite(sprite);

@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkRenderColumn<T extends ChunkGraphicsState> {
     @SuppressWarnings("unchecked")
@@ -16,15 +16,15 @@ public class ChunkRenderColumn<T extends ChunkGraphicsState> {
         this.x = x;
         this.z = z;
 
-        this.setAdjacentColumn(Direction.UP, this);
-        this.setAdjacentColumn(Direction.DOWN, this);
+        this.setAdjacentColumn(ForgeDirection.UP, this);
+        this.setAdjacentColumn(ForgeDirection.DOWN, this);
     }
 
-    public void setAdjacentColumn(Direction dir, ChunkRenderColumn<T> column) {
+    public void setAdjacentColumn(ForgeDirection dir, ChunkRenderColumn<T> column) {
         this.adjacent[dir.ordinal()] = column;
     }
 
-    public ChunkRenderColumn<T> getAdjacentColumn(Direction dir) {
+    public ChunkRenderColumn<T> getAdjacentColumn(ForgeDirection dir) {
         return this.adjacent[dir.ordinal()];
     }
 
@@ -48,24 +48,24 @@ public class ChunkRenderColumn<T extends ChunkGraphicsState> {
     }
 
     public boolean areNeighborsPresent() {
-        for (Direction dir : DirectionUtil.HORIZONTAL_DIRECTIONS) {
+        for (ForgeDirection dir : DirectionUtil.HORIZONTAL_DIRECTIONS) {
             ChunkRenderColumn<T> adj = this.adjacent[dir.ordinal()];
 
             if (adj == null) {
                 return false;
             }
 
-            Direction corner;
+            ForgeDirection corner;
 
             // Access the adjacent corner chunk from the neighbor in this direction
-            if (dir == Direction.NORTH) {
-                corner = Direction.EAST;
-            } else if (dir == Direction.SOUTH) {
-                corner = Direction.WEST;
-            } else if (dir == Direction.WEST) {
-                corner = Direction.NORTH;
-            } else if (dir == Direction.EAST) {
-                corner = Direction.SOUTH;
+            if (dir == ForgeDirection.NORTH) {
+                corner = ForgeDirection.EAST;
+            } else if (dir == ForgeDirection.SOUTH) {
+                corner = ForgeDirection.WEST;
+            } else if (dir == ForgeDirection.WEST) {
+                corner = ForgeDirection.NORTH;
+            } else if (dir == ForgeDirection.EAST) {
+                corner = ForgeDirection.SOUTH;
             } else {
                 continue;
             }

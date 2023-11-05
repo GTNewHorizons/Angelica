@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.format.hfp;
 
+import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeFormat;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
@@ -7,7 +8,7 @@ import me.jellysquid.mods.sodium.client.model.vertex.type.BlittableVertexType;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import net.minecraft.client.render.VertexConsumer;
+
 
 /**
  * Uses half-precision floating point numbers to represent position coordinates and normalized unsigned shorts for
@@ -22,7 +23,7 @@ public class HFPModelVertexType implements ChunkVertexType {
 	        .addElement(ChunkMeshAttribute.TEXTURE, 12, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, false)
 	        .addElement(ChunkMeshAttribute.LIGHT, 16, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, true)
 	        .build();
-            
+
 
     public static final float MODEL_SCALE = (32.0f / 65536.0f);
     public static final float TEXTURE_SCALE = (1.0f / 32768.0f);

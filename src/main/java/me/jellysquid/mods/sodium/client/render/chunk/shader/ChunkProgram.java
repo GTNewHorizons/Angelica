@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.Identifier;
-import org.lwjgl.opengl.GL20C;
-import org.lwjgl.system.MemoryStack;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 
 import java.util.function.Function;
 
@@ -39,17 +39,16 @@ public class ChunkProgram extends GlProgram {
     }
 
     public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
-        GlStateManager.uniform1(this.uBlockTex, 0);
-        GlStateManager.uniform1(this.uLightTex, 2);
+        GL20.glUniform1i(this.uBlockTex, 0);
+        GL20.glUniform1i(this.uLightTex, 2);
 
-        GL20C.glUniform3f(this.uModelScale, modelScale, modelScale, modelScale);
-        GL20C.glUniform2f(this.uTextureScale, textureScale, textureScale);
+        GL20.glUniform3f(this.uModelScale, modelScale, modelScale, modelScale);
+        GL20.glUniform2f(this.uTextureScale, textureScale, textureScale);
 
         this.fogShader.setup();
 
         try (MemoryStack memoryStack = MemoryStack.stackPush()) {
-        	GlStateManager.uniformMatrix4(this.uModelViewProjectionMatrix, false,
-                    GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek(), memoryStack));
+        	GL20.glUniformMatrix4(this.uModelViewProjectionMatrix, false, GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek(), memoryStack));
         }
     }
 }

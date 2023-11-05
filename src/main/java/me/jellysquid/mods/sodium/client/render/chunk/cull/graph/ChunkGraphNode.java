@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.client.render.chunk.ChunkOcclusionData;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkGraphNode {
     private static final long DEFAULT_VISIBILITY_DATA = calculateVisibilityData(ChunkRenderData.EMPTY.getOcclusionData());
@@ -30,7 +30,7 @@ public class ChunkGraphNode {
         this.visibilityData = DEFAULT_VISIBILITY_DATA;
     }
 
-    public ChunkGraphNode getConnectedNode(Direction dir) {
+    public ChunkGraphNode getConnectedNode(ForgeDirection dir) {
         return this.nodes[dir.ordinal()];
     }
 
@@ -54,7 +54,7 @@ public class ChunkGraphNode {
         return this.chunkZ;
     }
 
-    public void setAdjacentNode(Direction dir, ChunkGraphNode node) {
+    public void setAdjacentNode(ForgeDirection dir, ChunkGraphNode node) {
         this.nodes[dir.ordinal()] = node;
     }
 
@@ -65,8 +65,8 @@ public class ChunkGraphNode {
     private static long calculateVisibilityData(ChunkOcclusionData occlusionData) {
         long visibilityData = 0;
 
-        for (Direction from : DirectionUtil.ALL_DIRECTIONS) {
-            for (Direction to : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection from : DirectionUtil.ALL_DIRECTIONS) {
+            for (ForgeDirection to : DirectionUtil.ALL_DIRECTIONS) {
                 if (occlusionData == null || occlusionData.isVisibleThrough(from, to)) {
                     visibilityData |= (1L << ((from.ordinal() << 3) + to.ordinal()));
                 }
@@ -91,7 +91,7 @@ public class ChunkGraphNode {
         return retVal;
     }
 
-    public void updateCullingState(Direction flow, short parent) {
+    public void updateCullingState(ForgeDirection flow, short parent) {
         int inbound = flow.ordinal();
         this.cullingState |= (visibilityData >> (inbound<<3)) & 0xFF;
         this.cullingState &= ~(1 << (inbound + 8));
@@ -147,7 +147,7 @@ public class ChunkGraphNode {
      * given by {@param pos}
      */
     public double getSquaredDistance(BlockPos pos) {
-        return this.getSquaredDistance(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+        return this.getSquaredDistance(pos.x + 0.5D, pos.y + 0.5D, pos.z + 0.5D);
     }
 
     /**

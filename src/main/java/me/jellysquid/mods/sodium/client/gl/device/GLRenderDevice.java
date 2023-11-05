@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.gl.device;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import me.jellysquid.mods.sodium.client.gl.array.GlVertexArray;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBuffer;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBufferTarget;
@@ -13,6 +12,9 @@ import me.jellysquid.mods.sodium.client.gl.tessellation.GlPrimitiveType;
 import me.jellysquid.mods.sodium.client.gl.tessellation.GlTessellation;
 import me.jellysquid.mods.sodium.client.gl.tessellation.GlVertexArrayTessellation;
 import me.jellysquid.mods.sodium.client.gl.tessellation.TessellationBinding;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -76,7 +78,7 @@ public class GLRenderDevice implements RenderDevice {
         public void uploadData(GlMutableBuffer glBuffer, ByteBuffer byteBuffer) {
             this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, glBuffer);
 
-            GlStateManager.bufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), byteBuffer, glBuffer.getUsageHint().getId());
+            GL15.glBufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), byteBuffer, glBuffer.getUsageHint().getId());
 
             glBuffer.setSize(byteBuffer.limit());
         }
@@ -90,20 +92,20 @@ public class GLRenderDevice implements RenderDevice {
             this.bindBuffer(GlBufferTarget.COPY_READ_BUFFER, src);
             this.bindBuffer(GlBufferTarget.COPY_WRITE_BUFFER, dst);
 
-            GlFunctions.BUFFER_COPY.glCopyBufferSubData(GL31C.GL_COPY_READ_BUFFER, GL31C.GL_COPY_WRITE_BUFFER, readOffset, writeOffset, bytes);
+            GlFunctions.BUFFER_COPY.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_COPY_WRITE_BUFFER, readOffset, writeOffset, bytes);
         }
 
         @Override
         public void bindBuffer(GlBufferTarget target, GlBuffer buffer) {
             if (this.stateTracker.makeBufferActive(target, buffer)) {
-            	GlStateManager.bindBuffers(target.getTargetParameter(), buffer.handle());
+            	GL15.glBindBuffer(target.getTargetParameter(), buffer.handle());
             }
         }
 
         @Override
         public void unbindBuffer(GlBufferTarget target) {
             if (this.stateTracker.makeBufferActive(target, null)) {
-            	GlStateManager.bindBuffers(target.getTargetParameter(), GlBuffer.NULL_BUFFER_ID);
+            	GL15.glBindBuffer(target.getTargetParameter(), GlBuffer.NULL_BUFFER_ID);
             }
         }
 
@@ -123,7 +125,7 @@ public class GLRenderDevice implements RenderDevice {
         public void allocateBuffer(GlBufferTarget target, GlMutableBuffer buffer, long bufferSize) {
             this.bindBuffer(target, buffer);
 
-            GL20C.glBufferData(target.getTargetParameter(), bufferSize, buffer.getUsageHint().getId());
+            GL15.glBufferData(target.getTargetParameter(), bufferSize, buffer.getUsageHint().getId());
             buffer.setSize(bufferSize);
         }
 
@@ -132,7 +134,7 @@ public class GLRenderDevice implements RenderDevice {
             int handle = buffer.handle();
             buffer.invalidateHandle();
 
-            GlStateManager.deleteBuffers(handle);
+            GL15.glDeleteBuffers(handle);
         }
 
         @Override
@@ -192,13 +194,13 @@ public class GLRenderDevice implements RenderDevice {
         @Override
         public void multiDrawArrays(IntBuffer first, IntBuffer count) {
             GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
-            GL20C.glMultiDrawArrays(primitiveType.getId(), first, count);
+            GL14.glMultiDrawArrays(primitiveType.getId(), first, count);
         }
 
         @Override
-        public void multiDrawArraysIndirect(long pointer, int count, int stride) {
+        public void multiDrawArraysIndirect(ByteBuffer buffer, int count, int stride) {
             GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
-            GlFunctions.INDIRECT_DRAW.glMultiDrawArraysIndirect(primitiveType.getId(), pointer, count, stride);
+            GlFunctions.INDIRECT_DRAW.glMultiDrawArraysIndirect(primitiveType.getId(), buffer, count, stride);
         }
 
         @Override

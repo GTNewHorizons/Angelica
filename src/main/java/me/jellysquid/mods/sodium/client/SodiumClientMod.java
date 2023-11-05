@@ -1,20 +1,16 @@
 package me.jellysquid.mods.sodium.client;
 
-import me.jellysquid.mods.sodium.client.compat.ccl.CCLCompat;
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import net.minecraftforge.fml.ExtensionPoint;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.fml.network.FMLNetworkConstants;
+import com.gtnewhorizons.angelica.Tags;
+import cpw.mods.fml.common.Mod;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(SodiumClientMod.MODID)
+@Mod(modid = SodiumClientMod.MODID,
+    name = SodiumClientMod.NAME,
+    version = Tags.VERSION,
+    acceptedMinecraftVersions = "[1.7.10]",
+    acceptableRemoteVersions = "*")
 public class SodiumClientMod {
     private static SodiumGameOptions CONFIG;
     public static Logger LOGGER = LogManager.getLogger("Embeddium");
@@ -22,9 +18,7 @@ public class SodiumClientMod {
     private static String MOD_VERSION;
 
     public static final String MODID = "embeddium";
-
-    public static boolean flywheelLoaded;
-    public static boolean cclLoaded;
+    public static final String NAME = "Embeddium";
 
     public SodiumClientMod() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
@@ -33,13 +27,7 @@ public class SodiumClientMod {
     }
 
     public void onInitializeClient(final FMLClientSetupEvent event) {
-    	flywheelLoaded = ModList.get().isLoaded("flywheel");
-    	cclLoaded = ModList.get().isLoaded("codechickenlib");
     	MOD_VERSION = ModList.get().getModContainerById(MODID).get().getModInfo().getVersion().toString();
-
-    	if(cclLoaded) {
-    		CCLCompat.init();
-    	}
     }
 
     public static SodiumGameOptions options() {

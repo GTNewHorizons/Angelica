@@ -1,9 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull;
 
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.chunk.ChunkOcclusionData;
+
 
 public interface ChunkCuller {
     IntArrayList computeVisible(Camera camera, FrustumExtended frustum, int frame, boolean spectator);

@@ -4,7 +4,7 @@ import me.jellysquid.mods.sodium.client.model.vertex.VertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.particle.ParticleVertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
-import net.minecraft.client.texture.Sprite;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
 /**
  * Base implementation for a {@link VertexSink} which transforms texture coordinates relative to a sprite's bounds.
@@ -18,7 +18,7 @@ public abstract class SpriteTexturedVertexTransformer<T extends VertexSink> exte
     private final float uMaxMin;
     private final float vMaxMin;
 
-    public SpriteTexturedVertexTransformer(T delegate, Sprite sprite) {
+    public SpriteTexturedVertexTransformer(T delegate, TextureAtlasSprite sprite) {
         super(delegate);
 
         this.uMin = sprite.getMinU();
@@ -37,7 +37,7 @@ public abstract class SpriteTexturedVertexTransformer<T extends VertexSink> exte
     }
 
     public static class Quad extends SpriteTexturedVertexTransformer<QuadVertexSink> implements QuadVertexSink {
-        public Quad(QuadVertexSink delegate, Sprite sprite) {
+        public Quad(QuadVertexSink delegate, TextureAtlasSprite sprite) {
             super(delegate, sprite);
         }
 
@@ -51,7 +51,7 @@ public abstract class SpriteTexturedVertexTransformer<T extends VertexSink> exte
     }
 
     public static class Particle extends SpriteTexturedVertexTransformer<ParticleVertexSink> implements ParticleVertexSink {
-        public Particle(ParticleVertexSink delegate, Sprite sprite) {
+        public Particle(ParticleVertexSink delegate, TextureAtlasSprite sprite) {
             super(delegate, sprite);
         }
 
@@ -65,7 +65,7 @@ public abstract class SpriteTexturedVertexTransformer<T extends VertexSink> exte
     }
 
     public static class Glyph extends SpriteTexturedVertexTransformer<GlyphVertexSink> implements GlyphVertexSink {
-        public Glyph(GlyphVertexSink delegate, Sprite sprite) {
+        public Glyph(GlyphVertexSink delegate, TextureAtlasSprite sprite) {
             super(delegate, sprite);
         }
 

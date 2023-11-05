@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.quad.properties;
 
+import com.gtnewhorizons.angelica.compat.mojang.BakedQuad;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.util.math.Direction;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class ModelQuadFlags {
     /**
@@ -34,7 +34,7 @@ public class ModelQuadFlags {
      */
     public static int getQuadFlags(BakedQuad bakedQuad) {
         ModelQuadView quad = (ModelQuadView) bakedQuad;
-        Direction face = bakedQuad.getFace();
+        ForgeDirection face = bakedQuad.getFace();
 
         float minX = 32.0F;
         float minY = 32.0F;
@@ -58,21 +58,21 @@ public class ModelQuadFlags {
         }
 
         boolean partial = false;
-        
+
         switch (face.getAxis()) {
-            case X : 
+            case X :
             	partial = minY >= 0.0001f || minZ >= 0.0001f || maxY <= 0.9999F || maxZ <= 0.9999F;
             	break;
-            case Y : 
+            case Y :
             	partial = minX >= 0.0001f || minZ >= 0.0001f || maxX <= 0.9999F || maxZ <= 0.9999F;
             	break;
-            case Z : 
+            case Z :
             	partial = minX >= 0.0001f || minY >= 0.0001f || maxX <= 0.9999F || maxY <= 0.9999F;
             	break;
         };
 
         boolean parallel = false;
-        
+
         switch(face.getAxis()) {
             case X :
             	parallel = minX == maxX;
@@ -87,7 +87,7 @@ public class ModelQuadFlags {
 
         boolean aligned = false;
         boolean flag = false;
-        
+
         switch (face) {
             case DOWN :
             	flag = minY < 0.0001f;
@@ -108,7 +108,7 @@ public class ModelQuadFlags {
             	flag = maxX > 0.9999F;
             	break;
         };
-        
+
         aligned = parallel && flag;
 
         int flags = 0;

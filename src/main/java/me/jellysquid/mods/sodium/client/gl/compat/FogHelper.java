@@ -1,63 +1,55 @@
 package me.jellysquid.mods.sodium.client.gl.compat;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkFogMode;
-import net.minecraft.client.render.BackgroundRenderer;
-import net.minecraft.util.math.MathHelper;
-import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL11;
 
 public class FogHelper {
     private static final float FAR_PLANE_THRESHOLD_EXP = (float) Math.log(1.0f / 0.0019f);
-    private static final float FAR_PLANE_THRESHOLD_EXP2 = MathHelper.sqrt(FAR_PLANE_THRESHOLD_EXP);
+    private static final float FAR_PLANE_THRESHOLD_EXP2 = (float) Math.sqrt(FAR_PLANE_THRESHOLD_EXP);
 
     public static float getFogEnd() {
-    	return GlStateManager.FOG.end;
+    	return GLStateManager.getFog().end;
     }
 
     public static float getFogStart() {
-    	return GlStateManager.FOG.start;
+    	return GLStateManager.getFog().start;
     }
 
     public static float getFogDensity() {
-    	return GlStateManager.FOG.density;
+    	return GLStateManager.getFog().density;
     }
 
     /**
      * Retrieves the current fog mode from the fixed-function pipeline.
      */
     public static ChunkFogMode getFogMode() {
-        int mode = GlStateManager.FOG.mode;
+        int mode = GLStateManager.getFog().fogMode;
 
-        if(mode == 0 || !GlStateManager.FOG.capState.state)
+        if(mode == 0 || !GLStateManager.getFog().mode.isEnabled())
         	return ChunkFogMode.NONE;
 
-        switch (mode) {
-            case GL20.GL_EXP2:
-            case GL20.GL_EXP:
-                return ChunkFogMode.EXP2;
-            case GL20.GL_LINEAR:
-                return ChunkFogMode.LINEAR;
-            default:
-                throw new UnsupportedOperationException("Unknown fog mode: " + mode);
-        }
+        return switch (mode) {
+            case GL11.GL_EXP2, GL11.GL_EXP -> ChunkFogMode.EXP2;
+            case GL11.GL_LINEAR -> ChunkFogMode.LINEAR;
+            default -> throw new UnsupportedOperationException("Unknown fog mode: " + mode);
+        };
     }
 
     public static float getFogCutoff() {
-    	int mode = GlStateManager.FOG.mode;
+    	int mode = GLStateManager.getFog().fogMode;
 
-        switch (mode) {
-            case GL20.GL_LINEAR:
-                return getFogEnd();
-            case GL20.GL_EXP:
-                return FAR_PLANE_THRESHOLD_EXP / getFogDensity();
-            case GL20.GL_EXP2:
-                return FAR_PLANE_THRESHOLD_EXP2 / getFogDensity();
-            default:
-                return 0.0f;
-        }
+        return switch (mode) {
+            case GL11.GL_LINEAR -> getFogEnd();
+            case GL11.GL_EXP -> FAR_PLANE_THRESHOLD_EXP / getFogDensity();
+            case GL11.GL_EXP2 -> FAR_PLANE_THRESHOLD_EXP2 / getFogDensity();
+            default -> 0.0f;
+        };
     }
 
     public static float[] getFogColor() {
-    	return new float[]{BackgroundRenderer.red, BackgroundRenderer.green, BackgroundRenderer.blue, 1.0F};
+        // TODO: Sodium
+//    	return new float[]{BackgroundRenderer.red, BackgroundRenderer.green, BackgroundRenderer.blue, 1.0F};
+    	return new float[]{0.0F, 0.0F, 0.0F, 1.0F};
     }
 }

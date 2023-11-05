@@ -1,18 +1,18 @@
 package net.coderbot.iris.layer;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderStateShard;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.Optional;
 
-public class OuterWrappedRenderType extends RenderType implements WrappableRenderType {
-	private final RenderStateShard extra;
-	private final RenderType wrapped;
+public class OuterWrappedRenderType extends RenderLayer implements WrappableRenderType {
+	private final RenderPhase extra;
+	private final RenderLayer wrapped;
 
-	private OuterWrappedRenderType(String name, RenderType wrapped, RenderStateShard extra) {
+	private OuterWrappedRenderType(String name, RenderLayer wrapped, RenderPhase extra) {
 		super(name, wrapped.format(), wrapped.mode(), wrapped.bufferSize(),
 			wrapped.affectsCrumbling(), shouldSortOnUpload(wrapped), wrapped::setupRenderState, wrapped::clearRenderState);
 
@@ -20,7 +20,7 @@ public class OuterWrappedRenderType extends RenderType implements WrappableRende
 		this.wrapped = wrapped;
 	}
 
-	public static OuterWrappedRenderType wrapExactlyOnce(String name, RenderType wrapped, RenderStateShard extra) {
+	public static OuterWrappedRenderType wrapExactlyOnce(String name, RenderLayer wrapped, RenderPhase extra) {
 		if (wrapped instanceof OuterWrappedRenderType) {
 			wrapped = ((OuterWrappedRenderType) wrapped).unwrap();
 		}
@@ -43,12 +43,12 @@ public class OuterWrappedRenderType extends RenderType implements WrappableRende
 	}
 
 	@Override
-	public RenderType unwrap() {
+	public RenderLayer unwrap() {
 		return this.wrapped;
 	}
 
 	@Override
-	public Optional<RenderType> outline() {
+	public Optional<RenderLayer> outline() {
 		return this.wrapped.outline();
 	}
 
@@ -84,7 +84,7 @@ public class OuterWrappedRenderType extends RenderType implements WrappableRende
 		return "iris_wrapped:" + this.wrapped.toString();
 	}
 
-	private static boolean shouldSortOnUpload(RenderType type) {
+	private static boolean shouldSortOnUpload(RenderLayer type) {
         return true;
         // TODO: Iris
 //		return ((RenderTypeAccessor) type).shouldSortOnUpload();

@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.ints.IntArrays;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.hfp.HFPModelVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.sfp.SFPModelVertexType;
-import org.lwjgl.system.MemoryStack;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -71,38 +70,36 @@ public class ChunkBufferSorter {
         FloatBuffer floatBuffer = quadBuffer.asFloatBuffer();
         BitSet bits = new BitSet();
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer tmp = stack.mallocFloat(quadStride);
+        FloatBuffer tmp =  FloatBuffer.allocate(quadStride);
 
-            for (int l = bits.nextClearBit(0); l < indicesArray.length; l = bits.nextClearBit(l + 1)) {
-                int m = indicesArray[l];
+        for (int l = bits.nextClearBit(0); l < indicesArray.length; l = bits.nextClearBit(l + 1)) {
+            int m = indicesArray[l];
 
-                if (m != l) {
-                    sliceQuad(floatBuffer, m, quadStride, quadStart);
-                    ((Buffer)tmp).clear();
-                    tmp.put(floatBuffer);
+            if (m != l) {
+                sliceQuad(floatBuffer, m, quadStride, quadStart);
+                ((Buffer)tmp).clear();
+                tmp.put(floatBuffer);
 
-                    int n = m;
+                int n = m;
 
-                    for (int o = indicesArray[m]; n != l; o = indicesArray[o]) {
-                        sliceQuad(floatBuffer, o, quadStride, quadStart);
-                        FloatBuffer floatBuffer3 = floatBuffer.slice();
+                for (int o = indicesArray[m]; n != l; o = indicesArray[o]) {
+                    sliceQuad(floatBuffer, o, quadStride, quadStart);
+                    FloatBuffer floatBuffer3 = floatBuffer.slice();
 
-                        sliceQuad(floatBuffer, n, quadStride, quadStart);
-                        floatBuffer.put(floatBuffer3);
+                    sliceQuad(floatBuffer, n, quadStride, quadStart);
+                    floatBuffer.put(floatBuffer3);
 
-                        bits.set(n);
-                        n = o;
-                    }
-
-                    sliceQuad(floatBuffer, l, quadStride, quadStart);
-                    ((Buffer)tmp).flip();
-
-                    floatBuffer.put(tmp);
+                    bits.set(n);
+                    n = o;
                 }
 
-                bits.set(l);
+                sliceQuad(floatBuffer, l, quadStride, quadStart);
+                ((Buffer)tmp).flip();
+
+                floatBuffer.put(tmp);
             }
+
+            bits.set(l);
         }
     }
 

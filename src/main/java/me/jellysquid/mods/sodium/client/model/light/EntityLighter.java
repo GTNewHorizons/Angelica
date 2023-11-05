@@ -1,10 +1,12 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
+import cofh.lib.util.helpers.MathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.render.entity.EntityLightSampler;
-import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+
+import static org.joml.Math.lerp;
 
 public class EntityLighter {
     private static final double MIN_BOX_SIZE = 0.001D;
@@ -16,15 +18,15 @@ public class EntityLighter {
         boolean calcBlockLight = !entity.isOnFire();
 
         // Find the interpolated position of the entity
-        double x1 = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
-        double y1 = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
-        double z1 = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
+        double x1 = lerp(tickDelta, entity.prevPosX, entity.posX);
+        double y1 = lerp(tickDelta, entity.prevPosY, entity.posY);
+        double z1 = lerp(tickDelta, entity.prevPosZ, entity.posZ);
 
         // Bounding boxes with no volume cause issues, ensure they're non-zero
         // Notably, armor stands in "Marker" mode decide this is a cute thing to do
         // https://github.com/jellysquid3/sodium-fabric/issues/60
-        double width = Math.max(entity.getWidth(), MIN_BOX_SIZE);
-        double height = Math.max(entity.getHeight(), MIN_BOX_SIZE);
+        double width = Math.max(entity.width, MIN_BOX_SIZE);
+        double height = Math.max(entity.height, MIN_BOX_SIZE);
 
         double x2 = x1 + width;
         double y2 = y1 + height;
@@ -59,10 +61,10 @@ public class EntityLighter {
                 for (int bZ = bMinZ; bZ < bMaxZ; bZ++) {
                     pos.set(bX, bY, bZ);
 
-                    BlockState blockState = entity.world.getBlockState(pos);
+                    BlockState blockState = entity.worldObj.getBlockState(pos);
 
                     // Do not consider light-blocking volumes
-                    if (blockState.isOpaqueFullCube(entity.world, pos) && blockState.getLightValue(entity.world, pos) <= 0) {
+                    if (blockState.isOpaqueFullCube(entity.worldObj, pos) && blockState.getLightValue(entity.worldObj, pos) <= 0) {
                         continue;
                     }
 

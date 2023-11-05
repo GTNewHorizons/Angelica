@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.passes;
 
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import it.unimi.dsi.fastutil.objects.Reference2IntArrayMap;
-import net.minecraft.client.render.RenderLayer;
+
 
 /**
  * Maps vanilla render layers to render passes used by Sodium. This provides compatibility with the render layers already
@@ -36,11 +37,11 @@ public class BlockRenderPassManager {
      */
     public static BlockRenderPassManager createDefaultMappings() {
         BlockRenderPassManager mapper = new BlockRenderPassManager();
-        mapper.addMapping(RenderLayer.getSolid(), BlockRenderPass.SOLID);
-        mapper.addMapping(RenderLayer.getCutoutMipped(), BlockRenderPass.CUTOUT_MIPPED);
-        mapper.addMapping(RenderLayer.getCutout(), BlockRenderPass.CUTOUT);
-        mapper.addMapping(RenderLayer.getTranslucent(), BlockRenderPass.TRANSLUCENT);
-        mapper.addMapping(RenderLayer.getTripwire(), BlockRenderPass.TRIPWIRE);
+        mapper.addMapping(RenderLayer.solid(), BlockRenderPass.SOLID);
+        mapper.addMapping(RenderLayer.cutoutMipped(), BlockRenderPass.CUTOUT_MIPPED);
+        mapper.addMapping(RenderLayer.cutout(), BlockRenderPass.CUTOUT);
+        mapper.addMapping(RenderLayer.translucent(), BlockRenderPass.TRANSLUCENT);
+        mapper.addMapping(RenderLayer.tripwire(), BlockRenderPass.TRIPWIRE);
 
         return mapper;
     }

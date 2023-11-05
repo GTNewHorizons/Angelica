@@ -1,22 +1,21 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
+import com.gtnewhorizons.angelica.compat.mojang.Biome;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.LightType;
+import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPaletteFallback;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalleteArray;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.util.collection.PackedIntegerArray;
-import net.minecraft.util.math.BlockBox;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.LightType;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.source.BiomeArray;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.gen.structure.StructureBoundingBox;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,7 +27,7 @@ public class ClonedChunkSection {
     private final AtomicInteger referenceCount = new AtomicInteger(0);
     private final ClonedChunkSectionCache backingCache;
 
-    private final Short2ObjectMap<BlockEntity> blockEntities;
+    private final Short2ObjectMap<TileEntity> blockEntities;
     private final ChunkNibbleArray[] lightDataArrays;
     private final World world;
 
@@ -49,7 +48,7 @@ public class ClonedChunkSection {
     }
 
     public void init(ChunkSectionPos pos) {
-        WorldChunk chunk = world.getChunk(pos.getX(), pos.getZ());
+        Chunk chunk = world.getChunkFromChunkCoords(pos.x, pos.z);
 
         if (chunk == null) {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
@@ -76,11 +75,11 @@ public class ClonedChunkSection {
 
         this.biomeData = chunk.getBiomeArray();
 
-        BlockBox box = new BlockBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
+        StructureBoundingBox box = new StructureBoundingBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
 
         this.blockEntities.clear();
 
-        for (Map.Entry<BlockPos, BlockEntity> entry : chunk.getBlockEntities().entrySet()) {
+        for (Map.Entry<BlockPos, TileEntity> entry : chunk.getBlockEntities().entrySet()) {
             BlockPos entityPos = entry.getKey();
 
             if (box.contains(entityPos)) {
@@ -108,7 +107,7 @@ public class ClonedChunkSection {
         return this.biomeData.getBiomeForNoiseGen(x, y, z);
     }
 
-    public BlockEntity getBlockEntity(int x, int y, int z) {
+    public TileEntity getBlockEntity(int x, int y, int z) {
         return this.blockEntities.get(packLocal(x, y, z));
     }
 
@@ -155,7 +154,7 @@ public class ClonedChunkSection {
         ChunkSection section = null;
 
         if (!World.isOutOfBuildLimitVertically(ChunkSectionPos.getBlockCoord(pos.getY()))) {
-            section = chunk.getSectionArray()[pos.getY()];
+            section = chunk.getSectionArray()[pos.y];
         }
 
         return section;

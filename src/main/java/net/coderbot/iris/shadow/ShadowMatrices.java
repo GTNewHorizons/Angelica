@@ -1,6 +1,6 @@
 package net.coderbot.iris.shadow;
 
-import com.gtnewhorizons.angelica.compat.mojang.PoseStack;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
@@ -41,7 +41,7 @@ public class ShadowMatrices {
 		};
 	}
 
-	public static void createBaselineModelViewMatrix(PoseStack target, float shadowAngle, float sunPathRotation) {
+	public static void createBaselineModelViewMatrix(MatrixStack target, float shadowAngle, float sunPathRotation) {
 		float skyAngle;
 
 		if (shadowAngle < 0.25f) {
@@ -50,16 +50,16 @@ public class ShadowMatrices {
 			skyAngle = shadowAngle - 0.25f;
 		}
 
-		target.last().normal().identity();
-		target.last().pose().identity();
+		target.peek().getNormal().identity();
+		target.peek().getModel().identity();
 
-		target.last().pose().translate(0.0f, 0.0f, -100.0f);
+		target.peek().getModel().translate(0.0f, 0.0f, -100.0f);
         target.rotateX(90F * DEGREES_TO_RADIANS);
         target.rotateZ(sunPathRotation * DEGREES_TO_RADIANS);
         target.rotateZ(skyAngle * -360.0f * DEGREES_TO_RADIANS);
 	}
 
-	public static void snapModelViewToGrid(PoseStack target, float shadowIntervalSize, double cameraX, double cameraY, double cameraZ) {
+	public static void snapModelViewToGrid(MatrixStack target, float shadowIntervalSize, double cameraX, double cameraY, double cameraZ) {
 		if (Math.abs(shadowIntervalSize) == 0.0F) {
 			// Avoid a division by zero - semantically, this just means that the snapping does not take place,
 			// if the shadow interval (size of each grid "cell") is zero.
@@ -87,10 +87,10 @@ public class ShadowMatrices {
 		offsetY -= halfIntervalSize;
 		offsetZ -= halfIntervalSize;
 
-        target.last().pose().translate(offsetX, offsetY, offsetZ);
+        target.peek().getModel().translate(offsetX, offsetY, offsetZ);
 	}
 
-	public static void createModelViewMatrix(PoseStack target, float shadowAngle, float shadowIntervalSize,
+	public static void createModelViewMatrix(MatrixStack target, float shadowAngle, float shadowIntervalSize,
 											 float sunPathRotation, double cameraX, double cameraY, double cameraZ) {
 		createBaselineModelViewMatrix(target, shadowAngle, sunPathRotation);
 		snapModelViewToGrid(target, shadowIntervalSize, cameraX, cameraY, cameraZ);
@@ -152,7 +152,7 @@ public class ShadowMatrices {
 					1
 			};
 
-			PoseStack modelView = new PoseStack();
+			MatrixStack modelView = new MatrixStack();
 
 			// NB: At dawn, the shadow angle is NOT zero.
 			// When DayTime=0, skyAngle = 282 degrees.
@@ -160,7 +160,7 @@ public class ShadowMatrices {
 			createModelViewMatrix(modelView, 0.03451777f, 2.0f,
 					0.0f, 0.646045982837677f, 82.53274536132812f, -514.0264282226562f);
 
-			test("model view at dawn", expectedModelViewAtDawn, toFloatArray(modelView.last().pose()));
+			test("model view at dawn", expectedModelViewAtDawn, toFloatArray(modelView.peek().getModel()));
 		}
 
 		private static float[] toFloatArray(Matrix4f matrix4f) {

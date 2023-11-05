@@ -1,8 +1,7 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Matrix4f;
-import org.lwjgl.system.MemoryStack;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
 
@@ -10,7 +9,7 @@ public class GameRendererContext {
     private static Matrix4f PROJECTION_MATRIX;
 
     public static void captureProjectionMatrix(Matrix4f matrix) {
-        PROJECTION_MATRIX = matrix.copy();
+        PROJECTION_MATRIX.set(matrix);
     }
 
     /**

@@ -1,12 +1,12 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
-import net.minecraft.util.Identifier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.opengl.GL20C;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,19 +27,20 @@ public class GlShader extends GlObject {
 
         src = processShader(src, constants);
 
-        int handle = GlStateManager.createShader(type.id);
-        ShaderWorkarounds.safeShaderSource(handle, src);
-        GlStateManager.compileShader(handle);
+        int handle = GL20.glCreateShader(type.id);
+        // TODO: ShaderWorkaround
+        GL20.glShaderSource(handle, src);
+        GL20.glCompileShader(handle);
 
-        String log = GL20C.glGetShaderInfoLog(handle);
+        String log = GL20.glGetShaderInfoLog(handle, GL20.GL_INFO_LOG_LENGTH);
 
         if (!log.isEmpty()) {
             LOGGER.warn("Shader compilation log for " + this.name + ": " + log);
         }
 
-        int result = GlStateManager.getShader(handle, GL20C.GL_COMPILE_STATUS);
+        int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
 
-        if (result != GL20C.GL_TRUE) {
+        if (result != GL11.GL_TRUE) {
             throw new RuntimeException("Shader compilation failed, see log for details");
         }
 
@@ -84,7 +85,7 @@ public class GlShader extends GlObject {
     }
 
     public void delete() {
-    	GlStateManager.deleteShader(this.handle());
+    	GL20.glDeleteShader(this.handle());
 
         this.invalidateHandle();
     }

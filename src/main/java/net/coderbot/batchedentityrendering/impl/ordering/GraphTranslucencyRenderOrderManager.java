@@ -10,7 +10,7 @@ import de.odysseus.ithaka.digraph.util.fas.SimpleFeedbackArcSetProvider;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderType;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -18,10 +18,10 @@ import java.util.List;
 
 public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
     private final FeedbackArcSetProvider feedbackArcSetProvider;
-    private final EnumMap<TransparencyType, Digraph<RenderType>> types;
+    private final EnumMap<TransparencyType, Digraph<RenderLayer>> types;
 
     private boolean inGroup = false;
-    private final EnumMap<TransparencyType, RenderType> currentTypes;
+    private final EnumMap<TransparencyType, RenderLayer> currentTypes;
 
     public GraphTranslucencyRenderOrderManager() {
         feedbackArcSetProvider = new SimpleFeedbackArcSetProvider();
@@ -33,7 +33,7 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
         }
     }
 
-    private static TransparencyType getTransparencyType(RenderType type) {
+    private static TransparencyType getTransparencyType(RenderLayer type) {
         while (type instanceof WrappableRenderType) {
             type = ((WrappableRenderType) type).unwrap();
         }
@@ -46,13 +46,13 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
         return TransparencyType.GENERAL_TRANSPARENT;
     }
 
-    public void begin(RenderType renderType) {
+    public void begin(RenderLayer renderType) {
         TransparencyType transparencyType = getTransparencyType(renderType);
-        Digraph<RenderType> graph = types.get(transparencyType);
+        Digraph<RenderLayer> graph = types.get(transparencyType);
         graph.add(renderType);
 
         if (inGroup) {
-			RenderType previous = currentTypes.put(transparencyType, renderType);
+			RenderLayer previous = currentTypes.put(transparencyType, renderType);
 
             if (previous == null) {
                 return;
@@ -102,21 +102,21 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
         }
     }
 
-    public Iterable<RenderType> getRenderOrder() {
+    public Iterable<RenderLayer> getRenderOrder() {
         int layerCount = 0;
 
-        for (Digraph<RenderType> graph : types.values()) {
+        for (Digraph<RenderLayer> graph : types.values()) {
             layerCount += graph.getVertexCount();
         }
 
-        List<RenderType> allLayers = new ArrayList<>(layerCount);
+        List<RenderLayer> allLayers = new ArrayList<>(layerCount);
 
-        for (Digraph<RenderType> graph : types.values()) {
+        for (Digraph<RenderLayer> graph : types.values()) {
             // TODO: Make sure that FAS can't become a bottleneck!
             // Running NP-hard algorithms in a real time rendering loop might not be an amazing idea.
             // This shouldn't be necessary in sane scenes, though, and if there aren't cycles,
             // then this *should* be relatively inexpensive, since it'll bail out and return an empty set.
-            FeedbackArcSet<RenderType> arcSet =
+            FeedbackArcSet<RenderLayer> arcSet =
                     feedbackArcSetProvider.getFeedbackArcSet(graph, graph, FeedbackArcSetPolicy.MIN_WEIGHT);
 
             if (arcSet.getEdgeCount() > 0) {
@@ -125,8 +125,8 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
 
                 // Our feedback arc set algorithm finds some dependency links that can be removed hopefully
                 // without disrupting the overall order too much. Hopefully it isn't too slow!
-                for (RenderType source : arcSet.vertices()) {
-                    for (RenderType target : arcSet.targets(source)) {
+                for (RenderLayer source : arcSet.vertices()) {
+                    for (RenderLayer target : arcSet.targets(source)) {
                         graph.remove(source, target);
                     }
                 }

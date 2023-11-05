@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
-import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GLCapabilities;
+import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.GLContext;
 
 public class GlFunctions {
-    private static final GLCapabilities capabilities = GL.getCapabilities();
+    private static final ContextCapabilities capabilities = GLContext.getCapabilities();
 
     public static final GlVertexArrayFunctions VERTEX_ARRAY = GlVertexArrayFunctions.load(capabilities);
     public static final GlBufferCopyFunctions BUFFER_COPY = GlBufferCopyFunctions.load(capabilities);
