@@ -15,12 +15,17 @@ import org.embeddedt.archaicfix.config.ArchaicConfig;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -54,18 +59,17 @@ public class MixinChunk {
         }
     }
 
-    private static LinkedList<ChunkCoordIntPair> arch$populatingChunk = new LinkedList<>(); // keep track of cascading chunk generation during chunk population
-
-    private void logCascadingWorldGeneration() {
+    @Unique
+    private void logCascadingWorldGeneration(Deque<ChunkCoordIntPair> populatingChunk) {
         ModContainer activeModContainer = Loader.instance().activeModContainer();
         String format = "{} loaded a new chunk {} in dimension {} ({}) while populating chunk {}, causing cascading worldgen lag.";
 
         ChunkCoordIntPair pos = new ChunkCoordIntPair(this.xPosition, this.zPosition);
 
         if (activeModContainer == null) {
-            ArchaicLogger.LOGGER.warn(format, "Minecraft", pos, this.worldObj.provider.dimensionId, this.worldObj.provider.getDimensionName(), arch$populatingChunk.peek());
+            ArchaicLogger.LOGGER.warn(format, "Minecraft", pos, this.worldObj.provider.dimensionId, this.worldObj.provider.getDimensionName(), populatingChunk.peek());
         } else {
-            ArchaicLogger.LOGGER.warn(format, activeModContainer.getName(), pos, this.worldObj.provider.dimensionId, this.worldObj.provider.getDimensionName(), arch$populatingChunk.peek());
+            ArchaicLogger.LOGGER.warn(format, activeModContainer.getName(), pos, this.worldObj.provider.dimensionId, this.worldObj.provider.getDimensionName(), populatingChunk.peek());
             ArchaicLogger.LOGGER.warn("Please report this to the mod's issue tracker. This log can be disabled in the ArchaicFix config.");
         }
 
@@ -75,14 +79,15 @@ public class MixinChunk {
     }
 
     @Inject(method = "populateChunk", at = @At("HEAD"))
-    private void savePopulatingChunk(IChunkProvider p_76624_1_, IChunkProvider p_76624_2_, int x, int z, CallbackInfo ci) {
-        if (arch$populatingChunk.size() > 0 && ArchaicConfig.logCascadingWorldgen) logCascadingWorldGeneration();
-        arch$populatingChunk.push(new ChunkCoordIntPair(x, z));
+    private void savePopulatingChunk(IChunkProvider p_76624_1_, IChunkProvider p_76624_2_, int x, int z, CallbackInfo ci, @Share("populatingChunk") LocalRef<Deque<ChunkCoordIntPair>> populatingChunk) {
+        if(populatingChunk.get() == null) populatingChunk.set(new LinkedList<>());
+        if (populatingChunk.get().size() > 0 && ArchaicConfig.logCascadingWorldgen) logCascadingWorldGeneration(populatingChunk.get());
+        populatingChunk.get().push(new ChunkCoordIntPair(x, z));
     }
 
     @Inject(method = "populateChunk", at = @At("TAIL"))
-    private void restorePopulatingChunk(IChunkProvider p_76624_1_, IChunkProvider p_76624_2_, int p_76624_3_, int p_76624_4_, CallbackInfo ci) {
-        arch$populatingChunk.pop();
+    private void restorePopulatingChunk(IChunkProvider p_76624_1_, IChunkProvider p_76624_2_, int p_76624_3_, int p_76624_4_, CallbackInfo ci, @Share("populatingChunk") LocalRef<Deque<ChunkCoordIntPair>> populatingChunk) {
+        populatingChunk.get().pop();
     }
 
 }
