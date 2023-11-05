@@ -59,12 +59,6 @@ public class MixinEntityRenderer {
         }
     }
 
-    private void toggleFog(boolean enable) {
-        if (fogToggleListener != null) {
-            fogToggleListener.run();
-        }
-    }
-
 
     @Inject(at = @At(shift = At.Shift.AFTER, target = "Lnet/minecraft/client/renderer/EntityRenderer;setupCameraTransform(FI)V", value = "INVOKE"), method = "renderWorld(FJ)V")
     private void iris$setCamera(float tickDelta, long startTime, CallbackInfo ci) {
