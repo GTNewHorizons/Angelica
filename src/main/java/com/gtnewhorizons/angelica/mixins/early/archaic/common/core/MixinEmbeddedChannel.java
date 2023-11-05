@@ -21,7 +21,7 @@ import java.util.Queue;
 
 @Mixin(EmbeddedChannel.class)
 public abstract class MixinEmbeddedChannel extends AbstractChannel {
-    protected MixinEmbeddedChannel(Channel parent) {
+    private MixinEmbeddedChannel(Channel parent) {
         super(parent);
     }
 

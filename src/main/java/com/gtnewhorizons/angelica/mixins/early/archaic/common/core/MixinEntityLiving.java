@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 @Mixin(EntityLiving.class)
 public abstract class MixinEntityLiving extends EntityLivingBase {
-    public MixinEntityLiving(World p_i1594_1_) {
+    private MixinEntityLiving(World p_i1594_1_) {
         super(p_i1594_1_);
     }
 

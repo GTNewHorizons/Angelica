@@ -15,7 +15,7 @@ import net.minecraft.world.World;
 @Mixin(value = BlockEnchantmentTable.class)
 public abstract class MixinBlockEnchantmentTable extends BlockContainer {
 
-	protected MixinBlockEnchantmentTable(Material material) {
+	private MixinBlockEnchantmentTable(Material material) {
 		super(material);
 	}
 

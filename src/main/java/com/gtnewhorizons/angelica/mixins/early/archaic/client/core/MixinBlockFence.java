@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BlockFence.class)
 public abstract class MixinBlockFence extends Block {
-    protected MixinBlockFence(Material p_i45394_1_) {
+    private MixinBlockFence(Material p_i45394_1_) {
         super(p_i45394_1_);
     }
 

@@ -53,7 +53,7 @@ public abstract class MixinBlockLeaves extends BlockLeavesBase {
 
     @Shadow protected IIcon[][] field_150129_M;
 
-    protected MixinBlockLeaves(Material material, boolean overridden) {
+    private MixinBlockLeaves(Material material, boolean overridden) {
         super(material, overridden);
     }
 
