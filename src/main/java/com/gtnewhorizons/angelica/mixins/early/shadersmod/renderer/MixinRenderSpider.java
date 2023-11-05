@@ -20,7 +20,7 @@ public class MixinRenderSpider {
                     value = "INVOKE"),
             method = "shouldRenderPass(Lnet/minecraft/entity/monster/EntitySpider;IF)I")
     private void angelica$beginSpiderEyes(CallbackInfoReturnable<Integer> cir) {
-        Shaders.beginSpiderEyes();
+        Shaders.beginGlowingEyes();
     }
 
 }

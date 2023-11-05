@@ -27,6 +27,7 @@ import static org.lwjgl.opengl.GL11.glPushMatrix;
 import static org.lwjgl.opengl.GL11.glScalef;
 import static org.lwjgl.opengl.GL11.glTranslatef;
 
+@SuppressWarnings("deprecation")
 @Mixin(targets = { "cpw/mods/fml/client/SplashProgress$3" })
 public class MixinSplashProgress {
     private static final int memoryGoodColor = 0x78CB34;

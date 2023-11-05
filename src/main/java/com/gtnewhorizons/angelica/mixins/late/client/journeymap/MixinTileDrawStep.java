@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(TileDrawStep.class)
 public class MixinTileDrawStep {
-    @Redirect(method = "*", at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Ljourneymap/client/render/map/TileDrawStep;debug:Z"))
+    @Redirect(method = "*", at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Ljourneymap/client/render/map/TileDrawStep;debug:Z", remap = false))
     private boolean getDebug(TileDrawStep instance) {
         return false;
     }

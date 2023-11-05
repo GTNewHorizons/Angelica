@@ -4,17 +4,19 @@ import cpw.mods.fml.client.SplashProgress;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
+@SuppressWarnings("deprecation")
 @Mixin(SplashProgress.class)
 public interface AccessorSplashProgress {
-    @Accessor(value="barBorderColor", remap = false)
+    
+    @Accessor(remap = false)
     static int getBarBorderColor() {
         throw new AssertionError();
     }
-    @Accessor(value="barBackgroundColor", remap = false)
+    @Accessor(remap = false)
     static int getBarBackgroundColor() {
         throw new AssertionError();
     }
-    @Accessor(value="fontColor", remap = false)
+    @Accessor(remap = false)
     static int getFontColor() {
         throw new AssertionError();
     }
