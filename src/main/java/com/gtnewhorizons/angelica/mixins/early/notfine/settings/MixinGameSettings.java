@@ -96,6 +96,8 @@ public abstract class MixinGameSettings {
             case STREAM_FPS:
                 field_152404_N = value;
                 break;
+            default:
+                break;
         }
     }
 
@@ -193,6 +195,8 @@ public abstract class MixinGameSettings {
             case ENABLE_VSYNC:
                 enableVsync = !enableVsync;
                 Display.setVSyncEnabled(enableVsync);
+                break;
+            default:
                 break;
         }
         saveOptions();

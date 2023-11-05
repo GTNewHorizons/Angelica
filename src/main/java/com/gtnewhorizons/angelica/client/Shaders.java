@@ -2828,7 +2828,7 @@ public class Shaders {
         }
     }
 
-    public static void beginSpiderEyes() {
+    public static void beginGlowingEyes() {
         if (true) return;
         if (isRenderingWorld) {
             useProgram(ProgramSpiderEyes);

@@ -23,10 +23,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@SuppressWarnings("UnnecessaryQualifiedMemberReference")
 @Mixin(value = Chunk.class)
 public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, ILightingEngineProvider {
-    private static final EnumFacing[] HORIZONTAL = LightingHooks.HORIZONTAL_FACINGS;
 
     /**
      * Callback injected to the head of getLightSubtracted(BlockPos, int) to force deferred light updates to be processed.
@@ -76,7 +74,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
      * @author Angeline
      */
     @Overwrite
-    public void relightBlock(int x, int y, int z) {
+    private void relightBlock(int x, int y, int z) {
         int i = this.heightMap[z << 4 | x] & 255;
 
         int j = Math.max(y, i);
@@ -131,7 +129,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
      * @author Angeline
      */
     @Overwrite
-    public void recheckGaps(boolean onlyOne) {
+    private void recheckGaps(boolean onlyOne) {
         this.worldObj.theProfiler.startSection("recheckGaps");
 
         WorldChunkSlice slice = new WorldChunkSlice(this.worldObj, this.xPosition, this.zPosition);
@@ -179,7 +177,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
     private int recheckGapsGetLowestHeight(WorldChunkSlice slice, int x, int z) {
         int max = Integer.MAX_VALUE;
 
-        for (EnumFacing facing : HORIZONTAL) {
+        for (EnumFacing facing : LightingHooks.HORIZONTAL_FACINGS) {
             int j = x + facing.getFrontOffsetX();
             int k = z + facing.getFrontOffsetZ();
 
@@ -192,7 +190,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
     private void recheckGapsSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int height, int max) {
         this.checkSkylightNeighborHeight(slice, x, z, max);
 
-        for (EnumFacing facing : HORIZONTAL) {
+        for (EnumFacing facing : LightingHooks.HORIZONTAL_FACINGS) {
             int j = x + facing.getFrontOffsetX();
             int k = z + facing.getFrontOffsetZ();
 
