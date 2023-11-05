@@ -44,7 +44,7 @@ public abstract class MixinBlockWitchLeaves extends BlockLeavesBase {
     @Shadow(remap = false)
     private IIcon[][] iconsForModes;
 
-    protected MixinBlockWitchLeaves(Material material, boolean unused) {
+    private MixinBlockWitchLeaves(Material material, boolean unused) {
         super(material, unused);
     }
 

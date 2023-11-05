@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityPlayerMP.class)
 public abstract class MixinEntityPlayerMP extends EntityPlayer {
 
-    public MixinEntityPlayerMP(World worldIn, GameProfile gameProfileIn) {super(worldIn, gameProfileIn);}
+    private MixinEntityPlayerMP(World worldIn, GameProfile gameProfileIn) {super(worldIn, gameProfileIn);}
 
     /**
      * @reason This is incorrectly set to 1, but not noticable in vanilla since the move logic
