@@ -30,7 +30,7 @@ import java.util.Set;
 public abstract class MixinWorld {
     @Shadow public boolean isRemote;
 
-    @Shadow public List playerEntities;
+    @Shadow public List<EntityPlayer> playerEntities;
 
     @Shadow protected IChunkProvider chunkProvider;
 

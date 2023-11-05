@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.archaic.common.core;
 
 import com.google.common.collect.ImmutableList;
 import net.minecraft.world.gen.structure.MapGenStructure;
+import net.minecraft.world.gen.structure.StructureStart;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -13,7 +15,7 @@ import java.util.Map;
 public abstract class MixinMapGenStructure {
 
     @Redirect(method = { "func_143028_c", "func_142038_b", "func_151545_a", "generateStructuresInChunk" }, at = @At(value = "INVOKE", target = "Ljava/util/Map;values()Ljava/util/Collection;"))
-    private Collection getStructureMapValues(Map structureMap) {
+    private Collection<StructureStart> getStructureMapValues(Map<Long, StructureStart> structureMap) {
         return ImmutableList.copyOf(structureMap.values());
     }
 }

@@ -88,7 +88,7 @@ public abstract class MixinEffectRenderer {
 
     @Shadow @Final
     private static ResourceLocation particleTextures;
-    @Shadow private List[] fxLayers;
+    @Shadow private List<EntityFX>[] fxLayers;
     @Shadow private TextureManager renderer;
 
 }

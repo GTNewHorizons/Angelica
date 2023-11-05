@@ -5,6 +5,7 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkCache;
 import org.embeddedt.archaicfix.threadedupdates.ICapturableTessellator;
 import org.embeddedt.archaicfix.threadedupdates.IRendererUpdateResultHolder;
@@ -28,7 +29,7 @@ public class MixinWorldRenderer implements IRendererUpdateResultHolder {
     }
 
     @Inject(method = "updateRenderer", at = @At(value="INVOKE", target = "Lnet/minecraft/client/renderer/WorldRenderer;postRenderBlocks(ILnet/minecraft/entity/EntityLivingBase;)V"), locals=LocalCapture.CAPTURE_FAILHARD)
-    private void loadTessellationResult(EntityLivingBase cameraEntity, CallbackInfo ci, int i, int j, int k, int l, int i1, int j1, HashSet hashset, Minecraft minecraft, EntityLivingBase entitylivingbase1, int l1, int i2, int j2, byte b0, ChunkCache chunkcache, RenderBlocks renderblocks, int k2) {
+    private void loadTessellationResult(EntityLivingBase cameraEntity, CallbackInfo ci, int i, int j, int k, int l, int i1, int j1, HashSet<TileEntity> hashset, Minecraft minecraft, EntityLivingBase entitylivingbase1, int l1, int i2, int j2, byte b0, ChunkCache chunkcache, RenderBlocks renderblocks, int k2) {
         int pass = k2;
         if(!arch$getRendererUpdateTask().cancelled) {
             ((ICapturableTessellator) Tessellator.instance).arch$addTessellatorVertexState(arch$getRendererUpdateTask().result[pass].renderedQuads);
