@@ -49,7 +49,7 @@ public abstract class MixinBlockMagicalLeaves extends Block implements ILeafBloc
         return LeafRenderUtil.shouldSideBeRendered(world, x, y, z, side);
     }
 
-    protected MixinBlockMagicalLeaves(Material material) {
+    private MixinBlockMagicalLeaves(Material material) {
         super(material);
     }
 

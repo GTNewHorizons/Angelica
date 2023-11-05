@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.Mixin;
 
 @Mixin(MaterialLiquid.class)
 public abstract class MixinMaterialLiquid extends Material {
-    public MixinMaterialLiquid(MapColor p_i2116_1_) {
+    private MixinMaterialLiquid(MapColor p_i2116_1_) {
         super(p_i2116_1_);
     }
 
