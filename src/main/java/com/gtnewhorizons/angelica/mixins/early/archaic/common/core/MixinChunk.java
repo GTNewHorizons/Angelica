@@ -23,7 +23,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 @Mixin(value = Chunk.class, priority = 1100)
 public class MixinChunk {
@@ -34,8 +33,6 @@ public class MixinChunk {
     @Shadow @Final public int xPosition;
 
     @Shadow @Final public int zPosition;
-
-    @Shadow public Map chunkTileEntityMap;
 
     @Inject(method = "onChunkUnload", at = @At("HEAD"))
     public void handlePlayerChunkUnload(CallbackInfo ci) {

@@ -40,7 +40,6 @@ public class MixinWorldRenderer implements IWorldRenderer {
     @Shadow private TesselatorVertexState vertexState;
 
     @Unique private boolean arch$isInUpdateList;
-    @Unique private boolean arch$isFrustumCheckPending;
 
     @Unique private OcclusionWorker.CullInfo arch$cullInfo;
 
