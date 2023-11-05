@@ -1,4 +1,4 @@
-//version: 1695474595
+//version: 1698936026
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -646,7 +646,7 @@ repositories {
 
 def mixinProviderGroup = "io.github.legacymoddingmc"
 def mixinProviderModule = "unimixins"
-def mixinProviderVersion = "0.1.7.1"
+def mixinProviderVersion = "0.1.13"
 def mixinProviderSpecNoClassifer = "${mixinProviderGroup}:${mixinProviderModule}:${mixinProviderVersion}"
 def mixinProviderSpec = "${mixinProviderSpecNoClassifer}:dev"
 ext.mixinProviderSpec = mixinProviderSpec
@@ -798,7 +798,7 @@ dependencies {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
     if (modId != 'hodgepodge') {
-        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.3.5')
+        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.3.17')
     }
 
     java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches") {transitive = false}
