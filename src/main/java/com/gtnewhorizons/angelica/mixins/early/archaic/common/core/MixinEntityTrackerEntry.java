@@ -4,6 +4,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLeashKnot;
 import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.entity.item.EntityItemFrame;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S0CPacketSpawnPlayer;
@@ -34,7 +35,7 @@ public class MixinEntityTrackerEntry {
     @Shadow public int ticks;
 
     @Inject(method = "sendLocationToAllClients", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityTrackerEntry;sendMetadataToAllAssociatedPlayers()V", ordinal = 1, shift = At.Shift.AFTER), locals = LocalCapture.CAPTURE_FAILHARD)
-    private void saveIfTeleported(List clientList, CallbackInfo ci, int i, int j, int k, int l, int i1, int j1, int k1, int l1, Object object) {
+    private void saveIfTeleported(List<EntityPlayer> clientList, CallbackInfo ci, int i, int j, int k, int l, int i1, int j1, int k1, int l1, Object object) {
         if(object instanceof S18PacketEntityTeleport) {
             this.lastScaledXPosition = i;
             this.lastScaledYPosition = j;

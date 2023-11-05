@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.archaic.common.core;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.SpawnerAnimals;
 import net.minecraft.world.World;
 import org.embeddedt.archaicfix.config.ArchaicConfig;
@@ -15,7 +16,7 @@ import java.util.HashMap;
 
 @Mixin(SpawnerAnimals.class)
 public class MixinSpawnerAnimals {
-    @Shadow private HashMap eligibleChunksForSpawning;
+    @Shadow private HashMap<ChunkCoordIntPair, Boolean> eligibleChunksForSpawning;
 
     @ModifyConstant(method = "findChunksForSpawning", constant = @Constant(doubleValue = 24.0D))
     private double lowerSpawnRange(double old) {

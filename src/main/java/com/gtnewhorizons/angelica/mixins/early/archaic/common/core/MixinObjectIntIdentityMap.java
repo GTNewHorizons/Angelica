@@ -11,15 +11,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-@SuppressWarnings("rawtypes")
 @Mixin(ObjectIntIdentityMap.class)
 public class MixinObjectIntIdentityMap {
 
-    @Shadow protected List field_148748_b;
+    @Shadow protected List<Object> field_148748_b;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void initIdArray(CallbackInfo ci) {
-        this.field_148748_b = new UnexpectionalObjectArrayList();
+        this.field_148748_b = new UnexpectionalObjectArrayList<>();
     }
 
     /**
@@ -30,6 +29,6 @@ public class MixinObjectIntIdentityMap {
      */
     @Overwrite
     public Object func_148745_a(int id) {
-        return ((UnexpectionalObjectArrayList)field_148748_b).getOrNull(id);
+        return ((UnexpectionalObjectArrayList<Object>)field_148748_b).getOrNull(id);
     }
 }

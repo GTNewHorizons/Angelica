@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.archaic.client.occlusion;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.shader.TesselatorVertexState;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.EmptyChunk;
 import org.embeddedt.archaicfix.occlusion.interfaces.IWorldRenderer;
@@ -27,9 +28,9 @@ public class MixinWorldRenderer implements IWorldRenderer {
 
     @Shadow public int posZ;
 
-    @Shadow public List tileEntityRenderers;
+    @Shadow public List<TileEntity> tileEntityRenderers;
 
-    @Shadow private List tileEntities;
+    @Shadow private List<TileEntity> tileEntities;
 
     @Shadow public boolean needsUpdate;
 
