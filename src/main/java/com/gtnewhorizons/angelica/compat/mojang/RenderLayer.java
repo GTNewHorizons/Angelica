@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 public abstract class RenderLayer { // Aka: RenderType (Iris)
@@ -24,6 +26,10 @@ public abstract class RenderLayer { // Aka: RenderType (Iris)
 
     public static RenderLayer tripwire() {
         return null;
+    }
+
+    public static List<RenderLayer> getBlockLayers() {
+        return Collections.emptyList();
     }
 
     public void setupRenderState() {}

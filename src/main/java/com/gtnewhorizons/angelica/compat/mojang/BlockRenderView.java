@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 
 public interface BlockRenderView extends BlockView  {
@@ -19,5 +20,7 @@ public interface BlockRenderView extends BlockView  {
 
     boolean isSkyVisible(BlockPos pos);
 
-    Biome getBiomeForNoiseGen(int x, int y, int z);
+    BiomeGenBase getBiomeForNoiseGen(int x, int y, int z);
+
+    FluidState getFluidState(BlockPos set);
 }

@@ -2,7 +2,7 @@ package me.jellysquid.mods.sodium.client.model.quad.blender;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 
 public interface BlockColorSettings<T> {
     /**
@@ -14,13 +14,17 @@ public interface BlockColorSettings<T> {
      */
     boolean useSmoothColorBlending(BlockRenderView view, T state, BlockPos pos);
 
+//    @SuppressWarnings("unchecked")
+//    static <T> boolean isSmoothBlendingEnabled(BlockRenderView world, State<T, ?> state, BlockPos pos) {
+//        if (state.owner instanceof BlockColorSettings) {
+//        	BlockColorSettings<State<T, ?>> settings = (BlockColorSettings<State<T, ?>>) state.owner;
+//            return settings.useSmoothColorBlending(world, state, pos);
+//        }
+//
+//        return false;
+//    }
     @SuppressWarnings("unchecked")
-    static <T> boolean isSmoothBlendingEnabled(BlockRenderView world, State<T, ?> state, BlockPos pos) {
-        if (state.owner instanceof BlockColorSettings) {
-        	BlockColorSettings<State<T, ?>> settings = (BlockColorSettings<State<T, ?>>) state.owner;
-            return settings.useSmoothColorBlending(world, state, pos);
-        }
-
+    static <T> boolean isSmoothBlendingEnabled(BlockRenderView world, BlockState state, BlockPos pos) {
         return false;
     }
 }

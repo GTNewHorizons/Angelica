@@ -1,9 +1,12 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.FluidState;
+import com.gtnewhorizons.angelica.compat.mojang.SideShapeType;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
@@ -24,7 +27,6 @@ import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
-import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
@@ -37,7 +39,8 @@ public class FluidRenderer {
 
     private static final BlockColorProvider FLUID_COLOR_PROVIDER = (state, world, pos, tintIndex) -> {
         if (world == null) return 0xFFFFFFFF;
-        return state.getFluidState().getFluid().getAttributes().getColor(world, pos);
+        // TODO: Sodium - Fluids
+        return 0xFFFFFFFF; // state.getFluidState().getFluid().getAttributes().getColor(world, pos);
     };
 
     private final BlockPos.Mutable scratchPos = new BlockPos.Mutable();
@@ -67,10 +70,10 @@ public class FluidRenderer {
         BlockPos adjPos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
 
         if (blockState.isOpaque()) {
-            return world.getFluidState(adjPos).getFluid().matchesType(fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
+            return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
             // fluidlogged or next to water, occlude sides that are solid or the same liquid
             }
-        return world.getFluidState(adjPos).getFluid().matchesType(fluid);
+        return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid);
     }
 
     private boolean isSideExposed(BlockRenderView world, int x, int y, int z, ForgeDirection dir, float height) {
@@ -115,8 +118,9 @@ public class FluidRenderer {
             return false;
         }
 
-        TextureAtlasSprite[] sprites = ForgeHooksClient.getFluidSprites(world, pos, fluidState);
-        boolean hc = fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
+        TextureAtlasSprite[] sprites = ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
+        // TODO: Sodium - Fluids
+        boolean hc = true; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
 
         boolean rendered = false;
 
@@ -150,11 +154,11 @@ public class FluidRenderer {
             if (velocity.x == 0.0D && velocity.z == 0.0D) {
                 sprite = sprites[0];
                 facing = ModelQuadFacing.UP;
-                u1 = sprite.getFrameU(0.0D);
-                v1 = sprite.getFrameV(0.0D);
+                u1 = sprite.getInterpolatedU(0.0D);
+                v1 = sprite.getInterpolatedV(0.0D);
                 u2 = u1;
-                v2 = sprite.getFrameV(16.0D);
-                u3 = sprite.getFrameU(16.0D);
+                v2 = sprite.getInterpolatedV(16.0D);
+                u3 = sprite.getInterpolatedU(16.0D);
                 v3 = v2;
                 u4 = u3;
                 v4 = v1;
@@ -164,14 +168,14 @@ public class FluidRenderer {
                 float dir = (float) Math.atan2(velocity.z, velocity.x) - (1.5707964f);
                 float sin = MathHelper.sin(dir) * 0.25F;
                 float cos = MathHelper.cos(dir) * 0.25F;
-                u1 = sprite.getFrameU(8.0F + (-cos - sin) * 16.0F);
-                v1 = sprite.getFrameV(8.0F + (-cos + sin) * 16.0F);
-                u2 = sprite.getFrameU(8.0F + (-cos + sin) * 16.0F);
-                v2 = sprite.getFrameV(8.0F + (cos + sin) * 16.0F);
-                u3 = sprite.getFrameU(8.0F + (cos + sin) * 16.0F);
-                v3 = sprite.getFrameV(8.0F + (cos - sin) * 16.0F);
-                u4 = sprite.getFrameU(8.0F + (cos - sin) * 16.0F);
-                v4 = sprite.getFrameV(8.0F + (-cos - sin) * 16.0F);
+                u1 = sprite.getInterpolatedU(8.0F + (-cos - sin) * 16.0F);
+                v1 = sprite.getInterpolatedV(8.0F + (-cos + sin) * 16.0F);
+                u2 = sprite.getInterpolatedU(8.0F + (-cos + sin) * 16.0F);
+                v2 = sprite.getInterpolatedV(8.0F + (cos + sin) * 16.0F);
+                u3 = sprite.getInterpolatedU(8.0F + (cos + sin) * 16.0F);
+                v3 = sprite.getInterpolatedV(8.0F + (cos - sin) * 16.0F);
+                u4 = sprite.getInterpolatedU(8.0F + (cos - sin) * 16.0F);
+                v4 = sprite.getInterpolatedV(8.0F + (-cos - sin) * 16.0F);
             }
 
             float uAvg = (u1 + u2 + u3 + u4) / 4.0F;
@@ -313,11 +317,11 @@ public class FluidRenderer {
                     }
                 }
 
-                float u1 = sprite.getFrameU(0.0D);
-                float u2 = sprite.getFrameU(8.0D);
-                float v1 = sprite.getFrameV((1.0F - c1) * 16.0F * 0.5F);
-                float v2 = sprite.getFrameV((1.0F - c2) * 16.0F * 0.5F);
-                float v3 = sprite.getFrameV(8.0D);
+                float u1 = sprite.getInterpolatedU(0.0D);
+                float u2 = sprite.getInterpolatedU(8.0D);
+                float v1 = sprite.getInterpolatedV((1.0F - c1) * 16.0F * 0.5F);
+                float v2 = sprite.getInterpolatedV((1.0F - c2) * 16.0F * 0.5F);
+                float v3 = sprite.getInterpolatedV(8.0D);
 
                 quad.setSprite(sprite);
 
@@ -326,7 +330,7 @@ public class FluidRenderer {
                 this.setVertex(quad, 2, x1, yOffset, z1, u1, v3);
                 this.setVertex(quad, 3, x1, c1, z1, u1, v1);
 
-                float br = dir.getAxis() == ForgeDirection.Axis.Z ? 0.8F : 0.6F;
+                float br = dir.offsetZ != 0 ? 0.8F : 0.6F;
 
                 ModelQuadFacing facing = ModelQuadFacing.fromDirection(dir);
 
@@ -420,7 +424,8 @@ public class FluidRenderer {
             int x2 = x - (i & 1);
             int z2 = z - (i >> 1 & 1);
 
-            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid().matchesType(fluid)) {
+
+            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid().equals/*matchesType*/(fluid)) {
                 return 1.0F;
             }
 
@@ -429,7 +434,7 @@ public class FluidRenderer {
             BlockState blockState = world.getBlockState(pos);
             FluidState fluidState = blockState.getFluidState();
 
-            if (fluidState.getFluid().matchesType(fluid)) {
+            if (fluidState.getFluid().equals/*matchesType*/(fluid)) {
                 float height = fluidState.getHeight(world, pos);
 
                 if (height >= 0.8F) {

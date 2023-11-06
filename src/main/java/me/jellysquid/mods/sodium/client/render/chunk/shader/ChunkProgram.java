@@ -1,12 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
 import java.util.function.Function;
@@ -47,8 +45,6 @@ public class ChunkProgram extends GlProgram {
 
         this.fogShader.setup();
 
-        try (MemoryStack memoryStack = MemoryStack.stackPush()) {
-        	GL20.glUniformMatrix4(this.uModelViewProjectionMatrix, false, GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek(), memoryStack));
-        }
+        GL20.glUniformMatrix4(this.uModelViewProjectionMatrix, false, GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek()));
     }
 }

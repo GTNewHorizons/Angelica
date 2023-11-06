@@ -61,7 +61,8 @@ public class EntityLighter {
                 for (int bZ = bMinZ; bZ < bMaxZ; bZ++) {
                     pos.set(bX, bY, bZ);
 
-                    BlockState blockState = entity.worldObj.getBlockState(pos);
+                    // TODO - Sodium - Blocks
+                    BlockState blockState = null; /*entity.worldObj.getBlockState(pos);*/
 
                     // Do not consider light-blocking volumes
                     if (blockState.isOpaqueFullCube(entity.worldObj, pos) && blockState.getLightValue(entity.worldObj, pos) <= 0) {

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
+import net.minecraft.block.material.Material;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
@@ -19,7 +20,7 @@ public class BlockState implements IForgeBlockState {
         return null;
     }
 
-    public int getLightValue(BlockRenderView world, BlockPos pos) { return 15;}
+    public int getLightValue(World world, BlockPos pos) { return 15;}
 
     public float getAmbientOcclusionLightLevel(BlockRenderView world, BlockPos pos) { return 1.0f; }
 
@@ -45,5 +46,37 @@ public class BlockState implements IForgeBlockState {
 
     public boolean isAir() {
         return false;
+    }
+
+    public BlockRenderType getRenderType() {
+        return BlockRenderType.MODEL;
+    }
+
+    public boolean hasTileEntity() {
+        return true;
+    }
+
+    public long getRenderingSeed(BlockPos.Mutable pos) {
+        return 0;
+    }
+
+    public FluidState getFluidState() {
+        return null;
+    }
+
+    public boolean shouldDisplayFluidOverlay(BlockRenderView world, BlockPos adjPos, FluidState fluidState) {
+        return true;
+    }
+
+    public Material getMaterial() {
+        return null;
+    }
+
+    public boolean isSideSolid(BlockRenderView world, BlockPos pos, ForgeDirection dir, SideShapeType sideShapeType) {
+        return true;
+    }
+
+    public VoxelShape getCullingShape(BlockRenderView world, BlockPos pos) {
+        return null;
     }
 }

@@ -1,5 +1,5 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-public class Biome {
+public class PalettedContainer<T> {
 
 }

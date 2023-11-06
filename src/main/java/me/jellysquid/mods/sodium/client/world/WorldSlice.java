@@ -1,13 +1,14 @@
 package me.jellysquid.mods.sodium.client.world;
 
-import com.gtnewhorizons.angelica.compat.mojang.Biome;
 import com.gtnewhorizons.angelica.compat.mojang.BiomeAccess;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
+import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
+import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeCache;
@@ -18,11 +19,12 @@ import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
 import me.jellysquid.mods.sodium.client.world.cloned.PackedIntegerArrayExtended;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
 import net.minecraft.client.Minecraft;
-import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -65,7 +67,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     private static final int SECTION_TABLE_ARRAY_SIZE = TABLE_LENGTH * TABLE_LENGTH * TABLE_LENGTH;
 
     // Fallback BlockState to use if none were available in the array
-    private static final BlockState NULL_BLOCK_STATE = Blocks.air.getDefaultState();
+    private static final BlockState NULL_BLOCK_STATE = null; //Blocks.air.getDefaultState();
 
     // The world this slice has copied data from
     private final World world;
@@ -98,12 +100,12 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
-        ChunkSection section = chunk.getSectionArray()[origin.y];
+        ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
 
         // If the chunk section is absent or empty, simply terminate now. There will never be anything in this chunk
         // section to render, so we need to signal that a chunk render task shouldn't created. This saves a considerable
         // amount of time in queueing instant build tasks and greatly accelerates how quickly the world can be loaded.
-        if (ChunkSection.isEmpty(section)) {
+        if (section == null || section.isEmpty()) {
             return null;
         }
 
@@ -322,7 +324,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     }
 
     @Override
-    public Biome getBiomeForNoiseGen(int x, int y, int z) {
+    public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {
         int x2 = (x >> 2) - (this.baseX >> 4);
         int z2 = (z >> 2) - (this.baseZ >> 4);
 
@@ -334,13 +336,13 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
             return section.getBiomeForNoiseGen(x, y, z);
         }
 
-        return this.world.getGeneratorStoredBiome(x, y, z);
+        return this.world.getBiomeGenForCoords(x, z);
     }
 
     /**
      * Gets or computes the biome at the given global coordinates.
      */
-    public Biome getBiome(int x, int y, int z) {
+    public BiomeGenBase getBiome(int x, int y, int z) {
         int relX = x - this.baseX;
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
@@ -351,7 +353,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
         BiomeCache cache = this.biomeCaches[index];
         return cache != null ? cache
-                .getBiome(this, x, relY >> 4, z) : Minecraft.getMinecraft().theWorld.getBiome(new BlockPos(x, y, z));
+                .getBiome(this, x, relY >> 4, z) : Minecraft.getMinecraft().theWorld.getBiomeGenForCoords(x, z);
     }
 
     public ChunkSectionPos getOrigin() {

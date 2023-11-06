@@ -1,11 +1,17 @@
 package me.jellysquid.mods.sodium.client.render;
 
 import cofh.lib.util.helpers.MathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.BlockBreakingInfo;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BufferBuilderStorage;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.mojang.ModelLoader;
+import com.gtnewhorizons.angelica.compat.mojang.OverlayVertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.mojang.VertexConsumerProvider;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.rwtema.extrautils.block.Box;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -13,6 +19,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderBackend;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderManager;
@@ -287,7 +294,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     }
 
     private boolean checkBEVisibility(TileEntity entity) {
-        return frustum.isVisible(entity.getRenderBoundingBox());
+        return frustum.isBoundingBoxInFrustum(entity.getRenderBoundingBox());
     }
 
     public void renderTileEntities(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions,
@@ -299,10 +306,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         double y = cameraPos.y;
         double z = cameraPos.z;
 
-        for (TileEntity blockEntity : this.chunkRenderManager.getVisibleBlockEntities()) {
-            if(blockEntity.isRemoved() || !checkBEVisibility(blockEntity))
+        for (TileEntity tileEntity : this.chunkRenderManager.getVisibleBlockEntities()) {
+            if(tileEntity.isInvalid() || !checkBEVisibility(tileEntity))
                 continue;
-            BlockPos pos = blockEntity.getPos();
+            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
 
             matrices.push();
             matrices.translate((double) pos.x - x, (double) pos.y - y, (double) pos.z - z);
@@ -320,7 +327,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
                 }
             }
 
-            BlockEntityRenderDispatcher.INSTANCE.render(blockEntity, tickDelta, matrices, consumer);
+            BlockEntityRenderDispatcher.INSTANCE.render(tileEntity, tickDelta, matrices, consumer);
 
             matrices.pop();
         }

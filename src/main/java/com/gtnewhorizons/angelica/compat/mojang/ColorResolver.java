@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import net.minecraft.world.biome.BiomeGenBase;
+
 public interface ColorResolver {
 
-    int getColor(Biome biome, int x, int z);
+    int getColor(BiomeGenBase biome, int x, int z);
 }
