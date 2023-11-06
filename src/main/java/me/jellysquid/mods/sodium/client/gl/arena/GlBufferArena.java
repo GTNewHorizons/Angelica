@@ -69,9 +69,44 @@ public class GlBufferArena {
     }
 
     public void free(GlBufferSegment segment) {
-        if (!this.freeRegions.add(segment)) {
+        if (this.freeRegions.contains(segment)) {
             throw new IllegalArgumentException("Segment already freed");
         }
+
+        // Attempt merging
+        GlBufferSegment prev = null, next = null;
+        int selfEnd = segment.getEnd();
+        for (GlBufferSegment freeSeg : this.freeRegions) {
+            if (prev != null && next != null)
+                break;
+            if (freeSeg.getStart() == selfEnd) {
+                next = freeSeg;
+            } else if (freeSeg.getEnd() == segment.getStart()) {
+                prev = freeSeg;
+            }
+        }
+
+        if(prev != null || next != null) {
+            int start, end;
+
+            if(prev != null) {
+                this.freeRegions.remove(prev);
+                start = prev.getStart();
+            } else {
+                start = segment.getStart();
+            }
+
+            if(next != null) {
+                this.freeRegions.remove(next);
+                end = next.getEnd();
+            } else {
+                end = segment.getEnd();
+            }
+
+            segment = new GlBufferSegment(this, start, end - start);
+        }
+
+        this.freeRegions.add(segment);
 
         this.allocCount--;
     }

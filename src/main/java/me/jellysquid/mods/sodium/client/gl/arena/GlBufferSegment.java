@@ -19,6 +19,10 @@ public class GlBufferSegment {
         return this.len;
     }
 
+    public int getEnd() {
+        return this.start + this.len;
+    }
+
     public void delete() {
         this.arena.free(this);
     }
