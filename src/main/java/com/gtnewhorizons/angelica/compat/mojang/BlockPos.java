@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.ChunkPosition;
 import org.joml.Vector3i;
 
 import java.math.RoundingMode;
@@ -23,6 +24,10 @@ public class BlockPos extends Vector3i {
     }
     public BlockPos(int x, int y, int z) {
         super(x, y, z);
+    }
+
+    public BlockPos(ChunkPosition chunkPosition) {
+        super(chunkPosition.chunkPosX, chunkPosition.chunkPosY, chunkPosition.chunkPosZ);
     }
 
     public int getX() {

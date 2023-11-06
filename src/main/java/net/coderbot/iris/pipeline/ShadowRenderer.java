@@ -439,11 +439,11 @@ public class ShadowRenderer {
 					continue;
 				}
 			}
-			modelView.pushPose();
+			modelView.push();
             // TODO: Render
 			modelView.translate(entity.xCoord - cameraX, entity.yCoord - cameraY, entity.zCoord - cameraZ);
 //			BlockEntityRenderDispatcher.instance.render(entity, tickDelta, modelView, bufferSource);
-			modelView.popPose();
+			modelView.pop();
 
 			shadowBlockEntities++;
 		}

@@ -3,17 +3,15 @@ package me.jellysquid.mods.sodium.client.world;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
-import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
-import com.rwtema.extrautils.block.Box;
+import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
+import com.gtnewhorizons.angelica.compat.mojang.FluidState;
+import com.gtnewhorizons.angelica.compat.mojang.LightType;
+import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
-import org.joml.Vector3d;
 
 import javax.annotation.Nullable;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 /**
  * Wrapper object used to defeat identity comparisons in mods. Since vanilla provides a unique object to them for each
@@ -57,6 +55,11 @@ public class WorldSliceLocal implements BlockRenderView {
     }
 
     @Override
+    public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {
+        return null;
+    }
+
+    @Override
     @Nullable
     public TileEntity getBlockEntity(BlockPos pos) {
         return view.getBlockEntity(pos);
@@ -72,48 +75,51 @@ public class WorldSliceLocal implements BlockRenderView {
         return view.getFluidState(pos);
     }
 
-    @Override
+//    @Override
     public int getLuminance(BlockPos pos) {
-        return view.getLuminance(pos);
+        return 0;
+//        return view.getLuminance(pos);
     }
 
-    @Override
+//    @Override
     public int getMaxLightLevel() {
-        return view.getMaxLightLevel();
+        return 15;
+//        return view.getMaxLightLevel();
     }
 
-    @Override
+//    @Override
     public int getHeight() {
-        return view.getHeight();
+        return 255;
+//        return view.getHeight();
     }
 
-    @Override
-    public Stream<BlockState> method_29546(Box arg) {
-        return view.method_29546(arg);
-    }
-
-    @Override
-    public BlockHitResult raycast(RaycastContext context) {
-        return view.raycast(context);
-    }
-
-    @Override
-    @Nullable
-    public BlockHitResult raycastBlock(Vector3d start, Vector3d end, BlockPos pos, VoxelShape shape, BlockState state) {
-        return view.raycastBlock(start, end, pos, shape, state);
-    }
-
-    @Override
-    public double getDismountHeight(VoxelShape blockCollisionShape, Supplier<VoxelShape> belowBlockCollisionShapeGetter) {
-        return view.getDismountHeight(blockCollisionShape, belowBlockCollisionShapeGetter);
-    }
-
-    @Override
-    public double getDismountHeight(BlockPos pos) {
-        return view.getDismountHeight(pos);
-    }
-
-    public static <T> T raycast(RaycastContext arg, BiFunction<RaycastContext, BlockPos, T> context, Function<RaycastContext, T> blockRaycaster) {
-        return BlockView.raycast(arg, context, blockRaycaster);
-    }
+//    @Override
+//    public Stream<BlockState> method_29546(Box arg) {
+//        return view.method_29546(arg);
+//    }
+//
+//    @Override
+//    public BlockHitResult raycast(RaycastContext context) {
+//        return view.raycast(context);
+//    }
+//
+//    @Override
+//    @Nullable
+//    public BlockHitResult raycastBlock(Vector3d start, Vector3d end, BlockPos pos, VoxelShape shape, BlockState state) {
+//        return view.raycastBlock(start, end, pos, shape, state);
+//    }
+//
+//    @Override
+//    public double getDismountHeight(VoxelShape blockCollisionShape, Supplier<VoxelShape> belowBlockCollisionShapeGetter) {
+//        return view.getDismountHeight(blockCollisionShape, belowBlockCollisionShapeGetter);
+//    }
+//
+//    @Override
+//    public double getDismountHeight(BlockPos pos) {
+//        return view.getDismountHeight(pos);
+//    }
+//
+//    public static <T> T raycast(RaycastContext arg, BiFunction<RaycastContext, BlockPos, T> context, Function<RaycastContext, T> blockRaycaster) {
+//        return BlockView.raycast(arg, context, blockRaycaster);
+//    }
 }

@@ -83,7 +83,7 @@ public class HandRenderer {
 
 		pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
-		poseStack.pushPose();
+		poseStack.push();
 
 		Minecraft.getMinecraft().mcProfiler.startSection("iris_hand");
 
@@ -98,7 +98,7 @@ public class HandRenderer {
         // TODO: ProjectionMatrix
 //		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
-		poseStack.popPose();
+		poseStack.pop();
 
 		bufferSource.endBatch();
 
@@ -118,7 +118,7 @@ public class HandRenderer {
 
 		pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 
-		poseStack.pushPose();
+		poseStack.push();
 
 		Minecraft.getMinecraft().mcProfiler.startSection("iris_hand_translucent");
 
@@ -127,7 +127,7 @@ public class HandRenderer {
         // TODO: Hand
 //		Minecraft.getMinecraft().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getMinecraft().thePlayer, Minecraft.getMinecraft().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
 
-		poseStack.popPose();
+		poseStack.pop();
 
 		Minecraft.getMinecraft().mcProfiler.endSection();
 

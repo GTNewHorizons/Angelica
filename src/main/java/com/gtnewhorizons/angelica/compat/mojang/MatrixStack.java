@@ -18,12 +18,12 @@ public class MatrixStack {
         return (Entry)this.matrixStack.getLast();
     }
 
-    public void pushPose() {
+    public void push() {
         final Entry lv = (Entry)this.matrixStack.getLast();
         this.matrixStack.addLast(new Entry(new Matrix4f(lv.model), new Matrix3f(lv.normal)));
     }
 
-    public void popPose() {
+    public void pop() {
         this.matrixStack.removeLast();
     }
     public boolean clear() {

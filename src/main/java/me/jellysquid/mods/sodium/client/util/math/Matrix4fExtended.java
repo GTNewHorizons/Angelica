@@ -7,7 +7,7 @@ public interface Matrix4fExtended {
      *
      * @param quaternion The quaternion to rotate this matrix by
      */
-    void rotate(Quaternion quaternion);
+//    void rotate(Quaternion quaternion);
 
     /**
      * Applies the specified translation to this matrix in-place.

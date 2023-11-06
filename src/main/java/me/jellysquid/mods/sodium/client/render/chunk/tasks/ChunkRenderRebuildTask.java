@@ -1,11 +1,17 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
+import com.gtnewhorizons.angelica.compat.forge.EmptyModelData;
+import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
 import com.gtnewhorizons.angelica.compat.forge.IModelData;
 import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderType;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
 import com.rwtema.extrautils.ChunkPos;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -22,7 +28,6 @@ import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.ForgeHooksClient;
 import org.joml.Vector3d;
 
 import java.util.Map;
@@ -105,7 +110,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 	                        	continue;
 	                        }
 
-	                        ForgeHooksClient.setRenderLayer(layer);
+	                        ForgeHooksClientExt.setRenderLayer(layer);
                             IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
 
 	                        BakedModel model = cache.getBlockModels().getModel(blockState);
@@ -127,7 +132,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                                 continue;
                             }
 
-                            ForgeHooksClient.setRenderLayer(layer);
+                            ForgeHooksClientExt.setRenderLayer(layer);
 
 	                        if (cache.getFluidRenderer().render(cache.getLocalSlice(), fluidState, pos, buffers.get(layer))) {
 	                            bounds.addBlock(relX, relY, relZ);
@@ -154,7 +159,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             }
         }
 
-        ForgeHooksClient.setRenderLayer(null);
+        ForgeHooksClientExt.setRenderLayer(null);
 
         render.setRebuildForTranslucents(false);
         for (BlockRenderPass pass : BlockRenderPass.VALUES) {

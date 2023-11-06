@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.world.cloned.palette;
 
+import com.gtnewhorizons.angelica.compat.mojang.IdList;
 
 public class ClonedPaletteFallback<K> implements ClonedPalette<K> {
     private final IdList<K> idList;
