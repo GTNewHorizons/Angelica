@@ -19,4 +19,12 @@ public class Camera {
     public Vector3d getPos() {
         return new Vector3d();
     }
+
+    public float getPitch() {
+        return 0;
+    }
+
+    public float getYaw() {
+        return 0;
+    }
 }

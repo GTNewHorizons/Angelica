@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.model.light;
 
 import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.render.entity.EntityLightSampler;
 import net.minecraft.entity.Entity;
@@ -15,7 +16,7 @@ public class EntityLighter {
     private static final double MAX_LIGHTMAP_COORD = 240.0D;
 
     public static <T extends Entity> int getBlendedLight(EntityLightSampler<T> lighter, T entity, float tickDelta) {
-        boolean calcBlockLight = !entity.isOnFire();
+        boolean calcBlockLight = !entity.isBurning();
 
         // Find the interpolated position of the entity
         double x1 = lerp(tickDelta, entity.prevPosX, entity.posX);
@@ -65,7 +66,7 @@ public class EntityLighter {
                     BlockState blockState = null; /*entity.worldObj.getBlockState(pos);*/
 
                     // Do not consider light-blocking volumes
-                    if (blockState.isOpaqueFullCube(entity.worldObj, pos) && blockState.getLightValue(entity.worldObj, pos) <= 0) {
+                    if (blockState.isOpaqueFullCube((BlockRenderView)entity.worldObj, pos) && blockState.getLightValue((BlockRenderView)entity.worldObj, pos) <= 0) {
                         continue;
                     }
 

@@ -13,7 +13,7 @@ public class TaggingRenderTypeWrapper extends RenderLayer implements WrappableRe
 
     public TaggingRenderTypeWrapper(String name, RenderLayer wrapped, int tag) {
         super(name, wrapped.format(), wrapped.mode(), wrapped.bufferSize(),
-                wrapped.affectsCrumbling(), shouldSortOnUpload(wrapped), wrapped::setupRenderState, wrapped::clearRenderState);
+                wrapped.hasCrumbling(), shouldSortOnUpload(wrapped), wrapped::startDrawing, wrapped::endDrawing);
 
         this.tag = tag;
         this.wrapped = wrapped;

@@ -9,7 +9,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.texture.SpriteUtil;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
 import java.lang.reflect.Array;
 import java.util.concurrent.CompletableFuture;

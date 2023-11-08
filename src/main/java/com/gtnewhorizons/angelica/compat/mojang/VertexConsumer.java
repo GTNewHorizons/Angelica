@@ -32,4 +32,19 @@ public interface VertexConsumer  extends IForgeVertexBuilder {
     default VertexConsumer light(int light) {
         return this.light(light & 0xFFFF, light >> 16 & 0xFFFF);
     }
+
+    default VertexConsumer color(float red, float green, float blue, float alpha) {
+        return this.color((int)(red * 255.0F), (int)(green * 255.0F), (int)(blue * 255.0F), (int)(alpha * 255.0F));
+    }
+
+    default void vertex(float x, float y, float z, float red, float green, float blue, float alpha, float u, float v, int overlay, int light, float normalX, float normalY, float normalZ) {
+        this.vertex((double)x, (double)y, (double)z);
+        this.color(red, green, blue, alpha);
+        this.texture(u, v);
+        this.overlay(overlay);
+        this.light(light);
+        this.normal(normalX, normalY, normalZ);
+        this.next();
+    }
+
 }

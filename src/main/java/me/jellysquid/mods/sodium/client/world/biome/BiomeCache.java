@@ -15,7 +15,8 @@ public class BiomeCache {
     private final BiomeGenBase[] biomes;
 
     public BiomeCache(World world) {
-        this.type = world.getDimension().getBiomeAccessType();
+        // TODO: Sodium
+        this.type = null;//world.getDimension().getBiomeAccessType();
         this.seed = ((ClientWorldExtended) world).getBiomeSeed();
 
         this.biomes = new BiomeGenBase[16 * 16];

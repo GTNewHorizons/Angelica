@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
+import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 
 import java.nio.ByteBuffer;
 
@@ -15,7 +16,7 @@ public abstract class ChunkDrawCallBatcher extends StructBuffer {
     protected int arrayLength;
 
     protected ChunkDrawCallBatcher(int capacity) {
-        super(MathHelper.smallestEncompassingPowerOfTwo(capacity), 16);
+        super(CompatMathHelper.smallestEncompassingPowerOfTwo(capacity), 16);
 
         this.capacity = capacity;
     }

@@ -1,12 +1,30 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import lombok.Getter;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class RenderLayer { // Aka: RenderType (Iris)
-
-    public RenderLayer(String name, VertexFormat format, int mode, int i, Object o, boolean b, Runnable setupRenderState, Runnable clearRenderState) {}
+public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris)
+    @Getter
+    private final VertexFormat vertexFormat;
+    @Getter
+    private final int drawMode;
+    @Getter
+    private final int expectedBufferSize;
+    private final boolean hasCrumbling;
+    private final boolean translucent;
+    private final Optional<RenderLayer> optionalThis;
+    public RenderLayer(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, Runnable startAction, Runnable endAction) {
+        super(name, startAction, endAction);
+        this.vertexFormat = vertexFormat;
+        this.drawMode = drawMode;
+        this.expectedBufferSize = expectedBufferSize;
+        this.hasCrumbling = hasCrumbling;
+        this.translucent = translucent;
+        this.optionalThis = Optional.of(this);
+    }
 
     public static RenderLayer solid() {
         return null;
@@ -32,10 +50,6 @@ public abstract class RenderLayer { // Aka: RenderType (Iris)
         return Collections.emptyList();
     }
 
-    public void setupRenderState() {}
-
-    public void clearRenderState() {}
-
     public int mode() {
         return 1;
     }
@@ -54,8 +68,8 @@ public abstract class RenderLayer { // Aka: RenderType (Iris)
 
     public void end(BufferBuilder buffer, int i, int i1, int i2) {}
 
-    public Object affectsCrumbling() {
-        return null;
+    public boolean hasCrumbling() {
+        return hasCrumbling;
     }
 
     public Optional<RenderLayer> outline() {
@@ -66,5 +80,11 @@ public abstract class RenderLayer { // Aka: RenderType (Iris)
         return false;
     }
 
+    public Optional<RenderLayer> asOptional() {
+        return optionalThis;
+    }
+
+    public void draw(BufferBuilder lv, int cameraX, int cameraY, int cameraZ) {
+    }
 
 }

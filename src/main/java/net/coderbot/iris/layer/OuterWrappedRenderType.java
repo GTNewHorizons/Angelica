@@ -14,32 +14,32 @@ public class OuterWrappedRenderType extends RenderLayer implements WrappableRend
 
 	private OuterWrappedRenderType(String name, RenderLayer wrapped, RenderPhase extra) {
 		super(name, wrapped.format(), wrapped.mode(), wrapped.bufferSize(),
-			wrapped.affectsCrumbling(), shouldSortOnUpload(wrapped), wrapped::setupRenderState, wrapped::clearRenderState);
+			wrapped.hasCrumbling(), shouldSortOnUpload(wrapped), wrapped::startDrawing, wrapped::endDrawing);
 
 		this.extra = extra;
 		this.wrapped = wrapped;
 	}
 
 	public static OuterWrappedRenderType wrapExactlyOnce(String name, RenderLayer wrapped, RenderPhase extra) {
-		if (wrapped instanceof OuterWrappedRenderType) {
-			wrapped = ((OuterWrappedRenderType) wrapped).unwrap();
+		if (wrapped instanceof OuterWrappedRenderType outerWrappedRenderType) {
+			wrapped = outerWrappedRenderType.unwrap();
 		}
 
 		return new OuterWrappedRenderType(name, wrapped, extra);
 	}
 
 	@Override
-	public void setupRenderState() {
-		extra.setupRenderState();
+	public void startDrawing() {
+		extra.startDrawing();
 
-		super.setupRenderState();
+		super.startDrawing();
 	}
 
 	@Override
-	public void clearRenderState() {
-		super.clearRenderState();
+	public void endDrawing() {
+		super.endDrawing();
 
-		extra.clearRenderState();
+		extra.endDrawing();
 	}
 
 	@Override

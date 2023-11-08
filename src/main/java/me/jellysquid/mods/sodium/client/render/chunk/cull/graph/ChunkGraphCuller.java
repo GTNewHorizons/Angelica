@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
 import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -11,7 +12,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -73,7 +73,8 @@ public class ChunkGraphCuller implements ChunkCuller {
     private void initSearch(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {
         this.activeFrame = frame;
         this.frustum = frustum;
-        this.useOcclusionCulling = Minecraft.getMinecraft().chunkCullingEnabled;
+        // TODO: Sodium Options
+        this.useOcclusionCulling = true; //Minecraft.getMinecraft().chunkCullingEnabled;
 
         this.visible.clear();
 
@@ -93,7 +94,7 @@ public class ChunkGraphCuller implements ChunkCuller {
             rootNode.resetCullingState();
             rootNode.setLastVisibleFrame(frame);
 
-            if (spectator && this.world.getBlockState(origin).isOpaqueFullCube(this.world, origin)) {
+            if (spectator && ((BlockRenderView)this.world).getBlockState(origin).isOpaqueFullCube((BlockRenderView) this.world, origin)) {
                 this.useOcclusionCulling = false;
             }
 

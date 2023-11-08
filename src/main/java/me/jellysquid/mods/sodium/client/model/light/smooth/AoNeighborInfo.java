@@ -244,6 +244,6 @@ enum AoNeighborInfo {
      * @return Returns the {@link AoNeighborInfo} which corresponds with the specified direction
      */
     public static AoNeighborInfo get(ForgeDirection direction) {
-        return VALUES[direction.getId()];
+        return VALUES[direction.ordinal()];
     }
 }

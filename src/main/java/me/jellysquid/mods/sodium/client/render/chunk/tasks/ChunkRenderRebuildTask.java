@@ -3,16 +3,17 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 import com.gtnewhorizons.angelica.compat.forge.EmptyModelData;
 import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
 import com.gtnewhorizons.angelica.compat.forge.IModelData;
+import com.gtnewhorizons.angelica.compat.forge.ModelDataManager;
 import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderType;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
-import com.rwtema.extrautils.ChunkPos;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -59,7 +60,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         this.camera = new Vector3d();
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
 
-        this.modelDataMap = ModelDataManager.getModelData(Minecraft.getMinecraft().world, new ChunkPos(ChunkSectionPos.getSectionCoord(this.render.getOriginX()), ChunkSectionPos.getSectionCoord(this.render.getOriginZ())));
+        this.modelDataMap = ModelDataManager.getModelData(
+            Minecraft.getMinecraft().theWorld,
+            new ChunkPos(ChunkSectionPos.getSectionCoord(this.render.getOriginX()), ChunkSectionPos.getSectionCoord(this.render.getOriginZ())));
     }
 
     public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
@@ -144,11 +147,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         TileEntity entity = slice.getBlockEntity(pos);
 
                         if (entity != null) {
-                            BlockEntityRenderer<TileEntity> renderer = BlockEntityRenderDispatcher.INSTANCE.get(entity);
-
-                            if (renderer != null) {
-                                bounds.addBlock(relX, relY, relZ);
-                            }
+                            // TODO: Sodium TileEntity Rendering
+//                            BlockEntityRenderer<TileEntity> renderer = BlockEntityRenderDispatcher.INSTANCE.get(entity);
+//
+//                            if (renderer != null) {
+//                                bounds.addBlock(relX, relY, relZ);
+//                            }
                         }
                     }
 

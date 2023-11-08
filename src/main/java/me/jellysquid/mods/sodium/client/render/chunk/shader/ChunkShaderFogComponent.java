@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
-import org.joml.Vector3f;
 import org.lwjgl.opengl.GL20;
 
 /**
@@ -39,8 +38,8 @@ public abstract class ChunkShaderFogComponent {
 
         @Override
         public void setup() {
-            final Vector3f fogColor = FogHelper.getFogColor();
-            GL20.glUniform4f(this.uFogColor, FogHelper.getFogColor());
+            final float[] fc = FogHelper.getFogColor();
+            GL20.glUniform4f(this.uFogColor, fc[0], fc[1], fc[2], fc[3]);
             GL20.glUniform1f(this.uFogDensity, FogHelper.getFogDensity());
         }
     }
@@ -62,9 +61,9 @@ public abstract class ChunkShaderFogComponent {
             float start = FogHelper.getFogStart();
             float[] color = FogHelper.getFogColor();
 
-            GL20C.glUniform4fv(this.uFogColor, color);
-            GL20C.glUniform1f(this.uFogLength, end - start);
-            GL20C.glUniform1f(this.uFogEnd, end);
+            GL20.glUniform4f(this.uFogColor, color[0], color[1], color[2], color[3]);
+            GL20.glUniform1f(this.uFogLength, end - start);
+            GL20.glUniform1f(this.uFogEnd, end);
         }
     }
 

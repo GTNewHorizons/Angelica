@@ -4,13 +4,13 @@ import javax.annotation.Nullable;
 
 public abstract class RenderPhase {
     protected final String name;
-    protected Runnable setupState;
-    protected final Runnable clearState;
+    protected Runnable beingAction;
+    protected final Runnable endAction;
 
-    public RenderPhase(String name, Runnable setupState, Runnable clearState) {
+    public RenderPhase(String name, Runnable beingAction, Runnable clearState) {
         this.name = name;
-        this.setupState = setupState;
-        this.clearState = clearState;
+        this.beingAction = beingAction;
+        this.endAction = clearState;
     }
 
     public boolean equals(@Nullable Object object) {
@@ -31,11 +31,12 @@ public abstract class RenderPhase {
         return this.name;
     }
 
-    public void setupRenderState() {
-        this.setupState.run();
+    public void startDrawing() {
+        this.beingAction.run();
     }
 
-    public void clearRenderState() {
-        this.clearState.run();
+    public void endDrawing() {
+        this.endAction.run();
     }
+
 }
