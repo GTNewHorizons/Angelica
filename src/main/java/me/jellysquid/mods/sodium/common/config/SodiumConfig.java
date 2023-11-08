@@ -65,10 +65,6 @@ public class SodiumConfig {
         this.addMixinRule("features.world_ticking", true);
         this.addMixinRule("features.fast_biome_colors", true);
 
-        if(FMLLoader.getLoadingModList().getModFileById("seamless_loading_screen") != null) { this.options.get("mixin.features.gui.fast_loading_screen").addModOverride(false, "seamless_loading_screen"); }
-
-        if(FMLLoader.getLoadingModList().getModFileById("abnormals_core") != null) { this.options.get("mixin.features.world_ticking").addModOverride(false, "abnormals_core"); }
-
     }
 
     /**
@@ -108,10 +104,11 @@ public class SodiumConfig {
                 continue;
             }
 
-            if(!enabled && FMLEnvironment.production && SYSTEM_OPTIONS.contains(key)) {
-                LOGGER.warn("Configuration key '{}' is a required option and cannot be disabled", key);
-                continue;
-            }
+            // TODO: Sodium Config
+//            if(!enabled && FMLEnvironment.production && SYSTEM_OPTIONS.contains(key)) {
+//                LOGGER.warn("Configuration key '{}' is a required option and cannot be disabled", key);
+//                continue;
+//            }
 
             option.setEnabled(enabled, true);
         }

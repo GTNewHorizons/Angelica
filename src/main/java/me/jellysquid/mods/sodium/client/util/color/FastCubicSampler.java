@@ -11,6 +11,10 @@ public class FastCubicSampler {
     private static final double[] DENSITY_CURVE = new double[] { 0.0D, 1.0D, 4.0D, 6.0D, 4.0D, 1.0D, 0.0D };
     private static final int DIAMETER = 6;
 
+    private static Vector3d unpackRgb(int rgb) {
+        return new Vector3d((rgb >> 16 & 255) / 255.0, (rgb >> 8 & 255) / 255.0, (rgb & 255) / 255.0);
+    }
+
     public static Vector3d sampleColor(Vector3d pos, ColorFetcher colorFetcher, Function<Vector3d, Vector3d> transformer) {
         int intX = MathHelper.floor(pos.x);
         int intY = MathHelper.floor(pos.y);
@@ -35,7 +39,7 @@ public class FastCubicSampler {
         // Fast path! Skip blending the colors if all inputs are the same
         if (isHomogenousArray(values)) {
             // Take the first color if it's homogenous (all elements are the same...)
-            return transformer.apply(Vector3d.unpackRgb(values[0]));
+            return transformer.apply(unpackRgb(values[0]));
         }
 
         double deltaX = pos.x - (double)intX;
@@ -57,13 +61,13 @@ public class FastCubicSampler {
                     double factor = densityX * densityY * densityZ;
                     totalFactor += factor;
 
-                    Vector3d color = transformer.apply(Vector3d.unpackRgb(values[index(x, y, z)]));
-                    sum = sum.add(color.multiply(factor));
+                    Vector3d color = transformer.apply(unpackRgb(values[index(x, y, z)]));
+                    sum.add(color.mul(factor));
                 }
             }
         }
 
-        sum = sum.multiply(1.0D / totalFactor);
+        sum.mul(1.0D / totalFactor);
 
         return sum;
     }

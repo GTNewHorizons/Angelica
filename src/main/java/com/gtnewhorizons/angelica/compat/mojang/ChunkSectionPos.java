@@ -46,6 +46,10 @@ public class ChunkSectionPos extends Vector3i {
         return asLong(this.x, this.y, this.z);
     }
 
+    public int getSectionX() {
+        return this.x;
+    }
+
     public int getSectionY() {
         return this.y;
     }

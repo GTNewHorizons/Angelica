@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 // ChunkCoordIntPair
 public class ChunkPos {
+    public static long INT_MASK   = (1L << Integer.SIZE) - 1;
+
     public final int x;
     public final int z;
 
@@ -18,6 +20,14 @@ public class ChunkPos {
     public ChunkPos(long pos) {
         this.x = (int)pos;
         this.z = (int)(pos >> 32);
+    }
+
+    public static int getPackedX(long pos) {
+        return (int)(pos & INT_MASK);
+    }
+
+    public static int getPackedZ(long pos) {
+        return (int)(pos >>> 32 & INT_MASK);
     }
 
     public long toLong() {

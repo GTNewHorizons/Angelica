@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.world.cloned;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.IdListPalette;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
 import com.gtnewhorizons.angelica.compat.mojang.Palette;
@@ -12,7 +13,6 @@ import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPaletteFallback;
 import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalleteArray;
-import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.World;
@@ -136,7 +136,8 @@ public class ClonedChunkSection {
         Palette<BlockState> palette = container.getPalette();
 
         if (palette instanceof IdListPalette) {
-            return new ClonedPaletteFallback<>(Block.STATE_IDS);
+            // TODO: Sodium
+            return new ClonedPaletteFallback<>(null/*Block.STATE_IDS*/);
         }
 
         BlockState[] array = new BlockState[1 << container.getPaletteSize()];

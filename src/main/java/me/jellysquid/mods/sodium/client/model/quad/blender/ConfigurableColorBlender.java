@@ -17,7 +17,9 @@ class ConfigurableColorBlender implements BiomeColorBlender {
     }
 
     private static boolean isSmoothBlendingEnabled(Minecraft client) {
-        return client.options.biomeBlendRadius > 0;
+        return true;
+        // TODO: Sodium
+//        return client.options.biomeBlendRadius > 0;
     }
 
     @Override

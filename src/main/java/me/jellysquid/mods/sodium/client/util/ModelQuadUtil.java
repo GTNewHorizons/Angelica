@@ -34,7 +34,8 @@ public class ModelQuadUtil {
 
     static {
         for (int i = 0; i < NORMALS.length; i++) {
-            NORMALS[i] = Norm3b.pack(DirectionUtil.ALL_DIRECTIONS[i].getVector());
+            final ForgeDirection dir = DirectionUtil.ALL_DIRECTIONS[i];
+            NORMALS[i] = Norm3b.pack(dir.offsetX, dir.offsetY, dir.offsetZ);
         }
     }
 

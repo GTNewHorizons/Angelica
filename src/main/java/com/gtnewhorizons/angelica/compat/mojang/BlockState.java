@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
 import net.minecraft.block.material.Material;
-import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
@@ -20,7 +19,7 @@ public class BlockState implements IForgeBlockState {
         return null;
     }
 
-    public int getLightValue(World world, BlockPos pos) { return 15;}
+    public int getLightValue(BlockRenderView world, BlockPos pos) { return 15;}
 
     public float getAmbientOcclusionLightLevel(BlockRenderView world, BlockPos pos) { return 1.0f; }
 
@@ -34,7 +33,7 @@ public class BlockState implements IForgeBlockState {
         return 15;
     }
 
-    public boolean isOpaqueFullCube(World world, BlockPos pos) {
+    public boolean isOpaqueFullCube(BlockRenderView world, BlockPos pos) {
         return true;
     }
 

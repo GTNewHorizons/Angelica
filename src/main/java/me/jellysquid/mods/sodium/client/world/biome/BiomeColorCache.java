@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import net.minecraft.client.Minecraft;
 
 import java.util.Arrays;
 
@@ -30,7 +29,7 @@ public class BiomeColorCache {
     public BiomeColorCache(ColorResolver resolver, WorldSlice slice) {
         this.resolver = resolver;
         this.slice = slice;
-        this.radius = Minecraft.getMinecraft().options.biomeBlendRadius;
+        this.radius = 2; // Minecraft.getMinecraft().options.biomeBlendRadius;
 
         ChunkSectionPos origin = this.slice.getOrigin();
 

@@ -28,6 +28,7 @@ import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import me.jellysquid.mods.sodium.client.world.biome.BlockColorsExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Random;
 
 public class BlockRenderer {
+    public static Vector3d ZERO = new Vector3d(0, 0, 0);
     private static final MatrixStack EMPTY_STACK = new MatrixStack();
 
     private final Random random = new XoRoShiRoRandom();
@@ -52,13 +54,15 @@ public class BlockRenderer {
     private final boolean useAmbientOcclusion;
 
     public BlockRenderer(Minecraft client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
-        this.blockColors = (BlockColorsExtended) client.getBlockColors();
+        // TODO: Sodium - Block Colors
+        this.blockColors = (BlockColorsExtended) null; //client.getBlockColors();
         this.biomeColorBlender = biomeColorBlender;
 
         this.lighters = lighters;
 
         this.occlusionCache = new BlockOcclusionCache();
-        this.useAmbientOcclusion = MinecraftClient.isAmbientOcclusionEnabled();
+        // TODO: Sodium - AO Setting
+        this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
     }
 
     public boolean renderModel(BlockRenderView world, BlockState state, BlockPos pos, BakedModel model, ChunkModelBuffers buffers, boolean cull, long seed, IModelData modelData) {
@@ -72,7 +76,7 @@ public class BlockRenderer {
 
         if(ForgeBlockRenderer.useForgeLightingPipeline()) {
             MatrixStack mStack;
-            if(offset != Vector3d.ZERO) {
+            if(!offset.equals(ZERO)) {
                 mStack = new MatrixStack();
                 mStack.translate(offset.x, offset.y, offset.z);
             } else
@@ -156,9 +160,9 @@ public class BlockRenderer {
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             int srcIndex = order.getVertexIndex(dstIndex);
 
-            float x = src.getX(srcIndex) + (float) offset.getX();
-            float y = src.getY(srcIndex) + (float) offset.getY();
-            float z = src.getZ(srcIndex) + (float) offset.getZ();
+            float x = src.getX(srcIndex) + (float) offset.x;
+            float y = src.getY(srcIndex) + (float) offset.y;
+            float z = src.getZ(srcIndex) + (float) offset.z;
 
             int color = ColorABGR.mul(colors != null ? colors[srcIndex] : src.getColor(srcIndex), light.br[srcIndex]);
 

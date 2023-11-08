@@ -15,9 +15,9 @@ public class BufferSegmentRenderer {
      * Sets up the render type, draws the buffer, and then tears down the render type.
      */
     public void draw(BufferSegment segment) {
-        segment.getRenderType().setupRenderState();
+        segment.getRenderType().startDrawing();
         drawInner(segment);
-        segment.getRenderType().clearRenderState();
+        segment.getRenderType().endDrawing();
     }
 
     /**

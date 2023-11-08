@@ -110,7 +110,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 		profiler.endStartSection("draw buffers");
 
 		for (RenderLayer type : renderOrder) {
-			type.setupRenderState();
+			type.startDrawing();
 
 			renderTypes += 1;
 
@@ -119,7 +119,7 @@ public class FullyBufferedMultiBufferSource extends BufferSource implements Memo
 				drawCalls += 1;
 			}
 
-			type.clearRenderState();
+			type.endDrawing();
 		}
 
 		profiler.endStartSection("reset");
