@@ -2,8 +2,8 @@ package me.jellysquid.mods.sodium.client;
 
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import net.minecraft.client.Minecraft;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,7 +16,7 @@ public class SodiumClientMod {
     private static SodiumGameOptions CONFIG;
     public static Logger LOGGER = LogManager.getLogger("Embeddium");
 
-    private static String MOD_VERSION;
+    private static String MOD_VERSION = Tags.VERSION;
 
     public static final String MODID = "embeddium";
     public static final String NAME = "Embeddium";
@@ -25,10 +25,6 @@ public class SodiumClientMod {
 //        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
 //
 //        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
-    }
-
-    public void onInitializeClient(final FMLInitializationEvent event) {
-    	MOD_VERSION = Tags.VERSION; // ModList.get().getModContainerById(MODID).get().getModInfo().getVersion().toString();
     }
 
     public static SodiumGameOptions options() {
@@ -48,8 +44,7 @@ public class SodiumClientMod {
     }
 
     private static SodiumGameOptions loadConfig() {
-//        return SodiumGameOptions.load(FMLPaths.CONFIGDIR.get().resolve("rubidium-options.json"));
-        return null;
+        return SodiumGameOptions.load(Minecraft.getMinecraft().mcDataDir.toPath().resolve("config").resolve("rubidium-options.json"));
     }
 
     public static String getVersion() {

@@ -48,8 +48,9 @@ public class AngelicaLateMixins implements ILateMixinLoader {
             }
         }
         AngelicaTweaker.LOGGER.info("Not loading the following LATE mixins: {}", notLoading.toString());
-        mixins.addAll(getNotFineMixins(loadedMods));
-        mixins.addAll(getArchaicMixins(loadedMods));
+        // TODO: Sodium
+//        mixins.addAll(getNotFineMixins(loadedMods));
+//        mixins.addAll(getArchaicMixins(loadedMods));
         return mixins;
     }
 

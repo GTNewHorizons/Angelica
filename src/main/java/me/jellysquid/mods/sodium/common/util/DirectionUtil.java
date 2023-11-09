@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
  * be cloned every time.
  */
 public class DirectionUtil {
-    public static final ForgeDirection[] ALL_DIRECTIONS = ForgeDirection.values();
+    public static final ForgeDirection[] ALL_DIRECTIONS = ForgeDirection.VALID_DIRECTIONS;
+
     public static final int DIRECTION_COUNT = ALL_DIRECTIONS.length;
 
     // Provides the same order as enumerating ForgeDirection and checking the axis of each value

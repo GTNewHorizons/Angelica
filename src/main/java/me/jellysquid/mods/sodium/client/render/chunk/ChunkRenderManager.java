@@ -35,6 +35,7 @@ import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
@@ -431,8 +432,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private ChunkRenderContainer<T> createChunkRender(ChunkRenderColumn<T> column, int x, int y, int z) {
         ChunkRenderContainer<T> render = new ChunkRenderContainer<>(this.backend, this.renderer, x, y, z, column);
+        final ExtendedBlockStorage array = this.world.getChunkFromChunkCoords(x, z).getBlockStorageArray()[y];
 
-        if (this.world.getChunkFromChunkCoords(x, z).getBlockStorageArray()[y].isEmpty()) {
+        if (array == null || array.isEmpty()) {
             render.setData(ChunkRenderData.EMPTY);
         } else {
             render.scheduleRebuild(false);

@@ -8,7 +8,7 @@ import me.jellysquid.mods.sodium.client.util.math.MatrixUtil;
 import org.joml.Matrix4f;
 
 public interface GlyphVertexSink extends VertexSink {
-    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.PARTICLE;
+    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.POSITION_TEXTURE_COLOR_LIGHT;
 
     /**
      * Writes a glyph vertex to the sink.

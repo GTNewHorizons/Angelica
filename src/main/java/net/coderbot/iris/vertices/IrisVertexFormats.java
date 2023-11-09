@@ -23,25 +23,25 @@ public class IrisVertexFormats {
 		ImmutableList.Builder<VertexFormatElement> terrainElements = ImmutableList.builder();
 		ImmutableList.Builder<VertexFormatElement> entityElements = ImmutableList.builder();
 
-		terrainElements.add(DefaultVertexFormat.ELEMENT_POSITION); // 12
-		terrainElements.add(DefaultVertexFormat.ELEMENT_COLOR); // 16
-		terrainElements.add(DefaultVertexFormat.ELEMENT_UV0); // 24
-		terrainElements.add(DefaultVertexFormat.ELEMENT_UV2); // 28
-		terrainElements.add(DefaultVertexFormat.ELEMENT_NORMAL); // 31
-		terrainElements.add(DefaultVertexFormat.ELEMENT_PADDING); // 32
+		terrainElements.add(DefaultVertexFormat.POSITION_ELEMENT); // 12
+		terrainElements.add(DefaultVertexFormat.COLOR_ELEMENT); // 16
+		terrainElements.add(DefaultVertexFormat.TEXTURE_0_ELEMENT); // 24
+		terrainElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 28
+		terrainElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 31
+		terrainElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 32
 		terrainElements.add(ENTITY_ELEMENT); // 36
 		terrainElements.add(MID_TEXTURE_ELEMENT); // 44
 		terrainElements.add(TANGENT_ELEMENT); // 48
 		terrainElements.add(MID_BLOCK_ELEMENT); // 51
-		terrainElements.add(DefaultVertexFormat.ELEMENT_PADDING); // 52
+		terrainElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 52
 
-		entityElements.add(DefaultVertexFormat.ELEMENT_POSITION); // 12
-		entityElements.add(DefaultVertexFormat.ELEMENT_COLOR); // 16
-		entityElements.add(DefaultVertexFormat.ELEMENT_UV0); // 24
-		entityElements.add(DefaultVertexFormat.ELEMENT_UV1); // 28
-		entityElements.add(DefaultVertexFormat.ELEMENT_UV2); // 32
-		entityElements.add(DefaultVertexFormat.ELEMENT_NORMAL); // 35
-		entityElements.add(DefaultVertexFormat.ELEMENT_PADDING); // 36
+		entityElements.add(DefaultVertexFormat.POSITION_ELEMENT); // 12
+		entityElements.add(DefaultVertexFormat.COLOR_ELEMENT); // 16
+		entityElements.add(DefaultVertexFormat.TEXTURE_0_ELEMENT); // 24
+		entityElements.add(DefaultVertexFormat.OVERLAY_ELEMENT); // 28
+		entityElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 32
+		entityElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 35
+		entityElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 36
 		entityElements.add(MID_TEXTURE_ELEMENT); // 44
 		entityElements.add(TANGENT_ELEMENT); // 48
 

@@ -8,6 +8,7 @@ import me.jellysquid.mods.sodium.client.model.quad.blender.BiomeColorBlender;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
 
 import java.util.Map;
@@ -18,7 +19,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
     private final BlockRenderer blockRenderer;
     private final HashLightDataCache lightCache;
 
-    private ChunkRenderCacheShared(World world) {
+    private ChunkRenderCacheShared(WorldClient world) {
         Minecraft client = Minecraft.getMinecraft();
 
         this.lightCache = new HashLightDataCache((BlockRenderView)world);
@@ -53,7 +54,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
         }
     }
 
-    public static void createRenderContext(World world) {
+    public static void createRenderContext(WorldClient world) {
         if (INSTANCES.containsKey(world)) {
             throw new IllegalStateException("Render context already exists for world: " + world);
         }

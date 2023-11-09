@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
-import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.render.entity.EntityLightSampler;
+import net.minecraft.util.MathHelper;
 import net.minecraft.entity.Entity;
 
 import static org.joml.Math.lerp;
@@ -34,12 +34,12 @@ public class EntityLighter {
         double z2 = z1 + width;
 
         // The sampling volume of blocks which could possibly contribute light to this entity
-        int bMinX = MathHelper.floor(x1);
-        int bMinY = MathHelper.floor(y1);
-        int bMinZ = MathHelper.floor(z1);
-        int bMaxX = MathHelper.ceil(x2);
-        int bMaxY = MathHelper.ceil(y2);
-        int bMaxZ = MathHelper.ceil(z2);
+        int bMinX = MathHelper.floor_double(x1);
+        int bMinY = MathHelper.floor_double(y1);
+        int bMinZ = MathHelper.floor_double(z1);
+        int bMaxX = MathHelper.ceiling_double_int(x2);
+        int bMaxY = MathHelper.ceiling_double_int(y2);
+        int bMaxZ = MathHelper.ceiling_double_int(z2);
 
         // The maximum amount of light that could be contributed
         double max = 0.0D;
@@ -93,8 +93,8 @@ public class EntityLighter {
         }
 
         // The final light value is calculated from the percentage of light contributed out of the total maximum
-        int bli = MathHelper.floor((bl / max) * MAX_LIGHTMAP_COORD);
-        int sli = MathHelper.floor((sl / max) * MAX_LIGHTMAP_COORD);
+        int bli = MathHelper.floor_double((bl / max) * MAX_LIGHTMAP_COORD);
+        int sli = MathHelper.floor_double((sl / max) * MAX_LIGHTMAP_COORD);
 
         return ((sli & 0xFFFF) << 16) | (bli & 0xFFFF);
     }

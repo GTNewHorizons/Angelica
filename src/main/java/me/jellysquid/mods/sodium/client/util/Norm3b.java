@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.util;
 
-import cofh.lib.util.helpers.MathHelper;
+import net.minecraft.util.MathHelper;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
@@ -53,7 +53,7 @@ public class Norm3b {
      */
     private static int encode(float comp) {
         // TODO: is the clamp necessary here? our inputs should always be normalized vector components
-        return ((int) (MathHelper.clamp(comp, -1.0F, 1.0F) * COMPONENT_RANGE) & 255);
+        return ((int) (MathHelper.clamp_float(comp, -1.0F, 1.0F) * COMPONENT_RANGE) & 255);
     }
 
     /**

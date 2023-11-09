@@ -99,8 +99,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             }
         }
         LOGGER.info("Not loading the following EARLY mixins: {}", notLoading);
-        mixins.addAll(getNotFineMixins(loadedCoreMods));
-        mixins.addAll(getArchaicMixins(loadedCoreMods));
+        // TODO: Sodium
+//        mixins.addAll(getNotFineMixins(loadedCoreMods));
+//        mixins.addAll(getArchaicMixins(loadedCoreMods));
         return mixins;
     }
 

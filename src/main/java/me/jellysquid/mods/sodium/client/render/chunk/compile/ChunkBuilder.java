@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
-import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -22,6 +21,7 @@ import me.jellysquid.mods.sodium.common.util.collections.DequeDrain;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
+import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3d;
@@ -231,7 +231,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * but can be up to the number of available processor threads on the system.
      */
     private static int getOptimalThreadCount() {
-        return MathHelper.clamp(Math.max(getMaxThreadCount() / 3, getMaxThreadCount() - 6), 1, 10);
+        return MathHelper.clamp_int(Math.max(getMaxThreadCount() / 3, getMaxThreadCount() - 6), 1, 10);
     }
 
     private static int getThreadCount() {

@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
-import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
@@ -14,6 +13,7 @@ import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.MathHelper;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -100,7 +100,7 @@ public class ChunkGraphCuller implements ChunkCuller {
 
             this.visible.add(rootNode);
         } else {
-            chunkY = MathHelper.clamp(origin.getY() >> 4, 0, 15);
+            chunkY = MathHelper.clamp_int(origin.getY() >> 4, 0, 15);
 
             List<ChunkGraphNode> bestNodes = new ArrayList<>();
 
