@@ -18,7 +18,9 @@ public class IndirectCommandBufferVector extends StructBuffer {
     }
 
     public void end() {
-        this.buffer.flip();
+        if(this.buffer.position() > 0) {
+            this.buffer.flip();
+        }
     }
 
     public void pushCommandBuffer(ChunkDrawCallBatcher batcher) {

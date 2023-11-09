@@ -29,7 +29,7 @@ public abstract class MixinChunkProviderClient implements ChunkStatusListenerMan
         this.sodium$listener = listener;
     }
 
-    @Inject(method="loadChunk", at = @At(value = "INVOKE", target="Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", shift = At.Shift.BEFORE))
+    @Inject(method="loadChunk", at = @At(value = "INVOKE", target="Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", shift = At.Shift.BEFORE), remap = false)
     private void sodium$loadChunk(int x, int z, CallbackInfoReturnable<Chunk> cir) {
         if (this.sodium$listener != null) {
             this.sodium$listener.onChunkAdded(x, z);

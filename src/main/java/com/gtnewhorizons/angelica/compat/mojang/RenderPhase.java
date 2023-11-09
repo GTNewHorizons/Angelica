@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
@@ -212,35 +213,35 @@ public abstract class RenderPhase {
         }, () -> {
         });
         FOG = new Fog("fog", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            BackgroundRenderer.setFogBlack();
-//            RenderSystem.enableFog();
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.disableFog();
-        });
+            // Unclear what this should do
+            // BackgroundRenderer.setFogBlack(), also levelFogColor()
+            SodiumClientMod.LOGGER.debug("Fog - Not setting level fog color");
+            GLStateManager.enableFog();
+        }, GLStateManager::disableFog);
         BLACK_FOG = new Fog("black_fog", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.fog(2918, 0.0F, 0.0F, 0.0F, 1.0F);
-//            RenderSystem.enableFog();
+            GLStateManager.fogColor(0.0F, 0.0F, 0.0F, 1.0F);
+            GLStateManager.enableFog();
         }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            BackgroundRenderer.setFogBlack();
-//            RenderSystem.disableFog();
+            // Unclear what this should do
+            // BackgroundRenderer.setFogBlack(), also levelFogColor()
+            SodiumClientMod.LOGGER.debug("Fog - Not setting level fog color");
+            GLStateManager.disableFog();
         });
         MAIN_TARGET = new Target("main_target", () -> {
         }, () -> {
         });
         OUTLINE_TARGET = new Target("outline_target", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            MinecraftClient.getInstance().worldRenderer.getEntityOutlinesFramebuffer().beginWrite(false);
+            // TODO: Sodium
+            SodiumClientMod.LOGGER.debug("NOT enabling the entity outline framebuffer");
+            //MinecraftClient.getInstance().worldRenderer.getEntityOutlinesFramebuffer().beginWrite(false);
         }, () -> {
             Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
         });
         TRANSLUCENT_TARGET = new Target("translucent_target", () -> {
             if (Minecraft.isFancyGraphicsEnabled()) {
-                throw new RuntimeException("Not Implemented Yet");
-//                MinecraftClient.getInstance().worldRenderer.getTranslucentFramebuffer().beginWrite(false);
+                // TODO: Sodium
+                SodiumClientMod.LOGGER.debug("NOT enabling the translucent framebuffer");
+                // MinecraftClient.getInstance().worldRenderer.getTranslucentFramebuffer().beginWrite(false);
             }
 
         }, () -> {
@@ -518,13 +519,18 @@ public abstract class RenderPhase {
         public Lightmap(boolean lightmap) {
             super("lightmap", () -> {
                 if (lightmap) {
-                    throw new RuntimeException("Not Implemented Yet");
+                    // TODO: Sodium - LightmapTextureManager
+                    SodiumClientMod.LOGGER.debug("Lightmap - enable (not implemented)");
+//                    throw new RuntimeException("Not Implemented Yet");
 //                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().enable();
+
                 }
 
             }, () -> {
                 if (lightmap) {
-                    throw new RuntimeException("Not Implemented Yet");
+                    // TODO: Sodium - LightmapTextureManager
+                    SodiumClientMod.LOGGER.debug("Lightmap - disable (not implemented)");
+//                    throw new RuntimeException("Not Implemented Yet");
 //                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().disable();
                 }
 
