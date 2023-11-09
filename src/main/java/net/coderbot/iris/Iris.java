@@ -1,6 +1,7 @@
 package net.coderbot.iris;
 
 import com.mojang.realmsclient.gui.ChatFormatting;
+import lombok.Getter;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.GLDebug;
 import net.coderbot.iris.gl.shader.StandardMacros;
@@ -65,6 +66,7 @@ public class Iris {
     private static String currentPackName;
     // TODO: Iris Backport - Tie this to archaicfix
     private static final boolean sodiumInstalled = true; // FMLLoader.getLoadingModList().getModFileById("rubidium") != null;
+    @Getter
     private static boolean initialized;
 
     private static PipelineManager pipelineManager;

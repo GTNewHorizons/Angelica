@@ -11,33 +11,42 @@ import java.util.function.Supplier;
 public enum Mixins {
 
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses(
-                "shaders.startup.MixinGameSettings",
-                "shaders.startup.MixinGuiMainMenu",
-                "shaders.startup.MixinInitRenderer")
-            ),
-    IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses(
-                "shaders.MixinFramebuffer",
-                "shaders.MixinEntityRenderer",
-                "shaders.MixinItem",
-                "shaders.MixinOpenGlHelper"
-            )
+        .setPhase(Phase.EARLY).setApplyIf(() -> false).addMixinClasses(
+            "shaders.startup.MixinGameSettings",
+            "shaders.startup.MixinGuiMainMenu",
+            "shaders.startup.MixinInitRenderer")
         ),
 
+    SODIUM_STARTUP(new Builder("Start Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
+             "sodium.MixinRenderGlobal"
+            ,"sodium.MixinWorldClient"
+            ,"sodium.MixinChunkProviderClient"
+        )
+    ),
+
+    IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> false).addMixinClasses(
+            "shaders.MixinFramebuffer",
+            "shaders.MixinEntityRenderer",
+            "shaders.MixinItem",
+            "shaders.MixinOpenGlHelper"
+        )
+    ),
+
     IRIS_ACCESSORS(new Builder("Iris Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses(
-                "shaders.accessors.MinecraftAccessor",
-                "shaders.accessors.EntityRendererAccessor",
-                "shaders.accessors.SimpleTextureAccessor",
-                "shaders.accessors.TextureAtlasSpriteAccessor"
-            )),
+        .setPhase(Phase.EARLY).addMixinClasses(
+            "shaders.accessors.MinecraftAccessor",
+            "shaders.accessors.EntityRendererAccessor",
+            "shaders.accessors.SimpleTextureAccessor",
+            "shaders.accessors.TextureAtlasSpriteAccessor"
+        )),
 
 
     ANGELICA_TEXTURE(new Builder("Texture").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-            .setPhase(Phase.EARLY).addMixinClasses(
+        .setPhase(Phase.EARLY).addMixinClasses(
 
-            )),
+        )),
 
     // TODO: Iris
 //    SHADERSMOD_COMPAT_PR_ILLUMINATION(

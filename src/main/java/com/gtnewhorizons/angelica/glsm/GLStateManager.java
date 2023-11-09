@@ -49,11 +49,13 @@ public class GLStateManager {
     private static final BooleanState Cull = new BooleanState(GL11.GL_CULL_FACE);
     @Getter
     private static final AlphaState Alpha = new AlphaState();
+
+    // TODO: Maybe inject the iris stuff via mixins....
     @Getter
     private static final TextureState[] Textures;
 
     // Iris Listeners
-    private static Runnable blendFuncListener;
+    private static Runnable blendFuncListener = null;
 
     static {
         StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
@@ -66,8 +68,8 @@ public class GLStateManager {
         switch(cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
-            case GL11.GL_DEPTH_TEST -> Depth.mode.enable();
-            case GL11.GL_CULL_FACE -> Cull.enable();
+            case GL11.GL_DEPTH_TEST -> enableDepthTest();
+            case GL11.GL_CULL_FACE -> enableCull();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             default -> GL11.glEnable(cap);
         }
@@ -78,8 +80,8 @@ public class GLStateManager {
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> disableAlphaTest();
             case GL11.GL_BLEND -> disableBlend();
-            case GL11.GL_DEPTH_TEST -> Depth.mode.disable();
-            case GL11.GL_CULL_FACE -> Cull.disable();
+            case GL11.GL_DEPTH_TEST -> disableDepthTest();
+            case GL11.GL_CULL_FACE -> disableCull();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             default -> GL11.glDisable(cap);
         }
@@ -87,29 +89,32 @@ public class GLStateManager {
 
     // GLStateManager Functions
 
-    private static void enableBlend() {
-        // Iris
-        if(BlendModeStorage.isBlendLocked()) {
-            BlendModeStorage.deferBlendModeToggle(true);
-            return;
+    public static void enableBlend() {
+        if (Iris.isInitialized()) {
+            if (BlendModeStorage.isBlendLocked()) {
+                BlendModeStorage.deferBlendModeToggle(true);
+                return;
+            }
         }
         Blend.mode.enable();
     }
 
     public static void disableBlend() {
-        // Iris
-        if (BlendModeStorage.isBlendLocked()) {
-            BlendModeStorage.deferBlendModeToggle(false);
-            return;
+        if (Iris.isInitialized()) {
+            if (BlendModeStorage.isBlendLocked()) {
+                BlendModeStorage.deferBlendModeToggle(false);
+                return;
+            }
         }
         Blend.mode.disable();
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
-        // Iris
-        if(BlendModeStorage.isBlendLocked()) {
-            BlendModeStorage.deferBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
-            return;
+        if (Iris.isInitialized()) {
+            if (BlendModeStorage.isBlendLocked()) {
+                BlendModeStorage.deferBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
+                return;
+            }
         }
         Blend.srcRgb = srcFactor;
         Blend.dstRgb = dstFactor;
@@ -120,10 +125,11 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        // Iris
-        if(BlendModeStorage.isBlendLocked()) {
-            BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
-            return;
+        if (Iris.isInitialized()) {
+            if (BlendModeStorage.isBlendLocked()) {
+                BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
+                return;
+            }
         }
         Blend.srcRgb = srcRgb;
         Blend.dstRgb = dstRgb;
@@ -143,10 +149,11 @@ public class GLStateManager {
     }
 
     public static void glDepthMask(boolean mask) {
-        // Iris
-        if (DepthColorStorage.isDepthColorLocked()) {
-            DepthColorStorage.deferDepthEnable(mask);
-            return;
+        if (Iris.isInitialized()) {
+            if (DepthColorStorage.isDepthColorLocked()) {
+                DepthColorStorage.deferDepthEnable(mask);
+                return;
+            }
         }
 
         if(mask != Depth.mask) {
@@ -172,10 +179,11 @@ public class GLStateManager {
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
-        // Iris
-        if (DepthColorStorage.isDepthColorLocked()) {
-            DepthColorStorage.deferColorMask(red, green, blue, alpha);
-            return;
+        if (Iris.isInitialized()) {
+            if (DepthColorStorage.isDepthColorLocked()) {
+                DepthColorStorage.deferColorMask(red, green, blue, alpha);
+                return;
+            }
         }
         if(red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
             ColorMask.red = red;
@@ -188,28 +196,31 @@ public class GLStateManager {
 
     // ALPHA
     public static void enableAlphaTest() {
-        // Iris
-        if (AlphaTestStorage.isAlphaTestLocked()) {
-            AlphaTestStorage.deferAlphaTestToggle(true);
-            return;
+        if (Iris.isInitialized()) {
+            if (AlphaTestStorage.isAlphaTestLocked()) {
+                AlphaTestStorage.deferAlphaTestToggle(true);
+                return;
+            }
         }
         Alpha.mode.enable();
     }
 
     public static void disableAlphaTest() {
-        // Iris
-        if (AlphaTestStorage.isAlphaTestLocked()) {
-            AlphaTestStorage.deferAlphaTestToggle(false);
-            return;
+        if (Iris.isInitialized()) {
+            if (AlphaTestStorage.isAlphaTestLocked()) {
+                AlphaTestStorage.deferAlphaTestToggle(false);
+                return;
+            }
         }
         Alpha.mode.disable();
     }
 
     public static void glAlphaFunc(int function, float reference) {
-        // Iris
-        if (AlphaTestStorage.isAlphaTestLocked()) {
-            AlphaTestStorage.deferAlphaFunc(function, reference);
-            return;
+        if (Iris.isInitialized()) {
+            if (AlphaTestStorage.isAlphaTestLocked()) {
+                AlphaTestStorage.deferAlphaFunc(function, reference);
+                return;
+            }
         }
         Alpha.function = function;
         Alpha.reference = reference;
@@ -236,74 +247,82 @@ public class GLStateManager {
         if(Textures[activeTexture].binding != texture) {
             Textures[activeTexture].binding = texture;
             GL11.glBindTexture(target, texture);
-            TextureTracker.INSTANCE.onBindTexture(texture);
+            if (Iris.isInitialized()) {
+                TextureTracker.INSTANCE.onBindTexture(texture);
+            }
         }
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-        // Iris
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        if (Iris.isInitialized()) {
+            // Iris
+            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        // Iris
-        TextureInfoCache.INSTANCE.onTexImage2D(
-            target, level, internalformat, width, height, border, format, type,
-            pixels != null ? pixels.asIntBuffer() : (IntBuffer) null
-        );
+        if (Iris.isInitialized()) {
+            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
+        }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 
     public static void glDeleteTextures(int id) {
-        // Iris
-        iris$onDeleteTexture(id);
+        if (Iris.isInitialized()) {
+            iris$onDeleteTexture(id);
+        }
         GL11.glDeleteTextures(id);
     }
     public static void glDeleteTextures(IntBuffer ids) {
-        // Iris
-        for(int id: ids.array()) {
-            iris$onDeleteTexture(id);
+        if (Iris.isInitialized()) {
+            for (int id : ids.array()) {
+                iris$onDeleteTexture(id);
+            }
         }
         GL11.glDeleteTextures(ids);
     }
 
     public static void enableTexture() {
-        // Iris
-        boolean updatePipeline = false;
-        if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.albedoSampler = true;
-            updatePipeline = true;
-        } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.lightmapSampler = true;
-            updatePipeline = true;
-        } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.overlaySampler = true;
-            updatePipeline = true;
-        }
+        if (Iris.isInitialized()) {
+            // Iris
+            boolean updatePipeline = false;
+            if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.albedoSampler = true;
+                updatePipeline = true;
+            } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.lightmapSampler = true;
+                updatePipeline = true;
+            } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.overlaySampler = true;
+                updatePipeline = true;
+            }
 
-        if(updatePipeline) {
-            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+            if (updatePipeline) {
+                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+            }
         }
 
         Textures[activeTexture].mode.enable();
     }
 
     public static void disableTexture() {
-        // Iris
-        boolean updatePipeline = false;
-        if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.albedoSampler = false;
-            updatePipeline = true;
-        } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.lightmapSampler = false;
-            updatePipeline = true;
-        } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
-            StateTracker.INSTANCE.overlaySampler = false;
-            updatePipeline = true;
-        }
+        if (Iris.isInitialized()) {
+            // Iris
+            boolean updatePipeline = false;
+            if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.albedoSampler = false;
+                updatePipeline = true;
+            } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.lightmapSampler = false;
+                updatePipeline = true;
+            } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+                StateTracker.INSTANCE.overlaySampler = false;
+                updatePipeline = true;
+            }
 
-        if(updatePipeline) {
-            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+            if (updatePipeline) {
+                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
+            }
         }
 
         Textures[activeTexture].mode.disable();
@@ -317,12 +336,33 @@ public class GLStateManager {
     }
 
 
-    // Iris Functions
+    public static void defaultBlendFunc() {
+        GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+    }
 
+    public static void enableCull() {
+        Cull.enable();
+    }
+
+    public static void disableCull() {
+        Cull.disable();
+    }
+
+    public static void enableDepthTest() {
+        Depth.mode.enable();
+    }
+
+    public static void disableDepthTest() {
+        Depth.mode.disable();
+    }
+
+    // Iris Functions
     private static void iris$onDeleteTexture(int id) {
-        TextureTracker.INSTANCE.onDeleteTexture(id);
-        TextureInfoCache.INSTANCE.onDeleteTexture(id);
-        PBRTextureManager.INSTANCE.onDeleteTexture(id);
+        if (Iris.isInitialized()) {
+            TextureTracker.INSTANCE.onDeleteTexture(id);
+            TextureInfoCache.INSTANCE.onDeleteTexture(id);
+            PBRTextureManager.INSTANCE.onDeleteTexture(id);
+        }
     }
 
 }

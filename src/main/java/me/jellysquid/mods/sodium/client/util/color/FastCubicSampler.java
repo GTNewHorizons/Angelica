@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.util.color;
 
-import cofh.lib.util.helpers.MathHelper;
+import net.minecraft.util.MathHelper;
 import org.joml.Vector3d;
 
 import java.util.function.Function;
@@ -16,9 +16,9 @@ public class FastCubicSampler {
     }
 
     public static Vector3d sampleColor(Vector3d pos, ColorFetcher colorFetcher, Function<Vector3d, Vector3d> transformer) {
-        int intX = MathHelper.floor(pos.x);
-        int intY = MathHelper.floor(pos.y);
-        int intZ = MathHelper.floor(pos.z);
+        int intX = MathHelper.floor_double(pos.x);
+        int intY = MathHelper.floor_double(pos.y);
+        int intZ = MathHelper.floor_double(pos.z);
 
         int[] values = new int[DIAMETER * DIAMETER * DIAMETER];
 

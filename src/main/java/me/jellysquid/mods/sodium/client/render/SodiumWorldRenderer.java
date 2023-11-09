@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import cofh.lib.util.helpers.MathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.BlockBreakingInfo;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
@@ -15,6 +14,7 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumerProvider;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.IHasClientChunkProvider;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -38,6 +38,7 @@ import me.jellysquid.mods.sodium.client.world.ChunkStatusListenerManager;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
@@ -45,6 +46,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
 import org.joml.Vector3d;
 import speiger.src.collections.longs.maps.interfaces.Long2ObjectMap;
 
@@ -84,9 +86,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     /**
      * Instantiates Sodium's world renderer. This should be called at the time of the world renderer initialization.
      */
-    public static SodiumWorldRenderer create() {
+    public static SodiumWorldRenderer create(Minecraft mc) {
         if (instance == null) {
-            instance = new SodiumWorldRenderer(Minecraft.getMinecraft());
+            instance = new SodiumWorldRenderer(mc);
         }
 
         return instance;
@@ -132,7 +134,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         this.initRenderer();
 
-        ((ChunkStatusListenerManager) world.getWorldChunkManager()).setListener(this);
+        ((ChunkStatusListenerManager) ((IHasClientChunkProvider)world).getClientChunkProvider()).setListener(this);
     }
 
     private void unloadWorld() {
@@ -406,13 +408,13 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             return true;
         }
 
-        int minX = MathHelper.floor(box.minX - 0.5D) >> 4;
-        int minY = MathHelper.floor(box.minY - 0.5D) >> 4;
-        int minZ = MathHelper.floor(box.minZ - 0.5D) >> 4;
+        int minX = MathHelper.floor_double(box.minX - 0.5D) >> 4;
+        int minY = MathHelper.floor_double(box.minY - 0.5D) >> 4;
+        int minZ = MathHelper.floor_double(box.minZ - 0.5D) >> 4;
 
-        int maxX = MathHelper.floor(box.maxX + 0.5D) >> 4;
-        int maxY = MathHelper.floor(box.maxY + 0.5D) >> 4;
-        int maxZ = MathHelper.floor(box.maxZ + 0.5D) >> 4;
+        int maxX = MathHelper.floor_double(box.maxX + 0.5D) >> 4;
+        int maxY = MathHelper.floor_double(box.maxY + 0.5D) >> 4;
+        int maxZ = MathHelper.floor_double(box.maxZ + 0.5D) >> 4;
 
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {

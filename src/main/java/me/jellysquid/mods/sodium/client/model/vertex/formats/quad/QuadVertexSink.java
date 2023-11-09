@@ -9,7 +9,7 @@ import me.jellysquid.mods.sodium.client.util.math.MatrixUtil;
 
 
 public interface QuadVertexSink extends VertexSink {
-    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.BLOCK; // POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL;
 
     /**
      * Writes a quad vertex to this sink.

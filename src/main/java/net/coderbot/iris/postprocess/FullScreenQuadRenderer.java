@@ -47,7 +47,7 @@ public class FullScreenQuadRenderer {
 		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, quadBuffer);
-		DefaultVertexFormat.POSITION_TEX.setupBufferState(0L);
+		DefaultVertexFormat.POSITION_TEXTURE.setupBufferState(0L);
 	}
 
 	public void renderQuad() {
@@ -56,7 +56,7 @@ public class FullScreenQuadRenderer {
 
 	@SuppressWarnings("deprecation")
 	public static void end() {
-		DefaultVertexFormat.POSITION_TEX.clearBufferState();
+		DefaultVertexFormat.POSITION_TEXTURE.clearBufferState();
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);

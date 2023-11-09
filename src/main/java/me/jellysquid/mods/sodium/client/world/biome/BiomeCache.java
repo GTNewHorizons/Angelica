@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.world.biome;
 
 import com.gtnewhorizons.angelica.compat.mojang.BiomeAccess;
 import com.gtnewhorizons.angelica.compat.mojang.BiomeAccessType;
-import me.jellysquid.mods.sodium.client.world.ClientWorldExtended;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -17,7 +16,7 @@ public class BiomeCache {
     public BiomeCache(World world) {
         // TODO: Sodium
         this.type = null;//world.getDimension().getBiomeAccessType();
-        this.seed = ((ClientWorldExtended) world).getBiomeSeed();
+        this.seed = world.getSeed();
 
         this.biomes = new BiomeGenBase[16 * 16];
     }

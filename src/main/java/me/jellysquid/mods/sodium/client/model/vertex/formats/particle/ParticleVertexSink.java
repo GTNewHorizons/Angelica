@@ -6,7 +6,7 @@ import me.jellysquid.mods.sodium.client.model.vertex.VertexSink;
 
 
 public interface ParticleVertexSink extends VertexSink {
-    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.PARTICLE;
+    VertexFormat VERTEX_FORMAT = DefaultVertexFormat.POSITION_TEXTURE_COLOR_LIGHT;
 
     /**
      * @param x The x-position of the vertex
