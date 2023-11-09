@@ -50,6 +50,8 @@ public class GLStateManager {
     @Getter
     private static final AlphaState Alpha = new AlphaState();
 
+    private static int modelShadeMode;
+
     // TODO: Maybe inject the iris stuff via mixins....
     @Getter
     private static final TextureState[] Textures;
@@ -354,6 +356,27 @@ public class GLStateManager {
 
     public static void disableDepthTest() {
         Depth.mode.disable();
+    }
+
+    public static void setFilter(boolean bilinear, boolean mipmap) {
+        int j;
+        int i;
+        if (bilinear) {
+            i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR;
+            j = GL11.GL_LINEAR;
+        } else {
+            i = mipmap ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_NEAREST;
+            j = GL11.GL_NEAREST;
+        }
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
+    }
+
+    public static void glShadeModel(int mode) {
+        if (modelShadeMode != mode) {
+            modelShadeMode = mode;
+            GL11.glShadeModel(mode);
+        }
     }
 
     // Iris Functions
