@@ -26,6 +26,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.stream.IntStream;
 
@@ -330,6 +331,21 @@ public class GLStateManager {
         Textures[activeTexture].mode.disable();
     }
 
+    public static void setFilter(boolean bilinear, boolean mipmap) {
+        int j;
+        int i;
+        if (bilinear) {
+            i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR;
+            j = GL11.GL_LINEAR;
+        } else {
+            i = mipmap ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_NEAREST;
+            j = GL11.GL_NEAREST;
+        }
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
+    }
+
+
     public static void glDrawArrays(int mode, int first, int count) {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
 //        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
@@ -358,18 +374,54 @@ public class GLStateManager {
         Depth.mode.disable();
     }
 
-    public static void setFilter(boolean bilinear, boolean mipmap) {
-        int j;
-        int i;
-        if (bilinear) {
-            i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR;
-            j = GL11.GL_LINEAR;
-        } else {
-            i = mipmap ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_NEAREST;
-            j = GL11.GL_NEAREST;
+    public static void enableFog() {
+        Fog.mode.enable();
+    }
+
+    public static void disableFog() {
+        Fog.mode.disable();
+    }
+
+    public static void glFog(int pname, FloatBuffer param) {
+        // TODO: Iris Notifier
+        GL11.glFog(pname, param);
+        if(pname == GL11.GL_FOG_COLOR) {
+            Fog.fogColor.set(param.get(0), param.get(1), param.get(2));
+            Fog.fogAlpha = param.get(3);
+            Fog.fogColorBuffer.clear();
+            Fog.fogColorBuffer.put((FloatBuffer) param.position(0)).flip();
         }
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
+    }
+    public static void fogColor(float red, float green, float blue, float alpha) {
+        // TODO: Iris Notifier
+        if(red != Fog.fogColor.x || green != Fog.fogColor.y || blue != Fog.fogColor.z || alpha != Fog.fogAlpha) {
+            Fog.fogColor.set(red, green, blue);
+            Fog.fogAlpha = alpha;
+            Fog.fogColorBuffer.clear();
+            Fog.fogColorBuffer.put(red).put(green).put(blue).put(alpha).flip();
+            GL11.glFog(GL11.GL_FOG_COLOR, Fog.fogColorBuffer);
+        }
+    }
+    public static void glFogf(int pname, float param) {
+        // TODO: Iris Notifier
+        GL11.glFogf(pname, param);
+        switch(pname) {
+            case GL11.GL_FOG_DENSITY -> Fog.density = param;
+            case GL11.GL_FOG_START -> Fog.start = param;
+            case GL11.GL_FOG_END -> Fog.end = param;
+        }
+    }
+    public static void glFogi(int pname, int param) {
+        // TODO: Iris Notifier
+        GL11.glFogi(pname, param);
+        if(pname == GL11.GL_FOG_MODE) {
+            Fog.fogMode = param;
+        }
+    }
+
+    public static void setFogBlack() {
+        GL11.glFogf(GL11.GL_FOG_COLOR, 0.0F);
+
     }
 
     public static void glShadeModel(int mode) {
