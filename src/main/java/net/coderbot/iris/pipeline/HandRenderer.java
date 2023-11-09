@@ -47,7 +47,7 @@ public class HandRenderer {
 
 	private boolean canRender(Camera camera, GameRenderer gameRenderer) {
 		return !(!gameRenderer.getRenderHand()
-				|| camera.isDetached()
+				|| camera.isThirdPerson()
 					|| !(camera.getEntity() instanceof EntityPlayer)
 						|| gameRenderer.getPanoramicMode()
 							|| Minecraft.getMinecraft().gameSettings.hideGUI

@@ -22,6 +22,7 @@ public enum Mixins {
              "sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinChunkProviderClient"
+            ,"sodium.MixinFrustrum"
         )
     ),
 

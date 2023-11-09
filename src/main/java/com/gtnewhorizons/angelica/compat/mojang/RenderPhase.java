@@ -142,11 +142,11 @@ public abstract class RenderPhase {
 //        RenderSystem.matrixMode(5888);
     }
 
-    private static ResourceLocation UNKONWN_TEXTURE = new ResourceLocation("textures/misc/unknown_server.png");
+    private static ResourceLocation ATLAS = new ResourceLocation("sodium", "textures/atlas.png");
     static {
         // TODO: Sodium - SpriteAtlasTexture
-        MIPMAP_BLOCK_ATLAS_TEXTURE = new Texture(  UNKONWN_TEXTURE/*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, true);
-        BLOCK_ATLAS_TEXTURE = new Texture(UNKONWN_TEXTURE /*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, false);
+        MIPMAP_BLOCK_ATLAS_TEXTURE = new Texture(ATLAS/*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, true);
+        BLOCK_ATLAS_TEXTURE = new Texture(ATLAS /*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, false);
         NO_TEXTURE = new Texture();
         DEFAULT_TEXTURING = new Texturing("default_texturing", () -> {
         }, () -> {
@@ -662,8 +662,7 @@ public abstract class RenderPhase {
                 GLStateManager.enableTexture();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
-                throw new RuntimeException("Not Implemented Yet");
-//                lv.getTexture(id).setFilter(bilinear, mipmap);
+                GLStateManager.setFilter(bilinear, mipmap);
             }, () -> {
             });
             this.id = Optional.of(id);
@@ -707,13 +706,9 @@ public abstract class RenderPhase {
         private final boolean smooth;
 
         public ShadeModel(boolean smooth) {
-            super("shade_model", () -> {
-                throw new RuntimeException("Not Implemented Yet");
-//                RenderSystem.shadeModel(smooth ? 7425 : 7424);
-            }, () -> {
-//                RenderSystem.shadeModel(7424);
-                throw new RuntimeException("Not Implemented Yet");
-            });
+            super("shade_model",
+                () -> GLStateManager.glShadeModel(smooth ? GL11.GL_SMOOTH : GL11.GL_FLAT),
+                () -> GLStateManager.glShadeModel(GL11.GL_FLAT));
             this.smooth = smooth;
         }
 
