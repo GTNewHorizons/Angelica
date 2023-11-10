@@ -391,7 +391,8 @@ public class Iris {
         logger.info("Shaders are disabled");
     }
 
-    private static void setDebug(boolean enable) {
+    // Temp escalation
+    public static void setDebug(boolean enable) {
         int success;
         if (enable) {
             success = GLDebug.setupDebugMessageCallback();
@@ -407,12 +408,13 @@ public class Iris {
                 Minecraft.getMinecraft().thePlayer.sendChatMessage(I18n.format("iris.shaders.debug.restart"));
             }
         }
-
-        try {
-            irisConfig.setDebugEnabled(enable);
-            irisConfig.save();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if(Iris.isInitialized()) {
+            try {
+                irisConfig.setDebugEnabled(enable);
+                irisConfig.save();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
