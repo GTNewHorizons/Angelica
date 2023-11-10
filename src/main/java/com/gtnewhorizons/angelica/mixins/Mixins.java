@@ -23,6 +23,7 @@ public enum Mixins {
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinChunkProviderClient"
             ,"sodium.MixinFrustrum"
+            ,"sodium.startup.MixinInitDebug"
         )
     ),
 
