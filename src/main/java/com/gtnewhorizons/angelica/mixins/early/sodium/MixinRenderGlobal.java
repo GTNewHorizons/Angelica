@@ -29,6 +29,8 @@ public class MixinRenderGlobal {
     public Minecraft mc;
     @Unique private SodiumWorldRenderer renderer;
 
+    private int sodium$frame;
+
     @Inject(method="<init>", at=@At("RETURN"))
     private void sodium$initRenderer(Minecraft mc, CallbackInfo ci) {
         this.renderer = SodiumWorldRenderer.create(mc);
@@ -85,12 +87,11 @@ public class MixinRenderGlobal {
 
         final Frustrum frustum = (Frustrum) frustrum;
         boolean hasForcedFrustum = false;
-        int frame = 0;
         boolean spectator = false;
         Camera camera = new Camera(mc.renderViewEntity, partialTicks);
 
         try {
-            this.renderer.updateChunks(camera, frustum, hasForcedFrustum, frame, spectator);
+            this.renderer.updateChunks(camera, frustum, hasForcedFrustum, sodium$frame++, spectator);
         } finally {
             RenderDevice.exitManagedCode();
         }
@@ -124,5 +125,16 @@ public class MixinRenderGlobal {
     public void markBlockRangeForRenderUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         // scheduleBlockRenders
         this.renderer.scheduleRebuildForBlockArea(minX, minY, minZ, maxX, maxY, maxZ, false);
+    }
+
+    @Inject(method = "loadRenderers", at = @At("RETURN"))
+    private void onReload(CallbackInfo ci) {
+        RenderDevice.enterManagedCode();
+
+        try {
+            this.renderer.reload();
+        } finally {
+            RenderDevice.exitManagedCode();
+        }
     }
 }
