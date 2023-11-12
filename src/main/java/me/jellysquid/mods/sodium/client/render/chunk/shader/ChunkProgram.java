@@ -5,6 +5,9 @@ import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;
+import net.minecraft.client.renderer.OpenGlHelper;
+
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 
 import java.util.function.Function;
@@ -37,8 +40,8 @@ public class ChunkProgram extends GlProgram {
     }
 
     public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
-        GL20.glUniform1i(this.uBlockTex, 0);
-        GL20.glUniform1i(this.uLightTex, 2);
+        GL20.glUniform1i(this.uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
+        GL20.glUniform1i(this.uLightTex, OpenGlHelper.lightmapTexUnit - GL13.GL_TEXTURE0);
 
         GL20.glUniform3f(this.uModelScale, modelScale, modelScale, modelScale);
         GL20.glUniform2f(this.uTextureScale, textureScale, textureScale);

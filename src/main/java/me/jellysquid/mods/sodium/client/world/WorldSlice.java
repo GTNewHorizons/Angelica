@@ -10,7 +10,6 @@ import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
-import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeCache;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeColorCache;
@@ -191,9 +190,6 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     }
 
     private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
-        PackedIntegerArray intArray = section.getBlockData();
-//        ClonedPalette<BlockState> palette = section.getBlockPalette();
-
         ChunkSectionPos pos = section.getPosition();
 
         int minBlockX = Math.max(box.minX, pos.getMinX());
@@ -249,8 +245,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     }
 
     public BlockState getBlockStateRelative(int x, int y, int z) {
-        return nullableState(this.blockStatesArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)]
-                [getLocalBlockIndex(x & 15, y & 15, z & 15)]);
+        return nullableState(this.blockStatesArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)]);
     }
 
     @Override
