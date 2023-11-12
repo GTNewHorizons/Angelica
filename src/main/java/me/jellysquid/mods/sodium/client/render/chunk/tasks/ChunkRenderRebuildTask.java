@@ -29,6 +29,7 @@ import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
+import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import org.joml.Vector3d;
 
@@ -148,7 +149,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if (blockState.hasTileEntity()) {
                         TileEntity entity = slice.getBlockEntity(pos);
 
-                        if (entity != null && (TileEntityRendererDispatcher.instance.hasSpecialRenderer(entity))) {
+                        final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(entity);
+                        if (entity != null && renderer != null) {
+                            // TODO: Sodium - Per-chunk tile entities
+                            // !rendersOutsideBoundingBox(entity) in sodium
+                            // entity.getRenderBoundingBox() != TileEntity.INFINITE_EXTENT_AABB rough equivalent in 1.7.10
+                            renderData.addBlockEntity(entity, false);
                             bounds.addBlock(relX, relY, relZ);
                         }
                     }
