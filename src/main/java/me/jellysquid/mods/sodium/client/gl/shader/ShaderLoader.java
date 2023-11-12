@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
-import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
+import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -18,24 +18,24 @@ public class ShaderLoader {
      *
      * @param device
      * @param type The type of shader to create
-     * @param name The identifier used to locate the shader source file
+     * @param name The ResourceLocation used to locate the shader source file
      * @param constants A list of constants for shader specialization
      * @return An OpenGL shader object compiled with the given user defines
      */
-    public static GlShader loadShader(RenderDevice device, ShaderType type, Identifier name, ShaderConstants constants) {
+    public static GlShader loadShader(RenderDevice device, ShaderType type, ResourceLocation name, ShaderConstants constants) {
         return new GlShader(device, type, name, getShaderSource(getShaderPath(name, type)), constants);
     }
 
     /**
-     * Use {@link ShaderLoader#loadShader(RenderDevice, ShaderType, Identifier, ShaderConstants)} instead. This will be removed.
+     * Use {@link ShaderLoader#loadShader(RenderDevice, ShaderType, ResourceLocation, ShaderConstants)} instead. This will be removed.
      */
     @Deprecated
-    public static GlShader loadShader(RenderDevice device, ShaderType type, Identifier name, List<String> constants) {
+    public static GlShader loadShader(RenderDevice device, ShaderType type, ResourceLocation name, List<String> constants) {
         return new GlShader(device, type, name, getShaderSource(getShaderPath(name, type)), ShaderConstants.fromStringList(constants));
     }
 
-    private static String getShaderPath(Identifier name, ShaderType type) {
-        return String.format("/assets/sodium/shaders/%s.%s.glsl", name.getName(), type == ShaderType.VERTEX ? "v" : "f");
+    private static String getShaderPath(ResourceLocation name, ShaderType type) {
+        return String.format("/assets/%s/shaders/%s.%s.glsl", name.getResourceDomain(), name.getResourcePath(), type == ShaderType.VERTEX ? "v" : "f");
     }
 
     private static String getShaderSource(String path) {

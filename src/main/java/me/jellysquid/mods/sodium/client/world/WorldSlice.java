@@ -17,8 +17,6 @@ import me.jellysquid.mods.sodium.client.world.biome.BiomeColorCache;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
-import me.jellysquid.mods.sodium.client.world.cloned.PackedIntegerArrayExtended;
-import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
 import net.minecraft.client.Minecraft;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
@@ -194,7 +192,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
         PackedIntegerArray intArray = section.getBlockData();
-        ClonedPalette<BlockState> palette = section.getBlockPalette();
+//        ClonedPalette<BlockState> palette = section.getBlockPalette();
 
         ChunkSectionPos pos = section.getPosition();
 
@@ -211,17 +209,18 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
             for (int z = minBlockZ; z <= maxBlockZ; z++) {
                 for (int x = minBlockX; x <= maxBlockX; x++) {
                     int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
-                    int value = intArray.get(blockIdx);
-
-                    states[blockIdx] = palette.get(value);
+                        // TODO: Sodium - BlockState
+//                    int value = intArray.get(blockIdx);
+//                    states[blockIdx] = palette.get(value);
                 }
             }
         }
     }
 
     private void unpackBlockDataZ(BlockState[] states, ClonedChunkSection section) {
-        ((PackedIntegerArrayExtended) section.getBlockData())
-                .copyUsingPalette(states, section.getBlockPalette());
+        // TODO: Sodium - BlockStates
+//        ((PackedIntegerArrayExtended) section.getBlockData())
+//                .copyUsingPalette(states, section.getBlockPalette());
     }
 
     /**

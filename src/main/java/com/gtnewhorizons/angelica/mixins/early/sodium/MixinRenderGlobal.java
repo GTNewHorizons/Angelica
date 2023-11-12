@@ -50,6 +50,7 @@ public class MixinRenderGlobal {
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
+        // Roughly equivalent to `renderLayer`
         RenderDevice.enterManagedCode();
 
         final double x = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks;
@@ -79,6 +80,7 @@ public class MixinRenderGlobal {
      */
     @Overwrite
     public void clipRenderersByFrustum(ICamera frustrum, float partialTicks) {
+        // Roughly equivalent to setupTerrain
         RenderDevice.enterManagedCode();
 
         final Frustrum frustum = (Frustrum) frustrum;
@@ -94,4 +96,33 @@ public class MixinRenderGlobal {
         }
     }
 
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void markBlockForUpdate(int x, int y, int z) {
+        this.renderer.scheduleRebuildForBlockArea(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1, false);
+    }
+
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void markBlockForRenderUpdate(int x, int y, int z) {
+        // scheduleBlockRenders
+        this.renderer.scheduleRebuildForBlockArea(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1, false);
+    }
+
+
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void markBlockRangeForRenderUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+        // scheduleBlockRenders
+        this.renderer.scheduleRebuildForBlockArea(minX, minY, minZ, maxX, maxY, maxZ, false);
+    }
 }

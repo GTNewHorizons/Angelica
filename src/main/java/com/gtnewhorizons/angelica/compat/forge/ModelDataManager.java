@@ -20,7 +20,7 @@ public class ModelDataManager {
 
     public static Map<BlockPos, IModelData> getModelData(World world, ChunkPos pos)
     {
-        Preconditions.checkArgument(!world.isRemote, "Cannot request model data for server world");
+        Preconditions.checkArgument(world.isRemote, "Cannot request model data for server world");
 //        refreshModelData(world, pos);
         return modelDataCache.getOrDefault(pos, Collections.emptyMap());
     }

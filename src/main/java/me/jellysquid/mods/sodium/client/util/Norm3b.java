@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 /**
- * Provides some utilities for working with packed getNormal vectors. Each getNormal component provides 8 bits of
+ * Provides some utilities for working with packed normal vectors. Each getNormal component provides 8 bits of
  * precision in the range of [-1.0,1.0].
  *
  * | 32        | 24        | 16        | 8          |
