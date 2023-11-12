@@ -38,7 +38,6 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.Util;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -220,14 +219,14 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
             commandList.uploadData(this.commandBuffer, this.commandClientBufferBuilder.getBuffer());
         }
 
-        final ByteBuffer buffer =  this.commandBuffer == null ? this.commandClientBufferBuilder.getBuffer() : null;
+        long pointer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBufferAddress() : 0L;
 
         for (ChunkRegion<?> region : this.pendingBatches) {
             ChunkDrawCallBatcher batch = region.getDrawBatcher();
 
             if (!batch.isEmpty()) {
 	            try (DrawCommandList drawCommandList = commandList.beginTessellating(region.getTessellation())) {
-	                drawCommandList.multiDrawArraysIndirect(buffer, batch.getCount(), 0 /* tightly packed */);
+	                drawCommandList.multiDrawArraysIndirect(pointer, batch.getCount(), 0 /* tightly packed */);
 	            }
             }
 
