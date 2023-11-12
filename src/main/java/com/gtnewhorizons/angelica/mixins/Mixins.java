@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
-            "angelica.MixinEntityRenderer"
+             "angelica.MixinEntityRenderer"
         )
     ),
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
@@ -23,11 +23,18 @@ public enum Mixins {
 
     SODIUM_STARTUP(new Builder("Start Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
+            "sodium.startup.MixinInitDebug"
+        )
+    ),
+
+    SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
              "sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinChunkProviderClient"
             ,"sodium.MixinFrustrum"
-            ,"sodium.startup.MixinInitDebug"
+            ,"sodium.MixinExtendedBlockStorage"
+            ,"sodium.MixinNibbleArray"
         )
     ),
 

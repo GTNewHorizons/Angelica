@@ -1,10 +1,11 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
+import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedBlockStorageExt;
+import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import net.minecraft.tileentity.TileEntity;
@@ -25,16 +26,23 @@ public class ClonedChunkSection {
 
     private final AtomicInteger referenceCount = new AtomicInteger(0);
     private final ClonedChunkSectionCache backingCache;
-
-    private final Short2ObjectMap<TileEntity> blockEntities;
+    private boolean hasSky = false;
+    private final Short2ObjectMap<TileEntity> tileEntities;
     private final NibbleArray[] lightDataArrays;
+    /** Contains the least significant 8 bits of each block ID belonging to this block storage's parent Chunk. */
+    private byte[] blockLSBArray;
+    /** Contains the most significant 4 bits of each block ID belonging to this block storage's parent Chunk. */
+    private NibbleArray blockMSBArray;
+    /** Stores the metadata associated with blocks in this ExtendedBlockStorage. */
+    private NibbleArray blockMetadataArray;
+    /** The NibbleArray containing a block of Block-light data. */
+    private NibbleArray blocklightArray;
+    /** The NibbleArray containing a block of Sky-light data. */
+    private NibbleArray skylightArray;
+
     private final World world;
 
     private ChunkSectionPos pos;
-    // TODO: Sodium - BlockState - Replace with 1.7.10 equivalents from ExtendedBlockStorage
-    // Likely some combination of blockMetadataArray, blocklightArray, and skylightArray
-//    private PackedIntegerArray blockStateData;
-//    private ClonedPalette<BlockState> blockStatePalette;
 
     private byte[] biomeData;
 
@@ -43,8 +51,15 @@ public class ClonedChunkSection {
     ClonedChunkSection(ClonedChunkSectionCache backingCache, World world) {
         this.backingCache = backingCache;
         this.world = world;
-        this.blockEntities = new Short2ObjectOpenHashMap<>();
+        this.tileEntities = new Short2ObjectOpenHashMap<>();
         this.lightDataArrays = new NibbleArray[LIGHT_TYPES.length];
+        this.blockLSBArray = new byte[4096];
+        this.blockMetadataArray = new NibbleArray(this.blockLSBArray.length, 4);
+        this.blocklightArray = new NibbleArray(this.blockLSBArray.length, 4);
+        this.hasSky = !world.provider.hasNoSky;
+        if (hasSky) {
+            this.skylightArray = new NibbleArray(this.blockLSBArray.length, 4);
+        }
     }
 
     public void init(ChunkSectionPos pos) {
@@ -54,17 +69,28 @@ public class ClonedChunkSection {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
         }
 
-        ExtendedBlockStorage section = getChunkSection(chunk, pos);
+        ExtendedBlockStorageExt section = (ExtendedBlockStorageExt)getChunkSection(chunk, pos);
 
         if (section == null /*WorldChunk.EMPTY_SECTION*/ /*ChunkSection.isEmpty(section)*/) {
-            section = EMPTY_SECTION;
+            section = (ExtendedBlockStorageExt)EMPTY_SECTION;
         }
 
         this.pos = pos;
-//        PalettedContainerExtended<BlockState> container = PalettedContainerExtended.cast(new PalettedContainer<>()/*section.getContainer()*/);
 
-//        this.blockStateData = copyBlockData(container);
-//        this.blockStatePalette = copyPalette(container);
+        System.arraycopy(section.getBlockLSBArray(), 0, this.blockLSBArray, 0, this.blockLSBArray.length);
+        if(section.getBlockMSBArray() != null) {
+            this.blockMSBArray = new NibbleArray(this.blockLSBArray.length, 4);
+            copyNibbleArray((ExtendedNibbleArray) section.getBlockMSBArray(), (ExtendedNibbleArray) this.blockMSBArray);
+        }
+        copyNibbleArray((ExtendedNibbleArray) section.getBlockMetadataArray(), (ExtendedNibbleArray)this.blockMetadataArray);
+        copyNibbleArray((ExtendedNibbleArray) section.getBlocklightArray(), (ExtendedNibbleArray)this.blocklightArray);
+        if(section.getSkylightArray() != null) {
+            if(this.skylightArray == null) {
+                hasSky = true;
+                this.skylightArray = new NibbleArray(this.blockLSBArray.length, 4);
+            }
+            copyNibbleArray((ExtendedNibbleArray) section.getSkylightArray(), (ExtendedNibbleArray) this.skylightArray);
+        }
 
         for (LightType type : LIGHT_TYPES) {
             // TODO: Sodium - Lighting
@@ -77,7 +103,7 @@ public class ClonedChunkSection {
 
         StructureBoundingBox box = new StructureBoundingBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
 
-        this.blockEntities.clear();
+        this.tileEntities.clear();
 
         for (Map.Entry<ChunkPosition, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
             BlockPos entityPos = new BlockPos(entry.getKey());
@@ -85,15 +111,19 @@ public class ClonedChunkSection {
 //            if (box.contains(entityPos)) {
             if(box.isVecInside(entityPos.getX(), entityPos.getY(), entityPos.getZ())) {
                 //this.blockEntities.put(BlockPos.asLong(entityPos.getX() & 15, entityPos.getY() & 15, entityPos.getZ() & 15), entry.getValue());
-            	this.blockEntities.put(ChunkSectionPos.packLocal(entityPos), entry.getValue());
+            	this.tileEntities.put(ChunkSectionPos.packLocal(entityPos), entry.getValue());
             }
         }
     }
 
-    public BlockState getBlockState(int x, int y, int z) {
-        return null;
-//        return this.blockStatePalette.get(this.blockStateData.get(y << 8 | z << 4 | x));
+    private static void copyNibbleArray(ExtendedNibbleArray srcArray, ExtendedNibbleArray dstArray) {
+        if(srcArray == null || dstArray == null) {
+            throw new RuntimeException("NibbleArray is null src: " + (srcArray==null) + " dst: " + (dstArray==null));
+        }
+        final byte[] data = srcArray.getData();
+        System.arraycopy(data, 0, dstArray.getData(), 0, data.length);
     }
+
 
     public int getLightLevel(LightType type, int x, int y, int z) {
         NibbleArray array = this.lightDataArrays[type.ordinal()];
@@ -112,7 +142,7 @@ public class ClonedChunkSection {
     }
 
     public TileEntity getBlockEntity(int x, int y, int z) {
-        return this.blockEntities.get(packLocal(x, y, z));
+        return this.tileEntities.get(packLocal(x, y, z));
     }
 
     public PackedIntegerArray getBlockData() {
@@ -127,34 +157,6 @@ public class ClonedChunkSection {
     public ChunkSectionPos getPosition() {
         return this.pos;
     }
-
-//    private static ClonedPalette<BlockState> copyPalette(PalettedContainerExtended<BlockState> container) {
-//        Palette<BlockState> palette = container.getPalette();
-//
-//        if (palette instanceof IdListPalette) {
-//            // TODO: Sodium
-//            return new ClonedPaletteFallback<>(null/*Block.STATE_IDS*/);
-//        }
-//
-//        BlockState[] array = new BlockState[1 << container.getPaletteSize()];
-//
-//        for (int i = 0; i < array.length; i++) {
-//            array[i] = palette.getByIndex(i);
-//
-//            if (array[i] == null) {
-//                break;
-//            }
-//        }
-//
-//        return new ClonedPalleteArray<>(array, container.getDefaultValue());
-//    }
-
-//    private static PackedIntegerArray copyBlockData(PalettedContainerExtended<BlockState> container) {
-//        PackedIntegerArray array = container.getDataArray();
-//        long[] storage = array.getStorage();
-//
-//        return new PackedIntegerArray(container.getPaletteSize(), array.getSize(), storage.clone());
-//    }
 
     public static boolean isOutOfBuildLimitVertically(int y) {
         return y < 0 || y >= 256;
