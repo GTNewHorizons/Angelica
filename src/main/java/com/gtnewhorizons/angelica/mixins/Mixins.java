@@ -9,7 +9,11 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 public enum Mixins {
-
+    ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
+            "angelica.MixinEntityRenderer"
+        )
+    ),
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> false).addMixinClasses(
             "shaders.startup.MixinGameSettings",

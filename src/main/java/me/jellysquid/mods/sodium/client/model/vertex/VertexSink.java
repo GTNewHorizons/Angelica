@@ -26,7 +26,7 @@ public interface VertexSink {
      * Flushes any written vertex data to the {@link VertexDrain} this sink is connected to, ensuring it is actually
      * written to the backing storage. This should be called after vertex data has been written to this sink.
      *
-     * It is valid to flush a sink at any time. Only vertices that have been written since the peek flush will be
+     * It is valid to flush a sink at any time. Only vertices that have been written since the last flush will be
      * flushed when calling this method. If no vertices need to be flushed, this method does nothing.
      *
      * For optimal performance, callers should wait until they have written out as much vertex data as possible before

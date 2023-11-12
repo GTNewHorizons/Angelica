@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
-import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
+import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -18,9 +18,9 @@ import java.io.StringReader;
 public class GlShader extends GlObject {
     private static final Logger LOGGER = LogManager.getLogger(GlShader.class);
 
-    private final Identifier name;
+    private final ResourceLocation name;
 
-    public GlShader(RenderDevice owner, ShaderType type, Identifier name, String src, ShaderConstants constants) {
+    public GlShader(RenderDevice owner, ShaderType type, ResourceLocation name, String src, ShaderConstants constants) {
         super(owner);
 
         this.name = name;
@@ -80,7 +80,7 @@ public class GlShader extends GlObject {
         return builder.toString();
     }
 
-    public Identifier getName() {
+    public ResourceLocation getName() {
         return this.name;
     }
 

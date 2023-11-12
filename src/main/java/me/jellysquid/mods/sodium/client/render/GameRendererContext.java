@@ -1,20 +1,13 @@
 package me.jellysquid.mods.sodium.client.render;
 
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 
 import java.nio.FloatBuffer;
 
 public class GameRendererContext {
-    private static Matrix4f PROJECTION_MATRIX = new Matrix4f().identity();
-
-    // TODO: Sodium - projection matrix
-    // Sodium uses a mixin in `loadProjectionMatrix` to capture the matrix, unclear if this is available in 1.7.10
-    public static void captureProjectionMatrix(Matrix4f matrix) {
-        PROJECTION_MATRIX.set(matrix);
-    }
-
     /**
      * TODO: Not accurate
      * Obtains a model-view-projection matrix by multiplying the projection matrix with the model-view matrix
@@ -26,9 +19,8 @@ public class GameRendererContext {
      * uploading as uniform state
      */
     public static FloatBuffer getModelViewProjectionMatrix(MatrixStack.Entry matrices) {
-        FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
-        // TODO: Sodium - projection matrix
-        Matrix4f matrix = new Matrix4f(PROJECTION_MATRIX);
+        final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
+        final Matrix4f matrix = new Matrix4f(RenderingState.INSTANCE.getProjectionMatrix());
         matrix.mul(matrices.getModel());
 
         matrix.get(bufModelViewProjection);

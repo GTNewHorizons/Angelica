@@ -50,7 +50,7 @@ public interface ModelQuadView {
     int getLight(int idx);
 
     /**
-     * @return The integer-encoded getNormal vector for the vertex at index {@param idx}
+     * @return The integer-encoded normal vector for the vertex at index {@param idx}
      */
     int getNormal(int idx);
 

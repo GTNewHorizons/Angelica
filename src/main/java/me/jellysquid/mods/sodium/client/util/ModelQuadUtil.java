@@ -40,7 +40,7 @@ public class ModelQuadUtil {
     }
 
     /**
-     * Returns the getNormal vector for a model quad with the given {@param facing}.
+     * Returns the normal vector for a model quad with the given {@param facing}.
      */
     public static int getFacingNormal(ForgeDirection facing) {
         return NORMALS[facing.ordinal()];

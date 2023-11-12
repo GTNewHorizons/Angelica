@@ -64,6 +64,7 @@ public class MixinEntityRenderer {
 
     @Inject(at = @At(shift = At.Shift.AFTER, target = "Lnet/minecraft/client/renderer/EntityRenderer;setupCameraTransform(FI)V", value = "INVOKE"), method = "renderWorld(FJ)V")
     private void iris$setCamera(float tickDelta, long startTime, CallbackInfo ci) {
+        // TODO: Grab from Angelica
         CapturedRenderingState.INSTANCE.setCamera(tickDelta);
     }
 

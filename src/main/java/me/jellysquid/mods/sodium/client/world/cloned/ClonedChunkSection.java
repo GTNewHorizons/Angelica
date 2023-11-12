@@ -3,16 +3,10 @@ package me.jellysquid.mods.sodium.client.world.cloned;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
-import com.gtnewhorizons.angelica.compat.mojang.IdListPalette;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.PackedIntegerArray;
-import com.gtnewhorizons.angelica.compat.mojang.Palette;
-import com.gtnewhorizons.angelica.compat.mojang.PalettedContainer;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
-import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalette;
-import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPaletteFallback;
-import me.jellysquid.mods.sodium.client.world.cloned.palette.ClonedPalleteArray;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.World;
@@ -37,9 +31,10 @@ public class ClonedChunkSection {
     private final World world;
 
     private ChunkSectionPos pos;
-
-    private PackedIntegerArray blockStateData;
-    private ClonedPalette<BlockState> blockStatePalette;
+    // TODO: Sodium - BlockState - Replace with 1.7.10 equivalents from ExtendedBlockStorage
+    // Likely some combination of blockMetadataArray, blocklightArray, and skylightArray
+//    private PackedIntegerArray blockStateData;
+//    private ClonedPalette<BlockState> blockStatePalette;
 
     private byte[] biomeData;
 
@@ -66,11 +61,10 @@ public class ClonedChunkSection {
         }
 
         this.pos = pos;
+//        PalettedContainerExtended<BlockState> container = PalettedContainerExtended.cast(new PalettedContainer<>()/*section.getContainer()*/);
 
-        PalettedContainerExtended<BlockState> container = PalettedContainerExtended.cast(new PalettedContainer<>()/*section.getContainer()*/);;
-
-        this.blockStateData = copyBlockData(container);
-        this.blockStatePalette = copyPalette(container);
+//        this.blockStateData = copyBlockData(container);
+//        this.blockStatePalette = copyPalette(container);
 
         for (LightType type : LIGHT_TYPES) {
             // TODO: Sodium - Lighting
@@ -97,7 +91,8 @@ public class ClonedChunkSection {
     }
 
     public BlockState getBlockState(int x, int y, int z) {
-        return this.blockStatePalette.get(this.blockStateData.get(y << 8 | z << 4 | x));
+        return null;
+//        return this.blockStatePalette.get(this.blockStateData.get(y << 8 | z << 4 | x));
     }
 
     public int getLightLevel(LightType type, int x, int y, int z) {
@@ -121,44 +116,45 @@ public class ClonedChunkSection {
     }
 
     public PackedIntegerArray getBlockData() {
-        return this.blockStateData;
+        return null;
+//        return this.blockStateData;
     }
 
-    public ClonedPalette<BlockState> getBlockPalette() {
-        return this.blockStatePalette;
-    }
+//    public ClonedPalette<BlockState> getBlockPalette() {
+//        return this.blockStatePalette;
+//    }
 
     public ChunkSectionPos getPosition() {
         return this.pos;
     }
 
-    private static ClonedPalette<BlockState> copyPalette(PalettedContainerExtended<BlockState> container) {
-        Palette<BlockState> palette = container.getPalette();
+//    private static ClonedPalette<BlockState> copyPalette(PalettedContainerExtended<BlockState> container) {
+//        Palette<BlockState> palette = container.getPalette();
+//
+//        if (palette instanceof IdListPalette) {
+//            // TODO: Sodium
+//            return new ClonedPaletteFallback<>(null/*Block.STATE_IDS*/);
+//        }
+//
+//        BlockState[] array = new BlockState[1 << container.getPaletteSize()];
+//
+//        for (int i = 0; i < array.length; i++) {
+//            array[i] = palette.getByIndex(i);
+//
+//            if (array[i] == null) {
+//                break;
+//            }
+//        }
+//
+//        return new ClonedPalleteArray<>(array, container.getDefaultValue());
+//    }
 
-        if (palette instanceof IdListPalette) {
-            // TODO: Sodium
-            return new ClonedPaletteFallback<>(null/*Block.STATE_IDS*/);
-        }
-
-        BlockState[] array = new BlockState[1 << container.getPaletteSize()];
-
-        for (int i = 0; i < array.length; i++) {
-            array[i] = palette.getByIndex(i);
-
-            if (array[i] == null) {
-                break;
-            }
-        }
-
-        return new ClonedPalleteArray<>(array, container.getDefaultValue());
-    }
-
-    private static PackedIntegerArray copyBlockData(PalettedContainerExtended<BlockState> container) {
-        PackedIntegerArray array = container.getDataArray();
-        long[] storage = array.getStorage();
-
-        return new PackedIntegerArray(container.getPaletteSize(), array.getSize(), storage.clone());
-    }
+//    private static PackedIntegerArray copyBlockData(PalettedContainerExtended<BlockState> container) {
+//        PackedIntegerArray array = container.getDataArray();
+//        long[] storage = array.getStorage();
+//
+//        return new PackedIntegerArray(container.getPaletteSize(), array.getSize(), storage.clone());
+//    }
 
     public static boolean isOutOfBuildLimitVertically(int y) {
         return y < 0 || y >= 256;

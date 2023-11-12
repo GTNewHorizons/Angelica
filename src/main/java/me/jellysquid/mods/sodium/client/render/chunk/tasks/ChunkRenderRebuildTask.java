@@ -99,7 +99,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 for (int relX = 0; relX < 16; relX++) {
                     BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
 
-                    if (blockState.isAir()) {
+                    // TODO: Sodium - BlockState
+                    if (blockState == null || blockState.isAir()) {
                         continue;
                     }
 

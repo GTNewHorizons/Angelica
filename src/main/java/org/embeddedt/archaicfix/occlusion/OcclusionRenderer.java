@@ -536,13 +536,13 @@ public class OcclusionRenderer {
         return glListsRendered;
     }
 
-    public void clipRenderersByFrustum(ICamera p_72729_1_, float p_72729_2_) {
+    public void clipRenderersByFrustum(ICamera cam, float p_72729_2_) {
         for (int i = 0; i < rg.worldRenderers.length; ++i) {
             if((i + rg.frustumCheckOffset & 15) == 0) {
                 WorldRenderer wr = rg.worldRenderers[i];
                 IWorldRenderer iwr = (IWorldRenderer) wr;
                 if (wr.isInFrustum && iwr.arch$getCullInfo().isFrustumCheckPending) {
-                    wr.updateInFrustum(p_72729_1_);
+                    wr.updateInFrustum(cam);
                     iwr.arch$getCullInfo().isFrustumCheckPending = false;
                     if (!wr.isInFrustum) {
                         OcclusionHelpers.worker.dirtyFrustumRenderers++;

@@ -43,7 +43,7 @@ public interface ModelQuadViewMutable extends ModelQuadView {
     void setLight(int idx, int light);
 
     /**
-     * Sets the integer-encoded getNormal vector of the vertex at index {@param idx} to the value {@param light}
+     * Sets the integer-encoded normal vector of the vertex at index {@param idx} to the value {@param light}
      */
     void setNormal(int idx, int norm);
 

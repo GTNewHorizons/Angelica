@@ -18,18 +18,18 @@ public class CapturedRenderingState {
 	private static final Vector3d ZERO_VECTOR_3d = new Vector3d();
 
     private final FloatBuffer modelViewBuffer = BufferUtils.createFloatBuffer(16);
-	private Matrix4f gbufferModelView;
+	private final Matrix4f gbufferModelView = new Matrix4f();
     private final FloatBuffer shadowModelViewBuffer = BufferUtils.createFloatBuffer(16);
     private Matrix4f shadowModelView;
     private final FloatBuffer projectionBuffer = BufferUtils.createFloatBuffer(16);
-    private Matrix4f gbufferProjection;
+    private final Matrix4f gbufferProjection = new Matrix4f();
     private final FloatBuffer shadowProjectionBuffer = BufferUtils.createFloatBuffer(16);
     private Matrix4f shadowProjection;
 	private Vector3d fogColor;
     private Vector4d clearColor;
 
     @Getter
-    private Vector3d cameraPosition = new Vector3d();
+    private final Vector3d cameraPosition = new Vector3d();
 
 	private float tickDelta;
 	private int currentRenderedBlockEntity;
@@ -112,13 +112,13 @@ public class CapturedRenderingState {
         final double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * tickDelta;
         final double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * tickDelta;
         final double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * tickDelta;
-        cameraPosition = new Vector3d(x, y, z);
+        cameraPosition.set(x, y, z);
 
         GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, (FloatBuffer) projectionBuffer.position(0));
-        gbufferProjection = new Matrix4f((FloatBuffer)projectionBuffer.position(0));
+        gbufferProjection.set((FloatBuffer)projectionBuffer.position(0));
 
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, (FloatBuffer) modelViewBuffer.position(0));
-        gbufferModelView = new Matrix4f((FloatBuffer)modelViewBuffer.position(0));
+        gbufferModelView.set((FloatBuffer)modelViewBuffer.position(0));
      }
 
      public void setCameraShadow(float tickDelta) {

@@ -7,7 +7,6 @@ import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -30,8 +29,10 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
 //    private static final RenderLayer ENTITY_GLINT = of("entity_glint", DefaultVertexFormat.POSITION_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(ItemRenderer.ENCHANTED_ITEM_GLINT, true, false)).writeMaskState(COLOR_MASK).cull(DISABLE_CULLING).depthTest(EQUAL_DEPTH_TEST).transparency(GLINT_TRANSPARENCY).target(ITEM_TARGET).texturing(ENTITY_GLINT_TEXTURING).build(false));
 //    private static final RenderLayer DIRECT_ENTITY_GLINT = of("entity_glint_direct", DefaultVertexFormat.POSITION_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(ItemRenderer.ENCHANTED_ITEM_GLINT, true, false)).writeMaskState(COLOR_MASK).cull(DISABLE_CULLING).depthTest(EQUAL_DEPTH_TEST).transparency(GLINT_TRANSPARENCY).texturing(ENTITY_GLINT_TEXTURING).build(false));
     private static final RenderLayer LIGHTNING = of("lightning", DefaultVertexFormat.POSITION_COLOR, 7, 256, false, true, RenderLayer.MultiPhaseParameters.builder().writeMaskState(ALL_MASK).transparency(LIGHTNING_TRANSPARENCY).target(WEATHER_TARGET).shadeModel(SMOOTH_SHADE_MODEL).build(false));
-//    private static final RenderLayer TRIPWIRE = of("tripwire", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 262144, true, true, getTripwirePhaseData());
+    private static final RenderLayer TRIPWIRE = of("tripwire", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 262144, true, true, getTripwirePhaseData());
     private static final RenderLayer LINES = of("lines", DefaultVertexFormat.POSITION_COLOR, 1, 256, RenderLayer.MultiPhaseParameters.builder().lineWidth(new RenderPhase.LineWidth(OptionalDouble.empty())).layering(VIEW_OFFSET_Z_LAYERING).transparency(TRANSLUCENT_TRANSPARENCY).target(ITEM_TARGET).writeMaskState(ALL_MASK).build(false));
+
+    private static List<RenderLayer> BLOCK_LAYERS = ImmutableList.of(RenderLayer.solid(), RenderLayer.cutoutMipped(), RenderLayer.cutout(), RenderLayer.translucent(), RenderLayer.tripwire());
 
     @Getter
     private final VertexFormat vertexFormat;
@@ -42,6 +43,11 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
     private final boolean hasCrumbling;
     private final boolean translucent;
     private final Optional<RenderLayer> optionalThis;
+
+    private static MultiPhaseParameters getTripwirePhaseData() {
+        return MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(MIPMAP_BLOCK_ATLAS_TEXTURE).transparency(TRANSLUCENT_TRANSPARENCY).target(WEATHER_TARGET).build(true);
+    }
+
     public RenderLayer(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, Runnable startAction, Runnable endAction) {
         super(name, startAction, endAction);
         this.vertexFormat = vertexFormat;
@@ -186,11 +192,11 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
 
 
     public static RenderLayer tripwire() {
-        return null;
+        return TRIPWIRE;
     }
 
     public static List<RenderLayer> getBlockLayers() {
-        return Collections.emptyList();
+        return BLOCK_LAYERS;
     }
 
     public int mode() {
