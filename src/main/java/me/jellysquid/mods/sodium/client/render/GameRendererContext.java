@@ -9,18 +9,16 @@ import java.nio.FloatBuffer;
 
 public class GameRendererContext {
     /**
-     * TODO: Not accurate
-     * Obtains a model-view-projection matrix by multiplying the projection matrix with the model-view matrix
-     * from {@param matrices}.
-     *
-     * The returned buffer is only valid for the lifetime of {@param stack}.
+     * Obtains a model-view-projection matrix by multiplying the projection matrix with the model-view matrix.
      *
      * @return A float-buffer on the stack containing the model-view-projection matrix in a format suitable for
      * uploading as uniform state
      */
+    // TODO get rid of matrices, it's unnecessary in 1.7
     public static FloatBuffer getModelViewProjectionMatrix(MatrixStack.Entry matrices) {
         final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
         final Matrix4f matrix = new Matrix4f(RenderingState.INSTANCE.getProjectionMatrix());
+        matrix.mul(RenderingState.INSTANCE.getModelViewMatrix());
         matrix.mul(matrices.getModel());
 
         matrix.get(bufModelViewProjection);
