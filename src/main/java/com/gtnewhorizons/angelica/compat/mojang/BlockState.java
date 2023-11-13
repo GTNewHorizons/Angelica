@@ -1,11 +1,22 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
 public class BlockState implements IForgeBlockState {
+    private final Block block;
+    private final int meta;
+
+    public BlockState(Block block, int meta) {
+        this.block = block;
+        this.meta = meta;
+    }
+    public Block getBlock() {
+        return block;
+    }
 
     public boolean isSideInvisible(BlockState adjState, ForgeDirection facing) {
         return false;
@@ -44,7 +55,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public boolean isAir() {
-        return false;
+        return(block != null && block.isAir( null, 0, 0, 0));
     }
 
     public BlockRenderType getRenderType() {
@@ -52,7 +63,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public boolean hasTileEntity() {
-        return true;
+        return block.hasTileEntity(meta);
     }
 
     public long getRenderingSeed(BlockPos.Mutable pos) {
@@ -68,7 +79,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public Material getMaterial() {
-        return null;
+        return block.getMaterial();
     }
 
     public boolean isSideSolid(BlockRenderView world, BlockPos pos, ForgeDirection dir, SideShapeType sideShapeType) {

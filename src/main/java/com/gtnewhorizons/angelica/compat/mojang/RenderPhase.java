@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -143,7 +144,7 @@ public abstract class RenderPhase {
 //        RenderSystem.matrixMode(5888);
     }
 
-    private static ResourceLocation ATLAS = new ResourceLocation("sodium", "textures/atlas.png");
+    private static ResourceLocation ATLAS = TextureMap.locationBlocksTexture;
     static {
         // TODO: Sodium - SpriteAtlasTexture
         MIPMAP_BLOCK_ATLAS_TEXTURE = new Texture(ATLAS/*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, true);
@@ -668,7 +669,7 @@ public abstract class RenderPhase {
                 GLStateManager.enableTexture();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
-                GLStateManager.setFilter(bilinear, mipmap);
+                GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
             }, () -> {
             });
             this.id = Optional.of(id);

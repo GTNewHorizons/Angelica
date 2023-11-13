@@ -2,11 +2,14 @@ package me.jellysquid.mods.sodium.client.world.cloned;
 
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.World;
@@ -20,12 +23,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClonedChunkSection {
+    public static final BlockState DEFAULT_BLOCK_STATE = new BlockState(Blocks.air, 0);
     private static final LightType[] LIGHT_TYPES = LightType.values();
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
 
     private final AtomicInteger referenceCount = new AtomicInteger(0);
     private final ClonedChunkSectionCache backingCache;
-    private boolean hasSky = false;
+
     private final Short2ObjectMap<TileEntity> tileEntities;
     private final NibbleArray[] lightDataArrays;
 
@@ -46,7 +50,7 @@ public class ClonedChunkSection {
     }
 
     public void init(ChunkSectionPos pos) {
-        Chunk chunk = world.getChunkFromChunkCoords(pos.x, pos.z);
+        final Chunk chunk = world.getChunkFromChunkCoords(pos.x, pos.z);
 
         if (chunk == null) {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
@@ -86,6 +90,13 @@ public class ClonedChunkSection {
         }
     }
 
+    public BlockState getBlockState(int x, int y, int z) {
+        final Block block = data.getBlockByExtId(x, y, z);
+        if(block.isAir(world, x, y, z)) {
+            return DEFAULT_BLOCK_STATE;
+        }
+        return new BlockState(data.getBlockByExtId(x, y, z), data.getExtBlockMetadata(x, y, z));
+    }
     public int getLightLevel(LightType type, int x, int y, int z) {
         NibbleArray array = this.lightDataArrays[type.ordinal()];
 
@@ -115,13 +126,11 @@ public class ClonedChunkSection {
     }
 
     private static ExtendedBlockStorage getChunkSection(Chunk chunk, ChunkSectionPos pos) {
-        ExtendedBlockStorage section = null;
-
         if (!isOutOfBuildLimitVertically(ChunkSectionPos.getBlockCoord(pos.y()))) {
-            section = chunk.getBlockStorageArray()[pos.y];
+            return chunk.getBlockStorageArray()[pos.y];
         }
 
-        return section;
+        return null;
     }
 
     public void acquireReference() {

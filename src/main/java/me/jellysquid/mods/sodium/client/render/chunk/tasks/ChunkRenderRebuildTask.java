@@ -1,16 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
-import com.gtnewhorizons.angelica.compat.forge.EmptyModelData;
 import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
-import com.gtnewhorizons.angelica.compat.forge.IModelData;
-import com.gtnewhorizons.angelica.compat.forge.ModelDataManager;
-import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderType;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
@@ -27,13 +21,10 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import org.joml.Vector3d;
-
-import java.util.Map;
 
 /**
  * Rebuilds all the meshes of a chunk for each given render pass with non-occluded blocks. The result is then uploaded
@@ -49,8 +40,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private final ChunkRenderContext context;
 
-    private final Map<BlockPos, IModelData> modelDataMap;
-
     private Vector3d camera;
 
     private final boolean translucencySorting;
@@ -62,9 +51,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         this.camera = new Vector3d();
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
 
-        this.modelDataMap = ModelDataManager.getModelData(
-            Minecraft.getMinecraft().theWorld,
-            new ChunkPos(ChunkSectionPos.getSectionCoord(this.render.getOriginX()), ChunkSectionPos.getSectionCoord(this.render.getOriginZ())));
     }
 
     public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
@@ -117,15 +103,17 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 	                        }
 
 	                        ForgeHooksClientExt.setRenderLayer(layer);
-                            IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
+                            // TODO: RenderBlocks & capture tesselator state into quads
 
-	                        BakedModel model = cache.getBlockModels().getModel(blockState);
-
-	                        long seed = blockState.getRenderingSeed(pos);
-
-	                        if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), blockState, pos, model, buffers.get(layer), true, seed, modelData)) {
-	                            bounds.addBlock(relX, relY, relZ);
-	                        }
+//                            IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
+//
+//	                        BakedModel model = cache.getBlockModels().getModel(blockState);
+//
+//	                        long seed = blockState.getRenderingSeed(pos);
+//
+//	                        if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), blockState, pos, model, buffers.get(layer), true, seed, modelData)) {
+//	                            bounds.addBlock(relX, relY, relZ);
+//	                        }
 
                         }
                     }

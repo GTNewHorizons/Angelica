@@ -63,9 +63,6 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     // The array size for the section lookup table.
     private static final int SECTION_TABLE_ARRAY_SIZE = TABLE_LENGTH * TABLE_LENGTH * TABLE_LENGTH;
 
-    // Fallback BlockState to use if none were available in the array
-    private static final BlockState NULL_BLOCK_STATE = null; //Blocks.air.getDefaultState();
-
     // The world this slice has copied data from
     private final World world;
 
@@ -127,8 +124,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
                 for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
-                    sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] =
-                            sectionCache.acquire(chunkX, chunkY, chunkZ);
+                    sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] = sectionCache.acquire(chunkX, chunkY, chunkZ);
                 }
             }
         }
@@ -205,9 +201,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
             for (int z = minBlockZ; z <= maxBlockZ; z++) {
                 for (int x = minBlockX; x <= maxBlockX; x++) {
                     int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
-                        // TODO: Sodium - BlockState
-//                    int value = intArray.get(blockIdx);
-//                    states[blockIdx] = palette.get(value);
+                    states[blockIdx] = section.getBlockState(x & 15, y & 15, z & 15);
                 }
             }
         }
@@ -215,8 +209,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     private void unpackBlockDataZ(BlockState[] states, ClonedChunkSection section) {
         // TODO: Sodium - BlockStates
-//        ((PackedIntegerArrayExtended) section.getBlockData())
-//                .copyUsingPalette(states, section.getBlockPalette());
+//        ((PackedIntegerArrayExtended) section.getBlockData()).copyUsingPalette(states, section.getBlockPalette());
     }
 
     /**
@@ -224,10 +217,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
      * in place of null).
      */
     private static BlockState nullableState(BlockState state) {
-        if(state != null) {
-            return state;
-        } else
-            return NULL_BLOCK_STATE;
+        return state != null ? state : ClonedChunkSection.DEFAULT_BLOCK_STATE;
     }
 
     @Override
@@ -240,8 +230,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
 
-        return nullableState(this.blockStatesArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
-                [getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)]);
+        return nullableState(this.blockStatesArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)]);
     }
 
     public BlockState getBlockStateRelative(int x, int y, int z) {
@@ -273,8 +262,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
 
-        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
-                .getBlockEntity(relX & 15, relY & 15, relZ & 15);
+        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getBlockEntity(relX & 15, relY & 15, relZ & 15);
     }
 
     @Override
@@ -303,8 +291,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         int relY = pos.y - this.baseY;
         int relZ = pos.z - this.baseZ;
 
-        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
-                .getLightLevel(type, relX & 15, relY & 15, relZ & 15);
+        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getLightLevel(type, relX & 15, relY & 15, relZ & 15);
     }
 
     @Override
@@ -346,15 +333,13 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         index = index >= biomeCaches.length ? biomeCaches.length - 1 : index;
 
         BiomeCache cache = this.biomeCaches[index];
-        return cache != null ? cache
-                .getBiome(this, x, relY >> 4, z) : Minecraft.getMinecraft().theWorld.getBiomeGenForCoords(x, z);
+        return cache != null ? cache.getBiome(this, x, relY >> 4, z) : Minecraft.getMinecraft().theWorld.getBiomeGenForCoords(x, z);
     }
 
     public ChunkSectionPos getOrigin() {
         return this.origin;
     }
 
-    // [VanillaCopy] PalettedContainer#toIndex
     public static int getLocalBlockIndex(int x, int y, int z) {
         return y << 8 | z << 4 | x;
     }
