@@ -29,7 +29,7 @@ public class ChunkRenderData {
             .build();
     public static final ChunkRenderData EMPTY = createEmptyData();
 
-    private List<TileEntity> globalTileEntities;
+    private Set<TileEntity> globalTileEntities;
     private List<TileEntity> tileEntities;
 
     private EnumMap<BlockRenderPass, ChunkMeshData> meshes;
@@ -163,7 +163,7 @@ public class ChunkRenderData {
 
         public ChunkRenderData build() {
             ChunkRenderData data = new ChunkRenderData();
-            data.globalTileEntities = this.globalTileEntities;
+            data.globalTileEntities = new ObjectOpenHashSet<>(this.globalTileEntities);
             data.tileEntities = this.tileEntities;
             data.occlusionData = this.occlusionData;
             data.meshes = this.meshes;
