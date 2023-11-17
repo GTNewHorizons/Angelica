@@ -10,11 +10,11 @@ public class RecyclingList<T> {
     private Supplier<T> constructor;
 
     int nextIndex;
-    private List<T> list;
+    private final List<T> list;
 
     public RecyclingList(Supplier<T> constructor) {
         this.constructor = constructor;
-        this.list = new ArrayList<T>();
+        this.list = new ArrayList<>();
     }
 
     public T get(int i) {
@@ -44,6 +44,7 @@ public class RecyclingList<T> {
     }
 
     public List<T> getAsList() {
-        return list.subList(0, nextIndex);
+        // CME workaround..
+        return new ArrayList<>(list.subList(0, nextIndex));
     }
 }
