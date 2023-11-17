@@ -92,7 +92,7 @@ public class ClonedChunkSection {
 
     public BlockState getBlockState(int x, int y, int z) {
         final Block block = data.getBlockByExtId(x, y, z);
-        if(block.isAir(world, x, y, z)) {
+        if(block.isAir(null, 0, 0, 0)) /* dumb api */ {
             return DEFAULT_BLOCK_STATE;
         }
         return new BlockState(data.getBlockByExtId(x, y, z), data.getExtBlockMetadata(x, y, z));

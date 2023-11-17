@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
-import me.jellysquid.mods.sodium.client.world.ChunkStatusListenerManager;
+import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.world.chunk.Chunk;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChunkProviderClient.class)
-public abstract class MixinChunkProviderClient implements ChunkStatusListenerManager {
+public abstract class MixinChunkProviderClient implements IChunkProviderClientExt {
     private ChunkStatusListener sodium$listener;
     private final LongOpenHashSet sodium$loadedChunks = new LongOpenHashSet();
     @Unique private boolean sodium$needsTrackingUpdate = false;
@@ -29,8 +29,8 @@ public abstract class MixinChunkProviderClient implements ChunkStatusListenerMan
         this.sodium$listener = listener;
     }
 
-    @Inject(method="loadChunk", at = @At(value = "INVOKE", target="Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", shift = At.Shift.BEFORE), remap = false)
-    private void sodium$loadChunk(int x, int z, CallbackInfoReturnable<Chunk> cir) {
+
+    public void doPostChunk(int x, int z) {
         if (this.sodium$listener != null) {
             this.sodium$listener.onChunkAdded(x, z);
             this.sodium$loadedChunks.add(ChunkPos.toLong(x, z));

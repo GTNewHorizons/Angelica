@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
@@ -23,13 +24,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
 
 @Mixin(RenderGlobal.class)
-public class MixinRenderGlobal {
+public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Shadow
     public Minecraft mc;
     @Unique private SodiumWorldRenderer renderer;
 
     private int sodium$frame;
+
+    @Override
+    public void scheduleTerrainUpdate() {
+        this.renderer.scheduleTerrainUpdate();
+    }
 
     @Inject(method="<init>", at=@At("RETURN"))
     private void sodium$initRenderer(Minecraft mc, CallbackInfo ci) {

@@ -29,8 +29,7 @@ public class ChunkRenderContext {
     public void releaseResources() {
         for (ClonedChunkSection section : sections) {
             if (section != null) {
-                section.getBackingCache()
-                        .release(section);
+                section.getBackingCache().release(section);
             }
         }
     }

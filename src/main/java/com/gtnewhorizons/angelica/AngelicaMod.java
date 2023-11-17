@@ -3,8 +3,8 @@ package com.gtnewhorizons.angelica;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-
 
 @Mod(
         modid = "angelica",
@@ -20,5 +20,10 @@ public class AngelicaMod {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         proxy.preInit(event);
+    }
+
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.init(event);
     }
 }

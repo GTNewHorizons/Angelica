@@ -12,6 +12,7 @@ public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinEntityRenderer"
+            ,"angelica.MixinRenderBlocks"
         )
     ),
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
@@ -29,12 +30,14 @@ public enum Mixins {
 
     SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
-             "sodium.MixinRenderGlobal"
-            ,"sodium.MixinWorldClient"
-            ,"sodium.MixinChunkProviderClient"
-            ,"sodium.MixinFrustrum"
+             "sodium.MixinChunkProviderClient"
             ,"sodium.MixinExtendedBlockStorage"
+            ,"sodium.MixinFrustrum"
+            ,"sodium.MixinMinecraft"
+            ,"sodium.MixinNetHandlerPlayClient"
             ,"sodium.MixinNibbleArray"
+            ,"sodium.MixinRenderGlobal"
+            ,"sodium.MixinWorldClient"
         )
     ),
 
