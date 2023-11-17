@@ -669,7 +669,7 @@ public abstract class RenderPhase {
                 GLStateManager.enableTexture();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
-                GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
+                //GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
             }, () -> {
             });
             this.id = Optional.of(id);
