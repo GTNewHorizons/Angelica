@@ -17,12 +17,9 @@ import java.nio.ShortBuffer;
 
 @Mixin(Tessellator.class)
 public abstract class MixinTessellator implements ITessellatorInstance {
-    @Shadow public int[] rawBuffer;
+    @Shadow private static int nativeBufferSize;
     @Shadow public int vertexCount;
     @Shadow public boolean isDrawing;
-    @Shadow(remap = false) public boolean defaultTexture;
-    @Shadow(remap = false) private int rawBufferSize;
-    @Shadow(remap = false) public int textureID;
     @Shadow static ByteBuffer byteBuffer;
     @Shadow private static IntBuffer intBuffer;
     @Shadow private static FloatBuffer floatBuffer;
@@ -32,7 +29,6 @@ public abstract class MixinTessellator implements ITessellatorInstance {
     private IntBuffer angelica$intBuffer;
     private FloatBuffer angelica$floatBuffer;
     private ShortBuffer angelica$shortBuffer;
-    public float[] angelica$vertexPos;
     public float angelica$normalX;
     public float angelica$normalY;
     public float angelica$normalZ;
@@ -54,17 +50,12 @@ public abstract class MixinTessellator implements ITessellatorInstance {
         angelica$intBuffer = angelica$byteBuffer.asIntBuffer();
         angelica$floatBuffer = angelica$byteBuffer.asFloatBuffer();
         angelica$shortBuffer = angelica$byteBuffer.asShortBuffer();
-        rawBuffer = new int[bufferSize];
-        vertexCount = 0;
-        angelica$vertexPos = new float[16];
+        this.isDrawing = false;
     }
 
     @Inject(method = "<init>()V", at = @At("TAIL"))
     private void angelica$extendEmptyConstructor(CallbackInfo ci) {
-        this.angelica$extendBufferConstructor(65536, null);
-        this.defaultTexture = false;
-        this.rawBufferSize = 0;
-        this.textureID = 0;
+        this.angelica$extendBufferConstructor(nativeBufferSize, null);
     }
 
     @Inject(method = "setNormal(FFF)V", at = @At("HEAD"))

@@ -216,34 +216,33 @@ public class BlockRenderer {
 
     private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vector3d offset,
                             BlockColorProvider colorProvider, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
-        ModelQuadView src = (ModelQuadView) quad;
 
         ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
         int[] colors = null;
 
         if (quad.hasColor()) {
-            colors = this.biomeColorBlender.getColors(colorProvider, world, state, pos, src);
+            colors = this.biomeColorBlender.getColors(colorProvider, world, state, pos, quad);
         }
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             int srcIndex = order.getVertexIndex(dstIndex);
 
-            float x = src.getX(srcIndex) + (float) offset.x;
-            float y = src.getY(srcIndex) + (float) offset.y;
-            float z = src.getZ(srcIndex) + (float) offset.z;
+            float x = quad.getX(srcIndex) + (float) offset.x;
+            float y = quad.getY(srcIndex) + (float) offset.y;
+            float z = quad.getZ(srcIndex) + (float) offset.z;
 
-            int color = ColorABGR.mul(colors != null ? colors[srcIndex] : src.getColor(srcIndex), light.br[srcIndex]);
+            int color = ColorABGR.mul(colors != null ? colors[srcIndex] : quad.getColor(srcIndex), light.br[srcIndex]);
 
-            float u = src.getTexU(srcIndex);
-            float v = src.getTexV(srcIndex);
+            float u = quad.getTexU(srcIndex);
+            float v = quad.getTexV(srcIndex);
 
-            int lm = ModelQuadUtil.mergeBakedLight(src.getLight(srcIndex), light.lm[srcIndex]);
+            int lm = ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]);
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }
 
-        TextureAtlasSprite sprite = src.rubidium$getSprite();
+        TextureAtlasSprite sprite = quad.rubidium$getSprite();
 
         if (sprite != null) {
             renderData.addSprite(sprite);

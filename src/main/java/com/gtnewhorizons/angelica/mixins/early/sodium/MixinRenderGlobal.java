@@ -57,6 +57,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      * @reason Redirect to our renderer
      */
     @Overwrite
+    public boolean updateRenderers(EntityLivingBase e, boolean b){
+        return true;
+    }
+
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
         // Roughly equivalent to `renderLayer`
         RenderDevice.enterManagedCode();
