@@ -1,12 +1,12 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
@@ -33,7 +33,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -132,23 +131,23 @@ public class BlockRenderer {
         // Temporarily borrowed/badly adapted from Neodymium
         tesselatorDataCount++;
 
-        List<String> errors = new ArrayList<>();
-        List<String> warnings = new ArrayList<>();
-        if(t.drawMode != GL11.GL_QUADS && t.drawMode != GL11.GL_TRIANGLES) {
-            errors.add("Unsupported draw mode: " + t.drawMode);
-        }
-        if(!t.hasTexture) {
-            errors.add("Texture data is missing.");
-        }
-        if(!t.hasBrightness) {
-            warnings.add("Brightness data is missing");
-        }
-        if(!t.hasColor) {
-            warnings.add("Color data is missing");
-        }
-        if(t.hasNormals && GL11.glIsEnabled(GL11.GL_LIGHTING)) {
-            errors.add("Chunk uses GL lighting, this is not implemented.");
-        }
+//        List<String> errors = new ArrayList<>();
+//        List<String> warnings = new ArrayList<>();
+//        if(t.drawMode != GL11.GL_QUADS && t.drawMode != GL11.GL_TRIANGLES) {
+//            errors.add("Unsupported draw mode: " + t.drawMode);
+//        }
+//        if(!t.hasTexture) {
+//            errors.add("Texture data is missing.");
+//        }
+//        if(!t.hasBrightness) {
+//            warnings.add("Brightness data is missing");
+//        }
+//        if(!t.hasColor) {
+//            warnings.add("Color data is missing");
+//        }
+//        if(t.hasNormals && GL11.glIsEnabled(GL11.GL_LIGHTING)) {
+//            errors.add("Chunk uses GL lighting, this is not implemented.");
+//        }
         FLAGS.hasBrightness = t.hasBrightness;
         FLAGS.hasColor = t.hasColor;
 
@@ -162,30 +161,22 @@ public class BlockRenderer {
                 quadBuf.remove();
             }
         }
-
-//        if(!quadBuf.isEmpty()) {
-//            // Only show errors if we're actually supposed to be drawing something
-//            if(!errors.isEmpty() || !warnings.isEmpty()) {
-//                if(/*!Config.silenceErrors*/true ) {
-//                    if(!errors.isEmpty()) {
-//                        for(String error : errors) {
-//                            LOGGER.error("Error: " + error);
-//                        }
-//                        for(String warning : warnings) {
-//                            LOGGER.error("Warning: " + warning);
-//                        }
-//                        LOGGER.error("(Tessellator pos: ({}, {}, {}), Tessellation count: {}", t.xOffset, t.yOffset, t.zOffset, tesselatorDataCount);
-//                        LOGGER.error("Stack trace:");
-//                        try {
-//                            // Generate a stack trace
-//                            throw new IllegalArgumentException();
-//                        } catch(IllegalArgumentException e) {
-//                            e.printStackTrace();
-//                        }
-//                        LOGGER.error("Skipping chunk due to errors.");
-//                        quadBuf.reset();
-//                    }
-//                }
+//        final boolean silenceErrors = false;
+//
+//        if(!quadBuf.isEmpty() && (!errors.isEmpty() || !warnings.isEmpty()) && /*!Config.silenceErrors*/!silenceErrors) {
+//            for(String error : errors) {
+//                LOGGER.error("Error: " + error);
+//            }
+//            for(String warning : warnings) {
+//                LOGGER.error("Warning: " + warning);
+//            }
+//            LOGGER.error("(Tessellator pos: ({}, {}, {}), Tessellation count: {}", t.xOffset, t.yOffset, t.zOffset, tesselatorDataCount);
+//            LOGGER.error("Stack trace:");
+//            try {
+//                // Generate a stack trace
+//                throw new IllegalArgumentException();
+//            } catch(IllegalArgumentException e) {
+//                e.printStackTrace();
 //            }
 //        }
         final List<Quad> quads = quadBuf.getAsList();
@@ -206,6 +197,7 @@ public class BlockRenderer {
         // This is a very hot allocation, iterate over it manually
         // noinspection ForLoopReplaceableByForEach
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
+            // CME here if we don't return a copy.... why...
             Quad quad = quads.get(i);
 
             QuadLightData light = this.cachedQuadLightData;

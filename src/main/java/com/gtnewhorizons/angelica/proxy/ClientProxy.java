@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.gtnewhorizons.angelica.client.gui.AngelicaVideoSettings;
-import com.gtnewhorizons.angelica.rendering.ThreadedTesselatorHelper;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import jss.notfine.gui.GuiCustomMenu;
@@ -21,6 +20,6 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void init(FMLInitializationEvent event) {
-        ThreadedTesselatorHelper.instance.init();
+        // Nothing to do here (yet)
     }
 }

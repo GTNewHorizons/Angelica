@@ -8,7 +8,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
-import com.gtnewhorizons.angelica.rendering.ThreadedTesselatorHelper;
+import com.gtnewhorizons.angelica.mixins.interfaces.IHasTessellator;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -76,7 +76,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         // TODO: Sodium - WorldSlice probably needs to implement IWorldAccess and redirect to the slice/chunk cache
         WorldSlice slice = cache.getWorldSlice();
         // Gross
-        RenderBlocks renderBlocks = new RenderBlocks(slice.getWorld());
+        final RenderBlocks renderBlocks = new RenderBlocks(slice.getWorld());
 
         int baseX = this.render.getOriginX();
         int baseY = this.render.getOriginY();
@@ -84,7 +84,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         BlockPos.Mutable pos = new BlockPos.Mutable();
         BlockPos renderOffset = this.offset;
-        final Tessellator tessellator  = ThreadedTesselatorHelper.instance.getThreadTessellator();
+        final Tessellator tessellator = ((IHasTessellator)renderBlocks).getTessellator();
 
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
@@ -146,9 +146,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 //	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 //
 	                        long seed = blockState.getRenderingSeed(pos);
-                            // hax -- why is the reset needed here?
-                            tessellator.isDrawing = false;
-                            tessellator.reset();
+//                            // hax -- why is the reset needed here?
+//                            tessellator.isDrawing = false;
+//                            tessellator.reset();
                             tessellator.startDrawingQuads();
 
                             if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
