@@ -116,9 +116,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
 
 	                        ForgeHooksClientExt.setRenderLayer(layer);
-                            if(!(relX == 0 && relZ == 0)) {
-                                continue;
-                            }
+
                             /*  Test quads from Makamys
                                                 if(relX == 0 && relZ == 0) {
                                         // test quad
