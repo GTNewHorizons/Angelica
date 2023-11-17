@@ -1,15 +1,13 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
-import com.gtnewhorizons.angelica.compat.forge.IModelData;
-import com.gtnewhorizons.angelica.compat.forge.SinkingVertexBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.BakedModel;
-import com.gtnewhorizons.angelica.compat.mojang.BakedQuad;
 import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -26,12 +24,16 @@ import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import me.jellysquid.mods.sodium.client.world.biome.BlockColorsExtended;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
+import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -65,48 +67,54 @@ public class BlockRenderer {
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
     }
 
-    public boolean renderModel(BlockRenderView world, BlockState state, BlockPos pos, BakedModel model, ChunkModelBuffers buffers, boolean cull, long seed, IModelData modelData) {
-        LightMode mode = this.getLightingMode(state, model, world, pos);
-        LightPipeline lighter = this.lighters.getLighter(mode);
+    public boolean renderModel(BlockRenderView world, Tessellator tessellator, RenderBlocks renderBlocks, BlockState state, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+        final LightMode mode = this.getLightingMode(state, world, pos);
+        final LightPipeline lighter = this.lighters.getLighter(mode);
         Vector3d offset = state.getModelOffset(world, pos);
 
         boolean rendered = false;
 
-        modelData = model.getModelData(world, pos, state, modelData);
+//        modelData = model.getModelData(world, pos, state, modelData);
+//
+//        if(ForgeBlockRenderer.useForgeLightingPipeline()) {
+//            MatrixStack mStack;
+//            if(!offset.equals(ZERO)) {
+//                mStack = new MatrixStack();
+//                mStack.translate(offset.x, offset.y, offset.z);
+//            } else
+//                mStack = EMPTY_STACK;
+//            final SinkingVertexBuilder builder = SinkingVertexBuilder.getInstance();
+//            builder.reset();
+//            rendered = forgeBlockRenderer.renderBlock(mode, state, pos, world, model, mStack, builder, random, seed, modelData, cull, this.occlusionCache, buffers.getRenderData());
+//            builder.flush(buffers);
+//            return rendered;
+//        }
+        final Block block = state.getBlock();
+        // TODO: Occlusion by side... needs to break apart or invasively modify renderBlockByRenderType
+        // Or figure out the facing of the quad...
+        rendered = renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
 
-        if(ForgeBlockRenderer.useForgeLightingPipeline()) {
-            MatrixStack mStack;
-            if(!offset.equals(ZERO)) {
-                mStack = new MatrixStack();
-                mStack.translate(offset.x, offset.y, offset.z);
-            } else
-                mStack = EMPTY_STACK;
-            final SinkingVertexBuilder builder = SinkingVertexBuilder.getInstance();
-            builder.reset();
-            rendered = forgeBlockRenderer.renderBlock(mode, state, pos, world, model, mStack, builder, random, seed, modelData, cull, this.occlusionCache, buffers.getRenderData());
-            builder.flush(buffers);
-            return rendered;
-        }
-
-        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
-            this.random.setSeed(seed);
-
-            List<BakedQuad> sided = model.getQuads(state, dir, this.random, modelData);
-
-            if (sided.isEmpty()) {
-                continue;
-            }
-
-            if (!cull || this.occlusionCache.shouldDrawSide(state, world, pos, dir)) {
-                this.renderQuadList(world, state, pos, lighter, offset, buffers, sided, dir);
-
-                rendered = true;
-            }
-        }
+//        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+//            this.random.setSeed(seed);
+//
+//            List<BakedQuad> sided = model.getQuads(state, dir, this.random, modelData);
+//
+//            if (sided.isEmpty()) {
+//                continue;
+//            }
+//
+//            if (!cull || this.occlusionCache.shouldDrawSide(state, world, pos, dir)) {
+//                this.renderQuadList(world, state, pos, lighter, offset, buffers, sided, dir);
+//
+//                rendered = true;
+//            }
+//        }
 
         this.random.setSeed(seed);
+        List<Quad> all = tesselatorToBakedQuadList(tessellator);
 
-        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
+
+//        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
 
         if (!all.isEmpty()) {
             this.renderQuadList(world, state, pos, lighter, offset, buffers, all, null);
@@ -117,8 +125,75 @@ public class BlockRenderer {
         return rendered;
     }
 
+    private static final Flags FLAGS = new Flags(true, true, true, false);
+    private static RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
+    private int tesselatorDataCount;
+    private List<Quad> tesselatorToBakedQuadList(Tessellator t) {
+        // Temporarily borrowed/badly adapted from Neodymium
+        tesselatorDataCount++;
+
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        if(t.drawMode != GL11.GL_QUADS && t.drawMode != GL11.GL_TRIANGLES) {
+            errors.add("Unsupported draw mode: " + t.drawMode);
+        }
+        if(!t.hasTexture) {
+            errors.add("Texture data is missing.");
+        }
+        if(!t.hasBrightness) {
+            warnings.add("Brightness data is missing");
+        }
+        if(!t.hasColor) {
+            warnings.add("Color data is missing");
+        }
+        if(t.hasNormals && GL11.glIsEnabled(GL11.GL_LIGHTING)) {
+            errors.add("Chunk uses GL lighting, this is not implemented.");
+        }
+        FLAGS.hasBrightness = t.hasBrightness;
+        FLAGS.hasColor = t.hasColor;
+
+        int verticesPerPrimitive = t.drawMode == GL11.GL_QUADS ? 4 : 3;
+
+        for(int quadI = 0; quadI < t.vertexCount / verticesPerPrimitive; quadI++) {
+            Quad quad = quadBuf.next();
+            quad.setState(t.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, t.drawMode, (float)-t.xOffset, (float)-t.yOffset, (float)-t.zOffset);
+            if(quad.deleted) {
+                quadBuf.remove();
+            }
+        }
+
+//        if(!quadBuf.isEmpty()) {
+//            // Only show errors if we're actually supposed to be drawing something
+//            if(!errors.isEmpty() || !warnings.isEmpty()) {
+//                if(/*!Config.silenceErrors*/true ) {
+//                    if(!errors.isEmpty()) {
+//                        for(String error : errors) {
+//                            LOGGER.error("Error: " + error);
+//                        }
+//                        for(String warning : warnings) {
+//                            LOGGER.error("Warning: " + warning);
+//                        }
+//                        LOGGER.error("(Tessellator pos: ({}, {}, {}), Tessellation count: {}", t.xOffset, t.yOffset, t.zOffset, tesselatorDataCount);
+//                        LOGGER.error("Stack trace:");
+//                        try {
+//                            // Generate a stack trace
+//                            throw new IllegalArgumentException();
+//                        } catch(IllegalArgumentException e) {
+//                            e.printStackTrace();
+//                        }
+//                        LOGGER.error("Skipping chunk due to errors.");
+//                        quadBuf.reset();
+//                    }
+//                }
+//            }
+//        }
+        final List<Quad> quads = quadBuf.getAsList();
+        quadBuf.reset();
+        return quads;
+    }
+
     private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vector3d offset,
-                                ChunkModelBuffers buffers, List<BakedQuad> quads, ForgeDirection cullFace) {
+                                ChunkModelBuffers buffers, List<Quad> quads, ForgeDirection cullFace) {
     	ModelQuadFacing facing = cullFace == null ? ModelQuadFacing.UNASSIGNED : ModelQuadFacing.fromDirection(cullFace);
         BlockColorProvider colorizer = null;
 
@@ -130,12 +205,13 @@ public class BlockRenderer {
         // This is a very hot allocation, iterate over it manually
         // noinspection ForLoopReplaceableByForEach
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
-            BakedQuad quad = quads.get(i);
+            Quad quad = quads.get(i);
 
             QuadLightData light = this.cachedQuadLightData;
             lighter.calculate((ModelQuadView) quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
 
-            if (quad.hasColor() && colorizer == null) {
+            // TODO: Sodium - BlockColors
+            if (quad.hasColor() && colorizer == null && this.blockColors != null) {
                 colorizer = this.blockColors.getColorProvider(state);
             }
 
@@ -146,14 +222,14 @@ public class BlockRenderer {
     }
 
     private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vector3d offset,
-                            BlockColorProvider colorProvider, BakedQuad bakedQuad, QuadLightData light, ChunkRenderData.Builder renderData) {
-        ModelQuadView src = (ModelQuadView) bakedQuad;
+                            BlockColorProvider colorProvider, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
+        ModelQuadView src = (ModelQuadView) quad;
 
         ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
         int[] colors = null;
 
-        if (bakedQuad.hasColor()) {
+        if (quad.hasColor()) {
             colors = this.biomeColorBlender.getColors(colorProvider, world, state, pos, src);
         }
 
@@ -181,11 +257,51 @@ public class BlockRenderer {
         }
     }
 
-    private LightMode getLightingMode(BlockState state, BakedModel model, BlockRenderView world, BlockPos pos) {
-        if (this.useAmbientOcclusion && model.isAmbientOcclusion(state) && state.getLightValue(world, pos) == 0) {
+    private LightMode getLightingMode(BlockState state, BlockRenderView world, BlockPos pos) {
+        // TODO: Sodium: Ambient Occlusion
+        final Block block = state.getBlock();
+        if (this.useAmbientOcclusion && block.getLightValue() == 0 && /*model.isAmbientOcclusion(state) &&*/ state.getLightValue(world, pos) == 0) {
             return LightMode.SMOOTH;
         } else {
             return LightMode.FLAT;
+        }
+    }
+
+    public static class Flags {
+        boolean hasTexture;
+        public boolean hasBrightness;
+        public boolean hasColor;
+        boolean hasNormals;
+
+        public Flags(byte flags) {
+            hasTexture = (flags & 1) != 0;
+            hasBrightness = (flags & 2) != 0;
+            hasColor = (flags & 4) != 0;
+            hasNormals = (flags & 8) != 0;
+        }
+
+        public Flags(boolean hasTexture, boolean hasBrightness, boolean hasColor, boolean hasNormals) {
+            this.hasTexture = hasTexture;
+            this.hasBrightness = hasBrightness;
+            this.hasColor = hasColor;
+            this.hasNormals = hasNormals;
+        }
+
+        public byte toByte() {
+            byte flags = 0;
+            if(hasTexture) {
+                flags |= 1;
+            }
+            if(hasBrightness) {
+                flags |= 2;
+            }
+            if(hasColor) {
+                flags |= 4;
+            }
+            if(hasNormals) {
+                flags |= 8;
+            }
+            return flags;
         }
     }
 }

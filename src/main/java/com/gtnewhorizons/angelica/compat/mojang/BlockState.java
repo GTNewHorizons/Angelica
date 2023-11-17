@@ -7,6 +7,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
 public class BlockState implements IForgeBlockState {
+    private final static Vector3d ZERO = new Vector3d(0, 0, 0);
     private final Block block;
     private final int meta;
 
@@ -51,7 +52,7 @@ public class BlockState implements IForgeBlockState {
     public boolean isFullCube(BlockRenderView world, BlockPos pos) { return true; }
 
     public Vector3d getModelOffset(BlockRenderView world, BlockPos pos) {
-        return null;
+        return ZERO;
     }
 
     public boolean isAir() {

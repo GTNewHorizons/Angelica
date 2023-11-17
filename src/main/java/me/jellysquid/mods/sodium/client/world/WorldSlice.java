@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeCache;
 import me.jellysquid.mods.sodium.client.world.biome.BiomeColorCache;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
@@ -64,6 +65,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     private static final int SECTION_TABLE_ARRAY_SIZE = TABLE_LENGTH * TABLE_LENGTH * TABLE_LENGTH;
 
     // The world this slice has copied data from
+    @Getter // Temp
     private final World world;
 
     // Local Section->BlockState table.
@@ -93,8 +95,8 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
     private ChunkSectionPos origin;
 
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
-        Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
-        ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
+        final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
+        final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
 
         // If the chunk section is absent or empty, simply terminate now. There will never be anything in this chunk
         // section to render, so we need to signal that a chunk render task shouldn't created. This saves a considerable
@@ -185,6 +187,19 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         }
     }
 
+
+    private static void copyBlocks(BlockState[] states, ClonedChunkSection section, int minBlockY, int maxBlockY, int minBlockZ, int maxBlockZ, int minBlockX, int maxBlockX) {
+        for (int y = minBlockY; y <= maxBlockY; y++) {
+            for (int z = minBlockZ; z <= maxBlockZ; z++) {
+                for (int x = minBlockX; x <= maxBlockX; x++) {
+                    final int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
+                    // TODO: Optimize Allocations - shared block states? get rid of block states?
+                    states[blockIdx] = section.getBlockState(x & 15, y & 15, z & 15);
+                }
+            }
+        }
+    }
+
     private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
         ChunkSectionPos pos = section.getPosition();
 
@@ -197,19 +212,24 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         int minBlockZ = Math.max(box.minZ, pos.getMinZ());
         int maxBlockZ = Math.min(box.maxZ, pos.getMaxZ());
 
-        for (int y = minBlockY; y <= maxBlockY; y++) {
-            for (int z = minBlockZ; z <= maxBlockZ; z++) {
-                for (int x = minBlockX; x <= maxBlockX; x++) {
-                    int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
-                    states[blockIdx] = section.getBlockState(x & 15, y & 15, z & 15);
-                }
-            }
-        }
+        copyBlocks(states, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
 
     private void unpackBlockDataZ(BlockState[] states, ClonedChunkSection section) {
-        // TODO: Sodium - BlockStates
-//        ((PackedIntegerArrayExtended) section.getBlockData()).copyUsingPalette(states, section.getBlockPalette());
+        // TODO: Look into a faster copy for this?
+        final ChunkSectionPos pos = section.getPosition();
+
+        int minBlockX = pos.getMinX();
+        int maxBlockX = pos.getMaxX();
+
+        int minBlockY = pos.getMinY();
+        int maxBlockY = pos.getMaxY();
+
+        int minBlockZ = pos.getMinZ();
+        int maxBlockZ = pos.getMaxZ();
+
+        // TODO: Can this be optimized?
+        copyBlocks(states, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
 
     /**
@@ -244,7 +264,17 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     @Override
     public float getBrightness(ForgeDirection direction, boolean shaded) {
-        return ((BlockRenderView)this.world).getBrightness(direction, shaded);
+        boolean darkened = false; //this.getSkyProperties().isDarkened();
+        if (!shaded) {
+            return darkened ? 0.9f : 1.0f;
+        }
+        return switch (direction) {
+            case DOWN -> darkened ? 0.9f : 0.5f;
+            case UP -> darkened ? 0.9f : 1.0f;
+            case NORTH, SOUTH -> 0.8f;
+            case WEST, EAST -> 0.6f;
+            default -> 1.0f;
+        };
     }
 
     @Override

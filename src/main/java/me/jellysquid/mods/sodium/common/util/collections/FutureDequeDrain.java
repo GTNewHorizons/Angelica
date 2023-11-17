@@ -37,7 +37,7 @@ public class FutureDequeDrain<T> implements Iterator<T> {
             }
         }
     }
-    
+
     @Override
     public T next() {
         if (!hasNext()) {

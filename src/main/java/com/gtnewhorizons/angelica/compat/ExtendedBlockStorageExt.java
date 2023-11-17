@@ -14,7 +14,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     public ExtendedBlockStorageExt(IExtendedBlockStorageExt storage) {
         super(storage.getYBase(), storage.hasSky());
 
-        final byte[] blockLSBArray = storage.getBlockLSBArray();
+        final byte[] blockLSBArray = this.getBlockLSBArray();
 
         System.arraycopy(storage.getBlockLSBArray(), 0, blockLSBArray, 0, blockLSBArray.length);
         if(storage.getBlockMSBArray() != null) {
@@ -29,6 +29,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
             }
             copyNibbleArray((ExtendedNibbleArray) storage.getSkylightArray(), (ExtendedNibbleArray) this.getSkylightArray());
         }
+        ((IExtendedBlockStorageExt)this).setBlockRefCount(storage.getBlockRefCount());
     }
 
 

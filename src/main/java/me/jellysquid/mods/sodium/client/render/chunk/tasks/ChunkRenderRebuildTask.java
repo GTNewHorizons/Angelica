@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
+import com.gtnewhorizons.angelica.rendering.ThreadedTesselatorHelper;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -21,8 +22,11 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import org.joml.Vector3d;
 
@@ -69,7 +73,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         cache.init(this.context);
 
+        // TODO: Sodium - WorldSlice probably needs to implement IWorldAccess and redirect to the slice/chunk cache
         WorldSlice slice = cache.getWorldSlice();
+        // Gross
+        RenderBlocks renderBlocks = new RenderBlocks(slice.getWorld());
 
         int baseX = this.render.getOriginX();
         int baseY = this.render.getOriginY();
@@ -77,6 +84,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         BlockPos.Mutable pos = new BlockPos.Mutable();
         BlockPos renderOffset = this.offset;
+        final Tessellator tessellator  = ThreadedTesselatorHelper.instance.getThreadTessellator();
 
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
@@ -86,9 +94,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
                     BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
-
                     // TODO: Sodium - BlockState
-                    if (blockState == null || blockState.isAir()) {
+                    if (blockState == null || blockState.getBlock() == Blocks.air /* || blockState.isAir()*/) {
                         continue;
                     }
 
@@ -97,30 +104,69 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
                     if (blockState.getRenderType() == BlockRenderType.MODEL) {
-                    for (RenderLayer layer : RenderLayer.getBlockLayers()) {
+                        for (RenderLayer layer : RenderLayer.getBlockLayers()) {
 	                        if (!RenderLayers.canRenderInLayer(blockState, layer)) {
 	                        	continue;
 	                        }
 
+                            // Need an equivalent renderpass check
+                            // if (!block.canRenderInPass(pass)) continue;
+
+//                            boolean rendered = renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+
+
 	                        ForgeHooksClientExt.setRenderLayer(layer);
+                            if(!(relX == 0 && relZ == 0)) {
+                                continue;
+                            }
+                            /*  Test quads from Makamys
+                                                if(relX == 0 && relZ == 0) {
+                                        // test quad
+                                        ChunkModelBuffers buf = buffers.get(RenderLayer.solid());
+                                        ModelVertexSink sink = buf.getSink(ModelQuadFacing.UP);
+                                        int x = 0;
+                                        int y = 0;
+                                        int z = 0;
+                                        int color = 0xFFFFFFFF;
+                                        int light = 15728640;
+                                        float u0 = 0;
+                                        float v0 = 0;
+                                        float u1 = 1;
+                                        float v1 = 1;
+                                        sink.writeQuad(x + 0, y + 0, z + 1, color, u0, v1, light);
+                                        sink.writeQuad(x + 1, y + 0, z + 1, color, u1, v1, light);
+                                        sink.writeQuad(x + 1, y + 0, z + 0, color, u1, v0, light);
+                                        sink.writeQuad(x + 0, y + 0, z + 0, color, u0, v0, light);
+
+                                        sink.flush();
+                                    }
+                             */
                             // TODO: RenderBlocks & capture tesselator state into quads
 
 //                            IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
 //
 //	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 //
-//	                        long seed = blockState.getRenderingSeed(pos);
-//
-//	                        if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), blockState, pos, model, buffers.get(layer), true, seed, modelData)) {
-//	                            bounds.addBlock(relX, relY, relZ);
-//	                        }
+	                        long seed = blockState.getRenderingSeed(pos);
+                            // hax -- why is the reset needed here?
+                            tessellator.isDrawing = false;
+                            tessellator.reset();
+                            tessellator.startDrawingQuads();
+
+                            if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
+	                            bounds.addBlock(relX, relY, relZ);
+	                        }
+
+                            tessellator.isDrawing = false;
+                            tessellator.reset();
 
                         }
                     }
 
+
                     FluidState fluidState = blockState.getFluidState();
 
-                    if (!fluidState.isEmpty()) {
+                    if (fluidState != null && !fluidState.isEmpty()) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
                             if (!RenderLayers.canRenderInLayer(fluidState, layer)) {
                                 continue;

@@ -22,13 +22,10 @@ public class MixinRenderBlocks {
         int pass = ForgeHooksClient.getWorldRenderPass();
         boolean mainThread = Thread.currentThread() == ThreadedChunkUpdateHelper.MAIN_THREAD;
 
-        ThreadedChunkUpdateHelper.UpdateTask task = mainThread
-                ? ((IRendererUpdateResultHolder)ThreadedChunkUpdateHelper.lastWorldRenderer).arch$getRendererUpdateTask()
-                : null;
+        ThreadedChunkUpdateHelper.UpdateTask task = mainThread ? ((IRendererUpdateResultHolder)ThreadedChunkUpdateHelper.lastWorldRenderer).arch$getRendererUpdateTask() : null;
 
         boolean offThreadBlock = ThreadedChunkUpdateHelper.canBlockBeRenderedOffThread(block, pass, renderType)
-                && !(task != null && task.cancelled)
-                && (!mainThread || ThreadedChunkUpdateHelper.renderBlocksStack.getLevel() == 1);
+                && !(task != null && task.cancelled) && (!mainThread || ThreadedChunkUpdateHelper.renderBlocksStack.getLevel() == 1);
         if ((mainThread ? pass >= 0 : true) && (mainThread ? offThreadBlock : !offThreadBlock)) {
             // Cancel rendering block if it's delegated to a different thread.
             cir.setReturnValue(mainThread ? task.result[pass].renderedSomething : false);

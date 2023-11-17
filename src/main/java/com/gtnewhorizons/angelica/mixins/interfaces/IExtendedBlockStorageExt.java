@@ -12,4 +12,7 @@ public interface IExtendedBlockStorageExt {
 
     boolean hasSky();
 
+    int getBlockRefCount();
+    void setBlockRefCount(int blockRefCount);
+
 }

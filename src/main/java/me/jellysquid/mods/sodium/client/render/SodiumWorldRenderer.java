@@ -34,7 +34,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManag
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
-import me.jellysquid.mods.sodium.client.world.ChunkStatusListenerManager;
+import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -134,7 +134,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         this.initRenderer();
 
-        ((ChunkStatusListenerManager) ((IHasClientChunkProvider)world).getClientChunkProvider()).setListener(this);
+        ((IChunkProviderClientExt) ((IHasClientChunkProvider)world).getClientChunkProvider()).setListener(this);
     }
 
     private void unloadWorld() {

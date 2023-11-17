@@ -394,6 +394,11 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         private WrappedTask(ChunkRenderBuildTask<T> task) {
             this.task = task;
             this.future = new CompletableFuture<>();
+            this.future.exceptionally(e -> {
+                LOGGER.info("Exception thrown while building chunk", e);
+//                e.printStackTrace();
+                return null;
+            });
         }
 
         @Override
