@@ -24,7 +24,7 @@ public class FogHelper {
      * Retrieves the current fog mode from the fixed-function pipeline.
      */
     public static ChunkFogMode getFogMode() {
-        int mode = GLStateManager.getFog().fogMode;
+        int mode = 0; //GLStateManager.getFog().fogMode; // TODO fix fog
 
         if(mode == 0 || !GLStateManager.getFog().mode.isEnabled())
         	return ChunkFogMode.NONE;
