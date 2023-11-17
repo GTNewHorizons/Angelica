@@ -111,7 +111,7 @@ public class BlockRenderer {
 //        }
 
         this.random.setSeed(seed);
-        List<Quad> all = tesselatorToBakedQuadList(tessellator);
+        List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
 
 
 //        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
@@ -128,7 +128,7 @@ public class BlockRenderer {
     private static final Flags FLAGS = new Flags(true, true, true, false);
     private static RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
     private int tesselatorDataCount;
-    private List<Quad> tesselatorToBakedQuadList(Tessellator t) {
+    private List<Quad> tesselatorToBakedQuadList(Tessellator t, BlockPos pos) {
         // Temporarily borrowed/badly adapted from Neodymium
         tesselatorDataCount++;
 
@@ -156,7 +156,8 @@ public class BlockRenderer {
 
         for(int quadI = 0; quadI < t.vertexCount / verticesPerPrimitive; quadI++) {
             Quad quad = quadBuf.next();
-            quad.setState(t.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, t.drawMode, (float)-t.xOffset, (float)-t.yOffset, (float)-t.zOffset);
+            // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
+            quad.setState(t.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, t.drawMode, -pos.x, -pos.y, -pos.z);
             if(quad.deleted) {
                 quadBuf.remove();
             }
