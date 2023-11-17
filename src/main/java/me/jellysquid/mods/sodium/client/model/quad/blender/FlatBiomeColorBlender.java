@@ -18,6 +18,8 @@ public class FlatBiomeColorBlender implements BiomeColorBlender {
         // TODO: Sodium - Colorizer
 //        Arrays.fill(this.cachedRet, ColorARGB.toABGR(colorizer.getColor(state, world, origin, quad.getColorIndex())));
 
-        return this.cachedRet;
+//        return this.cachedRet;
+        
+        return new int[] {quad.getColor(0), quad.getColor(1), quad.getColor(2), quad.getColor(3)};
     }
 }
