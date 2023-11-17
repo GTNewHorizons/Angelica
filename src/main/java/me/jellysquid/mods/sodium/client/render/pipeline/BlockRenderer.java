@@ -54,6 +54,9 @@ public class BlockRenderer {
 
     private final boolean useAmbientOcclusion;
 
+    private final Flags FLAGS = new Flags(true, true, true, false);
+    private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
+
     public BlockRenderer(Minecraft client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
         // TODO: Sodium - Block Colors
         this.blockColors = (BlockColorsExtended) null; //client.getBlockColors();
@@ -124,8 +127,6 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private static final Flags FLAGS = new Flags(true, true, true, false);
-    private static RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
     private int tesselatorDataCount;
     private List<Quad> tesselatorToBakedQuadList(Tessellator t, BlockPos pos) {
         // Temporarily borrowed/badly adapted from Neodymium
@@ -197,7 +198,6 @@ public class BlockRenderer {
         // This is a very hot allocation, iterate over it manually
         // noinspection ForLoopReplaceableByForEach
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
-            // CME here if we don't return a copy.... why...
             Quad quad = quads.get(i);
 
             QuadLightData light = this.cachedQuadLightData;

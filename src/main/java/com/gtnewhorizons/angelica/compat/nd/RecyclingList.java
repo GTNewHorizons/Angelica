@@ -44,7 +44,6 @@ public class RecyclingList<T> {
     }
 
     public List<T> getAsList() {
-        // CME workaround..
-        return new ArrayList<>(list.subList(0, nextIndex));
+        return list.subList(0, nextIndex);
     }
 }

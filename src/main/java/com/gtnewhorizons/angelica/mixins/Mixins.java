@@ -13,7 +13,6 @@ public enum Mixins {
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinEntityRenderer"
             ,"angelica.MixinRenderBlocks"
-            ,"angelica.MixinTessellator"
         )
     ),
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
@@ -38,6 +37,7 @@ public enum Mixins {
             ,"sodium.MixinNetHandlerPlayClient"
             ,"sodium.MixinNibbleArray"
             ,"sodium.MixinRenderGlobal"
+            ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
         )
     ),

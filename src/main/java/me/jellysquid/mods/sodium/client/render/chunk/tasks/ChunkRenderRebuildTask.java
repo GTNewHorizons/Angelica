@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
 import com.gtnewhorizons.angelica.mixins.interfaces.IHasTessellator;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -112,51 +113,20 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             // Need an equivalent renderpass check
                             // if (!block.canRenderInPass(pass)) continue;
 
-//                            boolean rendered = renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-
-
 	                        ForgeHooksClientExt.setRenderLayer(layer);
 
-                            /*  Test quads from Makamys
-                                                if(relX == 0 && relZ == 0) {
-                                        // test quad
-                                        ChunkModelBuffers buf = buffers.get(RenderLayer.solid());
-                                        ModelVertexSink sink = buf.getSink(ModelQuadFacing.UP);
-                                        int x = 0;
-                                        int y = 0;
-                                        int z = 0;
-                                        int color = 0xFFFFFFFF;
-                                        int light = 15728640;
-                                        float u0 = 0;
-                                        float v0 = 0;
-                                        float u1 = 1;
-                                        float v1 = 1;
-                                        sink.writeQuad(x + 0, y + 0, z + 1, color, u0, v1, light);
-                                        sink.writeQuad(x + 1, y + 0, z + 1, color, u1, v1, light);
-                                        sink.writeQuad(x + 1, y + 0, z + 0, color, u1, v0, light);
-                                        sink.writeQuad(x + 0, y + 0, z + 0, color, u0, v0, light);
-
-                                        sink.flush();
-                                    }
-                             */
-                            // TODO: RenderBlocks & capture tesselator state into quads
 
 //                            IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
 //
 //	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 //
 	                        long seed = blockState.getRenderingSeed(pos);
-//                            // hax -- why is the reset needed here?
-//                            tessellator.isDrawing = false;
-//                            tessellator.reset();
                             tessellator.startDrawingQuads();
 
                             if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
 	                            bounds.addBlock(relX, relY, relZ);
 	                        }
-
-                            tessellator.isDrawing = false;
-                            tessellator.reset();
+                            ((ITessellatorInstance) tessellator).discard();
 
                         }
                     }
