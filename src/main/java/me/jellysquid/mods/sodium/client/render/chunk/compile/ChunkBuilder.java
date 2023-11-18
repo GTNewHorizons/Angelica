@@ -20,7 +20,6 @@ import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
 import me.jellysquid.mods.sodium.common.util.collections.DequeDrain;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.world.World;
 import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -51,7 +50,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
 
     private ClonedChunkSectionCache sectionCache;
 
-    private World world;
+    private WorldClient world;
     private Vector3d cameraPosition = new Vector3d();
     private BlockRenderPassManager renderPassManager;
 

@@ -74,10 +74,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         cache.init(this.context);
 
-        // TODO: Sodium - WorldSlice probably needs to implement IWorldAccess and redirect to the slice/chunk cache
-        WorldSlice slice = cache.getWorldSlice();
-        // Gross
-        final RenderBlocks renderBlocks = new RenderBlocks(slice.getWorld());
+        final WorldSlice slice = cache.getWorldSlice();
+        final RenderBlocks renderBlocks = new RenderBlocks(slice);
 
         int baseX = this.render.getOriginX();
         int baseY = this.render.getOriginY();
