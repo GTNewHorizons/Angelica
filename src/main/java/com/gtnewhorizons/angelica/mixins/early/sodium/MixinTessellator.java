@@ -17,7 +17,7 @@ import java.nio.ShortBuffer;
 
 @Mixin(Tessellator.class)
 public abstract class MixinTessellator implements ITessellatorInstance {
-    @Shadow private static int nativeBufferSize;
+    @Shadow(remap=false) private static int nativeBufferSize;
     @Shadow public int vertexCount;
     @Shadow public boolean isDrawing;
     @Shadow static ByteBuffer byteBuffer;

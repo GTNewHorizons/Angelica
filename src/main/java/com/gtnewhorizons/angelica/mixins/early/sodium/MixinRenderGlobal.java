@@ -10,9 +10,11 @@ import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.init.Blocks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,11 +25,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-@Mixin(RenderGlobal.class)
+// Let other mixins apply, and then overwrite them
+@Mixin(value = RenderGlobal.class, priority = 2000)
 public class MixinRenderGlobal implements IRenderGlobalExt {
+    @Shadow public int renderChunksWide;
+    @Shadow public int renderChunksTall;
+    @Shadow public int renderChunksDeep;
+    @Shadow public WorldClient theWorld;
+    @Shadow public Minecraft mc;
+    @Shadow public int renderDistanceChunks;
+    @Shadow public WorldRenderer[] worldRenderers;
+    @Shadow public WorldRenderer[] sortedWorldRenderers;
 
-    @Shadow
-    public Minecraft mc;
     @Unique private SodiumWorldRenderer renderer;
 
     private int sodium$frame;
@@ -52,7 +61,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         }
     }
 
-    /**
+   /**
      * @author Sodium
      * @reason Redirect to our renderer
      */
@@ -117,6 +126,17 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      * @reason Redirect to our renderer
      */
     @Overwrite
+    public void markBlocksForUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+        // scheduleBlockRenders
+        this.renderer.scheduleRebuildForBlockArea(minX, minY, minZ, maxX, maxY, maxZ, false);
+    }
+
+
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
     public void markBlockForUpdate(int x, int y, int z) {
         this.renderer.scheduleRebuildForBlockArea(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1, false);
     }
@@ -152,4 +172,23 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             RenderDevice.exitManagedCode();
         }
     }
+
+    /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void loadRenderers() {
+        if (this.theWorld == null) return;
+        Blocks.leaves.setGraphicsLevel(this.mc.gameSettings.fancyGraphics);
+        Blocks.leaves2.setGraphicsLevel(this.mc.gameSettings.fancyGraphics);
+        this.renderDistanceChunks = this.mc.gameSettings.renderDistanceChunks;
+        this.worldRenderers = null;
+        this.sortedWorldRenderers = null;
+
+        this.renderChunksWide = 0;
+        this.renderChunksTall = 0;
+        this.renderChunksDeep = 0;
+    }
+
 }
