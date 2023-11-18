@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
-import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
@@ -12,10 +11,10 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 
@@ -24,14 +23,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClonedChunkSection {
     public static final BlockState DEFAULT_BLOCK_STATE = new BlockState(Blocks.air, 0);
-    private static final LightType[] LIGHT_TYPES = LightType.values();
+    private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
 
     private final AtomicInteger referenceCount = new AtomicInteger(0);
     private final ClonedChunkSectionCache backingCache;
 
     private final Short2ObjectMap<TileEntity> tileEntities;
-    private final NibbleArray[] lightDataArrays;
 
     private ExtendedBlockStorageExt data;
     private final World world;
@@ -46,7 +44,6 @@ public class ClonedChunkSection {
         this.backingCache = backingCache;
         this.world = world;
         this.tileEntities = new Short2ObjectOpenHashMap<>();
-        this.lightDataArrays = new NibbleArray[LIGHT_TYPES.length];
     }
 
     public void init(ChunkSectionPos pos) {
@@ -64,14 +61,6 @@ public class ClonedChunkSection {
 
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(section);
-
-
-        for (LightType type : LIGHT_TYPES) {
-            // TODO: Sodium - Lighting
-            this.lightDataArrays[type.ordinal()] = null; /*world.getLightingProvider()
-                    .get(type)
-                    .getLightSection(pos);*/
-        }
 
         this.biomeData = chunk.getBiomeArray();
 
@@ -97,14 +86,11 @@ public class ClonedChunkSection {
         }
         return new BlockState(data.getBlockByExtId(x, y, z), data.getExtBlockMetadata(x, y, z));
     }
-    public int getLightLevel(LightType type, int x, int y, int z) {
-        NibbleArray array = this.lightDataArrays[type.ordinal()];
-
-        if (array != null) {
-            return array.get(x, y, z);
+    public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
+        if(type == EnumSkyBlock.Sky) {
+            return data.hasSky ? data.getExtSkylightValue(x, y, z) : 0;
         }
-
-        return 0;
+        return data.getExtBlocklightValue(x, y, z);
     }
 
     public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {

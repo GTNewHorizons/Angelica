@@ -6,9 +6,11 @@ import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
+    public boolean hasSky;
 
     public ExtendedBlockStorageExt(int yBase, boolean hasSky) {
         super(yBase, hasSky);
+        this.hasSky = hasSky;
     }
 
     public ExtendedBlockStorageExt(IExtendedBlockStorageExt storage) {
@@ -24,6 +26,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
         copyNibbleArray((ExtendedNibbleArray) storage.getMetadataArray(), (ExtendedNibbleArray)this.getMetadataArray());
         copyNibbleArray((ExtendedNibbleArray) storage.getBlocklightArray(), (ExtendedNibbleArray)this.getBlocklightArray());
         if(storage.getSkylightArray() != null) {
+            hasSky = true;
             if(this.getSkylightArray() == null) {
                 this.setSkylightArray(new NibbleArray(blockLSBArray.length, 4));
             }
