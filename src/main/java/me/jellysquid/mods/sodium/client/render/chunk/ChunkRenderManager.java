@@ -127,7 +127,8 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
         this.translucencyBlockRenderDistance = Math.min(9216, (renderDistance << 4) * (renderDistance << 4));
 
-        this.useBlockFaceCulling = SodiumClientMod.options().advanced.useBlockFaceCulling;
+        // TODO: Sodium - Culling
+        this.useBlockFaceCulling = false; //SodiumClientMod.options().advanced.useBlockFaceCulling;
     }
 
     public void update(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {
@@ -162,7 +163,8 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             float dist = FogHelper.getFogCutoff() + FOG_PLANE_OFFSET;
 
             if (dist != 0.0f) {
-                this.useFogCulling = true;
+                // TODO: Sodium - Culling
+                //this.useFogCulling = true; // TODO fix fog
                 this.fogRenderCutoff = Math.max(FOG_PLANE_MIN_DISTANCE, dist * dist);
             }
         }
