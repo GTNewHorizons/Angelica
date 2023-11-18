@@ -3,12 +3,9 @@ package me.jellysquid.mods.sodium.client.world;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
-import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
-import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.EnumSkyBlock;
-import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import javax.annotation.Nullable;
@@ -30,29 +27,14 @@ public class WorldSliceLocal implements BlockRenderView {
     }
 
     @Override
-    public LightingProvider getLightingProvider() {
-        return view.getLightingProvider();
-    }
-
-    @Override
-    public int getColor(BlockPos pos, ColorResolver colorResolver) {
-        return view.getColor(pos, colorResolver);
-    }
-
-    @Override
     public int getLightLevel(EnumSkyBlock type, BlockPos pos) {
         return view.getLightLevel(type, pos);
     }
 
     @Override
-    public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {
-        return null;
-    }
-
-    @Override
     @Nullable
-    public TileEntity getBlockEntity(BlockPos pos) {
-        return view.getBlockEntity(pos);
+    public TileEntity getTileEntity(BlockPos pos) {
+        return view.getTileEntity(pos);
     }
 
     @Override

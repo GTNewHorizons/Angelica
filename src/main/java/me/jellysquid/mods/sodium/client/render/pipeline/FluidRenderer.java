@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
-import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
@@ -16,7 +15,6 @@ import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuad;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadViewMutable;
-import me.jellysquid.mods.sodium.client.model.quad.blender.BiomeColorBlender;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
@@ -37,23 +35,16 @@ public class FluidRenderer {
 
 	private static final float EPSILON = 0.001f;
 
-    private static final BlockColorProvider FLUID_COLOR_PROVIDER = (state, world, pos, tintIndex) -> {
-        if (world == null) return 0xFFFFFFFF;
-        // TODO: Sodium - Fluids
-        return 0xFFFFFFFF; // state.getFluidState().getFluid().getAttributes().getColor(world, pos);
-    };
-
     private final BlockPos.Mutable scratchPos = new BlockPos.Mutable();
 
     private final ModelQuadViewMutable quad = new ModelQuad();
 
     private final LightPipelineProvider lighters;
-    private final BiomeColorBlender biomeColorBlender;
 
     private final QuadLightData quadLightData = new QuadLightData();
     private final int[] quadColors = new int[4];
 
-    public FluidRenderer(Minecraft client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
+    public FluidRenderer(Minecraft client, LightPipelineProvider lighters) {
         int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
 
         for (int i = 0; i < 4; i++) {
@@ -61,7 +52,6 @@ public class FluidRenderer {
         }
 
         this.lighters = lighters;
-        this.biomeColorBlender = biomeColorBlender;
     }
 
     private boolean isFluidOccluded(BlockRenderView world, int x, int y, int z, ForgeDirection dir, Fluid fluid) {
@@ -360,7 +350,7 @@ public class FluidRenderer {
         int[] biomeColors = null;
 
         if (colorized) {
-            biomeColors = this.biomeColorBlender.getColors(FLUID_COLOR_PROVIDER, world, world.getBlockState(pos), pos, quad);
+            // TODO: Sodium - Colorizer
         }
 
         for (int i = 0; i < 4; i++) {

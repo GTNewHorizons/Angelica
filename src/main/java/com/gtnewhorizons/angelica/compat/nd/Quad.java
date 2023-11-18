@@ -63,6 +63,10 @@ public class Quad implements ModelQuadView {
         return this.hasColor;
     }
 
+    public int[] getColors() {
+        return this.cs;
+    }
+
     public boolean hasShade() {
         return this.hasShade;
     }

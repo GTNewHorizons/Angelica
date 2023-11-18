@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
+import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
@@ -36,6 +37,7 @@ public class ClonedChunkSection {
 
     private ChunkSectionPos pos;
 
+    @Getter
     private byte[] biomeData;
 
     private long lastUsedTimestamp = Long.MAX_VALUE;
@@ -71,7 +73,6 @@ public class ClonedChunkSection {
         for (Map.Entry<ChunkPosition, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
             BlockPos entityPos = new BlockPos(entry.getKey());
 
-//            if (box.contains(entityPos)) {
             if(box.isVecInside(entityPos.getX(), entityPos.getY(), entityPos.getZ())) {
                 //this.blockEntities.put(BlockPos.asLong(entityPos.getX() & 15, entityPos.getY() & 15, entityPos.getZ() & 15), entry.getValue());
             	this.tileEntities.put(ChunkSectionPos.packLocal(entityPos), entry.getValue());

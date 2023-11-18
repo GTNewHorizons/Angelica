@@ -1,7 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.compat.forge.ForgeBlockRenderer;
-import com.gtnewhorizons.angelica.compat.mojang.BlockColorProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
@@ -12,8 +10,6 @@ import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import me.jellysquid.mods.sodium.client.model.quad.blender.BiomeColorBlender;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
@@ -23,7 +19,6 @@ import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
-import me.jellysquid.mods.sodium.client.world.biome.BlockColorsExtended;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -42,14 +37,10 @@ public class BlockRenderer {
 
     private final Random random = new XoRoShiRoRandom();
 
-    private final BlockColorsExtended blockColors;
     private final BlockOcclusionCache occlusionCache;
 
     private final QuadLightData cachedQuadLightData = new QuadLightData();
 
-    private final ForgeBlockRenderer forgeBlockRenderer = new ForgeBlockRenderer();
-
-    private final BiomeColorBlender biomeColorBlender;
     private final LightPipelineProvider lighters;
 
     private final boolean useAmbientOcclusion;
@@ -57,11 +48,7 @@ public class BlockRenderer {
     private final Flags FLAGS = new Flags(true, true, true, false);
     private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
 
-    public BlockRenderer(Minecraft client, LightPipelineProvider lighters, BiomeColorBlender biomeColorBlender) {
-        // TODO: Sodium - Block Colors
-        this.blockColors = (BlockColorsExtended) null; //client.getBlockColors();
-        this.biomeColorBlender = biomeColorBlender;
-
+    public BlockRenderer(Minecraft client, LightPipelineProvider lighters) {
         this.lighters = lighters;
 
         this.occlusionCache = new BlockOcclusionCache();
@@ -188,7 +175,6 @@ public class BlockRenderer {
     private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vector3d offset,
                                 ChunkModelBuffers buffers, List<Quad> quads, ForgeDirection cullFace) {
     	ModelQuadFacing facing = cullFace == null ? ModelQuadFacing.UNASSIGNED : ModelQuadFacing.fromDirection(cullFace);
-        BlockColorProvider colorizer = null;
 
         ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
@@ -201,28 +187,23 @@ public class BlockRenderer {
             Quad quad = quads.get(i);
 
             QuadLightData light = this.cachedQuadLightData;
-            lighter.calculate((ModelQuadView) quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
+            lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
 
-            // TODO: Sodium - BlockColors
-            if (quad.hasColor() && colorizer == null && this.blockColors != null) {
-                colorizer = this.blockColors.getColorProvider(state);
-            }
-
-            this.renderQuad(world, state, pos, sink, offset, colorizer, quad, light, renderData);
+            this.renderQuad(world, state, pos, sink, offset, quad, light, renderData);
         }
 
         sink.flush();
     }
 
     private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vector3d offset,
-                            BlockColorProvider colorProvider, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
+                            Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
 
         ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
         int[] colors = null;
 
         if (quad.hasColor()) {
-            colors = this.biomeColorBlender.getColors(colorProvider, world, state, pos, quad);
+            colors = quad.getColors();
         }
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
