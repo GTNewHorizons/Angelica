@@ -74,7 +74,8 @@ public class ChunkGraphCuller implements ChunkCuller {
         this.activeFrame = frame;
         this.frustum = frustum;
         // TODO: Sodium Options
-        this.useOcclusionCulling = true; //Minecraft.getMinecraft().chunkCullingEnabled;
+        // TODO: Sodium - Culling
+        this.useOcclusionCulling = false; //Minecraft.getMinecraft().chunkCullingEnabled;
 
         this.visible.clear();
 
