@@ -66,6 +66,42 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      * @reason Redirect to our renderer
      */
     @Overwrite
+    public int renderSortedRenderers(int x, int z, int pass, double partialTicks) {
+        // Do nothing
+        return 0;
+    }
+   /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void renderAllRenderLists(int pass, double partialTicks) {
+        // Do nothing
+    }
+
+   /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    private void checkOcclusionQueryResult(int x, int z) {
+        // Do nothing
+    }
+
+   /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public void markRenderersForNewPosition(int p_72722_1_, int p_72722_2_, int p_72722_3_) {
+        // Do nothing
+    }
+
+   /**
+     * @author Sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
     public boolean updateRenderers(EntityLivingBase e, boolean b){
         return true;
     }
