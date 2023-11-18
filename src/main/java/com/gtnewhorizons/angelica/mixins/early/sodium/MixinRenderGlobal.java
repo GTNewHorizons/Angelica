@@ -73,7 +73,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Overwrite
     public String getDebugInfoRenders() {
         return this.renderer.getChunksDebugString();
-        // + ". F: " + this.renderersBeingClipped + ", O: " + this.renderersBeingOccluded + ", E: " + this.renderersSkippingRenderPass;
     }
 
    /**
