@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.render.pipeline.context;
 import com.gtnewhorizons.angelica.compat.mojang.BlockModels;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache;
-import me.jellysquid.mods.sodium.client.model.quad.blender.BiomeColorBlender;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.FluidRenderer;
@@ -28,10 +27,9 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
         this.lightDataCache = new ArrayLightDataCache(this.worldSlice);
 
         LightPipelineProvider lightPipelineProvider = new LightPipelineProvider(this.lightDataCache);
-        BiomeColorBlender biomeColorBlender = this.createBiomeColorBlender();
 
-        this.blockRenderer = new BlockRenderer(client, lightPipelineProvider, biomeColorBlender);
-        this.fluidRenderer = new FluidRenderer(client, lightPipelineProvider, biomeColorBlender);
+        this.blockRenderer = new BlockRenderer(client, lightPipelineProvider);
+        this.fluidRenderer = new FluidRenderer(client, lightPipelineProvider);
 
         // TODO: Sodium
         this.blockModels = null; // client.getBakedModelManager().getBlockModels();
