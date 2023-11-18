@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
@@ -92,8 +93,13 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private float cameraX, cameraY, cameraZ;
     private boolean dirty;
 
+    @Getter
+    private int submitted;
+    private int totalSubmitted;
+
     private final boolean translucencySorting;
 
+    @Getter
     private int visibleChunkCount;
 
     private boolean useFogCulling;
@@ -132,6 +138,14 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.iterateChunks(camera, frustum, frame, spectator);
 
         this.dirty = false;
+    }
+
+    public int getRebuildQueueSize() {
+        return this.rebuildQueue.size();
+    }
+
+    public int getImportantRebuildQueueSize() {
+        return this.importantRebuildQueue.size();
     }
 
     private void setup(Camera camera) {
@@ -479,7 +493,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         Deque<CompletableFuture<ChunkBuildResult<T>>> futures = new ArrayDeque<>();
 
         int budget = this.builder.getSchedulingBudget();
-        int submitted = 0;
+        submitted = 0;
 
         while (!this.importantRebuildQueue.isEmpty()) {
             ChunkRenderContainer<T> render = this.importantRebuildQueue.dequeue();
@@ -518,6 +532,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             sortedAnything = true;
             submitted++;
         }
+        totalSubmitted += submitted;
 
         this.dirty |= submitted > 0;
 
@@ -527,6 +542,13 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         if (!futures.isEmpty()) {
             this.backend.upload(RenderDevice.INSTANCE.createCommandList(), new FutureDequeDrain<>(futures));
         }
+    }
+
+    public int getAndResetSubmitted() {
+        // Return how many chunks were submitted since the last call to this method
+        final int submitted = totalSubmitted;
+        totalSubmitted = 0;
+        return submitted;
     }
 
     public void markDirty() {
@@ -613,10 +635,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     public boolean isChunkPrioritized(ChunkRenderContainer<T> render) {
         return render != null ? render.getSquaredDistance(this.cameraX, this.cameraY, this.cameraZ) <= NEARBY_CHUNK_DISTANCE : false;
-    }
-
-    public int getVisibleChunkCount() {
-        return this.visibleChunkCount;
     }
 
     public void onChunkRenderUpdates(int x, int y, int z, ChunkRenderData data) {

@@ -46,6 +46,11 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderer.scheduleTerrainUpdate();
     }
 
+    @Override
+    public int getChunksSubmitted() {
+        return this.renderer.getChunksSubmitted();
+    }
+
     @Inject(method="<init>", at=@At("RETURN"))
     private void sodium$initRenderer(Minecraft mc, CallbackInfo ci) {
         this.renderer = SodiumWorldRenderer.create(mc);
@@ -59,6 +64,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         } finally {
             RenderDevice.exitManagedCode();
         }
+    }
+
+    /**
+     * @author mitchej123, sodium
+     * @reason Redirect to our renderer
+     */
+    @Overwrite
+    public String getDebugInfoRenders() {
+        return this.renderer.getChunksDebugString();
+        // + ". F: " + this.renderersBeingClipped + ", O: " + this.renderersBeingOccluded + ", E: " + this.renderersSkippingRenderPass;
     }
 
    /**
