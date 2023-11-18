@@ -74,6 +74,8 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
     // The starting point from which this slice captures blocks
     private int baseX, baseY, baseZ;
 
+    private final int worldHeight;
+
     // The chunk origin of this slice
     @Getter
     private ChunkSectionPos origin;
@@ -120,6 +122,7 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
     public WorldSlice(WorldClient world) {
         this.world = world;
+        this.worldHeight = world.getHeight();
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
         this.blockStatesArrays = new BlockState[SECTION_TABLE_ARRAY_SIZE][];
@@ -218,7 +221,7 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
     @Override
     public int getHeight() {
-        return this.world.provider.getActualHeight();
+        return this.worldHeight;
     }
 
     @Override
