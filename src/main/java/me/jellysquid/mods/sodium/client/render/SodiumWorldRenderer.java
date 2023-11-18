@@ -374,7 +374,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     }
 
     public void onChunkRenderUpdated(int x, int y, int z, ChunkRenderData meshBefore, ChunkRenderData meshAfter) {
-        ListUtil.updateList(this.globalTileEntities, meshBefore.getGlobalBlockEntities(), meshAfter.getGlobalBlockEntities());
+        ListUtil.updateList(this.globalTileEntities, meshBefore.getGlobalTileEntities(), meshAfter.getGlobalTileEntities());
 
         this.chunkRenderManager.onChunkRenderUpdates(x, y, z, meshAfter);
     }

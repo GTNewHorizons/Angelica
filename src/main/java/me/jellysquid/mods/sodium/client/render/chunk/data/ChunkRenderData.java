@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import com.gtnewhorizons.angelica.mixins.early.textures.ISpriteExt;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
@@ -28,18 +29,22 @@ public class ChunkRenderData {
             .build();
     public static final ChunkRenderData EMPTY = createEmptyData();
 
-    private List<TileEntity> globalBlockEntities;
-    private List<TileEntity> blockEntities;
+    private List<TileEntity> globalTileEntities;
+    private List<TileEntity> tileEntities;
 
     private EnumMap<BlockRenderPass, ChunkMeshData> meshes;
 
+    @Getter
     private ChunkOcclusionData occlusionData;
+    @Getter
     private ChunkRenderBounds bounds;
 
+    @Getter
     private List<TextureAtlasSprite> animatedSprites;
 
     private boolean isEmpty;
     private int meshByteSize;
+    @Getter
     private int facesWithData;
 
     /**
@@ -49,31 +54,19 @@ public class ChunkRenderData {
         return this.isEmpty;
     }
 
-    public ChunkRenderBounds getBounds() {
-        return this.bounds;
-    }
-
-    public ChunkOcclusionData getOcclusionData() {
-        return this.occlusionData;
-    }
-
-    public List<TextureAtlasSprite> getAnimatedSprites() {
-        return this.animatedSprites;
-    }
-
     /**
      * The collection of block entities contained by this rendered chunk.
      */
-    public Collection<TileEntity> getBlockEntities() {
-        return this.blockEntities;
+    public Collection<TileEntity> getTileEntities() {
+        return this.tileEntities;
     }
 
     /**
      * The collection of block entities contained by this rendered chunk section which are not part of its culling
      * volume. These entities should always be rendered regardless of the render being visible in the frustum.
      */
-    public Collection<TileEntity> getGlobalBlockEntities() {
-        return this.globalBlockEntities;
+    public Collection<TileEntity> getGlobalTileEntities() {
+        return this.globalTileEntities;
     }
 
     /**
@@ -93,14 +86,10 @@ public class ChunkRenderData {
         return this.meshByteSize;
     }
 
-    public int getFacesWithData() {
-        return this.facesWithData;
-    }
-
     public ChunkRenderData copyAndReplaceMesh(Map<BlockRenderPass, ChunkMeshData> replacements) {
         ChunkRenderData data = new ChunkRenderData();
-        data.globalBlockEntities = this.globalBlockEntities;
-        data.blockEntities = this.blockEntities;
+        data.globalTileEntities = this.globalTileEntities;
+        data.tileEntities = this.tileEntities;
         data.occlusionData = this.occlusionData;
         data.meshes = new EnumMap<>(this.meshes);
         data.bounds = this.bounds;
@@ -118,7 +107,7 @@ public class ChunkRenderData {
             }
         }
 
-        data.isEmpty = this.globalBlockEntities.isEmpty() && this.blockEntities.isEmpty() && facesWithData == 0;
+        data.isEmpty = this.globalTileEntities.isEmpty() && this.tileEntities.isEmpty() && facesWithData == 0;
         data.meshByteSize = size;
         data.facesWithData = facesWithData;
         return data;
@@ -174,8 +163,8 @@ public class ChunkRenderData {
 
         public ChunkRenderData build() {
             ChunkRenderData data = new ChunkRenderData();
-            data.globalBlockEntities = this.globalBlockEntities;
-            data.blockEntities = this.blockEntities;
+            data.globalTileEntities = this.globalBlockEntities;
+            data.tileEntities = this.blockEntities;
             data.occlusionData = this.occlusionData;
             data.meshes = this.meshes;
             data.bounds = this.bounds;

@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderBounds;
@@ -20,11 +21,18 @@ import java.util.concurrent.CompletableFuture;
  */
 public class ChunkRenderContainer<T extends ChunkGraphicsState> {
     private final SodiumWorldRenderer worldRenderer;
-    private final int chunkX, chunkY, chunkZ;
+    @Getter
+    private final int chunkX;
+    @Getter
+    private final int chunkY;
+    @Getter
+    private final int chunkZ;
 
+    @Getter
     private final T[] graphicsStates;
     private final ChunkRenderColumn<T> column;
 
+    @Getter
     private ChunkRenderData data = ChunkRenderData.ABSENT;
     private CompletableFuture<Void> rebuildTask = null;
 
@@ -33,7 +41,9 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
 
     private boolean needsSort;
 
+    @Getter
     private boolean tickable;
+    @Getter
     private int id;
 
     private boolean rebuildableForTranslucents;
@@ -64,10 +74,6 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
             this.rebuildTask.cancel(false);
             this.rebuildTask = null;
         }
-    }
-
-    public ChunkRenderData getData() {
-        return this.data;
     }
 
     /**
@@ -263,10 +269,6 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
         return new BlockPos(this.getRenderX(), this.getRenderY(), this.getRenderZ());
     }
 
-    public T[] getGraphicsStates() {
-        return this.graphicsStates;
-    }
-
     public void setGraphicsState(BlockRenderPass pass, T state) {
         this.graphicsStates[pass.ordinal()] = state;
     }
@@ -281,28 +283,12 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
         return (xDist * xDist) + (zDist * zDist);
     }
 
-    public int getChunkX() {
-        return this.chunkX;
-    }
-
-    public int getChunkY() {
-        return this.chunkY;
-    }
-
-    public int getChunkZ() {
-        return this.chunkZ;
-    }
-
     public ChunkRenderBounds getBounds() {
         return this.data.getBounds();
     }
 
     public T getGraphicsState(BlockRenderPass pass) {
         return this.graphicsStates[pass.ordinal()];
-    }
-
-    public boolean isTickable() {
-        return this.tickable;
     }
 
     public int getFacesWithData() {
@@ -317,7 +303,4 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
         this.id = id;
     }
 
-    public int getId() {
-        return this.id;
-    }
 }
