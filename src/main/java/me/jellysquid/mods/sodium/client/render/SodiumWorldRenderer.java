@@ -127,6 +127,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         }
     }
 
+    public int getChunksSubmitted() {
+        return this.chunkRenderManager != null ? this.chunkRenderManager.getAndResetSubmitted() : 0;
+    }
+
     private void loadWorld(WorldClient world) {
         this.world = world;
 
@@ -167,7 +171,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      * Notifies the chunk renderer that the graph scene has changed and should be re-computed.
      */
     public void scheduleTerrainUpdate() {
-        // BUG: seems to be called before init
         if (this.chunkRenderManager != null) {
             this.chunkRenderManager.markDirty();
         }
@@ -432,7 +435,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     public String getChunksDebugString() {
         // C: visible/total
         // TODO: add dirty and queued counts
-        return String.format("C: %s/%s", this.chunkRenderManager.getVisibleChunkCount(), this.chunkRenderManager.getTotalSections());
+        return String.format("C: %s/%s S: %s Q: %s+%si ", this.chunkRenderManager.getVisibleChunkCount(), this.chunkRenderManager.getTotalSections(), this.chunkRenderManager.getSubmitted(), this.chunkRenderManager.getRebuildQueueSize(), this.chunkRenderManager.getImportantRebuildQueueSize());
     }
 
     /**

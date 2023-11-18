@@ -26,4 +26,9 @@ public class AngelicaMod {
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
     }
+
+    @Mod.EventHandler
+    public void postInit(FMLInitializationEvent event) {
+        proxy.postInit(event);
+    }
 }
