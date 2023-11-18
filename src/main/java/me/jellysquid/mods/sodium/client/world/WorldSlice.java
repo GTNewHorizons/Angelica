@@ -17,8 +17,11 @@ import me.jellysquid.mods.sodium.client.world.biome.BiomeColorCache;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -38,7 +41,7 @@ import java.util.Map;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
+public class WorldSlice implements BlockRenderView, BiomeAccess.Storage, IBlockAccess {
     // The number of blocks on each axis in a section.
     private static final int SECTION_BLOCK_LENGTH = 16;
 
@@ -66,7 +69,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
 
     // The world this slice has copied data from
     @Getter // Temp
-    private final World world;
+    private final WorldClient world;
 
     // Local Section->BlockState table.
     private final BlockState[][] blockStatesArrays;
@@ -134,7 +137,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
         return new ChunkRenderContext(origin, sections, volume);
     }
 
-    public WorldSlice(World world) {
+    public WorldSlice(WorldClient world) {
         this.world = world;
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
@@ -177,6 +180,66 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage {
                 }
             }
         }
+    }
+
+    @Override
+    public Block getBlock(int x, int y, int z) {
+        // TODO: Use local cache
+//        final BlockState state = this.getBlockState(x, y, z);
+//        return state == null ? Blocks.air : state.getBlock();
+        return this.world.getBlock(x, y, z);
+    }
+
+    @Override
+    public TileEntity getTileEntity(int x, int y, int z) {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
+        // TODO - avoid calling the world here
+        return this.world.getLightBrightnessForSkyBlocks(x, y, z, min);
+    }
+
+    @Override
+    public int getBlockMetadata(int x, int y, int z) {
+        // TODO: Use local cache
+//        final BlockState state = this.getBlockState(x, y, z);
+//        return state == null ? 0 : state.getMetadata();
+        return this.world.getBlockMetadata(x, y, z);
+    }
+
+    @Override
+    public int isBlockProvidingPowerTo(int x, int y, int z, int directionIn) {
+        return this.getBlock(x, y, z).isProvidingStrongPower(this, x, y, z, directionIn);
+    }
+
+    @Override
+    public boolean isAirBlock(int x, int y, int z) {
+        return this.getBlock(x, y, z).isAir(this, x, y, z);
+    }
+
+    @Override
+    public BiomeGenBase getBiomeGenForCoords(int x, int z) {
+        // TODO: Use local cache
+//        return this.getBiome(x, 0, z);
+        return this.world.getBiomeGenForCoords(x, z);
+    }
+
+    @Override
+    public int getHeight() {
+        return this.world.provider.getActualHeight();
+    }
+
+    @Override
+    public boolean extendedLevelsInChunkCache() {
+        return false;
+    }
+
+    @Override
+    public boolean isSideSolid(int x, int y, int z, ForgeDirection side, boolean _default) {
+        return getBlock(x, y, z).isSideSolid(this, x, y, z, side);
     }
 
     private void unpackBlockData(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {

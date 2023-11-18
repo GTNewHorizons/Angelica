@@ -19,6 +19,10 @@ public class BlockState implements IForgeBlockState {
         return block;
     }
 
+    public int getMetadata() {
+        return meta;
+    }
+
     public boolean isSideInvisible(BlockState adjState, ForgeDirection facing) {
         return false;
     }

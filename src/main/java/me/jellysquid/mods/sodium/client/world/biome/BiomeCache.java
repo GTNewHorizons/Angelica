@@ -15,7 +15,7 @@ public class BiomeCache {
 
     public BiomeCache(World world) {
         // TODO: Sodium
-        this.type = null;//world.getDimension().getBiomeAccessType();
+        this.type = null;//world.getDimension().getBiomeAccessType(); // Provider?
         this.seed = world.getSeed();
 
         this.biomes = new BiomeGenBase[16 * 16];
@@ -26,7 +26,7 @@ public class BiomeCache {
 
         BiomeGenBase biome = this.biomes[idx];
 
-        if (biome == null) {
+        if (biome == null && this.type != null) {
             this.biomes[idx] = biome = this.type.getBiome(this.seed, x, y, z, storage);
         }
 
