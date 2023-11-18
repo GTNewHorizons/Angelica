@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -81,6 +82,8 @@ public class BlockRenderer {
         final Block block = state.getBlock();
         // TODO: Occlusion by side... needs to break apart or invasively modify renderBlockByRenderType
         // Or figure out the facing of the quad...
+
+        tessellator.startDrawingQuads();
         rendered = renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
 
 //        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
@@ -101,7 +104,7 @@ public class BlockRenderer {
 
         this.random.setSeed(seed);
         final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
-
+        ((ITessellatorInstance) tessellator).discard();
 
 //        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
 

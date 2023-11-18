@@ -9,7 +9,6 @@ import com.gtnewhorizons.angelica.compat.mojang.FluidState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
 import com.gtnewhorizons.angelica.mixins.interfaces.IHasTessellator;
-import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -119,12 +118,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 //	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 //
 	                        long seed = blockState.getRenderingSeed(pos);
-                            tessellator.startDrawingQuads();
+
 
                             if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
 	                            bounds.addBlock(relX, relY, relZ);
 	                        }
-                            ((ITessellatorInstance) tessellator).discard();
+
 
                         }
                     }

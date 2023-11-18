@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client;
 
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.minecraft.client.Minecraft;
 import org.apache.logging.log4j.LogManager;
@@ -21,7 +22,11 @@ public class SodiumClientMod {
     public static final String MODID = "embeddium";
     public static final String NAME = "Embeddium";
 
+    @Getter
+    private static Thread MainThread;
+
     public SodiumClientMod() {
+        MainThread = Thread.currentThread();
 //        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
 //
 //        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
