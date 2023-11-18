@@ -62,29 +62,14 @@ public class BlockRenderer {
         final LightPipeline lighter = this.lighters.getLighter(mode);
         Vector3d offset = state.getModelOffset(world, pos);
 
-        boolean rendered;
+        boolean rendered = false;
 
 //        modelData = model.getModelData(world, pos, state, modelData);
-//
-//        if(ForgeBlockRenderer.useForgeLightingPipeline()) {
-//            MatrixStack mStack;
-//            if(!offset.equals(ZERO)) {
-//                mStack = new MatrixStack();
-//                mStack.translate(offset.x, offset.y, offset.z);
-//            } else
-//                mStack = EMPTY_STACK;
-//            final SinkingVertexBuilder builder = SinkingVertexBuilder.getInstance();
-//            builder.reset();
-//            rendered = forgeBlockRenderer.renderBlock(mode, state, pos, world, model, mStack, builder, random, seed, modelData, cull, this.occlusionCache, buffers.getRenderData());
-//            builder.flush(buffers);
-//            return rendered;
-//        }
+
         final Block block = state.getBlock();
-        // TODO: Occlusion by side... needs to break apart or invasively modify renderBlockByRenderType
-        // Or figure out the facing of the quad...
 
         tessellator.startDrawingQuads();
-        rendered = renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+        renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
 
 //        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
 //            this.random.setSeed(seed);
@@ -103,6 +88,7 @@ public class BlockRenderer {
 //        }
 
         this.random.setSeed(seed);
+        // TODO: Occlusion by side... Potentially adapt the logic from Neodyium...
         final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
         ((ITessellatorInstance) tessellator).discard();
 
@@ -119,7 +105,7 @@ public class BlockRenderer {
 
     private int tesselatorDataCount;
     private List<Quad> tesselatorToBakedQuadList(Tessellator t, BlockPos pos) {
-        // Temporarily borrowed/badly adapted from Neodymium
+        // Adapted from Neodymium
         tesselatorDataCount++;
 
 //        List<String> errors = new ArrayList<>();
