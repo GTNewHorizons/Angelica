@@ -5,9 +5,9 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
-import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -40,18 +40,8 @@ public class WorldSliceLocal implements BlockRenderView {
     }
 
     @Override
-    public int getLightLevel(LightType type, BlockPos pos) {
+    public int getLightLevel(EnumSkyBlock type, BlockPos pos) {
         return view.getLightLevel(type, pos);
-    }
-
-    @Override
-    public int getBaseLightLevel(BlockPos pos, int ambientDarkness) {
-        return view.getBaseLightLevel(pos, ambientDarkness);
-    }
-
-    @Override
-    public boolean isSkyVisible(BlockPos pos) {
-        return view.isSkyVisible(pos);
     }
 
     @Override

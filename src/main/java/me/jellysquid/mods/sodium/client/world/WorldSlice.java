@@ -8,7 +8,6 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.ColorResolver;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.compat.mojang.FluidState;
-import com.gtnewhorizons.angelica.compat.mojang.LightType;
 import com.gtnewhorizons.angelica.compat.mojang.LightingProvider;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import lombok.Getter;
@@ -21,6 +20,8 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -184,10 +185,7 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage, IBlockA
 
     @Override
     public Block getBlock(int x, int y, int z) {
-        // TODO: Use local cache
-//        final BlockState state = this.getBlockState(x, y, z);
-//        return state == null ? Blocks.air : state.getBlock();
-        return this.world.getBlock(x, y, z);
+        return this.getBlockState(x, y, z).getBlock();
     }
 
     @Override
@@ -198,16 +196,41 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage, IBlockA
 
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
-        // TODO - avoid calling the world here
-        return this.world.getLightBrightnessForSkyBlocks(x, y, z, min);
+        int skyBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Sky, x, y, z);
+        int blockBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Block, x, y, z);
+
+        if (blockBrightness < min) {
+            blockBrightness = min;
+        }
+
+        return skyBrightness << 20 | blockBrightness << 4;
+    }
+    public int getSkyBlockTypeBrightness(EnumSkyBlock skyBlock, int x, int y, int z) {
+        y = MathHelper.clamp_int(y, 0, 255);
+        if (y < 0 || y >= 256 || x < -30000000 || z < -30000000 || x >= 30000000 || z > 30000000) {
+            return skyBlock.defaultLightValue;
+        }
+        if (this.getBlock(x, y, z).getUseNeighborBrightness()) {
+            int yp = this.getLightLevel(skyBlock, x, y + 1, z);
+            int xp = this.getLightLevel(skyBlock, x + 1, y, z);
+            int xm = this.getLightLevel(skyBlock, x - 1, y, z);
+            int zp = this.getLightLevel(skyBlock, x, y, z + 1);
+            int zm = this.getLightLevel(skyBlock, x, y, z - 1);
+
+            if (xp > yp) yp = xp;
+            if (xm > yp) yp = xm;
+            if (zp > yp) yp = zp;
+            if (zm > yp) yp = zm;
+
+            return yp;
+        }
+
+        return this.getLightLevel(skyBlock, x, y, z);
     }
 
     @Override
     public int getBlockMetadata(int x, int y, int z) {
-        // TODO: Use local cache
-//        final BlockState state = this.getBlockState(x, y, z);
-//        return state == null ? 0 : state.getMetadata();
-        return this.world.getBlockMetadata(x, y, z);
+        return this.getBlockState(x, y, z).getMetadata();
     }
 
     @Override
@@ -379,22 +402,18 @@ public class WorldSlice implements BlockRenderView, BiomeAccess.Storage, IBlockA
     }
 
     @Override
-    public int getLightLevel(LightType type, BlockPos pos) {
-        int relX = pos.x - this.baseX;
-        int relY = pos.y - this.baseY;
-        int relZ = pos.z - this.baseZ;
+    public int getLightLevel(EnumSkyBlock type, BlockPos pos) {
+        return getLightLevel(type, pos.x, pos.y, pos.z);
+    }
+
+    public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
+        y = MathHelper.clamp_int(y, 0, 255);
+
+        int relX = x - this.baseX;
+        int relY = y - this.baseY;
+        int relZ = z - this.baseZ;
 
         return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getLightLevel(type, relX & 15, relY & 15, relZ & 15);
-    }
-
-    @Override
-    public int getBaseLightLevel(BlockPos pos, int ambientDarkness) {
-        return 0;
-    }
-
-    @Override
-    public boolean isSkyVisible(BlockPos pos) {
-        return false;
     }
 
     @Override

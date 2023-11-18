@@ -74,7 +74,7 @@ public class BlockRenderer {
         final LightPipeline lighter = this.lighters.getLighter(mode);
         Vector3d offset = state.getModelOffset(world, pos);
 
-        boolean rendered = false;
+        boolean rendered;
 
 //        modelData = model.getModelData(world, pos, state, modelData);
 //
@@ -113,7 +113,7 @@ public class BlockRenderer {
 //        }
 
         this.random.setSeed(seed);
-        List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
+        final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
 
 
 //        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
