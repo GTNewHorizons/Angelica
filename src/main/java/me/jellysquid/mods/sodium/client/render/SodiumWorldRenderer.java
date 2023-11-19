@@ -300,7 +300,8 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     private static ChunkRenderBackend<?> createChunkRenderBackend(RenderDevice device, SodiumGameOptions options, ChunkVertexType vertexFormat) {
         boolean disableBlacklist = SodiumClientMod.options().advanced.ignoreDriverBlacklist;
 
-        if (options.advanced.useChunkMultidraw && MultidrawChunkRenderBackend.isSupported(disableBlacklist)) {
+        // TODO: Re-enable multidraw
+        if (false && options.advanced.useChunkMultidraw && MultidrawChunkRenderBackend.isSupported(disableBlacklist)) {
             return new MultidrawChunkRenderBackend(device, vertexFormat);
         } else {
             return new ChunkRenderBackendOneshot(vertexFormat);
