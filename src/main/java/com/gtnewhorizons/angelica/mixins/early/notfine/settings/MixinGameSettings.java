@@ -18,7 +18,7 @@ public abstract class MixinGameSettings {
     private static String[] GUISCALES = new String[] {
         "options.guiScale.auto",
         "options.guiScale.small",
-        "options.guiScale.getNormal",
+        "options.guiScale.normal",
         "options.guiScale.large",
         "options.guiScale.massive"
     };

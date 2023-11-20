@@ -20,7 +20,7 @@ public class MixinLayeredTexture {
 
     /**
      * @author glowredman
-     * @reason must take getNormal and specular maps into account
+     * @reason must take normal and specular maps into account
      */
     @Overwrite
     public void loadTexture(IResourceManager p_110551_1_) throws IOException {
