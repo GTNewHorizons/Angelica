@@ -51,7 +51,8 @@ public class GLStateManagerTransformer implements IClassTransformer {
         if (basicClass == null) return null;
 
 
-        // Ignore classes that are excluded from transformation - Doesn't seem to fully work without the TransformerExclusions
+        // Ignore classes that are excluded from transformation - Doesn't fully work without the
+        // TransformerExclusions due to some nested classes
         for (String exclusion : TransformerExclusions) {
             if (className.startsWith(exclusion)) {
                 return basicClass;
@@ -84,6 +85,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
                             owner = GLStateTracker;
                             remaps++;
                         }
+                        // TODO: Add an optional (if DEBUG) inject to assert we're on the main thread.
                         super.visitMethodInsn(opcode, owner, name, desc, itf);
                     }
                 };
