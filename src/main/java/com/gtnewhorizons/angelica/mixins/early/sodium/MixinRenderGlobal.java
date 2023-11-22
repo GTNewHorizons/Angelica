@@ -75,16 +75,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         return this.renderer.getChunksDebugString();
     }
 
-   /**
+    /**
      * @author Sodium
      * @reason Redirect to our renderer
-     */
+    */
     @Overwrite
     public int renderSortedRenderers(int x, int z, int pass, double partialTicks) {
         // Do nothing
         return 0;
     }
-   /**
+    /**
      * @author Sodium
      * @reason Redirect to our renderer
      */
@@ -93,7 +93,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         // Do nothing
     }
 
-   /**
+    /**
      * @author Sodium
      * @reason Redirect to our renderer
      */
@@ -102,7 +102,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         // Do nothing
     }
 
-   /**
+    /**
      * @author Sodium
      * @reason Redirect to our renderer
      */
@@ -111,7 +111,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         // Do nothing
     }
 
-   /**
+    /**
      * @author Sodium
      * @reason Redirect to our renderer
      */

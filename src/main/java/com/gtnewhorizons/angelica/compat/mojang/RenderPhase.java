@@ -146,8 +146,8 @@ public abstract class RenderPhase {
     private static ResourceLocation ATLAS = TextureMap.locationBlocksTexture;
     static {
         // TODO: Sodium - SpriteAtlasTexture
-        MIPMAP_BLOCK_ATLAS_TEXTURE = new Texture(ATLAS/*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, true);
-        BLOCK_ATLAS_TEXTURE = new Texture(ATLAS /*SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE*/, false, false);
+        MIPMAP_BLOCK_ATLAS_TEXTURE = new Texture(ATLAS, false, true);
+        BLOCK_ATLAS_TEXTURE = new Texture(ATLAS, false, false);
         NO_TEXTURE = new Texture();
         DEFAULT_TEXTURING = new Texturing("default_texturing", () -> {
         }, () -> {
@@ -327,6 +327,7 @@ public abstract class RenderPhase {
             this.width = optionalDouble;
         }
 
+        @Override
         public boolean equals(@Nullable Object object) {
             if (this == object) {
                 return true;
@@ -337,10 +338,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
-            return Objects.hash(new Object[]{super.hashCode(), this.width});
+            return Objects.hash(super.hashCode(), this.width);
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + (this.width.isPresent() ? this.width.getAsDouble() : "window_scale") + ']';
         }
@@ -396,6 +399,7 @@ public abstract class RenderPhase {
             this.depth = depth;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -407,10 +411,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
-            return Objects.hash(new Object[]{this.color, this.depth});
+            return Objects.hash(this.color, this.depth);
         }
 
+        @Override
         public String toString() {
             return this.name + "[writeColor=" + this.color + ", writeDepth=" + this.depth + ']';
         }
@@ -439,6 +445,7 @@ public abstract class RenderPhase {
             this.func = i;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -450,10 +457,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
             return Integer.hashCode(this.func);
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + this.depthFunction + ']';
         }
@@ -547,6 +556,7 @@ public abstract class RenderPhase {
             this.enabled = bl;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -558,10 +568,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
             return Boolean.hashCode(this.enabled);
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + this.enabled + ']';
         }
@@ -595,6 +607,7 @@ public abstract class RenderPhase {
             this.layer = layer;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -606,6 +619,7 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
             return Integer.hashCode(this.layer);
         }
@@ -634,6 +648,7 @@ public abstract class RenderPhase {
             this.y = y;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -645,8 +660,9 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
-            return Objects.hash(new Object[]{this.x, this.y});
+            return Objects.hash(this.x, this.y);
         }
     }
 
@@ -683,6 +699,7 @@ public abstract class RenderPhase {
             this.mipmap = false;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -694,10 +711,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
             return this.id.hashCode();
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + this.id + "(blur=" + this.bilinear + ", mipmap=" + this.mipmap + ")]";
         }
@@ -718,6 +737,7 @@ public abstract class RenderPhase {
             this.smooth = smooth;
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -729,10 +749,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
             return Boolean.hashCode(this.smooth);
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + (this.smooth ? "smooth" : "flat") + ']';
         }
@@ -759,6 +781,7 @@ public abstract class RenderPhase {
             this.alpha = alpha;
         }
 
+        @Override
         public boolean equals(@Nullable Object object) {
             if (this == object) {
                 return true;
@@ -773,10 +796,12 @@ public abstract class RenderPhase {
             }
         }
 
+        @Override
         public int hashCode() {
-            return Objects.hash(new Object[]{super.hashCode(), this.alpha});
+            return Objects.hash(super.hashCode(), this.alpha);
         }
 
+        @Override
         public String toString() {
             return this.name + '[' + this.alpha + ']';
         }
