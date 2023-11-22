@@ -1,12 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
-import me.jellysquid.mods.sodium.client.render.entity.EntityLightSampler;
-import net.minecraft.block.Block;
 import net.minecraft.util.MathHelper;
 import net.minecraft.entity.Entity;
+import net.minecraft.world.EnumSkyBlock;
 
 import static org.joml.Math.lerp;
 
@@ -63,11 +60,9 @@ public class EntityLighter {
                 for (int bZ = bMinZ; bZ < bMaxZ; bZ++) {
                     pos.set(bX, bY, bZ);
 
-                    // TODO - Sodium - Blocks
-                    Block block = entity.worldObj.getBlock(pos.x, pos.y, pos.z);
-
                     // Do not consider light-blocking volumes
-                    if (block.isOpaqueCube() && entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z) <= 0) {
+                    if (entity.worldObj.getBlock(pos.x, pos.y, pos.z).isOpaqueCube()
+                        && entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z) <= 0) {
                         continue;
                     }
 
@@ -81,18 +76,15 @@ public class EntityLighter {
                     // Keep count of how much light could've been contributed
                     max += weight;
 
-                    // lighter.bridge$getSkyLight(entity, pos) and lighter.bridge$getBlockLight(entity, pos) replaced
-                    // get the sky light at that block pos
-                    // x, y, z, block light to add
-                    double skylight = entity.worldObj.getLightBrightnessForSkyBlocks(pos.x, pos.y, pos.z, 0);
-                    // Ditto for block light, BUT it's always 15 if the entity is on fire
-                    double blklight = (entity.isBurning()) ? 15 : entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z);
+                    // note: lighter.bridge$getSkyLight(entity, pos) and lighter.bridge$getBlockLight(entity, pos)
+                    // were replaced, mixin+this method de-generified. as far as I can tell they only existed because
+                    // Sodium had a weird setup just for paintings, don't think we need it.
 
                     // Sum the light actually contributed by this volume
-                    sl += weight * (skylight / MAX_LIGHT_VAL);
+                    sl += weight * (entity.worldObj.getSkyBlockTypeBrightness(EnumSkyBlock.Sky, pos.x, pos.y, pos.z) / MAX_LIGHT_VAL);
 
                     if (calcBlockLight) {
-                        bl += weight * (blklight / MAX_LIGHT_VAL);
+                        bl += weight * (entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z) / MAX_LIGHT_VAL);
                     } else {
                         bl += weight;
                     }
