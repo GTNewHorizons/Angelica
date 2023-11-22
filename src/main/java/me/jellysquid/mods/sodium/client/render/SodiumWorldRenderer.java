@@ -34,7 +34,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.format.DefaultModelVertexFo
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManager;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
-import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
@@ -245,7 +244,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         profiler.endSection();
 
-        SodiumGameOptions.EntityRenderDistance.setRenderDistanceMult(MathUtil.clamp((double) this.client.gameSettings.renderDistanceChunks / 8.0D, 1.0D, 2.5D) * (double) 1.0F * (SettingsManager.entityRenderScaleFactor/100));
+        SodiumGameOptions.EntityRenderDistance.setRenderDistanceMult(MathHelper.clamp_double((double) this.client.gameSettings.renderDistanceChunks / 8.0D, 1.0D, 2.5D) * (double) 1.0F * (SettingsManager.entityRenderScaleFactor/100));
     }
 
     /**
