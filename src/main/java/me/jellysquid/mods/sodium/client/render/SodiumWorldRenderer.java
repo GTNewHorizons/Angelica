@@ -14,10 +14,12 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumerProvider;
 import com.gtnewhorizons.angelica.compat.mojang.VertexConsumers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.early.sodium.MixinEntity;
 import com.gtnewhorizons.angelica.mixins.interfaces.IHasClientChunkProvider;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import jss.notfine.core.SettingsManager;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -32,6 +34,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.format.DefaultModelVertexFo
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManager;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
+import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
@@ -239,8 +242,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         profiler.endSection();
 
-        // TODO: Sodium RenderDistance
-//        Entity.setRenderDistanceMultiplier(MathHelper.clamp((double) this.client.options.viewDistance / 8.0D, 1.0D, 2.5D) * (double) 1.0F/*this.client.options.entityDistanceScaling*/);
+        SodiumGameOptions.EntityRenderDistance.setRenderDistanceMult(MathUtil.clamp((double) this.client.gameSettings.renderDistanceChunks / 8.0D, 1.0D, 2.5D) * (double) 1.0F * (SettingsManager.entityRenderScaleFactor/100));
     }
 
     /**

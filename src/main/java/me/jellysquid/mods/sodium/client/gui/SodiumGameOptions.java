@@ -42,6 +42,16 @@ public class SodiumGameOptions {
         public boolean alwaysDeferChunkUpdates = false;
     }
 
+    public static class EntityRenderDistance {
+        public static double entityRenderDistanceMultiplier = 1.0;
+
+        public static double getRenderDistanceMult() {
+            return entityRenderDistanceMultiplier;
+        }
+        public static void setRenderDistanceMult(double value) {
+            entityRenderDistanceMultiplier = value;
+        }
+    }
     public static class QualitySettings {
         public GraphicsQuality cloudQuality = GraphicsQuality.DEFAULT;
         public GraphicsQuality weatherQuality = GraphicsQuality.DEFAULT;

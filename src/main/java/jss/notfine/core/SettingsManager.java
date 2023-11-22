@@ -24,6 +24,7 @@ public class SettingsManager {
     public static boolean leavesOpaque;
     public static boolean waterDetail;
     public static boolean vignette;
+    public static double entityRenderScaleFactor = 1.0;
 
     public static ResourceLocation defaultBackground = Gui.optionsBackground;
     public static ResourceLocation[] extraBackgrounds = new ResourceLocation[] {
@@ -127,6 +128,10 @@ public class SettingsManager {
                 vignette = false;
                 break;
         }
+    }
+
+    public static void entityRenderDistanceUpdated() {
+        entityRenderScaleFactor = Settings.RENDER_DISTANCE_ENTITIES.getValue();
     }
 
     public static void graphicsUpdated() {
