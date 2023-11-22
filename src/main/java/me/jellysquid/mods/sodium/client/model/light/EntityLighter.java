@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import me.jellysquid.mods.sodium.client.render.entity.EntityLightSampler;
+import net.minecraft.block.Block;
 import net.minecraft.util.MathHelper;
 import net.minecraft.entity.Entity;
 
@@ -15,13 +16,13 @@ public class EntityLighter {
     private static final double MAX_LIGHT_VAL = 15.0;
     private static final double MAX_LIGHTMAP_COORD = 240.0D;
 
-    public static <T extends Entity> int getBlendedLight(EntityLightSampler<T> lighter, T entity, float tickDelta) {
+    public static int getBlendedLight(Entity entity, float tickDelta) {
         boolean calcBlockLight = !entity.isBurning();
 
         // Find the interpolated position of the entity
-        double x1 = lerp(tickDelta, entity.prevPosX, entity.posX);
-        double y1 = lerp(tickDelta, entity.prevPosY, entity.posY);
-        double z1 = lerp(tickDelta, entity.prevPosZ, entity.posZ);
+        double x1 = lerp(entity.prevPosX, entity.posX, tickDelta);
+        double y1 = lerp(entity.prevPosY, entity.posY, tickDelta);
+        double z1 = lerp(entity.prevPosZ, entity.posZ, tickDelta);
 
         // Bounding boxes with no volume cause issues, ensure they're non-zero
         // Notably, armor stands in "Marker" mode decide this is a cute thing to do
@@ -63,10 +64,10 @@ public class EntityLighter {
                     pos.set(bX, bY, bZ);
 
                     // TODO - Sodium - Blocks
-                    BlockState blockState = null; /*entity.worldObj.getBlockState(pos);*/
+                    Block block = entity.worldObj.getBlock(pos.x, pos.y, pos.z);
 
                     // Do not consider light-blocking volumes
-                    if (blockState.isOpaqueFullCube((BlockRenderView)entity.worldObj, pos) && blockState.getLightValue((BlockRenderView)entity.worldObj, pos) <= 0) {
+                    if (block.isOpaqueCube() && entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z) <= 0) {
                         continue;
                     }
 
@@ -80,11 +81,18 @@ public class EntityLighter {
                     // Keep count of how much light could've been contributed
                     max += weight;
 
+                    // lighter.bridge$getSkyLight(entity, pos) and lighter.bridge$getBlockLight(entity, pos) replaced
+                    // get the sky light at that block pos
+                    // x, y, z, block light to add
+                    double skylight = entity.worldObj.getLightBrightnessForSkyBlocks(pos.x, pos.y, pos.z, 0);
+                    // Ditto for block light, BUT it's always 15 if the entity is on fire
+                    double blklight = (entity.isBurning()) ? 15 : entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z);
+
                     // Sum the light actually contributed by this volume
-                    sl += weight * (lighter.bridge$getSkyLight(entity, pos) / MAX_LIGHT_VAL);
+                    sl += weight * (skylight / MAX_LIGHT_VAL);
 
                     if (calcBlockLight) {
-                        bl += weight * (lighter.bridge$getBlockLight(entity, pos) / MAX_LIGHT_VAL);
+                        bl += weight * (blklight / MAX_LIGHT_VAL);
                     } else {
                         bl += weight;
                     }
