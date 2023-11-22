@@ -114,8 +114,8 @@ public class ChunkRenderData {
     }
 
     public static class Builder {
-        private final List<TileEntity> globalBlockEntities = new ArrayList<>();
-        private final List<TileEntity> blockEntities = new ArrayList<>();
+        private final List<TileEntity> globalTileEntities = new ArrayList<>();
+        private final List<TileEntity> tileEntities = new ArrayList<>();
         private final Set<TextureAtlasSprite> animatedSprites = new ObjectOpenHashSet<>();
 
         private final EnumMap<BlockRenderPass, ChunkMeshData> meshes = new EnumMap<>(BlockRenderPass.class);
@@ -157,14 +157,14 @@ public class ChunkRenderData {
          * @param entity The block entity itself
          * @param cull True if the block entity can be culled to this chunk render's volume, otherwise false
          */
-        public void addBlockEntity(TileEntity entity, boolean cull) {
-            (cull ? this.blockEntities : this.globalBlockEntities).add(entity);
+        public void addTileEntity(TileEntity entity, boolean cull) {
+            (cull ? this.tileEntities : this.globalTileEntities).add(entity);
         }
 
         public ChunkRenderData build() {
             ChunkRenderData data = new ChunkRenderData();
-            data.globalTileEntities = this.globalBlockEntities;
-            data.tileEntities = this.blockEntities;
+            data.globalTileEntities = this.globalTileEntities;
+            data.tileEntities = this.tileEntities;
             data.occlusionData = this.occlusionData;
             data.meshes = this.meshes;
             data.bounds = this.bounds;
@@ -181,7 +181,7 @@ public class ChunkRenderData {
                 }
             }
 
-            data.isEmpty = this.globalBlockEntities.isEmpty() && this.blockEntities.isEmpty() && facesWithData == 0;
+            data.isEmpty = this.globalTileEntities.isEmpty() && this.tileEntities.isEmpty() && facesWithData == 0;
             data.meshByteSize = size;
             data.facesWithData = facesWithData;
 

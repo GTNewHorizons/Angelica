@@ -241,4 +241,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderChunksDeep = 0;
     }
 
+    @Inject(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER))
+    public void sodium$renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks, CallbackInfo ci) {
+        this.renderer.renderTileEntities(entity, camera, partialTicks);
+    }
+
+
 }

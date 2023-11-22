@@ -71,9 +71,10 @@ public class ClonedChunkSection {
         this.tileEntities.clear();
 
         for (Map.Entry<ChunkPosition, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
-            BlockPos entityPos = new BlockPos(entry.getKey());
+            final TileEntity tile = entry.getValue();
+            final BlockPos entityPos = new BlockPos(tile.xCoord, tile.yCoord, tile.zCoord);
 
-            if(box.isVecInside(entityPos.getX(), entityPos.getY(), entityPos.getZ())) {
+            if(box.isVecInside(tile.xCoord, tile.yCoord, tile.zCoord)) {
                 //this.blockEntities.put(BlockPos.asLong(entityPos.getX() & 15, entityPos.getY() & 15, entityPos.getZ() & 15), entry.getValue());
             	this.tileEntities.put(ChunkSectionPos.packLocal(entityPos), entry.getValue());
             }

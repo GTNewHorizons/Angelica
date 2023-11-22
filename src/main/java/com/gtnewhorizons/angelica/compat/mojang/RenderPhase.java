@@ -26,31 +26,30 @@ public abstract class RenderPhase {
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
-        GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     });
     protected static final Transparency LIGHTNING_TRANSPARENCY = new Transparency("lightning_transparency", () -> {
-        GLStateManager.disableBlend();
+        GLStateManager.enableBlend();
         GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
     protected static final Transparency GLINT_TRANSPARENCY = new Transparency("glint_transparency", () -> {
-        GLStateManager.disableBlend();
+        GLStateManager.enableBlend();
         GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
     protected static final Transparency CRUMBLING_TRANSPARENCY = new Transparency("crumbling_transparency", () -> {
-        GLStateManager.disableBlend();
+        GLStateManager.enableBlend();
         GLStateManager.glBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
     protected static final Transparency TRANSLUCENT_TRANSPARENCY = new Transparency("translucent_transparency", () -> {
-        GLStateManager.disableBlend();
+        GLStateManager.enableBlend();
         GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }, () -> {
         GLStateManager.disableBlend();

@@ -153,7 +153,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             // TODO: Sodium - Per-chunk tile entities
                             // !rendersOutsideBoundingBox(entity) in sodium
                             // entity.getRenderBoundingBox() != TileEntity.INFINITE_EXTENT_AABB rough equivalent in 1.7.10
-                            renderData.addBlockEntity(entity, false);
+                            renderData.addTileEntity(entity, false);
                             bounds.addBlock(relX, relY, relZ);
                         }
                     }
