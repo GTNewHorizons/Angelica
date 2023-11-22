@@ -305,10 +305,10 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addEntitiesToRenderLists(ChunkRenderContainer<T> render) {
-        Collection<TileEntity> blockEntities = render.getData().getTileEntities();
+        Collection<TileEntity> tileEntities = render.getData().getTileEntities();
 
-        if (!blockEntities.isEmpty()) {
-            this.visibleBlockEntities.addAll(blockEntities);
+        if (!tileEntities.isEmpty()) {
+            this.visibleBlockEntities.addAll(tileEntities);
         }
     }
 
