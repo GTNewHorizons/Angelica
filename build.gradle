@@ -1,4 +1,4 @@
-//version: 1698936026
+//version: 1699290261
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -1187,9 +1187,8 @@ publishing {
             version = System.getenv("RELEASE_VERSION") ?: identifiedVersion
         }
     }
-
     repositories {
-        if (usesMavenPublishing.toBoolean()) {
+        if (usesMavenPublishing.toBoolean() && System.getenv("MAVEN_USER") != null) {
             maven {
                 url = mavenPublishUrl
                 allowInsecureProtocol = mavenPublishUrl.startsWith("http://") // Mostly for the GTNH maven
