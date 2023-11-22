@@ -41,6 +41,7 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinWorldRenderer"
+            ,"sodium.MixinEntity"
         )
     ),
 

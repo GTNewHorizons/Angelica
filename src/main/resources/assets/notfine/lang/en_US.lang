@@ -60,3 +60,4 @@ options.title.particle=Particle Settings | NotFine alpha
 options.title.sky=Atmosphere Settings | NotFine alpha
 options.title.video=Video Settings | NotFine alpha
 options.total_stars=Star Density
+options.render_distance_entities=Entity Render Mult

@@ -79,8 +79,13 @@ public enum Settings {
         public void updateSetting() {
             RenderStars.reloadStarRenderList(Minecraft.getMinecraft().renderGlobal);
         }
+    },
+    RENDER_DISTANCE_ENTITIES(true, 100f, 50f, 500f, 25f) {
+        @Override
+        public void updateSetting() {
+            SettingsManager.entityRenderDistanceUpdated();
+        }
     };
-
     public final boolean slider;
     public final float base;
     public final float minimum;
