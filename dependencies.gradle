@@ -38,6 +38,8 @@ dependencies {
     compileOnly(sourceSets.compileStubs.output)
     compileStubs(sourceSets.compileStubsStubs.output)
 
+    api("com.github.GTNewHorizons:Hodgepodge:2.3.32")
+
     // Iris Shaders
     implementation('org.jetbrains:annotations:24.0.1')
     implementation("it.unimi.dsi:fastutil:8.2.1")
