@@ -40,8 +40,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
+import net.minecraft.client.renderer.culling.ICamera;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
@@ -312,53 +315,54 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         return frustum.isBoundingBoxInFrustum(entity.getRenderBoundingBox());
     }
 
-    public void renderTileEntities(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions,
-                                   Camera camera, float tickDelta) {
-        VertexConsumerProvider.Immediate immediate = bufferBuilders.getEntityVertexConsumers();
-
-        Vector3d cameraPos = camera.getPos();
-        double x = cameraPos.x;
-        double y = cameraPos.y;
-        double z = cameraPos.z;
-
+    public void renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks) {
+//        VertexConsumerProvider.Immediate immediate = bufferBuilders.getEntityVertexConsumers();
+//
+//        Vector3d cameraPos = camera.getPos();
+//        double x = cameraPos.x;
+//        double y = cameraPos.y;
+//        double z = cameraPos.z;
+//
         for (TileEntity tileEntity : this.chunkRenderManager.getVisibleBlockEntities()) {
             if(tileEntity.isInvalid() || !checkBEVisibility(tileEntity))
                 continue;
-            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
-
-            matrices.push();
-            matrices.translate((double) pos.x - x, (double) pos.y - y, (double) pos.z - z);
-
-            VertexConsumerProvider consumer = immediate;
-            SortedSet<BlockBreakingInfo> breakingInfos = blockBreakingProgressions.get(pos.asLong());
-
-            if (breakingInfos != null && !breakingInfos.isEmpty()) {
-                int stage = breakingInfos.last().getStage();
-
-                if (stage >= 0) {
-                    MatrixStack.Entry entry = matrices.peek();
-                    VertexConsumer transformer = new OverlayVertexConsumer(bufferBuilders.getEffectVertexConsumers().getBuffer(ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(stage)), entry.getModel(), entry.getNormal());
-                    consumer = (layer) -> layer.hasCrumbling() ? VertexConsumers.union(transformer, immediate.getBuffer(layer)) : immediate.getBuffer(layer);
-                }
-            }
+//            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
+//
+//            matrices.push();
+//            matrices.translate((double) pos.x - x, (double) pos.y - y, (double) pos.z - z);
+//
+//            VertexConsumerProvider consumer = immediate;
+//            SortedSet<BlockBreakingInfo> breakingInfos = blockBreakingProgressions.get(pos.asLong());
+//
+//            if (breakingInfos != null && !breakingInfos.isEmpty()) {
+//                int stage = breakingInfos.last().getStage();
+//
+//                if (stage >= 0) {
+//                    MatrixStack.Entry entry = matrices.peek();
+//                    VertexConsumer transformer = new OverlayVertexConsumer(bufferBuilders.getEffectVertexConsumers().getBuffer(ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(stage)), entry.getModel(), entry.getNormal());
+//                    consumer = (layer) -> layer.hasCrumbling() ? VertexConsumers.union(transformer, immediate.getBuffer(layer)) : immediate.getBuffer(layer);
+//                }
+//            }
             // TODO: Sodium TileEntity Rendering Dispatcher
+            TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
 //            BlockEntityRenderDispatcher.INSTANCE.render(tileEntity, tickDelta, matrices, consumer);
 
-            matrices.pop();
+//            matrices.pop();
         }
 
         for (TileEntity tileEntity : this.globalTileEntities) {
             if(!checkBEVisibility(tileEntity))
                 continue;
-            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
-
-            matrices.push();
-            matrices.translate((double) pos.x - x, (double) pos.y - y, (double) pos.z - z);
+//            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
+//
+//            matrices.push();
+//            matrices.translate((double) pos.x - x, (double) pos.y - y, (double) pos.z - z);
 
             // TODO: Sodium TileEntity Rendering Dispatcher
+            TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
 //            BlockEntityRenderDispatcher.INSTANCE.render(tileEntity, tickDelta, matrices, immediate);
 
-            matrices.pop();
+//            matrices.pop();
         }
     }
 
