@@ -94,12 +94,14 @@ public class FluidRenderer {
     }
 
     public boolean render(BlockRenderView world, FluidState fluidState, BlockPos pos, ChunkModelBuffers buffers) {
+
         int posX = pos.x;
         int posY = pos.y;
         int posZ = pos.z;
 
         Fluid fluid = fluidState.getFluid();
 
+        // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
         boolean sfDown = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.DOWN, fluid) ||
                 !this.isSideExposed(world, posX, posY, posZ, ForgeDirection.DOWN, 0.8888889F);
