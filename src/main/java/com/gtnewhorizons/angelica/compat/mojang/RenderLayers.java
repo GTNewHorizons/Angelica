@@ -13,22 +13,12 @@ public class RenderLayers {
     }
 
     public static boolean canRenderInLayer(Block block, RenderLayer layer) {
+        if(layer == RenderLayer.translucent())
+            return block.canRenderInPass(1);
+        else if(layer == RenderLayer.cutoutMipped())
+            return block.canRenderInPass(0);
 
-        // Translucent blocks
-        if (((MixinMaterial) block.getMaterial()).getIsTranslucent())
-            return layer == RenderLayer.translucent();
-
-        // TODO: use Sodium rendering for fluids. This if can be removed once that's done
-        if(block.getMaterial() == Material.water)
-            return layer == RenderLayer.translucent();
-
-        // TODO: Make all full, opaque blocks SOLID, or remove SOLID entirely
-        // This misses things like fences and walls, but it doesn't matter too much
-        //if (block.isOpaqueCube())
-        //    return layer == RenderLayer.solid();
-
-        // TODO: CUTOUT is more performant, but this is fine for testing
-        return layer == RenderLayer.cutoutMipped();
+        return false;
     }
 
     public static boolean canRenderInLayer(FluidState fluidState, RenderLayer layer) {
@@ -36,7 +26,6 @@ public class RenderLayers {
     }
 
     public static boolean canRenderFluidInLayer(Block block, RenderLayer layer) {
-
         // Make all water-type fluids translucent, and all others solid
         // This may be revisited later, but it *should* be fine for now
         // Translucent fluids
