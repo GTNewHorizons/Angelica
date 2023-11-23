@@ -25,6 +25,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
+import static org.joml.Math.lerp;
+
 // Let other mixins apply, and then overwrite them
 @Mixin(value = RenderGlobal.class, priority = 2000)
 public class MixinRenderGlobal implements IRenderGlobalExt {
@@ -129,10 +131,9 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         // Roughly equivalent to `renderLayer`
         RenderDevice.enterManagedCode();
 
-        final double x = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks;
-        final double y = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks;
-        final double z = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * partialTicks;
-
+        final double x = lerp(entity.lastTickPosX, entity.posX, partialTicks);
+        final double y = lerp(entity.lastTickPosY, entity.posY, partialTicks);
+        final double z = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
             MatrixStack matrixStack = new MatrixStack();

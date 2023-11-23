@@ -3,6 +3,8 @@ package net.minecraft.client.renderer.texture;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
 
+import java.util.Map;
+
 public class TextureMap extends AbstractTexture {
 
     public static ResourceLocation locationBlocksTexture;
@@ -24,4 +26,6 @@ public class TextureMap extends AbstractTexture {
     public int getTextureType() {
         return 0;
     }
+
+    public Object getTextureEntry(String iconName) { return null; }
 }

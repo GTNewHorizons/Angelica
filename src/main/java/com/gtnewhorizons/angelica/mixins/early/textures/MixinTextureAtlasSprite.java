@@ -1,12 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.textures;
 
+import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(TextureAtlasSprite.class)
-public abstract class MixinTextureAtlasSprite implements ISpriteExt  {
+public abstract class MixinTextureAtlasSprite implements ISpriteExt {
     @Shadow
     private AnimationMetadataSection animationMetadata;
 
