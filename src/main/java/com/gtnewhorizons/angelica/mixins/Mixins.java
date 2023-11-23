@@ -67,7 +67,7 @@ public enum Mixins {
 
     ANGELICA_TEXTURE(new Builder("Texture").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
-
+            "textures.MixinTextureAtlasSprite"
         )),
 
     // TODO: Iris

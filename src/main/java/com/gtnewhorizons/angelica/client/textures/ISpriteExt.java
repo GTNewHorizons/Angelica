@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.textures;
+package com.gtnewhorizons.angelica.client.textures;
 
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 

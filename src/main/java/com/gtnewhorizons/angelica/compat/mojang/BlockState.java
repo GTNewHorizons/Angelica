@@ -31,7 +31,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public boolean isOpaque() {
-        return true;
+        return block.getMaterial().isOpaque();
     }
 
     public VoxelShape getCullingFace(BlockView view, BlockPos pos, ForgeDirection facing) {

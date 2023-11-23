@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
-import com.gtnewhorizons.angelica.mixins.early.textures.ISpriteExt;
+import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
@@ -143,7 +143,7 @@ public class ChunkRenderData {
          * @param sprite The sprite
          */
         public void addSprite(TextureAtlasSprite sprite) {
-            if (((ISpriteExt)sprite).isAnimation()) {
+            if (((ISpriteExt) sprite).isAnimation()) {
                 this.animatedSprites.add(sprite);
             }
         }

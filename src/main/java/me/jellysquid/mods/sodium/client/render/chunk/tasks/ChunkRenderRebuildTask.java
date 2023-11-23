@@ -95,9 +95,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
+
                     BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
                     // I don't like this but it's needed since we have no World
                     Block block = blockState.getBlock();
+                    boolean isFluid = FluidRegistry.lookupFluidForBlock(block) != null;
+
                     // TODO: Sodium - BlockState
                     if (block == Blocks.air) {
                         continue;
@@ -108,8 +111,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
                     // 1.7.10 has -1 (air, INVISIBLE), 0, (normal cubes), and 1+ (everything else)
-                    // For 1.16-style rendering non-TEs definitely map to MODEL... some TE's too but that's complicated
-                    if (!block.hasTileEntity(blockState.getMetadata())/*blockState.getRenderType() == BlockRenderType.MODEL*/) {
+                    // We don't actually use models, we have normal blocks and TEs
+                    // Also divert fluids
+                    if (!block.hasTileEntity(blockState.getMetadata()) && !isFluid) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
 
 	                        if (!RenderLayers.canRenderInLayer(block, layer)) {
@@ -131,14 +135,13 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
 	                            bounds.addBlock(relX, relY, relZ);
 	                        }
-
                         }
                     }
 
 
                     FluidState fluidState = blockState.getFluidState();
 
-                    if (FluidRegistry.lookupFluidForBlock(block) != null) {
+                    if (isFluid) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
                             if (!RenderLayers.canRenderFluidInLayer(block, layer)) {
                                 continue;

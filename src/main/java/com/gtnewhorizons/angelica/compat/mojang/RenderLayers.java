@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 import com.gtnewhorizons.angelica.mixins.early.sodium.MixinMaterial;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
+import net.minecraft.block.material.MaterialLiquid;
 import net.minecraftforge.fluids.Fluid;
 
 public class RenderLayers {
@@ -14,11 +15,16 @@ public class RenderLayers {
     public static boolean canRenderInLayer(Block block, RenderLayer layer) {
 
         // Translucent blocks
-        if (!((MixinMaterial) block.getMaterial()).getIsTranslucent())
+        if (((MixinMaterial) block.getMaterial()).getIsTranslucent())
             return layer == RenderLayer.translucent();
 
-        // TODO: Handle CUTOUT and CUTOUT_MIPPED and TileEntities
-        return layer == RenderLayer.solid();
+        // Make all full, opaque blocks SOLID
+        // This misses things like fences and walls, but it doesn't matter too much
+        if (block.isOpaqueCube())
+            return layer == RenderLayer.solid();
+
+        // TODO: CUTOUT is more performant, but this is fine for testing
+        return layer == RenderLayer.cutoutMipped();
     }
 
     public static boolean canRenderInLayer(FluidState fluidState, RenderLayer layer) {
@@ -30,8 +36,9 @@ public class RenderLayers {
         // Make all water-type fluids translucent, and all others solid
         // This may be revisited later, but it *should* be fine for now
         // Translucent fluids
-        if (block.getMaterial() == Material.water)
-            return layer == RenderLayer.translucent();
+        if (block.getMaterial() == Material.water) {
+            return layer == RenderLayer.solid();
+        }
 
         return layer == RenderLayer.solid();
     }

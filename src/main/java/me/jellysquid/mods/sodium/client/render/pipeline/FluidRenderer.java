@@ -23,6 +23,7 @@ import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -62,10 +63,11 @@ public class FluidRenderer {
         BlockPos adjPos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
 
         if (blockState.isOpaque()) {
-            return Objects.equals(world.getFluidState(adjPos).getFluid(), fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
+            return world.getFluidState(adjPos).getFluid() == fluid || blockState.isSideSolid(world, pos, dir, SideShapeType.FULL);
             // fluidlogged or next to water, occlude sides that are solid or the same liquid
+            // For a liquid block that's always
             }
-        return Objects.equals(world.getFluidState(adjPos).getFluid(), fluid);
+        return world.getFluidState(adjPos).getFluid() == fluid;
     }
 
     private boolean isSideExposed(BlockRenderView world, int x, int y, int z, ForgeDirection dir, float height) {
@@ -110,7 +112,13 @@ public class FluidRenderer {
             return false;
         }
 
-        TextureAtlasSprite[] sprites = ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
+        // sprites[0] should be the still frames, [1] the flowing, [2] the overlay
+        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because I can't find it used anywhere
+        TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
+            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 1),
+            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 2),
+            null
+        };//ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
         boolean hc = fluidState.getFluid().getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
 
         boolean rendered = false;
