@@ -10,6 +10,7 @@ import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -129,6 +130,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
+        RenderHelper.disableStandardItemLighting();
+        this.mc.entityRenderer.enableLightmap(partialTicks);
         // Roughly equivalent to `renderLayer`
         RenderDevice.enterManagedCode();
 
@@ -139,16 +142,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         try {
             MatrixStack matrixStack = new MatrixStack();
             final List<RenderLayer> renderLayers = switch(pass) {
-                case 0 -> ImmutableList.of(RenderLayer.solid(), RenderLayer.cutoutMipped(), RenderLayer.cutout());
+                case 0 -> ImmutableList.of(RenderLayer.cutoutMipped());
                 case 1 -> ImmutableList.of(RenderLayer.translucent());
                 default -> throw new IllegalStateException("Unexpected value: " + pass);
             };
             for (RenderLayer renderLayer : renderLayers) {
                 this.renderer.drawChunkLayer(renderLayer, matrixStack, x, y, z);
             }
-            GL11.glDepthMask(true);
         } finally {
             RenderDevice.exitManagedCode();
+            this.mc.entityRenderer.disableLightmap(partialTicks);
         }
         return 0;
     }
