@@ -50,13 +50,13 @@ public class FastCubicSampler {
         double totalFactor = 0.0D;
 
         for(int x = 0; x < DIAMETER; ++x) {
-            double densityX = lerp(deltaX, DENSITY_CURVE[x + 1], DENSITY_CURVE[x]);
+            double densityX = lerp(DENSITY_CURVE[x + 1], DENSITY_CURVE[x], deltaX);
 
             for(int y = 0; y < DIAMETER; ++y) {
-                double densityY = lerp(deltaY, DENSITY_CURVE[y + 1], DENSITY_CURVE[y]);
+                double densityY = lerp(DENSITY_CURVE[y + 1], DENSITY_CURVE[y], deltaY);
 
                 for(int z = 0; z < DIAMETER; ++z) {
-                    double densityZ = lerp(deltaZ, DENSITY_CURVE[z + 1], DENSITY_CURVE[z]);
+                    double densityZ = lerp(DENSITY_CURVE[z + 1], DENSITY_CURVE[z], deltaZ);
 
                     double factor = densityX * densityY * densityZ;
                     totalFactor += factor;

@@ -112,7 +112,7 @@ public class FluidRenderer {
 
         TextureAtlasSprite[] sprites = ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
         // TODO: Sodium - Fluids
-        boolean hc = true; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
+        boolean hc = fluidState.getFluid().getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
 
         boolean rendered = false;
 
@@ -176,14 +176,14 @@ public class FluidRenderer {
             float s2 = (float) sprites[0].getIconHeight() / (sprites[0].getMaxV() - sprites[0].getMinV());
             float s3 = 4.0F / Math.max(s2, s1);
 
-            u1 = lerp(s3, u1, uAvg);
-            u2 = lerp(s3, u2, uAvg);
-            u3 = lerp(s3, u3, uAvg);
-            u4 = lerp(s3, u4, uAvg);
-            v1 = lerp(s3, v1, vAvg);
-            v2 = lerp(s3, v2, vAvg);
-            v3 = lerp(s3, v3, vAvg);
-            v4 = lerp(s3, v4, vAvg);
+            u1 = lerp(u1, uAvg, s3);
+            u2 = lerp(u2, uAvg, s3);
+            u3 = lerp(u3, uAvg, s3);
+            u4 = lerp(u4, uAvg, s3);
+            v1 = lerp(v1, vAvg, s3);
+            v2 = lerp(v2, vAvg, s3);
+            v3 = lerp(v3, vAvg, s3);
+            v4 = lerp(v4, vAvg, s3);
 
             quad.setSprite(sprite);
 
