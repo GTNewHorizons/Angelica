@@ -29,6 +29,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
+import java.util.Objects;
+
 import static org.joml.Math.lerp;
 
 public class FluidRenderer {
@@ -60,10 +62,10 @@ public class FluidRenderer {
         BlockPos adjPos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
 
         if (blockState.isOpaque()) {
-            return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
+            return Objects.equals(world.getFluidState(adjPos).getFluid(), fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
             // fluidlogged or next to water, occlude sides that are solid or the same liquid
             }
-        return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid);
+        return Objects.equals(world.getFluidState(adjPos).getFluid(), fluid);
     }
 
     private boolean isSideExposed(BlockRenderView world, int x, int y, int z, ForgeDirection dir, float height) {

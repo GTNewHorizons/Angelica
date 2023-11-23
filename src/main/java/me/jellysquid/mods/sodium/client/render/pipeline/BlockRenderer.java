@@ -58,6 +58,8 @@ public class BlockRenderer {
     }
 
     public boolean renderModel(BlockRenderView world, Tessellator tessellator, RenderBlocks renderBlocks, BlockState state, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+
+        final Block block = state.getBlock();
         final LightMode mode = this.getLightingMode(state, world, pos);
         final LightPipeline lighter = this.lighters.getLighter(mode);
         Vector3d offset = state.getModelOffset(world, pos);
@@ -65,8 +67,6 @@ public class BlockRenderer {
         boolean rendered = false;
 
 //        modelData = model.getModelData(world, pos, state, modelData);
-
-        final Block block = state.getBlock();
 
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
@@ -220,9 +220,12 @@ public class BlockRenderer {
     }
 
     private LightMode getLightingMode(BlockState state, BlockRenderView world, BlockPos pos) {
+        return getLightingMode(state.getBlock(), world, pos);
+    }
+
+    private LightMode getLightingMode(Block block, BlockRenderView world, BlockPos pos) {
         // TODO: Sodium: Ambient Occlusion
-        final Block block = state.getBlock();
-        if (this.useAmbientOcclusion && block.getLightValue() == 0 && /*model.isAmbientOcclusion(state) &&*/ state.getLightValue(world, pos) == 0) {
+        if (this.useAmbientOcclusion && /* model.isAmbientOcclusion(state) &&*/ block.getLightValue() == 0) {
             return LightMode.SMOOTH;
         } else {
             return LightMode.FLAT;

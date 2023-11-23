@@ -19,15 +19,19 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderBounds;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheLocal;
+import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
+import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.MathHelper;
+import net.minecraftforge.fluids.FluidRegistry;
 import org.joml.Vector3d;
 
 /**
@@ -92,8 +96,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
                     BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
+                    // I don't like this but it's needed since we have no World
+                    Block block = blockState.getBlock();
                     // TODO: Sodium - BlockState
-                    if (blockState == null || blockState.getBlock() == Blocks.air /* || blockState.isAir()*/) {
+                    if (block == Blocks.air) {
                         continue;
                     }
 
@@ -101,9 +107,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
-                    if (blockState.getRenderType() == BlockRenderType.MODEL) {
+                    // 1.7.10 has -1 (air, INVISIBLE), 0, (normal cubes), and 1+ (everything else)
+                    // For 1.16-style rendering non-TEs definitely map to MODEL... some TE's too but that's complicated
+                    if (!block.hasTileEntity(blockState.getMetadata())/*blockState.getRenderType() == BlockRenderType.MODEL*/) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
-	                        if (!RenderLayers.canRenderInLayer(blockState, layer)) {
+
+	                        if (!RenderLayers.canRenderInLayer(block, layer)) {
 	                        	continue;
 	                        }
 
@@ -112,18 +121,16 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
 	                        ForgeHooksClientExt.setRenderLayer(layer);
 
-
-//                            IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
+//                          IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
 //
 //	                        BakedModel model = cache.getBlockModels().getModel(blockState);
 //
-	                        long seed = blockState.getRenderingSeed(pos);
-
+                            // This method calls block.getRenderingSeed, which just hashes the position
+	                        long seed = MathUtil.hashPos(pos.x, pos.y, pos.z); //blockState.getRenderingSeed(pos);
 
                             if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
 	                            bounds.addBlock(relX, relY, relZ);
 	                        }
-
 
                         }
                     }
@@ -131,9 +138,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     FluidState fluidState = blockState.getFluidState();
 
-                    if (fluidState != null && !fluidState.isEmpty()) {
+                    if (FluidRegistry.lookupFluidForBlock(block) != null) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
-                            if (!RenderLayers.canRenderInLayer(fluidState, layer)) {
+                            if (!RenderLayers.canRenderFluidInLayer(block, layer)) {
                                 continue;
                             }
 

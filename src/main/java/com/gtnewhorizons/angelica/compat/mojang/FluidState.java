@@ -1,16 +1,25 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import net.minecraft.block.Block;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
 public class FluidState {
 
+    private final Fluid fluid;
+    private final int meta;
+
+    public FluidState(Fluid fluid, int meta) {
+        this.fluid = fluid;
+        this.meta = meta;
+    }
+
     public boolean isEmpty() {
-        return false;
+        return fluid == null;
     }
 
     public Fluid getFluid() {
-        return null;
+        return fluid;
     }
 
     public Vector3d getVelocity(BlockRenderView world, BlockPos pos) {
