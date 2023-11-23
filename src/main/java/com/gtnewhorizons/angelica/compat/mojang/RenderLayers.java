@@ -22,10 +22,10 @@ public class RenderLayers {
         if(block.getMaterial() == Material.water)
             return layer == RenderLayer.translucent();
 
-        // Make all full, opaque blocks SOLID
+        // TODO: Make all full, opaque blocks SOLID, or remove SOLID entirely
         // This misses things like fences and walls, but it doesn't matter too much
-        if (block.isOpaqueCube())
-            return layer == RenderLayer.solid();
+        //if (block.isOpaqueCube())
+        //    return layer == RenderLayer.solid();
 
         // TODO: CUTOUT is more performant, but this is fine for testing
         return layer == RenderLayer.cutoutMipped();
