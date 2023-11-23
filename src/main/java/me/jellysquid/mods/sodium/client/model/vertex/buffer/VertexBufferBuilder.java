@@ -26,6 +26,7 @@ public class VertexBufferBuilder implements VertexBufferView {
 
         // Allocate a new buffer and copy the old buffer's contents into it
         ByteBuffer buffer = BufferUtils.createByteBuffer(cap);
+        this.buffer.rewind();
         buffer.put(this.buffer);
         buffer.position(0);
 
