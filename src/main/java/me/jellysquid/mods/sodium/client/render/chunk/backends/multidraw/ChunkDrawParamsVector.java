@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -30,11 +31,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
 
     protected void growBuffer() {
         this.capacity = this.capacity * 2;
-        ByteBuffer buffer = BufferUtils.createByteBuffer(this.capacity * this.stride);
-        this.buffer.rewind();
-        buffer.put(this.buffer);
-        buffer.position(0);
-        this.buffer = buffer;
+        this.buffer = CompatMemoryUtil.memReallocDirect(this.buffer, this.capacity * this.stride);
     }
 
     public static class NioChunkDrawCallVector extends ChunkDrawParamsVector {
