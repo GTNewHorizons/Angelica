@@ -23,11 +23,14 @@ import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
+
+import java.util.Objects;
 
 import static org.joml.Math.lerp;
 
@@ -60,10 +63,11 @@ public class FluidRenderer {
         BlockPos adjPos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
 
         if (blockState.isOpaque()) {
-            return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid) || blockState.isSideSolid(world,pos,dir, SideShapeType.FULL);
+            return world.getFluidState(adjPos).getFluid() == fluid || blockState.isSideSolid(world, pos, dir, SideShapeType.FULL);
             // fluidlogged or next to water, occlude sides that are solid or the same liquid
+            // For a liquid block that's always
             }
-        return world.getFluidState(adjPos).getFluid().equals/*matchesType*/(fluid);
+        return world.getFluidState(adjPos).getFluid() == fluid;
     }
 
     private boolean isSideExposed(BlockRenderView world, int x, int y, int z, ForgeDirection dir, float height) {
@@ -90,12 +94,14 @@ public class FluidRenderer {
     }
 
     public boolean render(BlockRenderView world, FluidState fluidState, BlockPos pos, ChunkModelBuffers buffers) {
+
         int posX = pos.x;
         int posY = pos.y;
         int posZ = pos.z;
 
         Fluid fluid = fluidState.getFluid();
 
+        // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
         boolean sfDown = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.DOWN, fluid) ||
                 !this.isSideExposed(world, posX, posY, posZ, ForgeDirection.DOWN, 0.8888889F);
@@ -108,9 +114,14 @@ public class FluidRenderer {
             return false;
         }
 
-        TextureAtlasSprite[] sprites = ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
-        // TODO: Sodium - Fluids
-        boolean hc = true; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
+        // sprites[0] should be the still frames, [1] the flowing, [2] the overlay
+        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because I can't find it used anywhere
+        TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
+            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 1),
+            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 2),
+            null
+        };//ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
+        boolean hc = fluidState.getFluid().getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
 
         boolean rendered = false;
 
@@ -174,14 +185,14 @@ public class FluidRenderer {
             float s2 = (float) sprites[0].getIconHeight() / (sprites[0].getMaxV() - sprites[0].getMinV());
             float s3 = 4.0F / Math.max(s2, s1);
 
-            u1 = lerp(s3, u1, uAvg);
-            u2 = lerp(s3, u2, uAvg);
-            u3 = lerp(s3, u3, uAvg);
-            u4 = lerp(s3, u4, uAvg);
-            v1 = lerp(s3, v1, vAvg);
-            v2 = lerp(s3, v2, vAvg);
-            v3 = lerp(s3, v3, vAvg);
-            v4 = lerp(s3, v4, vAvg);
+            u1 = lerp(u1, uAvg, s3);
+            u2 = lerp(u2, uAvg, s3);
+            u3 = lerp(u3, uAvg, s3);
+            u4 = lerp(u4, uAvg, s3);
+            v1 = lerp(v1, vAvg, s3);
+            v2 = lerp(v2, vAvg, s3);
+            v3 = lerp(v3, vAvg, s3);
+            v4 = lerp(v4, vAvg, s3);
 
             quad.setSprite(sprite);
 
@@ -415,7 +426,7 @@ public class FluidRenderer {
             int z2 = z - (i >> 1 & 1);
 
 
-            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid().equals/*matchesType*/(fluid)) {
+            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid() == fluid) {
                 return 1.0F;
             }
 
@@ -424,7 +435,7 @@ public class FluidRenderer {
             BlockState blockState = world.getBlockState(pos);
             FluidState fluidState = blockState.getFluidState();
 
-            if (fluidState.getFluid().equals/*matchesType*/(fluid)) {
+            if (fluidState.getFluid() == fluid) {
                 float height = fluidState.getHeight(world, pos);
 
                 if (height >= 0.8F) {

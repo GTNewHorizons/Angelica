@@ -2,8 +2,11 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.BlockFluidBase;
+import net.minecraftforge.fluids.FluidRegistry;
 import org.joml.Vector3d;
 
 public class BlockState implements IForgeBlockState {
@@ -28,7 +31,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public boolean isOpaque() {
-        return true;
+        return block.getMaterial().isOpaque();
     }
 
     public VoxelShape getCullingFace(BlockView view, BlockPos pos, ForgeDirection facing) {
@@ -76,7 +79,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public FluidState getFluidState() {
-        return null;
+        return new FluidState(FluidRegistry.lookupFluidForBlock(block), meta);
     }
 
     public boolean shouldDisplayFluidOverlay(BlockRenderView world, BlockPos adjPos, FluidState fluidState) {
