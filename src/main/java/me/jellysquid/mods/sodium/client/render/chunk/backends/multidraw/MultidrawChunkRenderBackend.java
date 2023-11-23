@@ -230,6 +230,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
 	            }
             }
 
+            pointer += batch.getArrayLength();
         }
 
         this.pendingBatches.clear();

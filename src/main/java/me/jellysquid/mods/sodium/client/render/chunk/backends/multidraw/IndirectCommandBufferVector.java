@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -18,9 +19,7 @@ public class IndirectCommandBufferVector extends StructBuffer {
     }
 
     public void end() {
-        if(this.buffer.position() > 0) {
-            this.buffer.flip();
-        }
+        this.buffer.flip();
     }
 
     public void pushCommandBuffer(ChunkDrawCallBatcher batcher) {
@@ -34,11 +33,6 @@ public class IndirectCommandBufferVector extends StructBuffer {
     }
 
     protected void growBuffer(int n) {
-        ByteBuffer buffer = BufferUtils.createByteBuffer(Math.max(this.buffer.capacity() * 2, this.buffer.capacity() + n));
-        this.buffer.rewind();
-        buffer.put(this.buffer);
-        buffer.position(0);
-
-        this.buffer = buffer;
+        this.buffer = CompatMemoryUtil.memReallocDirect(this.buffer, Math.max(this.buffer.capacity() * 2, this.buffer.capacity() + n));
     }
 }

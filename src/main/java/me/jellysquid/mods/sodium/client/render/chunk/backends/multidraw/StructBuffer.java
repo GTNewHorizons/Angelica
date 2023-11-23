@@ -24,7 +24,6 @@ public abstract class StructBuffer {
     }
 
     public void delete() {
-        this.buffer.clear();
-        this.buffer = null;
+        // no-op, because Java direct buffers free themselves
     }
 }
