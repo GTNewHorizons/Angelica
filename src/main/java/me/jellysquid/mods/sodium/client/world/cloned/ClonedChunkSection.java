@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import lombok.Getter;
 import net.minecraft.block.Block;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
@@ -70,13 +71,24 @@ public class ClonedChunkSection {
 
         this.tileEntities.clear();
 
-        for (Map.Entry<ChunkPosition, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
-            final TileEntity tile = entry.getValue();
-            final BlockPos entityPos = new BlockPos(tile.xCoord, tile.yCoord, tile.zCoord);
+        // Check for tile entities
+        for(int y = pos.getMinY(); y <= pos.getMaxY(); y++) {
+            for(int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
+                for(int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
+                    int lX = x & 15, lY = y & 15, lZ = z & 15;
+                    // We have to use this insanity because in 1.7 the tile entity isn't guaranteed to be created
+                    // when the chunk gets scheduled for rendering. So we might have to create it.
+                    // Cloning is done on the main thread so this will not introduce threading issues
+                    Block block = data.getBlockByExtId(lX, lY, lZ);
+                    if(block.hasTileEntity(data.getExtBlockMetadata(lX, lY, lZ))) {
+                        TileEntity tileentity = chunk.func_150806_e(x & 15, y, z & 15);
 
-            if(box.isVecInside(tile.xCoord, tile.yCoord, tile.zCoord)) {
-                //this.blockEntities.put(BlockPos.asLong(entityPos.getX() & 15, entityPos.getY() & 15, entityPos.getZ() & 15), entry.getValue());
-            	this.tileEntities.put(ChunkSectionPos.packLocal(entityPos), entry.getValue());
+                        if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileentity))
+                        {
+                            this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)), tileentity);
+                        }
+                    }
+                }
             }
         }
     }
