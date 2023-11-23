@@ -90,7 +90,9 @@ public class ClonedChunkSection {
     }
     public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
         if(type == EnumSkyBlock.Sky) {
-            return data.hasSky ? data.getExtSkylightValue(x, y, z) : 0;
+            if(world.provider.hasNoSky)
+                return 0;
+            return data.hasSky ? data.getExtSkylightValue(x, y, z) : type.defaultLightValue;
         }
         return data.getExtBlocklightValue(x, y, z);
     }
