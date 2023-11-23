@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
@@ -23,6 +24,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -258,6 +260,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Inject(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER))
     public void sodium$renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks, CallbackInfo ci) {
         this.renderer.renderTileEntities(entity, camera, partialTicks);
+    }
+
+    @Redirect(method="renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;isInRangeToRender3d(DDD)Z"))
+    private boolean isInRange(Entity e, double x, double y, double z) {
+        // TODO: this check is done slightly earlier than Sodium does it, make sure it doesn't cull too much
+        return e.isInRangeToRender3d(x, y, z) && SodiumWorldRenderer.getInstance().isEntityVisible(e);
     }
 
 

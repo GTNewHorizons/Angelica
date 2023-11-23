@@ -397,11 +397,11 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      * @return True if the entity is visible, otherwise false
      */
     public boolean isEntityVisible(Entity entity) {
-        if (!this.useEntityCulling) {
+        if (!this.useEntityCulling || entity.ignoreFrustumCheck) {
             return true;
         }
 
-        AxisAlignedBB box = entity.getBoundingBox();
+        AxisAlignedBB box = entity.boundingBox;
 
         // Entities outside the valid world height will never map to a rendered chunk
         // Always render these entities or they'll be culled incorrectly!
