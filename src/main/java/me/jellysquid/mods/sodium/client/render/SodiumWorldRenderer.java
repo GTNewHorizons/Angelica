@@ -252,11 +252,12 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      */
     public void drawChunkLayer(RenderLayer renderLayer, MatrixStack matrixStack, double x, double y, double z) {
         BlockRenderPass pass = this.renderPassManager.getRenderPassForLayer(renderLayer);
-        pass.startDrawing();
+        // startDrawing/endDrawing are handled by 1.7 already
+        //pass.startDrawing();
 
         this.chunkRenderManager.renderLayer(matrixStack, pass, x, y, z);
 
-        pass.endDrawing();
+        //pass.endDrawing();
 
         GLStateManager.clearCurrentColor();
     }
