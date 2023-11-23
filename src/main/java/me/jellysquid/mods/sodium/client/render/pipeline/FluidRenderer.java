@@ -111,7 +111,6 @@ public class FluidRenderer {
         }
 
         TextureAtlasSprite[] sprites = ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
-        // TODO: Sodium - Fluids
         boolean hc = fluidState.getFluid().getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
 
         boolean rendered = false;
@@ -417,7 +416,7 @@ public class FluidRenderer {
             int z2 = z - (i >> 1 & 1);
 
 
-            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid().equals/*matchesType*/(fluid)) {
+            if (world.getFluidState(this.scratchPos.set(x2, y + 1, z2)).getFluid() == fluid) {
                 return 1.0F;
             }
 
@@ -426,7 +425,7 @@ public class FluidRenderer {
             BlockState blockState = world.getBlockState(pos);
             FluidState fluidState = blockState.getFluidState();
 
-            if (fluidState.getFluid().equals/*matchesType*/(fluid)) {
+            if (fluidState.getFluid() == fluid) {
                 float height = fluidState.getHeight(world, pos);
 
                 if (height >= 0.8F) {
