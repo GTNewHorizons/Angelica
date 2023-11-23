@@ -44,6 +44,7 @@ public enum Mixins {
             ,"sodium.MixinEntity"
             ,"sodium.MixinRenderManager"
             ,"sodium.MixinMaterial"
+            ,"sodium.MixinGameSettings"
         )
     ),
 
