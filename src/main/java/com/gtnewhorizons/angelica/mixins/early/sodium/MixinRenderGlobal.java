@@ -130,6 +130,11 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
+        // Handle view distance change
+        if(this.renderDistanceChunks != this.mc.gameSettings.renderDistanceChunks) {
+            this.loadRenderers();
+        }
+
         RenderHelper.disableStandardItemLighting();
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_ALPHA_TEST);
