@@ -8,6 +8,8 @@ public class FogHelper {
     private static final float FAR_PLANE_THRESHOLD_EXP = (float) Math.log(1.0f / 0.0019f);
     private static final float FAR_PLANE_THRESHOLD_EXP2 = (float) Math.sqrt(FAR_PLANE_THRESHOLD_EXP);
 
+    public static float red, green, blue;
+
     public static float getFogEnd() {
     	return GLStateManager.getFog().end;
     }
@@ -24,7 +26,7 @@ public class FogHelper {
      * Retrieves the current fog mode from the fixed-function pipeline.
      */
     public static ChunkFogMode getFogMode() {
-        int mode = 0; //GLStateManager.getFog().fogMode; // TODO fix fog
+        int mode = GLStateManager.getFog().fogMode;
 
         if(mode == 0 || !GLStateManager.getFog().mode.isEnabled())
         	return ChunkFogMode.NONE;
@@ -50,6 +52,6 @@ public class FogHelper {
     public static float[] getFogColor() {
         // TODO: Sodium
 //    	return new float[]{BackgroundRenderer.red, BackgroundRenderer.green, BackgroundRenderer.blue, 1.0F};
-    	return new float[]{0.0F, 0.0F, 0.0F, 1.0F};
+    	return new float[]{red, green, blue, 1.0F};
     }
 }

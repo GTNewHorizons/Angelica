@@ -74,6 +74,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_CULL_FACE -> enableCull();
             case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL11.GL_FOG -> enableFog();
             default -> GL11.glEnable(cap);
         }
     }
@@ -86,6 +87,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_CULL_FACE -> disableCull();
             case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL11.GL_FOG -> disableFog();
             default -> GL11.glDisable(cap);
         }
     }

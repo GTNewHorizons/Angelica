@@ -131,6 +131,9 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
         RenderHelper.disableStandardItemLighting();
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_FOG);
         this.mc.entityRenderer.enableLightmap(partialTicks);
         // Roughly equivalent to `renderLayer`
         RenderDevice.enterManagedCode();
