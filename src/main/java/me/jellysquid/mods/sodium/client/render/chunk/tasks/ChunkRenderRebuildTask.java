@@ -97,8 +97,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 for (int relX = 0; relX < 16; relX++) {
 
                     BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
-                    // I don't like this but it's needed since we have no World
+
+                    // Can be replaced by slice.getBlockStateRelative if BlockState gets yeeted
                     Block block = blockState.getBlock();
+
                     boolean isFluid = FluidRegistry.lookupFluidForBlock(block) != null;
 
                     // TODO: Sodium - BlockState
@@ -112,8 +114,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     // 1.7.10 has -1 (air, INVISIBLE), 0, (normal cubes), and 1+ (everything else)
                     // We don't actually use models, we have normal blocks and TEs
-                    // Also divert fluids
-                    if (!block.hasTileEntity(blockState.getMetadata()) && !isFluid) {
+                    // TODO: use Sodium rendering for fluids
+                    if (!block.hasTileEntity(blockState.getMetadata()) /*&& !isFluid*/) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
 
 	                        if (!RenderLayers.canRenderInLayer(block, layer)) {
@@ -141,7 +143,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     FluidState fluidState = blockState.getFluidState();
 
-                    if (isFluid) {
+                    // TODO: use Sodium rendering for fluids
+                    if (isFluid && false) {
                         for (RenderLayer layer : RenderLayer.getBlockLayers()) {
                             if (!RenderLayers.canRenderFluidInLayer(block, layer)) {
                                 continue;

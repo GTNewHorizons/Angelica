@@ -18,6 +18,10 @@ public class RenderLayers {
         if (((MixinMaterial) block.getMaterial()).getIsTranslucent())
             return layer == RenderLayer.translucent();
 
+        // TODO: use Sodium rendering for fluids. This if can be removed once that's done
+        if(block.getMaterial() == Material.water)
+            return layer == RenderLayer.translucent();
+
         // Make all full, opaque blocks SOLID
         // This misses things like fences and walls, but it doesn't matter too much
         if (block.isOpaqueCube())
