@@ -24,7 +24,7 @@ public class SettingsManager {
     public static boolean leavesOpaque;
     public static boolean waterDetail;
     public static boolean vignette;
-    public static double entityRenderScaleFactor = 1.0;
+    public static double entityRenderScaleFactor;
 
     public static ResourceLocation defaultBackground = Gui.optionsBackground;
     public static ResourceLocation[] extraBackgrounds = new ResourceLocation[] {
