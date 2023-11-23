@@ -31,6 +31,7 @@ public enum Mixins {
         .setPhase(Phase.EARLY).addMixinClasses(
              "sodium.MixinChunkProviderClient"
             ,"sodium.MixinExtendedBlockStorage"
+            ,"sodium.MixinEntityRenderer"
             ,"sodium.MixinFMLClientHandler"
             ,"sodium.MixinFrustrum"
             ,"sodium.MixinMinecraft"
