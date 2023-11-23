@@ -29,10 +29,11 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
     }
 
     protected void growBuffer() {
-        ByteBuffer oldBuffer = this.buffer;
         this.capacity = this.capacity * 2;
-        this.buffer = BufferUtils.createByteBuffer(this.capacity * this.stride);
-        buffer.put((ByteBuffer) oldBuffer.rewind());
+        ByteBuffer buffer = BufferUtils.createByteBuffer(this.capacity * this.stride);
+        buffer.put(this.buffer);
+        buffer.position(0);
+        this.buffer = buffer;
     }
 
     public static class NioChunkDrawCallVector extends ChunkDrawParamsVector {
