@@ -80,7 +80,7 @@ public enum Settings {
             RenderStars.reloadStarRenderList(Minecraft.getMinecraft().renderGlobal);
         }
     },
-    RENDER_DISTANCE_ENTITIES(true, 100f, 50f, 500f, 25f) {
+    RENDER_DISTANCE_ENTITIES(true, 1.0f, 0.5f, 5.0f, 0.25f) {
         @Override
         public void updateSetting() {
             SettingsManager.entityRenderDistanceUpdated();
