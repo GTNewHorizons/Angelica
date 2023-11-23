@@ -52,6 +52,7 @@ import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
+import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
 import speiger.src.collections.longs.maps.interfaces.Long2ObjectMap;
 
@@ -324,8 +325,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 //        double y = cameraPos.y;
 //        double z = cameraPos.z;
 //
+        int pass = MinecraftForgeClient.getRenderPass();
         for (TileEntity tileEntity : this.chunkRenderManager.getVisibleBlockEntities()) {
-            if(tileEntity.isInvalid() || !checkBEVisibility(tileEntity))
+            if(tileEntity.isInvalid() || !tileEntity.shouldRenderInPass(pass) || !checkBEVisibility(tileEntity))
                 continue;
 //            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
 //
@@ -352,7 +354,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         }
 
         for (TileEntity tileEntity : this.globalTileEntities) {
-            if(!checkBEVisibility(tileEntity))
+            if(!tileEntity.shouldRenderInPass(pass) || !checkBEVisibility(tileEntity))
                 continue;
 //            BlockPos pos = new BlockPos(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
 //
