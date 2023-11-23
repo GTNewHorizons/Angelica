@@ -35,6 +35,7 @@ public class IndirectCommandBufferVector extends StructBuffer {
 
     protected void growBuffer(int n) {
         ByteBuffer buffer = BufferUtils.createByteBuffer(Math.max(this.buffer.capacity() * 2, this.buffer.capacity() + n));
+        this.buffer.rewind();
         buffer.put(this.buffer);
         buffer.position(0);
 

@@ -31,6 +31,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
     protected void growBuffer() {
         this.capacity = this.capacity * 2;
         ByteBuffer buffer = BufferUtils.createByteBuffer(this.capacity * this.stride);
+        this.buffer.rewind();
         buffer.put(this.buffer);
         buffer.position(0);
         this.buffer = buffer;
