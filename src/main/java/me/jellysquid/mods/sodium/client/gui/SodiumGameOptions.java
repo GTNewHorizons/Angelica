@@ -116,18 +116,31 @@ public class SodiumGameOptions {
     }
 
     public enum LightingQuality {
-        HIGH("options.ao.max"),
+        OFF("options.ao.off"),
         LOW("options.ao.min"),
-        OFF("options.ao.off");
+        HIGH("options.ao.max");
+
+        private static final LightingQuality[] VALUES = values();
 
         private final String name;
 
+        private final int vanilla;
+
         LightingQuality(String name) {
             this.name = name;
+            this.vanilla = ordinal();
         }
 
         public String getLocalizedName() {
             return this.name;
+        }
+
+        public int getVanilla() {
+            return vanilla;
+        }
+
+        public static LightingQuality fromOrdinal(int ordinal) {
+            return VALUES[ordinal];
         }
     }
 
