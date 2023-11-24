@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -16,10 +17,10 @@ public final class MatrixUniforms {
 	}
 
 	public static void addMatrixUniforms(UniformHolder uniforms, PackDirectives directives) {
-		addMatrix(uniforms, "ModelView", CapturedRenderingState.INSTANCE::getGbufferModelView);
+		addMatrix(uniforms, "ModelView", RenderingState.INSTANCE::getModelViewMatrix);
 		// TODO: In some cases, gbufferProjectionInverse takes on a value much different than OptiFine...
 		// We need to audit Mojang's linear algebra.
-		addMatrix(uniforms, "Projection", CapturedRenderingState.INSTANCE::getGbufferProjection);
+		addMatrix(uniforms, "Projection", RenderingState.INSTANCE::getProjectionMatrix);
 		addShadowMatrix(uniforms, "ModelView", () -> ShadowRenderer.createShadowModelView(directives.getSunPathRotation(), directives.getShadowDirectives().getIntervalSize()).peek().getModel());
 		addShadowArrayMatrix(uniforms, "Projection", () -> ShadowMatrices.createOrthoMatrix(directives.getShadowDirectives().getDistance()));
 	}

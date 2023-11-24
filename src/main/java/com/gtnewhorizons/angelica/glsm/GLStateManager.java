@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
@@ -20,6 +21,7 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -45,6 +47,8 @@ public class GLStateManager {
     @Getter
     private static final Color4 Color = new Color4();
     @Getter
+    private static final Color4 ClearColor = new Color4();
+    @Getter
     private static final GLColorMask ColorMask = new GLColorMask();
     @Getter
     private static final BooleanState Cull = new BooleanState(GL11.GL_CULL_FACE);
@@ -60,8 +64,21 @@ public class GLStateManager {
     // Iris Listeners
     private static Runnable blendFuncListener = null;
 
+    private static Runnable fogToggleListener = null;
+    private static Runnable fogModeListener = null;
+    private static Runnable fogStartListener = null;
+    private static Runnable fogEndListener = null;
+    private static Runnable fogDensityListener = null;
+
     static {
-        StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
+        if(AngelicaConfig.enableIris) {
+            StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
+            StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
+            StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
+            StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
+            StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
+            StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
+        }
         Textures = (TextureState[]) IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
     }
 
@@ -95,7 +112,7 @@ public class GLStateManager {
     // GLStateManager Functions
 
     public static void enableBlend() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(true);
                 return;
@@ -105,7 +122,7 @@ public class GLStateManager {
     }
 
     public static void disableBlend() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(false);
                 return;
@@ -115,7 +132,7 @@ public class GLStateManager {
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
                 return;
@@ -130,7 +147,7 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
                 return;
@@ -154,7 +171,7 @@ public class GLStateManager {
     }
 
     public static void glDepthMask(boolean mask) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (DepthColorStorage.isDepthColorLocked()) {
                 DepthColorStorage.deferDepthEnable(mask);
                 return;
@@ -184,7 +201,7 @@ public class GLStateManager {
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (DepthColorStorage.isDepthColorLocked()) {
                 DepthColorStorage.deferColorMask(red, green, blue, alpha);
                 return;
@@ -199,9 +216,20 @@ public class GLStateManager {
         }
     }
 
+    // Clear Color
+    public static void glClearColor(float red, float green, float blue, float alpha) {
+        if(red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
+            ClearColor.red = red;
+            ClearColor.green = green;
+            ClearColor.blue = blue;
+            ClearColor.alpha = alpha;
+            GL11.glClearColor(red, green, blue, alpha);
+        }
+    }
+
     // ALPHA
     public static void enableAlphaTest() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (AlphaTestStorage.isAlphaTestLocked()) {
                 AlphaTestStorage.deferAlphaTestToggle(true);
                 return;
@@ -211,7 +239,7 @@ public class GLStateManager {
     }
 
     public static void disableAlphaTest() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (AlphaTestStorage.isAlphaTestLocked()) {
                 AlphaTestStorage.deferAlphaTestToggle(false);
                 return;
@@ -221,7 +249,7 @@ public class GLStateManager {
     }
 
     public static void glAlphaFunc(int function, float reference) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             if (AlphaTestStorage.isAlphaTestLocked()) {
                 AlphaTestStorage.deferAlphaFunc(function, reference);
                 return;
@@ -252,34 +280,34 @@ public class GLStateManager {
         if(Textures[activeTexture].binding != texture) {
             Textures[activeTexture].binding = texture;
             GL11.glBindTexture(target, texture);
-            if (Iris.isInitialized()) {
+            if (AngelicaConfig.enableIris) {
                 TextureTracker.INSTANCE.onBindTexture(texture);
             }
         }
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             // Iris
             TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
         }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 
     public static void glDeleteTextures(int id) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             iris$onDeleteTexture(id);
         }
         GL11.glDeleteTextures(id);
     }
     public static void glDeleteTextures(IntBuffer ids) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             for (int id : ids.array()) {
                 iris$onDeleteTexture(id);
             }
@@ -288,7 +316,7 @@ public class GLStateManager {
     }
 
     public static void enableTexture() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
             if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
@@ -311,7 +339,7 @@ public class GLStateManager {
     }
 
     public static void disableTexture() {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
             if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
@@ -378,24 +406,39 @@ public class GLStateManager {
 
     public static void enableFog() {
         Fog.mode.enable();
+        if (fogToggleListener != null) {
+            fogToggleListener.run();
+        }
     }
 
     public static void disableFog() {
         Fog.mode.disable();
+        if (fogToggleListener != null) {
+            fogToggleListener.run();
+        }
     }
 
     public static void glFog(int pname, FloatBuffer param) {
         // TODO: Iris Notifier
         GL11.glFog(pname, param);
         if(pname == GL11.GL_FOG_COLOR) {
-            Fog.fogColor.set(param.get(0), param.get(1), param.get(2));
+            final float red = param.get(0);
+            final float green = param.get(1);
+            final float blue = param.get(2);
+
+            Fog.fogColor.set(red, green, blue);
             Fog.fogAlpha = param.get(3);
             Fog.fogColorBuffer.clear();
             Fog.fogColorBuffer.put((FloatBuffer) param.position(0)).flip();
         }
     }
+
+    public static Vector3d getFogColor() {
+        return Fog.fogColor;
+    }
+
+
     public static void fogColor(float red, float green, float blue, float alpha) {
-        // TODO: Iris Notifier
         if(red != Fog.fogColor.x || green != Fog.fogColor.y || blue != Fog.fogColor.z || alpha != Fog.fogAlpha) {
             Fog.fogColor.set(red, green, blue);
             Fog.fogAlpha = alpha;
@@ -405,24 +448,40 @@ public class GLStateManager {
         }
     }
     public static void glFogf(int pname, float param) {
-        // TODO: Iris Notifier
         GL11.glFogf(pname, param);
         switch(pname) {
-            case GL11.GL_FOG_DENSITY -> Fog.density = param;
-            case GL11.GL_FOG_START -> Fog.start = param;
-            case GL11.GL_FOG_END -> Fog.end = param;
+            case GL11.GL_FOG_DENSITY -> {
+                Fog.density = param;
+                if (fogDensityListener != null) {
+                    fogDensityListener.run();
+                }
+            }
+            case GL11.GL_FOG_START -> {
+                Fog.start = param;
+                if (fogStartListener != null) {
+                    fogStartListener.run();
+                }
+            }
+            case GL11.GL_FOG_END -> {
+                Fog.end = param;
+                if (fogEndListener != null) {
+                    fogEndListener.run();
+                }
+            }
         }
     }
     public static void glFogi(int pname, int param) {
-        // TODO: Iris Notifier
         GL11.glFogi(pname, param);
         if(pname == GL11.GL_FOG_MODE) {
             Fog.fogMode = param;
+            if (fogModeListener != null) {
+                fogModeListener.run();
+            }
         }
     }
 
     public static void setFogBlack() {
-        GL11.glFogf(GL11.GL_FOG_COLOR, 0.0F);
+        glFogf(GL11.GL_FOG_COLOR, 0.0F);
 
     }
 
@@ -435,7 +494,7 @@ public class GLStateManager {
 
     // Iris Functions
     private static void iris$onDeleteTexture(int id) {
-        if (Iris.isInitialized()) {
+        if (AngelicaConfig.enableIris) {
             TextureTracker.INSTANCE.onDeleteTexture(id);
             TextureInfoCache.INSTANCE.onDeleteTexture(id);
             PBRTextureManager.INSTANCE.onDeleteTexture(id);

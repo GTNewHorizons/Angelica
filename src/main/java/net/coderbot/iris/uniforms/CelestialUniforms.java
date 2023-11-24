@@ -1,6 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.compat.mojang.Constants;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -72,8 +73,7 @@ public final class CelestialUniforms {
 		Vector4f position = new Vector4f(0.0F, y, 0.0F, 0.0F);
 
 		// TODO: Deduplicate / remove this function.
-		Matrix4f celestial = new Matrix4f();
-		celestial.identity();
+		Matrix4f celestial = new Matrix4f().identity();
 
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.
@@ -89,7 +89,7 @@ public final class CelestialUniforms {
 	private Vector4f getCelestialPosition(float y) {
         Vector4f position = new Vector4f(0.0F, y, 0.0F, 0.0F);
 
-        Matrix4f celestial = new Matrix4f(CapturedRenderingState.INSTANCE.getGbufferModelView());
+        Matrix4f celestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.
         celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
@@ -104,8 +104,8 @@ public final class CelestialUniforms {
 	private static Vector4f getUpPosition() {
         Vector4f upVector = new Vector4f(0.0F, 100.0F, 0.0F, 0.0F);
 
-		// Get the current GBuffer model view matrix, since that is the basis of the celestial model view matrix
-        Matrix4f preCelestial = new Matrix4f(CapturedRenderingState.INSTANCE.getGbufferModelView());
+		// Get the current model view matrix, since that is the basis of the celestial model view matrix
+        Matrix4f preCelestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
 
 		// Apply the fixed -90.0F degrees rotation to mirror the same transformation in renderSky.
 		// But, notably, skip the rotation by the skyAngle.

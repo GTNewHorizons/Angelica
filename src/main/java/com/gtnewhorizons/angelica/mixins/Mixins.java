@@ -25,7 +25,7 @@ public enum Mixins {
         ),
 
     SODIUM_STARTUP(new Builder("Start Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium && !AngelicaConfig.enableIris).addMixinClasses(
             "sodium.startup.MixinInitDebug"
         )
     ),
@@ -33,10 +33,14 @@ public enum Mixins {
     SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
              "sodium.MixinChunkProviderClient"
+            ,"sodium.MixinEntity"
+            ,"sodium.MixinRenderManager"
             ,"sodium.MixinExtendedBlockStorage"
             ,"sodium.MixinEntityRenderer"
             ,"sodium.MixinFMLClientHandler"
+            ,"sodium.MixinGameSettings"
             ,"sodium.MixinFrustrum"
+            ,"sodium.MixinMaterial"
             ,"sodium.MixinMinecraft"
             ,"sodium.MixinNetHandlerPlayClient"
             ,"sodium.MixinNibbleArray"
@@ -45,17 +49,13 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinWorldRenderer"
-            ,"sodium.MixinEntity"
-            ,"sodium.MixinRenderManager"
-            ,"sodium.MixinMaterial"
-            ,"sodium.MixinGameSettings"
         )
     ),
 
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
-             "shaders.MixinFramebuffer"
-            ,"shaders.MixinEntityRenderer"
+             "shaders.MixinEntityRenderer"
+            ,"shaders.MixinFramebuffer"
             ,"shaders.MixinItem"
             ,"shaders.MixinOpenGlHelper"
         )
@@ -71,9 +71,9 @@ public enum Mixins {
     ),
 
 
-    ANGELICA_TEXTURE(new Builder("Iris Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
-            "shaders.textures.MixinTextureAtlasSprite"
+    ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium).addMixinClasses(
+            "angelica.textures.MixinTextureAtlasSprite"
         )),
 
     // TODO: Iris
