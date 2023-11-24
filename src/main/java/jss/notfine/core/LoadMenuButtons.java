@@ -14,7 +14,7 @@ public class LoadMenuButtons {
 
     public static final LoadMenuButtons INSTANCE = new LoadMenuButtons();
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    //@SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGui(InitGuiEvent.Post event) {
         if(event.gui instanceof GuiOptions) {
             // Hide the vanilla video settings button

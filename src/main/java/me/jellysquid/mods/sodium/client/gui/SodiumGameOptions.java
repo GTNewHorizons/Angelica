@@ -58,7 +58,6 @@ public class SodiumGameOptions {
         public GraphicsQuality leavesQuality = GraphicsQuality.DEFAULT;
 
         public boolean enableVignette = true;
-        public boolean enableClouds = true;
 
         public LightingQuality smoothLighting = LightingQuality.HIGH;
     }
@@ -67,7 +66,44 @@ public class SodiumGameOptions {
         public boolean hideDonationButton = false;
     }
 
-    public enum GraphicsQuality  {
+    public enum ParticleMode {
+        ALL("options.graphics.fancy"),
+        DECREASED("options.graphics.fast"),
+        MINIMAL("options.particles.minimal");
+
+        private static final ParticleMode[] VALUES = values();
+
+        private final String name;
+
+        ParticleMode(String name) {
+            this.name = name;
+        }
+
+        public static ParticleMode fromOrdinal(int ordinal) {
+            return VALUES[ordinal];
+        }
+    }
+
+    public enum GraphicsMode {
+        FANCY("options.graphics.fancy"),
+        FAST("options.graphics.fast");
+
+        private final String name;
+
+        GraphicsMode(String name) {
+            this.name = name;
+        }
+
+        public boolean isFancy() {
+            return this == FANCY;
+        }
+
+        public static GraphicsMode fromBoolean(boolean isFancy) {
+            return isFancy ? FANCY : FAST;
+        }
+    }
+
+    public enum GraphicsQuality {
         DEFAULT("generator.default"),
         FANCY("options.clouds.fancy"),
         FAST("options.clouds.fast");
@@ -77,7 +113,6 @@ public class SodiumGameOptions {
         GraphicsQuality(String name) {
             this.name = name;
         }
-
     }
 
     public enum LightingQuality {

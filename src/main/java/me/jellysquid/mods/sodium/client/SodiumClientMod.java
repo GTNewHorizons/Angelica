@@ -2,9 +2,15 @@ package me.jellysquid.mods.sodium.client;
 
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.gui.GuiVideoSettings;
+import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,9 +33,19 @@ public class SodiumClientMod {
 
     public SodiumClientMod() {
         MainThread = Thread.currentThread();
+
+        MinecraftForge.EVENT_BUS.register(this);
 //        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
 //
 //        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
+    }
+
+    @SubscribeEvent
+    public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
+        if(event.gui instanceof GuiVideoSettings) {
+            event.setCanceled(true);
+            Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(((GuiVideoSettings) event.gui).parentGuiScreen));
+        }
     }
 
     public static SodiumGameOptions options() {
