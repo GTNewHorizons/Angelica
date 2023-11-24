@@ -9,11 +9,13 @@ Not yet in an usable state
   * eigenraven, Caedis, glowredman, and mitchej123 for the conversion of ASM to Mixin
   * eigenraven and vlaetansky for getting the original ShaderMod compiling again
 * Archaicfix
-  * Includes graphic enhancements from ArchaicFix by embeddedt - https://github.com/embeddedt/ArchaicFix under the [LGPL and other licenses](https://github.com/embeddedt/ArchaicFix/blob/main/LICENSE.md)
+  * Includes graphic enhancements from [ArchaicFix](https://github.com/embeddedt/ArchaicFix/commit/4afb943751883b27a1f0aa7c5ba71698bc897e95) by embeddedt under the [LGPL](https://github.com/embeddedt/ArchaicFix/blob/main/LICENSE.md)
 * NotFine
-  * Includes modified version of Notfine by jss2a98aj - https://github.com/jss2a98aj/NotFine under the LGPL
+  * Includes modified version of [Notfine](https://github.com/jss2a98aj/NotFine/commit/a2652e24b5654f437fb7138f6d1f5e947a7d7125) by jss2a98aj under the LGPL
 * Iris Shaders
-  * Includes backported code from [Occulus](https://github.com/Asek3/Oculus) and [Iris](https://github.com/IrisShaders/Iris) under the LGPL
+  * The [Iris](https://github.com/IrisShaders/Iris) Team: coderbot, IMS212, Justsnoopy30, FoundationGames
+  * Asek3 for the Iris forge port [Occulus](https://github.com/Asek3/Oculus/commit/839ce8eca8cf0c4f6b7a1322b906e5c99125ca69)
+  * Backported code under the LGPL
 * Sodium
   * JellySquid & the CaffeineMC team, for making Sodium in the first place
   * Embeddedt for [Embeddium](https://github.com/embeddedt/embeddium/commit/dc59ca357c25beefd6288f0d1d40b4cd8e670ab8) under the [LGPL 3.0](https://github.com/embeddedt/embeddium/blob/16.x/forge/LICENSE)
