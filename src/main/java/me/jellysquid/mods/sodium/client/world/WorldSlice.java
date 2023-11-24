@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.world;
 
+import java.util.Arrays;
+
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
@@ -68,8 +70,8 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
     // Local section copies. Read-only.
     private ClonedChunkSection[] sections;
 
-    // Biome data -- todo - each chunk column?
-    private byte[] biomeData;
+    // Biome data for each chunk section
+    private byte[][] biomeData;
 
     // The starting point from which this slice captures blocks
     private int baseX, baseY, baseZ;
@@ -126,6 +128,7 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
         this.blockStatesArrays = new BlockState[SECTION_TABLE_ARRAY_SIZE][];
+        this.biomeData = new byte[SECTION_TABLE_ARRAY_SIZE][];
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
@@ -144,7 +147,7 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;
         this.baseY = (this.origin.y - NEIGHBOR_CHUNK_RADIUS) << 4;
         this.baseZ = (this.origin.z - NEIGHBOR_CHUNK_RADIUS) << 4;
-        this.biomeData = null;
+        Arrays.fill(this.biomeData, null);
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
@@ -152,6 +155,7 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
                     final int idx = getLocalSectionIndex(x, y, z);
 
                     this.unpackBlockData(this.blockStatesArrays[idx], this.sections[idx], context.getVolume());
+                    this.biomeData[idx] = this.sections[idx].getBiomeData();
                 }
             }
         }
@@ -214,9 +218,12 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        // TODO: We need to handle neighboring chunk columns
-        // (see BlockLiquid#colorMultiplier for example)
-        final int k = this.biomeData[(x & 15) | (z & 15) << 4] & 255;
+        int relX = x - this.baseX;
+        int relY = 0;
+        int relZ = z - this.baseZ;
+
+        final int k = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
+                [(x & 15) | (z & 15) << 4] & 255;
         return BiomeGenBase.getBiome(k);
     }
 
@@ -283,9 +290,6 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
         int minBlockZ = pos.getMinZ();
         int maxBlockZ = pos.getMaxZ();
-
-        // Copy biome data from the origin sub-chunk.  In 1.7.10 it's the same on every sub-chunk.
-        this.biomeData = section.getBiomeData();
 
         // TODO: Can this be optimized?
         copyBlocks(states, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
