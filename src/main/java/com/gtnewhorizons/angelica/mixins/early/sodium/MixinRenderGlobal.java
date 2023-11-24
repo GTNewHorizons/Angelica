@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
@@ -166,6 +167,13 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         return 0;
     }
 
+    private boolean isSpectatorMode() {
+        PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
+        if(controller == null)
+            return false;
+        return controller.currentGameType.getID() == 3;
+    }
+
     /**
      * @author Sodium
      * @reason Redirect to our renderer
@@ -177,7 +185,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         final Frustrum frustum = (Frustrum) frustrum;
         boolean hasForcedFrustum = false;
-        boolean spectator = false;
+        boolean spectator = isSpectatorMode();
         Camera camera = new Camera(mc.renderViewEntity, partialTicks);
 
         try {
