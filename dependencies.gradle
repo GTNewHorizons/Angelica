@@ -38,7 +38,7 @@ dependencies {
     compileOnly(sourceSets.compileStubs.output)
     compileStubs(sourceSets.compileStubsStubs.output)
 
-    api("com.github.GTNewHorizons:Hodgepodge:2.3.32")
+    api("com.github.GTNewHorizons:Hodgepodge:2.3.34")
 
     // Iris Shaders
     shadowImplementation('org.jetbrains:annotations:24.0.1') // Apache 2.0
