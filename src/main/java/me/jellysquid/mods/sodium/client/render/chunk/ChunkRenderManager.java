@@ -162,8 +162,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             float dist = FogHelper.getFogCutoff() + FOG_PLANE_OFFSET;
 
             if (dist != 0.0f) {
-                // TODO: Sodium - Culling
-                //this.useFogCulling = true; // TODO fix fog
+                this.useFogCulling = true;
                 this.fogRenderCutoff = Math.max(FOG_PLANE_MIN_DISTANCE, dist * dist);
             }
         }
