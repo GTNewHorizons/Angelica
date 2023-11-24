@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -35,7 +36,7 @@ public class Quad implements ModelQuadView {
     public boolean deleted;
     public boolean noMerge;
 
-    public QuadNormal normal;
+    public ModelQuadFacing normal;
     public int offset;
     public BlockRenderer.Flags flags;
 
@@ -47,15 +48,13 @@ public class Quad implements ModelQuadView {
     // 0: quads glued together on edge 1-2 or 3-0 ("megaquad row length")
     // 1: quads glued together on edge 0-1 or 2-3 ("megaquad column length")
     private int[] quadCountByDirection = {1, 1};
-    public static int[] totalMergeCountByPlane = new int[3];
 
     // When we merge with another quad, we forget what we used to be like.
     // Keep a reference to the quad we first merged with, and use it as a reminder.
     public Quad mergeReference;
 
-    private static final Vector3f vectorA = new Vector3f();
-    private static final Vector3f vectorB = new Vector3f();
-    private static final Vector3f vectorC = new Vector3f();
+    private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
+
     private boolean hasColor;
     private boolean hasShade;
 
@@ -187,9 +186,9 @@ public class Quad implements ModelQuadView {
 
         vectorA.set(xs[1] - xs[0], ys[1] - ys[0], zs[1] - zs[0]);
         vectorB.set(xs[2] - xs[1], ys[2] - ys[1], zs[2] - zs[1]);
-        vectorA.cross(vectorB, vectorA);
+        vectorA.cross(vectorB, vectorC);
 
-        normal = QuadNormal.fromVector(vectorC);
+        normal = ModelQuadFacing.fromVector(vectorC);
     }
 
     private void resetState() {
@@ -214,7 +213,6 @@ public class Quad implements ModelQuadView {
         flags = null;
         uDirectionIs01 = false;
         Arrays.fill(quadCountByDirection, 1);
-        Arrays.fill(totalMergeCountByPlane, 0);
         mergeReference = null;
     }
 
@@ -315,43 +313,6 @@ public class Quad implements ModelQuadView {
         return true;
     }
 
-    public void tryToMerge(Quad o) {
-        if(noMerge || o.noMerge) return;
-
-        if(isTranslatedCopyOf(o, true)) {
-            int numVerticesTouching = 0;
-            boolean[] verticesTouching = new boolean[4];
-            for(int i = 0; i < 4; i++) {
-                for(int j = 0; j < 4; j++) {
-                    if(xs[i] == o.xs[j] && ys[i] == o.ys[j] && zs[i] == o.zs[j]) {
-                        verticesTouching[i] = true;
-                        numVerticesTouching++;
-                    }
-                }
-            }
-            if(numVerticesTouching == 2) {
-                for(int i = 0; i < 4; i++) {
-                    if(verticesTouching[i]) {
-                        copyVertexFrom(o, i, i);
-                    }
-                }
-
-                if((verticesTouching[0] && verticesTouching[1]) || (verticesTouching[2] && verticesTouching[3])) {
-                    quadCountByDirection[0] += o.quadCountByDirection[0];
-                }
-                if((verticesTouching[1] && verticesTouching[2]) || (verticesTouching[3] && verticesTouching[0])) {
-                    quadCountByDirection[1] += o.quadCountByDirection[1];
-                }
-
-                totalMergeCountByPlane[getPlane().ordinal() - 1]++;
-
-                mergeReference = o;
-
-                o.deleted = true;
-            }
-        }
-    }
-
     private void copyVertexFrom(Quad o, int src, int dest) {
         xs[dest] = o.xs[src];
         ys[dest] = o.ys[src];
@@ -396,26 +357,6 @@ public class Quad implements ModelQuadView {
         return false;
     }
 
-    // maybe minXYZ and maxXYZ should be arrays instead
-    public double getMin(int coord) {
-        return coord == 0 ? minX : coord == 1 ? minY : coord == 2 ? minZ : -1;
-    }
-
-    public double getMax(int coord) {
-        return coord == 0 ? maxX : coord == 1 ? maxY : coord == 2 ? maxZ : -1;
-    }
-
-    public boolean onSamePlaneAs(Quad o) {
-        return isValid(this) && isValid(o) && getPlane() == o.getPlane() &&
-            ((getPlane() == Plane.XY && minZ == o.minZ) ||
-                    (getPlane() == Plane.XZ && minY == o.minY) ||
-                    (getPlane() == Plane.YZ && minX == o.minX));
-    }
-
-    public Plane getPlane() {
-        return Plane.fromNormal(normal);
-    }
-
     public static boolean isValid(Quad q) {
         return q != null && !q.deleted;
     }
@@ -428,67 +369,5 @@ public class Quad implements ModelQuadView {
     public String toString() {
         return String.format(Locale.ENGLISH, "%s(%.1f, %.1f, %.1f -- %.1f, %.1f, %.1f)", deleted ? "XXX " : "", minX, minY, minZ, maxX, maxY, maxZ);
         //return String.format(Locale.ENGLISH, "%s[(%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f)]", deleted ? "XXX " : "", xs[0], ys[0], zs[0], xs[1], ys[1], zs[1], xs[2], ys[2], zs[2], xs[3], ys[3], zs[3]);
-    }
-
-    public static class QuadPlaneComparator implements Comparator<Quad> {
-
-        public static final QuadPlaneComparator[] quadPlaneComparators = new QuadPlaneComparator[]{
-                new QuadPlaneComparator(2, 1, 0), // PLANE_XY -> ZYX
-                new QuadPlaneComparator(1, 2, 0), // PLANE_XZ -> YZX
-                new QuadPlaneComparator(0, 2, 1)  // PLANE_YZ -> XZY
-        };
-
-        private final int c0;
-        private final int c1;
-        private final int c2;
-
-        public QuadPlaneComparator(int firstCoordToCompare, int secondCoordToCompare, int thirdCoordToCompare) {
-            this.c0 = firstCoordToCompare;
-            this.c1 = secondCoordToCompare;
-            this.c2 = thirdCoordToCompare;
-        }
-
-        @Override
-        public int compare(Quad a, Quad b) {
-            if(a.getMin(c0) < b.getMin(c0)) {
-                return -1;
-            } else if(a.getMin(c0) > b.getMin(c0)) {
-                return 1;
-            } else {
-                if(a.getMin(c1) < b.getMin(c1)) {
-                    return -1;
-                } else if(a.getMin(c1) > b.getMin(c1)) {
-                    return 1;
-                } else {
-                    if(a.getMin(c2) < b.getMin(c2)) {
-                        return -1;
-                    } else if(a.getMin(c2) > b.getMin(c2)) {
-                        return 1;
-                    } else {
-                        return (int)Math.signum(a.offset - b.offset);
-                    }
-                }
-            }
-        }
-    }
-
-    public static enum Plane {
-        NONE,
-        XY,
-        XZ,
-        YZ;
-
-        public static Plane fromNormal(QuadNormal normal) {
-            return switch (normal) {
-                case POSITIVE_X, NEGATIVE_X -> YZ;
-                case POSITIVE_Y, NEGATIVE_Y -> XZ;
-                case POSITIVE_Z, NEGATIVE_Z -> XY;
-                default -> NONE;
-            };
-        }
-    }
-
-    public boolean isPosEqual(Quad b) {
-        return Arrays.equals(xs, b.xs) && Arrays.equals(ys, b.ys) && Arrays.equals(zs, b.zs);
     }
 }
