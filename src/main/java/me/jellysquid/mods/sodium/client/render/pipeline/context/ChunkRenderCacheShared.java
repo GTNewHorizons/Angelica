@@ -23,9 +23,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
 
         this.lightCache = new HashLightDataCache((BlockRenderView)world);
 
-        LightPipelineProvider lightPipelineProvider = new LightPipelineProvider(this.lightCache);
-
-        this.blockRenderer = new BlockRenderer(client, lightPipelineProvider);
+        this.blockRenderer = new BlockRenderer(client);
     }
 
     public BlockRenderer getBlockRenderer() {

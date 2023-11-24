@@ -35,7 +35,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-public class WorldSlice implements BlockRenderView, IBlockAccess {
+public class WorldSlice implements IBlockAccess {
     // The number of blocks on each axis in a section.
     private static final int SECTION_BLOCK_LENGTH = 16;
 
@@ -65,7 +65,8 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
     private final WorldClient world;
 
     // Local Section->BlockState table.
-    private final BlockState[][] blockStatesArrays;
+    private final Block[][] blockArrays;
+    private final int[][] metadataArrays;
 
     // Local section copies. Read-only.
     private ClonedChunkSection[] sections;
@@ -127,14 +128,16 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         this.worldHeight = world.getHeight();
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
-        this.blockStatesArrays = new BlockState[SECTION_TABLE_ARRAY_SIZE][];
+        this.blockArrays = new Block[SECTION_TABLE_ARRAY_SIZE][];
+        this.metadataArrays = new int[SECTION_TABLE_ARRAY_SIZE][];
         this.biomeData = new byte[SECTION_TABLE_ARRAY_SIZE][];
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
                     final int i = getLocalSectionIndex(x, y, z);
-                    this.blockStatesArrays[i] = new BlockState[SECTION_BLOCK_COUNT];
+                    this.blockArrays[i] = new Block[SECTION_BLOCK_COUNT];
+                    this.metadataArrays[i] = new int[SECTION_BLOCK_COUNT];
                 }
             }
         }
@@ -154,18 +157,12 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
                     final int idx = getLocalSectionIndex(x, y, z);
 
-                    this.unpackBlockData(this.blockStatesArrays[idx], this.sections[idx], context.getVolume());
+                    this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], this.sections[idx], context.getVolume());
                     this.biomeData[idx] = this.sections[idx].getBiomeData();
                 }
             }
         }
     }
-
-    @Override
-    public Block getBlock(int x, int y, int z) {
-        return this.getBlockState(x, y, z).getBlock();
-    }
-
 
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
@@ -202,11 +199,6 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
     }
 
     @Override
-    public int getBlockMetadata(int x, int y, int z) {
-        return this.getBlockState(x, y, z).getMetadata();
-    }
-
-    @Override
     public int isBlockProvidingPowerTo(int x, int y, int z, int directionIn) {
         return this.getBlock(x, y, z).isProvidingStrongPower(this, x, y, z, directionIn);
     }
@@ -224,7 +216,9 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
         final int k = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
                 [(x & 15) | (z & 15) << 4] & 255;
-        return BiomeGenBase.getBiome(k);
+        BiomeGenBase biome = BiomeGenBase.getBiome(k);
+        // can be null if biome wasn't generated yet
+        return biome == null ? BiomeGenBase.plains : biome;
     }
 
     @Override
@@ -242,28 +236,28 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         return getBlock(x, y, z).isSideSolid(this, x, y, z, side);
     }
 
-    private void unpackBlockData(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
+    private void unpackBlockData(Block[] blocks, int[] metas, ClonedChunkSection section, StructureBoundingBox box) {
         if (this.origin.equals(section.getPosition()))  {
-            this.unpackBlockDataZ(states, section);
+            this.unpackBlockDataZ(blocks, metas, section);
         } else {
-            this.unpackBlockDataR(states, section, box);
+            this.unpackBlockDataR(blocks, metas, section, box);
         }
     }
 
 
-    private static void copyBlocks(BlockState[] states, ClonedChunkSection section, int minBlockY, int maxBlockY, int minBlockZ, int maxBlockZ, int minBlockX, int maxBlockX) {
+    private static void copyBlocks(Block[] blocks, int[] metas, ClonedChunkSection section, int minBlockY, int maxBlockY, int minBlockZ, int maxBlockZ, int minBlockX, int maxBlockX) {
         for (int y = minBlockY; y <= maxBlockY; y++) {
             for (int z = minBlockZ; z <= maxBlockZ; z++) {
                 for (int x = minBlockX; x <= maxBlockX; x++) {
                     final int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
-                    // TODO: Optimize Allocations - shared block states? get rid of block states?
-                    states[blockIdx] = section.getBlockState(x & 15, y & 15, z & 15);
+                    blocks[blockIdx] = section.getBlock(x & 15, y & 15, z & 15);
+                    metas[blockIdx] = section.getBlockMetadata(x & 15, y & 15, z & 15);
                 }
             }
         }
     }
 
-    private void unpackBlockDataR(BlockState[] states, ClonedChunkSection section, StructureBoundingBox box) {
+    private void unpackBlockDataR(Block[] blocks, int metas[], ClonedChunkSection section, StructureBoundingBox box) {
         ChunkSectionPos pos = section.getPosition();
 
         int minBlockX = Math.max(box.minX, pos.getMinX());
@@ -275,10 +269,10 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         int minBlockZ = Math.max(box.minZ, pos.getMinZ());
         int maxBlockZ = Math.min(box.maxZ, pos.getMaxZ());
 
-        copyBlocks(states, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
+        copyBlocks(blocks, metas, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
 
-    private void unpackBlockDataZ(BlockState[] states, ClonedChunkSection section) {
+    private void unpackBlockDataZ(Block[] blocks, int[] metas, ClonedChunkSection section) {
         // TODO: Look into a faster copy for this?
         final ChunkSectionPos pos = section.getPosition();
 
@@ -292,58 +286,32 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         int maxBlockZ = pos.getMaxZ();
 
         // TODO: Can this be optimized?
-        copyBlocks(states, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
+        copyBlocks(blocks, metas, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
 
-    /**
-     * Helper function to ensure a valid BlockState is always returned (air is returned
-     * in place of null).
-     */
-    private static BlockState nullableState(BlockState state) {
-        return state != null ? state : ClonedChunkSection.DEFAULT_BLOCK_STATE;
-    }
-
-    @Override
-    public BlockState getBlockState(BlockPos pos) {
-        return this.getBlockState(pos.x, pos.y, pos.z);
-    }
-
-    public BlockState getBlockState(int x, int y, int z) {
+    public Block getBlock(int x, int y, int z) {
         int relX = x - this.baseX;
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
 
-        return nullableState(this.blockStatesArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)]);
+        return this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }
 
-    public BlockState getBlockStateRelative(int x, int y, int z) {
-        return nullableState(this.blockStatesArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)]);
+    public Block getBlockRelative(int x, int y, int z) {
+        return this.blockArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)];
+    }
+
+    public int getBlockMetadataRelative(int x, int y, int z) {
+        return this.metadataArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)];
     }
 
     @Override
-    public FluidState getFluidState(BlockPos pos) {
-        return this.getBlockState(pos).getFluidState();
-    }
+    public int getBlockMetadata(int x, int y, int z) {
+        int relX = x - this.baseX;
+        int relY = y - this.baseY;
+        int relZ = z - this.baseZ;
 
-    @Override
-    public float getBrightness(ForgeDirection direction, boolean shaded) {
-        boolean darkened = false; //this.getSkyProperties().isDarkened();
-        if (!shaded) {
-            return darkened ? 0.9f : 1.0f;
-        }
-        return switch (direction) {
-            case DOWN -> darkened ? 0.9f : 0.5f;
-            case UP -> darkened ? 0.9f : 1.0f;
-            case NORTH, SOUTH -> 0.8f;
-            case WEST, EAST -> 0.6f;
-            default -> 1.0f;
-        };
-    }
-
-
-    @Override
-    public TileEntity getTileEntity(BlockPos pos) {
-        return this.getTileEntity(pos.x, pos.y, pos.z);
+        return this.metadataArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }
 
     @Override
@@ -353,11 +321,6 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
         int relZ = z - this.baseZ;
 
         return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getBlockEntity(relX & 15, relY & 15, relZ & 15);
-    }
-
-    @Override
-    public int getLightLevel(EnumSkyBlock type, BlockPos pos) {
-        return getLightLevel(type, pos.x, pos.y, pos.z);
     }
 
     public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {

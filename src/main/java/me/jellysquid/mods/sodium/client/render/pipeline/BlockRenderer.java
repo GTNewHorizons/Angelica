@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
@@ -16,7 +15,6 @@ import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientati
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
@@ -25,7 +23,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.world.IBlockAccess;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.GL11;
 
@@ -38,31 +36,19 @@ public class BlockRenderer {
 
     private final Random random = new XoRoShiRoRandom();
 
-    private final BlockOcclusionCache occlusionCache;
-
     private final QuadLightData cachedQuadLightData = new QuadLightData();
-
-    private final LightPipelineProvider lighters;
 
     private final boolean useAmbientOcclusion;
 
     private final Flags FLAGS = new Flags(true, true, true, false);
     private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
 
-    public BlockRenderer(Minecraft client, LightPipelineProvider lighters) {
-        this.lighters = lighters;
-
-        this.occlusionCache = new BlockOcclusionCache();
+    public BlockRenderer(Minecraft client) {
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
     }
 
-    public boolean renderModel(BlockRenderView world, Tessellator tessellator, RenderBlocks renderBlocks, BlockState state, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
-
-        final Block block = state.getBlock();
-        final LightMode mode = this.getLightingMode(state, world, pos);
-        final LightPipeline lighter = this.lighters.getLighter(mode);
-        Vector3d offset = state.getModelOffset(world, pos);
+    public boolean renderModel(IBlockAccess world, Tessellator tessellator, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
 
         boolean rendered = false;
 
@@ -92,7 +78,7 @@ public class BlockRenderer {
         final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
 
         for(ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-            this.renderQuadList(world, state, pos, lighter, offset, buffers, all, facing);
+            this.renderQuadList(pos, buffers, all, facing);
         }
 
         if(!all.isEmpty())
@@ -162,7 +148,7 @@ public class BlockRenderer {
         return quads;
     }
 
-    private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vector3d offset,
+    private void renderQuadList(BlockPos pos,
                                 ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
 
         ModelVertexSink sink = buffers.getSink(facing);
@@ -178,20 +164,17 @@ public class BlockRenderer {
             if(quad.normal != facing)
                 continue;
 
-            QuadLightData light = this.cachedQuadLightData;
-            // TODO: maybe make non-null?
-            lighter.calculate(quad, pos, light, null, quad.getFace(), quad.hasShade());
-
-            this.renderQuad(world, state, pos, sink, offset, quad, light, renderData);
+            this.renderQuad(sink, quad, renderData);
         }
 
         sink.flush();
     }
 
-    private void renderQuad(BlockRenderView world, BlockState state, BlockPos pos, ModelVertexSink sink, Vector3d offset,
-                            Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
+    private void renderQuad(ModelVertexSink sink,
+                            Quad quad, ChunkRenderData.Builder renderData) {
 
-        ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
+        // TODO reorder using packed light
+        ModelQuadOrientation order = ModelQuadOrientation.NORMAL;
 
         int[] colors = null;
 
@@ -202,16 +185,16 @@ public class BlockRenderer {
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             int srcIndex = order.getVertexIndex(dstIndex);
 
-            float x = quad.getX(srcIndex) + (float) offset.x;
-            float y = quad.getY(srcIndex) + (float) offset.y;
-            float z = quad.getZ(srcIndex) + (float) offset.z;
+            float x = quad.getX(srcIndex);
+            float y = quad.getY(srcIndex);
+            float z = quad.getZ(srcIndex);
 
-            int color = ColorABGR.mul(colors != null ? colors[srcIndex] : quad.getColor(srcIndex), light.br[srcIndex]);
+            int color = quad.getColor(srcIndex);
 
             float u = quad.getTexU(srcIndex);
             float v = quad.getTexV(srcIndex);
 
-            int lm = ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]);
+            int lm = quad.getLight(srcIndex);
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }
@@ -220,19 +203,6 @@ public class BlockRenderer {
 
         if (sprite != null) {
             renderData.addSprite(sprite);
-        }
-    }
-
-    private LightMode getLightingMode(BlockState state, BlockRenderView world, BlockPos pos) {
-        return getLightingMode(state.getBlock(), world, pos);
-    }
-
-    private LightMode getLightingMode(Block block, BlockRenderView world, BlockPos pos) {
-        // TODO: Sodium: Ambient Occlusion
-        if (this.useAmbientOcclusion && /* model.isAmbientOcclusion(state) &&*/ block.getLightValue() == 0) {
-            return LightMode.SMOOTH;
-        } else {
-            return LightMode.FLAT;
         }
     }
 
