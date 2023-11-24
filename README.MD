@@ -5,16 +5,16 @@ Not yet in an usable state
 
 # Credits
 * ShadersMod
-  * Original ShaderMods: karyonix, sonic ether, id_miner, daxnitro
+  * Original ShadersMods: karyonix, sonic ether, id_miner, daxnitro
   * eigenraven, Caedis, glowredman, and mitchej123 for the conversion of ASM to Mixin
-  * eigenraven and vlaetansky for getting the original ShaderMod compiling again
-* Archaicfix
+  * eigenraven and vlaetansky for getting the original ShadersMod compiling again
+* ArchaicFix
   * Includes graphic enhancements from [ArchaicFix](https://github.com/embeddedt/ArchaicFix/commit/4afb943751883b27a1f0aa7c5ba71698bc897e95) by embeddedt under the [LGPL](https://github.com/embeddedt/ArchaicFix/blob/main/LICENSE.md)
 * NotFine
-  * Includes modified version of [Notfine](https://github.com/jss2a98aj/NotFine/commit/a2652e24b5654f437fb7138f6d1f5e947a7d7125) by jss2a98aj under the LGPL
+  * Includes modified version of [NotFine](https://github.com/jss2a98aj/NotFine/commit/a2652e24b5654f437fb7138f6d1f5e947a7d7125) by jss2a98aj under the LGPL
 * Iris Shaders
   * The [Iris](https://github.com/IrisShaders/Iris) Team: coderbot, IMS212, Justsnoopy30, FoundationGames
-  * Asek3 for the Iris forge port [Occulus](https://github.com/Asek3/Oculus/commit/839ce8eca8cf0c4f6b7a1322b906e5c99125ca69)
+  * Asek3 for the Iris Forge port [Oculus](https://github.com/Asek3/Oculus/commit/839ce8eca8cf0c4f6b7a1322b906e5c99125ca69)
   * Backported code under the LGPL
 * Sodium
   * JellySquid & the CaffeineMC team, for making Sodium in the first place
