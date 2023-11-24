@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
@@ -14,7 +13,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkMeshData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkModelOffset;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
-import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManager;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -30,25 +28,25 @@ public class ChunkBuildBuffers {
     private final VertexBufferBuilder[][] buffersByLayer;
     private final ChunkVertexType vertexType;
 
-    private final BlockRenderPassManager renderPassManager;
     private final ChunkModelOffset offset;
 
-    public ChunkBuildBuffers(ChunkVertexType vertexType, BlockRenderPassManager renderPassManager) {
+    private static final int EXPECTED_BUFFER_SIZE = 2097152;
+
+    public ChunkBuildBuffers(ChunkVertexType vertexType) {
         this.vertexType = vertexType;
-        this.renderPassManager = renderPassManager;
 
         this.delegates = new ChunkModelBuffers[BlockRenderPass.COUNT];
         this.buffersByLayer = new VertexBufferBuilder[BlockRenderPass.COUNT][ModelQuadFacing.COUNT];
 
         this.offset = new ChunkModelOffset();
 
-        for (RenderLayer layer : RenderLayer.getBlockLayers()) {
-            int passId = this.renderPassManager.getRenderPassId(layer);
+        for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+            int passId = pass.ordinal();
 
             VertexBufferBuilder[] buffers = this.buffersByLayer[passId];
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-                buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), layer.getExpectedBufferSize() / ModelQuadFacing.COUNT);
+                buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), EXPECTED_BUFFER_SIZE / ModelQuadFacing.COUNT);
             }
         }
     }
@@ -66,11 +64,11 @@ public class ChunkBuildBuffers {
     }
 
     /**
-     * Return the {@link ChunkModelVertexTransformer} for the given {@link RenderLayer} as mapped by the
+     * Return the {@link ChunkModelVertexTransformer} for the given {@link BlockRenderPass} as mapped by the
      * {@link BlockRenderPassManager} for this render context.
      */
-    public ChunkModelBuffers get(RenderLayer layer) {
-        return this.delegates[this.renderPassManager.getRenderPassId(layer)];
+    public ChunkModelBuffers get(BlockRenderPass pass) {
+        return this.delegates[pass.ordinal()];
     }
 
     /**

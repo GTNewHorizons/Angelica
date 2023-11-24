@@ -28,7 +28,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderList;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderListIterator;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
-import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManager;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
@@ -109,13 +108,13 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean alwaysDeferChunkUpdates;
 
-    public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, BlockRenderPassManager renderPassManager, WorldClient world, int renderDistance) {
+    public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
         this.world = world;
 
         this.builder = new ChunkBuilder<>(backend.getVertexType(), this.backend);
-        this.builder.init(world, renderPassManager);
+        this.builder.init(world);
 
         this.dirty = true;
 

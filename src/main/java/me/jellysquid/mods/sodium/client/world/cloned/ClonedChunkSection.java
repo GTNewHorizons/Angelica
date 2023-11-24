@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.world.cloned;
 
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
@@ -25,7 +24,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClonedChunkSection {
-    public static final BlockState DEFAULT_BLOCK_STATE = new BlockState(Blocks.air, 0);
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
 
@@ -94,13 +92,14 @@ public class ClonedChunkSection {
         }
     }
 
-    public BlockState getBlockState(int x, int y, int z) {
-        final Block block = data.getBlockByExtId(x, y, z);
-        if(block.isAir(null, 0, 0, 0)) /* dumb api */ {
-            return DEFAULT_BLOCK_STATE;
-        }
-        return new BlockState(data.getBlockByExtId(x, y, z), data.getExtBlockMetadata(x, y, z));
+    public Block getBlock(int x, int y, int z) {
+        return data.getBlockByExtId(x, y, z);
     }
+
+    public int getBlockMetadata(int x, int y, int z) {
+        return data.getExtBlockMetadata(x, y, z);
+    }
+
     public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
         if(type == EnumSkyBlock.Sky) {
             if(world.provider.hasNoSky)

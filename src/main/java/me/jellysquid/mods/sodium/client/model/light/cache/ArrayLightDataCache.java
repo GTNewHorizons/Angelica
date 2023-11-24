@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
+import net.minecraft.world.IBlockAccess;
 
 import java.util.Arrays;
 

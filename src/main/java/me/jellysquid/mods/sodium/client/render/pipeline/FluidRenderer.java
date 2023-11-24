@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
@@ -29,8 +28,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
-
-import java.util.Objects;
 
 import static org.joml.Math.lerp;
 

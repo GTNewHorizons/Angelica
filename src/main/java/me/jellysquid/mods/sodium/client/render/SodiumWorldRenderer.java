@@ -1,20 +1,11 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockBreakingInfo;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BufferBuilderStorage;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import com.gtnewhorizons.angelica.compat.mojang.ModelLoader;
-import com.gtnewhorizons.angelica.compat.mojang.OverlayVertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumerProvider;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.early.sodium.MixinEntity;
 import com.gtnewhorizons.angelica.mixins.interfaces.IHasClientChunkProvider;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -32,7 +23,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot.ChunkRende
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.DefaultModelVertexFormats;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
-import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPassManager;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
@@ -54,10 +44,8 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
-import speiger.src.collections.longs.maps.interfaces.Long2ObjectMap;
 
 import java.util.Set;
-import java.util.SortedSet;
 
 /**
  * Provides an extension to vanilla's {@link WorldRenderer}.
@@ -86,7 +74,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     @Getter
     private Frustrum frustum;
     private ChunkRenderManager<?> chunkRenderManager;
-    private BlockRenderPassManager renderPassManager;
     private ChunkRenderBackend<?> chunkRenderBackend;
 
     /**
@@ -251,8 +238,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     /**
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
-    public void drawChunkLayer(RenderLayer renderLayer, MatrixStack matrixStack, double x, double y, double z) {
-        BlockRenderPass pass = this.renderPassManager.getRenderPassForLayer(renderLayer);
+    public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
         // startDrawing/endDrawing are handled by 1.7 already
         //pass.startDrawing();
 
@@ -286,8 +272,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         SodiumGameOptions opts = SodiumClientMod.options();
 
-        this.renderPassManager = BlockRenderPassManager.createDefaultMappings();
-
         final ChunkVertexType vertexFormat;
 
         if (opts.advanced.useCompactVertexFormat) {
@@ -299,7 +283,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         this.chunkRenderBackend = createChunkRenderBackend(device, opts, vertexFormat);
         this.chunkRenderBackend.createShaders(device);
 
-        this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.renderPassManager, this.world, this.client.gameSettings.renderDistanceChunks);
+        this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.world, this.client.gameSettings.renderDistanceChunks);
         this.chunkRenderManager.restoreChunks(this.loadedChunkPositions);
     }
 

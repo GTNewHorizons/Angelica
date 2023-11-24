@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
+import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -152,14 +153,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         try {
             MatrixStack matrixStack = new MatrixStack();
-            final List<RenderLayer> renderLayers = switch(pass) {
-                case 0 -> ImmutableList.of(RenderLayer.cutoutMipped());
-                case 1 -> ImmutableList.of(RenderLayer.translucent());
-                default -> throw new IllegalStateException("Unexpected value: " + pass);
-            };
-            for (RenderLayer renderLayer : renderLayers) {
-                this.renderer.drawChunkLayer(renderLayer, matrixStack, x, y, z);
-            }
+            this.renderer.drawChunkLayer(BlockRenderPass.VALUES[pass], matrixStack, x, y, z);
         } finally {
             RenderDevice.exitManagedCode();
             this.mc.entityRenderer.disableLightmap(partialTicks);

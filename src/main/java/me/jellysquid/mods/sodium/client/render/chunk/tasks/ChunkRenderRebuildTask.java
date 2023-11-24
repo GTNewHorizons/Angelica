@@ -1,13 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
-import com.gtnewhorizons.angelica.compat.forge.ForgeHooksClientExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.FluidState;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayers;
 import com.gtnewhorizons.angelica.mixins.interfaces.IHasTessellator;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -28,11 +22,8 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MathHelper;
-import net.minecraftforge.fluids.FluidRegistry;
 import org.joml.Vector3d;
 
 /**
@@ -115,71 +106,25 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
+                    Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+                    int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
 
-                    BlockState blockState = slice.getBlockStateRelative(relX + 16, relY + 16, relZ + 16);
-
-                    // Can be replaced by slice.getBlockStateRelative if BlockState gets yeeted
-                    Block block = blockState.getBlock();
-
-                    boolean isFluid = FluidRegistry.lookupFluidForBlock(block) != null;
-
-                    // TODO: Sodium - BlockState
-                    if (block == Blocks.air) {
-                        continue;
-                    }
-
-                    // TODO: commit this separately
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
-                    // 1.7.10 has -1 (air, INVISIBLE), 0, (normal cubes), and 1+ (everything else)
-                    // We don't actually use models, we have normal blocks and TEs
-                    // TODO: use Sodium rendering for fluids
-                    if (!block.hasTileEntity(blockState.getMetadata()) /*&& !isFluid*/) {
-                        for (RenderLayer layer : RenderLayer.getBlockLayers()) {
+                    // Do regular block rendering
+                    for(BlockRenderPass pass : BlockRenderPass.VALUES) {
+                        if(block.canRenderInPass(pass.ordinal())) {
+                            long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
 
-	                        if (!RenderLayers.canRenderInLayer(block, layer)) {
-	                        	continue;
-	                        }
-
-                            // Need an equivalent renderpass check
-                            // if (!block.canRenderInPass(pass)) continue;
-
-	                        ForgeHooksClientExt.setRenderLayer(layer);
-
-//                          IModelData modelData = modelDataMap.getOrDefault(pos, EmptyModelData.INSTANCE);
-//
-//	                        BakedModel model = cache.getBlockModels().getModel(blockState);
-//
-                            // This method calls block.getRenderingSeed, which just hashes the position
-	                        long seed = MathUtil.hashPos(pos.x, pos.y, pos.z); //blockState.getRenderingSeed(pos);
-
-                            if (cache.getBlockRenderer().renderModel(cache.getLocalSlice(), tessellator, renderBlocks, blockState, pos, buffers.get(layer), true, seed)) {
-	                            bounds.addBlock(relX, relY, relZ);
-	                        }
-                        }
-                    }
-
-
-                    FluidState fluidState = blockState.getFluidState();
-
-                    // TODO: use Sodium rendering for fluids
-                    if (isFluid && false) {
-                        for (RenderLayer layer : RenderLayer.getBlockLayers()) {
-                            if (!RenderLayers.canRenderFluidInLayer(block, layer)) {
-                                continue;
+                            if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), tessellator, renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
+                                bounds.addBlock(relX, relY, relZ);
                             }
-
-                            ForgeHooksClientExt.setRenderLayer(layer);
-
-	                        if (cache.getFluidRenderer().render(cache.getLocalSlice(), fluidState, pos, buffers.get(layer))) {
-	                            bounds.addBlock(relX, relY, relZ);
-	                        }
                         }
                     }
 
-                    if (blockState.hasTileEntity()) {
-                        TileEntity entity = slice.getTileEntity(pos);
+                    if (block.hasTileEntity(meta)) {
+                        TileEntity entity = slice.getTileEntity(pos.x, pos.y, pos.z);
 
                         final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(entity);
                         if (entity != null && renderer != null) {
@@ -194,8 +139,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 }
             }
         }
-
-        ForgeHooksClientExt.setRenderLayer(null);
 
         render.setRebuildForTranslucents(false);
         for (BlockRenderPass pass : BlockRenderPass.VALUES) {

@@ -7,29 +7,22 @@ import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.FluidRenderer;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import me.jellysquid.mods.sodium.client.world.WorldSliceLocal;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 
 public class ChunkRenderCacheLocal extends ChunkRenderCache {
-    private final ArrayLightDataCache lightDataCache;
-
     private final BlockRenderer blockRenderer;
     private final FluidRenderer fluidRenderer;
 
     private final BlockModels blockModels;
     private final WorldSlice worldSlice;
-    private WorldSliceLocal localSlice;
 
     public ChunkRenderCacheLocal(Minecraft client, WorldClient world) {
         this.worldSlice = new WorldSlice(world);
-        this.lightDataCache = new ArrayLightDataCache(this.worldSlice);
 
-        LightPipelineProvider lightPipelineProvider = new LightPipelineProvider(this.lightDataCache);
-
-        this.blockRenderer = new BlockRenderer(client, lightPipelineProvider);
-        this.fluidRenderer = new FluidRenderer(client, lightPipelineProvider);
+        this.blockRenderer = new BlockRenderer(client);
+        this.fluidRenderer = new FluidRenderer(client, null);
 
         // TODO: Sodium
         this.blockModels = null; // client.getBakedModelManager().getBlockModels();
@@ -48,18 +41,10 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
     }
 
     public void init(ChunkRenderContext context) {
-        this.lightDataCache.reset(context.getOrigin());
         this.worldSlice.copyData(context);
-        // create the new local slice here so that it's unique whenever we copy new data
-        // this is passed into mod code, since some depend on the provided BlockRenderView object being unique each time
-        this.localSlice = new WorldSliceLocal(this.worldSlice);
     }
 
     public WorldSlice getWorldSlice() {
         return this.worldSlice;
-    }
-
-    public WorldSliceLocal getLocalSlice() {
-        return this.localSlice;
     }
 }
