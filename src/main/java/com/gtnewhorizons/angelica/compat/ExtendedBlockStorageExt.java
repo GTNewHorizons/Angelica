@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.mixins.early.sodium.MixinExtendedBlockStorage;
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
-import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
@@ -13,8 +13,8 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
         this.hasSky = hasSky;
     }
 
-    public ExtendedBlockStorageExt(IExtendedBlockStorageExt storage) {
-        super(storage.getYBase(), storage.hasSky());
+    public ExtendedBlockStorageExt(ExtendedBlockStorage storage) {
+        super(((MixinExtendedBlockStorage) storage).getYBase(), storage.getSkylightArray() != null);
 
         final byte[] blockLSBArray = this.getBlockLSBArray();
 
@@ -32,13 +32,13 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
             }
             copyNibbleArray((ExtendedNibbleArray) storage.getSkylightArray(), (ExtendedNibbleArray) this.getSkylightArray());
         }
-        ((IExtendedBlockStorageExt)this).setBlockRefCount(storage.getBlockRefCount());
+        ((MixinExtendedBlockStorage) this).setBlockRefCount(((MixinExtendedBlockStorage) storage).getBlockRefCount());
     }
 
 
     private static void copyNibbleArray(ExtendedNibbleArray srcArray, ExtendedNibbleArray dstArray) {
-        if(srcArray == null || dstArray == null) {
-            throw new RuntimeException("NibbleArray is null src: " + (srcArray==null) + " dst: " + (dstArray==null));
+        if (srcArray == null || dstArray == null) {
+            throw new RuntimeException("NibbleArray is null src: " + (srcArray == null) + " dst: " + (dstArray == null));
         }
         final byte[] data = srcArray.getData();
         System.arraycopy(data, 0, dstArray.getData(), 0, data.length);
