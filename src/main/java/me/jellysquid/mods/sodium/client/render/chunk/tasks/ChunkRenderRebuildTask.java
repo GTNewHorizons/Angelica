@@ -30,6 +30,7 @@ import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.fluids.FluidRegistry;
 import org.joml.Vector3d;
@@ -64,6 +65,25 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
         this.camera = camera;
         return this;
+    }
+
+    private boolean rendersOutsideBoundingBox(TileEntity entity, int baseX, int baseY, int baseZ) {
+        AxisAlignedBB box = entity.getRenderBoundingBox();
+
+        // Check if it's explictly infinite
+        if(box == TileEntity.INFINITE_EXTENT_AABB)
+            return true;
+
+        // Check if it extends outside our minimums
+        if(box.minX < baseX || box.minY < baseY || box.minZ < baseZ)
+            return true;
+
+        // Check if it extends outside our maximums
+        if(box.maxX > (baseX + 16) || box.maxY > (baseY + 16) || box.maxZ > (baseZ + 16))
+            return true;
+
+        // So it's within the chunk
+        return false;
     }
 
     @Override
@@ -163,10 +183,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                         final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(entity);
                         if (entity != null && renderer != null) {
-                            // TODO: Sodium - Per-chunk tile entities
-                            // !rendersOutsideBoundingBox(entity) in sodium
-                            // entity.getRenderBoundingBox() != TileEntity.INFINITE_EXTENT_AABB rough equivalent in 1.7.10
-                            renderData.addTileEntity(entity, false);
+                            renderData.addTileEntity(entity, !rendersOutsideBoundingBox(entity, baseX, baseY, baseZ));
                             bounds.addBlock(relX, relY, relZ);
                         }
                     }
