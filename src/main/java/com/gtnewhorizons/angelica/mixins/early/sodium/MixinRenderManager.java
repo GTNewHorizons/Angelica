@@ -18,7 +18,7 @@ public class MixinRenderManager {
      */
     @Redirect(method = "renderEntityStatic", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getBrightnessForRender(F)I"))
     private int sodium$getBrightnessForRender(Entity self, float partialTicks) {
-        if (Minecraft.getMinecraft().gameSettings.ambientOcclusion == 2) {
+        if (Minecraft.getMinecraft().gameSettings.ambientOcclusion == SodiumGameOptions.LightingQuality.HIGH.getVanilla()) {
             return EntityLighter.getBlendedLight(self, partialTicks);
         }
 

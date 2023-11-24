@@ -58,8 +58,6 @@ public class SodiumGameOptions {
         public GraphicsQuality leavesQuality = GraphicsQuality.DEFAULT;
 
         public boolean enableVignette = true;
-
-        public LightingQuality smoothLighting = LightingQuality.HIGH;
     }
 
     public static class NotificationSettings {
