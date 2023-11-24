@@ -214,8 +214,9 @@ public class WorldSlice implements BlockRenderView, IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        // TODO: Do we need to handle neighboring chunk columns or is this sufficient?
-        final int k = this.biomeData[(x & 15) << 4 | (z & 15)] & 255;
+        // TODO: We need to handle neighboring chunk columns
+        // (see BlockLiquid#colorMultiplier for example)
+        final int k = this.biomeData[(x & 15) | (z & 15) << 4] & 255;
         return BiomeGenBase.getBiome(k);
     }
 
