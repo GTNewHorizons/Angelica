@@ -127,8 +127,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
         this.translucencyBlockRenderDistance = Math.min(9216, (renderDistance << 4) * (renderDistance << 4));
 
-        // TODO: Sodium - Culling
-        this.useBlockFaceCulling = false; //SodiumClientMod.options().advanced.useBlockFaceCulling;
+        this.useBlockFaceCulling = SodiumClientMod.options().advanced.useBlockFaceCulling;
     }
 
     public void update(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {

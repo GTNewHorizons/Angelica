@@ -88,17 +88,17 @@ public class BlockRenderer {
 //        }
 
         this.random.setSeed(seed);
-        // TODO: Occlusion by side... Potentially adapt the logic from Neodyium...
+
         final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
-        ((ITessellatorInstance) tessellator).discard();
 
-//        List<BakedQuad> all = model.getQuads(state, null, this.random, modelData);
-
-        if (!all.isEmpty()) {
-            this.renderQuadList(world, state, pos, lighter, offset, buffers, all, null);
-
-            rendered = true;
+        for(ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+            this.renderQuadList(world, state, pos, lighter, offset, buffers, all, facing);
         }
+
+        if(!all.isEmpty())
+            rendered = true;
+
+        ((ITessellatorInstance) tessellator).discard();
 
         return rendered;
     }
@@ -134,6 +134,7 @@ public class BlockRenderer {
             Quad quad = quadBuf.next();
             // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
             quad.setState(t.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, t.drawMode, -pos.x, -pos.y, -pos.z);
+
             if(quad.deleted) {
                 quadBuf.remove();
             }
@@ -162,8 +163,7 @@ public class BlockRenderer {
     }
 
     private void renderQuadList(BlockRenderView world, BlockState state, BlockPos pos, LightPipeline lighter, Vector3d offset,
-                                ChunkModelBuffers buffers, List<Quad> quads, ForgeDirection cullFace) {
-    	ModelQuadFacing facing = cullFace == null ? ModelQuadFacing.UNASSIGNED : ModelQuadFacing.fromDirection(cullFace);
+                                ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
 
         ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
@@ -175,8 +175,12 @@ public class BlockRenderer {
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
             Quad quad = quads.get(i);
 
+            if(quad.normal != facing)
+                continue;
+
             QuadLightData light = this.cachedQuadLightData;
-            lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
+            // TODO: maybe make non-null?
+            lighter.calculate(quad, pos, light, null, quad.getFace(), quad.hasShade());
 
             this.renderQuad(world, state, pos, sink, offset, quad, light, renderData);
         }
