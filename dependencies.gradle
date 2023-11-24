@@ -41,11 +41,11 @@ dependencies {
     api("com.github.GTNewHorizons:Hodgepodge:2.3.32")
 
     // Iris Shaders
-    implementation('org.jetbrains:annotations:24.0.1')
-    implementation("it.unimi.dsi:fastutil:8.2.1")
-    implementation("org.joml:joml:1.10.5")
-    implementation("org.anarres:jcpp:1.4.14")
-    implementation("io.github.douira:glsl-transformer:1.0.0")
+    shadowImplementation('org.jetbrains:annotations:24.0.1') // Apache 2.0
+    shadowImplementation("it.unimi.dsi:fastutil:8.2.1") // Apache 2.0
+    shadowImplementation("org.joml:joml:1.10.5") // MIT
+    shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
+    shadowImplementation("io.github.douira:glsl-transformer:1.0.0") // glsl-transformer Noncommercial License 1.0.0
     compileOnly "org.apache.ant:ant:1.8.2"
 
 
@@ -63,7 +63,7 @@ dependencies {
 
 
     // ArchaicFix Deps
-    implementation("com.github.Speiger:Primitive-Collections:0.9.0")
+    shadowImplementation("com.github.Speiger:Primitive-Collections:0.9.0") // Apache 2.0
     compileOnly("codechicken:ChickenChunks:1.7.10-1.3.4.19:dev")
     compileOnly "thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev"
     compileOnly('curse.maven:cofh-core-69162:2388751')

@@ -302,7 +302,7 @@ if (apiPackage) {
 }
 
 if (accessTransformersFile) {
-    for (atFile in accessTransformersFile.split(",")) {
+    for (atFile in accessTransformersFile.split(" ")) {
         String targetFile = "src/main/resources/META-INF/" + atFile.trim()
         if (!getFile(targetFile).exists()) {
             throw new GradleException("Could not resolve \"accessTransformersFile\"! Could not find " + targetFile)

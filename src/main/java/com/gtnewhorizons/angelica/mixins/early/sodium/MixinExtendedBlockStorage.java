@@ -1,26 +1,16 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.IExtendedBlockStorageExt;
-import lombok.Getter;
-import lombok.Setter;
-import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(ExtendedBlockStorage.class)
-public abstract class MixinExtendedBlockStorage implements IExtendedBlockStorageExt {
-    @Shadow public abstract NibbleArray getSkylightArray();
-    @Shadow public abstract NibbleArray getBlocklightArray();
-    @Shadow public abstract NibbleArray getMetadataArray();
-    @Shadow public abstract byte[] getBlockLSBArray();
+public interface MixinExtendedBlockStorage {
 
-    @Getter @Shadow private int yBase;
-    @Getter @Setter @Shadow private int blockRefCount;
-    @Getter @Setter @Shadow private int tickRefCount;
-
-    @Override
-    public boolean hasSky() {
-        return getSkylightArray() != null;
-    }
+    @Accessor("yBase")
+    int getYBase();
+    @Accessor("blockRefCount")
+    int getBlockRefCount();
+    @Accessor("blockRefCount")
+    void setBlockRefCount(int blockRefCount);
 }
