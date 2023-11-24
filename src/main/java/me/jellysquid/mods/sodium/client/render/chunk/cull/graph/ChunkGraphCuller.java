@@ -11,6 +11,9 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
+import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraft.util.MathHelper;
@@ -73,9 +76,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     private void initSearch(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {
         this.activeFrame = frame;
         this.frustum = frustum;
-        // TODO: Sodium Options
-        // TODO: Sodium - Culling
-        this.useOcclusionCulling = false; //Minecraft.getMinecraft().chunkCullingEnabled;
+        this.useOcclusionCulling = true;
 
         this.visible.clear();
 
@@ -95,8 +96,11 @@ public class ChunkGraphCuller implements ChunkCuller {
             rootNode.resetCullingState();
             rootNode.setLastVisibleFrame(frame);
 
-            if (spectator && ((BlockRenderView)this.world).getBlockState(origin).isOpaqueFullCube((BlockRenderView) this.world, origin)) {
-                this.useOcclusionCulling = false;
+            if (spectator) {
+                Block block = this.world.getBlock(origin.getX(), origin.getY(), origin.getZ());
+                if(block.isOpaqueCube()) {
+                    this.useOcclusionCulling = false;
+                }
             }
 
             this.visible.add(rootNode);
