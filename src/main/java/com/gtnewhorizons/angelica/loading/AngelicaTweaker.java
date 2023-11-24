@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading;
 
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
@@ -36,6 +37,8 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     static {
         try {
+            // Angelica Config
+            ConfigurationManager.registerConfig(AngelicaConfig.class);
             // ArchaicFix Config
             ConfigurationManager.registerConfig(ArchaicConfig.class);
             LoggerContext ctx = (LoggerContext) LogManager.getContext(false);

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.proxy;
 
 import com.gtnewhorizons.angelica.client.gui.AngelicaEntityRenderDistanceSetting;
 import com.gtnewhorizons.angelica.client.gui.AngelicaVideoSettings;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import jss.notfine.gui.GuiCustomMenu;
@@ -9,8 +10,6 @@ import jss.notfine.gui.ISettingsEnum;
 import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
-
-import java.awt.*;
 
 public class ClientProxy extends CommonProxy {
 
@@ -35,7 +34,7 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLInitializationEvent event) {
-        /// TODO: If Sodium is active/loaded
-        MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
+        if(AngelicaConfig.enableSodium)
+            MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
     }
 }
