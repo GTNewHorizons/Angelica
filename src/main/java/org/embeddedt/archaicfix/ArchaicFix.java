@@ -11,11 +11,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
-import cpw.mods.fml.relauncher.Side;
 import net.minecraftforge.common.MinecraftForge;
-import org.embeddedt.archaicfix.config.ArchaicConfig;
 import org.embeddedt.archaicfix.proxy.CommonProxy;
-import org.embeddedt.archaicfix.threadedupdates.ThreadedChunkUpdateHelper;
 
 @Mod(modid = ArchaicFix.MODID, version = ArchaicFix.VERSION, dependencies = "required-after:gtnhmixins@[2.0.0,);", guiFactory = "org.embeddedt.archaicfix.config.ArchaicGuiConfigFactory")
 public class ArchaicFix
@@ -51,10 +48,6 @@ public class ArchaicFix
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
-        if(event.getSide() == Side.CLIENT && (ArchaicConfig.enableThreadedChunkUpdates && ArchaicConfig.enableOcclusionTweaks)) {
-            ThreadedChunkUpdateHelper.instance = new ThreadedChunkUpdateHelper();
-            ThreadedChunkUpdateHelper.instance.init();
-        }
     }
 
     @EventHandler
