@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import net.minecraft.block.Block;
+import net.minecraft.block.BlockLiquid;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
@@ -30,7 +30,10 @@ public class FluidState {
         return true;
     }
 
+    /**
+     * Returns how much of the block is fluid, from 0 to 1.
+     */
     public float getHeight(BlockRenderView world, BlockPos pos) {
-        return 0.0f;
+        return fluid == null ? 0 : 1 - BlockLiquid.getLiquidHeightPercent(meta);
     }
 }

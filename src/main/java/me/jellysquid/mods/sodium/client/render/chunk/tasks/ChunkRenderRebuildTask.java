@@ -17,6 +17,7 @@ import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
+import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -24,6 +25,7 @@ import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
 /**
@@ -113,12 +115,24 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
                     // Do regular block rendering
-                    for(BlockRenderPass pass : BlockRenderPass.VALUES) {
-                        if(block.canRenderInPass(pass.ordinal())) {
+                    for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+                        if (block.canRenderInPass(pass.ordinal()) && (!SodiumConfig.ENABLE_FLUID_RENDERER || !(block instanceof IFluidBlock))) {
                             long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
 
                             if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), tessellator, renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
                                 bounds.addBlock(relX, relY, relZ);
+                            }
+                        }
+                    }
+
+                    // Do fluid rendering without RenderBlocks
+                    if (SodiumConfig.ENABLE_FLUID_RENDERER && block instanceof IFluidBlock) {
+                        for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+                            if (block.canRenderInPass(pass.ordinal())) {
+
+                                if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), (IFluidBlock) block, pos, buffers.get(pass))) {
+                                    bounds.addBlock(relX, relY, relZ);
+                                }
                             }
                         }
                     }

@@ -5,7 +5,11 @@ import net.minecraftforge.common.util.ForgeDirection;
 public final class VoxelShapes {
 
     public static VoxelShape fullCube() {
-        return null;
+        return VoxelShape.FULL_CUBE;
+    }
+
+    public static VoxelShape empty() {
+        return VoxelShape.EMPTY;
     }
 
     public static boolean matchesAnywhere(VoxelShape shape1, VoxelShape shape2, Object predicate) {

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
+import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +52,11 @@ public enum Mixins {
             ,"sodium.MixinGuiIngameForge"
         )
     ),
+
+    // Required for Sodium's FluidRenderer, so it treats vanilla liquids as IFluidBlocks
+    SODIUM_WISHLIST(new Builder("Sodiumer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.BOTH)
+        .setPhase(Phase.EARLY).setApplyIf(() -> SodiumConfig.ENABLE_FLUID_RENDERER).addMixinClasses(
+        "sodium.MixinBlockLiquid")),
 
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(

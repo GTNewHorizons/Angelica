@@ -1,8 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.pipeline.context;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockModels;
-import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
-import me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.FluidRenderer;
@@ -22,7 +20,7 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
         this.worldSlice = new WorldSlice(world);
 
         this.blockRenderer = new BlockRenderer(client);
-        this.fluidRenderer = new FluidRenderer(client, null);
+        this.fluidRenderer = new FluidRenderer(client);
 
         // TODO: Sodium
         this.blockModels = null; // client.getBakedModelManager().getBlockModels();
