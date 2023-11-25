@@ -55,6 +55,7 @@ public enum Mixins {
             //,"sodium.MixinTextureMap"
             //,"sodium.MixinEntityFX"
             ,"sodium.MixinLongHashMap"
+            ,"sodium.MixinRender"
         )
     ),
 
