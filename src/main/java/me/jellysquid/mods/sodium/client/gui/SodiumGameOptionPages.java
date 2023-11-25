@@ -156,7 +156,7 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.particle_quality.tooltip"))
                         .setControl(opt -> new CyclingControl<>(opt, SodiumGameOptions.ParticleMode.class))
                         .setBinding((opts, value) -> opts.particleSetting = value.ordinal(), (opts) -> SodiumGameOptions.ParticleMode.fromOrdinal(opts.particleSetting))
-                        .setImpact(OptionImpact.MEDIUM)
+                        .setImpact(OptionImpact.LOW)
                         .build())
                 .add(OptionImpl.createBuilder(SodiumGameOptions.LightingQuality.class, vanillaOpts)
                         .setName(I18n.format("options.ao"))
