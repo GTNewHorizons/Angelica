@@ -32,7 +32,7 @@ public class SodiumGameOptions {
         public boolean useFogOcclusion = true;
         public boolean useCompactVertexFormat = true;
         public boolean useBlockFaceCulling = true;
-        public boolean allowDirectMemoryAccess = false;
+        public boolean allowDirectMemoryAccess = true;
         public boolean ignoreDriverBlacklist = false;
         public boolean translucencySorting = false;
     }

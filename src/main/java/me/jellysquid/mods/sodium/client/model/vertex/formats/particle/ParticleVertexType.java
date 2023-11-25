@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.particle.writer.ParticleVertexBufferWriterNio;
+import me.jellysquid.mods.sodium.client.model.vertex.formats.particle.writer.ParticleVertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.particle.writer.ParticleVertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.type.BlittableVertexType;
 import me.jellysquid.mods.sodium.client.model.vertex.type.VanillaVertexType;
@@ -11,7 +12,7 @@ import me.jellysquid.mods.sodium.client.model.vertex.type.VanillaVertexType;
 public class ParticleVertexType implements VanillaVertexType<ParticleVertexSink>, BlittableVertexType<ParticleVertexSink> {
     @Override
     public ParticleVertexSink createBufferWriter(VertexBufferView buffer, boolean direct) {
-        return new ParticleVertexBufferWriterNio(buffer);
+        return direct ? new ParticleVertexBufferWriterUnsafe(buffer) : new ParticleVertexBufferWriterNio(buffer);
     }
 
     @Override

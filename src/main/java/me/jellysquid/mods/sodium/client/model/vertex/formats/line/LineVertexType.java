@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer.LineVertexBufferWriterNio;
+import me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer.LineVertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer.LineVertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.type.BlittableVertexType;
 import me.jellysquid.mods.sodium.client.model.vertex.type.VanillaVertexType;
@@ -12,7 +13,7 @@ import me.jellysquid.mods.sodium.client.model.vertex.type.VanillaVertexType;
 public class LineVertexType implements VanillaVertexType<LineVertexSink>, BlittableVertexType<LineVertexSink> {
     @Override
     public LineVertexSink createBufferWriter(VertexBufferView buffer, boolean direct) {
-        return new LineVertexBufferWriterNio(buffer);
+        return direct ? new LineVertexBufferWriterUnsafe(buffer) : new LineVertexBufferWriterNio(buffer);
     }
 
     @Override
