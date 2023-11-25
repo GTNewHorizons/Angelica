@@ -48,7 +48,6 @@ public enum Mixins {
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
-            ,"sodium.MixinWorldRenderer"
             ,"sodium.MixinGuiIngameForge"
         )
     ),
