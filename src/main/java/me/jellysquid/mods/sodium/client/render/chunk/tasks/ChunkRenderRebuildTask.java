@@ -23,6 +23,7 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraftforge.fluids.IFluidBlock;
@@ -109,6 +110,13 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
                     Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+
+                    // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
+                    // can abuse it for all sorts of things
+                    if (block == Blocks.air) {
+                        continue;
+                    }
+
                     int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
 
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
