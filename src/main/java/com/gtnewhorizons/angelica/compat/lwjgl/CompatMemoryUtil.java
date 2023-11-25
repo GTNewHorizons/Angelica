@@ -3,10 +3,30 @@ package com.gtnewhorizons.angelica.compat.lwjgl;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 public class CompatMemoryUtil {
     public static ByteBuffer memReallocDirect(ByteBuffer old, int capacity) {
         ByteBuffer newBuf = BufferUtils.createByteBuffer(capacity);
+        int oldPos = old.position();
+        old.rewind();
+        newBuf.put(old);
+        newBuf.position(Math.min(capacity, oldPos));
+        return newBuf;
+    }
+
+    public static IntBuffer memReallocDirect(IntBuffer old, int capacity) {
+        IntBuffer newBuf = BufferUtils.createIntBuffer(capacity);
+        int oldPos = old.position();
+        old.rewind();
+        newBuf.put(old);
+        newBuf.position(Math.min(capacity, oldPos));
+        return newBuf;
+    }
+
+    public static FloatBuffer memReallocDirect(FloatBuffer old, int capacity) {
+        FloatBuffer newBuf = BufferUtils.createFloatBuffer(capacity);
         int oldPos = old.position();
         old.rewind();
         newBuf.put(old);
