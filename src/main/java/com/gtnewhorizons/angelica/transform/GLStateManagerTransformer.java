@@ -24,6 +24,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
      * Redirects a subset of GL11 calls to GLStateManager
      *  NOTE: Still need to verify compatibility with Mixins and Lwjgl3ify
      */
+    public static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
     public static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
@@ -45,6 +46,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
         "org.lwjgl", "com.gtnewhorizons.angelica.glsm.", "com.gtnewhorizons.angelica.transform", "me.eigenraven.lwjgl3ify", "cpw.mods.fml.client.SplashProgress")
     );
     public static int remaps = 0, calls = 0;
+    public static Method lastMethod = null;
 
     @Override
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
@@ -70,9 +72,11 @@ public class GLStateManagerTransformer implements IClassTransformer {
             @Override
             public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                 MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
-                if (!eligibleMethods.contains(new Method(name, desc))) {
+                final Method method = new Method(name, desc);
+                if (!eligibleMethods.contains(method)) {
                     return mv;
                 }
+
                 return new MethodVisitor(Opcodes.ASM9, mv) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
@@ -82,10 +86,14 @@ public class GLStateManagerTransformer implements IClassTransformer {
                                 final String shortOwner = owner.substring(owner.lastIndexOf("/") + 1);
                                 AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
                             }
+
+                            if(ASSERT_MAIN_THREAD && !method.equals(lastMethod)) {
+                                super.visitMethodInsn(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false);
+                            }
                             owner = GLStateTracker;
+                            lastMethod = method;
                             remaps++;
                         }
-                        // TODO: Add an optional (if DEBUG) inject to assert we're on the main thread.
                         super.visitMethodInsn(opcode, owner, name, desc, itf);
                     }
                 };
