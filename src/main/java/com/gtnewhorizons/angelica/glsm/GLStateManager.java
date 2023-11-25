@@ -70,6 +70,9 @@ public class GLStateManager {
     private static Runnable fogEndListener = null;
     private static Runnable fogDensityListener = null;
 
+    // Thread Checking
+    private static Thread MainThread;
+
     static {
         if(AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
@@ -80,6 +83,13 @@ public class GLStateManager {
             StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
         Textures = (TextureState[]) IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
+        MainThread = Thread.currentThread();
+    }
+
+    public static void assertMainThread() {
+        if (Thread.currentThread() != MainThread) {
+            throw new IllegalStateException("Not on the main thread!");
+        }
     }
 
 
