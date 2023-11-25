@@ -9,15 +9,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(GuiIngameForge.class)
 public class MixinGuiIngameForge {
 
-    @Redirect(
-        method = "renderGameOverlay(FZII)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/Minecraft;isFancyGraphicsEnabled()Z"
-        )
-    )
-    private boolean checkVignette(float whyAndHowIsThisAFloat) {
-        return SodiumClientMod.options().quality.enableVignette;
+    @Redirect(method = "renderGameOverlay(FZII)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isFancyGraphicsEnabled()Z"))
+    private boolean checkVignette(float idk) {
+        return SodiumClientMod.options().quality.enableVignette.isFancy();
     }
 
 }

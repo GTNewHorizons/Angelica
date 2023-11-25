@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui.options.control;
 
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.resources.I18n;
@@ -36,7 +37,7 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
             String name;
             T value = universe[i];
 
-            name = I18n.format(value.name());
+            name = I18n.format(value instanceof SodiumGameOptions.NamedState namedState ? namedState.getKey() : value.name());
 
             this.names[i] = name;
         }

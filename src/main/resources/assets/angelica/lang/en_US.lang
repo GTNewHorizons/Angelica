@@ -1,6 +1,7 @@
 options.button.shader=Shaders...
 
 options.chunks=%s chunks
+options.entityShadows=Entity Shadows
 sodium.option_impact.low=Low
 sodium.option_impact.medium=Medium
 sodium.option_impact.high=High
