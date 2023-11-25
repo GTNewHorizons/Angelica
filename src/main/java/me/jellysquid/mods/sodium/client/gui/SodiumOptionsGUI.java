@@ -11,6 +11,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
 import me.jellysquid.mods.sodium.client.gui.utils.Element;
+import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.gui.GuiScreen;
@@ -89,7 +90,7 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.closeButton = new FlatButtonWidget(new Dim2i(this.width - 73, this.height - 26, 65, 20), I18n.format("gui.done"), this::onClose);
         String donateToJelly = I18n.format("sodium.options.buttons.donate");
         int width = 12 + this.fontRendererObj.getStringWidth(donateToJelly);
-        this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, this::openDonationPage);
+        this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, () -> openDonationPage("https://caffeinemc.net/donate"));
         this.hideDonateButton = new FlatButtonWidget(new Dim2i(this.width - 26, 6, 20, 20), "x", this::hideDonationButton);
 
         if (SodiumClientMod.options().notifications.hideDonationButton) {
@@ -285,14 +286,8 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     // TODO Was taken from GuiChat, however i am pretty sure this code is very broken on other OS'es rather Windows
-    private void openDonationPage() {
-        try {
-            Class oclass = Class.forName("java.awt.Desktop");
-            Object object = oclass.getMethod("getDesktop").invoke(null);
-            oclass.getMethod("browse", URI.class).invoke(object, "https://caffeinemc.net/donate");
-        } catch (Throwable throwable) {
-            SodiumClientMod.logger().error("Couldn't open link", throwable);
-        }
+    private void openDonationPage(String url) {
+        URLUtils.open(url);
     }
 
     @Override
