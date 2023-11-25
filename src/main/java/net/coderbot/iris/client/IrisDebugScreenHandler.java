@@ -41,11 +41,13 @@ public class IrisDebugScreenHandler {
             event.right.add("");
 
             if (Iris.getIrisConfig().areShadersEnabled()) {
-                event.right.add("[Iris] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
-                Iris.getCurrentPack().ifPresent(pack -> event.right.add("[Iris] " + pack.getProfileInfo()));
+                event.right.add("[" + Iris.MODNAME + "] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
+                Iris.getCurrentPack().ifPresent(pack -> event.right.add("[" + Iris.MODNAME + "] " + pack.getProfileInfo()));
             } else {
-                event.right.add("[Iris] Shaders are disabled");
+                event.right.add("[" + Iris.MODNAME + "] Shaders are disabled");
             }
+
+            Iris.getPipelineManager().getPipeline().ifPresent(pipeline -> pipeline.addDebugText(event.left));
 
         }
     }

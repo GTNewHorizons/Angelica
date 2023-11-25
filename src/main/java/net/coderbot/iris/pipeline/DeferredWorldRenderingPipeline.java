@@ -1054,7 +1054,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (shadowRenderer != null) {
 			shadowRenderer.addDebugText(messages);
 		} else {
-			messages.add("[Iris] Shadow Maps: not used by shader pack");
+			messages.add("[" + Iris.MODNAME + "] Shadow Maps: not used by shader pack");
 		}
 	}
 
