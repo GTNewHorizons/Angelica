@@ -337,16 +337,14 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.performance.alwaysDeferChunkUpdates = value, opts -> opts.performance.alwaysDeferChunkUpdates)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
-                // TODO Instead of value in Angelica config
-                /*.add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(new TranslatableText("sodium.options.use_no_error_context.name"))
-                        .setTooltip(new TranslatableText("sodium.options.use_no_error_context.tooltip"))
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.use_no_error_context.name"))
+                        .setTooltip(I18n.format("sodium.options.use_no_error_context.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.LOW)
                         .setBinding((opts, value) -> opts.performance.useNoErrorGLContext = value, opts -> opts.performance.useNoErrorGLContext)
-                        .setEnabled(supportsNoErrorContext())
                         .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
-                        .build())*/
+                        .build())
                 .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.performance"), ImmutableList.copyOf(groups));
