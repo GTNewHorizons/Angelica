@@ -1,5 +1,10 @@
 package me.jellysquid.mods.sodium.client.gui;
 
+import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.gui.GuiShaders;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import jss.notfine.gui.GuiCustomMenu;
+import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -11,6 +16,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
 import me.jellysquid.mods.sodium.client.gui.utils.Element;
+import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.gui.GuiScreen;
@@ -47,6 +53,8 @@ public class SodiumOptionsGUI extends GuiScreen {
     private boolean hasPendingChanges;
     private ControlElement<?> hoveredElement;
 
+    private OptionPage shaderPacks;
+
     public SodiumOptionsGUI(GuiScreen prevScreen) {
         this.prevScreen = prevScreen;
 
@@ -54,9 +62,17 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.pages.add(SodiumGameOptionPages.quality());
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
+
+        if(AngelicaConfig.enableIris)
+            this.pages.add(shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of()));
     }
 
     public void setPage(OptionPage page) {
+        if (AngelicaConfig.enableIris && page == shaderPacks) {
+            mc.displayGuiScreen(new GuiShaders(prevScreen, mc.gameSettings));
+            return;
+        }
+
         this.currentPage = page;
 
         this.rebuildGUI();
@@ -89,7 +105,7 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.closeButton = new FlatButtonWidget(new Dim2i(this.width - 73, this.height - 26, 65, 20), I18n.format("gui.done"), this::onClose);
         String donateToJelly = I18n.format("sodium.options.buttons.donate");
         int width = 12 + this.fontRendererObj.getStringWidth(donateToJelly);
-        this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, this::openDonationPage);
+        this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, () -> openDonationPage("https://caffeinemc.net/donate"));
         this.hideDonateButton = new FlatButtonWidget(new Dim2i(this.width - 26, 6, 20, 20), "x", this::hideDonationButton);
 
         if (SodiumClientMod.options().notifications.hideDonationButton) {
@@ -284,15 +300,8 @@ public class SodiumOptionsGUI extends GuiScreen {
                 .forEach(Option::reset);
     }
 
-    // TODO Was taken from GuiChat, however i am pretty sure this code is very broken on other OS'es rather Windows
-    private void openDonationPage() {
-        try {
-            Class oclass = Class.forName("java.awt.Desktop");
-            Object object = oclass.getMethod("getDesktop").invoke(null);
-            oclass.getMethod("browse", URI.class).invoke(object, "https://caffeinemc.net/donate");
-        } catch (Throwable throwable) {
-            SodiumClientMod.logger().error("Couldn't open link", throwable);
-        }
+    private void openDonationPage(String url) {
+        URLUtils.open(url);
     }
 
     @Override
@@ -305,12 +314,8 @@ public class SodiumOptionsGUI extends GuiScreen {
         }
 
         if (keyCode == Keyboard.KEY_P && isShiftKeyDown()) {
-            this.mc.displayGuiScreen(new GuiVideoSettings(this.prevScreen, this.mc.gameSettings));
-
-            return;
+            this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, MenuButtonLists.VIDEO));
         }
-
-        super.keyTyped(typedChar, keyCode);
     }
 
     public boolean shouldCloseOnEsc() {

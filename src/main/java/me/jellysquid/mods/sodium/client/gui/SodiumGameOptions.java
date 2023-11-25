@@ -40,6 +40,7 @@ public class SodiumGameOptions {
     public static class PerformanceSettings {
         public int chunkBuilderThreads = 0;
         public boolean alwaysDeferChunkUpdates = false;
+        public boolean useNoErrorGLContext = true;
     }
 
     public static class EntityRenderDistance {

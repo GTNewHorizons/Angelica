@@ -14,7 +14,6 @@ public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinEntityRenderer"
-            ,"angelica.MixinMinecraft"
         )
     ),
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
@@ -50,6 +49,11 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinGuiIngameForge"
+            ,"sodium.MixinEffectRenderer"
+            // TODO Doesn't work correctly
+            //,"sodium.MixinTextureAtlasSprite"
+            //,"sodium.MixinTextureMap"
+            //,"sodium.MixinEntityFX"
             ,"sodium.MixinLongHashMap"
         )
     ),
