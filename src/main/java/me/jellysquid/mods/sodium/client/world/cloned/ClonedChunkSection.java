@@ -78,9 +78,9 @@ public class ClonedChunkSection {
                     if(block.hasTileEntity(data.getExtBlockMetadata(lX, lY, lZ))) {
                         TileEntity tileentity = chunk.func_150806_e(x & 15, y, z & 15);
 
-                        if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileentity))
+                        if (tileentity != null)
                         {
-                            this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)), tileentity);
+                            this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord & 15, tileentity.yCoord & 15, tileentity.zCoord & 15)), tileentity);
                         }
                     }
                 }
