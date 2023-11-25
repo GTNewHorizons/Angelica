@@ -16,9 +16,9 @@ public abstract class MixinRender {
         at = @At(
             value = "FIELD",
             target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z",
-            opcode = Opcodes.GETFIELD
-        ),
-        allow = 1
+            opcode = Opcodes.GETFIELD,
+            ordinal = 0
+        )
     )
     private boolean notFine$toggleEntityShadows(GameSettings settings) {
         return SettingsManager.shadows;

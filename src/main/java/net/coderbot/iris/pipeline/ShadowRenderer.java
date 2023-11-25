@@ -2,6 +2,7 @@ package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.batchedentityrendering.impl.BatchingDebugMessageHelper;
 import net.coderbot.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
 import net.coderbot.batchedentityrendering.impl.RenderBuffersExt;
@@ -311,8 +312,8 @@ public class ShadowRenderer {
 
 			shadowLightVectorFromOrigin.normalize();
 
-			return holder.setInfo(new AdvancedShadowCullingFrustum(((Matrix4fAccess) (Object) CapturedRenderingState.INSTANCE.getGbufferModelView()).convertToJOML(),
-				((Matrix4fAccess) (Object) CapturedRenderingState.INSTANCE.getGbufferProjection()).convertToJOML(), shadowLightVectorFromOrigin, boxCuller), distanceInfo, cullingInfo);
+			return holder.setInfo(new AdvancedShadowCullingFrustum(RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(),
+                shadowLightVectorFromOrigin, boxCuller), distanceInfo, cullingInfo);
 
 		}
 
@@ -641,14 +642,12 @@ public class ShadowRenderer {
 		messages.add("[" + Iris.MODNAME + "] Shadow Maps: " + debugStringOverall);
 		messages.add("[" + Iris.MODNAME + "] Shadow Distance Terrain: " + terrainFrustumHolder.getDistanceInfo() + " Entity: " + entityFrustumHolder.getDistanceInfo());
 		messages.add("[" + Iris.MODNAME + "] Shadow Culling Terrain: " + terrainFrustumHolder.getCullingInfo() + " Entity: " + entityFrustumHolder.getCullingInfo());
-		messages.add("[" + Iris.MODNAME + "] Shadow Terrain: " + debugStringTerrain
-			+ (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
+		messages.add("[" + Iris.MODNAME + "] Shadow Terrain: " + debugStringTerrain + (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
 		messages.add("[" + Iris.MODNAME + "] Shadow Entities: " + getEntitiesDebugString());
 		messages.add("[" + Iris.MODNAME + "] Shadow Block Entities: " + getTileEntitiesDebugString());
 
-		if (buffers instanceof DrawCallTrackingRenderBuffers && (shouldRenderEntities || shouldRenderPlayer)) {
-			DrawCallTrackingRenderBuffers drawCallTracker = (DrawCallTrackingRenderBuffers) buffers;
-			messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
+		if (buffers instanceof DrawCallTrackingRenderBuffers drawCallTracker && (shouldRenderEntities || shouldRenderPlayer)) {
+            messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
 		}
 	}
 

@@ -24,6 +24,7 @@ public class SettingsManager {
     public static boolean leavesOpaque;
     public static boolean waterDetail;
     public static boolean vignette;
+    public static byte downfallDistance;
     public static double entityRenderScaleFactor;
 
     public static ResourceLocation defaultBackground = Gui.optionsBackground;
@@ -63,6 +64,26 @@ public class SettingsManager {
                 break;
             case 1:
                 cloudTranslucencyCheck = Double.POSITIVE_INFINITY;
+                break;
+        }
+    }
+
+    public static void downfallDistanceUpdated() {
+        switch((int)Settings.DOWNFALL_DISTANCE.getValue()) {
+            case -1:
+                downfallDistance = (byte)(mc.gameSettings.fancyGraphics ? 10 : 5);
+                break;
+            case 0:
+                downfallDistance = (byte)5;
+                break;
+            case 1:
+                downfallDistance = (byte)10;
+                break;
+            case 2:
+                downfallDistance = (byte)15;
+                break;
+            case 3:
+                downfallDistance = (byte)0;
                 break;
         }
     }
@@ -135,6 +156,7 @@ public class SettingsManager {
     }
 
     public static void graphicsUpdated() {
+        downfallDistanceUpdated();
         leavesUpdated();
         shadowsUpdated();
         droppedItemDetailUpdated();

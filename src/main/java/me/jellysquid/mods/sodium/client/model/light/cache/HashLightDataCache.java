@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
+import me.jellysquid.mods.sodium.client.world.WorldSlice;
 
 
 /**
@@ -12,7 +13,7 @@ import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 public class HashLightDataCache extends LightDataAccess {
     private final Long2LongLinkedOpenHashMap map = new Long2LongLinkedOpenHashMap(1024, 0.50f);
 
-    public HashLightDataCache(BlockRenderView world) {
+    public HashLightDataCache(WorldSlice world) {
         this.world = world;
     }
 

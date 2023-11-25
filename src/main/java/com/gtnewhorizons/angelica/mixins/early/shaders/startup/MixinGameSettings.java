@@ -11,17 +11,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameSettings.class)
 public abstract class MixinGameSettings {
     @Unique
-    private static boolean angelica$shadersInitialized;
+    private static boolean iris$shadersInitialized;
+
+    private static Iris iris$Instance;
 
     @Inject(method="Lnet/minecraft/client/settings/GameSettings;loadOptions()V", at=@At("HEAD"))
     private void angelica$InitializeShaders(CallbackInfo ci) {
-        if (angelica$shadersInitialized) {
+        if (iris$shadersInitialized) {
             return;
         }
 
-        angelica$shadersInitialized = true;
-        // TODO: Should this be static, or a new var?
-        new Iris().onEarlyInitialize();
+        iris$shadersInitialized = true;
+        iris$Instance =new Iris();
+        iris$Instance.onEarlyInitialize();
     }
 
 }

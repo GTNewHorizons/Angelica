@@ -29,75 +29,57 @@ public abstract class MixinGameSettings {
      */
     @Overwrite
     public void setOptionFloatValue(GameSettings.Options option, float value) {
-        switch(option) {
-            case SENSITIVITY:
-                mouseSensitivity = value;
-                break;
-            case FOV:
-                fovSetting = value;
-                break;
-            case GAMMA:
-                gammaSetting = value;
-                break;
-            case FRAMERATE_LIMIT:
-                limitFramerate = (int) value;
-                break;
-            case CHAT_OPACITY:
+        switch (option) {
+            case SENSITIVITY -> mouseSensitivity = value;
+            case FOV -> fovSetting = value;
+            case GAMMA -> gammaSetting = value;
+            case FRAMERATE_LIMIT -> limitFramerate = (int) value;
+            case CHAT_OPACITY -> {
                 chatOpacity = value;
                 mc.ingameGUI.getChatGUI().refreshChat();
-                break;
-            case CHAT_HEIGHT_FOCUSED:
+            }
+            case CHAT_HEIGHT_FOCUSED -> {
                 chatHeightFocused = value;
                 mc.ingameGUI.getChatGUI().refreshChat();
-                break;
-            case CHAT_HEIGHT_UNFOCUSED:
+            }
+            case CHAT_HEIGHT_UNFOCUSED -> {
                 chatHeightUnfocused = value;
                 mc.ingameGUI.getChatGUI().refreshChat();
-                break;
-            case CHAT_WIDTH:
+            }
+            case CHAT_WIDTH -> {
                 chatWidth = value;
                 mc.ingameGUI.getChatGUI().refreshChat();
-                break;
-            case CHAT_SCALE:
+            }
+            case CHAT_SCALE -> {
                 chatScale = value;
                 mc.ingameGUI.getChatGUI().refreshChat();
-                break;
-            case ANISOTROPIC_FILTERING:
-                if(anisotropicFiltering != (int) value) {
+            }
+            case ANISOTROPIC_FILTERING -> {
+                if (anisotropicFiltering != (int) value) {
                     anisotropicFiltering = (int) value;
                     mc.getTextureMapBlocks().setAnisotropicFiltering(this.anisotropicFiltering);
                     mc.scheduleResourcesRefresh();
                 }
-                break;
-            case MIPMAP_LEVELS:
-                if(mipmapLevels != (int) value) {
+            }
+            case MIPMAP_LEVELS -> {
+                if (mipmapLevels != (int) value) {
                     mipmapLevels = (int) value;
                     mc.getTextureMapBlocks().setMipmapLevels(this.mipmapLevels);
                     mc.scheduleResourcesRefresh();
                 }
-                break;
-            case RENDER_DISTANCE:
-                renderDistanceChunks = (int) value;
-                break;
-            case STREAM_BYTES_PER_PIXEL:
-                field_152400_J = value;
-                break;
-            case STREAM_VOLUME_MIC:
+            }
+            case RENDER_DISTANCE -> renderDistanceChunks = (int) value;
+            case STREAM_BYTES_PER_PIXEL -> field_152400_J = value;
+            case STREAM_VOLUME_MIC -> {
                 field_152401_K = value;
                 mc.func_152346_Z().func_152915_s();
-                break;
-            case STREAM_VOLUME_SYSTEM:
+            }
+            case STREAM_VOLUME_SYSTEM -> {
                 field_152402_L = value;
                 mc.func_152346_Z().func_152915_s();
-                break;
-            case STREAM_KBPS:
-                field_152403_M = value;
-                break;
-            case STREAM_FPS:
-                field_152404_N = value;
-                break;
-            default:
-                break;
+            }
+            case STREAM_KBPS -> field_152403_M = value;
+            case STREAM_FPS -> field_152404_N = value;
         }
     }
 
@@ -196,14 +178,13 @@ public abstract class MixinGameSettings {
                 enableVsync = !enableVsync;
                 Display.setVSyncEnabled(enableVsync);
                 break;
-            default:
-                break;
         }
         saveOptions();
     }
 
     @Shadow
-    public void saveOptions() {}
+    public void saveOptions() {
+    }
 
     @Shadow protected Minecraft mc;
 

@@ -9,6 +9,7 @@ import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.ISettingsEnum;
 import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
+import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
 
 public class ClientProxy extends CommonProxy {
@@ -34,7 +35,11 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLInitializationEvent event) {
-        if(AngelicaConfig.enableSodium)
+        if(AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
+        }
+        if(AngelicaConfig.enableIris) {
+            MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
+        }
     }
 }

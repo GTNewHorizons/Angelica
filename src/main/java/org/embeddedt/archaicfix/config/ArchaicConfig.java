@@ -2,26 +2,6 @@ package org.embeddedt.archaicfix.config;
 
 @Config(modid = "archaicfix")
 public class ArchaicConfig {
-    @Config.Comment("Enables the 1.8-style occlusion culling originally developed by CoFHTweaks.")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean enableOcclusionTweaks;
-
-    @Config.Comment("EXPERIMENTAL: Enables multi-threaded chunk updating. At the moment it only works if enableOcclusionTweaks is turned on.  Doesn't currently work with Shaders")
-    @Config.DefaultBoolean(false)
-    @Config.RequiresMcRestart
-    public static boolean enableThreadedChunkUpdates;
-
-    @Config.Comment("The number of threads to use for chunk building. The default is 1, which shouldn't be any laggier than vanilla but will reduce stutter. If you have a lot of cores increasing this may be beneficial.")
-    @Config.DefaultInt(1)
-    @Config.RangeInt(min = 1)
-    @Config.RequiresMcRestart
-    public static int numChunkUpdateThreads;
-
-    @Config.Comment("Changes the enableThreadedChunkUpdates option to never wait for chunk updates. Improves framerate when blocks are placed or destroyed, at the cost of introducing visual delay. This is analogous to 1.18's 'Chunk Builder' option, false meaning 'Fully Blocking', and true meaning 'Threaded'.")
-    @Config.DefaultBoolean(false)
-    public static boolean disableBlockingChunkUpdates;
-
     @Config.DefaultBoolean(true)
     public static boolean hideDownloadingTerrainScreen;
 

@@ -1,7 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import org.lwjgl.MemoryUtil;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
@@ -22,7 +26,7 @@ public abstract class ChunkDrawCallBatcher extends StructBuffer {
     }
 
     public static ChunkDrawCallBatcher create(int capacity) {
-        return new NioChunkDrawCallBatcher(capacity);
+        return SodiumClientMod.isDirectMemoryAccessEnabled() ? new UnsafeChunkDrawCallBatcher(capacity) : new NioChunkDrawCallBatcher(capacity);
     }
 
     public void begin() {
@@ -53,6 +57,39 @@ public abstract class ChunkDrawCallBatcher extends StructBuffer {
 
     public boolean isEmpty() {
         return this.count <= 0;
+    }
+
+    public static class UnsafeChunkDrawCallBatcher extends ChunkDrawCallBatcher {
+
+        private final long basePointer;
+        private long writePointer;
+
+        public UnsafeChunkDrawCallBatcher(int capacity) {
+            super(capacity);
+
+            this.basePointer = MemoryUtil.getAddress(this.buffer);
+        }
+
+        @Override
+        public void begin() {
+            super.begin();
+
+            this.writePointer = this.basePointer;
+        }
+
+        @Override
+        public void addIndirectDrawCall(int first, int count, int baseInstance, int instanceCount) {
+            if (this.count++ >= this.capacity) {
+                throw new BufferUnderflowException();
+            }
+
+            CompatMemoryUtil.memPutInt(this.writePointer     , count);         // Vertex Count
+            CompatMemoryUtil.memPutInt(this.writePointer +  4, instanceCount); // Instance Count
+            CompatMemoryUtil.memPutInt(this.writePointer +  8, first);         // Vertex Start
+            CompatMemoryUtil.memPutInt(this.writePointer + 12, baseInstance);  // Base Instance
+
+            this.writePointer += this.stride;
+        }
     }
 
     public static class NioChunkDrawCallBatcher extends ChunkDrawCallBatcher {

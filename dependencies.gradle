@@ -45,7 +45,10 @@ dependencies {
     shadowImplementation("it.unimi.dsi:fastutil:8.2.1") // Apache 2.0
     shadowImplementation("org.joml:joml:1.10.5") // MIT
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
-    shadowImplementation("io.github.douira:glsl-transformer:1.0.0") // glsl-transformer Noncommercial License 1.0.0
+    implementation("io.github.douira:glsl-transformer:1.0.0")
+    shadowImplementation("io.github.douira:glsl-transformer:1.0.0") { // glsl-transformer Noncommercial License 1.0.0
+        exclude module: "antlr4" // we only want to shadow the runtime module
+    }
     compileOnly "org.apache.ant:ant:1.8.2"
 
 
@@ -74,6 +77,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5-pre:dev") // based off https://github.com/GTNewHorizons/NotEnoughIds/pull/2
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
 
