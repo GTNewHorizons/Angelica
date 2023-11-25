@@ -50,6 +50,7 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinGuiIngameForge"
+            ,"sodium.MixinLongHashMap"
         )
     ),
 
