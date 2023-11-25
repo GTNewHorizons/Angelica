@@ -1,5 +1,8 @@
 package me.jellysquid.mods.sodium.client.gui;
 
+import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.gui.GuiShaders;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -50,6 +53,8 @@ public class SodiumOptionsGUI extends GuiScreen {
     private boolean hasPendingChanges;
     private ControlElement<?> hoveredElement;
 
+    private OptionPage shaderPacks;
+
     public SodiumOptionsGUI(GuiScreen prevScreen) {
         this.prevScreen = prevScreen;
 
@@ -57,9 +62,17 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.pages.add(SodiumGameOptionPages.quality());
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
+
+        if(AngelicaConfig.enableIris)
+            this.pages.add(shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of()));
     }
 
     public void setPage(OptionPage page) {
+        if (AngelicaConfig.enableIris && page == shaderPacks) {
+            mc.displayGuiScreen(new GuiShaders(prevScreen, mc.gameSettings));
+            return;
+        }
+
         this.currentPage = page;
 
         this.rebuildGUI();
@@ -287,7 +300,6 @@ public class SodiumOptionsGUI extends GuiScreen {
                 .forEach(Option::reset);
     }
 
-    // TODO Was taken from GuiChat, however i am pretty sure this code is very broken on other OS'es rather Windows
     private void openDonationPage(String url) {
         URLUtils.open(url);
     }
