@@ -66,9 +66,13 @@ public class SodiumGameOptions {
         public boolean hideDonationButton = false;
     }
 
-    public enum ParticleMode {
-        ALL("options.graphics.fancy"),
-        DECREASED("options.graphics.fast"),
+    public interface NamedState {
+        String getKey();
+    }
+
+    public enum ParticleMode implements NamedState {
+        ALL("options.particles.all"),
+        DECREASED("options.particles.decreased"),
         MINIMAL("options.particles.minimal");
 
         private static final ParticleMode[] VALUES = values();
@@ -79,12 +83,17 @@ public class SodiumGameOptions {
             this.name = name;
         }
 
+        @Override
+        public String getKey() {
+            return this.name;
+        }
+
         public static ParticleMode fromOrdinal(int ordinal) {
             return VALUES[ordinal];
         }
     }
 
-    public enum GraphicsMode {
+    public enum GraphicsMode implements NamedState {
         FANCY("options.graphics.fancy"),
         FAST("options.graphics.fast");
 
@@ -92,6 +101,11 @@ public class SodiumGameOptions {
 
         GraphicsMode(String name) {
             this.name = name;
+        }
+
+        @Override
+        public String getKey() {
+            return this.name;
         }
 
         public boolean isFancy() {
@@ -103,10 +117,10 @@ public class SodiumGameOptions {
         }
     }
 
-    public enum GraphicsQuality {
+    public enum GraphicsQuality implements NamedState {
         DEFAULT("generator.default"),
-        FANCY("options.clouds.fancy"),
-        FAST("options.clouds.fast");
+        FANCY("options.graphics.fancy"),
+        FAST("options.graphics.fast");
 
         private final String name;
 
@@ -114,12 +128,17 @@ public class SodiumGameOptions {
             this.name = name;
         }
 
+        @Override
+        public String getKey() {
+            return this.name;
+        }
+
         public boolean isFancy() {
             return this == FANCY || (this == DEFAULT && Minecraft.getMinecraft().gameSettings.fancyGraphics);
         }
     }
 
-    public enum LightingQuality {
+    public enum LightingQuality implements NamedState {
         OFF("options.ao.off"),
         LOW("options.ao.min"),
         HIGH("options.ao.max");
@@ -135,7 +154,8 @@ public class SodiumGameOptions {
             this.vanilla = ordinal();
         }
 
-        public String getLocalizedName() {
+        @Override
+        public String getKey() {
             return this.name;
         }
 
