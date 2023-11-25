@@ -20,8 +20,8 @@ public class MixinEffectRenderer {
     @Unique
     private Frustrum cullingFrustum;
 
-    @Inject(method = "renderParticles", at = @At("HEAD"))
-    private void setupFrustum$standart(Entity player, float partialTickTime, CallbackInfo ci) {
+    @Unique
+    private void setupCullingFrustum() {
         Frustrum frustum = SodiumWorldRenderer.getInstance().getFrustum();
         boolean useCulling = SodiumClientMod.options().advanced.useParticleCulling;
         // Setup the frustum state before rendering particles
@@ -30,6 +30,11 @@ public class MixinEffectRenderer {
         } else {
             this.cullingFrustum = null;
         }
+    }
+
+    @Inject(method = "renderParticles", at = @At("HEAD"))
+    private void setupFrustum$standart(Entity player, float partialTickTime, CallbackInfo ci) {
+        setupCullingFrustum();
     }
 
     @Redirect(method = "renderParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
@@ -41,14 +46,7 @@ public class MixinEffectRenderer {
 
     @Inject(method = "renderLitParticles", at = @At("HEAD"))
     private void setupFrustum$lit(Entity player, float partialTickTime, CallbackInfo ci) {
-        Frustrum frustum = SodiumWorldRenderer.getInstance().getFrustum();
-        boolean useCulling = SodiumClientMod.options().advanced.useParticleCulling;
-        // Setup the frustum state before rendering particles
-        if (useCulling && frustum != null) {
-            this.cullingFrustum = frustum;
-        } else {
-            this.cullingFrustum = null;
-        }
+        setupCullingFrustum();
     }
 
     @Redirect(method = "renderLitParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
