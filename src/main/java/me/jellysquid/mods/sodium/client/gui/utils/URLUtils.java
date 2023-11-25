@@ -9,9 +9,9 @@ public class URLUtils {
 
     private static String[] getURLOpenCommand(String url) {
         return switch (Util.getOSType()) {
-            case LINUX, SOLARIS, WINDOWS -> new String[]{"rundll32", "url.dll,FileProtocolHandler", url};
+            case WINDOWS -> new String[]{"rundll32", "url.dll,FileProtocolHandler", url};
             case OSX -> new String[]{"open", url};
-            case UNKNOWN -> new String[]{"xdg-open", url};
+            case UNKNOWN, LINUX, SOLARIS -> new String[]{"xdg-open", url};
         };
     }
 
