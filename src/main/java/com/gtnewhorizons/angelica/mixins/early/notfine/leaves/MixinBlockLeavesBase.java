@@ -16,7 +16,7 @@ public abstract class MixinBlockLeavesBase extends Block implements ILeafBlock {
         return LeafRenderUtil.shouldSideBeRendered(world, x, y, z, side);
     }
 
-    private MixinBlockLeavesBase(Material material) {
+    protected MixinBlockLeavesBase(Material material) {
         super(material);
     }
 

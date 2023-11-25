@@ -13,6 +13,12 @@ public enum Settings {
         }
     },
     CLOUD_SCALE(true, 1f, 0.5f, 5f, 0.25f),
+    DOWNFALL_DISTANCE(false, -1f, -1f, 3f, 1f, "-1:Default, 0:Fancy, 1:Fast, 2:Ultra, 2:Off") {
+        @Override
+        public void updateSetting() {
+            SettingsManager.downfallDistanceUpdated();
+        }
+    },
     FOG_DEPTH(false,0f, 0f, 1f, 1f, "0:On, 1:Off"),
     GUI_BACKGROUND(false, -1f, -1f, 5f, 1f, "-1:Default, 0:Sand, 1:Mycelium, 2:Stonebrick, 3:Mossy Stonebrick, 4:Oak Planks, 5: Birch Planks") {
         @Override
@@ -26,7 +32,7 @@ public enum Settings {
             SettingsManager.cloudsUpdated();
         }
     },
-    MODE_CLOUDS(false,-1f, -1f, 2f, 1f, "-1:Default, 0:Fancy, 1:Fast, 2:Off") {
+    MODE_CLOUDS(false, -1f, -1f, 2f, 1f, "-1:Default, 0:Fancy, 1:Fast, 2:Off") {
         @Override
         public void updateSetting() {
             SettingsManager.cloudsUpdated();
@@ -38,10 +44,10 @@ public enum Settings {
             SettingsManager.droppedItemDetailUpdated();
         }
     },
-    MODE_GLINT_INV(false,0f, 0f, 1f, 1f, "0:On, 1:Off"),
-    MODE_GLINT_WORLD(false,0f, 0f, 1f, 1f, "0:On, 1:Off"),
+    MODE_GLINT_INV(false, 0f, 0f, 1f, 1f, "0:On, 1:Off"),
+    MODE_GLINT_WORLD(false, 0f, 0f, 1f, 1f, "0:On, 1:Off"),
     MODE_GUI_BACKGROUND(false, 0f, 0f, 1f, 1f, "0:On, 1:Off"),
-    MODE_LEAVES(false,-1f, -1f, 4f,1f,"-1:Default, 0:Fancy, 1:Fast, 2: Smart, 3:Hybrid Fancy, 3:Hybrid Fast") {
+    MODE_LEAVES(false,-1f, -1f, 4f,1f,"-1:Default, 0:Fancy, 1:Fast, 2:Smart, 3:Hybrid Fancy, 4:Hybrid Fast") {
         @Override
         public void updateSetting() {
             SettingsManager.leavesUpdated();
@@ -66,8 +72,8 @@ public enum Settings {
             SettingsManager.vignetteUpdated();
         }
     },
-    PARTICLES_ENC_TABLE(true,1f, 0f, 16f, 1f),
-    PARTICLES_VOID(false,0f, 0f, 1f, 1f, "0:On, 1:Off"),
+    PARTICLES_ENC_TABLE(true, 1f, 0f, 16f, 1f),
+    PARTICLES_VOID(false, 0f, 0f, 1f, 1f, "0:On, 1:Off"),
     RENDER_DISTANCE_CLOUDS(true, 4f, 4f, 64f, 2f) {
         @Override
         public void updateSetting() {
@@ -86,6 +92,7 @@ public enum Settings {
             SettingsManager.entityRenderDistanceUpdated();
         }
     };
+
     public final boolean slider;
     public final float base;
     public final float minimum;
@@ -113,10 +120,8 @@ public enum Settings {
         if(step > 0f) {
             value = step * (float)Math.round(value / step);
         }
-        if(this.value != value) {
-            this.value = value;
-            updateSetting();
-        }
+        this.value = value;
+        updateSetting();
     }
 
     public void setValueNormalized(float value) {

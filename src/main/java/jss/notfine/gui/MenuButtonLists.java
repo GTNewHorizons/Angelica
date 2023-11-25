@@ -1,6 +1,5 @@
 package jss.notfine.gui;
 
-import cpw.mods.fml.common.Loader;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -10,8 +9,6 @@ import net.minecraft.client.settings.GameSettings;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import static com.gtnewhorizons.angelica.client.gui.AngelicaVideoSettings.SHADERS;
 
 public enum MenuButtonLists implements ISettingsEnum {
     VIDEO("options.video") {
@@ -38,9 +35,9 @@ public enum MenuButtonLists implements ISettingsEnum {
             ArrayList<Enum<?>> list = new ArrayList<>();
 
             list.add(Settings.MODE_LEAVES); list.add(Settings.MODE_WATER);
-            list.add(Settings.MODE_SHADOWS); list.add(Settings.MODE_VIGNETTE);
-            list.add(Settings.MODE_DROPPED_ITEMS); list.add(Settings.MODE_GLINT_WORLD);
-            list.add(Settings.MODE_GLINT_INV);
+            list.add(Settings.DOWNFALL_DISTANCE); list.add(Settings.MODE_VIGNETTE);
+            list.add(Settings.MODE_SHADOWS); list.add(Settings.MODE_DROPPED_ITEMS);
+            list.add(Settings.MODE_GLINT_WORLD); list.add(Settings.MODE_GLINT_INV);
 
             return list;
         }
