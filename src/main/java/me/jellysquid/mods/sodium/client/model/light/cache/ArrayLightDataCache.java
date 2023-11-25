@@ -1,10 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.light.cache;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import net.minecraft.world.IBlockAccess;
 
 import java.util.Arrays;
 
@@ -21,7 +19,7 @@ public class ArrayLightDataCache extends LightDataAccess {
 
     private int xOffset, yOffset, zOffset;
 
-    public ArrayLightDataCache(BlockRenderView world) {
+    public ArrayLightDataCache(WorldSlice world) {
         this.world = world;
         this.light = new long[BLOCK_LENGTH * BLOCK_LENGTH * BLOCK_LENGTH];
     }
