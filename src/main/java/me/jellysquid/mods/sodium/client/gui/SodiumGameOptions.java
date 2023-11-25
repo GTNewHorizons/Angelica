@@ -58,16 +58,50 @@ public class SodiumGameOptions {
         public GraphicsQuality leavesQuality = GraphicsQuality.DEFAULT;
 
         public boolean enableVignette = true;
-        public boolean enableClouds = true;
-
-        public LightingQuality smoothLighting = LightingQuality.HIGH;
     }
 
     public static class NotificationSettings {
         public boolean hideDonationButton = false;
     }
 
-    public enum GraphicsQuality  {
+    public enum ParticleMode {
+        ALL("options.graphics.fancy"),
+        DECREASED("options.graphics.fast"),
+        MINIMAL("options.particles.minimal");
+
+        private static final ParticleMode[] VALUES = values();
+
+        private final String name;
+
+        ParticleMode(String name) {
+            this.name = name;
+        }
+
+        public static ParticleMode fromOrdinal(int ordinal) {
+            return VALUES[ordinal];
+        }
+    }
+
+    public enum GraphicsMode {
+        FANCY("options.graphics.fancy"),
+        FAST("options.graphics.fast");
+
+        private final String name;
+
+        GraphicsMode(String name) {
+            this.name = name;
+        }
+
+        public boolean isFancy() {
+            return this == FANCY;
+        }
+
+        public static GraphicsMode fromBoolean(boolean isFancy) {
+            return isFancy ? FANCY : FAST;
+        }
+    }
+
+    public enum GraphicsQuality {
         DEFAULT("generator.default"),
         FANCY("options.clouds.fancy"),
         FAST("options.clouds.fast");
@@ -77,22 +111,34 @@ public class SodiumGameOptions {
         GraphicsQuality(String name) {
             this.name = name;
         }
-
     }
 
     public enum LightingQuality {
-        HIGH("options.ao.max"),
+        OFF("options.ao.off"),
         LOW("options.ao.min"),
-        OFF("options.ao.off");
+        HIGH("options.ao.max");
+
+        private static final LightingQuality[] VALUES = values();
 
         private final String name;
 
+        private final int vanilla;
+
         LightingQuality(String name) {
             this.name = name;
+            this.vanilla = ordinal();
         }
 
         public String getLocalizedName() {
             return this.name;
+        }
+
+        public int getVanilla() {
+            return vanilla;
+        }
+
+        public static LightingQuality fromOrdinal(int ordinal) {
+            return VALUES[ordinal];
         }
     }
 

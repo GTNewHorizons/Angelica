@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.model.light.EntityLighter;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,9 +18,7 @@ public class MixinRenderManager {
      */
     @Redirect(method = "renderEntityStatic", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getBrightnessForRender(F)I"))
     private int sodium$getBrightnessForRender(Entity self, float partialTicks) {
-
-        if (SodiumClientMod.options().quality.smoothLighting == SodiumGameOptions.LightingQuality.HIGH) {
-
+        if (Minecraft.getMinecraft().gameSettings.ambientOcclusion == SodiumGameOptions.LightingQuality.HIGH.getVanilla()) {
             return EntityLighter.getBlendedLight(self, partialTicks);
         }
 
