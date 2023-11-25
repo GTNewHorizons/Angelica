@@ -59,8 +59,7 @@ public class SodiumGameOptions {
         public GraphicsQuality weatherQuality = GraphicsQuality.DEFAULT;
         public GraphicsQuality leavesQuality = GraphicsQuality.DEFAULT;
         public GraphicsQuality entityShadows = GraphicsQuality.DEFAULT;
-
-        public boolean enableVignette = true;
+        public GraphicsQuality enableVignette = GraphicsQuality.DEFAULT;
     }
 
     public static class NotificationSettings {
