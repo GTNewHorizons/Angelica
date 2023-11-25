@@ -35,7 +35,7 @@ public class HFPModelVertexType implements ChunkVertexType {
 
     @Override
     public ModelVertexSink createBufferWriter(VertexBufferView buffer, boolean direct) {
-        return new HFPModelVertexBufferWriterNio(buffer);
+        return direct ? new HFPModelVertexBufferWriterUnsafe(buffer) : new HFPModelVertexBufferWriterNio(buffer);
     }
 
     @Override

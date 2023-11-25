@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer.QuadVertexBufferWriterNio;
+import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer.QuadVertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer.QuadVertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.type.BlittableVertexType;
 import me.jellysquid.mods.sodium.client.model.vertex.type.VanillaVertexType;
@@ -17,7 +18,7 @@ public class QuadVertexType implements VanillaVertexType<QuadVertexSink>, Blitta
 
     @Override
     public QuadVertexSink createBufferWriter(VertexBufferView buffer, boolean direct) {
-        return new QuadVertexBufferWriterNio(buffer);
+        return direct ? new QuadVertexBufferWriterUnsafe(buffer) : new QuadVertexBufferWriterNio(buffer);
     }
 
     @Override
