@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import net.minecraft.client.Minecraft;
 
 
 import java.io.FileReader;
@@ -111,6 +112,10 @@ public class SodiumGameOptions {
 
         GraphicsQuality(String name) {
             this.name = name;
+        }
+
+        public boolean isFancy() {
+            return this == FANCY || (this == DEFAULT && Minecraft.getMinecraft().gameSettings.fancyGraphics);
         }
     }
 
