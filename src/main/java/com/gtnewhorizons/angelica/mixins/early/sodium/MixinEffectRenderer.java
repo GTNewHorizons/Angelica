@@ -34,12 +34,7 @@ public class MixinEffectRenderer {
 
     @Redirect(method = "renderParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
     private void renderParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if(cullingFrustum == null) {
-            particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
-            return;
-        }
-
-        if(cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
+        if(cullingFrustum == null || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
             particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
         }
     }
@@ -58,12 +53,7 @@ public class MixinEffectRenderer {
 
     @Redirect(method = "renderLitParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
     private void renderLitParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if(cullingFrustum == null) {
-            particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
-            return;
-        }
-
-        if(cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
+        if(cullingFrustum == null || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
             particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
         }
     }
