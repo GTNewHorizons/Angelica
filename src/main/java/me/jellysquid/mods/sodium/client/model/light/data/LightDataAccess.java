@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.compat.mojang.WorldRendererExt;
+import me.jellysquid.mods.sodium.client.world.WorldSlice;
+import net.minecraft.block.Block;
 import net.minecraftforge.common.util.ForgeDirection;
 
 /**
@@ -23,7 +23,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  */
 public abstract class LightDataAccess {
     private final BlockPos.Mutable pos = new BlockPos.Mutable();
-    protected BlockRenderView world;
+    protected WorldSlice world;
 
     public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
         return this.get(x + d1.offsetX + d2.offsetX, y + d1.offsetY + d2.offsetY, z + d1.offsetZ + d2.offsetZ);
@@ -49,28 +49,30 @@ public abstract class LightDataAccess {
 
     protected long compute(int x, int y, int z) {
         BlockPos pos = this.pos.set(x, y, z);
-        BlockRenderView world = this.world;
+        WorldSlice world = this.world;
 
-        BlockState state = world.getBlockState(pos);
+        Block block = world.getBlock(x, y, z);
 
         float ao;
         boolean em;
 
-        if (state.getLightValue(world, pos) == 0) {
-            ao = state.getAmbientOcclusionLightLevel(world, pos);
-            em = state.hasEmissiveLighting(world, pos);
+        if (block.getLightValue() == 0) {
+            ao = block.getAmbientOcclusionLightValue();
+            em = false; //state.hasEmissiveLighting(world, pos);
         } else {
             ao = 1.0f;
             em = true;
         }
 
-        boolean op = !state.shouldBlockVision(world, pos) || state.getOpacity(world, pos) == 0;
-        boolean fo = state.isOpaqueFullCube(world, pos);
-        boolean fc = state.isFullCube(world, pos);
+        // First is shouldBlockVision, but I can't find if any transparent objects set it
+        boolean op = /*state.shouldBlockVision(world, pos) ||*/ block.getLightOpacity() == 0;
+        boolean fo = block.isOpaqueCube();
+        // Should be isFullCube, but this is probably close enough
+        boolean fc = block.renderAsNormalBlock();
 
         // OPTIMIZE: Do not calculate lightmap data if the block is full and opaque.
         // FIX: Calculate lightmap data for light-emitting or emissive blocks, even though they are full and opaque.
-        int lm = (fo && !em) ? 0 : WorldRendererExt.getLightmapCoordinates(world, state, pos);
+        int lm = (fo && !em) ? 0 : WorldRendererExt.getLightmapCoordinates(world, block, pos);
 
         return packAO(ao) | packLM(lm) | packOP(op) | packFO(fo) | packFC(fc) | (1L << 60);
     }
@@ -117,7 +119,7 @@ public abstract class LightDataAccess {
         return aoi * (1.0f / 4096.0f);
     }
 
-    public BlockRenderView getWorld() {
+    public WorldSlice getWorld() {
         return this.world;
     }
 }

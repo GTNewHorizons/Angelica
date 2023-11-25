@@ -2,10 +2,10 @@ package me.jellysquid.mods.sodium.client.render.pipeline.context;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.cache.HashLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
+import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
@@ -18,10 +18,10 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
     private final BlockRenderer blockRenderer;
     private final HashLightDataCache lightCache;
 
-    private ChunkRenderCacheShared(WorldClient world) {
+    private ChunkRenderCacheShared(WorldSlice world) {
         Minecraft client = Minecraft.getMinecraft();
 
-        this.lightCache = new HashLightDataCache((BlockRenderView)world);
+        this.lightCache = new HashLightDataCache(world);
 
         this.blockRenderer = new BlockRenderer(client);
     }
@@ -55,7 +55,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
             throw new IllegalStateException("Render context already exists for world: " + world);
         }
 
-        INSTANCES.put(world, new ChunkRenderCacheShared(world));
+        INSTANCES.put(world, new ChunkRenderCacheShared(new WorldSlice(world)));
     }
 
     public static void resetCaches() {
