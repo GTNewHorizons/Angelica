@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui;
 
+import jss.notfine.gui.GuiCustomMenu;
+import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -300,12 +302,8 @@ public class SodiumOptionsGUI extends GuiScreen {
         }
 
         if (keyCode == Keyboard.KEY_P && isShiftKeyDown()) {
-            this.mc.displayGuiScreen(new GuiVideoSettings(this.prevScreen, this.mc.gameSettings));
-
-            return;
+            this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, MenuButtonLists.VIDEO));
         }
-
-        super.keyTyped(typedChar, keyCode);
     }
 
     public boolean shouldCloseOnEsc() {
