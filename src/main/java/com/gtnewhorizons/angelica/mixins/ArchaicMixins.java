@@ -90,24 +90,10 @@ public enum ArchaicMixins {
         "lighting.MixinSPacketChunkData",
         "lighting.MixinWorld_Lighting"),
 
-    client_occlusion(Side.CLIENT, Phase.EARLY, m -> ArchaicConfig.enableOcclusionTweaks,
-        "occlusion.MixinChunk",
-        "occlusion.MixinEntityRenderer",
-        "occlusion.MixinRenderGlobal",
-        "occlusion.MixinGuiVideoSettings",
-        "occlusion.MixinWorldRenderer"),
-
     client_renderdistance(Side.CLIENT, Phase.EARLY, m -> ArchaicConfig.raiseMaxRenderDistance,
         "renderdistance.MixinGameSettings",
         "renderdistance.MixinRenderGlobal",
         "renderdistance.MixinPlayerManager"),
-
-    client_threadedupdates(Side.CLIENT, Phase.EARLY, m -> ArchaicConfig.enableThreadedChunkUpdates && ArchaicConfig.enableOcclusionTweaks,
-        "threadedupdates.MixinRenderBlocks",
-        "threadedupdates.MixinWorldRenderer",
-        "threadedupdates.MixinTessellator"),
-    client_threadedupdates_MixinTessellator_Debug(Side.CLIENT, Phase.EARLY, m -> ArchaicConfig.enableThreadedChunkUpdates && ArchaicConfig.enableOcclusionTweaks && Boolean.parseBoolean(System.getProperty("archaicfix.debug.verifyTessellatorAccessThread")), "threadedupdates.MixinTessellator_Debug"),
-
 
     common_botania_MixinBlockSpecialFlower(Side.COMMON, Phase.LATE, require(TargetedMod.BOTANIA), "botania.MixinBlockSpecialFlower"),
 

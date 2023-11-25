@@ -37,4 +37,5 @@ public class RenderingState {
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
         modelViewMatrix.set(modelViewBuffer);
     }
+
 }

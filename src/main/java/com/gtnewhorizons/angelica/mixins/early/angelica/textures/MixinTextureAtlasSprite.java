@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.shaders.textures;
+package com.gtnewhorizons.angelica.mixins.early.angelica.textures;
 
 import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
