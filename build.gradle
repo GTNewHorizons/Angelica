@@ -89,7 +89,7 @@ def out = services.get(StyledTextOutputFactory).create('an-output')
 def projectJavaVersion = JavaLanguageVersion.of(8)
 
 boolean disableSpotless = project.hasProperty("disableSpotless") ? project.disableSpotless.toBoolean() : false
-boolean disableCheckstyle = true
+boolean disableCheckstyle = project.hasProperty("disableCheckstyle") ? project.disableCheckstyle.toBoolean() : false
 
 final String CHECKSTYLE_CONFIG = """
 <!DOCTYPE module PUBLIC
