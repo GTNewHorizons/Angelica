@@ -13,8 +13,12 @@ abstract public class MixinRenderItem {
 
     @Redirect(
         method = "renderDroppedItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/util/IIcon;IFFFFI)V",
-        at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z", opcode = Opcodes.GETFIELD),
-        allow = 1, expect = 0
+        at = @At(
+            value = "FIELD",
+            target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z",
+            opcode = Opcodes.GETFIELD
+        ),
+        allow = 1
     )
     private boolean notFine$toggleDroppedItemDetail(GameSettings settings) {
         return SettingsManager.droppedItemDetail;

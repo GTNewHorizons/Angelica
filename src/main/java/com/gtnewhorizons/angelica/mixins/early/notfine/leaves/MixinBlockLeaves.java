@@ -3,10 +3,10 @@ package com.gtnewhorizons.angelica.mixins.early.notfine.leaves;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import jss.notfine.util.ILeafBlock;
-import jss.util.DirectionHelper;
 import net.minecraft.block.BlockLeaves;
 import net.minecraft.block.BlockLeavesBase;
 import net.minecraft.block.material.Material;
+import net.minecraft.util.Facing;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,28 +32,22 @@ public abstract class MixinBlockLeaves extends BlockLeavesBase {
         }
         int renderMode = (int)Settings.MODE_LEAVES.getValue();
         int maskedMeta = world.getBlockMetadata(x, y, z) & 3;
-        switch(renderMode) {
-            case -1:
-                renderMode = SettingsManager.leavesOpaque ? 1 : 0;
-                break;
-            case 4:
-                renderMode = world.getBlock(
-                    x + DirectionHelper.xDirectionalIncrease[side],
-                    y + DirectionHelper.yDirectionalIncrease[side],
-                    z + DirectionHelper.zDirectionalIncrease[side]
-                ) instanceof ILeafBlock ? 1 : 0;
-                break;
-            default:
-                renderMode = renderMode > 1 ? 0 : renderMode;
-                break;
-        }
+        renderMode = switch (renderMode) {
+            case -1 -> SettingsManager.leavesOpaque ? 1 : 0;
+            case 4 -> world.getBlock(
+                x + Facing.offsetsXForSide[side],
+                y + Facing.offsetsYForSide[side],
+                z + Facing.offsetsZForSide[side]
+            ) instanceof ILeafBlock ? 1 : 0;
+            default -> renderMode > 1 ? 0 : renderMode;
+        };
         maskedMeta = maskedMeta >= field_150129_M[renderMode].length ? 0 : maskedMeta;
         return field_150129_M[renderMode][maskedMeta];
     }
 
     @Shadow protected IIcon[][] field_150129_M;
 
-    private MixinBlockLeaves(Material material, boolean overridden) {
+    protected MixinBlockLeaves(Material material, boolean overridden) {
         super(material, overridden);
     }
 

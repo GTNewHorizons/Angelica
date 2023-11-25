@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(RenderGlobal.class)
+@Mixin(value = RenderGlobal.class, priority = 990)
 public abstract class MixinRenderGlobal {
 
     /**
@@ -199,7 +199,7 @@ public abstract class MixinRenderGlobal {
         float red = (float)color.xCoord;
         float green = (float)color.yCoord;
         float blue = (float)color.zCoord;
-        if (mc.gameSettings.anaglyph) {
+        if(mc.gameSettings.anaglyph) {
             float altRed = (red * 30.0F + green * 59.0F + blue * 11.0F) / 100.0F;
             float altGreen = (red * 30.0F + green * 70.0F) / 100.0F;
             float altBlue = (red * 30.0F + blue * 70.0F) / 100.0F;
@@ -208,9 +208,8 @@ public abstract class MixinRenderGlobal {
             blue = altBlue;
         }
         double cloudTick = ((float)cloudTickCounter + partialTicks);
-
         float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
-        double cameraOffsetX = mc.renderViewEntity.prevPosX + (mc.renderViewEntity.posX - mc.renderViewEntity.prevPosX) * (double)partialTicks + cloudTick * 0.029999999329447746D;
+        double cameraOffsetX = mc.renderViewEntity.prevPosX + (mc.renderViewEntity.posX - mc.renderViewEntity.prevPosX) * (double)partialTicks + cloudTick * 0.03D;
         double cameraOffsetZ = mc.renderViewEntity.prevPosZ + (mc.renderViewEntity.posZ - mc.renderViewEntity.prevPosZ) * (double)partialTicks;
         cameraOffsetX -= MathHelper.floor_double(cameraOffsetX / 2048.0D) * 2048;
         cameraOffsetZ -= MathHelper.floor_double(cameraOffsetZ / 2048.0D) * 2048;

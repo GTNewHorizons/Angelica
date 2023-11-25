@@ -4,9 +4,9 @@ import com.emoniph.witchery.blocks.BlockWitchLeaves;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import jss.notfine.util.ILeafBlock;
-import jss.util.DirectionHelper;
 import net.minecraft.block.BlockLeavesBase;
 import net.minecraft.block.material.Material;
+import net.minecraft.util.Facing;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,9 +32,10 @@ public abstract class MixinBlockWitchLeaves extends BlockLeavesBase {
         renderMode = switch (renderMode) {
             case -1 -> SettingsManager.leavesOpaque ? 1 : 0;
             case 4 -> world.getBlock(
-                    x + DirectionHelper.xDirectionalIncrease[side],
-                    y + DirectionHelper.yDirectionalIncrease[side],
-                    z + DirectionHelper.zDirectionalIncrease[side]) instanceof ILeafBlock ? 1 : 0;
+                x + Facing.offsetsXForSide[side],
+                y + Facing.offsetsYForSide[side],
+                z + Facing.offsetsZForSide[side]
+            ) instanceof ILeafBlock ? 1 : 0;
             default -> renderMode > 1 ? 0 : renderMode;
         };
         maskedMeta = maskedMeta > 1 ? 0 : maskedMeta;
