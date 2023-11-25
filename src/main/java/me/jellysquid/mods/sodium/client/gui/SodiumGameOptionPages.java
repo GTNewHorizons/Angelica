@@ -295,7 +295,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.animate_only_visible_textures.name"))
                         .setTooltip(I18n.format("sodium.options.animate_only_visible_textures.tooltip"))
                         .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.HIGH)
+                        .setImpact(OptionImpact.MEDIUM)
                         .setBinding((opts, value) -> opts.advanced.animateOnlyVisibleTextures = value, opts -> opts.advanced.animateOnlyVisibleTextures)
                         .build()
                 )

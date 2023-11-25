@@ -50,6 +50,10 @@ public enum Mixins {
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
+            // TODO Doesn't work correctly
+            //,"sodium.MixinTextureAtlasSprite"
+            //,"sodium.MixinTextureMap"
+            //,"sodium.MixinEntityFX"
         )
     ),
 
