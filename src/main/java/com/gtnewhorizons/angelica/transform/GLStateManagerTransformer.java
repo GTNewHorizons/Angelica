@@ -42,7 +42,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
     );
 
 
-    private static final List<String> TransformerExclusions = new ArrayList<>(Arrays.asList(
+    public static final List<String> TransformerExclusions = new ArrayList<>(Arrays.asList(
         "org.lwjgl", "com.gtnewhorizons.angelica.glsm.", "com.gtnewhorizons.angelica.transform", "me.eigenraven.lwjgl3ify",
         "cpw.mods.fml.client.SplashProgress")
     );

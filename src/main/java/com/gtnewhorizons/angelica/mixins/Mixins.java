@@ -66,7 +66,6 @@ public enum Mixins {
             ,"sodium.MixinMinecraft"
             ,"sodium.MixinNetHandlerPlayClient"
             ,"sodium.MixinNibbleArray"
-            ,"sodium.MixinRenderBlocks"
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"

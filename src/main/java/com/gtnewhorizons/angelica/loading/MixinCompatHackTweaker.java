@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizons.angelica.transform.AClassTransformer;
 import com.gtnewhorizons.angelica.transform.GLStateManagerTransformer;
+import com.gtnewhorizons.angelica.transform.TessellatorTransformer;
 import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -61,6 +62,7 @@ public class MixinCompatHackTweaker implements ITweaker {
     public String[] getLaunchArguments() {
         // Run after Mixins, but hopefully before LWJGl3ify
         Launch.classLoader.registerTransformer(GLStateManagerTransformer.class.getName());
+        Launch.classLoader.registerTransformer(TessellatorTransformer.class.getName());
         return new String[0];
     }
 }
