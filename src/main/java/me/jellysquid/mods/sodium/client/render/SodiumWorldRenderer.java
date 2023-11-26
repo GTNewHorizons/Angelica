@@ -268,7 +268,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             this.chunkRenderBackend = null;
         }
 
-        this.globalBlockEntities.clear();
+        this.globalTileEntities.clear();
 
         RenderDevice device = RenderDevice.INSTANCE;
 
