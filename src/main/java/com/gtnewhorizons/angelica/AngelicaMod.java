@@ -17,6 +17,7 @@ public class AngelicaMod {
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
     public static boolean isNEIDLoaded;
+    public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {

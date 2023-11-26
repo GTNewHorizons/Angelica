@@ -5,6 +5,7 @@
 
 package net.coderbot.iris.gl;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
@@ -318,7 +319,7 @@ public final class GLDebug {
 
 	public static void initRenderer() {
         // Only enable if debug is enabled, and also forcibly disable the splash screen
-        if(!Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false")))
+        if(!AngelicaMod.lwjglDebug)
             return;
 
 		if (Iris.capabilities.GL_KHR_debug || Iris.capabilities.OpenGL43) {

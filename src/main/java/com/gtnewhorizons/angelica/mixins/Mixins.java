@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import me.jellysquid.mods.sodium.common.config.SodiumConfig;
@@ -16,23 +17,24 @@ public enum Mixins {
              "angelica.MixinEntityRenderer"
         )
     ),
-//
-//    ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-//        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && false).addMixinClasses(
-//              "angelica.archaic.MixinSplashProgress"
-//             ,"angelica.archaic.AccessorSplashProgress"
-//        )
-//    ),
-//
-//    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-//        .setPhase(Phase.EARLY).addMixinClasses(
-//             "angelica.archaic.MixinBlockFence"
-//            ,"angelica.archaic.MixinFMLClientHandler"
-//            ,"angelica.archaic.MixinGuiIngameForge"
-//            ,"angelica.archaic.MixinNetHandlerPlayClient"
-//            ,"angelica.archaic.MixinThreadDownloadImageData"
-//        )
-//    ),
+
+    // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
+    ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(
+              "angelica.archaic.MixinSplashProgress"
+             ,"angelica.archaic.AccessorSplashProgress"
+        )
+    ),
+
+    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
+             "angelica.archaic.MixinBlockFence"
+            ,"angelica.archaic.MixinFMLClientHandler"
+            ,"angelica.archaic.MixinGuiIngameForge"
+            ,"angelica.archaic.MixinNetHandlerPlayClient"
+            ,"angelica.archaic.MixinThreadDownloadImageData"
+        )
+    ),
 
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
@@ -42,7 +44,7 @@ public enum Mixins {
         )
         ),
     ANGELICA_ENABLE_DEBUG(new Builder("Angelica Debug").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"))).addMixinClasses(
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaMod.lwjglDebug).addMixinClasses(
             "angelica.debug.MixinSplashProgress"
         )
     ),
