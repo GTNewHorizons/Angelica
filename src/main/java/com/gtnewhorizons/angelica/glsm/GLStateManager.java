@@ -203,6 +203,10 @@ public class GLStateManager {
         }
     }
 
+    public static void glColor3f(float red, float green, float blue) {
+        glColor4f(red, green, blue, 1.0f);
+    }
+
     public static void clearCurrentColor() {
         Color.red = -1.0F;
         Color.green = -1.0F;
