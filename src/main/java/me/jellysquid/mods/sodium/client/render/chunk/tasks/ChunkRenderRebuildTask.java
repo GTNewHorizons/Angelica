@@ -2,7 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
-import com.gtnewhorizons.angelica.mixins.interfaces.IHasTessellator;
+import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -100,7 +100,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         BlockPos.Mutable pos = new BlockPos.Mutable();
         BlockPos renderOffset = this.offset;
-        final Tessellator tessellator = ((IHasTessellator)renderBlocks).getTessellator();
+        final Tessellator tessellator = TessellatorManager.get();
 
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {

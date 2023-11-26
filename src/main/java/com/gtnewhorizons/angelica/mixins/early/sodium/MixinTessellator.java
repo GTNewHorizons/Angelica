@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,7 +31,7 @@ public abstract class MixinTessellator implements ITessellatorInstance {
      **/
     @Redirect(method = "reset", at = @At(value = "INVOKE", target = "Ljava/nio/ByteBuffer;clear()Ljava/nio/Buffer;"))
     private Buffer removeStaticBufferResetOutsideSingleton(ByteBuffer buffer) {
-        if(((Object)this) == Tessellator.instance) {
+        if(TessellatorManager.isMainInstance(this)) {
             return buffer.clear();
         }
         return buffer;
@@ -38,7 +39,7 @@ public abstract class MixinTessellator implements ITessellatorInstance {
 
     @Inject(method="draw", at=@At("HEAD"))
     private void preventOffMainThreadDrawing(CallbackInfoReturnable<Integer> cir) {
-        if(((Object)this) != Tessellator.instance) {
+        if(!TessellatorManager.isMainInstance(this)) {
             throw new RuntimeException("Tried to draw on a tessellator that isn't on the main thread!");
         }
     }
