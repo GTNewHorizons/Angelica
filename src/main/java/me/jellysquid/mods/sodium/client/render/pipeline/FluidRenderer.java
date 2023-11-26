@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuad;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
@@ -18,7 +19,6 @@ import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
@@ -40,7 +40,7 @@ public class FluidRenderer {
     private final QuadLightData quadLightData = new QuadLightData();
     private final int[] quadColors = new int[4];
 
-    public FluidRenderer(Minecraft client) {
+    public FluidRenderer(LightPipelineProvider lpp) {
         int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
 
         for (int i = 0; i < 4; i++) {

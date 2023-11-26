@@ -1,6 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.pipeline.context;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockModels;
+import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
+import me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.FluidRenderer;
@@ -10,6 +12,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 
 public class ChunkRenderCacheLocal extends ChunkRenderCache {
+    private final ArrayLightDataCache lightDataCache;
+
     private final BlockRenderer blockRenderer;
     private final FluidRenderer fluidRenderer;
 
@@ -18,9 +22,12 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
 
     public ChunkRenderCacheLocal(Minecraft client, WorldClient world) {
         this.worldSlice = new WorldSlice(world);
+        this.lightDataCache = new ArrayLightDataCache(this.worldSlice);
+
+        LightPipelineProvider lpp = new LightPipelineProvider(lightDataCache);
 
         this.blockRenderer = new BlockRenderer(client);
-        this.fluidRenderer = new FluidRenderer(client);
+        this.fluidRenderer = new FluidRenderer(lpp);
 
         // TODO: Sodium
         this.blockModels = null; // client.getBakedModelManager().getBlockModels();
@@ -39,6 +46,7 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
     }
 
     public void init(ChunkRenderContext context) {
+        this.lightDataCache.reset(context.getOrigin());
         this.worldSlice.copyData(context);
     }
 
