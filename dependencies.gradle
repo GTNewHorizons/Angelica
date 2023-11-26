@@ -35,9 +35,6 @@
  */
 
 dependencies {
-    compileOnly(sourceSets.compileStubs.output)
-    compileStubs(sourceSets.compileStubsStubs.output)
-
     api("com.github.GTNewHorizons:Hodgepodge:2.3.35")
 
     compileOnly("org.projectlombok:lombok:1.18.22") {transitive = false }
@@ -53,10 +50,6 @@ dependencies {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     compileOnly "org.apache.ant:ant:1.8.2"
-
-
-    compileOnly("com.github.GTNewHorizons:ProjectRed:4.7.12-GTNH:dev")
-    compileOnly(files("dependencies/SmartRender-1.7.10-2.1-dev.jar"))
 
     // Because who doesn't want NEI
     compileOnly('com.github.GTNewHorizons:NotEnoughItems:2.4.9-GTNH:dev')
