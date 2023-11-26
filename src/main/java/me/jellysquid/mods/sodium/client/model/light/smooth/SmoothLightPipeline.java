@@ -1,12 +1,14 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
 import com.google.common.math.DoubleMath;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraftforge.common.util.ForgeDirection;
 
 
@@ -218,6 +220,10 @@ public class SmoothLightPipeline implements LightPipeline {
     }
 
     private void applySidedBrightness(QuadLightData out, ForgeDirection face, boolean shade) {
+        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading()) {
+            return;
+        }
+
         float brightness = this.lightCache.getWorld().getBrightness(face, shade);
         float[] br = out.br;
 

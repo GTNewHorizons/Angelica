@@ -3,11 +3,14 @@ package me.jellysquid.mods.sodium.client.model.light.flat;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockState;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.Arrays;
@@ -45,7 +48,9 @@ public class FlatLightPipeline implements LightPipeline {
         }
 
         Arrays.fill(out.lm, lightmap);
-        Arrays.fill(out.br, this.lightCache.getWorld().getBrightness(face, shade));
+        final float brightness = (AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading())
+            ? 1.0F : this.lightCache.getWorld().getBrightness(face, shade);
+        Arrays.fill(out.br, brightness);
     }
 
     /**
