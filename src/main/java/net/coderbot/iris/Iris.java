@@ -1,5 +1,6 @@
 package net.coderbot.iris;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.mojang.realmsclient.gui.ChatFormatting;
 import lombok.Getter;
 import net.coderbot.iris.config.IrisConfig;
@@ -393,6 +394,7 @@ public class Iris {
 
     // Temp escalation
     public static void setDebug(boolean enable) {
+        GLStateManager.assertMainThread();
         int success;
         if (enable) {
             success = GLDebug.setupDebugMessageCallback();

@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.loading;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
+import com.gtnewhorizons.angelica.config.ConfigException;
+import com.gtnewhorizons.angelica.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -14,9 +15,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
-import org.embeddedt.archaicfix.config.ArchaicConfig;
-import org.embeddedt.archaicfix.config.ConfigException;
-import org.embeddedt.archaicfix.config.ConfigurationManager;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
@@ -26,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.GLStateManagerTransformer")
@@ -39,8 +36,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
-            // ArchaicFix Config
-            ConfigurationManager.registerConfig(ArchaicConfig.class);
             LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
             Configuration config = ctx.getConfiguration();
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
@@ -117,7 +112,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         mixins.add("notfine.clouds.MixinGameSettings");
         mixins.add("notfine.clouds.MixinRenderGlobal");
         mixins.add("notfine.clouds.MixinWorldType");
-        
+
         mixins.add("notfine.faceculling.MixinBlock");
         mixins.add("notfine.faceculling.MixinBlockSlab");
         mixins.add("notfine.faceculling.MixinBlockSnow");
@@ -161,18 +156,5 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 coreMods.add(value);
         });
     }
-
-    public List<String> getArchaicMixins(Set<String> loadedCoreMods) {
-        List<String> mixins = new ArrayList<>();
-        detectCoreMods(loadedCoreMods);
-        LOGGER.info("Detected coremods: [" + coreMods.stream().map(TargetedMod::name).collect(Collectors.joining(", ")) + "]");
-        for(ArchaicMixins mixin : ArchaicMixins.values()) {
-            if(mixin.getPhase() == ArchaicMixins.Phase.EARLY && mixin.shouldLoadSide() && mixin.getFilter().test(coreMods)) {
-                mixins.addAll(mixin.getMixins());
-            }
-        }
-        return mixins;
-    }
-
 
 }

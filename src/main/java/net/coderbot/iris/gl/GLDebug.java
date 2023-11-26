@@ -5,6 +5,8 @@
 
 package net.coderbot.iris.gl;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
@@ -27,6 +29,10 @@ public final class GLDebug {
      * @return 0 for failure, 1 for success, 2 for restart required.
      */
     public static int setupDebugMessageCallback() {
+        if (Thread.currentThread() != GLStateManager.getMainThread()) {
+            AngelicaTweaker.LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
+            return 0;
+        }
         return setupDebugMessageCallback(System.err);
     }
 
@@ -311,6 +317,10 @@ public final class GLDebug {
 	}
 
 	public static void initRenderer() {
+        // Only enable if debug is enabled, and also forcibly disable the splash screen
+        if(!Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false")))
+            return;
+
 		if (Iris.capabilities.GL_KHR_debug || Iris.capabilities.OpenGL43) {
 			debugState = new KHRDebugState();
 		} else {

@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.config;
 
-import org.embeddedt.archaicfix.config.Config;
-
 @Config(modid = "angelica")
 public class AngelicaConfig {
     @Config.Comment("Enable Sodium rendering")
@@ -9,10 +7,23 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodium;
 
-    @Config.Comment("Enable Iris Shaders")
+    @Config.Comment("Enable Iris Shaders [Requires Sodium]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableIris;
 
+    @Config.Comment("Tweak F3 screen to be closer to modern versions. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean modernizeF3Screen;
 
+    @Config.Comment("Show block registry name and meta value in F3, similar to 1.8+. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean showBlockDebugInfo;
+
+    @Config.DefaultBoolean(true)
+    public static boolean hideDownloadingTerrainScreen;
+
+    @Config.Comment("Show memory usage during game load. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean showSplashMemoryBar;
 }

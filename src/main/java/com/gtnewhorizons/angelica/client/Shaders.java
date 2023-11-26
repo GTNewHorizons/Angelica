@@ -2117,7 +2117,7 @@ public class Shaders {
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, dfb);
         GL11.glViewport(0, 0, Shaders.renderWidth, Shaders.renderHeight);
         activeDrawBuffers = null;
-        ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
+//        ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         useProgram(ProgramTextured);
 
         checkGLError("end beginRender");
@@ -2783,7 +2783,7 @@ public class Shaders {
         if (isRenderingWorld) {
             checkGLError("endBlockEntities");
             useProgram(lightmapEnabled ? ProgramTexturedLit : ProgramTextured);
-            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
+//            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID());
         }
     }
 
@@ -2921,7 +2921,7 @@ public class Shaders {
                 checkGLError("copy depth");
                 GL13.glActiveTexture(GL13.GL_TEXTURE0);
             }
-            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID()); // flat
+//            ShadersTex.bindNSTextures(defaultTexture.angelica$getMultiTexID()); // flat
         }
     }
 
