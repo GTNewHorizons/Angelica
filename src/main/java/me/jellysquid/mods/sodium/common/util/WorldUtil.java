@@ -18,7 +18,7 @@ import org.joml.Vector3d;
  */
 public class WorldUtil {
 
-    public static Vector3d getVelocity(IBlockAccess world, BlockPos pos) {
+    public static Vector3d getVelocity(IBlockAccess world, BlockPos pos, Fluid fluid) {
 
         Vector3d velocity = new Vector3d();
         ForgeDirection[] news = new ForgeDirection[]{ ForgeDirection.NORTH, ForgeDirection.EAST, ForgeDirection.WEST, ForgeDirection.SOUTH };

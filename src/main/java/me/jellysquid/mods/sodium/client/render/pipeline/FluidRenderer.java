@@ -3,6 +3,8 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import me.jellysquid.mods.sodium.client.model.light.LightMode;
+import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuad;
@@ -10,7 +12,6 @@ import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadViewMutable;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
@@ -19,6 +20,7 @@ import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
@@ -126,6 +128,9 @@ public class FluidRenderer {
 
         final ModelQuadViewMutable quad = this.quad;
 
+        LightMode mode = hc && Minecraft.isAmbientOcclusionEnabled() ? LightMode.SMOOTH : LightMode.FLAT;
+        LightPipeline lighter = this.lpp.getLighter(mode);
+
         quad.setFlags(0);
 
         if (!sfUp && this.isSideExposed(world, posX, posY, posZ, ForgeDirection.UP, Math.min(Math.min(h1, h2), Math.min(h3, h4)))) {
@@ -134,7 +139,7 @@ public class FluidRenderer {
             h3 -= 0.001F;
             h4 -= 0.001F;
 
-            Vector3d velocity = WorldUtil.getVelocity(world, pos);
+            Vector3d velocity = WorldUtil.getVelocity(world, pos, fluid);
 
             TextureAtlasSprite sprite;
             ModelQuadFacing facing;
@@ -190,7 +195,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, h3, 1.0F, u3, v3);
             this.setVertex(quad, 3, 1.0F, h4, 0.0f, u4, v4);
 
-            this.calculateQuadColors(quad, pos, ForgeDirection.UP, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.UP, 1.0F, hc);
             this.flushQuad(buffers, quad, facing, false);
 
             if (WorldUtil.method_15756(slice, this.scratchPos.set(posX, posY + 1, posZ), fluid)) {
@@ -219,7 +224,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, yOffset, 0.0f, maxU, minV);
             this.setVertex(quad, 3, 1.0F, yOffset, 1.0F, maxU, maxV);
 
-            this.calculateQuadColors(quad, pos, ForgeDirection.DOWN, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.DOWN, 1.0F, hc);
             this.flushQuad(buffers, quad, ModelQuadFacing.DOWN, false);
 
             rendered = true;
@@ -323,7 +328,7 @@ public class FluidRenderer {
 
                 ModelQuadFacing facing = ModelQuadFacing.fromDirection(dir);
 
-                this.calculateQuadColors(quad, pos, dir, br, hc);
+                this.calculateQuadColors(quad, pos, lighter, dir, br, hc);
                 this.flushQuad(buffers, quad, facing, false);
 
                 if (sprite != oSprite) {
@@ -342,8 +347,9 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad,  BlockPos pos, ForgeDirection dir, float brightness, boolean colorized) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized) {
         QuadLightData light = this.quadLightData;
+        lighter.calculate(quad, pos, light, null, dir, false);
 
         int[] biomeColors = null;
 
@@ -358,28 +364,34 @@ public class FluidRenderer {
 
     private void flushQuad(ChunkModelBuffers buffers, ModelQuadView quad, ModelQuadFacing facing, boolean flip) {
 
+        int vertexIdx, lightOrder;
+
+        if (flip) {
+            vertexIdx = 3;
+            lightOrder = -1;
+        } else {
+            vertexIdx = 0;
+            lightOrder = 1;
+        }
+
         ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(4);
 
-        //ChunkRenderData.Builder renderData = buffers.getRenderData();
+        for (int i = 0; i < 4; i++) {
+            float x = quad.getX(i);
+            float y = quad.getY(i);
+            float z = quad.getZ(i);
 
-        ModelQuadOrientation order = flip ? ModelQuadOrientation.NORMAL : ModelQuadOrientation.FLIP;
+            int color = this.quadColors[vertexIdx];
 
-        for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
-            int srcIndex = order.getVertexIndex(dstIndex);
+            float u = quad.getTexU(i);
+            float v = quad.getTexV(i);
 
-            float x = quad.getX(srcIndex);
-            float y = quad.getY(srcIndex);
-            float z = quad.getZ(srcIndex);
+            int light = this.quadLightData.lm[vertexIdx];
 
-            int color = this.quadColors[srcIndex];
+            sink.writeQuad(x, y, z, color, u, v, light);
 
-            float u = quad.getTexU(srcIndex);
-            float v = quad.getTexV(srcIndex);
-
-            int lm = quad.getLight(srcIndex);
-
-            sink.writeQuad(x, y, z, color, u, v, lm);
+            vertexIdx += lightOrder;
         }
 
         TextureAtlasSprite sprite = quad.rubidium$getSprite();
