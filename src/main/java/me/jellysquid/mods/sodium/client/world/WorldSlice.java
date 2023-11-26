@@ -348,12 +348,12 @@ public class WorldSlice implements IBlockAccess {
     // Modern checks if the sky is darkened, which only happens in the nether. However, I think 1.7.10's hasNoSky is
     // close enough and possibly a behavior change between versions. I also don't know why it's rotationally asymmetric
     public float getBrightness(ForgeDirection direction, boolean shaded) {
-        if (world.provider.hasNoSky) {
-            return shaded ? 0.9f : 1.0f;
+        if (!shaded) {
+            return world.provider.hasNoSky ? 0.9f : 1.0f;
         }
         return switch (direction) {
-            case DOWN -> shaded ? 0.9f : 0.5f;
-            case UP -> shaded ? 0.9f : 1.0f;
+            case DOWN -> world.provider.hasNoSky ? 0.9f : 0.5f;
+            case UP -> world.provider.hasNoSky ? 0.9f : 1.0f;
             case NORTH, SOUTH -> 0.8f;
             case WEST, EAST -> 0.6f;
             case UNKNOWN -> 1.0f;

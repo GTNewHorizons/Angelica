@@ -3,29 +3,29 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import me.jellysquid.mods.sodium.client.model.light.LightMode;
+import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
+import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuad;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadViewMutable;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
-import me.jellysquid.mods.sodium.client.util.WorldUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
+import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
@@ -33,6 +33,7 @@ import static org.joml.Math.lerp;
 
 public class FluidRenderer {
 	private static final float EPSILON = 0.001f;
+    private final LightPipelineProvider lpp;
 
     private final BlockPos.Mutable scratchPos = new BlockPos.Mutable();
 
@@ -41,17 +42,19 @@ public class FluidRenderer {
     private final QuadLightData quadLightData = new QuadLightData();
     private final int[] quadColors = new int[4];
 
-    public FluidRenderer(Minecraft client) {
+    public FluidRenderer(LightPipelineProvider lpp) {
         int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
 
         for (int i = 0; i < 4; i++) {
             this.quad.setNormal(i, normal);
         }
+
+        this.lpp = lpp;
     }
 
     private boolean isFluidOccluded(IBlockAccess world, int x, int y, int z, ForgeDirection d, Fluid fluid) {
         Block block = world.getBlock(x, y, z);
-        boolean tmp = FluidRegistry.lookupFluidForBlock(world.getBlock(x + d.offsetX, y + d.offsetY, z + d.offsetZ)) == fluid;
+        boolean tmp = WorldUtil.getFluid(world.getBlock(x + d.offsetX, y + d.offsetY, z + d.offsetZ)) == fluid;
 
         if (block.getMaterial().isOpaque()) {
             return tmp || block.isSideSolid(world, x, y, z, d);
@@ -84,13 +87,13 @@ public class FluidRenderer {
         return true;
     }
 
-    public boolean render(IBlockAccess world, WorldSlice slice, IFluidBlock block, BlockPos pos, ChunkModelBuffers buffers) {
+    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
 
         int posX = pos.x;
         int posY = pos.y;
         int posZ = pos.z;
 
-        Fluid fluid = block.getFluid();
+        Fluid fluid = ((IFluidBlock) block).getFluid();
 
         // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
@@ -106,13 +109,13 @@ public class FluidRenderer {
         }
 
         // sprites[0] should be the still frames, [1] the flowing, [2] the overlay
-        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because I can't find it used anywhere
+        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because 1.7.10 probably doesn't use it.
         TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
-            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 1),
-            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 2),
+            (TextureAtlasSprite) fluid.getStillIcon(),
+            (TextureAtlasSprite) fluid.getFlowingIcon(),
             null
-        };//ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
-        boolean hc = fluid.getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
+        };
+        boolean hc = fluid.getColor() != 0xffffffff;
 
         boolean rendered = false;
 
@@ -125,6 +128,9 @@ public class FluidRenderer {
 
         final ModelQuadViewMutable quad = this.quad;
 
+        LightMode mode = hc && Minecraft.isAmbientOcclusionEnabled() ? LightMode.SMOOTH : LightMode.FLAT;
+        LightPipeline lighter = this.lpp.getLighter(mode);
+
         quad.setFlags(0);
 
         if (!sfUp && this.isSideExposed(world, posX, posY, posZ, ForgeDirection.UP, Math.min(Math.min(h1, h2), Math.min(h3, h4)))) {
@@ -133,7 +139,7 @@ public class FluidRenderer {
             h3 -= 0.001F;
             h4 -= 0.001F;
 
-            Vector3d velocity = WorldUtil.getVelocity(world, pos);
+            Vector3d velocity = WorldUtil.getVelocity(world, pos.x, pos.y, pos.z, block);
 
             TextureAtlasSprite sprite;
             ModelQuadFacing facing;
@@ -189,7 +195,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, h3, 1.0F, u3, v3);
             this.setVertex(quad, 3, 1.0F, h4, 0.0f, u4, v4);
 
-            this.calculateQuadColors(quad, pos, ForgeDirection.UP, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.UP, 1.0F, hc);
             this.flushQuad(buffers, quad, facing, false);
 
             if (WorldUtil.method_15756(slice, this.scratchPos.set(posX, posY + 1, posZ), fluid)) {
@@ -218,7 +224,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, yOffset, 0.0f, maxU, minV);
             this.setVertex(quad, 3, 1.0F, yOffset, 1.0F, maxU, maxV);
 
-            this.calculateQuadColors(quad, pos, ForgeDirection.DOWN, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.DOWN, 1.0F, hc);
             this.flushQuad(buffers, quad, ModelQuadFacing.DOWN, false);
 
             rendered = true;
@@ -322,7 +328,7 @@ public class FluidRenderer {
 
                 ModelQuadFacing facing = ModelQuadFacing.fromDirection(dir);
 
-                this.calculateQuadColors(quad, pos, dir, br, hc);
+                this.calculateQuadColors(quad, pos, lighter, dir, br, hc);
                 this.flushQuad(buffers, quad, facing, false);
 
                 if (sprite != oSprite) {
@@ -341,8 +347,9 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad,  BlockPos pos, ForgeDirection dir, float brightness, boolean colorized) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized) {
         QuadLightData light = this.quadLightData;
+        lighter.calculate(quad, pos, light, null, dir, false);
 
         int[] biomeColors = null;
 
@@ -357,28 +364,34 @@ public class FluidRenderer {
 
     private void flushQuad(ChunkModelBuffers buffers, ModelQuadView quad, ModelQuadFacing facing, boolean flip) {
 
+        int vertexIdx, lightOrder;
+
+        if (flip) {
+            vertexIdx = 3;
+            lightOrder = -1;
+        } else {
+            vertexIdx = 0;
+            lightOrder = 1;
+        }
+
         ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(4);
 
-        //ChunkRenderData.Builder renderData = buffers.getRenderData();
+        for (int i = 0; i < 4; i++) {
+            float x = quad.getX(i);
+            float y = quad.getY(i);
+            float z = quad.getZ(i);
 
-        ModelQuadOrientation order = flip ? ModelQuadOrientation.NORMAL : ModelQuadOrientation.FLIP;
+            int color = this.quadColors[vertexIdx];
 
-        for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
-            int srcIndex = order.getVertexIndex(dstIndex);
+            float u = quad.getTexU(i);
+            float v = quad.getTexV(i);
 
-            float x = quad.getX(srcIndex);
-            float y = quad.getY(srcIndex);
-            float z = quad.getZ(srcIndex);
+            int light = this.quadLightData.lm[vertexIdx];
 
-            int color = this.quadColors[srcIndex];
+            sink.writeQuad(x, y, z, color, u, v, light);
 
-            float u = quad.getTexU(srcIndex);
-            float v = quad.getTexV(srcIndex);
-
-            int lm = quad.getLight(srcIndex);
-
-            sink.writeQuad(x, y, z, color, u, v, lm);
+            vertexIdx += lightOrder;
         }
 
         TextureAtlasSprite sprite = quad.rubidium$getSprite();
