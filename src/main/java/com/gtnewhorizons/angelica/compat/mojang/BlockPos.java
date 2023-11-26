@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.ChunkPosition;
+import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3i;
 
 import java.math.RoundingMode;
@@ -43,6 +44,20 @@ public class BlockPos extends Vector3i {
     public BlockPos set(int x, int y, int z) {
         super.set(x, y, z);
         return this;
+    }
+
+    /**
+     * This method does NOT mutate the BlockPos
+     */
+    public BlockPos offset(ForgeDirection d) {
+        return new BlockPos(this.x + d.offsetX, this.y + d.offsetY, this.z + d.offsetZ);
+    }
+
+    /**
+     * This method does NOT mutate the BlockPos
+     */
+    public BlockPos down() {
+        return offset(ForgeDirection.DOWN);
     }
 
     public long asLong() {

@@ -21,30 +21,41 @@ public class WorldUtil {
     public static Vector3d getVelocity(IBlockAccess world, BlockPos pos, Fluid fluid) {
 
         Vector3d velocity = new Vector3d();
-        ForgeDirection[] news = new ForgeDirection[]{ ForgeDirection.NORTH, ForgeDirection.EAST, ForgeDirection.WEST, ForgeDirection.SOUTH };
-        BlockPos target = new BlockPos.Mutable();
-        target.set(pos);
-        Fluid thisFluid = getFluid(world.getBlock(pos.x, pos.y, pos.z));
         int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);
 
+        BlockPos target = new BlockPos.Mutable();
+        target.set(pos);
+
         // for each orthogonally adjacent fluid, add the height delta
-        for (ForgeDirection d : news) {
+        for (ForgeDirection d : DirectionUtil.HORIZONTAL_DIRECTIONS) {
 
             target.add(d.offsetX, 0, d.offsetZ);
-            Fluid orthoFluid = getFluid(world.getBlock(pos.x, pos.y, pos.z));
-            int orthoMeta = world.getBlockMetadata(pos.x, pos.y, pos.z);
-            double mult;
+            Block oBlock = world.getBlock(target.x, target.y, target.z);
+            Fluid oFluid = getFluid(oBlock);
+            int oMeta = world.getBlockMetadata(target.x, target.y, target.z);
 
-            // blocks always add 0.9, for some reason
-            if (orthoFluid == null) {
-                mult = 0.9;
-            } else {
+            if (!isEmptyOrSame(fluid, oFluid)) continue;
 
-                mult = WorldUtil.getFluidHeight(thisFluid, meta) - WorldUtil.getFluidHeight(orthoFluid, orthoMeta);
+            float oHeight = getFluidHeight(oFluid, oMeta);
+            float delta = 0.0f;
+
+            if (oHeight == 0.0f) {
+
+                BlockPos loTarget = target.down();
+                Fluid loFluid = getFluid(world.getBlock(loTarget.x, loTarget.y, loTarget.z));
+                int loMeta = world.getBlockMetadata(loTarget.x, loTarget.y, loTarget.z);
+                oHeight = getFluidHeight(loFluid, loMeta);
+                if (!oBlock.getMaterial().blocksMovement() && isEmptyOrSame(fluid, loFluid) && oHeight > 0.0f) {
+                    delta = getFluidHeight(fluid, meta) - oHeight + 0.9f;
+                }
+            } else if (oHeight > 0.0f) {
+                delta = getFluidHeight(fluid, meta) - oHeight;
             }
 
-            velocity.add(d.offsetX * mult, 0, d.offsetZ * mult);
-            target.add(-d.offsetX, 0, -d.offsetZ);
+            if (delta == 0.0f) continue;
+
+            velocity.add(d.offsetX * delta, 0, d.offsetZ * delta);
+            target.set(pos.x, pos.y, pos.z);
         }
 
         return velocity.normalize();
@@ -86,5 +97,12 @@ public class WorldUtil {
 
     public static Fluid getFluid(Block b) {
         return b instanceof IFluidBlock ? ((IFluidBlock) b).getFluid() : null;
+    }
+
+    /**
+     * Equivalent to method_15748 in 1.16.5
+     */
+    public static boolean isEmptyOrSame(Fluid fluid, Fluid otherFluid) {
+        return otherFluid == null || fluid == otherFluid;
     }
 }
