@@ -32,6 +32,7 @@ import static org.joml.Math.lerp;
 
 public class FluidRenderer {
 	private static final float EPSILON = 0.001f;
+    private final LightPipelineProvider lpp;
 
     private final BlockPos.Mutable scratchPos = new BlockPos.Mutable();
 
@@ -46,6 +47,8 @@ public class FluidRenderer {
         for (int i = 0; i < 4; i++) {
             this.quad.setNormal(i, normal);
         }
+
+        this.lpp = lpp;
     }
 
     private boolean isFluidOccluded(IBlockAccess world, int x, int y, int z, ForgeDirection d, Fluid fluid) {
