@@ -14,6 +14,7 @@ import net.minecraft.util.ReportedException;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -104,7 +105,12 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		}
 	}
 
-	protected void uploadSprite(TextureAtlasSprite sprite) {
+    @Override
+    public void loadTexture(IResourceManager p_110551_1_) throws IOException {
+        // todo
+    }
+
+    protected void uploadSprite(TextureAtlasSprite sprite) {
 		if (((MixinTextureAtlasSprite) (Object)sprite).isAnimation()) {
             MixinTextureAtlasSprite mixinSprite = ((MixinTextureAtlasSprite) (Object) sprite);
 			AnimationMetadataSection metadata = mixinSprite.getMetadata();

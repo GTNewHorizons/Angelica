@@ -16,6 +16,24 @@ public enum Mixins {
              "angelica.MixinEntityRenderer"
         )
     ),
+//
+//    ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+//        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && false).addMixinClasses(
+//              "angelica.archaic.MixinSplashProgress"
+//             ,"angelica.archaic.AccessorSplashProgress"
+//        )
+//    ),
+//
+//    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+//        .setPhase(Phase.EARLY).addMixinClasses(
+//             "angelica.archaic.MixinBlockFence"
+//            ,"angelica.archaic.MixinFMLClientHandler"
+//            ,"angelica.archaic.MixinGuiIngameForge"
+//            ,"angelica.archaic.MixinNetHandlerPlayClient"
+//            ,"angelica.archaic.MixinThreadDownloadImageData"
+//        )
+//    ),
+
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
              "shaders.startup.MixinGameSettings"
@@ -23,7 +41,11 @@ public enum Mixins {
             ,"shaders.startup.MixinInitRenderer"
         )
         ),
-
+    ANGELICA_ENABLE_DEBUG(new Builder("Angelica Debug").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"))).addMixinClasses(
+            "angelica.debug.MixinSplashProgress"
+        )
+    ),
     SODIUM_STARTUP(new Builder("Start Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium && !AngelicaConfig.enableIris).addMixinClasses(
             "sodium.startup.MixinInitDebug"

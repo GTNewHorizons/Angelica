@@ -71,6 +71,7 @@ public class GLStateManager {
     private static Runnable fogDensityListener = null;
 
     // Thread Checking
+    @Getter
     private static Thread MainThread;
 
     static {

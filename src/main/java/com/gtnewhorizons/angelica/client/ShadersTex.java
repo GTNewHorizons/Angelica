@@ -1,14 +1,11 @@
 package com.gtnewhorizons.angelica.client;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.LayeredTexture;
 import net.minecraft.client.renderer.texture.Stitcher;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.IResource;
@@ -27,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -100,36 +96,37 @@ public class ShadersTex {
     }
 
     public static MultiTexID getMultiTexID(AbstractTexture tex) {
-        MultiTexID multiTex = tex.angelica$multiTex;
-        if (multiTex == null) {
-            int baseTex = tex.getGlTextureId();
-            multiTex = multiTexMap.get(Integer.valueOf(baseTex));
-            if (multiTex == null) {
-                multiTex = new MultiTexID(baseTex, GL11.glGenTextures(), GL11.glGenTextures());
-                multiTexMap.put(baseTex, multiTex);
-            }
-            tex.angelica$multiTex = multiTex;
-        }
-        return multiTex;
+        return null;
+//        MultiTexID multiTex = tex.angelica$multiTex;
+//        if (multiTex == null) {
+//            int baseTex = tex.getGlTextureId();
+//            multiTex = multiTexMap.get(Integer.valueOf(baseTex));
+//            if (multiTex == null) {
+//                multiTex = new MultiTexID(baseTex, GL11.glGenTextures(), GL11.glGenTextures());
+//                multiTexMap.put(baseTex, multiTex);
+//            }
+//            tex.angelica$multiTex = multiTex;
+//        }
+//        return multiTex;
     }
 
     public static void deleteTextures(AbstractTexture atex) {
-        int texid = atex.glTextureId;
-        if (texid != -1) {
-            GL11.glDeleteTextures(texid);
-            atex.glTextureId = -1;
-        }
-        MultiTexID multiTex = atex.angelica$multiTex;
-        if (multiTex != null) {
-            atex.angelica$multiTex = null;
-            multiTexMap.remove(Integer.valueOf(multiTex.base));
-            GL11.glDeleteTextures(multiTex.norm);
-            GL11.glDeleteTextures(multiTex.spec);
-            if (multiTex.base != texid) {
-                AngelicaTweaker.LOGGER.warn("Error : MultiTexID.base mismatch.");
-                GL11.glDeleteTextures(multiTex.base);
-            }
-        }
+//        int texid = atex.glTextureId;
+//        if (texid != -1) {
+//            GL11.glDeleteTextures(texid);
+//            atex.glTextureId = -1;
+//        }
+//        MultiTexID multiTex = atex.angelica$multiTex;
+//        if (multiTex != null) {
+//            atex.angelica$multiTex = null;
+//            multiTexMap.remove(Integer.valueOf(multiTex.base));
+//            GL11.glDeleteTextures(multiTex.norm);
+//            GL11.glDeleteTextures(multiTex.spec);
+//            if (multiTex.base != texid) {
+//                AngelicaTweaker.LOGGER.warn("Error : MultiTexID.base mismatch.");
+//                GL11.glDeleteTextures(multiTex.base);
+//            }
+//        }
     }
 
     /** Remove MultiTexID object reference and delete textures */
@@ -188,14 +185,14 @@ public class ShadersTex {
     }
 
     public static void bindTexture(ITextureObject tex) {
-        if (tex instanceof TextureMap) {
-            Shaders.atlasSizeX = ((TextureMap) tex).angelica$atlasWidth;
-            Shaders.atlasSizeY = ((TextureMap) tex).angelica$atlasHeight;
-        } else {
-            Shaders.atlasSizeX = 0;
-            Shaders.atlasSizeY = 0;
-        }
-        bindTextures(tex.angelica$getMultiTexID());
+//        if (tex instanceof TextureMap) {
+//            Shaders.atlasSizeX = ((TextureMap) tex).angelica$atlasWidth;
+//            Shaders.atlasSizeY = ((TextureMap) tex).angelica$atlasHeight;
+//        } else {
+//            Shaders.atlasSizeX = 0;
+//            Shaders.atlasSizeY = 0;
+//        }
+//        bindTextures(tex.angelica$getMultiTexID());
     }
 
     /** not used */
@@ -224,41 +221,41 @@ public class ShadersTex {
     // for Dynamic Texture
     public static void initDynamicTexture(int texID, int width, int height, DynamicTexture tex) {
         // TODO: PBR
-        MultiTexID multiTex = tex.angelica$getMultiTexID();
-        int[] aint = tex.getTextureData();
-        int size = width * height;
-        Arrays.fill(aint, size, size * 2, defNormTexColor);
-        Arrays.fill(aint, size * 2, size * 3, defSpecTexColor);
-        // base texture
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
-        allocTexStorage(width, height, 0);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-
-        // This seems PBR related...
-        // norm texture
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        allocTexStorage(width, height, 0);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-
-        // spec texture
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
-        allocTexStorage(width, height, 0);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-
-        // base texture
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
+//        MultiTexID multiTex = tex.angelica$getMultiTexID();
+//        int[] aint = tex.getTextureData();
+//        int size = width * height;
+//        Arrays.fill(aint, size, size * 2, defNormTexColor);
+//        Arrays.fill(aint, size * 2, size * 3, defSpecTexColor);
+//        // base texture
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
+//        allocTexStorage(width, height, 0);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+//
+//        // This seems PBR related...
+//        // norm texture
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//        allocTexStorage(width, height, 0);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+//
+//        // spec texture
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
+//        allocTexStorage(width, height, 0);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+//        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+//
+//        // base texture
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
     }
 
     public static ITextureObject createDefaultTexture() {
@@ -271,18 +268,18 @@ public class ShadersTex {
     // for TextureMap
     public static void allocateTextureMap(int texID, int mipmapLevels, int width, int height, float anisotropy,
             Stitcher stitcher, TextureMap tex) {
-        AngelicaTweaker.LOGGER.trace("allocateTextureMap {} {} {} {} {}", tex.getTextureType(), mipmapLevels, width, height, anisotropy);
-        updatingTextureMap = tex;
-        tex.angelica$atlasWidth = width;
-        tex.angelica$atlasHeight = height;
-        MultiTexID multiTex = getMultiTexID(tex);
-        updatingTex = multiTex;
-        TextureUtil.allocateTextureImpl(multiTex.base, mipmapLevels, width, height, anisotropy);
-        if (Shaders.configNormalMap)
-            TextureUtil.allocateTextureImpl(multiTex.norm, mipmapLevels, width, height, anisotropy);
-        if (Shaders.configSpecularMap)
-            TextureUtil.allocateTextureImpl(multiTex.spec, mipmapLevels, width, height, anisotropy);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texID);
+//        AngelicaTweaker.LOGGER.trace("allocateTextureMap {} {} {} {} {}", tex.getTextureType(), mipmapLevels, width, height, anisotropy);
+//        updatingTextureMap = tex;
+//        tex.angelica$atlasWidth = width;
+//        tex.angelica$atlasHeight = height;
+//        MultiTexID multiTex = getMultiTexID(tex);
+//        updatingTex = multiTex;
+//        TextureUtil.allocateTextureImpl(multiTex.base, mipmapLevels, width, height, anisotropy);
+//        if (Shaders.configNormalMap)
+//            TextureUtil.allocateTextureImpl(multiTex.norm, mipmapLevels, width, height, anisotropy);
+//        if (Shaders.configSpecularMap)
+//            TextureUtil.allocateTextureImpl(multiTex.spec, mipmapLevels, width, height, anisotropy);
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texID);
     }
 
     public static TextureAtlasSprite setSprite(TextureAtlasSprite tas) {
@@ -609,13 +606,13 @@ public class ShadersTex {
 
     public static void updateDynamicTexture(int texID, int[] src, int width, int height, DynamicTexture tex) {
         // TODO: PBR
-        MultiTexID multiTex = tex.angelica$getMultiTexID();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        updateSubImage1(src, width, height, 0, 0, 1, defNormTexColor);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
-        updateSubImage1(src, width, height, 0, 0, 2, defSpecTexColor);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
-        updateSubImage1(src, width, height, 0, 0, 0, defBaseTexColor);
+//        MultiTexID multiTex = tex.angelica$getMultiTexID();
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//        updateSubImage1(src, width, height, 0, 0, 1, defNormTexColor);
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
+//        updateSubImage1(src, width, height, 0, 0, 2, defSpecTexColor);
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
+//        updateSubImage1(src, width, height, 0, 0, 0, defBaseTexColor);
     }
 
     public static void updateSubImage(int[] src, int width, int height, int posX, int posY, boolean linear,
@@ -632,23 +629,23 @@ public class ShadersTex {
 
     // not used
     public static void updateAnimationTextureMap(TextureMap tex, List<TextureAtlasSprite> tasList) {
-        Iterator<TextureAtlasSprite> iterator;
-        MultiTexID multiTex = tex.angelica$getMultiTexID();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        for (iterator = tasList.iterator(); iterator.hasNext();) {
-            TextureAtlasSprite tas = iterator.next();
-            tas.updateAnimation();
-        }
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        for (iterator = tasList.iterator(); iterator.hasNext();) {
-            TextureAtlasSprite tas = iterator.next();
-            tas.updateAnimation();
-        }
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-        for (iterator = tasList.iterator(); iterator.hasNext();) {
-            TextureAtlasSprite tas = iterator.next();
-            tas.updateAnimation();
-        }
+//        Iterator<TextureAtlasSprite> iterator;
+//        MultiTexID multiTex = tex.angelica$getMultiTexID();
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//        for (iterator = tasList.iterator(); iterator.hasNext();) {
+//            TextureAtlasSprite tas = iterator.next();
+//            tas.updateAnimation();
+//        }
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//        for (iterator = tasList.iterator(); iterator.hasNext();) {
+//            TextureAtlasSprite tas = iterator.next();
+//            tas.updateAnimation();
+//        }
+//        GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//        for (iterator = tasList.iterator(); iterator.hasNext();) {
+//            TextureAtlasSprite tas = iterator.next();
+//            tas.updateAnimation();
+//        }
     }
 
     public static void setupTexture(MultiTexID multiTex, int[] src, int width, int height, boolean linear,
@@ -785,66 +782,66 @@ public class ShadersTex {
     }
 
     public static void loadLayeredTexture(LayeredTexture tex, IResourceManager manager, List<String> list) {
-        int width = 0;
-        int height = 0;
-        int size = 0;
-        int[] image = null;
-        Iterator<String> iterator;
-        for (iterator = list.iterator(); iterator.hasNext();) {
-            String s = iterator.next();
-            if (s != null) {
-                try {
-                    ResourceLocation location = new ResourceLocation(s);
-                    InputStream inputstream = manager.getResource(location).getInputStream();
-                    BufferedImage bufimg = ImageIO.read(inputstream);
-
-                    if (size == 0) {
-                        width = bufimg.getWidth();
-                        height = bufimg.getHeight();
-                        size = width * height;
-                        image = createAIntImage(size, 0x00000000);
-                    }
-                    int[] aint = getIntArray(size * 3);
-                    bufimg.getRGB(0, 0, width, height, aint, 0, width);
-                    loadNSMap(manager, location, width, height, aint);
-                    // merge
-                    for (int i = 0; i < size; ++i) {
-                        int alpha = (aint[i] >>> 24) & 255;
-                        image[size * 0 + i] = blendColor(aint[size * 0 + i], image[size * 0 + i], alpha);
-                        image[size * 1 + i] = blendColor(aint[size * 1 + i], image[size * 1 + i], alpha);
-                        image[size * 2 + i] = blendColor(aint[size * 2 + i], image[size * 2 + i], alpha);
-                    }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }
-        // init and upload
-        setupTexture(tex.angelica$getMultiTexID(), image, width, height, false, false);
+//        int width = 0;
+//        int height = 0;
+//        int size = 0;
+//        int[] image = null;
+//        Iterator<String> iterator;
+//        for (iterator = list.iterator(); iterator.hasNext();) {
+//            String s = iterator.next();
+//            if (s != null) {
+//                try {
+//                    ResourceLocation location = new ResourceLocation(s);
+//                    InputStream inputstream = manager.getResource(location).getInputStream();
+//                    BufferedImage bufimg = ImageIO.read(inputstream);
+//
+//                    if (size == 0) {
+//                        width = bufimg.getWidth();
+//                        height = bufimg.getHeight();
+//                        size = width * height;
+//                        image = createAIntImage(size, 0x00000000);
+//                    }
+//                    int[] aint = getIntArray(size * 3);
+//                    bufimg.getRGB(0, 0, width, height, aint, 0, width);
+//                    loadNSMap(manager, location, width, height, aint);
+//                    // merge
+//                    for (int i = 0; i < size; ++i) {
+//                        int alpha = (aint[i] >>> 24) & 255;
+//                        image[size * 0 + i] = blendColor(aint[size * 0 + i], image[size * 0 + i], alpha);
+//                        image[size * 1 + i] = blendColor(aint[size * 1 + i], image[size * 1 + i], alpha);
+//                        image[size * 2 + i] = blendColor(aint[size * 2 + i], image[size * 2 + i], alpha);
+//                    }
+//                } catch (IOException ex) {
+//                    ex.printStackTrace();
+//                }
+//            }
+//        }
+//        // init and upload
+//        setupTexture(tex.angelica$getMultiTexID(), image, width, height, false, false);
     }
 
     /* update block texture filter +/- items texture */
     public static void updateTextureMinMagFilter() {
-        TextureManager texman = Minecraft.getMinecraft().getTextureManager();
-        ITextureObject texObj = texman.getTexture(TextureMap.locationBlocksTexture);
-        if (texObj != null) {
-            MultiTexID multiTex = texObj.angelica$getMultiTexID();
-            // base texture
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilB]);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilB]);
-            // norm texture
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilN]);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilN]);
-
-            // spec texture
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilS]);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilS]);
-
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        }
+//        TextureManager texman = Minecraft.getMinecraft().getTextureManager();
+//        ITextureObject texObj = texman.getTexture(TextureMap.locationBlocksTexture);
+//        if (texObj != null) {
+//            MultiTexID multiTex = texObj.angelica$getMultiTexID();
+//            // base texture
+//            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.base);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilB]);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilB]);
+//            // norm texture
+//            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.norm);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilN]);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilN]);
+//
+//            // spec texture
+//            GL11.glBindTexture(GL11.GL_TEXTURE_2D, multiTex.spec);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, Shaders.texMinFilValue[Shaders.configTexMinFilS]);
+//            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, Shaders.texMagFilValue[Shaders.configTexMagFilS]);
+//
+//            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+//        }
     }
 
     static IResourceManager resManager = null;

@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
-import com.gtnewhorizons.angelica.mixins.ArchaicMixins;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import cpw.mods.fml.common.Loader;
@@ -97,10 +96,6 @@ public class AngelicaLateMixins implements ILateMixinLoader {
         for(String modId : loadedMods) {
             TargetedMod t = modById.get(modId);
             if(t != null) validMods.add(t);
-        }
-        for(ArchaicMixins mixin : ArchaicMixins.values()) {
-            if(mixin.getPhase() == ArchaicMixins.Phase.LATE && mixin.shouldLoadSide() && mixin.getFilter().test(validMods))
-                mixins.addAll(mixin.getMixins());
         }
         return mixins;
     }

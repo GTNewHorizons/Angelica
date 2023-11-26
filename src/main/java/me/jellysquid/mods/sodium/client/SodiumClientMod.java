@@ -39,6 +39,7 @@ public class SodiumClientMod {
 //        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
     }
 
+
     @SubscribeEvent
     public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
         if(event.gui instanceof GuiVideoSettings) {
