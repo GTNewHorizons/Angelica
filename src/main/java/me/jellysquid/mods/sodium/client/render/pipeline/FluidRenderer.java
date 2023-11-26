@@ -19,7 +19,6 @@ import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
@@ -106,13 +105,13 @@ public class FluidRenderer {
         }
 
         // sprites[0] should be the still frames, [1] the flowing, [2] the overlay
-        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because I can't find it used anywhere
+        // Sides 0 and 1 (top and bottom) are still, 2+ flowing. Overlay is null because 1.7.10 probably doesn't use it.
         TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
-            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 1),
-            (TextureAtlasSprite) RenderBlocks.getInstance().getBlockIconFromSide(fluid.getBlock(), 2),
+            (TextureAtlasSprite) fluid.getStillIcon(),
+            (TextureAtlasSprite) fluid.getFlowingIcon(),
             null
-        };//ForgeHooksClientExt.getFluidSprites(world, pos, fluidState);
-        boolean hc = fluid.getColor() != 0xffffffff; //fluidState.getFluid().getAttributes().getColor() != 0xffffffff;
+        };
+        boolean hc = fluid.getColor() != 0xffffffff;
 
         boolean rendered = false;
 

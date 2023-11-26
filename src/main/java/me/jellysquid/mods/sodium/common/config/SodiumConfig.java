@@ -30,7 +30,7 @@ public class SodiumConfig {
 
     private final Map<String, Option> options = new HashMap<>();
     // Enable Sodium's fluid renderer. Part of RenderBlocks removal, postponed for now
-    public static final boolean ENABLE_FLUID_RENDERER = Boolean.parseBoolean(System.getProperty("sodium.enableFluidRenderer", "false"));
+    public static final boolean ENABLE_FLUID_RENDERER = true;//Boolean.parseBoolean(System.getProperty("sodium.enableFluidRenderer", "false"));
 
     private SodiumConfig() {
         // Defines the default rules which can be configured by the user or other mods.
