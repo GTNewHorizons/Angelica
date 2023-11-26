@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.transform;
 
+import org.objectweb.asm.tree.MethodInsnNode;
+
 public class Names {
 
     public static class Name {
@@ -80,5 +82,9 @@ public class Names {
 
     public static boolean equals(String clas1, String name1, String desc1, String clas2, String name2, String desc2) {
         return clas1.equals(clas2) && name1.equals(name2) && desc1.equals(desc2);
+    }
+
+    public static boolean equals(MethodInsnNode node, String owner, String name, String desc) {
+        return node.owner.equals(owner) && node.name.equals(name) && node.desc.equals(desc);
     }
 }
