@@ -87,13 +87,13 @@ public class FluidRenderer {
         return true;
     }
 
-    public boolean render(IBlockAccess world, WorldSlice slice, IFluidBlock block, BlockPos pos, ChunkModelBuffers buffers) {
+    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
 
         int posX = pos.x;
         int posY = pos.y;
         int posZ = pos.z;
 
-        Fluid fluid = block.getFluid();
+        Fluid fluid = ((IFluidBlock) block).getFluid();
 
         // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
@@ -139,7 +139,7 @@ public class FluidRenderer {
             h3 -= 0.001F;
             h4 -= 0.001F;
 
-            Vector3d velocity = WorldUtil.getVelocity(world, pos, fluid);
+            Vector3d velocity = WorldUtil.getVelocity(world, pos.x, pos.y, pos.z, block);
 
             TextureAtlasSprite sprite;
             ModelQuadFacing facing;

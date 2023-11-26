@@ -18,47 +18,52 @@ import org.joml.Vector3d;
  */
 public class WorldUtil {
 
-    public static Vector3d getVelocity(IBlockAccess world, BlockPos pos, Fluid fluid) {
+    public static Vector3d getVelocity(IBlockAccess world, int x, int y, int z, Block thizz) {
 
         Vector3d velocity = new Vector3d();
-        int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);
+        int decay = getEffectiveFlowDecay(world, x, y, z, thizz);
 
-        BlockPos target = new BlockPos.Mutable();
-        target.set(pos);
+        for (ForgeDirection dire : DirectionUtil.HORIZONTAL_DIRECTIONS) {
 
-        // for each orthogonally adjacent fluid, add the height delta
-        for (ForgeDirection d : DirectionUtil.HORIZONTAL_DIRECTIONS) {
+            int adjX = x + dire.offsetX;
+            int adjZ = z + dire.offsetZ;
 
-            target.add(d.offsetX, 0, d.offsetZ);
-            Block oBlock = world.getBlock(target.x, target.y, target.z);
-            Fluid oFluid = getFluid(oBlock);
-            int oMeta = world.getBlockMetadata(target.x, target.y, target.z);
+            int adjDecay = getEffectiveFlowDecay(world, adjX, y, adjZ, thizz);
 
-            if (!isEmptyOrSame(fluid, oFluid)) continue;
+            if (adjDecay < 0) {
 
-            float oHeight = getFluidHeight(oFluid, oMeta);
-            float delta = 0.0f;
+                if (!world.getBlock(adjX, y, adjZ).getMaterial().blocksMovement()) {
 
-            if (oHeight == 0.0f) {
+                    adjDecay = getEffectiveFlowDecay(world, adjX, y - 1, adjZ, thizz);
 
-                BlockPos loTarget = target.down();
-                Fluid loFluid = getFluid(world.getBlock(loTarget.x, loTarget.y, loTarget.z));
-                int loMeta = world.getBlockMetadata(loTarget.x, loTarget.y, loTarget.z);
-                oHeight = getFluidHeight(loFluid, loMeta);
-                if (!oBlock.getMaterial().blocksMovement() && isEmptyOrSame(fluid, loFluid) && oHeight > 0.0f) {
-                    delta = getFluidHeight(fluid, meta) - oHeight + 0.9f;
+                    if (adjDecay >= 0) {
+
+                        adjDecay -= (decay - 8);
+                        velocity = velocity.add((adjX - x) * adjDecay, 0, (adjZ - z) * adjDecay);
+                    }
                 }
-            } else if (oHeight > 0.0f) {
-                delta = getFluidHeight(fluid, meta) - oHeight;
+            } else {
+
+                adjDecay -= decay;
+                velocity = velocity.add((adjX - x) * adjDecay, 0, (adjZ - z) * adjDecay);
             }
-
-            if (delta == 0.0f) continue;
-
-            velocity.add(d.offsetX * delta, 0, d.offsetZ * delta);
-            target.set(pos.x, pos.y, pos.z);
         }
 
-        if (velocity.x == velocity.z && velocity.x == velocity.z)
+        if (world.getBlockMetadata(x, y, z) >= 8) {
+
+            if (thizz.isBlockSolid(world, x, y, z - 1, 2)
+                || thizz.isBlockSolid(world, x, y, z + 1, 3)
+                || thizz.isBlockSolid(world, x - 1, y, z, 4)
+                || thizz.isBlockSolid(world, x + 1, y, z, 5)
+                || thizz.isBlockSolid(world, x, y + 1, z - 1, 2)
+                || thizz.isBlockSolid(world, x, y + 1, z + 1, 3)
+                || thizz.isBlockSolid(world, x - 1, y + 1, z, 4)
+                || thizz.isBlockSolid(world, x + 1, y + 1, z, 5)) {
+                velocity = velocity.normalize().add(0.0D, -6.0D, 0.0D);
+            }
+        }
+
+        if (velocity.x == 0 && velocity.y == 0 && velocity.z == 0)
             return velocity.zero();
         return velocity.normalize();
     }
@@ -91,6 +96,22 @@ public class WorldUtil {
         return fluid == null ? 0 : 1 - BlockLiquid.getLiquidHeightPercent(meta);
     }
 
+    /**
+     * Returns the flow decay but converts values indicating falling liquid (values >=8) to their effective source block
+     * value of zero
+     */
+    public static int getEffectiveFlowDecay(IBlockAccess world, int x, int y, int z, Block thiz) {
+
+        if (world.getBlock(x, y, z).getMaterial() != thiz.getMaterial()) {
+
+            return -1;
+        } else {
+
+            int decay = world.getBlockMetadata(x, y, z);
+            return decay >= 8 ? 0 : decay;
+        }
+    }
+
     // I believe forge mappings in modern say BreakableBlock, while yarn says TransparentBlock.
     // I have a sneaking suspicion isOpaque is neither, but it works for now
     public static boolean shouldDisplayFluidOverlay(Block block) {
@@ -106,5 +127,20 @@ public class WorldUtil {
      */
     public static boolean isEmptyOrSame(Fluid fluid, Fluid otherFluid) {
         return otherFluid == null || fluid == otherFluid;
+    }
+
+    /**
+     * Equivalent to method_15749 in 1.16.5
+     */
+    public static boolean method_15749(IBlockAccess world, Fluid thiz, BlockPos pos, ForgeDirection dir) {
+        Block b = world.getBlock(pos.x, pos.y, pos.z);
+        Fluid f = getFluid(b);
+        if (f == thiz) {
+            return false;
+        }
+        if (dir == ForgeDirection.UP) {
+            return true;
+        }
+        return b.getMaterial() != Material.ice && b.isSideSolid(world, pos.x, pos.y, pos.z, dir);
     }
 }

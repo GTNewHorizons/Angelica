@@ -60,6 +60,13 @@ public class BlockPos extends Vector3i {
         return offset(ForgeDirection.DOWN);
     }
 
+    /**
+     * This method does NOT mutate the BlockPos
+     */
+    public BlockPos up() {
+        return offset(ForgeDirection.UP);
+    }
+
     public long asLong() {
         return asLong(this.x, this.y, this.z);
     }
