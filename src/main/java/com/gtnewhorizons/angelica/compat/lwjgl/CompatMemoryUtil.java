@@ -71,4 +71,12 @@ public class CompatMemoryUtil {
     public static void memPutFloat(long ptr, float value)   { UNSAFE.putFloat(null, ptr, value); }
     public static void memPutDouble(long ptr, double value) { UNSAFE.putDouble(null, ptr, value); }
 
+    public static boolean memGetBoolean(long ptr) { return UNSAFE.getByte(null, ptr) != 0; }
+    public static byte memGetByte(long ptr)       { return UNSAFE.getByte(null, ptr); }
+    public static short memGetShort(long ptr)     { return UNSAFE.getShort(null, ptr); }
+    public static int memGetInt(long ptr)         { return UNSAFE.getInt(null, ptr); }
+    public static long memGetLong(long ptr)       { return UNSAFE.getLong(null, ptr); }
+    public static float memGetFloat(long ptr)     { return UNSAFE.getFloat(null, ptr); }
+    public static double memGetDouble(long ptr)   { return UNSAFE.getDouble(null, ptr); }
+
 }

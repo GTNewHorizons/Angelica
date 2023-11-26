@@ -1,7 +1,6 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Matrix4f;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkProgram;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogComponent;
@@ -9,9 +8,10 @@ import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.system.MemoryStack;
+import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
 
 import java.nio.FloatBuffer;
 
@@ -40,8 +40,8 @@ public class IrisChunkProgram extends ChunkProgram {
 		this.irisProgramImages = irisProgramImages;
 	}
 
-	public void setup(PoseStack poseStack, float modelScale, float textureScale) {
-		super.setup(poseStack, modelScale, textureScale);
+	public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
+		super.setup(matrixStack, modelScale, textureScale);
 
 		if (irisProgramUniforms != null) {
 			irisProgramUniforms.update();
@@ -55,8 +55,8 @@ public class IrisChunkProgram extends ChunkProgram {
 			irisProgramImages.update();
 		}
 
-		Matrix4f modelViewMatrix = poseStack.last().pose();
-		Matrix4f normalMatrix = poseStack.last().pose().copy();
+		Matrix4f modelViewMatrix = matrixStack.peek().getModel();
+		Matrix4f normalMatrix = new Matrix4f(matrixStack.peek().getModel());
 		normalMatrix.invert();
 		normalMatrix.transpose();
 
@@ -87,12 +87,10 @@ public class IrisChunkProgram extends ChunkProgram {
 			return;
 		}
 
-		try (MemoryStack memoryStack = MemoryStack.stackPush()) {
-			FloatBuffer buffer = memoryStack.mallocFloat(16);
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
 
-			matrix.store(buffer);
+        matrix.get(buffer);
 
-			IrisRenderSystem.uniformMatrix4fv(location, false, buffer);
-		}
+        IrisRenderSystem.uniformMatrix4fv(location, false, buffer);
 	}
 }

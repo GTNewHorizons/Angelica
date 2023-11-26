@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.shaderpack.DimensionId;
@@ -20,6 +21,7 @@ public class PipelineManager {
 	private final Function<DimensionId, WorldRenderingPipeline> pipelineFactory;
 	private final Map<DimensionId, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
 	private WorldRenderingPipeline pipeline = new FixedFunctionWorldRenderingPipeline();
+    @Getter
 	private int versionCounterForSodiumShaderReload = 0;
 
 	public PipelineManager(Function<DimensionId, WorldRenderingPipeline> pipelineFactory) {

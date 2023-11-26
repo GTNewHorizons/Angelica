@@ -4,16 +4,16 @@ import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexUtil;
-import net.coderbot.iris.compat.sodium.impl.block_context.BlockContextHolder;
-import net.coderbot.iris.compat.sodium.impl.block_context.ContextAwareVertexWriter;
-import net.coderbot.iris.compat.sodium.impl.vertex_format.IrisModelVertexFormats;
-import net.coderbot.iris.vendored.joml.Vector3f;
+import net.coderbot.iris.sodium.block_context.BlockContextHolder;
+import net.coderbot.iris.sodium.block_context.ContextAwareVertexWriter;
+import net.coderbot.iris.sodium.vertex_format.IrisModelVertexFormats;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.coderbot.iris.vertices.NormalHelper;
+import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
 
-import static net.coderbot.iris.compat.sodium.impl.vertex_format.terrain_xhfp.XHFPModelVertexType.STRIDE;
+import static net.coderbot.iris.sodium.vertex_format.terrain_xhfp.XHFPModelVertexType.STRIDE;
 
 public class XHFPModelVertexBufferWriterNio extends VertexBufferWriterNio implements ModelVertexSink, ContextAwareVertexWriter {
 	private final QuadViewTerrain.QuadViewTerrainNio quad = new QuadViewTerrain.QuadViewTerrainNio();
