@@ -1,78 +1,50 @@
 package com.gtnewhorizons.angelica.transform;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.launchwrapper.IClassTransformer;
-
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import org.objectweb.asm.tree.*;
 
 /** Transformer for {@link EntityRenderer} */
-public class ACTEntityRenderer implements IClassTransformer {
+public class ACTEntityRenderer implements IClassTransformer, Opcodes {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        AngelicaTweaker.LOGGER.debug("transforming {} {}", name, transformedName);
-        ClassReader cr = new ClassReader(basicClass);
-        ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
-        CVTransform cv = new CVTransform(cw);
-        cr.accept(cv, 0);
-        return cw.toByteArray();
-    }
-
-    private static class CVTransform extends ClassVisitor {
-
-        private String classname;
-
-        public CVTransform(ClassVisitor cv) {
-            super(Opcodes.ASM4, cv);
-        }
-
-        @Override
-        public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-            classname = name;
-            cv.visit(version, access, name, signature, superName, interfaces);
-        }
-
-        @Override
-        public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-            if (Names.entityRenderer_renderHand.equalsNameDesc(name, desc)) {
-                AngelicaTweaker.LOGGER.trace(" patching method {}.{}{}", classname, name, desc);
-                return new MVrenderHand(cv.visitMethod(access, name, desc, signature, exceptions));
+        if ("net.minecraft.client.renderer.EntityRenderer".equals(transformedName)) {
+            AngelicaTweaker.LOGGER.debug("transforming {} {}", name, transformedName);
+            ClassReader cr = new ClassReader(basicClass);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            for (MethodNode mn : cn.methods) {
+                if (Names.entityRenderer_renderHand.equalsNameDesc(mn.name, mn.desc)) {
+                    // Wraps the code from GL11.glPushMatrix() to GL11.glPopMatrix() in an if(!Shaders.isHandRendered) check
+                    AngelicaTweaker.LOGGER.trace(" patching method {}.{}{}", transformedName, mn.name, mn.desc);
+                    LabelNode label = new LabelNode();
+                    for (AbstractInsnNode node : mn.instructions.toArray()) {
+                        if (node instanceof MethodInsnNode mNode) {
+                            if (Names.equals(mNode, "org/lwjgl/opengl/GL11", "glPushMatrix", "()V")) {
+                                InsnList list = new InsnList();
+                                list.add(new FieldInsnNode(GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isHandRendered", "Z"));
+                                list.add(new JumpInsnNode(IFNE, label));
+                                mn.instructions.insertBefore(node, list);
+                            } else if (Names.equals(mNode, "org/lwjgl/opengl/GL11", "glPopMatrix", "()V")) {
+                                InsnList list = new InsnList();
+                                list.add(label);
+                                list.add(new FrameNode(F_SAME, 0, null, 0, null));
+                                mn.instructions.insert(node, list);
+                            }
+                        }
+                    }
+                }
             }
-            return cv.visitMethod(access, name, desc, signature, exceptions);
+            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+            cn.accept(cw);
+            return cw.toByteArray();
         }
+        return basicClass;
     }
 
-    private static class MVrenderHand extends MethodVisitor {
-
-        private Label label;
-
-        public MVrenderHand(MethodVisitor mv) {
-            super(Opcodes.ASM4, mv);
-            label = new Label();
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            // Wraps the code from GL11.glPushMatrix() to GL11.glPopMatrix() in an if(!Shaders.isHandRendered) check
-            if (Names.equals("org/lwjgl/opengl/GL11", "glPushMatrix", "()V", owner, name, desc)) {
-                mv.visitFieldInsn(Opcodes.GETSTATIC, "com/gtnewhorizons/angelica/client/Shaders", "isHandRendered", "Z");
-                mv.visitJumpInsn(Opcodes.IFNE, label);
-                mv.visitMethodInsn(opcode, owner, name, desc);
-                return;
-            } else if (Names.equals("org/lwjgl/opengl/GL11", "glPopMatrix", "()V", owner, name, desc)) {
-                mv.visitMethodInsn(opcode, owner, name, desc);
-                mv.visitLabel(label);
-                mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-                return;
-            }
-            mv.visitMethodInsn(opcode, owner, name, desc);
-        }
-    }
 }
