@@ -58,6 +58,8 @@ public class WorldUtil {
             target.set(pos.x, pos.y, pos.z);
         }
 
+        if (velocity.x == velocity.z && velocity.x == velocity.z)
+            return velocity.zero();
         return velocity.normalize();
     }
 
