@@ -14,17 +14,16 @@ import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientati
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
-import me.jellysquid.mods.sodium.client.util.WorldUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
+import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
@@ -53,7 +52,7 @@ public class FluidRenderer {
 
     private boolean isFluidOccluded(IBlockAccess world, int x, int y, int z, ForgeDirection d, Fluid fluid) {
         Block block = world.getBlock(x, y, z);
-        boolean tmp = FluidRegistry.lookupFluidForBlock(world.getBlock(x + d.offsetX, y + d.offsetY, z + d.offsetZ)) == fluid;
+        boolean tmp = WorldUtil.getFluid(world.getBlock(x + d.offsetX, y + d.offsetY, z + d.offsetZ)) == fluid;
 
         if (block.getMaterial().isOpaque()) {
             return tmp || block.isSideSolid(world, x, y, z, d);

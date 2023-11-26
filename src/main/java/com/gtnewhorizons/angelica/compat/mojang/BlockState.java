@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
+import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
@@ -79,7 +80,7 @@ public class BlockState implements IForgeBlockState {
     }
 
     public FluidState getFluidState() {
-        return new FluidState(FluidRegistry.lookupFluidForBlock(block), meta);
+        return new FluidState(WorldUtil.getFluid(block), meta);
     }
 
     public boolean shouldDisplayFluidOverlay(BlockRenderView world, BlockPos adjPos, FluidState fluidState) {

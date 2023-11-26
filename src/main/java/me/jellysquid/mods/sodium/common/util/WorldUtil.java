@@ -1,13 +1,15 @@
-package me.jellysquid.mods.sodium.client.util;
+package me.jellysquid.mods.sodium.common.util;
 
-import com.gtnewhorizons.angelica.compat.mojang.*;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
+import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
 /**
@@ -22,14 +24,14 @@ public class WorldUtil {
         ForgeDirection[] news = new ForgeDirection[]{ ForgeDirection.NORTH, ForgeDirection.EAST, ForgeDirection.WEST, ForgeDirection.SOUTH };
         BlockPos target = new BlockPos.Mutable();
         target.set(pos);
-        Fluid thisFluid = FluidRegistry.lookupFluidForBlock(world.getBlock(pos.x, pos.y, pos.z));
+        Fluid thisFluid = getFluid(world.getBlock(pos.x, pos.y, pos.z));
         int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);
 
         // for each orthogonally adjacent fluid, add the height delta
         for (ForgeDirection d : news) {
 
             target.add(d.offsetX, 0, d.offsetZ);
-            Fluid orthoFluid = FluidRegistry.lookupFluidForBlock(world.getBlock(pos.x, pos.y, pos.z));
+            Fluid orthoFluid = getFluid(world.getBlock(pos.x, pos.y, pos.z));
             int orthoMeta = world.getBlockMetadata(pos.x, pos.y, pos.z);
             double mult;
 
@@ -56,7 +58,7 @@ public class WorldUtil {
         for (int i = 0; i < 2; ++i) {
             for (int j = 0; j < 2; ++j) {
                 Block block = world.getBlock(pos.x, pos.y, pos.z);
-                if (!block.isOpaqueCube() && FluidRegistry.lookupFluidForBlock(block) != fluid) {
+                if (!block.isOpaqueCube() && getFluid(block) != fluid) {
                     return true;
                 }
             }
@@ -80,5 +82,9 @@ public class WorldUtil {
     // I have a sneaking suspicion isOpaque is neither, but it works for now
     public static boolean shouldDisplayFluidOverlay(Block block) {
         return !block.getMaterial().isOpaque() || block.getMaterial() == Material.leaves;
+    }
+
+    public static Fluid getFluid(Block b) {
+        return b instanceof IFluidBlock ? ((IFluidBlock) b).getFluid() : null;
     }
 }
