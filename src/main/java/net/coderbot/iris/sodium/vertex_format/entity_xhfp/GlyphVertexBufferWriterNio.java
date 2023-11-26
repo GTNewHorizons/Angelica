@@ -1,14 +1,14 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
+import com.gtnewhorizons.angelica.compat.mojang.OverlayTexture;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
-import net.coderbot.iris.vendored.joml.Vector3f;
 import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.coderbot.iris.vertices.NormalHelper;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
 

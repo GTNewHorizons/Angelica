@@ -13,7 +13,7 @@ public class GlVertexAttributeFormat {
     private final int glId;
     private final int size;
 
-    private GlVertexAttributeFormat(int glId, int size) {
+    public GlVertexAttributeFormat(int glId, int size) {
         this.glId = glId;
         this.size = size;
     }

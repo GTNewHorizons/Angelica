@@ -1,8 +1,8 @@
 package net.coderbot.iris.sodium.block_context;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
-import net.minecraft.world.level.block.state.BlockState;
 
 public class BlockContextHolder {
 	private final Object2IntMap<BlockState> blockStateIds;

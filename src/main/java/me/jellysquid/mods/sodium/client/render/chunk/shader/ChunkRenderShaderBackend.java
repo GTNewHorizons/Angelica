@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import io.github.douira.glsl_transformer.ast.node.Identifier;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -36,7 +35,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
         GlShader fragShader = ShaderLoader.loadShader(device, ShaderType.FRAGMENT, new ResourceLocation("sodium", "chunk_gl20"), fogMode.getDefines());
 
         try {
-            return GlProgram.builder(new Identifier("chunk_shader"))
+            return GlProgram.builder(new ResourceLocation("sodium", "chunk_shader"))
                     .attachShader(vertShader)
                     .attachShader(fragShader)
                     .bindAttribute("a_Pos", ChunkShaderBindingPoints.POSITION)
