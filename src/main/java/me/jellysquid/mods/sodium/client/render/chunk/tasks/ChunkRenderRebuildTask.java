@@ -138,7 +138,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (block.canRenderInPass(pass.ordinal())) {
 
-                                if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), (IFluidBlock) block, pos, buffers.get(pass))) {
+                                if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), block, pos, buffers.get(pass))) {
                                     bounds.addBlock(relX, relY, relZ);
                                 }
                             }
