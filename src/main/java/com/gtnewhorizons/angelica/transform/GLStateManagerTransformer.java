@@ -34,7 +34,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
 
     public static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
          GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
-            "glColorMask", "glAlphaFunc", "glDrawArrays", "glColor4f", "glShadeModel", "glFog", "glFogi", "glFogf", "glClearColor")
+            "glColorMask", "glAlphaFunc", "glDrawArrays", "glColor3f", "glColor4f", "glShadeModel", "glFog", "glFogi", "glFogf", "glClearColor")
         ,GL13, Sets.newHashSet("glActiveTexture")
         ,GL14, Sets.newHashSet("glBlendFuncSeparate")
         ,EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
