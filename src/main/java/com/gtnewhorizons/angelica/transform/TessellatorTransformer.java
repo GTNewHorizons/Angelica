@@ -27,7 +27,7 @@ public class TessellatorTransformer implements IClassTransformer {
             for(AbstractInsnNode insn : m.instructions) {
                 if(insn.getOpcode() == Opcodes.GETSTATIC) {
                     FieldInsnNode fNode = (FieldInsnNode)insn;
-                    if(fNode.name.equals("instance") && fNode.owner.equals("net/minecraft/client/renderer/Tessellator")) {
+                    if((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals("net/minecraft/client/renderer/Tessellator")) {
                         MethodInsnNode getNode = new MethodInsnNode(Opcodes.INVOKESTATIC, "com/gtnewhorizons/angelica/glsm/TessellatorManager", "get", "()Lnet/minecraft/client/renderer/Tessellator;", false);
                         m.instructions.set(fNode, getNode);
                         changed = true;
