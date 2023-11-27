@@ -508,10 +508,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			case TERRAIN_SOLID, TERRAIN_CUTOUT, TERRAIN_CUTOUT_MIPPED:
 				return RenderCondition.TERRAIN_OPAQUE;
 			case ENTITIES:
-                if (GLStateManager.getBlend().srcRgb == SRC_ALPHA &&
-                    GLStateManager.getBlend().srcAlpha == ONE_MINUS_SRC_ALPHA &&
-                    GLStateManager.getBlend().dstRgb == ONE &&
-                    GLStateManager.getBlend().dstAlpha == ONE_MINUS_SRC_ALPHA)
+                if (GLStateManager.getBlendState().srcRgb == SRC_ALPHA &&
+                    GLStateManager.getBlendState().srcAlpha == ONE_MINUS_SRC_ALPHA &&
+                    GLStateManager.getBlendState().dstRgb == ONE &&
+                    GLStateManager.getBlendState().dstAlpha == ONE_MINUS_SRC_ALPHA)
                 {
 					return RenderCondition.ENTITIES_TRANSLUCENT;
 				} else {
