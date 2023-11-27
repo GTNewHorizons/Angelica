@@ -3,6 +3,8 @@ package net.coderbot.iris.block_rendering;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import lombok.Getter;
+import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -12,9 +14,9 @@ import java.util.Map;
 public class BlockRenderingSettings {
 	public static final BlockRenderingSettings INSTANCE = new BlockRenderingSettings();
 
-	private boolean reloadRequired;
-    // TODO: BlockStateIdMap
-	private Object2IntMap<Object> blockStateIds;
+	@Getter
+    private boolean reloadRequired;
+	private Object2IntMap<BlockMatch> blockMatches;
 	private Map<Block, RenderLayer> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
 	private float ambientOcclusionLevel;
@@ -24,7 +26,7 @@ public class BlockRenderingSettings {
 
 	public BlockRenderingSettings() {
 		reloadRequired = false;
-		blockStateIds = null;
+		blockMatches = null;
 		blockTypeIds = null;
 		ambientOcclusionLevel = 1.0F;
 		disableDirectionalShading = false;
@@ -32,18 +34,13 @@ public class BlockRenderingSettings {
 		useExtendedVertexFormat = false;
 	}
 
-	public boolean isReloadRequired() {
-		return reloadRequired;
-	}
-
-	public void clearReloadRequired() {
+    public void clearReloadRequired() {
 		reloadRequired = false;
 	}
 
-    // TODO: BlockStateIdMap
-	@Nullable
-	public Object2IntMap<Object> getBlockStateIds() {
-		return blockStateIds;
+    @Nullable
+	public Object2IntMap<BlockMatch> getBlockMatches() {
+		return blockMatches;
 	}
 
 	@Nullable
@@ -51,20 +48,18 @@ public class BlockRenderingSettings {
 		return blockTypeIds;
 	}
 
-	// TODO (coderbot): This doesn't belong here. But I couldn't think of a nicer place to put it.
 	@Nullable
 	public Object2IntFunction<NamespacedId> getEntityIds() {
 		return entityIds;
 	}
 
-    // TODO: BlockStateIdMap
-	public void setBlockStateIds(Object2IntMap<Object> blockStateIds) {
-		if (this.blockStateIds != null && this.blockStateIds.equals(blockStateIds)) {
+	public void setBlockMatches(Object2IntMap<BlockMatch> blockIds) {
+		if (this.blockMatches != null && this.blockMatches.equals(blockIds)) {
 			return;
 		}
 
 		this.reloadRequired = true;
-		this.blockStateIds = blockStateIds;
+		this.blockMatches = blockIds;
 	}
 
 	public void setBlockTypeIds(Map<Block, RenderLayer> blockTypeIds) {

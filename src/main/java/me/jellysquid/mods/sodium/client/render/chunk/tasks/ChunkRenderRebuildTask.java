@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -18,6 +19,7 @@ import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.common.config.SodiumConfig;
+import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -121,11 +123,13 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
+                    if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
 
                     // Do regular block rendering
                     for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                         if (block.canRenderInPass(pass.ordinal()) && (!SodiumConfig.ENABLE_FLUID_RENDERER || !(block instanceof IFluidBlock))) {
                             long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
+                             if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                             if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), tessellator, renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
                                 bounds.addBlock(relX, relY, relZ);
@@ -137,6 +141,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if (SodiumConfig.ENABLE_FLUID_RENDERER && block instanceof IFluidBlock) {
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (block.canRenderInPass(pass.ordinal())) {
+                                 if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                 if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), block, pos, buffers.get(pass))) {
                                     bounds.addBlock(relX, relY, relZ);
@@ -145,6 +150,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         }
                     }
 
+                    if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
                     if (block.hasTileEntity(meta)) {
                         TileEntity entity = slice.getTileEntity(pos.x, pos.y, pos.z);
 

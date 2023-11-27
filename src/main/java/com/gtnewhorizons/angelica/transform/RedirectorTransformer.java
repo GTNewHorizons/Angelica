@@ -18,7 +18,6 @@ import java.util.Set;
 /**
  * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
  * As well as redirect some GL calls to our custom GLStateManager
- * NOTE: Still need to verify compatibility with Mixins and Lwjgl3ify
  */
 public class RedirectorTransformer implements IClassTransformer {
 

@@ -1,20 +1,21 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
 import net.coderbot.iris.Iris;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class BlockEntry {
 	private final NamespacedId id;
-	private final Map<String, String> propertyPredicates;
+	private final Set<Integer> metas;
 
-	public BlockEntry(NamespacedId id, Map<String, String> propertyPredicates) {
+	public BlockEntry(NamespacedId id,  Set<Integer> metas) {
 		this.id = id;
-		this.propertyPredicates = propertyPredicates;
+		this.metas = metas;
 	}
 
 	/**
@@ -33,69 +34,71 @@ public class BlockEntry {
 
 		// Trivial case: no states, no namespace
 		if (splitStates.length == 1) {
-			return new BlockEntry(new NamespacedId("minecraft", entry), Collections.emptyMap());
+			return new BlockEntry(new NamespacedId("minecraft", entry), Collections.emptySet());
 		}
 
-		// Less trivial case: no states involved, just a namespace
+        // Examples of what we'll accept
+        // stone
+        // stone:0
+        // minecraft:stone:0
+        // minecraft:stone:0,1,2  # Theoretically valid, but I haven't seen any examples in actual shaders
+
+        // Examples of what we don't (Yet?) accept - Seems to be from MC 1.8+
+        // minecraft:farmland:moisture=0
+        // minecraft:farmland:moisture=1
+        // minecraft:double_plant:half=lower
+        // minecraft:double_plant:half=upper
+        // minecraft:grass:snowy=true
+        // minecraft:unpowered_comparator:powered=false
+
+
+		// Less trivial case: no metas involved, just a namespace
 		//
-		// The first term MUST be a valid ResourceLocation component without an equals sign
-		// The second term, if it does not contain an equals sign, must be a valid ResourceLocation component.
-		if (splitStates.length == 2 && !splitStates[1].contains("=")) {
-			return new BlockEntry(new NamespacedId(splitStates[0], splitStates[1]), Collections.emptyMap());
+		// The first term MUST be a valid ResourceLocation component
+		// The second term, if it is not numeric, must be a valid ResourceLocation component.
+		if (splitStates.length == 2 && !StringUtils.isNumeric(splitStates[1].substring(0, 1))) {
+			return new BlockEntry(new NamespacedId(splitStates[0], splitStates[1]), Collections.emptySet());
 		}
 
 		// Complex case: One or more states involved...
 		int statesStart;
 		NamespacedId id;
 
-		if (splitStates[1].contains("=")) {
-			// We have an entry of the form "tall_grass:half=upper"
+		if (StringUtils.isNumeric(splitStates[1].substring(0, 1))) {
+			// We have an entry of the form "stone:0"
 			statesStart = 1;
 			id = new NamespacedId("minecraft", splitStates[0]);
 		} else {
-			// We have an entry of the form "minecraft:tall_grass:half=upper"
+			// We have an entry of the form "minecraft:stone:0"
 			statesStart = 2;
 			id = new NamespacedId(splitStates[0], splitStates[1]);
 		}
 
-		// We must parse each property key=value pair from the state entry.
-		//
-		// These pairs act as a filter on the block states. Thus, the shader pack does not have to specify all the
-		// individual block properties itself; rather, it only specifies the parts of the block state that it wishes
-		// to filter in/out.
-		//
-		// For example, some shader packs may make it so that hanging lantern blocks wave. They will put something of
-		// the form "lantern:hanging=false" in the ID map as a result. Note, however, that there are also waterlogged
-		// hanging lanterns, which would have "lantern:hanging=false:waterlogged=true". We must make sure that when the
-		// shader pack author writes "lantern:hanging=false", that we do not just match that individual state, but that
-		// we also match the waterlogged variant too.
-		Map<String, String> map = new HashMap<>();
+        Set<Integer> metas = new HashSet<>();
 
 		for (int index = statesStart; index < splitStates.length; index++) {
-			// Split "key=value" into the key and value
-			String[] propertyParts = splitStates[index].split("=");
+			// Parse out one or more metadata ids
+			String[] metaParts = splitStates[index].split(", ");
 
-			if (propertyParts.length != 2) {
-				Iris.logger.warn("Warning: the block ID map entry \"" + entry + "\" could not be fully parsed:");
-				Iris.logger.warn("- Block state property filters must be of the form \"key=value\", but "
-						+ splitStates[index] + " is not of that form!");
+            for (String metaPart : metaParts) {
+                try {
+                    metas.add(Integer.parseInt(metaPart));
+                } catch (NumberFormatException e) {
+                    Iris.logger.warn("Warning: the block ID map entry \"" + entry + "\" could not be fully parsed:");
+                    Iris.logger.warn("- Metadata ids must be a comma separated list of one or more integers, but "+ splitStates[index] + " is not of that form!");
+                }
+            }
+        }
 
-				// Continue and ignore the invalid entry.
-				continue;
-			}
-
-			map.put(propertyParts[0], propertyParts[1]);
-		}
-
-		return new BlockEntry(id, map);
+		return new BlockEntry(id, metas);
 	}
 
 	public NamespacedId getId() {
 		return id;
 	}
 
-	public Map<String, String> getPropertyPredicates() {
-		return propertyPredicates;
+	public Set<Integer> getMetas() {
+		return metas;
 	}
 
 	@Override
@@ -103,11 +106,11 @@ public class BlockEntry {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		BlockEntry that = (BlockEntry) o;
-		return Objects.equals(id, that.id) && Objects.equals(propertyPredicates, that.propertyPredicates);
+		return Objects.equals(id, that.id) && Objects.equals(metas, that.metas);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(id, propertyPredicates);
+		return Objects.hash(id, metas);
 	}
 }

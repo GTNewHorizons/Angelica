@@ -1,31 +1,33 @@
 package net.coderbot.iris.block_rendering;
 
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class BlockMaterialMapping {
-	public static Object2IntMap<Object> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
-		Object2IntMap<Object> blockStateIds = new Object2IntOpenHashMap<>();
+	public static Object2IntMap<BlockMatch> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
+		Object2IntMap<BlockMatch> blockMatches = new Object2IntOpenHashMap<>();
 
-        // TODO: BlockStateIdMap
-//		blockPropertiesMap.forEach((intId, entries) -> {
-//			for (BlockEntry entry : entries) {
-//				addBlockStates(entry, blockStateIds, intId);
-//			}
-//		});
+		blockPropertiesMap.forEach((intId, entries) -> {
+			for (BlockEntry entry : entries) {
+				addBlock(entry, blockMatches, intId);
+			}
+		});
 
-		return blockStateIds;
+		return blockMatches;
 	}
 
 	public static Map<Block, RenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
@@ -48,72 +50,40 @@ public class BlockMaterialMapping {
 		}
 
         return switch (type) {
-            // TODO: RenderType
-//            case SOLID -> RenderType.solid();
-//            case CUTOUT -> RenderType.cutout();
-//            case CUTOUT_MIPPED -> RenderType.cutoutMipped();
-//            case TRANSLUCENT -> RenderType.translucent();
+            // Everything renders in cutout or translucent in 1.7.10
+            case SOLID, CUTOUT, CUTOUT_MIPPED -> RenderLayer.cutout();
+            // case SOLID -> RenderLayer.solid();
+            // case CUTOUT_MIPPED -> RenderLayer.cutoutMipped();
+            case TRANSLUCENT -> RenderLayer.translucent();
             default -> null;
         };
 	}
 
-    // TODO: BlockStateIdMap
-//	private static void addBlockStates(BlockEntry entry, Object2IntMap<BlockState> idMap, int intId) {
-//		NamespacedId id = entry.getId();
-//		ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
-//
-//		Block block = Registry.BLOCK.get(resourceLocation);
-//
-//		// If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
-//		// TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
-//		if (block == Blocks.air) {
-//			return;
-//		}
-//
-//		Map<String, String> propertyPredicates = entry.getPropertyPredicates();
-//
-//		if (propertyPredicates.isEmpty()) {
-//			// Just add all the states if there aren't any predicates
-//			for (BlockState state : block.getStateDefinition().getPossibleStates()) {
-//				// NB: Using putIfAbsent means that the first successful mapping takes precedence
-//				//     Needed for OptiFine parity:
-//				//     https://github.com/IrisShaders/Iris/issues/1327
-//				idMap.putIfAbsent(state, intId);
-//			}
-//
-//			return;
-//		}
-//
-//		// As a result, we first collect each key=value pair in order to determine what properties we need to filter on.
-//		// We already get this from BlockEntry, but we convert the keys to `Property`s to ensure they exist and to avoid
-//		// string comparisons later.
-//		Map<Property<?>, String> properties = new HashMap<>();
-//		StateDefinition<Block, BlockState> stateManager = block.getStateDefinition();
-//
-//		propertyPredicates.forEach((key, value) -> {
-//			Property<?> property = stateManager.getProperty(key);
-//
-//			if (property == null) {
-//				Iris.logger.warn("Error while parsing the block ID map entry for \"" + "block." + intId + "\":");
-//				Iris.logger.warn("- The block " + resourceLocation + " has no property with the name " + key + ", ignoring!");
-//
-//				return;
-//			}
-//
-//			properties.put(property, value);
-//		});
-//
-//		// Once we have a list of properties and their expected values, we iterate over every possible state of this
-//		// block and check for ones that match the filters. This isn't particularly efficient, but it works!
-//		for (BlockState state : stateManager.getPossibleStates()) {
-//			if (checkState(state, properties)) {
-//				// NB: Using putIfAbsent means that the first successful mapping takes precedence
-//				//     Needed for OptiFine parity:
-//				//     https://github.com/IrisShaders/Iris/issues/1327
-//				idMap.putIfAbsent(state, intId);
-//			}
-//		}
-//	}
+	private static void addBlock(BlockEntry entry, Object2IntMap<BlockMatch> idMap, int intId) {
+		final NamespacedId id = entry.getId();
+		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+
+		Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
+
+		// If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
+		// TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
+		if (block == null || block == Blocks.air) {
+			return;
+		}
+
+        Set<Integer> metas = entry.getMetas();
+
+        // All metas match
+		if (metas.isEmpty()) {
+            idMap.putIfAbsent(new BlockMatch(block, null), intId);
+			return;
+		}
+
+        // A subset of metas match
+        for(int meta : metas) {
+            idMap.putIfAbsent(new BlockMatch(block, meta), intId);
+        }
+	}
 
 	// We ignore generics here, the actual types don't matter because we just convert
 	// them to strings anyways, and the compiler checks just get in the way.

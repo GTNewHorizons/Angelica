@@ -1,5 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
@@ -12,7 +15,14 @@ import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelV
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkMeshData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkModelOffset;
+import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
+import net.coderbot.iris.sodium.block_context.BlockContextHolder;
+import net.coderbot.iris.sodium.block_context.ChunkBuildBuffersExt;
+import net.coderbot.iris.sodium.block_context.ContextAwareVertexWriter;
+import net.minecraft.block.Block;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -23,12 +33,15 @@ import java.util.Map;
  * passes. This makes a best-effort attempt to pick a suitable size for each scratch buffer, but will never try to
  * shrink a buffer.
  */
-public class ChunkBuildBuffers {
+public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
     private final ChunkModelBuffers[] delegates;
     private final VertexBufferBuilder[][] buffersByLayer;
+    @Getter
     private final ChunkVertexType vertexType;
 
     private final ChunkModelOffset offset;
+
+    private BlockContextHolder iris$contextHolder;
 
     private static final int EXPECTED_BUFFER_SIZE = 2097152;
 
@@ -49,6 +62,16 @@ public class ChunkBuildBuffers {
                 buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), EXPECTED_BUFFER_SIZE / ModelQuadFacing.COUNT);
             }
         }
+
+        if(AngelicaConfig.enableIris) {
+            Object2IntMap<BlockMatch> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+
+            if (blockMatches != null) {
+                this.iris$contextHolder = new BlockContextHolder(blockMatches);
+            } else {
+                this.iris$contextHolder = new BlockContextHolder();
+            }
+        }
     }
 
     public void init(ChunkRenderData.Builder renderData) {
@@ -56,7 +79,11 @@ public class ChunkBuildBuffers {
             ChunkModelVertexTransformer[] writers = new ChunkModelVertexTransformer[ModelQuadFacing.COUNT];
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-                writers[facing.ordinal()] = new ChunkModelVertexTransformer(this.vertexType.createBufferWriter(this.buffersByLayer[i][facing.ordinal()], SodiumClientMod.isDirectMemoryAccessEnabled()), this.offset);
+                final ModelVertexSink sink = this.vertexType.createBufferWriter(this.buffersByLayer[i][facing.ordinal()], SodiumClientMod.isDirectMemoryAccessEnabled());
+                if (AngelicaConfig.enableIris && sink instanceof ContextAwareVertexWriter) {
+                    ((ContextAwareVertexWriter) sink).iris$setContextHolder(iris$contextHolder);
+                }
+                writers[facing.ordinal()] = new ChunkModelVertexTransformer(sink, this.offset);
             }
 
             this.delegates[i] = new BakedChunkModelBuffers(writers, renderData);
@@ -125,7 +152,19 @@ public class ChunkBuildBuffers {
         this.offset.set(x, y, z);
     }
 
-    public ChunkVertexType getVertexType() {
-        return this.vertexType;
+    // Iris Compat
+    public void iris$setLocalPos(int localPosX, int localPosY, int localPosZ) {
+        if(!AngelicaConfig.enableIris) return;
+        this.iris$contextHolder.setLocalPos(localPosX, localPosY, localPosZ);
+    }
+
+    public void iris$setMaterialId(Block block, short renderType) {
+        if(!AngelicaConfig.enableIris) return;
+        this.iris$contextHolder.set(block, renderType);
+    }
+
+    public void iris$resetBlockContext() {
+        if(!AngelicaConfig.enableIris) return;
+        this.iris$contextHolder.reset();
     }
 }

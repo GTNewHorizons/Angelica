@@ -79,7 +79,7 @@ public class LegacyIdMap {
 	}
 
 	private static BlockEntry block(String name) {
-		return new BlockEntry(new NamespacedId("minecraft", name), Collections.emptyMap());
+		return new BlockEntry(new NamespacedId("minecraft", name), Collections.emptySet());
 	}
 
 	private static void addMany(Int2ObjectMap<List<BlockEntry>> blockIdMap, int id, List<String> prefixes, Function<String, BlockEntry> toId) {
