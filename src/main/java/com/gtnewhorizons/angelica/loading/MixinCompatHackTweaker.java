@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizons.angelica.transform.AClassTransformer;
-import com.gtnewhorizons.angelica.transform.GLStateManagerTransformer;
-import com.gtnewhorizons.angelica.transform.TessellatorTransformer;
+import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -36,7 +35,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 AngelicaTweaker.LOGGER.info("LwjglRedirectTransformer found, injecting before it");
                 terminalIndex -= 2;
 
-            } catch(Exception ignored) {
+            } catch (Exception ignored) {
                 AngelicaTweaker.LOGGER.info("LwjglRedirectTransformer not found, injecting near the end");
                 terminalIndex -= 1;
             }
@@ -61,8 +60,7 @@ public class MixinCompatHackTweaker implements ITweaker {
     @Override
     public String[] getLaunchArguments() {
         // Run after Mixins, but hopefully before LWJGl3ify
-        Launch.classLoader.registerTransformer(GLStateManagerTransformer.class.getName());
-        Launch.classLoader.registerTransformer(TessellatorTransformer.class.getName());
+        Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
         return new String[0];
     }
 }
