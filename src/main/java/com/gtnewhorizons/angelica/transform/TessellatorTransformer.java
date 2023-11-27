@@ -28,17 +28,17 @@ public class TessellatorTransformer implements IClassTransformer {
             return basicClass;
         }
 
-        final ClassReader reader = new ClassReader(basicClass);
-        ClassNode node = new ClassNode();
-        reader.accept(node, Opcodes.ASM9);
+        final ClassReader cr = new ClassReader(basicClass);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, 0);
         boolean changed = false;
-        for (MethodNode m : node.methods) {
-            for (AbstractInsnNode insn : m.instructions) {
-                if (insn.getOpcode() == Opcodes.GETSTATIC) {
-                    FieldInsnNode fNode = (FieldInsnNode) insn;
+
+        for (MethodNode mn : cn.methods) {
+            for (AbstractInsnNode node : mn.instructions) {
+                if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
                     if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals("net/minecraft/client/renderer/Tessellator")) {
                         MethodInsnNode getNode = new MethodInsnNode(Opcodes.INVOKESTATIC, "com/gtnewhorizons/angelica/glsm/TessellatorManager", "get", "()Lnet/minecraft/client/renderer/Tessellator;", false);
-                        m.instructions.set(fNode, getNode);
+                        mn.instructions.set(fNode, getNode);
                         changed = true;
                     }
                 }
@@ -46,9 +46,9 @@ public class TessellatorTransformer implements IClassTransformer {
         }
 
         if (changed) {
-            ClassWriter writer = new ClassWriter(reader, 0);
-            node.accept(writer);
-            return writer.toByteArray();
+            ClassWriter cw = new ClassWriter(0);
+            cn.accept(cw);
+            return cw.toByteArray();
         }
         return basicClass;
 

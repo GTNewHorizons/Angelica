@@ -6,14 +6,14 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassVisitor;
 import org.spongepowered.asm.lib.ClassWriter;
-import org.spongepowered.asm.lib.MethodVisitor;
 import org.spongepowered.asm.lib.Opcodes;
-import org.spongepowered.asm.lib.commons.Method;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +50,6 @@ public class GLStateManagerTransformer implements IClassTransformer {
         "cpw.mods.fml.client.SplashProgress"
     );
     public static int remaps = 0, calls = 0;
-    public static Method lastMethod = null;
 
     @Override
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
@@ -68,64 +67,39 @@ public class GLStateManagerTransformer implements IClassTransformer {
             return basicClass;
         }
 
-        final ClassReader reader = new ClassReader(basicClass);
-        Set<Method> eligibleMethods = findEligibleMethods(reader);
-        if (eligibleMethods.isEmpty()) {
-            return basicClass;
+        final ClassReader cr = new ClassReader(basicClass);
+        final ClassNode cn = new ClassNode();
+        cr.accept(cn, 0);
+
+        boolean changed = false;
+        for (MethodNode mn : cn.methods) {
+            boolean redirectInMethod = false;
+            for (AbstractInsnNode node : mn.instructions.toArray()) {
+                if (node instanceof MethodInsnNode mNode) {
+                    final Set<String> redirects = EnabledRedirects.get(mNode.owner);
+                    if (redirects != null && redirects.contains(mNode.name)) {
+                        if (IrisLogging.ENABLE_SPAM) {
+                            final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                            AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, mNode.name, mNode.desc, mNode.name, mNode.desc);
+                        }
+                        ((MethodInsnNode) node).owner = GLStateTracker;
+                        changed = true;
+                        redirectInMethod = true;
+                        remaps++;
+                    }
+                }
+            }
+            if (ASSERT_MAIN_THREAD && redirectInMethod) {
+                mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false));
+            }
         }
 
-        ClassWriter writer = new ClassWriter(reader, 0);
-        reader.accept(new ClassVisitor(Opcodes.ASM9, writer) {
-            @Override
-            public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-                MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
-                final Method method = new Method(name, desc);
-                if (!eligibleMethods.contains(method)) {
-                    return mv;
-                }
-
-                return new MethodVisitor(Opcodes.ASM9, mv) {
-                    @Override
-                    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-                        final Set<String> redirects = EnabledRedirects.get(owner);
-                        if (redirects != null && redirects.contains(name)) {
-                            if (IrisLogging.ENABLE_SPAM) {
-                                final String shortOwner = owner.substring(owner.lastIndexOf("/") + 1);
-                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
-                            }
-
-                            if (ASSERT_MAIN_THREAD && !method.equals(lastMethod)) {
-                                super.visitMethodInsn(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false);
-                            }
-                            owner = GLStateTracker;
-                            lastMethod = method;
-                            remaps++;
-                        }
-                        super.visitMethodInsn(opcode, owner, name, desc, itf);
-                    }
-                };
-            }
-        }, 0);
-        return writer.toByteArray();
-    }
-
-    private Set<Method> findEligibleMethods(ClassReader reader) {
-        Set<Method> eligibleMethods = new HashSet<>();
-        reader.accept(new ClassVisitor(Opcodes.ASM9) {
-            @Override
-            public MethodVisitor visitMethod(int access, String methodName, String methodDesc, String signature, String[] exceptions) {
-                return new MethodVisitor(Opcodes.ASM9) {
-                    @Override
-                    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-                        final Set<String> redirects = EnabledRedirects.get(owner);
-                        if (redirects != null && redirects.contains(name)) {
-                            eligibleMethods.add(new Method(methodName, methodDesc));
-                        }
-                    }
-                };
-            }
-        }, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-        return eligibleMethods;
+        if (changed) {
+            ClassWriter cw = new ClassWriter(0);
+            cn.accept(cw);
+            return cw.toByteArray();
+        }
+        return basicClass;
     }
 
 }
