@@ -34,7 +34,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
         this.lightCache.clearCache();
     }
 
-    public static ChunkRenderCacheShared getInstance(BlockRenderView world) {
+    public static ChunkRenderCacheShared getInstance(WorldClient world) {
         ChunkRenderCacheShared instance = INSTANCES.get(world);
 
         if (instance == null) {
@@ -44,7 +44,7 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
         return instance;
     }
 
-    public static void destroyRenderContext(BlockRenderView world) {
+    public static void destroyRenderContext(WorldClient world) {
         if (INSTANCES.remove(world) == null) {
             throw new IllegalStateException("No render context exists for world: " + world);
         }

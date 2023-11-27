@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.interfaces.IHasClientChunkProvider;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -26,7 +25,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
-import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -130,12 +128,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         ChunkRenderCacheShared.createRenderContext(this.world);
 
         this.initRenderer();
-
-        ((IChunkProviderClientExt) ((IHasClientChunkProvider)world).getClientChunkProvider()).setListener(this);
     }
 
     private void unloadWorld() {
-        ChunkRenderCacheShared.destroyRenderContext((BlockRenderView)this.world);
+        ChunkRenderCacheShared.destroyRenderContext(this.world);
 
         if (this.chunkRenderManager != null) {
             this.chunkRenderManager.destroy();
