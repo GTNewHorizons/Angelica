@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.GLStateManagerTransformer")
+@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.RedirectorTransformer")
 @IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
