@@ -21,6 +21,7 @@ import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -115,7 +116,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
                     // can abuse it for all sorts of things
-                    if (block == Blocks.air) {
+                    if (block.getMaterial() == Material.air) {
                         continue;
                     }
 
