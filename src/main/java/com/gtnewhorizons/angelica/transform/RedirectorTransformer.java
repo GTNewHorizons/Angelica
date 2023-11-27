@@ -35,7 +35,10 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
     private static final String MinecraftClient = "net.minecraft.client";
-    private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of("startGame", "initializeTextures");
+    private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
+        "startGame", "func_71384_a",
+        "initializeTextures", "func_77474_a"
+    );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
 
@@ -103,7 +106,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
             }
-            if (ASSERT_MAIN_THREAD && redirectInMethod && !(className.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
+            if (ASSERT_MAIN_THREAD && redirectInMethod && !(transformedName.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
                 mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false));
             }
         }
