@@ -6,6 +6,8 @@ import com.google.common.collect.Sets;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraft.launchwrapper.Launch;
+import org.apache.commons.io.FileUtils;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
@@ -15,6 +17,10 @@ import org.spongepowered.asm.lib.tree.FieldInsnNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +33,7 @@ import java.util.Set;
 public class RedirectorTransformer implements IClassTransformer {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
+    private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
     private static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
@@ -114,9 +121,45 @@ public class RedirectorTransformer implements IClassTransformer {
         if (changed) {
             ClassWriter cw = new ClassWriter(0);
             cn.accept(cw);
-            return cw.toByteArray();
+            final byte[] bytes = cw.toByteArray();
+            saveTransformedClass(bytes, transformedName);
+            return bytes;
         }
         return basicClass;
+    }
+
+    private File outputDir = null;
+
+    private void saveTransformedClass(final byte[] data, final String transformedName) {
+        if (!DUMP_CLASSES) {
+            return;
+        }
+        if (outputDir == null) {
+            outputDir = new File(Launch.minecraftHome, "ASM_REDIRECTOR");
+            try {
+                FileUtils.deleteDirectory(outputDir);
+            } catch (IOException ignored) {}
+            if (!outputDir.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                outputDir.mkdirs();
+            }
+        }
+        final String fileName = transformedName.replace('.', File.separatorChar);
+        final File classFile = new File(outputDir, fileName + ".class");
+        final File outDir = classFile.getParentFile();
+        if (!outDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            outDir.mkdirs();
+        }
+        if (classFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            classFile.delete();
+        }
+        try (final OutputStream output = Files.newOutputStream(classFile.toPath())) {
+            output.write(data);
+        } catch (IOException e) {
+            AngelicaTweaker.LOGGER.error("Could not save transformed class (byte[]) " + transformedName, e);
+        }
     }
 
 }
