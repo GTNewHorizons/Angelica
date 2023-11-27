@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
@@ -8,7 +9,11 @@ import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
-import org.spongepowered.asm.lib.tree.*;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,9 +33,11 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
-    private static final String tessellatorClass = "net/minecraft/client/renderer/Tessellator";
+    private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
+    private static final String MinecraftClient = "net.minecraft.client";
+    private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of("startGame", "initializeTextures");
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, tessellatorClass);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
 
     private static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
         GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
@@ -87,7 +94,7 @@ public class RedirectorTransformer implements IClassTransformer {
                         remaps++;
                     }
                 } else if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
-                    if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals("net/minecraft/client/renderer/Tessellator")) {
+                    if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals(TessellatorClass)) {
                         if (IrisLogging.ENABLE_SPAM) {
                             AngelicaTweaker.LOGGER.info("Redirecting Tessellator.instance field in {} to TessellatorManager.get()", transformedName);
                         }
@@ -96,7 +103,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
             }
-            if (ASSERT_MAIN_THREAD && redirectInMethod) {
+            if (ASSERT_MAIN_THREAD && redirectInMethod && !(className.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
                 mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false));
             }
         }
