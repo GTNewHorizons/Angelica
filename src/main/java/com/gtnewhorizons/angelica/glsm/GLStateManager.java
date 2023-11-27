@@ -35,25 +35,15 @@ import java.util.stream.IntStream;
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
     // GLStateManager State Trackers
-    @Getter
-    private static int activeTexture;
-
-    @Getter
-    private static final BlendState Blend = new BlendState();
-    @Getter
-    private static final DepthState Depth = new DepthState();
-    @Getter
-    private static final FogState Fog = new FogState();
-    @Getter
-    private static final Color4 Color = new Color4();
-    @Getter
-    private static final Color4 ClearColor = new Color4();
-    @Getter
-    private static final GLColorMask ColorMask = new GLColorMask();
-    @Getter
-    private static final BooleanState Cull = new BooleanState(GL11.GL_CULL_FACE);
-    @Getter
-    private static final AlphaState Alpha = new AlphaState();
+    @Getter private static int activeTexture;
+    @Getter private static final BlendState blendState = new BlendState();
+    @Getter private static final DepthState depthState = new DepthState();
+    @Getter private static final FogState fogState = new FogState();
+    @Getter private static final Color4 Color = new Color4();
+    @Getter private static final Color4 ClearColor = new Color4();
+    @Getter private static final GLColorMask ColorMask = new GLColorMask();
+    @Getter private static final BooleanState cullState = new BooleanState(GL11.GL_CULL_FACE);
+    @Getter private static final AlphaState alphaState = new AlphaState();
 
     private static int modelShadeMode;
 
@@ -62,7 +52,6 @@ public class GLStateManager {
 
     // Iris Listeners
     private static Runnable blendFuncListener = null;
-
     private static Runnable fogToggleListener = null;
     private static Runnable fogModeListener = null;
     private static Runnable fogStartListener = null;
@@ -71,14 +60,10 @@ public class GLStateManager {
 
     // Thread Checking
     @Getter
-    private static Thread MainThread;
-
-    static {
-        MainThread = Thread.currentThread();
-    }
+    private static final Thread MainThread = Thread.currentThread();
 
     public static void init() {
-        if(AngelicaConfig.enableIris) {
+        if (AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
             StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
             StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
@@ -87,8 +72,7 @@ public class GLStateManager {
             StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
         // We want textures regardless of Iris being initialized, and using SamplerLimits is isolated enough
-        Textures = (TextureState[]) IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
-
+        Textures = IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
     }
 
     public static void assertMainThread() {
@@ -97,10 +81,9 @@ public class GLStateManager {
         }
     }
 
-
     // LWJGL Overrides
     public static void glEnable(int cap) {
-        switch(cap) {
+        switch (cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
@@ -110,7 +93,6 @@ public class GLStateManager {
             default -> GL11.glEnable(cap);
         }
     }
-
 
     public static void glDisable(int cap) {
         switch (cap) {
@@ -133,7 +115,7 @@ public class GLStateManager {
                 return;
             }
         }
-        Blend.mode.enable();
+        blendState.mode.enable();
     }
 
     public static void disableBlend() {
@@ -143,7 +125,7 @@ public class GLStateManager {
                 return;
             }
         }
-        Blend.mode.disable();
+        blendState.mode.disable();
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
@@ -153,8 +135,8 @@ public class GLStateManager {
                 return;
             }
         }
-        Blend.srcRgb = srcFactor;
-        Blend.dstRgb = dstFactor;
+        blendState.srcRgb = srcFactor;
+        blendState.dstRgb = dstFactor;
         GL11.glBlendFunc(srcFactor, dstFactor);
 
         // Iris
@@ -168,10 +150,10 @@ public class GLStateManager {
                 return;
             }
         }
-        Blend.srcRgb = srcRgb;
-        Blend.dstRgb = dstRgb;
-        Blend.srcAlpha = srcAlpha;
-        Blend.dstAlpha = dstAlpha;
+        blendState.srcRgb = srcRgb;
+        blendState.dstRgb = dstRgb;
+        blendState.srcAlpha = srcAlpha;
+        blendState.dstAlpha = dstAlpha;
         GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
 
         // Iris
@@ -179,8 +161,8 @@ public class GLStateManager {
     }
 
     public static void glDepthFunc(int func) {
-        if(func != Depth.func) {
-            Depth.func = func;
+        if (func != depthState.func) {
+            depthState.func = func;
             GL11.glDepthFunc(func);
         }
     }
@@ -193,13 +175,14 @@ public class GLStateManager {
             }
         }
 
-        if(mask != Depth.mask) {
-            Depth.mask = mask;
+        if (mask != depthState.mask) {
+            depthState.mask = mask;
             GL11.glDepthMask(mask);
         }
     }
+
     public static void glColor4f(float red, float green, float blue, float alpha) {
-        if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+        if (red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
             Color.red = red;
             Color.green = green;
             Color.blue = blue;
@@ -226,7 +209,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if(red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
+        if (red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
             ColorMask.red = red;
             ColorMask.green = green;
             ColorMask.blue = blue;
@@ -237,7 +220,7 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if(red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
+        if (red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
             ClearColor.red = red;
             ClearColor.green = green;
             ClearColor.blue = blue;
@@ -254,7 +237,7 @@ public class GLStateManager {
                 return;
             }
         }
-        Alpha.mode.enable();
+        alphaState.mode.enable();
     }
 
     public static void disableAlphaTest() {
@@ -264,7 +247,7 @@ public class GLStateManager {
                 return;
             }
         }
-        Alpha.mode.disable();
+        alphaState.mode.disable();
     }
 
     public static void glAlphaFunc(int function, float reference) {
@@ -274,8 +257,8 @@ public class GLStateManager {
                 return;
             }
         }
-        Alpha.function = function;
-        Alpha.reference = reference;
+        alphaState.function = function;
+        alphaState.reference = reference;
         GL11.glAlphaFunc(function, reference);
     }
 
@@ -287,6 +270,7 @@ public class GLStateManager {
             GL13.glActiveTexture(texture);
         }
     }
+
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
         if (activeTexture != newTexture) {
@@ -296,7 +280,7 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if(Textures[activeTexture].binding != texture) {
+        if (Textures[activeTexture].binding != texture) {
             Textures[activeTexture].binding = texture;
             GL11.glBindTexture(target, texture);
             if (AngelicaConfig.enableIris) {
@@ -312,6 +296,7 @@ public class GLStateManager {
         }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         if (AngelicaConfig.enableIris) {
             TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
@@ -325,6 +310,7 @@ public class GLStateManager {
         }
         GL11.glDeleteTextures(id);
     }
+
     public static void glDeleteTextures(IntBuffer ids) {
         if (AngelicaConfig.enableIris) {
             for (int id : ids.array()) {
@@ -353,7 +339,6 @@ public class GLStateManager {
                 Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
             }
         }
-
         Textures[activeTexture].mode.enable();
     }
 
@@ -376,7 +361,6 @@ public class GLStateManager {
                 Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
             }
         }
-
         Textures[activeTexture].mode.disable();
     }
 
@@ -394,44 +378,41 @@ public class GLStateManager {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
     }
 
-
     public static void glDrawArrays(int mode, int first, int count) {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-//        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
-
+        // Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         GL11.glDrawArrays(mode, first, count);
     }
-
 
     public static void defaultBlendFunc() {
         glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     public static void enableCull() {
-        Cull.enable();
+        cullState.enable();
     }
 
     public static void disableCull() {
-        Cull.disable();
+        cullState.disable();
     }
 
     public static void enableDepthTest() {
-        Depth.mode.enable();
+        depthState.mode.enable();
     }
 
     public static void disableDepthTest() {
-        Depth.mode.disable();
+        depthState.mode.disable();
     }
 
     public static void enableFog() {
-        Fog.mode.enable();
+        fogState.mode.enable();
         if (fogToggleListener != null) {
             fogToggleListener.run();
         }
     }
 
     public static void disableFog() {
-        Fog.mode.disable();
+        fogState.mode.disable();
         if (fogToggleListener != null) {
             fogToggleListener.run();
         }
@@ -440,59 +421,60 @@ public class GLStateManager {
     public static void glFog(int pname, FloatBuffer param) {
         // TODO: Iris Notifier
         GL11.glFog(pname, param);
-        if(pname == GL11.GL_FOG_COLOR) {
+        if (pname == GL11.GL_FOG_COLOR) {
             final float red = param.get(0);
             final float green = param.get(1);
             final float blue = param.get(2);
 
-            Fog.fogColor.set(red, green, blue);
-            Fog.fogAlpha = param.get(3);
-            Fog.fogColorBuffer.clear();
-            Fog.fogColorBuffer.put((FloatBuffer) param.position(0)).flip();
+            fogState.fogColor.set(red, green, blue);
+            fogState.fogAlpha = param.get(3);
+            fogState.fogColorBuffer.clear();
+            fogState.fogColorBuffer.put((FloatBuffer) param.position(0)).flip();
         }
     }
 
     public static Vector3d getFogColor() {
-        return Fog.fogColor;
+        return fogState.fogColor;
     }
-
 
     public static void fogColor(float red, float green, float blue, float alpha) {
-        if(red != Fog.fogColor.x || green != Fog.fogColor.y || blue != Fog.fogColor.z || alpha != Fog.fogAlpha) {
-            Fog.fogColor.set(red, green, blue);
-            Fog.fogAlpha = alpha;
-            Fog.fogColorBuffer.clear();
-            Fog.fogColorBuffer.put(red).put(green).put(blue).put(alpha).flip();
-            GL11.glFog(GL11.GL_FOG_COLOR, Fog.fogColorBuffer);
+        if (red != fogState.fogColor.x || green != fogState.fogColor.y || blue != fogState.fogColor.z || alpha != fogState.fogAlpha) {
+            fogState.fogColor.set(red, green, blue);
+            fogState.fogAlpha = alpha;
+            fogState.fogColorBuffer.clear();
+            fogState.fogColorBuffer.put(red).put(green).put(blue).put(alpha).flip();
+            GL11.glFog(GL11.GL_FOG_COLOR, fogState.fogColorBuffer);
         }
     }
+
     public static void glFogf(int pname, float param) {
         GL11.glFogf(pname, param);
-        switch(pname) {
+        switch (pname) {
             case GL11.GL_FOG_DENSITY -> {
-                Fog.density = param;
+                fogState.density = param;
                 if (fogDensityListener != null) {
                     fogDensityListener.run();
                 }
             }
             case GL11.GL_FOG_START -> {
-                Fog.start = param;
+                fogState.start = param;
                 if (fogStartListener != null) {
                     fogStartListener.run();
                 }
             }
             case GL11.GL_FOG_END -> {
-                Fog.end = param;
+                fogState.end = param;
                 if (fogEndListener != null) {
                     fogEndListener.run();
                 }
             }
         }
     }
+
     public static void glFogi(int pname, int param) {
         GL11.glFogi(pname, param);
-        if(pname == GL11.GL_FOG_MODE) {
-            Fog.fogMode = param;
+        if (pname == GL11.GL_FOG_MODE) {
+            fogState.fogMode = param;
             if (fogModeListener != null) {
                 fogModeListener.run();
             }
@@ -501,7 +483,6 @@ public class GLStateManager {
 
     public static void setFogBlack() {
         glFogf(GL11.GL_FOG_COLOR, 0.0F);
-
     }
 
     public static void glShadeModel(int mode) {

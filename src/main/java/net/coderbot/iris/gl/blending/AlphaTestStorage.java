@@ -12,7 +12,7 @@ public class AlphaTestStorage {
 
     public static void overrideAlphaTest(AlphaTest override) {
 		if (!alphaTestLocked) {
-            final AlphaState alphaState = GLStateManager.getAlpha();
+            final AlphaState alphaState = GLStateManager.getAlphaState();
 
 			// Only save the previous state if the alpha test wasn't already locked
 			originalAlphaTestEnable = alphaState.mode.isEnabled();
