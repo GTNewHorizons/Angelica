@@ -57,9 +57,8 @@ public class GLStateManager {
 
     private static int modelShadeMode;
 
-    // TODO: Maybe inject the iris stuff via mixins....
     @Getter
-    private static final TextureState[] Textures;
+    private static TextureState[] Textures;
 
     // Iris Listeners
     private static Runnable blendFuncListener = null;
@@ -75,6 +74,10 @@ public class GLStateManager {
     private static Thread MainThread;
 
     static {
+        MainThread = Thread.currentThread();
+    }
+
+    public static void init() {
         if(AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
             StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
@@ -83,8 +86,9 @@ public class GLStateManager {
             StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
             StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
+        // We want textures regardless of Iris being initialized, and using SamplerLimits is isolated enough
         Textures = (TextureState[]) IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
-        MainThread = Thread.currentThread();
+
     }
 
     public static void assertMainThread() {
