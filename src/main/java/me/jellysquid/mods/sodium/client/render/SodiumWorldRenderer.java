@@ -188,6 +188,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         this.useEntityCulling = SodiumClientMod.options().advanced.useEntityCulling;
 
+        if (this.client.gameSettings.renderDistanceChunks != this.renderDistance) {
+            this.reload();
+        }
+
         Profiler profiler = this.client.mcProfiler;
         profiler.startSection("camera_setup");
 
@@ -284,6 +288,8 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         RenderDevice device = RenderDevice.INSTANCE;
 
+        this.renderDistance = this.client.gameSettings.renderDistanceChunks;
+
         SodiumGameOptions opts = SodiumClientMod.options();
 
         final ChunkVertexType vertexFormat;
@@ -299,7 +305,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         this.chunkRenderBackend = createChunkRenderBackend(device, opts, vertexFormat);
         this.chunkRenderBackend.createShaders(device);
 
-        this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.world, this.client.gameSettings.renderDistanceChunks);
+        this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.world, this.renderDistance);
         this.chunkRenderManager.restoreChunks(this.loadedChunkPositions);
     }
 
