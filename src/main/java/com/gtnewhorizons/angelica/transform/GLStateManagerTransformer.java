@@ -12,7 +12,6 @@ import org.spongepowered.asm.lib.MethodVisitor;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.commons.Method;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -24,27 +23,31 @@ public class GLStateManagerTransformer implements IClassTransformer {
      * Redirects a subset of GL11 calls to GLStateManager
      *  NOTE: Still need to verify compatibility with Mixins and Lwjgl3ify
      */
-    public static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
-    public static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
+    private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
+    private static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
 
-    public static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
-         GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture);
+
+    private static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
+        GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
             "glColorMask", "glAlphaFunc", "glDrawArrays", "glColor3f", "glColor4f", "glShadeModel", "glFog", "glFogi", "glFogf", "glClearColor")
-        ,GL13, Sets.newHashSet("glActiveTexture")
-        ,GL14, Sets.newHashSet("glBlendFuncSeparate")
-        ,EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
-        ,ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
+        , GL13, Sets.newHashSet("glActiveTexture")
+        , GL14, Sets.newHashSet("glBlendFuncSeparate")
+        , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
+        , ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
     );
 
-
-    public static final List<String> TransformerExclusions = new ArrayList<>(Arrays.asList(
-        "org.lwjgl", "com.gtnewhorizons.angelica.glsm.", "com.gtnewhorizons.angelica.transform", "me.eigenraven.lwjgl3ify",
-        "cpw.mods.fml.client.SplashProgress")
+    public static final List<String> TransformerExclusions = Arrays.asList(
+        "org.lwjgl",
+        "com.gtnewhorizons.angelica.glsm.",
+        "com.gtnewhorizons.angelica.transform",
+        "me.eigenraven.lwjgl3ify",
+        "cpw.mods.fml.client.SplashProgress"
     );
     public static int remaps = 0, calls = 0;
     public static Method lastMethod = null;
@@ -53,13 +56,16 @@ public class GLStateManagerTransformer implements IClassTransformer {
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
         if (basicClass == null) return null;
 
-
         // Ignore classes that are excluded from transformation - Doesn't fully work without the
         // TransformerExclusions due to some nested classes
         for (String exclusion : TransformerExclusions) {
             if (className.startsWith(exclusion)) {
                 return basicClass;
             }
+        }
+
+        if (!cstPoolParser.find(basicClass)) {
+            return basicClass;
         }
 
         final ClassReader reader = new ClassReader(basicClass);
@@ -83,12 +89,12 @@ public class GLStateManagerTransformer implements IClassTransformer {
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
                         final Set<String> redirects = EnabledRedirects.get(owner);
                         if (redirects != null && redirects.contains(name)) {
-                            if(IrisLogging.ENABLE_SPAM) {
+                            if (IrisLogging.ENABLE_SPAM) {
                                 final String shortOwner = owner.substring(owner.lastIndexOf("/") + 1);
                                 AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", className, shortOwner, name, desc, name, desc);
                             }
 
-                            if(ASSERT_MAIN_THREAD && !method.equals(lastMethod)) {
+                            if (ASSERT_MAIN_THREAD && !method.equals(lastMethod)) {
                                 super.visitMethodInsn(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false);
                             }
                             owner = GLStateTracker;
@@ -103,7 +109,6 @@ public class GLStateManagerTransformer implements IClassTransformer {
         return writer.toByteArray();
     }
 
-
     private Set<Method> findEligibleMethods(ClassReader reader) {
         Set<Method> eligibleMethods = new HashSet<>();
         reader.accept(new ClassVisitor(Opcodes.ASM9) {
@@ -113,7 +118,7 @@ public class GLStateManagerTransformer implements IClassTransformer {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
                         final Set<String> redirects = EnabledRedirects.get(owner);
-                        if(redirects != null && redirects.contains(name)) {
+                        if (redirects != null && redirects.contains(name)) {
                             eligibleMethods.add(new Method(methodName, methodDesc));
                         }
                     }
