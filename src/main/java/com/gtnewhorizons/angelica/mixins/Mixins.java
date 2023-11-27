@@ -73,11 +73,10 @@ public enum Mixins {
             ,"sodium.MixinFrustrum"
             ,"sodium.MixinMaterial"
             ,"sodium.MixinMinecraft"
-            ,"sodium.MixinNetHandlerPlayClient"
             ,"sodium.MixinNibbleArray"
             ,"sodium.MixinRenderGlobal"
-            ,"sodium.MixinTessellator"
             ,"sodium.MixinWorldClient"
+            ,"sodium.MixinTessellator"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
             // TODO Doesn't work correctly

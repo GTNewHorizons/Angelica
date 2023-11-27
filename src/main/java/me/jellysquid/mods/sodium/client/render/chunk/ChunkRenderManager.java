@@ -615,18 +615,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             important = important || this.isChunkPrioritized(render);
 
             // Only enqueue chunks for updates if they aren't already enqueued for an update
-            //
-            // We should avoid rebuilding chunks that aren't visible by using data from the occlusion culler, however
-            // that is not currently feasible because occlusion culling data is only ever updated when chunks are
-            // rebuilt. Computation of occlusion data needs to be isolated from chunk rebuilds for that to be feasible.
-            //
-            // TODO: Avoid rebuilding chunks that aren't visible to the player
             if (render.scheduleRebuild(important)) {
-                (render.needsImportantRebuild() ? this.importantRebuildQueue : this.rebuildQueue)
-                        .enqueue(render);
+                this.dirty = true;
             }
-
-            this.dirty = true;
         }
 
         this.builder.onChunkDataChanged(x, y, z);

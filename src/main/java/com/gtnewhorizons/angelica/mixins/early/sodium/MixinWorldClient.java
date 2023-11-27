@@ -1,26 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.mixins.interfaces.IHasClientChunkProvider;
-import com.gtnewhorizons.angelica.mixins.interfaces.IWorldClientExt;
-import me.jellysquid.mods.sodium.client.world.IChunkProviderClientExt;
-import net.minecraft.client.multiplayer.ChunkProviderClient;
+import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.multiplayer.WorldClient;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldClient.class)
-public abstract class MixinWorldClient implements BlockRenderView, IHasClientChunkProvider, IWorldClientExt {
-    @Shadow
-    private ChunkProviderClient clientChunkProvider;
-
-    @Override
-    public ChunkProviderClient getClientChunkProvider() {
-        return clientChunkProvider;
-    }
-
-    @Override
-    public void doPostChunk(int x, int z) {
-        ((IChunkProviderClientExt)this.clientChunkProvider).doPostChunk(x, z);
+public class MixinWorldClient {
+    @Inject(method = "doPreChunk", at = @At("TAIL"))
+    private void sodium$loadChunk(int x, int z, boolean load, CallbackInfo ci) {
+        if(load)
+            SodiumWorldRenderer.getInstance().onChunkAdded(x, z);
     }
 }
