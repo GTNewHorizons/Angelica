@@ -616,9 +616,12 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             important = important || this.isChunkPrioritized(render);
 
             // Only enqueue chunks for updates if they aren't already enqueued for an update
-            if (render.scheduleRebuild(important)) {
-                this.dirty = true;
+            if (render.scheduleRebuild(important) && render.canRebuild()) {
+                (render.needsImportantRebuild() ? this.importantRebuildQueue : this.rebuildQueue)
+                    .enqueue(render);
             }
+
+            this.dirty = true;
         }
 
         this.builder.onChunkDataChanged(x, y, z);
