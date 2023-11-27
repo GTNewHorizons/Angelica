@@ -54,11 +54,9 @@ public class IdMap {
 	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines)
-			.map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
+		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
 
-		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines)
-			.map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
 
 		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
 			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");

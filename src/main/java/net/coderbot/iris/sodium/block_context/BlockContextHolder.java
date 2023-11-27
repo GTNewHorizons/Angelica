@@ -1,11 +1,12 @@
 package net.coderbot.iris.sodium.block_context;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
+import net.minecraft.block.Block;
 
 public class BlockContextHolder {
-	private final Object2IntMap<BlockState> blockStateIds;
+	private final Object2IntMap<BlockMatch> blockMatches;
 
 	public int localPosX;
 	public int localPosY;
@@ -15,13 +16,13 @@ public class BlockContextHolder {
 	public short renderType;
 
 	public BlockContextHolder() {
-		this.blockStateIds = Object2IntMaps.emptyMap();
+		this.blockMatches = Object2IntMaps.emptyMap();
 		this.blockId = -1;
 		this.renderType = -1;
 	}
 
-	public BlockContextHolder(Object2IntMap<BlockState> idMap) {
-		this.blockStateIds = idMap;
+	public BlockContextHolder(Object2IntMap<BlockMatch> idMap) {
+		this.blockMatches = idMap;
 		this.blockId = -1;
 		this.renderType = -1;
 	}
@@ -32,8 +33,8 @@ public class BlockContextHolder {
 		this.localPosZ = localPosZ;
 	}
 
-	public void set(BlockState state, short renderType) {
-		this.blockId = (short) this.blockStateIds.getOrDefault(state, -1);
+	public void set(Block block, short renderType) {
+		this.blockId = (short) this.blockMatches.getOrDefault(block, -1);
 		this.renderType = renderType;
 	}
 
