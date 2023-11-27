@@ -84,7 +84,7 @@ public class EntityLighter {
                     sl += weight * (entity.worldObj.getSkyBlockTypeBrightness(EnumSkyBlock.Sky, pos.x, pos.y, pos.z) / MAX_LIGHT_VAL);
 
                     if (calcBlockLight) {
-                        bl += weight * (entity.worldObj.getBlockLightValue(pos.x, pos.y, pos.z) / MAX_LIGHT_VAL);
+                        bl += weight * (entity.worldObj.getSkyBlockTypeBrightness(EnumSkyBlock.Block, pos.x, pos.y, pos.z) / MAX_LIGHT_VAL);
                     } else {
                         bl += weight;
                     }
