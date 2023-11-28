@@ -10,6 +10,8 @@ import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatte
 import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
+import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
@@ -116,37 +118,37 @@ public class SodiumGameOptionPages {
         List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsMode.class, vanillaOpts)
+                .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
                         .setName(I18n.format("options.graphics"))
                         .setTooltip(I18n.format("sodium.options.graphics_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsMode.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsMode.class))
                         .setBinding(
                                 (opts, value) -> opts.fancyGraphics = value.isFancy(),
-                                opts -> SodiumGameOptions.GraphicsMode.fromBoolean(opts.fancyGraphics))
+                                opts -> GraphicsMode.fromBoolean(opts.fancyGraphics))
                         .setImpact(OptionImpact.HIGH)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
                 .build());
 
         groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsQuality.class, sodiumOpts)
+                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("options.renderClouds"))
                         .setTooltip(I18n.format("sodium.options.clouds_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsQuality.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
                         .setBinding((opts, value) -> opts.quality.cloudQuality = value, opts -> opts.quality.cloudQuality)
                         .setImpact(OptionImpact.LOW)
                         .build())
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsQuality.class, sodiumOpts)
+                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("soundCategory.weather"))
                         .setTooltip(I18n.format("sodium.options.weather_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsQuality.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
                         .setBinding((opts, value) -> opts.quality.weatherQuality = value, opts -> opts.quality.weatherQuality)
                         .setImpact(OptionImpact.MEDIUM)
                         .build())
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsQuality.class, sodiumOpts)
+                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.leaves_quality.name"))
                         .setTooltip(I18n.format("sodium.options.leaves_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsQuality.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
                         .setBinding((opts, value) -> opts.quality.leavesQuality = value, opts -> opts.quality.leavesQuality)
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
@@ -183,17 +185,17 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.MEDIUM)
                         .build()
                 )*/
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsQuality.class, sodiumOpts)
+                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("options.entityShadows"))
                         .setTooltip(I18n.format("sodium.options.entity_shadows.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsQuality.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
                         .setBinding((opts, value) -> opts.quality.entityShadows = value, opts -> opts.quality.entityShadows)
                         .setImpact(OptionImpact.LOW)
                         .build())
-                .add(OptionImpl.createBuilder(SodiumGameOptions.GraphicsQuality.class, sodiumOpts)
+                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.vignette.name"))
                         .setTooltip(I18n.format("sodium.options.vignette.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.GraphicsQuality.class))
+                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
                         .setBinding((opts, value) -> opts.quality.enableVignette = value, opts -> opts.quality.enableVignette)
                         .setImpact(OptionImpact.LOW)
                         .build())

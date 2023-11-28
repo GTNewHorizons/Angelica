@@ -5,6 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.NamedState;
 import net.minecraft.client.Minecraft;
 
 
@@ -66,10 +68,6 @@ public class SodiumGameOptions {
         public boolean hideDonationButton = false;
     }
 
-    public interface NamedState {
-        String getKey();
-    }
-
     public enum ParticleMode implements NamedState {
         ALL("options.particles.all"),
         DECREASED("options.particles.decreased"),
@@ -90,51 +88,6 @@ public class SodiumGameOptions {
 
         public static ParticleMode fromOrdinal(int ordinal) {
             return VALUES[ordinal];
-        }
-    }
-
-    public enum GraphicsMode implements NamedState {
-        FANCY("options.graphics.fancy"),
-        FAST("options.graphics.fast");
-
-        private final String name;
-
-        GraphicsMode(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public String getKey() {
-            return this.name;
-        }
-
-        public boolean isFancy() {
-            return this == FANCY;
-        }
-
-        public static GraphicsMode fromBoolean(boolean isFancy) {
-            return isFancy ? FANCY : FAST;
-        }
-    }
-
-    public enum GraphicsQuality implements NamedState {
-        DEFAULT("generator.default"),
-        FANCY("options.graphics.fancy"),
-        FAST("options.graphics.fast");
-
-        private final String name;
-
-        GraphicsQuality(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public String getKey() {
-            return this.name;
-        }
-
-        public boolean isFancy() {
-            return this == FANCY || (this == DEFAULT && Minecraft.getMinecraft().gameSettings.fancyGraphics);
         }
     }
 
