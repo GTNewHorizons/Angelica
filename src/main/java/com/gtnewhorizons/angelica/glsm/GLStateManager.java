@@ -203,10 +203,7 @@ public class GLStateManager {
     }
 
     public static void clearCurrentColor() {
-        Color.red = -1.0F;
-        Color.green = -1.0F;
-        Color.blue = -1.0F;
-        Color.alpha = -1.0F;
+        glColor4f(-1.0F, -1.0F, -1.0F, -1.0F);
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
