@@ -2,9 +2,7 @@ package me.jellysquid.mods.sodium.client.gui.options.control;
 
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.element.ControlElementFactory;
-import me.jellysquid.mods.sodium.client.gui.utils.Rect2i;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
-import net.minecraft.util.MathHelper;
 import org.apache.commons.lang3.Validate;
 
 public class SliderControl implements Control<Integer> {
