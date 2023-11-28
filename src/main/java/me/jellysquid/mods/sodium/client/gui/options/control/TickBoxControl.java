@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.gui.options.control;
 
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.element.ControlElementFactory;
-import me.jellysquid.mods.sodium.client.gui.utils.Rect2i;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 
 public class TickBoxControl implements Control<Boolean> {
