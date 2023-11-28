@@ -45,16 +45,35 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
     private static final String MinecraftClient = "net.minecraft.client";
+    private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
-        "initializeTextures", "func_77474_a"
+        "initializeTextures", "func_77474_a",
+        "start" // SplashProgress
     );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
 
     private static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
-        GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glDepthFunc", "glDepthMask",
-            "glColorMask", "glAlphaFunc", "glDrawArrays", "glColor3f", "glColor4f", "glShadeModel", "glFog", "glFogi", "glFogf", "glClearColor")
+        GL11, Sets.newHashSet(
+             "glAlphaFunc"
+            ,"glBlendFunc"
+            ,"glClearColor"
+            ,"glColor3f"
+            ,"glColor4f"
+            ,"glColor3ub"
+            ,"glColorMask"
+            ,"glDeleteTextures"
+            ,"glDepthFunc"
+            ,"glDepthMask"
+            ,"glDrawArrays"
+            ,"glFog"
+            ,"glFogf"
+            ,"glFogi"
+            ,"glShadeModel"
+            ,"glTexImage2D"
+            ,"glBindTexture"
+        )
         , GL13, Sets.newHashSet("glActiveTexture")
         , GL14, Sets.newHashSet("glBlendFuncSeparate")
         , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
@@ -63,11 +82,10 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 
     private static final List<String> TransformerExclusions = Arrays.asList(
-        "org.lwjgl",
-        "com.gtnewhorizons.angelica.glsm.",
-        "com.gtnewhorizons.angelica.transform",
-        "me.eigenraven.lwjgl3ify",
-        "cpw.mods.fml.client.SplashProgress"
+         "org.lwjgl"
+        ,"com.gtnewhorizons.angelica.glsm."
+        ,"com.gtnewhorizons.angelica.transform"
+        ,"me.eigenraven.lwjgl3ify"
     );
     private static int remaps = 0;
 
@@ -160,7 +178,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
             }
-            if (ASSERT_MAIN_THREAD && redirectInMethod && !(transformedName.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
+            if (ASSERT_MAIN_THREAD && redirectInMethod && !((transformedName.startsWith(MinecraftClient) || transformedName.startsWith(SplashProgress)) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
                 mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false));
             }
         }
