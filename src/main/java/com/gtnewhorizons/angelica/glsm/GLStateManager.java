@@ -62,6 +62,7 @@ public class GLStateManager {
     // Thread Checking
     @Getter
     private static final Thread MainThread = Thread.currentThread();
+    private static boolean runningSplash = false;
 
     public static void init() {
         if (AngelicaConfig.enableIris) {
@@ -77,7 +78,7 @@ public class GLStateManager {
     }
 
     public static void assertMainThread() {
-        if (Thread.currentThread() != MainThread) {
+        if (Thread.currentThread() != MainThread || runningSplash) {
             throw new IllegalStateException("Not on the main thread!");
         }
     }
@@ -168,7 +169,8 @@ public class GLStateManager {
     }
 
     public static void glDepthFunc(int func) {
-        if (func != depthState.func) {
+        // Hacky workaround for now, need to figure out why this isn't being applied...
+        if (func != depthState.func || GLStateManager.runningSplash) {
             depthState.func = func;
             GL11.glDepthFunc(func);
         }
@@ -189,17 +191,33 @@ public class GLStateManager {
     }
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
-        if (red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
-            Color.red = red;
-            Color.green = green;
-            Color.blue = blue;
-            Color.alpha = alpha;
+        if (changeColor(red, green, blue, alpha)) {
             GL11.glColor4f(red, green, blue, alpha);
         }
     }
 
     public static void glColor3f(float red, float green, float blue) {
-        glColor4f(red, green, blue, 1.0f);
+        if(changeColor(red, green, blue, 1.0F)) {
+            GL11.glColor3f(red, green, blue);
+        }
+    }
+
+    public static void glColor3ub(byte red, byte green, byte blue) {
+        if(changeColor(red, green, blue, 1.0F)) {
+            GL11.glColor3ub(red, green, blue);
+        }
+    }
+
+    private static boolean changeColor(float red, float green, float blue, float alpha) {
+        // Helper function for glColor*
+        if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+            Color.red = red;
+            Color.green = green;
+            Color.blue = blue;
+            Color.alpha = alpha;
+            return true;
+        }
+        return false;
     }
 
     public static void clearCurrentColor() {
@@ -513,4 +531,7 @@ public class GLStateManager {
         }
     }
 
+    public static void setRunningSplash(boolean runningSplash) {
+        GLStateManager.runningSplash = runningSplash;
+    }
 }

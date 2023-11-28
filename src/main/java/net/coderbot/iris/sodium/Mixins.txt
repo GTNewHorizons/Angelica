@@ -12,8 +12,8 @@ Y directional_shading
   * MixinGameRendererContext.java
   * MixinChunkRenderManager.java
 * block_id
-  X MixinChunkRenderRebuildTask.java
-  X MixinChunkBuildBuffers.java
+  Y MixinChunkRenderRebuildTask.java
+  Y MixinChunkBuildBuffers.java
 * pbr_animation
   * MixinTextureAtlasSprite.java
 * vertex_format
