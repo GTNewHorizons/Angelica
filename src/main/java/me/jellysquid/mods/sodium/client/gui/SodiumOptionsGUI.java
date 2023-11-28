@@ -13,6 +13,7 @@ import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.gui.options.control.Control;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
+import me.jellysquid.mods.sodium.client.gui.options.control.element.SodiumControlElementFactory;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
 import me.jellysquid.mods.sodium.client.gui.utils.Element;
@@ -35,6 +36,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
 public class SodiumOptionsGUI extends GuiScreen {
+
+    private static final SodiumControlElementFactory elementFactory = new SodiumControlElementFactory();
 
     private final List<Element> children = new CopyOnWriteArrayList<>();
 
@@ -167,10 +170,11 @@ public class SodiumOptionsGUI extends GuiScreen {
             // Add each option's control element
             for (Option<?> option : group.getOptions()) {
                 Control<?> control = option.getControl();
-                ControlElement<?> element = control.createElement(new Dim2i(x, y, 200, 18));
+                ControlElement<?> element = control.createElement(new Dim2i(x, y, 200, 18), elementFactory);
 
                 this.controls.add(element);
-                this.children.add(element);
+                //Safe if SodiumControlElementFactory or a compatible ControlElementFactory is used to create element.
+                this.children.add((Element)element);
 
                 // Move down to the next option
                 y += 18;
