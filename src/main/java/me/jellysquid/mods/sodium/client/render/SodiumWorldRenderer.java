@@ -1,11 +1,9 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -242,7 +240,8 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         //pass.endDrawing();
 
-        GLStateManager.clearCurrentColor();
+        // Hmm, is this needed?  It wasn't doing anything before, and doesn't seem to make a difference when fixed...
+//        GLStateManager.clearCurrentColor();
     }
 
     public void reload() {
