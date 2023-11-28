@@ -135,9 +135,11 @@ public class GLStateManager {
                 return;
             }
         }
-        blendState.srcRgb = srcFactor;
-        blendState.dstRgb = dstFactor;
-        GL11.glBlendFunc(srcFactor, dstFactor);
+        if (blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
+            blendState.srcRgb = srcFactor;
+            blendState.dstRgb = dstFactor;
+            GL11.glBlendFunc(srcFactor, dstFactor);
+        }
 
         // Iris
         if (blendFuncListener != null) blendFuncListener.run();
@@ -150,11 +152,13 @@ public class GLStateManager {
                 return;
             }
         }
-        blendState.srcRgb = srcRgb;
-        blendState.dstRgb = dstRgb;
-        blendState.srcAlpha = srcAlpha;
-        blendState.dstAlpha = dstAlpha;
-        GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
+            blendState.srcRgb = srcRgb;
+            blendState.dstRgb = dstRgb;
+            blendState.srcAlpha = srcAlpha;
+            blendState.dstAlpha = dstAlpha;
+            GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        }
 
         // Iris
         if (blendFuncListener != null) blendFuncListener.run();
