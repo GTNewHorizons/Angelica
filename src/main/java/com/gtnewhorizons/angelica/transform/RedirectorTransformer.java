@@ -14,6 +14,8 @@ import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.IntInsnNode;
+import org.spongepowered.asm.lib.tree.LdcInsnNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
 
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,13 +53,14 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
 
     private static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
-        GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glEnable", "glDisable", "glDepthFunc", "glDepthMask",
+        GL11, Sets.newHashSet("glBindTexture", "glTexImage2D", "glDeleteTextures", "glDepthFunc", "glDepthMask",
             "glColorMask", "glAlphaFunc", "glDrawArrays", "glColor3f", "glColor4f", "glShadeModel", "glFog", "glFogi", "glFogf", "glClearColor")
         , GL13, Sets.newHashSet("glActiveTexture")
         , GL14, Sets.newHashSet("glBlendFuncSeparate")
         , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
         , ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
     );
+    private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 
     private static final List<String> TransformerExclusions = Arrays.asList(
         "org.lwjgl",
@@ -66,6 +70,15 @@ public class RedirectorTransformer implements IClassTransformer {
         "cpw.mods.fml.client.SplashProgress"
     );
     private static int remaps = 0;
+
+    static {
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_BLEND, "Blend");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_DEPTH_TEST, "DepthTest");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_CULL_FACE, "Cull");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, "Texture");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
+    }
 
     @Override
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
@@ -92,16 +105,49 @@ public class RedirectorTransformer implements IClassTransformer {
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {
-                    final Set<String> redirects = EnabledRedirects.get(mNode.owner);
-                    if (redirects != null && redirects.contains(mNode.name)) {
-                        if (IrisLogging.ENABLE_SPAM) {
-                            final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                            AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, mNode.name, mNode.desc);
+                    if (mNode.owner.equals(GL11) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
+                        final AbstractInsnNode prevNode = node.getPrevious();
+                        String name = null;
+                        if (prevNode instanceof LdcInsnNode ldcNode) {
+                            name = glCapRedirects.get(((Integer) ldcNode.cst));
+                        } else if (prevNode instanceof IntInsnNode intNode) {
+                            name = glCapRedirects.get(intNode.operand);
                         }
-                        ((MethodInsnNode) node).owner = GLStateTracker;
+                        if (name != null) {
+                            if (mNode.name.equals("glEnable")) {
+                                name = "enable" + name;
+                            } else {
+                                name = "disable" + name;
+                            }
+                        }
+                        if (IrisLogging.ENABLE_SPAM) {
+                            if (name == null) {
+                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}(I)V", transformedName, mNode.name, mNode.name);
+                            } else {
+                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}()V", transformedName, mNode.name, name);
+                            }
+                        }
+                        mNode.owner = GLStateTracker;
+                        if (name != null) {
+                            mNode.name = name;
+                            mNode.desc = "()V";
+                            mn.instructions.remove(prevNode);
+                        }
                         changed = true;
                         redirectInMethod = true;
                         remaps++;
+                    } else {
+                        final Set<String> redirects = EnabledRedirects.get(mNode.owner);
+                        if (redirects != null && redirects.contains(mNode.name)) {
+                            if (IrisLogging.ENABLE_SPAM) {
+                                final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, mNode.name, mNode.desc);
+                            }
+                            mNode.owner = GLStateTracker;
+                            changed = true;
+                            redirectInMethod = true;
+                            remaps++;
+                        }
                     }
                 } else if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
                     if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals(TessellatorClass)) {
@@ -119,7 +165,7 @@ public class RedirectorTransformer implements IClassTransformer {
         }
 
         if (changed) {
-            ClassWriter cw = new ClassWriter(0);
+            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
             saveTransformedClass(bytes, transformedName);
