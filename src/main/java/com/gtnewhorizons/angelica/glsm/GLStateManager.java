@@ -24,6 +24,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 
@@ -45,6 +46,7 @@ public class GLStateManager {
     @Getter private static final BooleanState cullState = new BooleanState(GL11.GL_CULL_FACE);
     @Getter private static final AlphaState alphaState = new AlphaState();
     @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
+    @Getter private static final BooleanState rescaleNormalState = new BooleanState(GL12.GL_RESCALE_NORMAL);
 
     private static int modelShadeMode;
 
@@ -91,6 +93,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_CULL_FACE -> enableCull();
             case GL11.GL_LIGHTING -> enableLighting();
+            case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             case GL11.GL_FOG -> enableFog();
             default -> GL11.glEnable(cap);
@@ -104,6 +107,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_CULL_FACE -> disableCull();
             case GL11.GL_LIGHTING -> disableLighting();
+            case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             case GL11.GL_FOG -> disableFog();
             default -> GL11.glDisable(cap);
@@ -432,6 +436,14 @@ public class GLStateManager {
 
     public static void disableLighting() {
         lightingState.disable();
+    }
+
+    public static void enableRescaleNormal() {
+        rescaleNormalState.enable();
+    }
+
+    public static void disableRescaleNormal() {
+        rescaleNormalState.disable();
     }
 
     public static void enableFog() {
