@@ -85,22 +85,10 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
-        final List<String> mixins = new ArrayList<>();
-        final List<String> notLoading = new ArrayList<>();
-        for (Mixins mixin : Mixins.values()) {
-            if (mixin.phase == Mixins.Phase.EARLY) {
-                if (mixin.shouldLoad(loadedCoreMods, Collections.emptySet())) {
-                    mixins.addAll(mixin.mixinClasses);
-                } else {
-                    notLoading.addAll(mixin.mixinClasses);
-                }
-            }
-        }
-        LOGGER.info("Not loading the following EARLY mixins: {}", notLoading);
         // TODO: Sodium
 //        mixins.addAll(getNotFineMixins(loadedCoreMods));
 //        mixins.addAll(getArchaicMixins(loadedCoreMods));
-        return mixins;
+        return Mixins.getEarlyMixins(loadedCoreMods);
     }
 
     private List<String> getNotFineMixins(Set<String> loadedCoreMods) {

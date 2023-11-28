@@ -2,11 +2,13 @@ package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -129,61 +131,14 @@ public enum Mixins {
 
     ;
 
-    public final String name;
-    public final List<String> mixinClasses;
+    private final List<String> mixinClasses;
     private final Supplier<Boolean> applyIf;
-    public final Phase phase;
+    private final Phase phase;
     private final Side side;
-    public final List<TargetedMod> targetedMods;
-    public final List<TargetedMod> excludedMods;
-
-    private static class Builder {
-
-        private final String name;
-        private final List<String> mixinClasses = new ArrayList<>();
-        private Supplier<Boolean> applyIf = () -> true;
-        private Side side = Side.BOTH;
-        private Phase phase = Phase.LATE;
-        private final List<TargetedMod> targetedMods = new ArrayList<>();
-        private final List<TargetedMod> excludedMods = new ArrayList<>();
-
-        public Builder(String name) {
-            this.name = name;
-        }
-
-        public Builder addMixinClasses(String... mixinClasses) {
-            this.mixinClasses.addAll(Arrays.asList(mixinClasses));
-            return this;
-        }
-
-        public Builder setPhase(Phase phase) {
-            this.phase = phase;
-            return this;
-        }
-
-        public Builder setSide(Side side) {
-            this.side = side;
-            return this;
-        }
-
-        public Builder setApplyIf(Supplier<Boolean> applyIf) {
-            this.applyIf = applyIf;
-            return this;
-        }
-
-        public Builder addTargetedMod(TargetedMod mod) {
-            this.targetedMods.add(mod);
-            return this;
-        }
-
-        public Builder addExcludedMod(TargetedMod mod) {
-            this.excludedMods.add(mod);
-            return this;
-        }
-    }
+    private final List<TargetedMod> targetedMods;
+    private final List<TargetedMod> excludedMods;
 
     Mixins(Builder builder) {
-        this.name = builder.name;
         this.mixinClasses = builder.mixinClasses;
         this.applyIf = builder.applyIf;
         this.side = builder.side;
@@ -191,16 +146,48 @@ public enum Mixins {
         this.excludedMods = builder.excludedMods;
         this.phase = builder.phase;
         if (this.targetedMods.isEmpty()) {
-            throw new RuntimeException("No targeted mods specified for " + this.name);
+            throw new RuntimeException("No targeted mods specified for " + this.name());
         }
         if (this.applyIf == null) {
-            throw new RuntimeException("No ApplyIf function specified for " + this.name);
+            throw new RuntimeException("No ApplyIf function specified for " + this.name());
         }
     }
 
+    public static List<String> getEarlyMixins(Set<String> loadedCoreMods) {
+        final List<String> mixins = new ArrayList<>();
+        final List<String> notLoading = new ArrayList<>();
+        for (Mixins mixin : Mixins.values()) {
+            if (mixin.phase == Mixins.Phase.EARLY) {
+                if (mixin.shouldLoad(loadedCoreMods, Collections.emptySet())) {
+                    mixins.addAll(mixin.mixinClasses);
+                } else {
+                    notLoading.addAll(mixin.mixinClasses);
+                }
+            }
+        }
+        AngelicaTweaker.LOGGER.info("Not loading the following EARLY mixins: {}", notLoading);
+        return mixins;
+    }
+
+    public static List<String> getLateMixins(Set<String> loadedMods) {
+        final List<String> mixins = new ArrayList<>();
+        final List<String> notLoading = new ArrayList<>();
+        for (Mixins mixin : Mixins.values()) {
+            if (mixin.phase == Mixins.Phase.LATE) {
+                if (mixin.shouldLoad(Collections.emptySet(), loadedMods)) {
+                    mixins.addAll(mixin.mixinClasses);
+                } else {
+                    notLoading.addAll(mixin.mixinClasses);
+                }
+            }
+        }
+        AngelicaTweaker.LOGGER.info("Not loading the following LATE mixins: {}", notLoading.toString());
+        return mixins;
+    }
+
     private boolean shouldLoadSide() {
-        return (side == Side.BOTH || (side == Side.SERVER && FMLLaunchHandler.side().isServer())
-                || (side == Side.CLIENT && FMLLaunchHandler.side().isClient()));
+        return side == Side.BOTH || (side == Side.SERVER && FMLLaunchHandler.side().isServer())
+                || (side == Side.CLIENT && FMLLaunchHandler.side().isClient());
     }
 
     private boolean allModsLoaded(List<TargetedMod> targetedMods, Set<String> loadedCoreMods, Set<String> loadedMods) {
@@ -235,19 +222,61 @@ public enum Mixins {
         return true;
     }
 
-    public boolean shouldLoad(Set<String> loadedCoreMods, Set<String> loadedMods) {
+    private boolean shouldLoad(Set<String> loadedCoreMods, Set<String> loadedMods) {
         return (shouldLoadSide() && applyIf.get()
                 && allModsLoaded(targetedMods, loadedCoreMods, loadedMods)
                 && noModsLoaded(excludedMods, loadedCoreMods, loadedMods));
     }
 
-    enum Side {
+    private static class Builder {
+
+        private final List<String> mixinClasses = new ArrayList<>();
+        private Supplier<Boolean> applyIf = () -> true;
+        private Side side = Side.BOTH;
+        private Phase phase = Phase.LATE;
+        private final List<TargetedMod> targetedMods = new ArrayList<>();
+        private final List<TargetedMod> excludedMods = new ArrayList<>();
+
+        public Builder(@SuppressWarnings("unused") String description) {}
+
+        public Builder addMixinClasses(String... mixinClasses) {
+            this.mixinClasses.addAll(Arrays.asList(mixinClasses));
+            return this;
+        }
+
+        public Builder setPhase(Phase phase) {
+            this.phase = phase;
+            return this;
+        }
+
+        public Builder setSide(Side side) {
+            this.side = side;
+            return this;
+        }
+
+        public Builder setApplyIf(Supplier<Boolean> applyIf) {
+            this.applyIf = applyIf;
+            return this;
+        }
+
+        public Builder addTargetedMod(TargetedMod mod) {
+            this.targetedMods.add(mod);
+            return this;
+        }
+
+        public Builder addExcludedMod(TargetedMod mod) {
+            this.excludedMods.add(mod);
+            return this;
+        }
+    }
+
+    private enum Side {
         BOTH,
         CLIENT,
         SERVER
     }
 
-    public enum Phase {
+    private enum Phase {
         EARLY,
         LATE,
     }

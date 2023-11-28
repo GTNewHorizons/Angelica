@@ -35,22 +35,10 @@ public class AngelicaLateMixins implements ILateMixinLoader {
 
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
-        final List<String> mixins = new ArrayList<>();
-        final List<String> notLoading = new ArrayList<>();
-        for (Mixins mixin : Mixins.values()) {
-            if (mixin.phase == Mixins.Phase.LATE) {
-                if (mixin.shouldLoad(Collections.emptySet(), loadedMods)) {
-                    mixins.addAll(mixin.mixinClasses);
-                } else {
-                    notLoading.addAll(mixin.mixinClasses);
-                }
-            }
-        }
-        AngelicaTweaker.LOGGER.info("Not loading the following LATE mixins: {}", notLoading.toString());
+        return Mixins.getLateMixins(loadedMods);
         // TODO: Sodium
 //        mixins.addAll(getNotFineMixins(loadedMods));
 //        mixins.addAll(getArchaicMixins(loadedMods));
-        return mixins;
     }
 
     private List<String> getNotFineMixins(Set<String> loadedMods) {
