@@ -76,6 +76,7 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_BLEND, "Blend");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_DEPTH_TEST, "DepthTest");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_CULL_FACE, "Cull");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_LIGHTING, "Lighting");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, "Texture");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
     }

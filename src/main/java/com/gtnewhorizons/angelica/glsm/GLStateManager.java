@@ -44,6 +44,7 @@ public class GLStateManager {
     @Getter private static final GLColorMask ColorMask = new GLColorMask();
     @Getter private static final BooleanState cullState = new BooleanState(GL11.GL_CULL_FACE);
     @Getter private static final AlphaState alphaState = new AlphaState();
+    @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
 
     private static int modelShadeMode;
 
@@ -88,6 +89,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> enableBlend();
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_CULL_FACE -> enableCull();
+            case GL11.GL_LIGHTING -> enableLighting();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             case GL11.GL_FOG -> enableFog();
             default -> GL11.glEnable(cap);
@@ -100,6 +102,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> disableBlend();
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_CULL_FACE -> disableCull();
+            case GL11.GL_LIGHTING -> disableLighting();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             case GL11.GL_FOG -> disableFog();
             default -> GL11.glDisable(cap);
@@ -406,6 +409,14 @@ public class GLStateManager {
 
     public static void disableDepthTest() {
         depthState.mode.disable();
+    }
+
+    public static void enableLighting() {
+        lightingState.enable();
+    }
+
+    public static void disableLighting() {
+        lightingState.disable();
     }
 
     public static void enableFog() {
