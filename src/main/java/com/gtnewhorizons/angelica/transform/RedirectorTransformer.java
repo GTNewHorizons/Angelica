@@ -81,7 +81,7 @@ public class RedirectorTransformer implements IClassTransformer {
         )
         , GL13, Sets.newHashSet("glActiveTexture")
         , GL14, Sets.newHashSet("glBlendFuncSeparate")
-        , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparate")
+        , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparateEXT")
         , ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
     );
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
