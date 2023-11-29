@@ -135,7 +135,6 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
-                .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("options.renderClouds"))
                         .setTooltip(I18n.format("sodium.options.clouds_quality.tooltip"))
