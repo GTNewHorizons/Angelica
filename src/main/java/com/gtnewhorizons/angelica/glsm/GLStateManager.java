@@ -23,6 +23,7 @@ import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.EXTBlendFuncSeparate;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -166,6 +167,25 @@ public class GLStateManager {
             blendState.srcAlpha = srcAlpha;
             blendState.dstAlpha = dstAlpha;
             GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        }
+
+        // Iris
+        if (blendFuncListener != null) blendFuncListener.run();
+    }
+
+    public static void glBlendFuncSeparateEXT(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        if (AngelicaConfig.enableIris) {
+            if (BlendModeStorage.isBlendLocked()) {
+                BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
+                return;
+            }
+        }
+        if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
+            blendState.srcRgb = srcRgb;
+            blendState.dstRgb = dstRgb;
+            blendState.srcAlpha = srcAlpha;
+            blendState.dstAlpha = dstAlpha;
+            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
 
         // Iris
