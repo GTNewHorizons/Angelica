@@ -68,59 +68,6 @@ public class SodiumGameOptions {
         public boolean hideDonationButton = false;
     }
 
-    public enum ParticleMode implements NamedState {
-        ALL("options.particles.all"),
-        DECREASED("options.particles.decreased"),
-        MINIMAL("options.particles.minimal");
-
-        private static final ParticleMode[] VALUES = values();
-
-        private final String name;
-
-        ParticleMode(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public String getKey() {
-            return this.name;
-        }
-
-        public static ParticleMode fromOrdinal(int ordinal) {
-            return VALUES[ordinal];
-        }
-    }
-
-    public enum LightingQuality implements NamedState {
-        OFF("options.ao.off"),
-        LOW("options.ao.min"),
-        HIGH("options.ao.max");
-
-        private static final LightingQuality[] VALUES = values();
-
-        private final String name;
-
-        private final int vanilla;
-
-        LightingQuality(String name) {
-            this.name = name;
-            this.vanilla = ordinal();
-        }
-
-        @Override
-        public String getKey() {
-            return this.name;
-        }
-
-        public int getVanilla() {
-            return vanilla;
-        }
-
-        public static LightingQuality fromOrdinal(int ordinal) {
-            return VALUES[ordinal];
-        }
-    }
-
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()

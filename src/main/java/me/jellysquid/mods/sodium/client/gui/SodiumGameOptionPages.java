@@ -12,6 +12,8 @@ import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
@@ -153,18 +155,18 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
-                .add(OptionImpl.createBuilder(SodiumGameOptions.ParticleMode.class, vanillaOpts)
+                .add(OptionImpl.createBuilder(ParticleMode.class, vanillaOpts)
                         .setName(I18n.format("options.particles"))
                         .setTooltip(I18n.format("sodium.options.particle_quality.tooltip"))
-                        .setControl(opt -> new CyclingControl<>(opt, SodiumGameOptions.ParticleMode.class))
-                        .setBinding((opts, value) -> opts.particleSetting = value.ordinal(), (opts) -> SodiumGameOptions.ParticleMode.fromOrdinal(opts.particleSetting))
+                        .setControl(opt -> new CyclingControl<>(opt, ParticleMode.class))
+                        .setBinding((opts, value) -> opts.particleSetting = value.ordinal(), (opts) -> ParticleMode.fromOrdinal(opts.particleSetting))
                         .setImpact(OptionImpact.LOW)
                         .build())
-                .add(OptionImpl.createBuilder(SodiumGameOptions.LightingQuality.class, vanillaOpts)
+                .add(OptionImpl.createBuilder(LightingQuality.class, vanillaOpts)
                         .setName(I18n.format("options.ao"))
                         .setTooltip(I18n.format("sodium.options.smooth_lighting.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, SodiumGameOptions.LightingQuality.class))
-                        .setBinding((opts, value) -> opts.ambientOcclusion = value.getVanilla(), opts -> SodiumGameOptions.LightingQuality.fromOrdinal(opts.ambientOcclusion))
+                        .setControl(option -> new CyclingControl<>(option, LightingQuality.class))
+                        .setBinding((opts, value) -> opts.ambientOcclusion = value.getVanilla(), opts -> LightingQuality.fromOrdinal(opts.ambientOcclusion))
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
