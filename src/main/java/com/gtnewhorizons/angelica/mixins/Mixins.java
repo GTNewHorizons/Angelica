@@ -129,6 +129,13 @@ public enum Mixins {
 //    SHADERSMOD_COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
 //            .addMixinClasses("compat.MixinModelRotationRenderer"))
 
+    NOTFINE_OPTIMIZATION(new Builder("NotFine Optimizations").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineOptimizations).addMixinClasses(
+            "notfine.faceculling.MixinBlock"
+            ,"notfine.faceculling.MixinBlockSlab"
+            ,"notfine.faceculling.MixinBlockSnow"
+            ,"notfine.faceculling.MixinBlockStairs"
+        )),
     ;
 
     private final List<String> mixinClasses;
