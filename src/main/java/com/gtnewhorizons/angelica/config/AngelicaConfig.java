@@ -13,12 +13,12 @@ public class AngelicaConfig {
     public static boolean enableIris;
 
     @Config.Comment("Enable NotFine optimizations")
-    @Config.DefaultBoolean(true)
+    @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableNotFineOptimizations;
 
     @Config.Comment("Enable NotFine features")
-    @Config.DefaultBoolean(true)
+    @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableNotFineFeatures;
 
