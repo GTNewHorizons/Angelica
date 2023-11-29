@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
 import com.gtnewhorizons.angelica.glsm.states.TextureState;
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
@@ -21,6 +22,7 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.EXTBlendFuncSeparate;
@@ -66,6 +68,8 @@ public class GLStateManager {
     @Getter
     private static final Thread MainThread = Thread.currentThread();
     private static boolean runningSplash = false;
+
+    private static boolean hudCaching$blendEnabled;
 
     public static void init() {
         if (AngelicaConfig.enableIris) {
@@ -118,6 +122,9 @@ public class GLStateManager {
     // GLStateManager Functions
 
     public static void enableBlend() {
+        if (HUDCaching.renderingCacheOverride) {
+            hudCaching$blendEnabled = true;
+        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(true);
@@ -128,6 +135,9 @@ public class GLStateManager {
     }
 
     public static void disableBlend() {
+        if (HUDCaching.renderingCacheOverride) {
+            hudCaching$blendEnabled = false;
+        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(false);
@@ -138,6 +148,10 @@ public class GLStateManager {
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
+        if (HUDCaching.renderingCacheOverride) {
+            GL14.glBlendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
+        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
@@ -155,6 +169,10 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
+            GL14.glBlendFuncSeparate(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
+        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
@@ -174,6 +192,10 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparateEXT(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
+            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
+        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
@@ -215,23 +237,39 @@ public class GLStateManager {
     }
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
+        if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < 1f) {
+            GL11.glColor4f(red, green, blue, 1f);
+            return;
+        }
         if (changeColor(red, green, blue, alpha)) {
             GL11.glColor4f(red, green, blue, alpha);
         }
     }
     public static void glColor4d(double red, double green, double blue, double alpha) {
+        if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < 1d) {
+            GL11.glColor4d(red, green, blue, 1d);
+            return;
+        }
         if (changeColor((float)red, (float)green, (float)blue, (float)alpha)) {
             GL11.glColor4d(red, green, blue, alpha);
         }
     }
 
     public static void glColor4b(byte red, byte green, byte blue, byte alpha) {
+        if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < Byte.MAX_VALUE) {
+            GL11.glColor4b(red, green, blue, Byte.MAX_VALUE);
+            return;
+        }
         if (changeColor(b2f(red), b2f(green), b2f(blue), b2f(alpha))) {
             GL11.glColor4b(red, green, blue, alpha);
         }
     }
 
     public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
+        if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < Byte.MAX_VALUE) {
+            GL11.glColor4b(red, green, blue, Byte.MAX_VALUE);
+            return;
+        }
         if (changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha))) {
             GL11.glColor4ub(red, green, blue, alpha);
         }

@@ -128,8 +128,7 @@ public enum Mixins {
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
-            "angelica.hudcaching.MixinGuiIngameForge_HUDCaching",
-            "angelica.hudcaching.MixinOpenGlHelper_HUDCaching")
+            "angelica.hudcaching.MixinGuiIngameForge_HUDCaching")
         .setApplyIf(() -> true)), // TODO add config
 
     // TODO: Iris

@@ -87,6 +87,8 @@ public class HUDCaching {
         }
     }
 
+    // TODO draw vignette
+
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean p_73830_2_, int p_73830_3_, int p_73830_4_) {
 

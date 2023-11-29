@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinGuiIngame_HUDCaching {
 
     @Inject(method = "renderVignette", at = @At("HEAD"), cancellable = true)
-    private void hodgepodge$cancelVignette(CallbackInfo ci) {
+    private void angelica$cancelVignette(CallbackInfo ci) {
         if (HUDCaching.renderingCacheOverride) {
             ci.cancel();
         }

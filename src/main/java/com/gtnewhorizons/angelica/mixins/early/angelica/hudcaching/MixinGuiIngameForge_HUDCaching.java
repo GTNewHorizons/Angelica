@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinGuiIngameForge_HUDCaching {
 
     @Inject(method = "renderCrosshairs", at = @At("HEAD"), cancellable = true, remap = false)
-    private void hodgepodge$cancelCrosshair(CallbackInfo ci) {
+    private void angelica$cancelCrosshair(CallbackInfo ci) {
         if (HUDCaching.renderingCacheOverride) {
             ci.cancel();
         }
