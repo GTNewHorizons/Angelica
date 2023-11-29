@@ -199,10 +199,39 @@ public class GLStateManager {
             GL11.glColor4f(red, green, blue, alpha);
         }
     }
+    public static void glColor4d(double red, double green, double blue, double alpha) {
+        if (changeColor(red, green, blue, alpha)) {
+            GL11.glColor4d(red, green, blue, alpha);
+        }
+    }
+
+    public static void glColor4b(byte red, byte green, byte blue, byte alpha) {
+        if (changeColor(red, green, blue, alpha)) {
+            GL11.glColor4b(red, green, blue, alpha);
+        }
+    }
+
+    public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
+        if (changeColor(red, green, blue, alpha)) {
+            GL11.glColor4ub(red, green, blue, alpha);
+        }
+    }
 
     public static void glColor3f(float red, float green, float blue) {
         if(changeColor(red, green, blue, 1.0F)) {
             GL11.glColor3f(red, green, blue);
+        }
+    }
+
+    public static void glColor3d(double red, double green, double blue) {
+        if(changeColor(red, green, blue, 1.0F)) {
+            GL11.glColor3d(red, green, blue);
+        }
+    }
+
+    public static void glColor3b(byte red, byte green, byte blue) {
+        if(changeColor(red, green, blue, 1.0F)) {
+            GL11.glColor3b(red, green, blue);
         }
     }
 
@@ -212,7 +241,7 @@ public class GLStateManager {
         }
     }
 
-    private static boolean changeColor(float red, float green, float blue, float alpha) {
+    private static boolean changeColor(double red, double green, double blue, double alpha) {
         // Helper function for glColor*
         if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
             Color.red = red;
