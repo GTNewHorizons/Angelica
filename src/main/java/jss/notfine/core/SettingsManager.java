@@ -32,7 +32,9 @@ public class SettingsManager {
     public static boolean waterDetail;
     public static boolean vignette;
     public static byte downfallDistance;
-    public static double entityRenderScaleFactor;
+
+    //TODO: Hook up using sodium system
+    public static double entityRenderScaleFactor = 20000;
 
     public static ResourceLocation defaultBackground = Gui.optionsBackground;
     public static ResourceLocation[] extraBackgrounds = new ResourceLocation[] {
