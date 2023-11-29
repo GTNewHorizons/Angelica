@@ -14,7 +14,7 @@ public abstract class MixinWorldType {
      */
     @Overwrite(remap = false)
     public float getCloudHeight() {
-        return Settings.CLOUD_HEIGHT.getValue();
+        return (int)Settings.CLOUD_HEIGHT.option.getStore();
     }
 
 }

@@ -3,34 +3,49 @@ package jss.notfine.gui;
 import com.google.common.collect.Lists;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import jss.notfine.gui.options.control.element.NotFineControlElementFactory;
+import me.jellysquid.mods.sodium.client.gui.options.Option;
+import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
+import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiListExtended;
 import net.minecraft.client.renderer.Tessellator;
 
+import java.util.Iterator;
 import java.util.List;
 
 @SideOnly(Side.CLIENT)
-public class GuiCustomSettingsRowList extends GuiListExtended {
+public class GuiCustomOptionsRowList extends GuiListExtended {
+    private static final NotFineControlElementFactory factory = new NotFineControlElementFactory();
     private final List<Row> settingsList = Lists.newArrayList();
 
-    public GuiCustomSettingsRowList(Minecraft mc, int width, int height, int top, int bottom, int slotHeight, MenuButtonLists buttonEnum)  {
+    public GuiCustomOptionsRowList(Minecraft mc, int width, int height, int top, int bottom, int slotHeight, OptionPage optionPage, OptionPage... subPages)  {
         super(mc, width, height, top, bottom, slotHeight);
         field_148163_i = false;
 
-        Enum<?>[] settings = MenuButtonLists.getEntries(buttonEnum);
-
-        for(int i = 0; i < settings.length; i += 2) {
-            Enum<?> settingOne = settings[i];
-            Enum<?> settingTwo = i < settings.length - 1 ? settings[i + 1] : null;
-            GuiButton buttonOne = GuiCustomMenu.createButton(width / 2 - 155, 0, settingOne);
-            GuiButton buttonTwo = GuiCustomMenu.createButton(width / 2 - 155 + 160, 0, settingTwo);
+        for(OptionGroup optionGroup : optionPage.getGroups()) {
+            Iterator settings = optionGroup.getOptions().stream().iterator();
+            while(settings.hasNext()) {
+                Option optionOne = (Option)settings.next();
+                Option optionTwo = settings.hasNext() ? (Option)settings.next() : null;
+                GuiButton buttonOne = (GuiButton)optionOne.getControl().createElement(new Dim2i(width / 2 - 155,0,150,20), factory);
+                GuiButton buttonTwo = optionTwo == null ? null : (GuiButton)optionTwo.getControl().createElement(new Dim2i(width / 2 - 155 + 160,0,150,20), factory);
+                settingsList.add(new GuiCustomOptionsRowList.Row(buttonOne, buttonTwo));
+            }
+        }
+        for(int i = 0; i < subPages.length; i += 2) {
+            OptionPage pageOne = subPages[i];
+            OptionPage pageTwo = i < subPages.length - 1 ? subPages[i + 1] : null;
+            GuiButton buttonOne = new GuiCustomMenuButton(width / 2 - 155, 0, pageOne);
+            GuiButton buttonTwo = pageTwo == null ? null : new GuiCustomMenuButton(width / 2 - 155  + 160, 0, pageTwo);
             settingsList.add(new Row(buttonOne, buttonTwo));
         }
     }
 
     @Override
-    public Row getListEntry(int index) {
+    public GuiCustomOptionsRowList.Row getListEntry(int index) {
         return settingsList.get(index);
     }
 
@@ -50,7 +65,7 @@ public class GuiCustomSettingsRowList extends GuiListExtended {
     }
 
     @SideOnly(Side.CLIENT)
-    public static class Row implements IGuiListEntry {
+    public static class Row implements GuiListExtended.IGuiListEntry {
         private final Minecraft mc = Minecraft.getMinecraft();
         private final GuiButton buttonOne, buttonTwo;
 
@@ -65,10 +80,9 @@ public class GuiCustomSettingsRowList extends GuiListExtended {
 
         @Override
         public void drawEntry(int varU1, int x, int y, int varU2, int varU3, Tessellator tessellator, int mouseX, int mouseY, boolean varU4)  {
-            if(buttonOne != null) {
-                buttonOne.yPosition = y;
-                buttonOne.drawButton(mc, mouseX, mouseY);
-            }
+            buttonOne.yPosition = y;
+            buttonOne.drawButton(mc, mouseX, mouseY);
+
 
             if(buttonTwo != null) {
                 buttonTwo.yPosition = y;
@@ -78,9 +92,10 @@ public class GuiCustomSettingsRowList extends GuiListExtended {
 
         @Override
         public boolean mousePressed(int index, int x, int y, int mouseEvent, int relativeX, int relativeY) {
-            if(buttonOne != null && buttonOne.mousePressed(mc, x, y)) {
+            if(buttonOne.mousePressed(mc, x, y)) {
                 return true;
-            } else if(buttonTwo != null && buttonTwo.mousePressed(mc, x, y)) {
+            }
+            if(buttonTwo != null && buttonTwo.mousePressed(mc, x, y)) {
                 return true;
             }
             return false;

@@ -19,7 +19,7 @@ public class RenderStars {
     }
 
     public static void renderStars() {
-        final int totalStars = (int) Settings.TOTAL_STARS.getValue();
+        final int totalStars = (int)Settings.TOTAL_STARS.option.getStore();
         if(totalStars <= 0) {
             return;
         }

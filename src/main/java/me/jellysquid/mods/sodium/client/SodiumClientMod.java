@@ -4,8 +4,8 @@ import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import jss.notfine.gui.GuiCustomMenu;
-import jss.notfine.gui.MenuButtonLists;
 import lombok.Getter;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.minecraft.client.Minecraft;
@@ -48,7 +48,8 @@ public class SodiumClientMod {
         if(event.gui instanceof GuiVideoSettings eventGui) {
             event.setCanceled(true);
             if(GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, MenuButtonLists.VIDEO));
+                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, SodiumGameOptionPages.general(),
+                    SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
             } else {
                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
             }

@@ -19,7 +19,7 @@ public abstract class MixinItemRenderer {
         remap = false
     )
     private boolean notFine$toggleGlint(ItemStack stack, int pass) {
-        return Settings.MODE_GLINT_WORLD.isValueBase() && stack.hasEffect(pass);
+        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.hasEffect(pass);
     }
 
 }

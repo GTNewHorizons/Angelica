@@ -16,7 +16,7 @@ public abstract class MixinWorldClient {
 	 * @author jss2a98aj
 	 * @reason Xoshiro256** is faster than Random.
 	 */
-	@Redirect(method = "doVoidFogParticles", at = @At(value = "NEW", target = "java/util/Random", ordinal = 0))
+	@Redirect(method = "doVoidFogParticles(III)V", at = @At(value = "NEW", target = "java/util/Random", ordinal = 0))
 	private Random notFine$redirectDoVoidFogParticlesRandom() {
 		return new RandomXoshiro256StarStar();
 	}

@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizons.angelica.client.gui.AngelicaEntityRenderDistanceSetting;
-import com.gtnewhorizons.angelica.client.gui.AngelicaVideoSettings;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -11,9 +9,6 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import jss.notfine.gui.GuiCustomMenu;
-import jss.notfine.gui.ISettingsEnum;
-import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
@@ -38,17 +33,6 @@ public class ClientProxy extends CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
-        MenuButtonLists.addAdditionalEntry(MenuButtonLists.VIDEO, AngelicaVideoSettings.SHADERS);
-        GuiCustomMenu.addButtonHandler(AngelicaVideoSettings.class, (xPosition, yPosition, setting) -> {
-            ISettingsEnum settingsEnum = (ISettingsEnum) setting;
-            return settingsEnum.createButton(xPosition, yPosition, setting);
-        });
-        MenuButtonLists.addAdditionalEntry(MenuButtonLists.VIDEO, AngelicaEntityRenderDistanceSetting.ENTITY_RENDER_DISTANCE);
-        GuiCustomMenu.addButtonHandler(AngelicaEntityRenderDistanceSetting.class, (xPosition, yPosition, setting) ->{
-            ISettingsEnum settingsEnum = (ISettingsEnum) setting;
-            return settingsEnum.createButton(xPosition, yPosition, setting);
-        });
     }
 
     @Override

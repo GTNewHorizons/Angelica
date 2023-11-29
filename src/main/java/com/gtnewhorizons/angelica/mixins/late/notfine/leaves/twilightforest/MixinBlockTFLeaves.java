@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.late.notfine.leaves.twilightforest;
 
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
+import jss.notfine.gui.options.named.LeavesQuality;
 import jss.notfine.util.ILeafBlock;
 import net.minecraft.block.BlockLeaves;
 import net.minecraft.init.Blocks;
@@ -16,7 +17,7 @@ public abstract class MixinBlockTFLeaves extends BlockLeaves {
 
     @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
-        int renderMode = (int)Settings.MODE_LEAVES.getValue();
+        int renderMode = ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()).ordinal() - 1;
         int maskedMeta = world.getBlockMetadata(x, y, z) & 3;
         renderMode = switch (renderMode) {
             case -1 -> SettingsManager.leavesOpaque ? 1 : 0;
