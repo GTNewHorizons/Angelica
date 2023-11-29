@@ -22,7 +22,6 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.EXTBlendFuncSeparate;
@@ -122,41 +121,41 @@ public class GLStateManager {
     // GLStateManager Functions
 
     public static void enableBlend() {
-        if (HUDCaching.renderingCacheOverride) {
-            hudCaching$blendEnabled = true;
-        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(true);
                 return;
             }
         }
+        if (HUDCaching.renderingCacheOverride) {
+            hudCaching$blendEnabled = true;
+        }
         blendState.mode.enable();
     }
 
     public static void disableBlend() {
-        if (HUDCaching.renderingCacheOverride) {
-            hudCaching$blendEnabled = false;
-        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendModeToggle(false);
                 return;
             }
         }
+        if (HUDCaching.renderingCacheOverride) {
+            hudCaching$blendEnabled = false;
+        }
         blendState.mode.disable();
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
-        if (HUDCaching.renderingCacheOverride) {
-            GL14.glBlendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            return;
-        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
                 return;
             }
+        }
+        if (HUDCaching.renderingCacheOverride) {
+            GL14.glBlendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
         }
         if (blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
             blendState.srcRgb = srcFactor;
@@ -169,15 +168,15 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
-            GL14.glBlendFuncSeparate(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            return;
-        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
                 return;
             }
+        }
+        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
+            GL14.glBlendFuncSeparate(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
         }
         if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
             blendState.srcRgb = srcRgb;
@@ -192,15 +191,15 @@ public class GLStateManager {
     }
 
     public static void glBlendFuncSeparateEXT(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
-            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            return;
-        }
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
                 return;
             }
+        }
+        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
+            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            return;
         }
         if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
             blendState.srcRgb = srcRgb;
@@ -267,7 +266,7 @@ public class GLStateManager {
 
     public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
         if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < Byte.MAX_VALUE) {
-            GL11.glColor4b(red, green, blue, Byte.MAX_VALUE);
+            GL11.glColor4ub(red, green, blue, Byte.MAX_VALUE);
             return;
         }
         if (changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha))) {

@@ -37,7 +37,7 @@ public class RedirectorTransformer implements IClassTransformer {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
     private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
-    private static final String GLStateTracker = "com/gtnewhorizons/angelica/glsm/GLStateManager";
+    private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
@@ -152,7 +152,7 @@ public class RedirectorTransformer implements IClassTransformer {
                                 AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}()V", transformedName, mNode.name, name);
                             }
                         }
-                        mNode.owner = GLStateTracker;
+                        mNode.owner = GLStateManager;
                         if (name != null) {
                             mNode.name = name;
                             mNode.desc = "()V";
@@ -168,7 +168,7 @@ public class RedirectorTransformer implements IClassTransformer {
                                 final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                 AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, mNode.name, mNode.desc);
                             }
-                            mNode.owner = GLStateTracker;
+                            mNode.owner = GLStateManager;
                             changed = true;
                             redirectInMethod = true;
                             remaps++;
@@ -185,7 +185,7 @@ public class RedirectorTransformer implements IClassTransformer {
                 }
             }
             if (ASSERT_MAIN_THREAD && redirectInMethod && !((transformedName.startsWith(MinecraftClient) || transformedName.startsWith(SplashProgress)) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
-                mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateTracker, "assertMainThread", "()V", false));
+                mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateManager, "assertMainThread", "()V", false));
             }
         }
 
