@@ -101,15 +101,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         mixins.add("notfine.clouds.MixinRenderGlobal");
         mixins.add("notfine.clouds.MixinWorldType");
 
-
-
-        mixins.add("notfine.glint.MixinItemRenderer");
-        mixins.add("notfine.glint.MixinRenderBiped");
-        mixins.add("notfine.glint.MixinRenderItem");
-        mixins.add("notfine.glint.MixinRenderPlayer");
-
-        mixins.add("notfine.gui.MixinGuiSlot");
-
         mixins.add("notfine.leaves.MixinBlockLeaves");
         mixins.add("notfine.leaves.MixinBlockLeavesBase");
 
@@ -122,9 +113,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         mixins.add("notfine.toggle.MixinEntityRenderer");
         mixins.add("notfine.toggle.MixinRender");
         mixins.add("notfine.toggle.MixinRenderItem");
-
-        mixins.add("notfine.settings.MixinGameSettings");
-        mixins.add("notfine.renderer.MixinRenderGlobal");
         return mixins;
     }
 

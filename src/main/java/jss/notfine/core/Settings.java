@@ -1,5 +1,6 @@
 package jss.notfine.core;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import jss.notfine.gui.options.named.AlwaysNever;
 import jss.notfine.gui.options.named.BackgroundSelect;
@@ -254,7 +255,7 @@ public enum Settings {
 
         @Override
         public boolean isAvailable() {
-            return true;
+            return AngelicaConfig.enableNotFineFeatures;
         }
 
         @Override

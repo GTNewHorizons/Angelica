@@ -136,6 +136,17 @@ public enum Mixins {
             ,"notfine.faceculling.MixinBlockSnow"
             ,"notfine.faceculling.MixinBlockStairs"
         )),
+
+    NOTFINE_FEATURES(new Builder("NotFine Features").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
+            "notfine.glint.MixinItemRenderer"
+            ,"notfine.glint.MixinRenderBiped"
+            ,"notfine.glint.MixinRenderItem"
+            ,"notfine.glint.MixinRenderPlayer"
+            ,"notfine.gui.MixinGuiSlot"
+            ,"notfine.renderer.MixinRenderGlobal"
+            ,"notfine.settings.MixinGameSettings"
+        ))
     ;
 
     private final List<String> mixinClasses;

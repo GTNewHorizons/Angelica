@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
+import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
@@ -47,6 +48,7 @@ public class SodiumGameOptionPages {
                         .setControl(opt -> new SliderControl(opt, 0, 100, 1, ControlValueFormatter.brightness()))
                         .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
                         .build())
+                .add(Settings.MODE_SKY.option)
                 .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                         .setName(I18n.format("sodium.options.clouds.name"))
                         .setTooltip(I18n.format("sodium.options.clouds.tooltip"))
@@ -133,6 +135,7 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
+                .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("options.renderClouds"))
                         .setTooltip(I18n.format("sodium.options.clouds_quality.tooltip"))
@@ -201,6 +204,7 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.quality.enableVignette = value, opts -> opts.quality.enableVignette)
                         .setImpact(OptionImpact.LOW)
                         .build())
+                    .add(Settings.TOTAL_STARS.option)
                 .build());
 
 
@@ -214,7 +218,10 @@ public class SodiumGameOptionPages {
                         .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
                         .build())
                 .build());
-
+        groups.add(OptionGroup.createBuilder()
+            .add(Settings.MODE_GLINT_INV.option)
+            .add(Settings.MODE_GLINT_WORLD.option)
+            .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.quality"), ImmutableList.copyOf(groups));
     }
@@ -325,6 +332,11 @@ public class SodiumGameOptionPages {
                         .build()
                 )
                 .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(Settings.MODE_GUI_BACKGROUND.option)
+                .add(Settings.GUI_BACKGROUND.option)
+            .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.advanced"), ImmutableList.copyOf(groups));
     }
