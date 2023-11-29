@@ -220,19 +220,19 @@ public class GLStateManager {
         }
     }
     public static void glColor4d(double red, double green, double blue, double alpha) {
-        if (changeColor(red, green, blue, alpha)) {
+        if (changeColor((float)red, (float)green, (float)blue, (float)alpha)) {
             GL11.glColor4d(red, green, blue, alpha);
         }
     }
 
     public static void glColor4b(byte red, byte green, byte blue, byte alpha) {
-        if (changeColor(red, green, blue, alpha)) {
+        if (changeColor(b2f(red), b2f(green), b2f(blue), b2f(alpha))) {
             GL11.glColor4b(red, green, blue, alpha);
         }
     }
 
     public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
-        if (changeColor(red, green, blue, alpha)) {
+        if (changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha))) {
             GL11.glColor4ub(red, green, blue, alpha);
         }
     }
@@ -244,24 +244,31 @@ public class GLStateManager {
     }
 
     public static void glColor3d(double red, double green, double blue) {
-        if(changeColor(red, green, blue, 1.0F)) {
+        if(changeColor((float)red, (float)green, (float)blue, 1.0F)) {
             GL11.glColor3d(red, green, blue);
         }
     }
 
     public static void glColor3b(byte red, byte green, byte blue) {
-        if(changeColor(red, green, blue, 1.0F)) {
+        if(changeColor(b2f(red), b2f(green), b2f(blue), 1.0F)) {
             GL11.glColor3b(red, green, blue);
         }
     }
 
     public static void glColor3ub(byte red, byte green, byte blue) {
-        if(changeColor(red, green, blue, 1.0F)) {
+        if(changeColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F)) {
             GL11.glColor3ub(red, green, blue);
         }
     }
+    private static float ub2f(byte b) {
+        return (b & 0xFF) / 255.0F;
+    }
 
-    private static boolean changeColor(double red, double green, double blue, double alpha) {
+    private static float b2f(byte b) {
+        return ((b - Byte.MIN_VALUE) & 0xFF) / 255.0F;
+    }
+
+    private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
         if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
             Color.red = red;
