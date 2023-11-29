@@ -13,10 +13,10 @@ public class GlStateTracker {
     private static final int UNASSIGNED_HANDLE = -1;
 
     private final int[] bufferState = new int[GlBufferTarget.COUNT];
-    private final int[] bufferRestoreState = new int[GlBufferTarget.COUNT];
+    //private final int[] bufferRestoreState = new int[GlBufferTarget.COUNT];
 
     private int vertexArrayState;
-    private int vertexArrayRestoreState;
+    //private int vertexArrayRestoreState;
 
     public GlStateTracker() {
         this.clearRestoreState();
@@ -28,10 +28,6 @@ public class GlStateTracker {
 
     private boolean makeBufferActive(GlBufferTarget target, int buffer) {
         int prevBuffer = this.bufferState[target.ordinal()];
-
-        if (prevBuffer == UNASSIGNED_HANDLE) {
-            this.bufferRestoreState[target.ordinal()] = GL11.glGetInteger(target.getBindingParameter());
-        }
 
         this.bufferState[target.ordinal()] = buffer;
 
@@ -45,10 +41,6 @@ public class GlStateTracker {
     private boolean makeVertexArrayActive(int array) {
         int prevArray = this.vertexArrayState;
 
-        if (prevArray == UNASSIGNED_HANDLE) {
-            this.vertexArrayRestoreState = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        }
-
         this.vertexArrayState = array;
 
         return prevArray != array;
@@ -56,21 +48,17 @@ public class GlStateTracker {
 
     public void applyRestoreState() {
         for (int i = 0; i < GlBufferTarget.COUNT; i++) {
-            if (this.bufferState[i] != this.bufferRestoreState[i] && this.bufferRestoreState[i] != UNASSIGNED_HANDLE) {
-            	GL15.glBindBuffer(GlBufferTarget.VALUES[i].getTargetParameter(), this.bufferRestoreState[i]);
-            }
+            GL15.glBindBuffer(GlBufferTarget.VALUES[i].getTargetParameter(), 0);
         }
 
-        if (this.vertexArrayState != this.vertexArrayRestoreState && this.vertexArrayRestoreState != UNASSIGNED_HANDLE) {
-            GL30.glBindVertexArray(this.vertexArrayRestoreState);
-        }
+        GL30.glBindVertexArray(0);
     }
 
     public void clearRestoreState() {
         Arrays.fill(this.bufferState, UNASSIGNED_HANDLE);
-        Arrays.fill(this.bufferRestoreState, UNASSIGNED_HANDLE);
+        //Arrays.fill(this.bufferRestoreState, UNASSIGNED_HANDLE);
 
         this.vertexArrayState = UNASSIGNED_HANDLE;
-        this.vertexArrayRestoreState = UNASSIGNED_HANDLE;
+        //this.vertexArrayRestoreState = UNASSIGNED_HANDLE;
     }
 }
