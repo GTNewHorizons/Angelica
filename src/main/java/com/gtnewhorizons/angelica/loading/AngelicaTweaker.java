@@ -101,10 +101,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         mixins.add("notfine.clouds.MixinRenderGlobal");
         mixins.add("notfine.clouds.MixinWorldType");
 
-        mixins.add("notfine.faceculling.MixinBlock");
-        mixins.add("notfine.faceculling.MixinBlockSlab");
-        mixins.add("notfine.faceculling.MixinBlockSnow");
-        mixins.add("notfine.faceculling.MixinBlockStairs");
+
 
         mixins.add("notfine.glint.MixinItemRenderer");
         mixins.add("notfine.glint.MixinRenderBiped");
