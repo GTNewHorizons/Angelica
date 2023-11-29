@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.client.gui;
 
-import jss.notfine.gui.ISettingsEnum;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
 
-public enum AngelicaVideoSettings implements ISettingsEnum {
+public enum AngelicaVideoSettings {
     SHADERS("options.button.shader");
 
     private final String unlocalizedButton;

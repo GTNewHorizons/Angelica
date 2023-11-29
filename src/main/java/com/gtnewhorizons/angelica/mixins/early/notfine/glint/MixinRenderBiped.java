@@ -18,7 +18,7 @@ public abstract class MixinRenderBiped {
         )
     )
     private boolean notFine$toggleGlint(ItemStack stack) {
-        return Settings.MODE_GLINT_WORLD.isValueBase() && stack.isItemEnchanted();
+        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.isItemEnchanted();
     }
 
 }

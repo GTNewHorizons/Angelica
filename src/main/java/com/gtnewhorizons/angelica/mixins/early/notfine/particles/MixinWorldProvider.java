@@ -16,7 +16,7 @@ public class MixinWorldProvider {
      */
     @Overwrite
     public boolean getWorldHasVoidParticles() {
-        return Settings.PARTICLES_VOID.isValueBase() && terrainType.hasVoidParticles(hasNoSky);
+        return (boolean)Settings.PARTICLES_VOID.option.getStore() && terrainType.hasVoidParticles(hasNoSky);
     }
 
     @Shadow public WorldType terrainType;

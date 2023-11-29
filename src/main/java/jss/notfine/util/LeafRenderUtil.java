@@ -2,6 +2,7 @@ package jss.notfine.util;
 
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
+import jss.notfine.gui.options.named.LeavesQuality;
 import net.minecraft.block.Block;
 import net.minecraft.util.Facing;
 import net.minecraft.world.IBlockAccess;
@@ -30,11 +31,11 @@ public class LeafRenderUtil {
             return false;
         }
         if(otherBlock instanceof ILeafBlock) {
-            switch ((int) Settings.MODE_LEAVES.getValue()) {
-                case 1, 2 -> {
+            switch ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()) {
+                case FANCY, SMART -> {
                     return false;
                 }
-                case 3, 4 -> {
+                case SHELLED_FANCY, SHELLED_FAST -> {
                     x -= Facing.offsetsXForSide[side];
                     y -= Facing.offsetsYForSide[side];
                     z -= Facing.offsetsZForSide[side];

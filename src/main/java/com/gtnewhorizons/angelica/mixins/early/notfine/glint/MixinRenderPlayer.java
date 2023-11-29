@@ -18,7 +18,7 @@ public abstract class MixinRenderPlayer {
         )
     )
     private boolean notFine$toggleGlint(ItemStack stack) {
-        return Settings.MODE_GLINT_WORLD.isValueBase() && stack.isItemEnchanted();
+        return stack.isItemEnchanted() && (boolean)Settings.MODE_GLINT_WORLD.option.getStore();
     }
 
 }

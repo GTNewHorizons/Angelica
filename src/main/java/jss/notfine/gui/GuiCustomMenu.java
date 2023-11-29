@@ -1,81 +1,58 @@
 package jss.notfine.gui;
 
-import jss.notfine.NotFine;
 import jss.notfine.core.Settings;
-import jss.notfine.core.SettingsManager;
+import me.jellysquid.mods.sodium.client.gui.options.Option;
+import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
+import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiListExtended;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.settings.GameSettings;
 import org.lwjgl.input.Keyboard;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Stream;
 
 public class GuiCustomMenu extends GuiScreen {
-    private static final HashMap<Class<?>, ISettingHandler> buttonHandlers = new HashMap<>();
+    public static GuiCustomMenu instance;
+    public static HashSet<OptionStorage<?>> dirtyStorages = new HashSet<>();
     private final GuiScreen parentGuiScreen;
-    private final MenuButtonLists buttonEnum;
+    private final OptionPage optionPage;
+    private final OptionPage[] subPages;
     protected String screenTitle;
+
 
     private GuiListExtended optionsRowList;
 
-    static {
-        addButtonHandler(Settings.class, (xPosition, yPosition, setting) -> {
-            Settings customSetting = (Settings)setting;
-            if(customSetting.slider)
-                return (new GuiCustomSettingSlider(xPosition, yPosition, customSetting));
-            else
-                return (new GuiCustomSettingButton(xPosition, yPosition, customSetting));
-        });
-        addButtonHandler(GameSettings.Options.class, (xPosition, yPosition, setting) -> {
-            GameSettings.Options vanillaSetting = (GameSettings.Options)setting;
-            if (vanillaSetting.getEnumFloat())
-                return (new GuiVanillaSettingSlider(xPosition, yPosition, vanillaSetting));
-            else
-                return (new GuiVanillaSettingButton(xPosition, yPosition, vanillaSetting));
-        });
-        addButtonHandler(MenuButtonLists.class, (xPosition, yPosition, setting) -> {
-            MenuButtonLists menuType = (MenuButtonLists)setting;
-            return new GuiCustomMenuButton(xPosition, yPosition, menuType);
-        });
-    }
-
-    public GuiCustomMenu(GuiScreen parentGuiScreen, MenuButtonLists buttonEnum) {
+    public GuiCustomMenu(GuiScreen parentGuiScreen, OptionPage optionPage, OptionPage... subPages) {
         this.parentGuiScreen = parentGuiScreen;
-        this.screenTitle = buttonEnum.getTitleLabel();
-        this.buttonEnum = buttonEnum;
-    }
+        this.screenTitle = optionPage.getName();
+        this.optionPage = optionPage;
+        this.subPages = subPages;
 
-    public static void addButtonHandler(Class<?> cls, ISettingHandler handler) {
-        buttonHandlers.put(cls, handler);
-    }
-
-    public static GuiButton createButton(int xPosition, int yPosition, Enum<?> setting) {
-        if(setting == null) return null;
-
-        final ISettingHandler buttonHandler = buttonHandlers.get((setting).getDeclaringClass());
-        if (buttonHandler == null) {
-            NotFine.logger.debug("No handler for setting: " + setting.getClass().getName());
-            return null;
-        }
-        return buttonHandler.createButton(xPosition, yPosition, setting);
     }
 
     @Override
     public void initGui() {
         buttonList.clear();
-        buttonList.add(new GuiButton(200, width / 2 - 100, height - 27, I18n.format("gui.done")));
-
-        optionsRowList = new GuiCustomSettingsRowList(mc, width, height, 32, height - 32, 25, buttonEnum);
+        buttonList.add(new GuiButton(200, width / 2 - 110, height - 27, I18n.format("gui.done")));
+        optionsRowList = new GuiCustomOptionsRowList(mc, width, height, 32, height - 32, 25, optionPage, subPages);
+        instance = this;
     }
 
     @Override
     protected void actionPerformed(GuiButton button) {
         if(button.enabled && button.id == 200) {
             if(!(parentGuiScreen instanceof GuiCustomMenu)) {
-                saveSettings();
+                saveChanges();
             }
             mc.displayGuiScreen(parentGuiScreen);
         }
@@ -120,15 +97,17 @@ public class GuiCustomMenu extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) {
-        if(keyCode == Keyboard.KEY_ESCAPE) {
-            saveSettings();
+        if(keyCode == Keyboard.KEY_ESCAPE && !(parentGuiScreen instanceof GuiCustomMenu)) {
+            saveChanges();
         }
         super.keyTyped(typedChar, keyCode);
     }
 
-    private void saveSettings() {
-        mc.gameSettings.saveOptions();
-        SettingsManager.settingsFile.saveSettings();
+    private void saveChanges() {
+        for(OptionStorage<?> storage : dirtyStorages) {
+            storage.save();
+        }
+        dirtyStorages = new HashSet<>();
     }
 
 }

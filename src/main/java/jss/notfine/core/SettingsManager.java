@@ -1,6 +1,13 @@
 package jss.notfine.core;
 
-import jss.notfine.config.VideoSettingsConfig;
+import jss.notfine.config.VideoSettings;
+import jss.notfine.gui.options.named.AlwaysNever;
+import jss.notfine.gui.options.named.BackgroundSelect;
+import jss.notfine.gui.options.named.DownfallQuality;
+import jss.notfine.gui.options.named.GraphicsQualityOff;
+import jss.notfine.gui.options.named.GraphicsToggle;
+import jss.notfine.gui.options.named.LeavesQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.init.Blocks;
@@ -13,8 +20,8 @@ public class SettingsManager {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    public static VideoSettingsConfig settingsFile = new VideoSettingsConfig(
-        new File(Launch.minecraftHome + File.separator + "optionsGraphics.cfg")
+    public static VideoSettings settingsFile = new VideoSettings(
+        new File(Launch.minecraftHome + File.separator + "optionsnf.txt")
     );
 
     public static int minimumFarPlaneDistance;
@@ -38,121 +45,79 @@ public class SettingsManager {
     };
 
     public static void backgroundUpdated() {
-        int value = (int)Settings.GUI_BACKGROUND.getValue();
-        if(value < 0 || value >= extraBackgrounds.length) {
+        int value = ((BackgroundSelect)Settings.GUI_BACKGROUND.option.getStore()).ordinal();
+        if(value == 0) {
             Gui.optionsBackground = defaultBackground;
         } else {
-            Gui.optionsBackground = extraBackgrounds[(int)Settings.GUI_BACKGROUND.getValue()];
+            Gui.optionsBackground = extraBackgrounds[((BackgroundSelect)Settings.GUI_BACKGROUND.option.getStore()).ordinal() - 1];
         }
     }
 
     public static void cloudsUpdated() {
-        if(Settings.MODE_CLOUDS.getValue() != 2f) {
-            minimumFarPlaneDistance = (int)(32f * Settings.RENDER_DISTANCE_CLOUDS.getValue());
-            minimumFarPlaneDistance += Math.abs(Settings.CLOUD_HEIGHT.getValue());
+        if(Settings.MODE_CLOUDS.option.getStore() != GraphicsQualityOff.OFF) {
+            minimumFarPlaneDistance = 32 * (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore();
+            minimumFarPlaneDistance += Math.abs((int)Settings.CLOUD_HEIGHT.option.getStore());
             mc.gameSettings.clouds = true;
         } else {
             minimumFarPlaneDistance = 128;
             mc.gameSettings.clouds = false;
         }
-        switch((int) Settings.MODE_CLOUD_TRANSLUCENCY.getValue()) {
-            case -1:
-                cloudTranslucencyCheck = Settings.CLOUD_HEIGHT.getValue();
-                break;
-            case 0:
-                cloudTranslucencyCheck = Double.NEGATIVE_INFINITY;
-                break;
-            case 1:
-                cloudTranslucencyCheck = Double.POSITIVE_INFINITY;
-                break;
+        switch((AlwaysNever)Settings.MODE_CLOUD_TRANSLUCENCY.option.getStore()) {
+            case DEFAULT -> cloudTranslucencyCheck = (int)Settings.CLOUD_HEIGHT.option.getStore();
+            case ALWAYS -> cloudTranslucencyCheck = Double.NEGATIVE_INFINITY;
+            case NEVER -> cloudTranslucencyCheck = Double.POSITIVE_INFINITY;
         }
     }
 
     public static void downfallDistanceUpdated() {
-        switch((int)Settings.DOWNFALL_DISTANCE.getValue()) {
-            case -1:
-                downfallDistance = (byte)(mc.gameSettings.fancyGraphics ? 10 : 5);
-                break;
-            case 0:
-                downfallDistance = (byte)5;
-                break;
-            case 1:
-                downfallDistance = (byte)10;
-                break;
-            case 2:
-                downfallDistance = (byte)15;
-                break;
-            case 3:
-                downfallDistance = (byte)0;
-                break;
+        switch((DownfallQuality)Settings.DOWNFALL_DISTANCE.option.getStore()) {
+            case DEFAULT -> downfallDistance = (byte) (mc.gameSettings.fancyGraphics ? 10 : 5);
+            case FAST -> downfallDistance = (byte) 5;
+            case FANCY -> downfallDistance = (byte) 10;
+            case ULTRA -> downfallDistance = (byte) 15;
+            case OFF -> downfallDistance = (byte) 0;
         }
     }
 
     public static void leavesUpdated() {
-        mc.renderGlobal.loadRenderers();
-        leavesOpaque = Settings.MODE_LEAVES.getValue() == 1 || (Settings.MODE_LEAVES.getValue() == -1 && !mc.gameSettings.fancyGraphics);
+        //Do not re-enable, see MixinBlockLeaves workaround for Angelica/Sodium style menus.
+        //mc.renderGlobal.loadRenderers();
+        LeavesQuality value = (LeavesQuality)Settings.MODE_LEAVES.option.getStore();
+        leavesOpaque = value == LeavesQuality.FANCY || (value == LeavesQuality.DEFAULT && !mc.gameSettings.fancyGraphics);
         Blocks.leaves.setGraphicsLevel(!leavesOpaque);
         Blocks.leaves2.setGraphicsLevel(!leavesOpaque);
     }
 
     public static void shadowsUpdated() {
-        switch((int)Settings.MODE_SHADOWS.getValue()) {
-            case -1:
-                shadows = mc.gameSettings.fancyGraphics;
-                break;
-            case 0:
-                shadows = true;
-                break;
-            case 1:
-                shadows = false;
-                break;
+        switch((GraphicsToggle)Settings.MODE_SHADOWS.option.getStore()) {
+            case DEFAULT -> shadows = mc.gameSettings.fancyGraphics;
+            case ON-> shadows = true;
+            case OFF -> shadows = false;
         }
     }
 
     public static void droppedItemDetailUpdated() {
-        switch((int)Settings.MODE_DROPPED_ITEMS.getValue()) {
-            case -1:
-                droppedItemDetail = mc.gameSettings.fancyGraphics;
-                break;
-            case 0:
-                droppedItemDetail = true;
-                break;
-            case 1:
-                droppedItemDetail = false;
-                break;
+        switch((GraphicsQuality)Settings.MODE_DROPPED_ITEMS.option.getStore()) {
+            case DEFAULT -> droppedItemDetail = mc.gameSettings.fancyGraphics;
+            case FANCY -> droppedItemDetail = true;
+            case FAST -> droppedItemDetail = false;
         }
     }
 
     public static void waterDetailUpdated() {
-        switch((int)Settings.MODE_DROPPED_ITEMS.getValue()) {
-            case -1:
-                waterDetail = mc.gameSettings.fancyGraphics;
-                break;
-            case 0:
-                waterDetail = true;
-                break;
-            case 1:
-                waterDetail = false;
-                break;
+        switch((GraphicsQuality)Settings.MODE_WATER.option.getStore()) {
+            case DEFAULT -> waterDetail = mc.gameSettings.fancyGraphics;
+            case FANCY -> waterDetail = true;
+            case FAST -> waterDetail = false;
         }
     }
 
     public static void vignetteUpdated() {
-        switch((int)Settings.MODE_VIGNETTE.getValue()) {
-            case -1:
-                vignette = mc.gameSettings.fancyGraphics;
-                break;
-            case 0:
-                vignette = true;
-                break;
-            case 1:
-                vignette = false;
-                break;
+        switch((GraphicsToggle)Settings.MODE_VIGNETTE.option.getStore()) {
+            case DEFAULT -> vignette = mc.gameSettings.fancyGraphics;
+            case ON -> vignette = true;
+            case OFF -> vignette = false;
         }
-    }
-
-    public static void entityRenderDistanceUpdated() {
-        entityRenderScaleFactor = Settings.RENDER_DISTANCE_ENTITIES.getValue();
     }
 
     public static void graphicsUpdated() {

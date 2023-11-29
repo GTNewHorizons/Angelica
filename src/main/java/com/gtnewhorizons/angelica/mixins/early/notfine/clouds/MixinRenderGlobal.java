@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
 import jss.notfine.core.Settings;
+import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -33,8 +34,8 @@ public abstract class MixinRenderGlobal {
             return;
         }
         if(mc.theWorld.provider.isSurfaceWorld()) {
-            int cloudMode = (int)Settings.MODE_CLOUDS.getValue();
-            if(cloudMode == 0 || cloudMode == -1 && mc.gameSettings.fancyGraphics) {
+            GraphicsQualityOff cloudMode = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
+            if(cloudMode == GraphicsQualityOff.FANCY || cloudMode == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics) {
                 renderCloudsFancy(partialTicks);
             } else {
                 renderCloudsFast(partialTicks);
@@ -68,7 +69,7 @@ public abstract class MixinRenderGlobal {
         }
         double cloudTick = ((float)cloudTickCounter + partialTicks);
 
-        float cloudScale = Settings.CLOUD_SCALE.getValue();
+        float cloudScale = (int)Settings.CLOUD_SCALE.option.getStore() * 0.25f;
         float cloudInteriorWidth = 12.0F * cloudScale;
         float cloudInteriorHeight = 4.0F * cloudScale;
         float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
@@ -86,7 +87,7 @@ public abstract class MixinRenderGlobal {
         float cloudScrollingZ = (float)MathHelper.floor_double(cameraOffsetZ) * scrollSpeed;
 
         float cloudWidth = 8f;
-        int renderRadius = (int)(Settings.RENDER_DISTANCE_CLOUDS.getValue() / (cloudScale * 2f));
+        int renderRadius = (int)((int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore() / (cloudScale * 2f));
         float edgeOverlap = 0.0001f;//0.001F;
         GL11.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
@@ -214,8 +215,8 @@ public abstract class MixinRenderGlobal {
         cameraOffsetX -= MathHelper.floor_double(cameraOffsetX / 2048.0D) * 2048;
         cameraOffsetZ -= MathHelper.floor_double(cameraOffsetZ / 2048.0D) * 2048;
 
-        float renderRadius = 32 * Settings.RENDER_DISTANCE_CLOUDS.getValue();
-        double uvScale = 0.0005D / Settings.CLOUD_SCALE.getValue();
+        float renderRadius = 32 * (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore();
+        double uvScale = 0.0005D / (int)Settings.CLOUD_SCALE.option.getStore() * 0.25f;
 
         float uvShiftX = (float)(cameraOffsetX * uvScale);
         float uvShiftZ = (float)(cameraOffsetZ * uvScale);

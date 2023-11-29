@@ -13,7 +13,7 @@ public abstract class MixinGuiSlot {
 
     @Inject(method = "drawContainerBackground", at = @At("HEAD"), cancellable = true, remap = false)
     private void notFine$toggleContainerBackground(CallbackInfo ci) {
-        if(!Settings.MODE_GUI_BACKGROUND.isValueBase() && Minecraft.getMinecraft().theWorld != null) {
+        if(!(boolean)Settings.MODE_GUI_BACKGROUND.option.getStore() && Minecraft.getMinecraft().theWorld != null) {
             ci.cancel();
         }
     }

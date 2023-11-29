@@ -14,7 +14,7 @@ public abstract class MixinRenderGlobal {
 
     @Inject(method = "renderSky", at = @At("HEAD"), cancellable = true)
     void notFine$toggleSky(CallbackInfo ci) {
-        if(!Settings.MODE_SKY.isValueBase()) ci.cancel();
+        if(!(boolean)Settings.MODE_SKY.option.getStore()) ci.cancel();
     }
 
     /**

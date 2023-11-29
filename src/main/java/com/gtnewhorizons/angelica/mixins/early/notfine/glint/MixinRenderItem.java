@@ -22,7 +22,7 @@ public abstract class MixinRenderItem {
 	 */
 	@Overwrite
     private void renderGlint(int unused, int posX, int posY, int width, int height) {
-        if(!Settings.MODE_GLINT_INV.isValueBase()) {
+        if(!(boolean)Settings.MODE_GLINT_INV.option.getStore()) {
             return;
         }
         final float timeUVSpeed = 0.00390625F;
@@ -71,7 +71,7 @@ public abstract class MixinRenderItem {
         remap = false
     )
     private boolean notFine$toggleGlint(ItemStack stack, int pass) {
-        return Settings.MODE_GLINT_WORLD.isValueBase() && stack.hasEffect(pass);
+        return stack.hasEffect(pass) && (boolean)Settings.MODE_GLINT_WORLD.option.getStore();
     }
 
     @Shadow public float zLevel;

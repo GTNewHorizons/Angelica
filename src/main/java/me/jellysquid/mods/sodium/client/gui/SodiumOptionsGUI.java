@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.client.gui.GuiShaders;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
-import jss.notfine.gui.MenuButtonLists;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -21,13 +20,11 @@ import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiVideoSettings;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -318,7 +315,8 @@ public class SodiumOptionsGUI extends GuiScreen {
         }
 
         if (keyCode == Keyboard.KEY_P && isShiftKeyDown()) {
-            this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, MenuButtonLists.VIDEO));
+            this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(),
+                SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
         }
     }
 
