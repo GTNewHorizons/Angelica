@@ -40,6 +40,8 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
+    public static final boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
+
     // GLStateManager State Trackers
     @Getter private static int activeTexture;
     @Getter private static final BlendState blendState = new BlendState();
@@ -161,7 +163,7 @@ public class GLStateManager {
             OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             return;
         }
-        if (blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
+        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
             blendState.srcRgb = srcFactor;
             blendState.dstRgb = dstFactor;
             GL11.glBlendFunc(srcFactor, dstFactor);
@@ -182,7 +184,7 @@ public class GLStateManager {
             srcAlpha = GL11.GL_ONE;
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
-        if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
+        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
             blendState.srcRgb = srcRgb;
             blendState.dstRgb = dstRgb;
             blendState.srcAlpha = srcAlpha;
@@ -196,7 +198,7 @@ public class GLStateManager {
 
     public static void glDepthFunc(int func) {
         // Hacky workaround for now, need to figure out why this isn't being applied...
-        if (func != depthState.func || GLStateManager.runningSplash) {
+        if (GLStateManager.BYPASS_CACHE || func != depthState.func || GLStateManager.runningSplash) {
             depthState.func = func;
             GL11.glDepthFunc(func);
         }
@@ -286,7 +288,7 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
             Color.red = red;
             Color.green = green;
             Color.blue = blue;
@@ -307,7 +309,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
             ColorMask.red = red;
             ColorMask.green = green;
             ColorMask.blue = blue;
@@ -318,7 +320,7 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
             ClearColor.red = red;
             ClearColor.green = green;
             ClearColor.blue = blue;
@@ -363,7 +365,7 @@ public class GLStateManager {
     // Textures
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (activeTexture != newTexture) {
+        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture) {
             activeTexture = newTexture;
             GL13.glActiveTexture(texture);
         }
@@ -371,14 +373,14 @@ public class GLStateManager {
 
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (activeTexture != newTexture) {
+        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture) {
             activeTexture = newTexture;
             ARBMultitexture.glActiveTextureARB(texture);
         }
     }
 
     public static void glBindTexture(int target, int texture) {
-        if (Textures[activeTexture].binding != texture) {
+        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture) {
             Textures[activeTexture].binding = texture;
             GL11.glBindTexture(target, texture);
             if (AngelicaConfig.enableIris) {
@@ -552,7 +554,7 @@ public class GLStateManager {
     }
 
     public static void fogColor(float red, float green, float blue, float alpha) {
-        if (red != fogState.fogColor.x || green != fogState.fogColor.y || blue != fogState.fogColor.z || alpha != fogState.fogAlpha) {
+        if (GLStateManager.BYPASS_CACHE || red != fogState.fogColor.x || green != fogState.fogColor.y || blue != fogState.fogColor.z || alpha != fogState.fogAlpha) {
             fogState.fogColor.set(red, green, blue);
             fogState.fogAlpha = alpha;
             fogState.fogColorBuffer.clear();
@@ -600,7 +602,7 @@ public class GLStateManager {
     }
 
     public static void glShadeModel(int mode) {
-        if (modelShadeMode != mode) {
+        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode) {
             modelShadeMode = mode;
             GL11.glShadeModel(mode);
         }
