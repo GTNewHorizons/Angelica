@@ -22,13 +22,12 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.ARBMultitexture;
-import org.lwjgl.opengl.EXTBlendFuncSeparate;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL14;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -127,9 +126,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (HUDCaching.renderingCacheOverride) {
-            hudCaching$blendEnabled = true;
-        }
+        hudCaching$blendEnabled = true;
         blendState.mode.enable();
     }
 
@@ -140,9 +137,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (HUDCaching.renderingCacheOverride) {
-            hudCaching$blendEnabled = false;
-        }
+        hudCaching$blendEnabled = false;
         blendState.mode.disable();
     }
 
@@ -154,7 +149,11 @@ public class GLStateManager {
             }
         }
         if (HUDCaching.renderingCacheOverride) {
-            GL14.glBlendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            blendState.srcRgb = srcFactor;
+            blendState.dstRgb = dstFactor;
+            blendState.srcAlpha = GL11.GL_ONE;
+            blendState.dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
+            OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             return;
         }
         if (blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
@@ -167,7 +166,7 @@ public class GLStateManager {
         if (blendFuncListener != null) blendFuncListener.run();
     }
 
-    public static void glBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+    public static void tryBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
                 BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
@@ -175,38 +174,15 @@ public class GLStateManager {
             }
         }
         if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
-            GL14.glBlendFuncSeparate(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            return;
+            srcAlpha = GL11.GL_ONE;
+            dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
         if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
             blendState.srcRgb = srcRgb;
             blendState.dstRgb = dstRgb;
             blendState.srcAlpha = srcAlpha;
             blendState.dstAlpha = dstAlpha;
-            GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
-        }
-
-        // Iris
-        if (blendFuncListener != null) blendFuncListener.run();
-    }
-
-    public static void glBlendFuncSeparateEXT(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (AngelicaConfig.enableIris) {
-            if (BlendModeStorage.isBlendLocked()) {
-                BlendModeStorage.deferBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
-                return;
-            }
-        }
-        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
-            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            return;
-        }
-        if (blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
-            blendState.srcRgb = srcRgb;
-            blendState.dstRgb = dstRgb;
-            blendState.srcAlpha = srcAlpha;
-            blendState.dstAlpha = dstAlpha;
-            EXTBlendFuncSeparate.glBlendFuncSeparateEXT(srcRgb, dstRgb, srcAlpha, dstAlpha);
+            OpenGlHelper.glBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
 
         // Iris
@@ -237,27 +213,25 @@ public class GLStateManager {
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
         if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < 1f) {
-            GL11.glColor4f(red, green, blue, 1f);
-            return;
+            alpha = 1f;
         }
         if (changeColor(red, green, blue, alpha)) {
             GL11.glColor4f(red, green, blue, alpha);
         }
     }
+
     public static void glColor4d(double red, double green, double blue, double alpha) {
         if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < 1d) {
-            GL11.glColor4d(red, green, blue, 1d);
-            return;
+            alpha = 1d;
         }
-        if (changeColor((float)red, (float)green, (float)blue, (float)alpha)) {
+        if (changeColor((float) red, (float) green, (float) blue, (float) alpha)) {
             GL11.glColor4d(red, green, blue, alpha);
         }
     }
 
     public static void glColor4b(byte red, byte green, byte blue, byte alpha) {
         if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < Byte.MAX_VALUE) {
-            GL11.glColor4b(red, green, blue, Byte.MAX_VALUE);
-            return;
+            alpha = Byte.MAX_VALUE;
         }
         if (changeColor(b2f(red), b2f(green), b2f(blue), b2f(alpha))) {
             GL11.glColor4b(red, green, blue, alpha);
@@ -266,8 +240,7 @@ public class GLStateManager {
 
     public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
         if (!hudCaching$blendEnabled && HUDCaching.renderingCacheOverride && alpha < Byte.MAX_VALUE) {
-            GL11.glColor4ub(red, green, blue, Byte.MAX_VALUE);
-            return;
+            alpha = Byte.MAX_VALUE;
         }
         if (changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha))) {
             GL11.glColor4ub(red, green, blue, alpha);
@@ -275,28 +248,29 @@ public class GLStateManager {
     }
 
     public static void glColor3f(float red, float green, float blue) {
-        if(changeColor(red, green, blue, 1.0F)) {
+        if (changeColor(red, green, blue, 1.0F)) {
             GL11.glColor3f(red, green, blue);
         }
     }
 
     public static void glColor3d(double red, double green, double blue) {
-        if(changeColor((float)red, (float)green, (float)blue, 1.0F)) {
+        if (changeColor((float) red, (float) green, (float) blue, 1.0F)) {
             GL11.glColor3d(red, green, blue);
         }
     }
 
     public static void glColor3b(byte red, byte green, byte blue) {
-        if(changeColor(b2f(red), b2f(green), b2f(blue), 1.0F)) {
+        if (changeColor(b2f(red), b2f(green), b2f(blue), 1.0F)) {
             GL11.glColor3b(red, green, blue);
         }
     }
 
     public static void glColor3ub(byte red, byte green, byte blue) {
-        if(changeColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F)) {
+        if (changeColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F)) {
             GL11.glColor3ub(red, green, blue);
         }
     }
+
     private static float ub2f(byte b) {
         return (b & 0xFF) / 255.0F;
     }
@@ -307,7 +281,7 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if(red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+        if (red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
             Color.red = red;
             Color.green = green;
             Color.blue = blue;
@@ -504,7 +478,7 @@ public class GLStateManager {
     }
 
     public static void defaultBlendFunc() {
-        glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     public static void enableCull() {

@@ -39,6 +39,7 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
+    private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
@@ -50,7 +51,7 @@ public class RedirectorTransformer implements IClassTransformer {
         "start" // SplashProgress
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final List<String> TransformerExclusions = Arrays.asList(
@@ -94,8 +95,11 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glTexImage2D")
             .add("glBindTexture"));
         methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
-        methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate"));
-        methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT"));
+        methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate", "tryBlendFuncSeparate"));
+        methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
+            .add("glBlendFunc", "tryBlendFuncSeparate")
+            .add("func_148821_a", "tryBlendFuncSeparate"));
+        methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
     }
 
@@ -121,6 +125,9 @@ public class RedirectorTransformer implements IClassTransformer {
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
+            if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
+                continue;
+            }
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {

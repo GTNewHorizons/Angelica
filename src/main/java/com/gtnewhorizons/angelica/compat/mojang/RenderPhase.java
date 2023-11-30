@@ -36,21 +36,21 @@ public abstract class RenderPhase {
     });
     protected static final Transparency GLINT_TRANSPARENCY = new Transparency("glint_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
     protected static final Transparency CRUMBLING_TRANSPARENCY = new Transparency("crumbling_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.glBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
     protected static final Transparency TRANSLUCENT_TRANSPARENCY = new Transparency("translucent_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
