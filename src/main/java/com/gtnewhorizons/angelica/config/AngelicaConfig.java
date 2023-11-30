@@ -36,4 +36,9 @@ public class AngelicaConfig {
     @Config.Comment("Show memory usage during game load. [From ArchaicFix]")
     @Config.DefaultBoolean(true)
     public static boolean showSplashMemoryBar;
+
+
+    @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance")
+    @Config.DefaultBoolean(false)
+    public static boolean hudCaching; // TODO disabled for now as it doesn't render items with an enchantment glint in the hotbar properly as well as doesn't render the vignette
 }

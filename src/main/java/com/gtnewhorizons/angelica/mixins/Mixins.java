@@ -129,9 +129,7 @@ public enum Mixins {
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
             "angelica.hudcaching.MixinGuiIngameForge_HUDCaching")
-        .setApplyIf(() -> false)),
-    // TODO add config for HUD caching
-    //  disabled for now as it doesn't render items with an enchantment glint in the hotbar properlu as well as doesn't render the vignette
+        .setApplyIf(() -> AngelicaConfig.hudCaching)),
 
     // TODO: Iris
 //    SHADERSMOD_COMPAT_PR_ILLUMINATION(
