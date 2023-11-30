@@ -38,7 +38,9 @@ public class AngelicaConfig {
     public static boolean showSplashMemoryBar;
 
 
-    @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance")
+    @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance. [Experimental]")
     @Config.DefaultBoolean(false)
-    public static boolean hudCaching; // TODO disabled for now as it doesn't render items with an enchantment glint in the hotbar properly as well as doesn't render the vignette
+    @Config.RequiresMcRestart
+    // TODO disabled for now as it doesn't render items with an enchantment glint in the hotbar properly as well as doesn't render the vignette
+    public static boolean enableHudCaching;
 }

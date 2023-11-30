@@ -129,7 +129,7 @@ public enum Mixins {
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
             "angelica.hudcaching.MixinGuiIngameForge_HUDCaching")
-        .setApplyIf(() -> AngelicaConfig.hudCaching)),
+        .setApplyIf(() -> AngelicaConfig.enableHudCaching)),
 
     // TODO: Iris
 //    SHADERSMOD_COMPAT_PR_ILLUMINATION(

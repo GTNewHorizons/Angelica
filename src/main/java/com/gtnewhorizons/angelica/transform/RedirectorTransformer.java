@@ -35,6 +35,7 @@ public class RedirectorTransformer implements IClassTransformer {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
     private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
+    private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
@@ -47,8 +48,7 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
-        "initializeTextures", "func_77474_a",
-        "start" // SplashProgress
+        "initializeTextures", "func_77474_a"
     );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
@@ -162,6 +162,15 @@ public class RedirectorTransformer implements IClassTransformer {
                         changed = true;
                         redirectInMethod = true;
                         remaps++;
+                    } else if (mNode.owner.startsWith(Drawable) && mNode.name.equals("makeCurrent")) {
+                        mNode.setOpcode(Opcodes.INVOKESTATIC);
+                        mNode.owner = GLStateManager;
+                        mNode.desc = "(L" + Drawable + ";)V";
+                        mNode.itf = false;
+                        changed = true;
+                        if (IrisLogging.ENABLE_SPAM) {
+                            AngelicaTweaker.LOGGER.info("Redirecting call in {} to GLStateManager.makeCurrent()", transformedName);
+                        }
                     } else {
                         final Map<String, String> redirects = methodRedirects.get(mNode.owner);
                         if (redirects != null && redirects.containsKey(mNode.name)) {
@@ -186,7 +195,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
             }
-            if (ASSERT_MAIN_THREAD && redirectInMethod && !((transformedName.startsWith(MinecraftClient) || transformedName.startsWith(SplashProgress)) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
+            if (ASSERT_MAIN_THREAD && redirectInMethod && !transformedName.startsWith(SplashProgress) && !(transformedName.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
                 mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateManager, "assertMainThread", "()V", false));
             }
         }

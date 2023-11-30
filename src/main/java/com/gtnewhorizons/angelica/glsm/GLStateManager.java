@@ -24,7 +24,9 @@ import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Vector3d;
+import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -33,6 +35,8 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.stream.IntStream;
+
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
@@ -65,6 +69,7 @@ public class GLStateManager {
     // Thread Checking
     @Getter
     private static final Thread MainThread = Thread.currentThread();
+    private static Thread CurrentThread = MainThread;
     private static boolean runningSplash = false;
 
     private static boolean hudCaching$blendEnabled;
@@ -83,8 +88,8 @@ public class GLStateManager {
     }
 
     public static void assertMainThread() {
-        if (Thread.currentThread() != MainThread || runningSplash) {
-            throw new IllegalStateException("Not on the main thread!");
+        if (Thread.currentThread() != CurrentThread && !runningSplash) {
+            LOGGER.info("Call from not the Current Thread! - " + Thread.currentThread().getName() + " Current thread: " + CurrentThread.getName());
         }
     }
 
@@ -612,5 +617,13 @@ public class GLStateManager {
 
     public static void setRunningSplash(boolean runningSplash) {
         GLStateManager.runningSplash = runningSplash;
+    }
+
+    public static void makeCurrent(Drawable drawable) throws LWJGLException {
+        drawable.makeCurrent();
+        final Thread currentThread = Thread.currentThread();
+
+        CurrentThread = currentThread;
+        LOGGER.info("Current thread: {}", currentThread.getName());
     }
 }
