@@ -78,7 +78,7 @@ public class HUDCaching {
         }
     }
 
-    /* END REMOVE DEBUG STUFF */
+    /* TODO END REMOVE DEBUG STUFF */
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
