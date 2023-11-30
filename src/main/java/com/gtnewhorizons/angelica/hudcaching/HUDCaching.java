@@ -18,9 +18,7 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.GuiIngameForge;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
@@ -90,10 +88,10 @@ public class HUDCaching {
     // TODO draw vignette
 
     @SuppressWarnings("unused")
-    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean p_73830_2_, int p_73830_3_, int p_73830_4_) {
+    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean b, int i, int j) {
 
         if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled) {
-            ingame.renderGameOverlay(partialTicks, p_73830_2_, p_73830_3_, p_73830_4_);
+            ingame.renderGameOverlay(partialTicks, b, i, j);
             return;
         }
 
@@ -136,7 +134,7 @@ public class HUDCaching {
             GLStateManager.disableLighting();
             GLStateManager.disableFog();
             renderingCacheOverride = true;
-            ingame.renderGameOverlay(partialTicks, p_73830_2_, p_73830_3_, p_73830_4_);
+            ingame.renderGameOverlay(partialTicks, b, i, j);
             renderingCacheOverride = false;
             mc.getFramebuffer().bindFramebuffer(false);
             GLStateManager.enableBlend();

@@ -13,14 +13,7 @@ public class MixinEntityRenderer_HUDCaching {
     @Redirect(
             method = "updateCameraAndRender",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiIngame;renderGameOverlay(FZII)V"))
-    public void angelica$renderCachedHUD(GuiIngame guiIngame, float partialTicks, boolean p_73830_2_, int p_73830_3_,
-            int p_73830_4_) {
-        HUDCaching.renderCachedHud(
-                (EntityRenderer) (Object) this,
-                guiIngame,
-                partialTicks,
-                p_73830_2_,
-                p_73830_3_,
-                p_73830_4_);
+    public void angelica$renderCachedHUD(GuiIngame guiIngame, float partialTicks, boolean b, int i, int j) {
+        HUDCaching.renderCachedHud((EntityRenderer) (Object) this, guiIngame, partialTicks, b, i, j);
     }
 }
