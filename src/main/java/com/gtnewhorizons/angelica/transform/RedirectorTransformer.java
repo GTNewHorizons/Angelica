@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -53,44 +51,13 @@ public class RedirectorTransformer implements IClassTransformer {
     );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, EXTBlendFunc, ARBMultiTexture, TessellatorClass);
-
-    private static final Map<String, Set<String>> EnabledRedirects = ImmutableMap.of(
-        GL11, Sets.newHashSet(
-             "glAlphaFunc"
-            ,"glBlendFunc"
-            ,"glClearColor"
-            ,"glColor3f"
-            ,"glColor3d"
-            ,"glColor3b"
-            ,"glColor3ub"
-            ,"glColor4f"
-            ,"glColor4d"
-            ,"glColor4b"
-            ,"glColor4ub"
-            ,"glColorMask"
-            ,"glDeleteTextures"
-            ,"glDepthFunc"
-            ,"glDepthMask"
-            ,"glDrawArrays"
-            ,"glFog"
-            ,"glFogf"
-            ,"glFogi"
-            ,"glShadeModel"
-            ,"glTexImage2D"
-            ,"glBindTexture"
-        )
-        , GL13, Sets.newHashSet("glActiveTexture")
-        , GL14, Sets.newHashSet("glBlendFuncSeparate")
-        , EXTBlendFunc, Sets.newHashSet("glBlendFuncSeparateEXT")
-        , ARBMultiTexture, Sets.newHashSet("glActiveTextureARB")
-    );
+    private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
-
     private static final List<String> TransformerExclusions = Arrays.asList(
-         "org.lwjgl"
-        ,"com.gtnewhorizons.angelica.glsm."
-        ,"com.gtnewhorizons.angelica.transform"
-        ,"me.eigenraven.lwjgl3ify"
+        "org.lwjgl",
+        "com.gtnewhorizons.angelica.glsm.",
+        "com.gtnewhorizons.angelica.transform",
+        "me.eigenraven.lwjgl3ify"
     );
     private static int remaps = 0;
 
@@ -103,6 +70,33 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, "Texture");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
         glCapRedirects.put(org.lwjgl.opengl.GL12.GL_RESCALE_NORMAL, "RescaleNormal");
+        methodRedirects.put(GL11, RedirectMap.newMap()
+            .add("glAlphaFunc")
+            .add("glBlendFunc")
+            .add("glClearColor")
+            .add("glColor3f")
+            .add("glColor3d")
+            .add("glColor3b")
+            .add("glColor3ub")
+            .add("glColor4f")
+            .add("glColor4d")
+            .add("glColor4b")
+            .add("glColor4ub")
+            .add("glColorMask")
+            .add("glDeleteTextures")
+            .add("glDepthFunc")
+            .add("glDepthMask")
+            .add("glDrawArrays")
+            .add("glFog")
+            .add("glFogf")
+            .add("glFogi")
+            .add("glShadeModel")
+            .add("glTexImage2D")
+            .add("glBindTexture"));
+        methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
+        methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate"));
+        methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT"));
+        methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
     }
 
     @Override
@@ -162,13 +156,14 @@ public class RedirectorTransformer implements IClassTransformer {
                         redirectInMethod = true;
                         remaps++;
                     } else {
-                        final Set<String> redirects = EnabledRedirects.get(mNode.owner);
-                        if (redirects != null && redirects.contains(mNode.name)) {
+                        final Map<String, String> redirects = methodRedirects.get(mNode.owner);
+                        if (redirects != null && redirects.containsKey(mNode.name)) {
                             if (IrisLogging.ENABLE_SPAM) {
                                 final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, mNode.name, mNode.desc);
+                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
                             }
                             mNode.owner = GLStateManager;
+                            mNode.name = redirects.get(mNode.name);
                             changed = true;
                             redirectInMethod = true;
                             remaps++;
@@ -230,6 +225,22 @@ public class RedirectorTransformer implements IClassTransformer {
             output.write(data);
         } catch (IOException e) {
             AngelicaTweaker.LOGGER.error("Could not save transformed class (byte[]) " + transformedName, e);
+        }
+    }
+
+    private static class RedirectMap<K> extends HashMap<K, K> {
+        public static RedirectMap<String> newMap() {
+            return new RedirectMap<>();
+        }
+
+        public RedirectMap<K> add(K name) {
+            this.put(name, name);
+            return this;
+        }
+
+        public RedirectMap<K> add(K name, K newName) {
+            this.put(name, newName);
+            return this;
         }
     }
 
