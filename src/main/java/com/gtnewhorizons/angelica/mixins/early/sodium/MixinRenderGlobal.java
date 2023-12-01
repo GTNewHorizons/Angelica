@@ -67,7 +67,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderer = SodiumWorldRenderer.create(mc);
     }
 
-    @Inject(method="Lnet/minecraft/client/renderer/RenderGlobal;setWorldAndLoadRenderers(Lnet/minecraft/client/multiplayer/WorldClient;)V", at=@At("HEAD"))
+    @Inject(method="Lnet/minecraft/client/renderer/RenderGlobal;setWorldAndLoadRenderers(Lnet/minecraft/client/multiplayer/WorldClient;)V", at=@At("RETURN"))
     private void sodium$setWorldAndLoadRenderers(WorldClient world, CallbackInfo ci) {
         RenderDevice.enterManagedCode();
         try {
