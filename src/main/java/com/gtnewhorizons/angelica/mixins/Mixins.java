@@ -127,7 +127,8 @@ public enum Mixins {
 
     ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium).addMixinClasses(
-            "angelica.textures.MixinTextureAtlasSprite"
+             "angelica.textures.MixinTextureAtlasSprite"
+            ,"angelica.textures.MixinTextureUtil"
         )),
 
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
