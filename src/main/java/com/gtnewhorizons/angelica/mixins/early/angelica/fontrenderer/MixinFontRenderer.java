@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.angelica;
+package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;

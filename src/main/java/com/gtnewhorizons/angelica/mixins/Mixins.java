@@ -24,8 +24,14 @@ public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinEntityRenderer"
-            ,"angelica.MixinGuiIngameForge"
-            ,"angelica.MixinFontRenderer"
+
+        )
+    ),
+
+    ANGELICA_FONT_RENDERER(new Builder("Angelica Font Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableFontRenderer).addMixinClasses(
+             "angelica.fontrenderer.MixinGuiIngameForge"
+            ,"angelica.fontrenderer.MixinFontRenderer"
         )
     ),
 
