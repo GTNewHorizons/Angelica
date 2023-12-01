@@ -41,7 +41,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.22")
 
     // Iris Shaders
-    shadowImplementation('org.jetbrains:annotations:24.0.1') // Apache 2.0
+    compileOnly('org.jetbrains:annotations:24.0.1')
     shadowImplementation("it.unimi.dsi:fastutil:8.2.1") // Apache 2.0
     shadowImplementation("org.joml:joml:1.10.5") // MIT
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
