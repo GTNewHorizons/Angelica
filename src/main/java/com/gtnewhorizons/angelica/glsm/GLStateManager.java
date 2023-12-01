@@ -74,6 +74,8 @@ public class GLStateManager {
     private static Thread CurrentThread = MainThread;
     private static boolean runningSplash = false;
 
+    private static boolean inGLNewList = false;
+
     private static boolean hudCaching$blendEnabled;
 
     public static void init() {
@@ -380,9 +382,17 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture) {
-            Textures[activeTexture].binding = texture;
+        if(inGLNewList) {
+            // Binding a texture, while building a list, is not allowed and is a silent noop
+            Throwable throwable = new Throwable();
+            LOGGER.info("Naughty naughty, someone's making a texture binding in a display list!", throwable);
+            return;
+        }
+
+        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture || runningSplash) {
             GL11.glBindTexture(target, texture);
+
+            Textures[activeTexture].binding = texture;
             if (AngelicaConfig.enableIris) {
                 TextureTracker.INSTANCE.onBindTexture(texture);
             }
@@ -408,6 +418,7 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             iris$onDeleteTexture(id);
         }
+        Textures[activeTexture].binding = -1;
         GL11.glDeleteTextures(id);
     }
 
@@ -417,6 +428,7 @@ public class GLStateManager {
                 iris$onDeleteTexture(id);
             }
         }
+        Textures[activeTexture].binding = -1;
         GL11.glDeleteTextures(ids);
     }
 
@@ -465,8 +477,7 @@ public class GLStateManager {
     }
 
     public static void setFilter(boolean bilinear, boolean mipmap) {
-        int j;
-        int i;
+        int i, j;
         if (bilinear) {
             i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR;
             j = GL11.GL_LINEAR;
@@ -628,4 +639,31 @@ public class GLStateManager {
         CurrentThread = currentThread;
         LOGGER.info("Current thread: {}", currentThread.getName());
     }
+
+    public static void glNewList(int list, int mode) {
+        if(inGLNewList) {
+            throw new RuntimeException("glNewList called inside of a display list!");
+        }
+        inGLNewList = true;
+        GL11.glNewList(list, mode);
+    }
+
+    public static void glEndList() {
+        if(!inGLNewList) {
+            throw new RuntimeException("glEndList called outside of a display list!");
+        }
+        inGLNewList = false;
+        GL11.glEndList();
+    }
+
+    public static void glPushAttrib(int mask) {
+        // TODO: Proper state tracking; but at least for now the current cases of this didn't do anything related to textures and
+        // just overly broadly set ALL_BITS :facepalm:
+        GL11.glPushAttrib(mask & ~(GL11.GL_TEXTURE_BIT));
+    }
+
+    public static void glPopAttrib() {
+        GL11.glPopAttrib();
+    }
+
 }
