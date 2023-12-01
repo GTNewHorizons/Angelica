@@ -68,7 +68,8 @@ public enum Mixins {
 
     SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
-             "sodium.MixinChunkProviderClient"
+            "sodium.MixinChunkProviderClient"
+            ,"sodium.MixinBlock"
             ,"sodium.MixinEntity"
             ,"sodium.MixinRenderManager"
             ,"sodium.MixinExtendedBlockStorage"
