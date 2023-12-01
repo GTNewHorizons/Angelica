@@ -47,5 +47,5 @@ public class AngelicaConfig {
     @Config.Comment("Batch render fonts [Experimental]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
-    public static Boolean enableFontRenderer;
+    public static boolean enableFontRenderer;
 }
