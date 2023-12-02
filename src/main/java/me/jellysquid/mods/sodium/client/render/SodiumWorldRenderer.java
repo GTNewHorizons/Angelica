@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -24,6 +26,9 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
+import net.coderbot.iris.pipeline.ShadowRenderer;
+import net.coderbot.iris.shadows.ShadowRenderingState;
+import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -62,16 +67,15 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     private final LongSet loadedChunkPositions = new LongOpenHashSet();
     private final Set<TileEntity> globalTileEntities = new ObjectOpenHashSet<>();
 
-    /**
-     * -- GETTER --
-     *
-     * @return The frustum of the current player's camera used to cull chunks
-     */
-    @Getter
-    private Frustrum frustum;
+
+    @Getter private Frustrum frustum;
     private ChunkRenderManager<?> chunkRenderManager;
     private ChunkRenderBackend<?> chunkRenderBackend;
 
+    // Iris
+    private boolean wasRenderingShadows = false;
+
+    private double iris$swapLastCameraX, iris$swapLastCameraY, iris$swapLastCameraZ, iris$swapLastCameraPitch, iris$swapLastCameraYaw;
     /**
      * Instantiates Sodium's world renderer. This should be called at the time of the world renderer initialization.
      */
@@ -159,6 +163,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      */
     public void scheduleTerrainUpdate() {
         if (this.chunkRenderManager != null) {
+            if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
             this.chunkRenderManager.markDirty();
         }
     }
@@ -200,6 +205,12 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         boolean dirty = pos.x != this.lastCameraX || pos.y != this.lastCameraY || pos.z != this.lastCameraZ ||
                 pitch != this.lastCameraPitch || yaw != this.lastCameraYaw;
 
+        if(AngelicaConfig.enableIris) {
+            iris$ensureStateSwapped();
+            if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+                dirty = true;
+            }
+        }
         if (dirty) {
             this.chunkRenderManager.markDirty();
         }
@@ -227,21 +238,25 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         profiler.endSection();
 
         SodiumGameOptions.EntityRenderDistance.setRenderDistanceMult(MathHelper.clamp_double((double) this.client.gameSettings.renderDistanceChunks / 8.0D, 1.0D, 2.5D) * (double) 1.0F * (SettingsManager.entityRenderScaleFactor));
+        if(AngelicaConfig.enableIris) {
+            if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+                ShadowRenderer.visibleTileEntities.addAll(this.chunkRenderManager.getVisibleTileEntities());
+            }
+        }
     }
 
     /**
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
+        if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already
         //pass.startDrawing();
 
         this.chunkRenderManager.renderLayer(matrixStack, pass, x, y, z);
 
         //pass.endDrawing();
-
-        // Hmm, is this needed?  It wasn't doing anything before, and doesn't seem to make a difference when fixed...
-//        GLStateManager.clearCurrentColor();
+        GLStateManager.clearCurrentColor();
     }
 
     public void reload() {
@@ -315,7 +330,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
     public void renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks) {
         int pass = MinecraftForgeClient.getRenderPass();
-        for (TileEntity tileEntity : this.chunkRenderManager.getVisibleBlockEntities()) {
+        for (TileEntity tileEntity : this.chunkRenderManager.getVisibleTileEntities()) {
             renderTE(tileEntity, pass, partialTicks);
         }
 
@@ -430,5 +445,48 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
     public ChunkRenderBackend<?> getChunkRenderer() {
         return this.chunkRenderBackend;
+    }
+
+    // Iris
+    private void swapCachedCameraPositions() {
+        double tmp;
+
+        tmp = lastCameraX;
+        lastCameraX = iris$swapLastCameraX;
+        iris$swapLastCameraX = tmp;
+
+        tmp = lastCameraY;
+        lastCameraY = iris$swapLastCameraY;
+        iris$swapLastCameraY = tmp;
+
+        tmp = lastCameraZ;
+        lastCameraZ = iris$swapLastCameraZ;
+        iris$swapLastCameraZ = tmp;
+
+        tmp = lastCameraPitch;
+        lastCameraPitch = iris$swapLastCameraPitch;
+        iris$swapLastCameraPitch = tmp;
+
+        tmp = lastCameraYaw;
+        lastCameraYaw = iris$swapLastCameraYaw;
+        iris$swapLastCameraYaw = tmp;
+    }
+
+    private void iris$ensureStateSwapped() {
+        if (!wasRenderingShadows && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            if (this.chunkRenderManager instanceof SwappableChunkRenderManager) {
+                ((SwappableChunkRenderManager) this.chunkRenderManager).iris$swapVisibilityState();
+                swapCachedCameraPositions();
+            }
+
+            wasRenderingShadows = true;
+        } else if (wasRenderingShadows && !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            if (this.chunkRenderManager instanceof SwappableChunkRenderManager) {
+                ((SwappableChunkRenderManager) this.chunkRenderManager).iris$swapVisibilityState();
+                swapCachedCameraPositions();
+            }
+
+            wasRenderingShadows = false;
+        }
     }
 }
