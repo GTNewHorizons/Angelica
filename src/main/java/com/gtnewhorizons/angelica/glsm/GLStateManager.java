@@ -55,6 +55,8 @@ public class GLStateManager {
     @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
     @Getter private static final BooleanState rescaleNormalState = new BooleanState(GL12.GL_RESCALE_NORMAL);
 
+    private static long dirty = 0;
+
     private static int modelShadeMode;
 
     @Getter
@@ -163,9 +165,10 @@ public class GLStateManager {
             blendState.srcAlpha = GL11.GL_ONE;
             blendState.dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
             OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            clean(Dirty.BLEND_STATE);
             return;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor) {
+        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor || checkDirty(Dirty.BLEND_STATE)) {
             blendState.srcRgb = srcFactor;
             blendState.dstRgb = dstFactor;
             GL11.glBlendFunc(srcFactor, dstFactor);
@@ -186,7 +189,7 @@ public class GLStateManager {
             srcAlpha = GL11.GL_ONE;
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha) {
+        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha || checkDirty(Dirty.BLEND_STATE)) {
             blendState.srcRgb = srcRgb;
             blendState.dstRgb = dstRgb;
             blendState.srcAlpha = srcAlpha;
@@ -200,7 +203,7 @@ public class GLStateManager {
 
     public static void glDepthFunc(int func) {
         // Hacky workaround for now, need to figure out why this isn't being applied...
-        if (GLStateManager.BYPASS_CACHE || func != depthState.func || GLStateManager.runningSplash) {
+        if (GLStateManager.BYPASS_CACHE || func != depthState.func || GLStateManager.runningSplash || checkDirty(Dirty.DEPTH_FUNC)) {
             depthState.func = func;
             GL11.glDepthFunc(func);
         }
@@ -214,7 +217,7 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.mask) {
+        if (mask != depthState.mask || checkDirty(Dirty.DEPTH_MASK)) {
             depthState.mask = mask;
             GL11.glDepthMask(mask);
         }
@@ -290,7 +293,7 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (GLStateManager.BYPASS_CACHE || red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha || checkDirty(Dirty.COLOR)) {
             Color.red = red;
             Color.green = green;
             Color.blue = blue;
@@ -301,7 +304,8 @@ public class GLStateManager {
     }
 
     public static void clearCurrentColor() {
-        glColor4f(-1.0F, -1.0F, -1.0F, -1.0F);
+        // Marks the cache dirty, doesn't actually reset the color
+        dirty(Dirty.COLOR);
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
@@ -311,7 +315,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (GLStateManager.BYPASS_CACHE || red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha || checkDirty(Dirty.COLOR_MASK)) {
             ColorMask.red = red;
             ColorMask.green = green;
             ColorMask.blue = blue;
@@ -322,7 +326,7 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha) {
+        if (GLStateManager.BYPASS_CACHE || red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha || checkDirty(Dirty.CLEAR_COLOR)) {
             ClearColor.red = red;
             ClearColor.green = green;
             ClearColor.blue = blue;
@@ -367,7 +371,7 @@ public class GLStateManager {
     // Textures
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture) {
+        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
             activeTexture = newTexture;
             GL13.glActiveTexture(texture);
         }
@@ -375,7 +379,7 @@ public class GLStateManager {
 
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture) {
+        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
             activeTexture = newTexture;
             ARBMultitexture.glActiveTextureARB(texture);
         }
@@ -389,7 +393,8 @@ public class GLStateManager {
             return;
         }
 
-        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture || runningSplash) {
+        // TODO: Do we need to do the check dirty for each bound texture?
+        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture || runningSplash || checkDirty(Dirty.BOUND_TEXTURE)) {
             GL11.glBindTexture(target, texture);
 
             Textures[activeTexture].binding = texture;
@@ -613,7 +618,7 @@ public class GLStateManager {
     }
 
     public static void glShadeModel(int mode) {
-        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode) {
+        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode || checkDirty(Dirty.SHADE_MODEL)) {
             modelShadeMode = mode;
             GL11.glShadeModel(mode);
         }
@@ -663,7 +668,22 @@ public class GLStateManager {
     }
 
     public static void glPopAttrib() {
+        dirty = Dirty.ALL;
         GL11.glPopAttrib();
     }
 
+    public static boolean checkDirty(long flag) {
+        if((dirty & flag ) == flag) {
+            dirty &= ~flag;
+            return true;
+        }
+        return false;
+    }
+    public static void clean(long dirtyFlag) {
+        dirty &= ~dirtyFlag;
+    }
+
+    public static void dirty(long dirtyFlag) {
+        dirty |= dirtyFlag;
+    }
 }
