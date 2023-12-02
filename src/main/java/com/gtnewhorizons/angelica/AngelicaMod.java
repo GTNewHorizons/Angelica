@@ -11,6 +11,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         modid = "angelica",
         name = "Angelica",
         version = Tags.VERSION,
+        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.3.35,);",
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*")
 public class AngelicaMod {
