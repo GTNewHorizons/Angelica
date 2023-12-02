@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render;
 
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import net.coderbot.iris.shadows.ShadowRenderingState;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 
@@ -17,7 +18,8 @@ public class GameRendererContext {
     // TODO get rid of matrices, it's unnecessary in 1.7
     public static FloatBuffer getModelViewProjectionMatrix(MatrixStack.Entry matrices) {
         final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
-        final Matrix4f matrix = new Matrix4f(RenderingState.INSTANCE.getProjectionMatrix());
+        final Matrix4f projectionMatrix = ShadowRenderingState.areShadowsCurrentlyBeingRendered() ? ShadowRenderingState.getShadowOrthoMatrix() : RenderingState.INSTANCE.getProjectionMatrix();
+        final Matrix4f matrix = new Matrix4f(projectionMatrix);
         matrix.mul(RenderingState.INSTANCE.getModelViewMatrix());
         matrix.mul(matrices.getModel());
 

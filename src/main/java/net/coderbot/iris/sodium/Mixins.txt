@@ -9,8 +9,8 @@ Y directional_shading
   * MixinChunkRenderManager.java
 * shadow_map
   Y MixinSodiumWorldRenderer.java
-  * MixinGameRendererContext.java
-  * MixinChunkRenderManager.java
+  Y MixinGameRendererContext.java
+  Y MixinChunkRenderManager.java
 * block_id
   Y MixinChunkRenderRebuildTask.java
   Y MixinChunkBuildBuffers.java
