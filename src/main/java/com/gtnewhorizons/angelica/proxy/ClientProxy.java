@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -42,6 +43,10 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLInitializationEvent event) {
+        if(AngelicaConfig.enableHudCaching) {
+            FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
+            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
+        }
         if(AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
         }

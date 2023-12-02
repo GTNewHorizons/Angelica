@@ -148,8 +148,7 @@ public class BlockRenderer {
         return quads;
     }
 
-    private void renderQuadList(BlockPos pos,
-                                ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
+    private void renderQuadList(BlockPos pos, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
 
         ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);

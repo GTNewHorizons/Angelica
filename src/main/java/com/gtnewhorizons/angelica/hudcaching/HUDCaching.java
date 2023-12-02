@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameForgeAccessor;
 import cpw.mods.fml.client.registry.ClientRegistry;
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -19,13 +18,12 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
-import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// TODO add license from Sk1er/patcher with special credit to Moulberry https://github.com/Moulberry
+// See LICENSE+HUDCaching.md for license information.
 
 public class HUDCaching {
 
@@ -33,12 +31,8 @@ public class HUDCaching {
     public static Framebuffer framebuffer;
     private static boolean dirty = true;
     public static boolean renderingCacheOverride;
+    public static final HUDCaching INSTANCE = new HUDCaching();
 
-    static {
-        final HUDCaching hudCaching = new HUDCaching();
-        FMLCommonHandler.instance().bus().register(hudCaching);
-        MinecraftForge.EVENT_BUS.register(hudCaching);// TODO remove debug stuff, unsued registration
-    }
 
     private HUDCaching() {}
 

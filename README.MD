@@ -21,5 +21,7 @@ Not yet in an usable state
   * Embeddedt for [Embeddium](https://github.com/embeddedt/embeddium/commit/dc59ca357c25beefd6288f0d1d40b4cd8e670ab8) under the [LGPL 3.0](https://github.com/embeddedt/embeddium/blob/16.x/forge/LICENSE)
 * Neodymium
   * Makamys for [Neodymium](https://github.com/makamys/Neodymium) - Various Tessellator -> Quad functionality taken under the LGPL 3
+* HUDCaching
+  * Backported from https://github.com/Sk1erLLC/Patcher by Alexdoru under the CC-BY-SA-NC 4.0 license
 * Angelica
   * [Insert your name here] for helping get Angelica up and running!
