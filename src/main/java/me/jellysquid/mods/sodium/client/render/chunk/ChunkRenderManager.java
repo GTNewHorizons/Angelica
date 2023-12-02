@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.chunk;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -33,6 +34,7 @@ import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
+import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
@@ -78,10 +80,10 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private final ObjectArrayFIFOQueue<ChunkRenderContainer<T>> unloadQueue = new ObjectArrayFIFOQueue<>();
 
     @SuppressWarnings("unchecked")
-    private final ChunkRenderList<T>[] chunkRenderLists = new ChunkRenderList[BlockRenderPass.COUNT];
-    private final ObjectList<ChunkRenderContainer<T>> tickableChunks = new ObjectArrayList<>();
+    private ChunkRenderList<T>[] chunkRenderLists = new ChunkRenderList[BlockRenderPass.COUNT];
+    private ObjectList<ChunkRenderContainer<T>> tickableChunks = new ObjectArrayList<>();
 
-    private final ObjectList<TileEntity> visibleTileEntities = new ObjectArrayList<>();
+    private ObjectList<TileEntity> visibleTileEntities = new ObjectArrayList<>();
 
     private final SodiumWorldRenderer renderer;
     private final WorldClient world;
@@ -108,6 +110,22 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean alwaysDeferChunkUpdates;
 
+    // Iris
+
+    private ChunkRenderList<T>[] chunkRenderListsSwap;
+
+    private ObjectList<ChunkRenderContainer<T>> tickableChunksSwap;
+
+    private ObjectList<TileEntity> visibleTileEntitiesSwap;
+
+    private int visibleChunkCountSwap;
+
+    private boolean dirtySwap;
+
+    private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
+
+
+
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
@@ -127,6 +145,18 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.translucencyBlockRenderDistance = Math.min(9216, (renderDistance << 4) * (renderDistance << 4));
 
         this.useBlockFaceCulling = SodiumClientMod.options().advanced.useBlockFaceCulling;
+
+        if(AngelicaConfig.enableIris) {
+            this.chunkRenderListsSwap = new ChunkRenderList[BlockRenderPass.COUNT];
+            this.tickableChunksSwap = new ObjectArrayList<>();
+            this.visibleTileEntitiesSwap = new ObjectArrayList<>();
+
+            for (int i = 0; i < this.chunkRenderListsSwap.length; i++) {
+                this.chunkRenderListsSwap[i] = new ChunkRenderList<>();
+            }
+
+            this.dirtySwap = true;
+        }
     }
 
     public void update(Camera camera, FrustumExtended frustum, int frame, boolean spectator) {
@@ -213,13 +243,15 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addChunk(ChunkRenderContainer<T> render) {
-        if (render.needsRebuild() && render.canRebuild()) {
+        final boolean canRebuild = AngelicaConfig.enableIris ? !ShadowRenderingState.areShadowsCurrentlyBeingRendered() : render.canRebuild();
+
+        if (render.needsRebuild() && canRebuild) {
             if (!this.alwaysDeferChunkUpdates && render.needsImportantRebuild()) {
                 this.importantRebuildQueue.enqueue(render);
             } else {
                 this.rebuildQueue.enqueue(render);
             }
-        } else if (render.canRebuild() && !render.getData().isEmpty() && render.needsSort()) {
+        } else if (canRebuild && !render.getData().isEmpty() && render.needsSort()) {
             this.sortQueue.enqueue(render);
         }
 
@@ -264,6 +296,12 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private int computeVisibleFaces(ChunkRenderContainer<T> render) {
+        if(AngelicaConfig.enableIris) {
+            // TODO: Enable chunk face culling during the shadow pass
+            if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+                return(ChunkFaceFlags.ALL);
+            }
+        }
         // If chunk face culling is disabled, render all faces
         if (!this.useBlockFaceCulling) {
             return ChunkFaceFlags.ALL;
@@ -320,8 +358,10 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void reset() {
-        this.rebuildQueue.clear();
-        this.importantRebuildQueue.clear();
+        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.rebuildQueue.clear();
+        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.importantRebuildQueue.clear();
+
+
         this.sortQueue.clear();
 
         this.visibleTileEntities.clear();
@@ -487,6 +527,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     public void updateChunks() {
+        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) return;
         this.builder.cleanupSectionCache();
 
         Deque<CompletableFuture<ChunkBuildResult<T>>> futures = new ArrayDeque<>();
@@ -633,5 +674,28 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     public void onChunkRenderUpdates(int x, int y, int z, ChunkRenderData data) {
         this.culler.onSectionStateChanged(x, y, z, data.getOcclusionData());
+    }
+
+    // Iris
+    public void iris$swapVisibilityState() {
+        ChunkRenderList<T>[] chunkRenderListsTmp = chunkRenderLists;
+        chunkRenderLists = chunkRenderListsSwap;
+        chunkRenderListsSwap = chunkRenderListsTmp;
+
+        ObjectList<ChunkRenderContainer<T>> tickableChunksTmp = tickableChunks;
+        tickableChunks = tickableChunksSwap;
+        tickableChunksSwap = tickableChunksTmp;
+
+        ObjectList<TileEntity> visibleTileEntitiesTmp = visibleTileEntities;
+        visibleTileEntities = visibleTileEntitiesSwap;
+        visibleTileEntitiesSwap = visibleTileEntitiesTmp;
+
+        int visibleChunkCountTmp = visibleChunkCount;
+        visibleChunkCount = visibleChunkCountSwap;
+        visibleChunkCountSwap = visibleChunkCountTmp;
+
+        boolean dirtyTmp = dirty;
+        dirty = dirtySwap;
+        dirtySwap = dirtyTmp;
     }
 }
