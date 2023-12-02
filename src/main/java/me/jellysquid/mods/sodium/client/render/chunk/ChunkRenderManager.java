@@ -81,7 +81,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private final ChunkRenderList<T>[] chunkRenderLists = new ChunkRenderList[BlockRenderPass.COUNT];
     private final ObjectList<ChunkRenderContainer<T>> tickableChunks = new ObjectArrayList<>();
 
-    private final ObjectList<TileEntity> visibleBlockEntities = new ObjectArrayList<>();
+    private final ObjectList<TileEntity> visibleTileEntities = new ObjectArrayList<>();
 
     private final SodiumWorldRenderer renderer;
     private final WorldClient world;
@@ -305,7 +305,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         Collection<TileEntity> tileEntities = render.getData().getTileEntities();
 
         if (!tileEntities.isEmpty()) {
-            this.visibleBlockEntities.addAll(tileEntities);
+            this.visibleTileEntities.addAll(tileEntities);
         }
     }
 
@@ -324,7 +324,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.importantRebuildQueue.clear();
         this.sortQueue.clear();
 
-        this.visibleBlockEntities.clear();
+        this.visibleTileEntities.clear();
 
         for (ChunkRenderList<T> list : this.chunkRenderLists) {
             list.reset();
@@ -342,8 +342,8 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         }
     }
 
-    public Collection<TileEntity> getVisibleBlockEntities() {
-        return this.visibleBlockEntities;
+    public Collection<TileEntity> getVisibleTileEntities() {
+        return this.visibleTileEntities;
     }
 
     @Override
