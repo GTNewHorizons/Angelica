@@ -101,6 +101,9 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     @Shadow
     protected abstract String bidiReorder(String p_147647_1_);
 
+    @Shadow
+    protected abstract void bindTexture(ResourceLocation location);
+
     @Unique
     public BatchingFontRenderer angelica$batcher;
 
@@ -168,4 +171,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     public BatchingFontRenderer angelica$getBatcher() {
         return angelica$batcher;
     }
+
+    @Override
+    public void angelica$bindTexture(ResourceLocation location) { this.bindTexture(location); }
+
 }

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import jss.util.RandomXoshiro256StarStar;
@@ -273,7 +274,7 @@ public class BatchingFontRenderer {
                     GLStateManager.disableTexture();
                 }
                 if (cmd.texture != null) {
-                    renderEngine.bindTexture(cmd.texture);
+                    ((FontRendererAccessor) (Object) underlying).angelica$bindTexture(cmd.texture);
                 }
                 lastTexture = cmd.texture;
             }
