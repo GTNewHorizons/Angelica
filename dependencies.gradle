@@ -35,7 +35,7 @@
  */
 
 dependencies {
-    api("com.github.GTNewHorizons:Hodgepodge:2.3.35")
+    api("com.github.GTNewHorizons:Hodgepodge:2.3.37")
 
     compileOnly("org.projectlombok:lombok:1.18.22") {transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.22")
