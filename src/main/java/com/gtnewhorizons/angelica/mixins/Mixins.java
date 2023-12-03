@@ -138,13 +138,14 @@ public enum Mixins {
 
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
         .addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .addMixinClasses(
+        .setApplyIf(() -> AngelicaConfig.enableHudCaching).addMixinClasses(
             "angelica.hudcaching.GuiIngameForgeAccessor",
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
             "angelica.hudcaching.MixinGuiIngameForge_HUDCaching")
-        .setApplyIf(() -> AngelicaConfig.enableHudCaching)),
+
+    ),
 
     // TODO: Iris
 //    SHADERSMOD_COMPAT_PR_ILLUMINATION(
@@ -171,6 +172,21 @@ public enum Mixins {
             ,"notfine.gui.MixinGuiSlot"
             ,"notfine.renderer.MixinRenderGlobal"
             ,"notfine.settings.MixinGameSettings"
+        )),
+    NOTFINE_LATE_TWILIGHT_FORESTLEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.TWILIGHT_FOREST).setSide(Side.CLIENT)
+        .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
+             "notfine.leaves.twilightforest.MixinBlockTFLeaves"
+            ,"notfine.leaves.twilightforest.MixinBlockTFLeaves3"
+            // TODO: Verify 2.3.8.18 or later to support non NH builds?
+            ,"notfine.leaves.twilightforest.MixinBlockTFMagicLeaves"
+        )),
+    NOTFINE_LATE_THAUMCRAFT_LEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.THAUMCRAFT).setSide(Side.CLIENT)
+        .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
+             "notfine.leaves.thaumcraft.MixinBlockMagicalLeaves"
+        )),
+    NOTFINE_LATE_WITCHERY_LEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.WITCHERY).setSide(Side.CLIENT)
+        .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
+             "notfine.leaves.witchery.MixinBlockWitchLeaves"
         ))
     ;
 
