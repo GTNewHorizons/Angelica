@@ -1,22 +1,16 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
-import me.jellysquid.mods.sodium.client.model.light.LightMode;
-import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
-import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -52,39 +46,23 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-//        modelData = model.getModelData(world, pos, state, modelData);
+        try {
+            tessellator.startDrawingQuads();
+            renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
 
-        tessellator.startDrawingQuads();
-        renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+            this.random.setSeed(seed);
 
-//        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
-//            this.random.setSeed(seed);
-//
-//            List<BakedQuad> sided = model.getQuads(state, dir, this.random, modelData);
-//
-//            if (sided.isEmpty()) {
-//                continue;
-//            }
-//
-//            if (!cull || this.occlusionCache.shouldDrawSide(state, world, pos, dir)) {
-//                this.renderQuadList(world, state, pos, lighter, offset, buffers, sided, dir);
-//
-//                rendered = true;
-//            }
-//        }
+            final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
 
-        this.random.setSeed(seed);
+            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                this.renderQuadList(pos, buffers, all, facing);
+            }
 
-        final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
-
-        for(ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-            this.renderQuadList(pos, buffers, all, facing);
+            if (!all.isEmpty()) rendered = true;
+        } finally {
+            ((ITessellatorInstance) tessellator).discard();
         }
 
-        if(!all.isEmpty())
-            rendered = true;
-
-        ((ITessellatorInstance) tessellator).discard();
 
         return rendered;
     }

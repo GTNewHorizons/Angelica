@@ -65,6 +65,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5-pre:dev") // based off https://github.com/GTNewHorizons/NotEnoughIds/pull/2
+    compileOnly("com.github.GTNewHorizons:Jabba:1.3.1:dev")
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
 
