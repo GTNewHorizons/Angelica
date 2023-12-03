@@ -163,7 +163,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
      * @reason Replace with more sensible batched rendering and optimize some operations
      */
     @Overwrite
-    protected int renderString(String text, int x, int y, int argb, boolean dropShadow) {
+    public int renderString(String text, int x, int y, int argb, boolean dropShadow) {
         return drawString(text, x, y, argb, dropShadow);
     }
 

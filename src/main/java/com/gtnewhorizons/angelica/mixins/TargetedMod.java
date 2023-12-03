@@ -11,6 +11,7 @@ public enum TargetedMod {
     LWJGL3IFY("lwjgl3ify", "me.eigenraven.lwjgl3ify.core.Lwjgl3ifyCoremod", "lwjgl3ify"),
     CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks"),
     MRTJPCORE("MrTJPCore", null, "MrTJPCoreMod"),
+    JABBA("JABBA", null, "JABBA"),
     BOTANIA("Botania", null, "Botania"),
     COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore"),
     EXTRAUTILS("ExtraUtilities", null, "ExtraUtilities"),
