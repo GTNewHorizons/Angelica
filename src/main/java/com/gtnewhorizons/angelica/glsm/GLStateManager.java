@@ -421,7 +421,7 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         if (AngelicaConfig.enableIris) {
-            //TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
+            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         }
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
     }
