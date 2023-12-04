@@ -72,7 +72,7 @@ public class WorldSlice implements IBlockAccess {
     private ClonedChunkSection[] sections;
 
     // Biome data for each chunk section
-    private byte[][] biomeData;
+    private BiomeGenBase[][] biomeData;
 
     // The starting point from which this slice captures blocks
     private int baseX, baseY, baseZ;
@@ -130,7 +130,7 @@ public class WorldSlice implements IBlockAccess {
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
         this.blockArrays = new Block[SECTION_TABLE_ARRAY_SIZE][];
         this.metadataArrays = new int[SECTION_TABLE_ARRAY_SIZE][];
-        this.biomeData = new byte[SECTION_TABLE_ARRAY_SIZE][];
+        this.biomeData = new BiomeGenBase[SECTION_TABLE_ARRAY_SIZE][];
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
@@ -214,9 +214,8 @@ public class WorldSlice implements IBlockAccess {
         int relY = 0;
         int relZ = z - this.baseZ;
 
-        final int k = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
-                [(x & 15) | (z & 15) << 4] & 255;
-        BiomeGenBase biome = BiomeGenBase.getBiome(k);
+        BiomeGenBase biome = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
+            [(x & 15) | (z & 15) << 4];
         // can be null if biome wasn't generated yet
         return biome == null ? BiomeGenBase.plains : biome;
     }

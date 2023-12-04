@@ -16,7 +16,6 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClonedChunkSection {
@@ -34,7 +33,7 @@ public class ClonedChunkSection {
     private ChunkSectionPos pos;
 
     @Getter
-    private byte[] biomeData;
+    private BiomeGenBase[] biomeData;
 
     private long lastUsedTimestamp = Long.MAX_VALUE;
 
@@ -60,13 +59,13 @@ public class ClonedChunkSection {
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(section);
 
-        this.biomeData = Arrays.copyOf(chunk.getBiomeArray(), chunk.getBiomeArray().length);
+        this.biomeData = new BiomeGenBase[chunk.getBiomeArray().length];
 
         StructureBoundingBox box = new StructureBoundingBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
 
         this.tileEntities.clear();
 
-        // Check for tile entities
+        // Check for tile entities & fill biome data
         for(int y = pos.getMinY(); y <= pos.getMaxY(); y++) {
             for(int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
                 for(int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
@@ -83,6 +82,7 @@ public class ClonedChunkSection {
                             this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord & 15, tileentity.yCoord & 15, tileentity.zCoord & 15)), tileentity);
                         }
                     }
+                    this.biomeData[(lZ << 4) | lX] = world.getBiomeGenForCoords(x, z);
                 }
             }
         }
@@ -106,8 +106,7 @@ public class ClonedChunkSection {
     }
 
     public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {
-        int k = this.biomeData[x | z << 4] & 255;
-        return BiomeGenBase.getBiome(k);
+        return this.biomeData[x | z << 4];
 
     }
 
