@@ -39,14 +39,14 @@ public class ChunkProgram extends GlProgram {
     }
 
     public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
-        GL20.glUniform1i(this.uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
-        GL20.glUniform1i(this.uLightTex, OpenGlHelper.lightmapTexUnit - GL13.GL_TEXTURE0);
+        if(this.uBlockTex != -1) GL20.glUniform1i(this.uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
+        if(this.uLightTex != -1) GL20.glUniform1i(this.uLightTex, OpenGlHelper.lightmapTexUnit - GL13.GL_TEXTURE0);
 
-        GL20.glUniform3f(this.uModelScale, modelScale, modelScale, modelScale);
-        GL20.glUniform2f(this.uTextureScale, textureScale, textureScale);
+        if(this.uModelScale != -1) GL20.glUniform3f(this.uModelScale, modelScale, modelScale, modelScale);
+        if(this.uTextureScale != -1) GL20.glUniform2f(this.uTextureScale, textureScale, textureScale);
 
         this.fogShader.setup();
 
-        GL20.glUniformMatrix4(this.uModelViewProjectionMatrix, false, GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek()));
+        if(this.uModelViewProjectionMatrix != -1) GL20.glUniformMatrix4(this.uModelViewProjectionMatrix, false, GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek()));
     }
 }

@@ -8,7 +8,6 @@ import me.jellysquid.mods.sodium.client.model.vertex.type.BlittableVertexType;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import net.coderbot.iris.sodium.vertex_format.IrisChunkMeshAttributes;
 import net.coderbot.iris.sodium.vertex_format.IrisGlVertexAttributeFormat;
 
 /**
@@ -21,11 +20,11 @@ public class XHFPModelVertexType implements ChunkVertexType {
 			.addElement(ChunkMeshAttribute.COLOR, 8, GlVertexAttributeFormat.UNSIGNED_BYTE, 4, true)
 			.addElement(ChunkMeshAttribute.TEXTURE, 12, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, false)
 			.addElement(ChunkMeshAttribute.LIGHT, 16, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, false)
-			.addElement(IrisChunkMeshAttributes.MID_TEX_COORD, 20, GlVertexAttributeFormat.FLOAT, 2, false)
-			.addElement(IrisChunkMeshAttributes.TANGENT, 28, IrisGlVertexAttributeFormat.BYTE, 4, true)
-			.addElement(IrisChunkMeshAttributes.NORMAL, 32, IrisGlVertexAttributeFormat.BYTE, 3, true)
-			.addElement(IrisChunkMeshAttributes.BLOCK_ID, 36, IrisGlVertexAttributeFormat.SHORT, 2, false)
-			.addElement(IrisChunkMeshAttributes.MID_BLOCK, 40, IrisGlVertexAttributeFormat.BYTE, 3, false)
+			.addElement(ChunkMeshAttribute.MID_TEX_COORD, 20, GlVertexAttributeFormat.FLOAT, 2, false)
+			.addElement(ChunkMeshAttribute.TANGENT, 28, IrisGlVertexAttributeFormat.BYTE, 4, true)
+			.addElement(ChunkMeshAttribute.NORMAL, 32, IrisGlVertexAttributeFormat.BYTE, 3, true)
+			.addElement(ChunkMeshAttribute.BLOCK_ID, 36, IrisGlVertexAttributeFormat.SHORT, 2, false)
+			.addElement(ChunkMeshAttribute.MID_BLOCK, 40, IrisGlVertexAttributeFormat.BYTE, 3, false)
 			.build();
 
 	public static final float MODEL_SCALE = (32.0f / 65536.0f);

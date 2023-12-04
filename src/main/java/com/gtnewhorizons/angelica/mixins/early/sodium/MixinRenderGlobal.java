@@ -1,14 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.pipeline.HandRenderer;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -32,8 +35,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.List;
-
 import static org.joml.Math.lerp;
 
 // Let other mixins apply, and then overwrite them
@@ -48,6 +49,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Shadow public WorldRenderer[] worldRenderers;
     @Shadow public WorldRenderer[] sortedWorldRenderers;
 
+    @Getter
     @Unique private SodiumWorldRenderer renderer;
 
     private int sodium$frame;
@@ -137,6 +139,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
+        if(AngelicaConfig.enableIris && pass == 1) {
+            final Camera camera = new Camera(mc.renderViewEntity, (float)partialTicks);
+            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+
+            // iris$beginTranslucents
+            pipeline.beginHand();
+            HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float)partialTicks, camera, null /*gameRenderer*/, pipeline);
+            mc.mcProfiler.endStartSection("iris_pre_translucent");
+            pipeline.beginTranslucents();
+        }
         // Handle view distance change
         if(this.renderDistanceChunks != this.mc.gameSettings.renderDistanceChunks) {
             this.loadRenderers();

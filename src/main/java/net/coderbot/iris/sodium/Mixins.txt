@@ -3,10 +3,10 @@ Y directional_shading
   Y MixinFlatLightPipeline.java
 * shader_overrides
   * ShaderTypeAccessor.java
-  * MixinChunkRenderShaderBackend.java
-  * MixinShaderType.java
-  * MixinChunkProgram.java
-  * MixinChunkRenderManager.java
+  Y MixinChunkRenderShaderBackend.java
+  Y MixinShaderType.java
+  Y MixinChunkProgram.java
+  Y MixinChunkRenderManager.java
 * shadow_map
   Y MixinSodiumWorldRenderer.java
   Y MixinGameRendererContext.java
@@ -18,14 +18,14 @@ Y directional_shading
   * MixinTextureAtlasSprite.java
 * vertex_format
   * entity
-    * MixinBufferBuilder_ExtendedVertexFormatCompat.java
-  * MixinSodiumWorldRenderer.java
-  * MixinChunkOneshotGraphicsState.java
-  * GlVertexAttributeFormatAccessor.java
-  * MixinMultidrawChunkRenderBackend.java
-  * MixinChunkMeshAttribute.java
-  * MixinGlVertexFormatBuilder.java
-  * ChunkMeshAttributeAccessor.java
+    * MixinBufferBuilder_ExtendedVertexFormatCompat.java // Unclear
+  Y MixinSodiumWorldRenderer.java
+  Y MixinChunkOneshotGraphicsState.java
+  N GlVertexAttributeFormatAccessor.java
+  Y MixinMultidrawChunkRenderBackend.java
+  Y MixinChunkMeshAttribute.java
+  Y MixinGlVertexFormatBuilder.java
+  N ChunkMeshAttributeAccessor.java
 * separate_ao
   * MixinBlockRenderer.java
   * MixinFluidRenderer.java

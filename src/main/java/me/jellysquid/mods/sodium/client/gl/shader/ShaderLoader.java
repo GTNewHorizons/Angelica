@@ -34,7 +34,7 @@ public class ShaderLoader {
         return new GlShader(device, type, name, getShaderSource(getShaderPath(name, type)), ShaderConstants.fromStringList(constants));
     }
 
-    private static String getShaderPath(ResourceLocation name, ShaderType type) {
+    public static String getShaderPath(ResourceLocation name, ShaderType type) {
         return String.format("/assets/%s/shaders/%s.%s.glsl", name.getResourceDomain(), name.getResourcePath(), type == ShaderType.VERTEX ? "v" : "f");
     }
 

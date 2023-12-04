@@ -46,14 +46,16 @@ public class HandRenderer {
 	}
 
 	private boolean canRender(Camera camera, GameRenderer gameRenderer) {
-		return !(!gameRenderer.getRenderHand()
-				|| camera.isThirdPerson()
-					|| !(camera.getEntity() instanceof EntityPlayer)
-						|| gameRenderer.getPanoramicMode()
-							|| Minecraft.getMinecraft().gameSettings.hideGUI
-								|| (camera.getEntity() instanceof EntityLiving && ((EntityLiving)camera.getEntity()).isPlayerSleeping())
-                                    // TODO: SPECTATOR
-									/*|| Minecraft.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR*/);
+        return (camera.isThirdPerson() || !(camera.getEntity() instanceof EntityPlayer) || Minecraft.getMinecraft().gameSettings.hideGUI || (camera.getEntity() instanceof EntityLiving && ((EntityLiving)camera.getEntity()).isPlayerSleeping()));
+
+//		return !(!gameRenderer.getRenderHand()
+//				|| camera.isThirdPerson()
+//					|| !(camera.getEntity() instanceof EntityPlayer)
+//						|| gameRenderer.getPanoramicMode()
+//							|| Minecraft.getMinecraft().gameSettings.hideGUI
+//								|| (camera.getEntity() instanceof EntityLiving && ((EntityLiving)camera.getEntity()).isPlayerSleeping())
+//                                    // TODO: SPECTATOR
+//									/*|| Minecraft.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR*/);
 	}
 
 	public boolean isHandTranslucent(InteractionHand hand) {
@@ -83,11 +85,12 @@ public class HandRenderer {
 
 		pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
-		poseStack.push();
+//		poseStack.push();
 
 		Minecraft.getMinecraft().mcProfiler.startSection("iris_hand");
 
-		setupGlState(gameRenderer, camera, poseStack, tickDelta);
+        // TODO: Iris
+//		setupGlState(gameRenderer, camera, poseStack, tickDelta);
 
 		renderingSolid = true;
         // TODO: Hand
@@ -98,7 +101,7 @@ public class HandRenderer {
         // TODO: ProjectionMatrix
 //		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
-		poseStack.pop();
+//		poseStack.pop();
 
 		bufferSource.endBatch();
 

@@ -18,17 +18,19 @@ public class Camera {
     float yaw;
     EntityLivingBase entity;
     boolean thirdPerson;
+    final float partialTicks;
 
     public Camera(EntityLivingBase entity, float partialTicks) {
+        this.partialTicks = partialTicks;
         Vector4f offset = new Vector4f(); // third person offset
         final Matrix4f inverseModelView = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix()).invert();
         inverseModelView.transform(offset);
-        
+
         final double camX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks + offset.x;
         final double camY = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks + offset.y;
         final double camZ = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * partialTicks + offset.z;
         this.entity = entity;
-        
+
         pos.set(camX, camY, camZ);
         blockPos.set((int)entity.posX, (int)entity.posY, (int)entity.posZ);
         pitch = entity.cameraPitch;

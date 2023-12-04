@@ -1,18 +1,16 @@
 package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.mojang.RenderBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.batchedentityrendering.impl.BatchingDebugMessageHelper;
 import net.coderbot.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
 import net.coderbot.batchedentityrendering.impl.RenderBuffersExt;
 import net.coderbot.iris.Iris;
-import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.compat.mojang.LevelRenderer;
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import com.gtnewhorizons.angelica.compat.mojang.RenderBuffers;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -33,6 +31,8 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
@@ -348,7 +348,7 @@ public class ShadowRenderer {
 		targets.copyPreTranslucentDepth();
 	}
 
-	private void renderEntities(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderEntities(EntityRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -387,7 +387,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderPlayerEntity(LevelRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -454,8 +454,11 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	public void renderShadows(LevelRenderer levelRenderer, Camera playerCamera) {
-		// We have to re-query this each frame since this changes based on whether the profiler is active
+	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
+        final Minecraft mc = Minecraft.getMinecraft();
+        final RenderGlobal rg = mc.renderGlobal;
+
+        // We have to re-query this each frame since this changes based on whether the profiler is active
 		// If the profiler is inactive, it will return InactiveProfiler.INSTANCE
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
@@ -541,9 +544,11 @@ public class ShadowRenderer {
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
-			levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
+            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
+            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+//            levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
+//			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
+//			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		profiler.endStartSection("entities");
@@ -605,7 +610,8 @@ public class ShadowRenderer {
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
+            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+//			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.

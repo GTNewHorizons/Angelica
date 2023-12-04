@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.compat.mojang.LevelRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.Iris;
@@ -58,6 +57,7 @@ import net.coderbot.iris.texture.pbr.PBRType;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.shader.Framebuffer;
@@ -739,8 +739,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (shadowViewport) {
 				GL11.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
 			} else {
-                final Minecraft mc = Minecraft.getMinecraft();
-				GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+                final Framebuffer main = Minecraft.getMinecraft().getFramebuffer(); // FBO?
+				GL11.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
 			if (program != null && !sodiumTerrainRendering) {
@@ -1019,7 +1019,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public void renderShadows(LevelRenderer levelRenderer, Camera playerCamera) {
+	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 

@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.attribute;
 
+import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
+
 import java.util.EnumMap;
 
 /**
@@ -9,6 +11,9 @@ import java.util.EnumMap;
  * @param <T> The enumeration over the vertex attributes
  */
 public class GlVertexFormat<T extends Enum<T>> implements BufferVertexFormat {
+    // Iris
+    private static final GlVertexAttribute EMPTY = new GlVertexAttribute(GlVertexAttributeFormat.FLOAT, 0, false, 0, 0);
+
     private final Class<T> attributeEnum;
     private final EnumMap<T, GlVertexAttribute> attributesKeyed;
     private final GlVertexAttribute[] attributesArray;
@@ -105,7 +110,12 @@ public class GlVertexFormat<T extends Enum<T>> implements BufferVertexFormat {
                 GlVertexAttribute attribute = this.attributes.get(key);
 
                 if (attribute == null) {
-                    throw new NullPointerException("Generic attribute not assigned to enumeration " + key.name());
+                    if(key == ChunkMeshAttribute.NORMAL || key == ChunkMeshAttribute.TANGENT || key == ChunkMeshAttribute.MID_TEX_COORD || key == ChunkMeshAttribute.BLOCK_ID || key == ChunkMeshAttribute.MID_BLOCK) {
+                        // Missing these attributes is acceptable and will be handled properly.
+                        attribute = EMPTY;
+                    } else {
+                        throw new NullPointerException("Generic attribute not assigned to enumeration " + key.name());
+                    }
                 }
 
                 size = Math.max(size, attribute.getPointer() + attribute.getSize());
