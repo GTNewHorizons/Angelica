@@ -26,9 +26,11 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
+import net.coderbot.iris.sodium.vertex_format.IrisModelVertexFormats;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -286,7 +288,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         final ChunkVertexType vertexFormat;
 
-        if (opts.advanced.useCompactVertexFormat) {
+        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
+            vertexFormat = IrisModelVertexFormats.MODEL_VERTEX_XHFP;
+        } else if (opts.advanced.useCompactVertexFormat) {
             vertexFormat = DefaultModelVertexFormats.MODEL_VERTEX_HFP;
         } else {
             vertexFormat = DefaultModelVertexFormats.MODEL_VERTEX_SFP;

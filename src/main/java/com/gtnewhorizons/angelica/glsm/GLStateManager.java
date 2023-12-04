@@ -18,6 +18,7 @@ import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
@@ -503,8 +504,13 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-        // Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         GL11.glDrawArrays(mode, first, count);
+        // Temporary
+        int error = GL11.glGetError();
+        if(error != GL11.GL_NO_ERROR) {
+            throw new RuntimeException("glDrawArrays error: " + error);
+        }
     }
 
     public static void defaultBlendFunc() {

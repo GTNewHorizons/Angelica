@@ -504,8 +504,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
         RenderDevice device = RenderDevice.INSTANCE;
         CommandList commandList = device.createCommandList();
+        if(AngelicaConfig.enableIris) this.backend.iris$begin(matrixStack, pass);
+        else this.backend.begin(matrixStack);
 
-        this.backend.begin(matrixStack);
         // Ensure multidraw regions are ordered appropriately
         if(this.backend instanceof MultidrawChunkRenderBackend) {
             ((MultidrawChunkRenderBackend) this.backend).setReverseRegions(pass.isTranslucent());

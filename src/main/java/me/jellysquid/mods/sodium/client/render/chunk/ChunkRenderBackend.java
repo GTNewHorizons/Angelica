@@ -6,6 +6,7 @@ import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBuildResult;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderListIterator;
+import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -56,4 +57,6 @@ public interface ChunkRenderBackend<T extends ChunkGraphicsState> {
     default List<String> getDebugStrings() {
         return Collections.emptyList();
     }
+
+    void iris$begin(MatrixStack matrixStack, BlockRenderPass pass);
 }

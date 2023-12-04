@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBufferUsage;
@@ -17,6 +18,8 @@ import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkMeshData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderBindingPoints;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.sodium.IrisChunkShaderBindingPoints;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -72,12 +75,7 @@ public class ChunkOneshotGraphicsState extends ChunkGraphicsState {
         GlVertexFormat<ChunkMeshAttribute> vertexFormat = (GlVertexFormat<ChunkMeshAttribute>) vertexData.format;
 
         this.tessellation = commandList.createTessellation(GlPrimitiveType.QUADS, new TessellationBinding[] {
-                new TessellationBinding(this.vertexBuffer, new GlVertexAttributeBinding[] {
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.TEX_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.TEXTURE)),
-                        new GlVertexAttributeBinding(ChunkShaderBindingPoints.LIGHT_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT))
-                }, false)
+                new TessellationBinding(this.vertexBuffer, getBindings(vertexFormat), false)
         });
 
         this.setupModelParts(meshData, vertexData.format);
@@ -86,4 +84,26 @@ public class ChunkOneshotGraphicsState extends ChunkGraphicsState {
         vertexData.buffer.position(0);
         this.setTranslucencyData(vertexData.buffer);
     }
+
+     private GlVertexAttributeBinding[] getBindings(GlVertexFormat<ChunkMeshAttribute> vertexFormat) {
+        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
+            return new GlVertexAttributeBinding[] {
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.TEX_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.TEXTURE)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.LIGHT_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT)),
+                new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.BLOCK_ID, vertexFormat.getAttribute(ChunkMeshAttribute.BLOCK_ID)),
+                new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.MID_TEX_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.MID_TEX_COORD)),
+                new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.TANGENT, vertexFormat.getAttribute(ChunkMeshAttribute.TANGENT)),
+                new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.NORMAL, vertexFormat.getAttribute(ChunkMeshAttribute.NORMAL))
+            };
+        } else {
+            return new GlVertexAttributeBinding[] {
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.TEX_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.TEXTURE)),
+                new GlVertexAttributeBinding(ChunkShaderBindingPoints.LIGHT_COORD, vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT)) };
+        }
+    }
+
 }

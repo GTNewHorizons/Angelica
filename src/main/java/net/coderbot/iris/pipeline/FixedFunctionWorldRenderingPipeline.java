@@ -1,14 +1,14 @@
 package net.coderbot.iris.pipeline;
 
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.compat.mojang.LevelRenderer;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.EntityRenderer;
 import org.lwjgl.opengl.GL20;
 
 import java.util.List;
@@ -31,7 +31,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
-	public void renderShadows(LevelRenderer levelRenderer, Camera camera) {
+	public void renderShadows(EntityRenderer levelRenderer, Camera camera) {
 		// stub: nothing to do here
 	}
 
