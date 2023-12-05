@@ -49,6 +49,7 @@ import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shaderpack.loading.ProgramId;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
+import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.texture.pbr.PBRTextureHolder;
@@ -171,9 +172,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
+        final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
+		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
+		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, main.depthBuffer,
-            ((IRenderTargetExt)main).iris$getDepthBufferVersion(),
+		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, depthTextureId,
+            ((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthBufferFormat,
 			programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
 
 		this.sunPathRotation = programs.getPackDirectives().getSunPathRotation();
@@ -890,8 +894,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
-		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), main.depthBuffer, main.framebufferWidth,
-            main.framebufferHeight, DepthBufferFormat.DEPTH, packDirectives);
+        final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
+		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
+		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
+
+		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthTextureId, main.framebufferWidth,
+            main.framebufferHeight, depthBufferFormat, packDirectives);
 
 		if (changed) {
 			prepareRenderer.recalculateSizes();
@@ -1109,7 +1117,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			final Vector3d fogColor = GLStateManager.getFogColor();
             GL11.glColor4f((float) fogColor.x, (float) fogColor.y, (float) fogColor.z, 1.0F);
 
-			horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewMatrix());
+			horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewBuffer());
 
 			GL11.glDepthMask(true);
             GL11.glEnable(GL11.GL_TEXTURE_2D);

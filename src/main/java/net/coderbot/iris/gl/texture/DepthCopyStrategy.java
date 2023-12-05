@@ -73,23 +73,7 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			GL43.glCopyImageSubData(
-				sourceTexture,
-				GL11.GL_TEXTURE_2D,
-				0,
-				0,
-				0,
-				0,
-				destTexture,
-				GL11.GL_TEXTURE_2D,
-				0,
-				0,
-				0,
-				0,
-				width,
-				height,
-				1
-			);
+			GL43.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
 		}
 	}
 

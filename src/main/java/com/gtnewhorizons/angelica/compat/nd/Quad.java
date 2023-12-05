@@ -10,11 +10,10 @@ import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Locale;
 
 public class Quad implements ModelQuadView {
-    // Temporarily borrowed from Neodymium
+    // Adapted from Neodymium
 
     private final static int DEFAULT_BRIGHTNESS = 15 << 20 | 15 << 4;
     private final static int DEFAULT_COLOR = 0xFFFFFFFF;
@@ -34,7 +33,6 @@ public class Quad implements ModelQuadView {
     public int[] cs = new int[4];
     // TODO normals?
     public boolean deleted;
-    public boolean noMerge;
 
     public ModelQuadFacing normal;
     public int offset;
@@ -47,11 +45,7 @@ public class Quad implements ModelQuadView {
 
     // 0: quads glued together on edge 1-2 or 3-0 ("megaquad row length")
     // 1: quads glued together on edge 0-1 or 2-3 ("megaquad column length")
-    private int[] quadCountByDirection = {1, 1};
-
-    // When we merge with another quad, we forget what we used to be like.
-    // Keep a reference to the quad we first merged with, and use it as a reminder.
-    public Quad mergeReference;
+    private final int[] quadCountByDirection = {1, 1};
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
@@ -179,10 +173,6 @@ public class Quad implements ModelQuadView {
 
         updateMinMaxXYZ();
         updateIsRectangle();
-        if(!isRectangle) {
-            // merging non-rectangles (e.g. Carpenter's Blocks wedge) is buggy, don't do it
-            noMerge = true;
-        }
 
         vectorA.set(xs[1] - xs[0], ys[1] - ys[0], zs[1] - zs[0]);
         vectorB.set(xs[2] - xs[1], ys[2] - ys[1], zs[2] - zs[1]);
@@ -207,13 +197,12 @@ public class Quad implements ModelQuadView {
         maxY = Float.NEGATIVE_INFINITY;
         maxZ = Float.NEGATIVE_INFINITY;
 
-        deleted = noMerge = false;
+        deleted = false;
         normal = null;
         offset = 0;
         flags = null;
         uDirectionIs01 = false;
         Arrays.fill(quadCountByDirection, 1);
-        mergeReference = null;
     }
 
     public void writeToBuffer(BufferWriter out) throws IOException {
@@ -232,13 +221,8 @@ public class Quad implements ModelQuadView {
             float u = us[vi];
             float v = vs[vi];
 
-            if(false/*Config.shortUV*/) {
-                out.writeShort((short)(Math.round(u * 32768f)));
-                out.writeShort((short)(Math.round(v * 32768f)));
-            } else {
-                out.writeFloat(u);
-                out.writeFloat(v);
-            }
+            out.writeFloat(u);
+            out.writeFloat(v);
 
             int b = bs[vi];
 
@@ -247,21 +231,6 @@ public class Quad implements ModelQuadView {
             int c = cs[vi];
 
             out.writeInt(c);
-
-            if(false/*Config.simplifyChunkMeshes*/) {
-                if((quadCountByUVDirection(false) == 1 && quadCountByUVDirection(true) == 1)) {
-                    // let the fragment shader know this is not a megaquad
-                    out.writeByte((byte)255);
-                    out.writeByte((byte)255);
-                    out.writeByte((byte)255);
-                    out.writeByte((byte)255);
-                } else {
-                    out.writeByte(us[vi] == us[provokingI] ? 0 : (byte)quadCountByUVDirection(false));
-                    out.writeByte(vs[vi] == vs[provokingI] ? 0 : (byte)quadCountByUVDirection(true));
-                    out.writeByte(us[vi] == us[provokingI] ? (byte)0 : 1);
-                    out.writeByte(vs[vi] == vs[provokingI] ? (byte)0 : 1);
-                }
-            }
 
             assert out.position() % getStride() == 0;
 
@@ -283,16 +252,11 @@ public class Quad implements ModelQuadView {
                 + 2 * (/*Config.shortUV*/false ? 2 : 4)     // UV           (float)
                 + 4                                         // B            (int)
                 + 4                                         // C            (int)
-                + (/*Config.simplifyChunkMeshes*/ false ? 4 : 0)      // megaquad XY  (byte)
                 ;
     }
 
     private boolean isTranslatedCopyOf(Quad o, boolean checkValid) {
         if((!isValid(this) && checkValid) || !isValid(o) || normal != o.normal) return false;
-
-        if(mergeReference != null) {
-            return mergeReference.isTranslatedCopyOf(o, false);
-        }
 
         for(int i = 1; i < 4; i++) {
             double relX = xs[i] - xs[0];

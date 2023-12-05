@@ -6,8 +6,11 @@ import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL43;
+
+import java.nio.IntBuffer;
 
 public final class ComputeProgram extends GlResource {
 	private final ProgramUniforms uniforms;
@@ -15,7 +18,8 @@ public final class ComputeProgram extends GlResource {
 	private final ProgramImages images;
 	private Vector3i absoluteWorkGroups;
 	private Vector2f relativeWorkGroups;
-	private int[] localSize;
+//	private int[] localSize;
+    private IntBuffer localSizeBuffer;
 	private float cachedWidth;
 	private float cachedHeight;
 	private Vector3i cachedWorkGroups;
@@ -23,8 +27,9 @@ public final class ComputeProgram extends GlResource {
 	ComputeProgram(int program, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
 		super(program);
 
-		localSize = new int[3];
-		IrisRenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSize);
+        localSizeBuffer = BufferUtils.createIntBuffer(3);
+//		localSize = new int[3];
+		IrisRenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
@@ -44,9 +49,9 @@ public final class ComputeProgram extends GlResource {
 			} else if (relativeWorkGroups != null) {
 				// TODO: This is my best guess at what Optifine does. Can this be confirmed?
 				// Do not use actual localSize here, apparently that's not what we want.
-				this.cachedWorkGroups = new Vector3i((int) Math.ceil(Math.ceil((width * relativeWorkGroups.x)) / localSize[0]), (int) Math.ceil(Math.ceil((height * relativeWorkGroups.y)) / localSize[1]), 1);
+				this.cachedWorkGroups = new Vector3i((int) Math.ceil(Math.ceil((width * relativeWorkGroups.x)) / localSizeBuffer.get(0)), (int) Math.ceil(Math.ceil((height * relativeWorkGroups.y)) / localSizeBuffer.get(1)), 1);
 			} else {
-				this.cachedWorkGroups = new Vector3i((int) Math.ceil(width / localSize[0]), (int) Math.ceil(height / localSize[1]), 1);
+				this.cachedWorkGroups = new Vector3i((int) Math.ceil(width / localSizeBuffer.get(0)), (int) Math.ceil(height / localSizeBuffer.get(1)), 1);
 			}
 		}
 

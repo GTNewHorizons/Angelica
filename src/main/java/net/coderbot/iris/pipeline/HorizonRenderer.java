@@ -1,12 +1,14 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.Minecraft;
-import org.joml.Matrix4f;
+import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 /**
  * Renders the sky horizon. Vanilla Minecraft simply uses the "clear color" for its horizon, and then draws a plane
@@ -39,7 +41,7 @@ public class HorizonRenderer {
 	 * Sine of 22.5 degrees.
 	 */
 	private static final double SIN_22_5 = Math.sin(Math.toRadians(22.5));
-	private VertexBuffer buffer;
+	private VertexBuffer vertexBuffer;
 	private int currentRenderDistance;
 
 	public HorizonRenderer() {
@@ -49,36 +51,49 @@ public class HorizonRenderer {
 	}
 
 	private void rebuildBuffer() {
-		if (this.buffer != null) {
-			this.buffer.close();
+		if (this.vertexBuffer != null) {
+			this.vertexBuffer.close();
 		}
-
-//		BufferBuilder buffer = Tesselator.getInstance().getBuilder();
-		BufferBuilder buffer = new BufferBuilder();
+        Tessellator tessellator = Tessellator.instance;
 
 		// Build the horizon quads into a buffer
-		buffer.begin(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
-		buildHorizon(currentRenderDistance * 16, buffer);
-		buffer.end();
+        tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
+		buildHorizon(currentRenderDistance * 16, tessellator);
+        ByteBuffer buf = tessellatorToBuffer(tessellator);
+        ((ITessellatorInstance) tessellator).discard();
 
-		this.buffer = new VertexBuffer(DefaultVertexFormat.POSITION);
-		this.buffer.bind();
-		this.buffer.upload(buffer);
-		VertexBuffer.unbind();
+		this.vertexBuffer = new VertexBuffer();
+		this.vertexBuffer.bind();
+		this.vertexBuffer.upload(buf, tessellator.vertexCount);
+		this.vertexBuffer.unbind();
 	}
 
-	private void buildQuad(VertexConsumer consumer, double x1, double z1, double x2, double z2) {
-		consumer.vertex(x1, BOTTOM, z1);
-		consumer.next();
-		consumer.vertex(x1, TOP, z1);
-		consumer.next();
-		consumer.vertex(x2, TOP, z2);
-		consumer.next();
-		consumer.vertex(x2, BOTTOM, z2);
-		consumer.next();
+    /* Convert the tessellator's data into a buffer that can be uploaded to the GPU. */
+    private ByteBuffer tessellatorToBuffer(Tessellator tessellator) {
+        final int[] rawBuffer = tessellator.rawBuffer;
+        final int byteSize = (tessellator.vertexCount * 3) << 2;
+        ByteBuffer byteBuffer = BufferUtils.createByteBuffer(byteSize);
+
+        for(int quadI = 0 ; quadI < tessellator.vertexCount / 4 ; quadI++) {
+            for(int vertexI = 0 ; vertexI < 4 ; vertexI++) {
+                int i = (quadI * 4 * 8 ) + (vertexI * 8);
+                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 0]));
+                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 1]));
+                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 2]));
+            }
+        }
+
+        return (ByteBuffer) byteBuffer.rewind();
+    }
+
+    private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {
+		consumer.addVertex(x1, BOTTOM, z1);
+		consumer.addVertex(x1, TOP, z1);
+		consumer.addVertex(x2, TOP, z2);
+		consumer.addVertex(x2, BOTTOM, z2);
 	}
 
-	private void buildHalf(VertexConsumer consumer, double adjacent, double opposite, boolean invert) {
+	private void buildHalf(Tessellator consumer, double adjacent, double opposite, boolean invert) {
 		if (invert) {
 			adjacent = -adjacent;
 			opposite = -opposite;
@@ -104,49 +119,41 @@ public class HorizonRenderer {
 	 * @param opposite the opposite side length of the a triangle with a hypotenuse extending from the center of the
 	 *                 octagon to a given vertex on the perimeter.
 	 */
-	private void buildOctagonalPrism(VertexConsumer consumer, double adjacent, double opposite) {
+	private void buildOctagonalPrism(Tessellator consumer, double adjacent, double opposite) {
 		buildHalf(consumer, adjacent, opposite, false);
 		buildHalf(consumer, adjacent, opposite, true);
 	}
 
-	private void buildRegularOctagonalPrism(VertexConsumer consumer, double radius) {
+	private void buildRegularOctagonalPrism(Tessellator consumer, double radius) {
 		buildOctagonalPrism(consumer, radius * COS_22_5, radius * SIN_22_5);
 	}
 
-	private void buildBottomPlane(VertexConsumer consumer, int radius) {
+	private void buildBottomPlane(Tessellator consumer, int radius) {
 		for (int x = -radius; x <= radius; x += 64) {
 			for (int z = -radius; z <= radius; z += 64) {
-				consumer.vertex(x + 64, BOTTOM, z);
-				consumer.next();
-				consumer.vertex(x, BOTTOM, z);
-				consumer.next();
-				consumer.vertex(x, BOTTOM, z + 64);
-				consumer.next();
-				consumer.vertex(x + 64, BOTTOM, z + 64);
-				consumer.next();
+				consumer.addVertex(x + 64, BOTTOM, z);
+				consumer.addVertex(x, BOTTOM, z);
+				consumer.addVertex(x, BOTTOM, z + 64);
+				consumer.addVertex(x + 64, BOTTOM, z + 64);
 			}
 		}
 	}
 
-	private void buildTopPlane(VertexConsumer consumer, int radius) {
+	private void buildTopPlane(Tessellator consumer, int radius) {
 		// You might be tempted to try to combine this with buildBottomPlane to avoid code duplication,
 		// but that won't work since the winding order has to be reversed or else one of the planes will be
 		// discarded by back face culling.
 		for (int x = -radius; x <= radius; x += 64) {
 			for (int z = -radius; z <= radius; z += 64) {
-				consumer.vertex(x + 64, TOP, z);
-				consumer.next();
-				consumer.vertex(x + 64, TOP, z + 64);
-				consumer.next();
-				consumer.vertex(x, TOP, z + 64);
-				consumer.next();
-				consumer.vertex(x, TOP, z);
-				consumer.next();
+				consumer.addVertex(x + 64, TOP, z);
+				consumer.addVertex(x + 64, TOP, z + 64);
+				consumer.addVertex(x, TOP, z + 64);
+				consumer.addVertex(x, TOP, z);
 			}
 		}
 	}
 
-	private void buildHorizon(int radius, VertexConsumer consumer) {
+	private void buildHorizon(int radius, Tessellator consumer) {
 		if (radius > 256) {
 			// Prevent the prism from getting too large, this causes issues on some shader packs that modify the vanilla
 			// sky if we don't do this.
@@ -163,20 +170,21 @@ public class HorizonRenderer {
 		buildBottomPlane(consumer, 384);
 	}
 
-	public void renderHorizon(Matrix4f matrix) {
+	public void renderHorizon(FloatBuffer floatBuffer) {
 		if (currentRenderDistance != Minecraft.getMinecraft().gameSettings.renderDistanceChunks) {
 			currentRenderDistance = Minecraft.getMinecraft().gameSettings.renderDistanceChunks;
 			rebuildBuffer();
 		}
 
-		buffer.bind();
-		DefaultVertexFormat.POSITION.setupBufferState(0L);
-		buffer.draw(matrix, GL11.GL_QUADS);
-		DefaultVertexFormat.POSITION.clearBufferState();
-		VertexBuffer.unbind();
+		vertexBuffer.bind();
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 12, 0L);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+		vertexBuffer.draw(floatBuffer, GL11.GL_QUADS);
+		GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
+		vertexBuffer.unbind();
 	}
 
 	public void destroy() {
-		buffer.close();
+		vertexBuffer.close();
 	}
 }

@@ -6,7 +6,7 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 public class BufferWriter {
-    // Temporarily borrowed from Neodymium
+    // Adapted from Neodymium
 
     private final ByteBuffer buf;
 

@@ -4,8 +4,12 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
+
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 public class TextureManipulationUtil {
 	private static int colorFillFBO = -1;
@@ -16,11 +20,14 @@ public class TextureManipulationUtil {
 		}
 
 		int previousFramebufferId = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-		float[] previousClearColor = new float[4];
-		IrisRenderSystem.getFloatv(GL11.GL_COLOR_CLEAR_VALUE, previousClearColor);
+        // TODO: allocations
+        FloatBuffer previousClearColorBuffer = BufferUtils.createFloatBuffer(4);
+//		float[] previousClearColor = new float[4];
+		IrisRenderSystem.getFloatv(GL11.GL_COLOR_CLEAR_VALUE, previousClearColorBuffer);
 		int previousTextureId = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-		int[] previousViewport = new int[4];
-		IrisRenderSystem.getIntegerv(GL11.GL_VIEWPORT, previousViewport);
+        IntBuffer previousViewportBuffer = BufferUtils.createIntBuffer(4);
+//		int[] previousViewport = new int[4];
+		IrisRenderSystem.getIntegerv(GL11.GL_VIEWPORT, previousViewportBuffer);
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, colorFillFBO);
 		GL11.glClearColor(
@@ -45,8 +52,8 @@ public class TextureManipulationUtil {
 		}
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, previousFramebufferId);
-		GL11.glClearColor(previousClearColor[0], previousClearColor[1], previousClearColor[2], previousClearColor[3]);
+		GL11.glClearColor(previousClearColorBuffer.get(0), previousClearColorBuffer.get(1), previousClearColorBuffer.get(2), previousClearColorBuffer.get(3));
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
-		GL11.glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+		GL11.glViewport(previousViewportBuffer.get(0), previousViewportBuffer.get(1), previousViewportBuffer.get(2), previousViewportBuffer.get(3));
 	}
 }

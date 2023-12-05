@@ -6,6 +6,7 @@ import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
 
 import java.nio.FloatBuffer;
 import java.util.function.Supplier;
@@ -71,10 +72,11 @@ public final class MatrixUniforms {
 
 		@Override
 		public Matrix4f get() {
-			FloatBuffer buffer = FloatBuffer.allocate(16);
+            // TODO: How can we not do this?
+			FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
+//            new Matrix4f(parent.get());
 			buffer.put(parent.get());
 			buffer.rewind();
-
             final Matrix4f matrix4f = new Matrix4f(buffer);
 			matrix4f.invert();
 
