@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public class RecyclingList<T> {
-    // Temporarily borrowed from Neodymium
+    // Adapted from Neodymium
 
     private Supplier<T> constructor;
 

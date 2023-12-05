@@ -52,7 +52,7 @@ public class BlockRenderer {
 
             this.random.setSeed(seed);
 
-            final List<Quad> all = tesselatorToBakedQuadList(tessellator, pos);
+            final List<Quad> all = tessellatorToQuadList(tessellator, pos);
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.renderQuadList(pos, buffers, all, facing);
@@ -68,7 +68,7 @@ public class BlockRenderer {
     }
 
     private int tesselatorDataCount;
-    private List<Quad> tesselatorToBakedQuadList(Tessellator t, BlockPos pos) {
+    private List<Quad> tessellatorToQuadList(Tessellator t, BlockPos pos) {
         // Adapted from Neodymium
         tesselatorDataCount++;
 

@@ -39,7 +39,7 @@ public class RenderTargets {
 
 	private int cachedDepthBufferVersion;
 
-	public RenderTargets(int width, int height,  int depthTexture, int depthBufferVersion, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
+	public RenderTargets(int width, int height,  int depthTexture, int depthBufferVersion, DepthBufferFormat depthFormat, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
         targets = new RenderTarget[renderTargets.size()];
 
 		renderTargets.forEach((index, settings) -> {
@@ -49,9 +49,8 @@ public class RenderTargets {
 					.setInternalFormat(settings.getInternalFormat())
 					.setPixelFormat(settings.getInternalFormat().getPixelFormat()).build();
 		});
-        // TODO: currentDepthFormat... :hmmm: -- NEED GL_TEXTURE_INTERNAL_FORMAT ??
-		this.currentDepthFormat = DepthBufferFormat.DEPTH;
 		this.currentDepthTexture = depthTexture;
+		this.currentDepthFormat = depthFormat;
 		this.copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
 
 		this.cachedWidth = width;

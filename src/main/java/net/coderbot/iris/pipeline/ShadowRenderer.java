@@ -18,7 +18,6 @@ import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
-import net.coderbot.iris.shadows.Matrix4fAccess;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
@@ -320,7 +319,7 @@ public class ShadowRenderer {
 		return holder;
 	}
 
-	private void setupGlState(float[] projMatrix) {
+	private void setupGlState(Matrix4f projMatrix) {
 		// Set up our projection matrix and load it into the legacy matrix stack
 		IrisRenderSystem.setupProjectionMatrix(projMatrix);
 
@@ -477,7 +476,7 @@ public class ShadowRenderer {
 		// Create our camera
 		MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
         // TODO: Render
-//		MODELVIEW = modelView.peek().getModel().copy();
+		MODELVIEW = new Matrix4f(modelView.peek().getModel());
 		float[] projMatrix;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
@@ -486,8 +485,8 @@ public class ShadowRenderer {
 			projMatrix = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
 		}
 
-		PROJECTION = new Matrix4f();
-		((Matrix4fAccess) (Object) PROJECTION).copyFromArray(projMatrix);
+        // TODO: Allocations
+		PROJECTION = new Matrix4f().set(projMatrix);
 
 		profiler.startSection("terrain_setup");
 
@@ -540,7 +539,7 @@ public class ShadowRenderer {
 
 		profiler.endStartSection("terrain");
 
-		setupGlState(projMatrix);
+		setupGlState(PROJECTION);
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {

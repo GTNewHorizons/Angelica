@@ -4,7 +4,9 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 import org.joml.Vector3i;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
@@ -46,14 +48,12 @@ public class IrisRenderSystem {
 		supportsCompute = supportsCompute();
 	}
 
-	public static void getIntegerv(int pname, int[] params) {
-        // TODO: Iris Shaders - IntBuffer
-		GL11.glGetInteger(pname, IntBuffer.wrap(params));
+	public static void getIntegerv(int pname, IntBuffer params) {
+		GL11.glGetInteger(pname, params);
 	}
 
-	public static void getFloatv(int pname, float[] params) {
-        // TODO: Iris Shaders - FloatBuffer
-		GL11.glGetFloat(pname, FloatBuffer.wrap(params));
+	public static void getFloatv(int pname, FloatBuffer params) {
+		GL11.glGetFloat(pname, params);
 	}
 
 	public static void generateMipmaps(int texture, int mipmapTarget) {
@@ -149,8 +149,8 @@ public class IrisRenderSystem {
         return GL20.glGetActiveUniform(program, index, maxLength, sizeType);
 	}
 
-	public static void readPixels(int x, int y, int width, int height, int format, int type, float[] pixels) {
-		GL11.glReadPixels(x, y, width, height, format, type, FloatBuffer.wrap(pixels));
+	public static void readPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) {
+		GL11.glReadPixels(x, y, width, height, format, type, pixels);
 	}
 
 	public static void bufferData(int target, FloatBuffer data, int usage) {
@@ -195,8 +195,8 @@ public class IrisRenderSystem {
 		}
 	}
 
-	public static void getProgramiv(int program, int value, int[] storage) {
-        GL20.glGetProgram(program, value, IntBuffer.wrap(storage));
+	public static void getProgramiv(int program, int value, IntBuffer storage) {
+        GL20.glGetProgram(program, value, storage);
 	}
 
 	public static void dispatchCompute(int workX, int workY, int workZ) {
@@ -233,10 +233,13 @@ public class IrisRenderSystem {
 		dsaState.bindTextureToUnit(unit, texture);
 	}
 
-    public static void setupProjectionMatrix(float[] matrix) {
+    public static void setupProjectionMatrix(Matrix4f matrix) {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
-        GL11.glLoadMatrix(FloatBuffer.wrap(matrix));
+        // TODO: allocations
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
+        matrix.get(buffer);
+        GL11.glLoadMatrix(buffer);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
 

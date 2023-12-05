@@ -40,7 +40,9 @@ public class GlFramebuffer extends GlResource {
 		} else {
 			IrisRenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
 		}
-
+        if(!isComplete()) {
+            throw new RuntimeException("Framebuffer incomplete");
+        }
 		this.hasDepthAttachment = true;
 	}
 
@@ -103,9 +105,8 @@ public class GlFramebuffer extends GlResource {
 
 	public boolean isComplete() {
 		bind();
-		int status = OpenGlHelper.func_153167_i/*glCheckFramebufferStatus*/(GL30.GL_FRAMEBUFFER);
 
-		return status == GL30.GL_FRAMEBUFFER_COMPLETE;
+        return OpenGlHelper.func_153167_i/*glCheckFramebufferStatus*/(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
 	}
 
 	public int getId() {
