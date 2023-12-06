@@ -11,6 +11,7 @@ import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.HandRenderer;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
@@ -139,15 +140,23 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
-        if(AngelicaConfig.enableIris && pass == 1) {
-            final Camera camera = new Camera(mc.renderViewEntity, (float)partialTicks);
-            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+        final WorldRenderingPipeline pipeline;
+        if(!AngelicaConfig.enableIris) {
+            pipeline = null;
+        } else {
+            pipeline = Iris.getPipelineManager().getPipelineNullable();
+//            pipeline.setPhase(WorldRenderingPhase.fromTerrainRenderType(renderType));
+            pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
 
-            // iris$beginTranslucents
-            pipeline.beginHand();
-            HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float)partialTicks, camera, null /*gameRenderer*/, pipeline);
-            mc.mcProfiler.endStartSection("iris_pre_translucent");
-            pipeline.beginTranslucents();
+            if(pass == 1) {
+                final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
+
+                // iris$beginTranslucents
+                pipeline.beginHand();
+                HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, null /*gameRenderer*/, pipeline);
+                mc.mcProfiler.endStartSection("iris_pre_translucent");
+                pipeline.beginTranslucents();
+            }
         }
         // Handle view distance change
         if(this.renderDistanceChunks != this.mc.gameSettings.renderDistanceChunks) {
@@ -173,6 +182,9 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             RenderDevice.exitManagedCode();
             this.mc.entityRenderer.disableLightmap(partialTicks);
         }
+
+        if(pipeline != null)  pipeline.setPhase(WorldRenderingPhase.NONE);
+
         return 0;
     }
 

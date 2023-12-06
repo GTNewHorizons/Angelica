@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -1027,8 +1028,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
-        if (true) return;
-
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
@@ -1118,7 +1117,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			final Vector3d fogColor = GLStateManager.getFogColor();
             GL11.glColor4f((float) fogColor.x, (float) fogColor.y, (float) fogColor.z, 1.0F);
 
-			//horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewBuffer());
+			horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewBuffer());
 
 			GL11.glDepthMask(true);
             GL11.glEnable(GL11.GL_TEXTURE_2D);
@@ -1142,10 +1141,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		isRenderingFullScreenPass = true;
 
-//		centerDepthSampler.sampleCenterDepth();
+		centerDepthSampler.sampleCenterDepth();
 
-//		compositeRenderer.renderAll();
-//		finalPassRenderer.renderFinalPass();
+		compositeRenderer.renderAll();
+		finalPassRenderer.renderFinalPass();
 
 		isRenderingFullScreenPass = false;
 	}

@@ -451,8 +451,6 @@ public class ShadowRenderer {
 	}
 
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
-        if(true) return;
-
         final Minecraft mc = Minecraft.getMinecraft();
         final RenderGlobal rg = mc.renderGlobal;
 
