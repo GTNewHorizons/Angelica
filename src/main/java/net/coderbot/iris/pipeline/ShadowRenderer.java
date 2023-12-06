@@ -4,12 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
-import com.gtnewhorizons.angelica.compat.mojang.RenderBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import net.coderbot.batchedentityrendering.impl.BatchingDebugMessageHelper;
-import net.coderbot.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
-import net.coderbot.batchedentityrendering.impl.RenderBuffersExt;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
@@ -72,8 +68,8 @@ public class ShadowRenderer {
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
 	private final float sunPathRotation;
-	private final RenderBuffers buffers;
-	private final RenderBuffersExt renderBuffersExt;
+//	private final RenderBuffers buffers;
+//	private final RenderBuffersExt renderBuffersExt;
 	private final List<MipmapPass> mipmapPasses = new ArrayList<>();
 	private final String debugStringOverall;
 	private FrustumHolder terrainFrustumHolder;
@@ -120,13 +116,13 @@ public class ShadowRenderer {
 
 		this.sunPathRotation = directives.getSunPathRotation();
 
-		this.buffers = new RenderBuffers();
-
-		if (this.buffers instanceof RenderBuffersExt) {
-			this.renderBuffersExt = (RenderBuffersExt) buffers;
-		} else {
-			this.renderBuffersExt = null;
-		}
+//		this.buffers = new RenderBuffers();
+//
+//		if (this.buffers instanceof RenderBuffersExt) {
+//			this.renderBuffersExt = (RenderBuffersExt) buffers;
+//		} else {
+//			this.renderBuffersExt = null;
+//		}
 
 		configureSamplingSettings(shadowDirectives);
 	}
@@ -210,6 +206,7 @@ public class ShadowRenderer {
 		// Workaround for issues with old shader packs like Chocapic v4.
 		// They expected the driver to put the depth value in z, but it's supposed to only
 		// be available in r. So we set up the swizzle to fix that.
+		// TODO: allocations
         IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
         swizzleBuf.put(new int[] { GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE }).rewind();
 		IrisRenderSystem.texParameteriv(glTextureId, GL11.GL_TEXTURE_2D, ARBTextureSwizzle.GL_TEXTURE_SWIZZLE_RGBA, swizzleBuf);
@@ -454,6 +451,8 @@ public class ShadowRenderer {
 	}
 
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
+        if(true) return;
+
         final Minecraft mc = Minecraft.getMinecraft();
         final RenderGlobal rg = mc.renderGlobal;
 
@@ -543,8 +542,10 @@ public class ShadowRenderer {
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
-            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
-            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+            // TODO: Render
+//            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
+//            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+
 //            levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
@@ -574,24 +575,24 @@ public class ShadowRenderer {
 		//
 		// Note: We must use a separate BuilderBufferStorage object here, or else very weird things will happen during
 		// rendering.
-		if (renderBuffersExt != null) {
-			renderBuffersExt.beginLevelRendering();
-		}
+//		if (renderBuffersExt != null) {
+//			renderBuffersExt.beginLevelRendering();
+//		}
 
-		if (buffers instanceof DrawCallTrackingRenderBuffers) {
-			((DrawCallTrackingRenderBuffers) buffers).resetDrawCounts();
-		}
+//		if (buffers instanceof DrawCallTrackingRenderBuffers) {
+//			((DrawCallTrackingRenderBuffers) buffers).resetDrawCounts();
+//		}
 
-		BufferSource bufferSource = buffers.bufferSource();
+//		BufferSource bufferSource = buffers.bufferSource();
 
 		if (shouldRenderEntities) {
-			renderEntities(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+//			renderEntities(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		} else if (shouldRenderPlayer) {
-			renderPlayerEntity(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+//			renderPlayerEntity(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		}
 
 		if (shouldRenderBlockEntities) {
-			renderBlockEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+//			renderBlockEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
@@ -599,7 +600,7 @@ public class ShadowRenderer {
 		// NB: Don't try to draw the translucent parts of entities afterwards. It'll cause problems since some
 		// shader packs assume that everything drawn afterwards is actually translucent and should cast a colored
 		// shadow...
-		bufferSource.endBatch();
+//		bufferSource.endBatch();
 
 		copyPreTranslucentDepth();
 
@@ -609,16 +610,17 @@ public class ShadowRenderer {
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+            // TODO: Render
+//            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.
 		// worldRenderer.invokeRenderType(RenderType.getTripwire(), modelView, cameraX, cameraY, cameraZ);
 
-		if (renderBuffersExt != null) {
-			renderBuffersExt.endLevelRendering();
-		}
+//		if (renderBuffersExt != null) {
+//			renderBuffersExt.endLevelRendering();
+//		}
 
         // TODO: Render
 //		debugStringTerrain = ((LevelRenderer) levelRenderer).getChunkStatistics();
@@ -651,9 +653,9 @@ public class ShadowRenderer {
 		messages.add("[" + Iris.MODNAME + "] Shadow Entities: " + getEntitiesDebugString());
 		messages.add("[" + Iris.MODNAME + "] Shadow Block Entities: " + getTileEntitiesDebugString());
 
-		if (buffers instanceof DrawCallTrackingRenderBuffers drawCallTracker && (shouldRenderEntities || shouldRenderPlayer)) {
-            messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
-		}
+//		if (buffers instanceof DrawCallTrackingRenderBuffers drawCallTracker && (shouldRenderEntities || shouldRenderPlayer)) {
+//            messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
+//		}
 	}
 
 	private String getEntitiesDebugString() {
