@@ -33,7 +33,8 @@ public class RenderTargets {
 
 	private int cachedWidth;
 	private int cachedHeight;
-	private boolean fullClearRequired;
+	@Getter
+    private boolean fullClearRequired;
 	private boolean translucentDepthDirty;
 	private boolean handDepthDirty;
 
@@ -178,8 +179,7 @@ public class RenderTargets {
 			depthSourceFb.bindAsReadBuffer();
 			IrisRenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 		} else {
-			copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(),
-				getCurrentWidth(), getCurrentHeight());
+			copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(), getCurrentWidth(), getCurrentHeight());
 		}
 	}
 
@@ -194,11 +194,7 @@ public class RenderTargets {
 		}
 	}
 
-	public boolean isFullClearRequired() {
-		return fullClearRequired;
-	}
-
-	public void onFullClear() {
+    public void onFullClear() {
 		fullClearRequired = false;
 	}
 

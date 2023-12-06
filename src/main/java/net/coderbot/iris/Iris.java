@@ -609,6 +609,7 @@ public class Iris {
 
         ProgramSet programs = currentPack.getProgramSet(dimensionId);
 
+
         try {
             return new DeferredWorldRenderingPipeline(programs);
         } catch (Exception e) {
