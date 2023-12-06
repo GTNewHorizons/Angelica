@@ -1,7 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;

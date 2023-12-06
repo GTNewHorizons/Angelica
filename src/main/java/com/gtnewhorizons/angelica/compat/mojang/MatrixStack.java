@@ -6,6 +6,7 @@ import org.joml.Matrix4f;
 
 import java.util.Deque;
 
+@Deprecated
 public class MatrixStack {
     private final Deque<Entry> matrixStack;
 

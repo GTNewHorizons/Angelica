@@ -1,6 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.compat.NativeImage;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 
 public class NativeImageBackedSingleColorTexture extends DynamicTexture {

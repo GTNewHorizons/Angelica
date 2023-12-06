@@ -1,5 +1,5 @@
 package net.coderbot.iris.texture.mipmap;
-import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.compat.NativeImage;
 
 public class ChannelMipmapGenerator extends AbstractMipmapGenerator {
 	protected final BlendFunction redFunc;

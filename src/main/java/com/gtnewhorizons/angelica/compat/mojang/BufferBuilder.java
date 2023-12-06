@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 // This is the Tessellator - TODO: Merge/Overwrite
+@Deprecated
 public class BufferBuilder implements VertexConsumer, BufferBuilderExt {
     private ByteBuffer buffer;
     private List<DrawState> vertexCounts;

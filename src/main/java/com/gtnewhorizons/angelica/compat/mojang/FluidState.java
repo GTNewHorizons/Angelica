@@ -4,6 +4,7 @@ import net.minecraft.block.BlockLiquid;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
+@Deprecated
 public class FluidState {
 
     private final Fluid fluid;

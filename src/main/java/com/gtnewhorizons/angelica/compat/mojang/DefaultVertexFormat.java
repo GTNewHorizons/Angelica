@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Type;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Usage;
 
+@Deprecated
 public class DefaultVertexFormat {
 
     public static final VertexFormatElement POSITION_ELEMENT = new VertexFormatElement(0, Type.FLOAT, Usage.POSITION, 3);

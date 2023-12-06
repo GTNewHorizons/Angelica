@@ -1,6 +1,8 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat;
 
-// ChunkCoordIntPair
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+
+// See if we can merge/mixin/extend ChunkCoordIntPair?
 public class ChunkPos {
     public static long INT_MASK   = (1L << Integer.SIZE) - 1;
 
@@ -36,5 +38,22 @@ public class ChunkPos {
 
     public static long toLong(int x, int z) {
         return (long)x & 4294967295L | ((long)z & 4294967295L) << 32;
+    }
+
+    public int hashCode()
+    {
+        int i = 1664525 * this.x + 1013904223;
+        int j = 1664525 * (this.z ^ -559038737) + 1013904223;
+        return i ^ j;
+    }
+
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (object instanceof ChunkPos lv) {
+            return this.x == lv.x && this.z == lv.z;
+        }
+        return false;
     }
 }

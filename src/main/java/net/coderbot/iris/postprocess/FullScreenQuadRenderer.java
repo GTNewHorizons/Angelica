@@ -31,7 +31,7 @@ public class FullScreenQuadRenderer {
 
 	@SuppressWarnings("deprecation")
 	public void begin() {
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GLStateManager.disableDepthTest();
 
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
@@ -59,7 +59,7 @@ public class FullScreenQuadRenderer {
 		DefaultVertexFormat.POSITION_TEXTURE.clearBufferState();
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GLStateManager.enableDepthTest();
 
         GL11.glMatrixMode(GL11.GL_PROJECTION);
 		GL11.glPopMatrix();

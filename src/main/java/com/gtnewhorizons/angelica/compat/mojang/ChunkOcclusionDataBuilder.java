@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.compat.mojang;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntPriorityQueue;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import net.minecraft.util.Util;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.BitSet;
@@ -13,6 +12,8 @@ import java.util.Set;
 /**
  * WARNING: Minecraft 1.16 code rip!!
  */
+
+@Deprecated
 public class ChunkOcclusionDataBuilder {
     private static final int STEP_X = (int)Math.pow(16.0, 0.0);
     private static final int STEP_Z = (int)Math.pow(16.0, 1.0);

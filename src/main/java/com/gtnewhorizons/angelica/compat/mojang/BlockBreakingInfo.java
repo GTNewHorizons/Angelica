@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import org.jetbrains.annotations.NotNull;
 
+@Deprecated
 public class BlockBreakingInfo implements Comparable<BlockBreakingInfo> {
 
     @Override

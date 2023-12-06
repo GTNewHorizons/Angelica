@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+@Deprecated
 public interface VertexConsumerProvider {
     static Immediate immediate(BufferBuilder buffer) {
         return immediate(ImmutableMap.of(), buffer);

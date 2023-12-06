@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import java.util.Map;
 
+@Deprecated
 public class BufferSource implements MultiBufferSource {
 
     public <V, K> BufferSource(BufferBuilder bufferBuilder, Map<K,V> kvMap) {}

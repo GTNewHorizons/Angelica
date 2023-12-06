@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
+@Deprecated
 public class OverlayVertexConsumer implements VertexConsumer {
 
     public OverlayVertexConsumer(VertexConsumer buffer, Matrix4f model, Matrix3f normal) {}

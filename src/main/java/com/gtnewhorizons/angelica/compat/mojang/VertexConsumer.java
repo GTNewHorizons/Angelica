@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.forge.IForgeVertexBuilder;
 
 import javax.annotation.Nonnull;
 
+@Deprecated
 public interface VertexConsumer  extends IForgeVertexBuilder {
 
     VertexConsumer vertex(double d, double e, double f);

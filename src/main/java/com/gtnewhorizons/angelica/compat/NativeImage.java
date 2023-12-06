@@ -1,5 +1,6 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.compat.mojang.ByteBufferBackedInputStream;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.lwjgl.BufferUtils;
@@ -14,6 +15,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
+// TBD
 public class NativeImage extends BufferedImage {
     @Getter
     private final Format format;

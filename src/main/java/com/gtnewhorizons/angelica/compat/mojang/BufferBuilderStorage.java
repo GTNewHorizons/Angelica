@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import java.util.SortedMap;
 
+@Deprecated
 public class BufferBuilderStorage {
     private final SortedMap<RenderLayer, BufferBuilder> entityBuilders = null;
     private final VertexConsumerProvider.Immediate entityVertexConsumers;
