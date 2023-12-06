@@ -40,9 +40,7 @@ public class GlFramebuffer extends GlResource {
 		} else {
 			IrisRenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
 		}
-        if(!isComplete()) {
-            throw new RuntimeException("Framebuffer incomplete");
-        }
+
 		this.hasDepthAttachment = true;
 	}
 
