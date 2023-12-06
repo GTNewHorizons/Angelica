@@ -1,5 +1,6 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;

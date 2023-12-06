@@ -3,13 +3,11 @@ package com.gtnewhorizons.angelica.compat.mojang;
 import com.gtnewhorizons.angelica.compat.forge.IForgeBlockState;
 import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.BlockFluidBase;
-import net.minecraftforge.fluids.FluidRegistry;
 import org.joml.Vector3d;
 
+@Deprecated
 public class BlockState implements IForgeBlockState {
     private final static Vector3d ZERO = new Vector3d(0, 0, 0);
     private final Block block;

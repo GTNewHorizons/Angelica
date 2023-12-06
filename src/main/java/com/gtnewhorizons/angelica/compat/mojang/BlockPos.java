@@ -9,6 +9,7 @@ import java.math.RoundingMode;
 
 import static com.google.common.math.IntMath.log2;
 
+// Should we keep this?
 public class BlockPos extends Vector3i {
 
     private static final int SIZE_BITS_X = 1 + log2(MathHelper.roundUpToPowerOfTwo(30000000), RoundingMode.UNNECESSARY);

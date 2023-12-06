@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+@Deprecated
 public class ByteBufferBackedInputStream extends InputStream {
 
     ByteBuffer buf;

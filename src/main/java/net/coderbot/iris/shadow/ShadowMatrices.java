@@ -5,7 +5,7 @@ import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
 
-import static com.gtnewhorizons.angelica.compat.mojang.Constants.DEGREES_TO_RADIANS;
+import static com.gtnewhorizons.angelica.compat.Constants.DEGREES_TO_RADIANS;
 
 public class ShadowMatrices {
 	private static final float NEAR = 0.05f;

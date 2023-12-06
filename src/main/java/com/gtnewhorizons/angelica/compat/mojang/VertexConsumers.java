@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+@Deprecated
 public class VertexConsumers {
     public static VertexConsumer union(VertexConsumer first, VertexConsumer second) {
         return new Dual(first, second);

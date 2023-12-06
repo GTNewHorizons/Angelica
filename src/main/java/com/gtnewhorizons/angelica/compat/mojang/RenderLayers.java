@@ -1,11 +1,9 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.mixins.early.sodium.MixinMaterial;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.block.material.MaterialLiquid;
-import net.minecraftforge.fluids.Fluid;
 
+@Deprecated
 public class RenderLayers {
     public static boolean canRenderInLayer(BlockState state, RenderLayer layer) {
 

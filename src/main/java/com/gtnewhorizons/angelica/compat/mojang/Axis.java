@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import net.minecraftforge.common.util.ForgeDirection;
 
+@Deprecated
 public enum Axis {
     X,
     Y,

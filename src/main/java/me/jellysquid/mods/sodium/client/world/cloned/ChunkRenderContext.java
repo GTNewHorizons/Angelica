@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
-import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 
 public class ChunkRenderContext {

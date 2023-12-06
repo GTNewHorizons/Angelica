@@ -30,6 +30,7 @@ import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.shader.Framebuffer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
@@ -62,8 +63,7 @@ public class CompositeRenderer {
 		this.customTextureIds = customTextureIds;
 
 		final PackRenderTargetDirectives renderTargetDirectives = packDirectives.getRenderTargetDirectives();
-		final Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargetSettings =
-				renderTargetDirectives.getRenderTargetSettings();
+		final Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargetSettings = renderTargetDirectives.getRenderTargetSettings();
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -205,21 +205,18 @@ public class CompositeRenderer {
 	}
 
 	public void renderAll() {
-		GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
 
 		FullScreenQuadRenderer.INSTANCE.begin();
-        final Minecraft mc = Minecraft.getMinecraft();
+
 		for (Pass renderPass : passes) {
 			boolean ranCompute = false;
 			for (ComputeProgram computeProgram : renderPass.computes) {
 				if (computeProgram != null) {
 					ranCompute = true;
-
-                    // TODO: Iris
-//					com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getMinecraft().getMainRenderTarget();
-//					computeProgram.dispatch(main.width, main.height);
-					computeProgram.dispatch(mc.displayWidth, mc.displayHeight);
+                    final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
+					computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
 				}
 			}
 

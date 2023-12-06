@@ -7,6 +7,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import java.util.List;
 import java.util.Random;
 
+@Deprecated
 public interface BakedModel extends IForgeBakedModel {
 
     List<BakedQuad> getQuads(BlockState state, ForgeDirection face, Random random);

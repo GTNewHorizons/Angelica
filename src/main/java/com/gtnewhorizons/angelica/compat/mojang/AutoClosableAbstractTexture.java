@@ -7,6 +7,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
 
+@Deprecated
 public abstract class AutoClosableAbstractTexture extends AbstractTexture implements AutoCloseable {
 
     public abstract void load(IResourceManager manager) throws IOException;

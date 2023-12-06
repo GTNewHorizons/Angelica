@@ -170,7 +170,7 @@ public class FinalPassRenderer {
 		//
 		// This is not a concern for depthtex1 / depthtex2 since the copy call extracts the depth values, and the
 		// shader pack only ever uses them to read the depth values.
-		if (((IRenderTargetExt)main).iris$getColorBufferVersion() != lastColorTextureVersion) {
+		if (((IRenderTargetExt)main).iris$getColorBufferVersion() != lastColorTextureVersion || main.framebufferTexture != lastColorTextureId) {
 			lastColorTextureVersion = ((IRenderTargetExt)main).iris$getColorBufferVersion();
 			this.lastColorTextureId = main.framebufferTexture;
 			colorHolder.addColorAttachment(0, lastColorTextureId);

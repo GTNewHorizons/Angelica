@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 import com.gtnewhorizons.angelica.compat.forge.VertexLighterFlat;
 import net.minecraftforge.common.util.ForgeDirection;
 
+@Deprecated
 public class BakedQuad {
 
     public void pipe(VertexLighterFlat lighter) {}

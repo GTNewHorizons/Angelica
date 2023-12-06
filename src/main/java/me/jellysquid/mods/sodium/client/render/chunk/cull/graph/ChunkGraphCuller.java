@@ -1,10 +1,9 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -12,8 +11,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraft.util.MathHelper;

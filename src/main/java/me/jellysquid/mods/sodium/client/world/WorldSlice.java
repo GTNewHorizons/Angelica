@@ -2,12 +2,8 @@ package me.jellysquid.mods.sodium.client.world;
 
 import java.util.Arrays;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
-import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
-import com.gtnewhorizons.angelica.compat.mojang.FluidState;
+import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.CompatMathHelper;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;

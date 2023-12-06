@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat;
 
 public class Constants {
 

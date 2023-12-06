@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
+@Deprecated
 public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris)
     private static final RenderLayer SOLID = of("solid", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 2097152, true, false, RenderLayer.MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(MIPMAP_BLOCK_ATLAS_TEXTURE).build(true));
     private static final RenderLayer CUTOUT_MIPPED = of("cutout_mipped", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 131072, true, false, RenderLayer.MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(MIPMAP_BLOCK_ATLAS_TEXTURE).alpha(HALF_ALPHA).build(true));

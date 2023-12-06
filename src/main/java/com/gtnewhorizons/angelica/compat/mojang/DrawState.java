@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import lombok.Getter;
 
+@Deprecated
 public class DrawState {
     @Getter
     private final VertexFormat format;

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+@Deprecated
 public class GameRenderer {
 
     public void invokeBobHurt(MatrixStack poseStack, float tickDelta) {}

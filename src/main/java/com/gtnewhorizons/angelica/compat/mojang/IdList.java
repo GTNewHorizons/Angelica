@@ -9,6 +9,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 
+@Deprecated
 public class IdList <T> implements IndexedIterable<T> {
     protected int nextId;
     protected final IdentityHashMap<T, Integer> idMap;

@@ -2,7 +2,7 @@ package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;

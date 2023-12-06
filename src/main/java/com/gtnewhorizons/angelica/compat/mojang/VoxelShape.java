@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+@Deprecated
 public enum VoxelShape {
 
     FULL_CUBE(false),

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+@Deprecated
 public class PackedIntegerArray {
 
     public PackedIntegerArray(int paletteSize, int size, long[] storage) {}
