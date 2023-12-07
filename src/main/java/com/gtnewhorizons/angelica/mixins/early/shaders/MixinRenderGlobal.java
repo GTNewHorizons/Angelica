@@ -6,9 +6,11 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.RenderGlobal;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RenderGlobal.class)
@@ -45,12 +47,10 @@ public class MixinRenderGlobal {
         pipeline.get().setPhase(WorldRenderingPhase.VOID);
     }
 
-    // TODO: Inject here (line1188) <GL11.glRotatef(this.theWorld.getCelestialAngle(p_72714_1_) * 360.0F, 1.0F, 0.0F, 0.0F);>
-    // What to translate poseStack mulPose() to?
-//    @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getTimeOfDay(F)F"),
-//        slice = @Slice(from = @At(value = "FIELD", target = "com/mojang/math/Vector3f.YP : Lcom/mojang/math/Vector3f;")))
-//    private void iris$renderSky$tiltSun(PoseStack poseStack, float tickDelta, CallbackInfo callback) {
-//        poseStack.mulPose(Vector3f.ZP.rotationDegrees(pipeline.getSunPathRotation()));
-//    }
+    @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F"),
+        slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getRainStrength(F)F")))
+    private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        GL11.glRotatef(pipeline.get().getSunPathRotation(), 1.0F, 0.0F, 0.0F);
+    }
 
 }

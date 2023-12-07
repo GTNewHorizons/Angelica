@@ -72,12 +72,7 @@ public final class MatrixUniforms {
 
 		@Override
 		public Matrix4f get() {
-            // TODO: How can we not do this?
-			FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-//            new Matrix4f(parent.get());
-			buffer.put(parent.get());
-			buffer.rewind();
-            final Matrix4f matrix4f = new Matrix4f(buffer);
+            final Matrix4f matrix4f = new Matrix4f().set(parent.get());
 			matrix4f.invert();
 
 			return matrix4f;
@@ -97,11 +92,11 @@ public final class MatrixUniforms {
 		public Matrix4f get() {
 			// PERF: Don't copy + allocate these matrices every time?
 			final Matrix4f copy = new Matrix4f(parent.get());
-            final Matrix4f previous = new Matrix4f(this.previous);
+            final Matrix4f prev = new Matrix4f(this.previous);
 
 			this.previous = copy;
 
-			return previous;
+			return prev;
 		}
 	}
 }
