@@ -12,6 +12,7 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -48,6 +49,11 @@ public class ClientProxy extends CommonProxy {
         }
         if(AngelicaConfig.enableIris) {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
+
+            Iris.INSTANCE.registerKeybindings();
+            FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
+            MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
+
         }
     }
 

@@ -13,8 +13,6 @@ public abstract class MixinGameSettings {
     @Unique
     private static boolean iris$shadersInitialized;
 
-    private static Iris iris$Instance;
-
     @Inject(method="Lnet/minecraft/client/settings/GameSettings;loadOptions()V", at=@At("HEAD"))
     private void angelica$InitializeShaders(CallbackInfo ci) {
         if (iris$shadersInitialized) {
@@ -22,8 +20,7 @@ public abstract class MixinGameSettings {
         }
 
         iris$shadersInitialized = true;
-        iris$Instance =new Iris();
-        iris$Instance.onEarlyInitialize();
+        Iris.INSTANCE.onEarlyInitialize();
     }
 
 }

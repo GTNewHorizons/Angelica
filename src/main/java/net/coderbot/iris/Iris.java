@@ -1,7 +1,11 @@
 package net.coderbot.iris;
 
+import com.google.common.base.Throwables;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.mojang.realmsclient.gui.ChatFormatting;
+import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.InputEvent;
 import lombok.Getter;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.GLDebug;
@@ -23,7 +27,9 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.launchwrapper.Launch;
+import net.minecraft.util.ChatComponentText;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GLContext;
@@ -87,8 +93,14 @@ public class Iris {
     private static String IRIS_VERSION;
     private static boolean fallback;
 
+    private static final KeyBinding reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
+    private static final KeyBinding toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
+    private static final KeyBinding shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
+
+    public static Iris INSTANCE = new Iris();
+
     // Wrapped in try-catch due to early initializing class
-    public Iris() {
+    private Iris() {
         isDevelopmentEnvironment = (boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
         // TODO: Iris Backport
         //		try {
@@ -99,6 +111,36 @@ public class Iris {
         //		}catch(Exception ignored) {}
     }
 
+    @SubscribeEvent
+    public void onKeypress(InputEvent.KeyInputEvent event) {
+        if (reloadKeybind.isPressed()) {
+            final Minecraft mc = Minecraft.getMinecraft();
+            try {
+                reload();
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText("Shaders Reloaded!"));
+
+            } catch (Exception e) {
+                logger.error("Error while reloading Shaders for Iris!", e);
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Failed tgo reload shaders! Reason: " + Throwables.getRootCause(e).getMessage()));
+            }
+        } else if (toggleShadersKeybind.isPressed()) {
+            final Minecraft mc = Minecraft.getMinecraft();
+            try {
+                toggleShaders(mc, !irisConfig.areShadersEnabled());
+            } catch (Exception e) {
+                logger.error("Error while toggling shaders!", e);
+
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Failed tgo toggle shaders! Reason: " + Throwables.getRootCause(e).getMessage()));
+                setShadersDisabled();
+                fallback = true;
+            }
+        } else if (shaderpackScreenKeybind.isPressed()) {
+            final Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Shaderpack selection screen is not implemented yet!"));
+//            minecraft.setScreen(new ShaderPackScreen(null));
+        }
+
+    }
     /**
      * Called very early on in Minecraft initialization. At this point we *cannot* safely access OpenGL, but we can do some very basic setup, config loading,
      * and environment checks.
@@ -691,5 +733,11 @@ public class Iris {
         }
 
         return shaderpacksDirectoryManager;
+    }
+
+    public void registerKeybindings() {
+        ClientRegistry.registerKeyBinding(reloadKeybind);
+        ClientRegistry.registerKeyBinding(toggleShadersKeybind);
+        ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
     }
 }
