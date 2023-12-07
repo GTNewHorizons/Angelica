@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.proxy;
+package jss.notfine.proxy;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
