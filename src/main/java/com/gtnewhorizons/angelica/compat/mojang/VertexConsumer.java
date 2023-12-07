@@ -1,11 +1,9 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.forge.IForgeVertexBuilder;
-
 import javax.annotation.Nonnull;
 
 @Deprecated
-public interface VertexConsumer  extends IForgeVertexBuilder {
+public interface VertexConsumer {
 
     VertexConsumer vertex(double d, double e, double f);
 

@@ -6,7 +6,7 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
-@Deprecated
+
 public class VertexBuffer implements AutoCloseable {
     private int id;
     private int vertexCount;
