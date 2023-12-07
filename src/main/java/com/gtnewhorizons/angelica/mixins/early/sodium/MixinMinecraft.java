@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;

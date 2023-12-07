@@ -131,19 +131,13 @@ public class CustomTextureManager {
 					if (texture != null) {
 						int id = texture.getGlTextureId();
 						PBRTextureHolder pbrHolder = PBRTextureManager.INSTANCE.getOrLoadHolder(id);
-						AbstractTexture pbrTexture;
-						switch (pbrType) {
-						case NORMAL:
-							pbrTexture = pbrHolder.getNormalTexture();
-							break;
-						case SPECULAR:
-							pbrTexture = pbrHolder.getSpecularTexture();
-							break;
-						default:
-							throw new Error("Unknown PBRType '" + pbrType + "'");
-						}
+						AbstractTexture pbrTexture = switch (pbrType) {
+                            case NORMAL -> pbrHolder.getNormalTexture();
+                            case SPECULAR -> pbrHolder.getSpecularTexture();
+                            default -> throw new Error("Unknown PBRType '" + pbrType + "'");
+                        };
 
-						TextureFormat textureFormat = TextureFormatLoader.getFormat();
+                        TextureFormat textureFormat = TextureFormatLoader.getFormat();
 						if (textureFormat != null) {
 							int previousBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 							GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, pbrTexture.getGlTextureId());

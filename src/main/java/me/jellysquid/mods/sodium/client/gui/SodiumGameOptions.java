@@ -6,9 +6,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
-import me.jellysquid.mods.sodium.client.gui.options.named.NamedState;
-import net.minecraft.client.Minecraft;
-
 
 import java.io.FileReader;
 import java.io.IOException;
