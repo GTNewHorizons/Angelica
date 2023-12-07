@@ -15,7 +15,8 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 public class RenderTarget {
-	private final InternalTextureFormat internalFormat;
+	@Getter
+    private final InternalTextureFormat internalFormat;
 	private final PixelFormat format;
 	private final PixelType type;
 	@Getter
@@ -83,11 +84,7 @@ public class RenderTarget {
 		resizeTexture(altTexture, width, height);
 	}
 
-	public InternalTextureFormat getInternalFormat() {
-		return internalFormat;
-	}
-
-	public int getMainTexture() {
+    public int getMainTexture() {
 		requireValid();
 
 		return mainTexture;
