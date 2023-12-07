@@ -1,8 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.quad.properties;
 
-import com.gtnewhorizons.angelica.compat.mojang.Axis;
-import com.gtnewhorizons.angelica.compat.mojang.BakedQuad;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
+import com.gtnewhorizons.angelica.compat.Axis;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
 import net.minecraftforge.common.util.ForgeDirection;
 
 public class ModelQuadFlags {
@@ -33,10 +32,9 @@ public class ModelQuadFlags {
      * Calculates the properties of the given quad. This data is used later by the light pipeline in order to make
      * certain optimizations.
      */
-    public static int getQuadFlags(BakedQuad bakedQuad) {
-        final ModelQuadView quad = (ModelQuadView) bakedQuad;
-        final ForgeDirection face = bakedQuad.getFace();
-        final Axis axis = Axis.fromDirection(face);
+    public static int getQuadFlags(Quad quad) {
+        final ForgeDirection face = quad.getFace();
+        final Axis axis = Axis.fromDirection(quad.normal);
 
         float minX = 32.0F;
         float minY = 32.0F;

@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.pipeline.context;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockModels;
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
@@ -14,10 +14,11 @@ import net.minecraft.client.multiplayer.WorldClient;
 public class ChunkRenderCacheLocal extends ChunkRenderCache {
     private final ArrayLightDataCache lightDataCache;
 
+    @Getter
     private final BlockRenderer blockRenderer;
+    @Getter
     private final FluidRenderer fluidRenderer;
-
-    private final BlockModels blockModels;
+    @Getter
     private final WorldSlice worldSlice;
 
     public ChunkRenderCacheLocal(Minecraft client, WorldClient world) {
@@ -29,20 +30,6 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
         this.blockRenderer = new BlockRenderer(client);
         this.fluidRenderer = new FluidRenderer(lpp);
 
-        // TODO: Sodium
-        this.blockModels = null; // client.getBakedModelManager().getBlockModels();
-    }
-
-    public BlockModels getBlockModels() {
-        return this.blockModels;
-    }
-
-    public BlockRenderer getBlockRenderer() {
-        return this.blockRenderer;
-    }
-
-    public FluidRenderer getFluidRenderer() {
-        return this.fluidRenderer;
     }
 
     public void init(ChunkRenderContext context) {
@@ -50,7 +37,4 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
         this.worldSlice.copyData(context);
     }
 
-    public WorldSlice getWorldSlice() {
-        return this.worldSlice;
-    }
 }

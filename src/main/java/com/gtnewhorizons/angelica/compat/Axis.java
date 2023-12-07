@@ -1,14 +1,13 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat;
 
-import net.minecraftforge.common.util.ForgeDirection;
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 
-@Deprecated
 public enum Axis {
     X,
     Y,
     Z;
 
-    public static Axis fromDirection(ForgeDirection dir) {
+    public static Axis fromDirection(ModelQuadFacing dir) {
         return switch (dir) {
             case DOWN, UP -> Y;
             case NORTH, SOUTH -> Z;
