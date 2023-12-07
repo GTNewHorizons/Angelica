@@ -99,11 +99,13 @@ public class RenderTarget {
 		return altTexture;
 	}
 
+    private final IntBuffer deleteBuffer = BufferUtils.createIntBuffer(2);
     public void destroy() {
 		requireValid();
 		isValid = false;
-        GLStateManager.glDeleteTextures(mainTexture);
-        GLStateManager.glDeleteTextures(altTexture);
+        deleteBuffer.put(0, mainTexture);
+        deleteBuffer.put(1, altTexture);
+        GLStateManager.glDeleteTextures(deleteBuffer);
 	}
 
 	private void requireValid() {

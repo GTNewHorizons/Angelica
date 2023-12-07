@@ -71,7 +71,7 @@ public class FullScreenQuadRenderer {
 	 * Creates and uploads a vertex buffer containing a single full-screen quad
 	 */
 	private static int createQuad() {
-        FloatBuffer vertices = BufferUtils.createFloatBuffer(20);
+        final FloatBuffer vertices = BufferUtils.createFloatBuffer(20);
         vertices.put(new float[] {
                 // Vertex 0: Top right corner
                 1.0F, 1.0F, 0.0F, 1.0F, 1.0F,

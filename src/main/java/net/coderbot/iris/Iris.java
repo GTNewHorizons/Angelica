@@ -268,7 +268,7 @@ public class Iris {
 
         reload();
         if (minecraft.thePlayer != null) {
-            minecraft.thePlayer.sendChatMessage(enabled ? I18n.format("iris.shaders.toggled", currentPackName) : I18n.format("iris.shaders.disabled"));
+            minecraft.thePlayer.addChatMessage(new ChatComponentText(enabled ? I18n.format("iris.shaders.toggled", currentPackName) : I18n.format("iris.shaders.disabled")));
         }
     }
 

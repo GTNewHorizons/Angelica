@@ -437,8 +437,8 @@ public class GLStateManager {
 
     public static void glDeleteTextures(IntBuffer ids) {
         if (AngelicaConfig.enableIris) {
-            for (int id : ids.array()) {
-                iris$onDeleteTexture(id);
+            for(int i = 0; i < ids.capacity(); i++) {
+                iris$onDeleteTexture(ids.get(i));
             }
         }
         Textures[activeTexture].binding = -1;

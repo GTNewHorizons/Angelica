@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import lombok.Getter;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.ComputeProgram;
@@ -49,7 +50,8 @@ public class CompositeRenderer {
 	private final FrameUpdateNotifier updateNotifier;
 	private final CenterDepthSampler centerDepthSampler;
 	private final Object2ObjectMap<String, IntSupplier> customTextureIds;
-	private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
+	@Getter
+    private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
 
 	public CompositeRenderer(PackDirectives packDirectives, ProgramSource[] sources, ComputeSource[][] computes, RenderTargets renderTargets,
 							 IntSupplier noiseTexture, FrameUpdateNotifier updateNotifier,
@@ -76,7 +78,7 @@ public class CompositeRenderer {
 		});
 
 		for (int i = 0; i < sources.length; i++) {
-			ProgramSource source = sources[i];
+			final ProgramSource source = sources[i];
 
 			ImmutableSet<Integer> flipped = bufferFlipper.snapshot();
 			ImmutableSet<Integer> flippedAtLeastOnceSnapshot = flippedAtLeastOnce.build();
@@ -145,19 +147,14 @@ public class CompositeRenderer {
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
-	public ImmutableSet<Integer> getFlippedAtLeastOnceFinal() {
-		return this.flippedAtLeastOnceFinal;
-	}
-
-
-	public void recalculateSizes() {
+    public void recalculateSizes() {
 		for (Pass pass : passes) {
 			if (pass instanceof ComputeOnlyPass) {
 				continue;
 			}
 			int passWidth = 0, passHeight = 0;
 			for (int buffer : pass.drawBuffers) {
-				RenderTarget target = renderTargets.get(buffer);
+				final RenderTarget target = renderTargets.get(buffer);
 				if ((passWidth > 0 && passWidth != target.getWidth()) || (passHeight > 0 && passHeight != target.getHeight())) {
 					throw new IllegalStateException("Pass widths must match");
 				}
@@ -238,8 +235,8 @@ public class CompositeRenderer {
 				}
 			}
 
-			float scaledWidth = renderPass.viewWidth * renderPass.viewportScale;
-			float scaledHeight = renderPass.viewHeight * renderPass.viewportScale;
+			final float scaledWidth = renderPass.viewWidth * renderPass.viewportScale;
+			final float scaledHeight = renderPass.viewHeight * renderPass.viewportScale;
 			GL11.glViewport(0, 0, (int) scaledWidth, (int) scaledHeight);
 
 			renderPass.framebuffer.bind();
