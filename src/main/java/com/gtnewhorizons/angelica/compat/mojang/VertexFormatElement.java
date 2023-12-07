@@ -28,6 +28,14 @@ public class VertexFormatElement {
         this.byteSize = type.getSize() * count;
     }
 
+    public void setupBufferState(long l, int i) {
+        this.usage.setupBufferState(this.count, this.type.getGlType(), i, l, this.index);
+    }
+
+    public void clearBufferState() {
+        this.usage.clearBufferState(this.index);
+    }
+
     public enum Usage {
         POSITION("Position", (i, j, k, l, m) -> {
             GL11.glVertexPointer(i, j, k, l);

@@ -268,7 +268,7 @@ public class RenderTargets {
 	}
 
 	public GlFramebuffer createColorFramebufferWithDepth(ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers) {
-        GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
+        final GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
         framebuffer.addDepthAttachment(currentDepthTexture);
 
 		return framebuffer;
@@ -279,10 +279,10 @@ public class RenderTargets {
 			throw new IllegalArgumentException("Framebuffer must have at least one color buffer");
 		}
 
-        GlFramebuffer framebuffer = new GlFramebuffer();
+        final GlFramebuffer framebuffer = new GlFramebuffer();
         ownedFramebuffers.add(framebuffer);
 
-		int[] actualDrawBuffers = new int[drawBuffers.length];
+		final int[] actualDrawBuffers = new int[drawBuffers.length];
 
 		for (int i = 0; i < drawBuffers.length; i++) {
 			actualDrawBuffers[i] = i;
@@ -293,9 +293,9 @@ public class RenderTargets {
 						+ getRenderTargetCount() + " render targets are supported.");
 			}
 
-			RenderTarget target = this.get(drawBuffers[i]);
+			final RenderTarget target = this.get(drawBuffers[i]);
 
-			int textureId = stageWritesToMain.contains(drawBuffers[i]) ? target.getMainTexture() : target.getAltTexture();
+			final int textureId = stageWritesToMain.contains(drawBuffers[i]) ? target.getMainTexture() : target.getAltTexture();
 
 			framebuffer.addColorAttachment(i, textureId);
         }

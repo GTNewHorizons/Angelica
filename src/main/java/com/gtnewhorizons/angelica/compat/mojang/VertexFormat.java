@@ -1,12 +1,15 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.UnmodifiableIterator;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;
 
+import java.util.List;
 
 public class VertexFormat {
+    @Getter
     protected final ImmutableList<VertexFormatElement> elements;
     protected final IntList offsets = new IntArrayList();
     @Getter
@@ -23,9 +26,20 @@ public class VertexFormat {
     }
 
     @Deprecated
-    public void setupBufferState(long l) {}
+    public void setupBufferState(long l) {
+        final int i = this.getVertexSize();
+        final List<VertexFormatElement> list = this.getElements();
+
+        for(int j = 0; j < list.size(); ++j) {
+            ((VertexFormatElement)list.get(j)).setupBufferState(l + (long)this.offsets.getInt(j), i);
+        }
+    }
 
     @Deprecated
-    public void clearBufferState() {}
+    public void clearBufferState() {
+        for (VertexFormatElement vertexformatelement : this.getElements()) {
+            vertexformatelement.clearBufferState();
+        }
+    }
 
 }

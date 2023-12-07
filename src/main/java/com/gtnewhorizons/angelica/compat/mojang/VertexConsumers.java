@@ -6,6 +6,7 @@ public class VertexConsumers {
         return new Dual(first, second);
     }
 
+    @Deprecated
     static class Dual implements VertexConsumer {
         private final VertexConsumer first;
         private final VertexConsumer second;
