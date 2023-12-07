@@ -5,11 +5,6 @@ import net.minecraft.block.material.Material;
 
 @Deprecated
 public class RenderLayers {
-    public static boolean canRenderInLayer(BlockState state, RenderLayer layer) {
-
-        return canRenderInLayer(state.getBlock(), layer);
-    }
-
     public static boolean canRenderInLayer(Block block, RenderLayer layer) {
         if(layer == RenderLayer.translucent())
             return block.canRenderInPass(1);

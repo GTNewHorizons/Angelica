@@ -1,8 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.flat;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
-import com.gtnewhorizons.angelica.compat.mojang.BlockState;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
@@ -10,7 +8,6 @@ import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.Arrays;
@@ -55,7 +52,7 @@ public class FlatLightPipeline implements LightPipeline {
 
     /**
      * When vanilla computes an offset lightmap with flat lighting, it passes the original BlockState but the
-     * offset BlockPos to {@link WorldRenderer#getLightmapCoordinates(BlockRenderView, BlockState, BlockPos)}.
+     * offset BlockPos to WorldRenderer#getLightmapCoordinates(BlockRenderView, BlockState, BlockPos)
      * This does not make much sense but fixes certain issues, primarily dark quads on light-emitting blocks
      * behind tinted glass. {@link LightDataAccess} cannot efficiently store lightmaps computed with
      * inconsistent values so this method exists to mirror vanilla behavior as closely as possible.

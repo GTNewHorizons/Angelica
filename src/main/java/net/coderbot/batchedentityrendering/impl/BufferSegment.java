@@ -2,11 +2,13 @@ package net.coderbot.batchedentityrendering.impl;
 
 import com.gtnewhorizons.angelica.compat.mojang.DrawState;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import lombok.Getter;
 
 import java.nio.ByteBuffer;
 
 public class BufferSegment {
     private final ByteBuffer slice;
+    @Getter
     private final DrawState drawState;
     private final RenderLayer type;
 
@@ -18,10 +20,6 @@ public class BufferSegment {
 
     public ByteBuffer getSlice() {
         return slice;
-    }
-
-    public DrawState getDrawState() {
-        return drawState;
     }
 
     public RenderLayer getRenderType() {

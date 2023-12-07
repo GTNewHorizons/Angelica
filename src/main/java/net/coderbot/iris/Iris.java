@@ -71,8 +71,6 @@ public class Iris {
 
     private static ShaderPack currentPack;
     private static String currentPackName;
-    // TODO: Iris Backport - Tie this to archaicfix
-    private static final boolean sodiumInstalled = true; // FMLLoader.getLoadingModList().getModFileById("rubidium") != null;
     @Getter
     private static boolean initialized;
 
@@ -713,10 +711,6 @@ public class Iris {
         }
 
         return color + version;
-    }
-
-    public static boolean isSodiumInstalled() {
-        return sodiumInstalled;
     }
 
     public static Path getShaderpacksDirectory() {
