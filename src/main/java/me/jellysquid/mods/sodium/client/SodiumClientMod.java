@@ -2,17 +2,14 @@ package me.jellysquid.mods.sodium.client;
 
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import jss.notfine.gui.GuiCustomMenu;
+import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
+import me.jellysquid.mods.sodium.proxy.CommonProxy;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,6 +19,9 @@ import org.apache.logging.log4j.Logger;
     acceptedMinecraftVersions = "[1.7.10]",
     acceptableRemoteVersions = "*")
 public class SodiumClientMod {
+    @SidedProxy(clientSide = "me.jellysquid.mods.sodium.proxy.ClientProxy", serverSide = "me.jellysquid.mods.sodium.proxy.CommonProxy")
+    public static CommonProxy proxy;
+
     private static SodiumGameOptions CONFIG;
     public static Logger LOGGER = LogManager.getLogger("Embeddium");
 
@@ -35,26 +35,9 @@ public class SodiumClientMod {
 
     public SodiumClientMod() {
         MainThread = Thread.currentThread();
-
-        MinecraftForge.EVENT_BUS.register(this);
-//        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
-//
-//        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
     }
 
 
-    @SubscribeEvent
-    public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
-        if(event.gui instanceof GuiVideoSettings eventGui) {
-            event.setCanceled(true);
-            if(GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, SodiumGameOptionPages.general(),
-                    SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
-            } else {
-                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
-            }
-        }
-    }
 
     public static SodiumGameOptions options() {
         if (CONFIG == null) {
@@ -82,6 +65,21 @@ public class SodiumClientMod {
         }
 
         return MOD_VERSION;
+    }
+
+    @Mod.EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        proxy.preInit(event);
+    }
+
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.init(event);
+    }
+
+    @Mod.EventHandler
+    public void postInit(FMLPostInitializationEvent event) {
+        proxy.postInit(event);
     }
 
     public static boolean isDirectMemoryAccessEnabled() {

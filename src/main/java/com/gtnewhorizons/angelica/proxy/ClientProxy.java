@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -38,11 +39,6 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void init(FMLInitializationEvent event) {
-        // Nothing to do here (yet)
-    }
-
-    @Override
-    public void postInit(FMLInitializationEvent event) {
         if(AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
             MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
@@ -54,6 +50,12 @@ public class ClientProxy extends CommonProxy {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
         }
     }
+
+    @Override
+    public void postInit(FMLPostInitializationEvent event) {
+        // Nothing to do here (yet)
+    }
+
     float lastIntegratedTickTime;
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {

@@ -2,14 +2,11 @@ package jss.notfine;
 
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.relauncher.Side;
-import jss.notfine.config.NotFineConfig;
-import jss.notfine.core.Settings;
-import jss.notfine.core.SettingsManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.settings.GameSettings;
+import jss.notfine.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,28 +22,23 @@ public class NotFine {
     public static final String VERSION = Tags.VERSION;
     public static final Logger logger = LogManager.getLogger(NAME);
 
+    @SidedProxy(clientSide = "jss.notfine.proxy.ClientProxy", serverSide = "jss.notfine.proxy.CommonProxy")
+    public static CommonProxy proxy;
+
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        if(event.getSide() == Side.CLIENT) {
-            GameSettings.Options.FRAMERATE_LIMIT.valueStep = 1f;
-        }
-        NotFineConfig config = new NotFineConfig();
-        config.loadSettings();
+        proxy.preInit(event);
+    }
 
-        if(!NotFineConfig.allowAdvancedOpenGL) {
-            Minecraft.getMinecraft().gameSettings.advancedOpengl = false;
-        }
-
-        for(Settings setting : Settings.values()) {
-            setting.ready();
-        }
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.init(event);
     }
 
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
-        if(event.getSide() == Side.CLIENT) {
-            SettingsManager.settingsFile.loadSettings();
-        }
+        proxy.postInit(event);
     }
 
 }

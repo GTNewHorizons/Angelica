@@ -5,6 +5,7 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(
@@ -32,7 +33,7 @@ public class AngelicaMod {
     }
 
     @Mod.EventHandler
-    public void postInit(FMLInitializationEvent event) {
+    public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
     }
 }

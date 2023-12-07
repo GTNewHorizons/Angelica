@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.proxy;
+package me.jellysquid.mods.sodium.proxy;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;

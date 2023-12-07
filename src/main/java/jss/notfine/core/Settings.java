@@ -1,6 +1,8 @@
 package jss.notfine.core;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import jss.notfine.gui.options.named.AlwaysNever;
 import jss.notfine.gui.options.named.BackgroundSelect;
@@ -28,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 
+@SideOnly(Side.CLIENT)
 public enum Settings {
     CLOUD_HEIGHT(new NotFineOptionSlider(128, 96, 384, 8,  null)) {
         @Override
