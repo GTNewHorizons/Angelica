@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import javax.annotation.Nonnull;
 
-@Deprecated
 public interface VertexConsumer {
 
     VertexConsumer vertex(double d, double e, double f);

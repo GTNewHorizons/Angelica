@@ -13,7 +13,6 @@ import java.util.Set;
  * WARNING: Minecraft 1.16 code rip!!
  */
 
-@Deprecated
 public class ChunkOcclusionDataBuilder {
     private static final int STEP_X = (int)Math.pow(16.0, 0.0);
     private static final int STEP_Z = (int)Math.pow(16.0, 1.0);

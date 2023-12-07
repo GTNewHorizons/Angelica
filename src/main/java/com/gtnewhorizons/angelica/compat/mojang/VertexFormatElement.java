@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL20;
 
 import java.util.function.IntConsumer;
 
-@Deprecated
+
 public class VertexFormatElement {
     @Getter
     protected final Type type;
