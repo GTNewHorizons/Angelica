@@ -2,11 +2,11 @@ package net.coderbot.iris.pipeline;
 
 import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
 import com.gtnewhorizons.angelica.compat.Camera;
-import com.gtnewhorizons.angelica.compat.mojang.GameRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -22,7 +22,7 @@ public class HandRenderer {
 
 	public static final float DEPTH = 0.125F;
 
-	private void setupGlState(GameRenderer gameRenderer, Camera camera, MatrixStack poseStack, float tickDelta) {
+	private void setupGlState(RenderGlobal gameRenderer, Camera camera, MatrixStack poseStack, float tickDelta) {
         final MatrixStack.Entry pose = poseStack.peek();
 
 		// We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
@@ -38,14 +38,14 @@ public class HandRenderer {
 		pose.getModel().identity();
         pose.getNormal().identity();
 
-		gameRenderer.invokeBobHurt(poseStack, tickDelta);
+//		gameRenderer.invokeBobHurt(poseStack, tickDelta);
 
 		if (Minecraft.getMinecraft().gameSettings.viewBobbing) {
-			gameRenderer.invokeBobView(poseStack, tickDelta);
+//			gameRenderer.invokeBobView(poseStack, tickDelta);
 		}
 	}
 
-	private boolean canRender(Camera camera, GameRenderer gameRenderer) {
+	private boolean canRender(Camera camera, RenderGlobal gameRenderer) {
         return (camera.isThirdPerson() || !(camera.getEntity() instanceof EntityPlayer) || Minecraft.getMinecraft().gameSettings.hideGUI || (camera.getEntity() instanceof EntityLiving && ((EntityLiving)camera.getEntity()).isPlayerSleeping()));
 
 //		return !(!gameRenderer.getRenderHand()
@@ -76,7 +76,7 @@ public class HandRenderer {
 		return isHandTranslucent(InteractionHand.MAIN_HAND) || isHandTranslucent(InteractionHand.OFF_HAND);
 	}
 
-	public void renderSolid(MatrixStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
+	public void renderSolid(MatrixStack poseStack, float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
 		if (!canRender(camera, gameRenderer) || !IrisApi.getInstance().isShaderPackInUse()) {
 			return;
 		}
@@ -112,7 +112,7 @@ public class HandRenderer {
 		ACTIVE = false;
 	}
 
-	public void renderTranslucent(MatrixStack poseStack, float tickDelta, Camera camera, GameRenderer gameRenderer, WorldRenderingPipeline pipeline) {
+	public void renderTranslucent(MatrixStack poseStack, float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
 		if (!canRender(camera, gameRenderer) || !isAnyHandTranslucent() || !IrisApi.getInstance().isShaderPackInUse()) {
 			return;
 		}

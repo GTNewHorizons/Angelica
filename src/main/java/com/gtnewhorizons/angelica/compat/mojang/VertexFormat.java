@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;
 
-@Deprecated
+
 public class VertexFormat {
     protected final ImmutableList<VertexFormatElement> elements;
     protected final IntList offsets = new IntArrayList();
