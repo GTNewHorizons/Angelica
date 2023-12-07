@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.compat.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
+
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -176,7 +178,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final double z = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
-            MatrixStack matrixStack = new MatrixStack();
+            MatrixStack matrixStack = new MatrixStack(RenderingState.INSTANCE.getModelViewMatrix());
             this.renderer.drawChunkLayer(BlockRenderPass.VALUES[pass], matrixStack, x, y, z);
         } finally {
             RenderDevice.exitManagedCode();
