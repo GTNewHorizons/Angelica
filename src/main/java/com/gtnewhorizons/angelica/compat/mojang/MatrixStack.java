@@ -14,6 +14,12 @@ public class MatrixStack {
         this.matrixStack = Queues.newArrayDeque();
         matrixStack.add(new Entry(new Matrix4f().identity(), new Matrix3f().identity()));
     }
+    
+    public MatrixStack(Matrix4f initial) {
+        this.matrixStack = Queues.newArrayDeque();
+        Matrix3f normal = new Matrix3f();
+        matrixStack.add(new Entry(initial, initial.normal(normal)));
+    }
 
     public Entry peek() {
         return (Entry)this.matrixStack.getLast();
