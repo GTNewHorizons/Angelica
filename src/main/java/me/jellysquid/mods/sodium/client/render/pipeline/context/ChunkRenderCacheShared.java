@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.render.pipeline.context;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockRenderView;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.model.light.cache.HashLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;

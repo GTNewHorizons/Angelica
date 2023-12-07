@@ -14,15 +14,11 @@ public enum PatchShaderType {
 	}
 
 	public static PatchShaderType[] fromGlShaderType(ShaderType glShaderType) {
-		switch (glShaderType) {
-			case VERTEX:
-				return new PatchShaderType[] { VERTEX };
-			case GEOMETRY:
-				return new PatchShaderType[] { GEOMETRY };
-			case FRAGMENT:
-				return new PatchShaderType[] { FRAGMENT };
-			default:
-				throw new IllegalArgumentException("Unknown shader type: " + glShaderType);
-		}
+        return switch (glShaderType) {
+            case VERTEX -> new PatchShaderType[] { VERTEX };
+            case GEOMETRY -> new PatchShaderType[] { GEOMETRY };
+            case FRAGMENT -> new PatchShaderType[] { FRAGMENT };
+            default -> throw new IllegalArgumentException("Unknown shader type: " + glShaderType);
+        };
 	}
 }

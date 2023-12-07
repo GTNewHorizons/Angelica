@@ -23,17 +23,17 @@ public enum DepthBufferFormat {
 
 	@Nullable
 	public static DepthBufferFormat fromGlEnum(int glenum) {
-		switch (glenum) {
-			case GL11.GL_DEPTH_COMPONENT: return DepthBufferFormat.DEPTH;
-			case GL14.GL_DEPTH_COMPONENT16: return DepthBufferFormat.DEPTH16;
-			case GL14.GL_DEPTH_COMPONENT24: return DepthBufferFormat.DEPTH24;
-			case GL14.GL_DEPTH_COMPONENT32: return DepthBufferFormat.DEPTH32;
-			case GL30.GL_DEPTH_COMPONENT32F: return DepthBufferFormat.DEPTH32F;
-			case GL30.GL_DEPTH_STENCIL: return DepthBufferFormat.DEPTH_STENCIL;
-			case GL30.GL_DEPTH24_STENCIL8: return DepthBufferFormat.DEPTH24_STENCIL8;
-			case GL30.GL_DEPTH32F_STENCIL8: return DepthBufferFormat.DEPTH32F_STENCIL8;
-			default: return null;
-		}
+        return switch (glenum) {
+            case GL11.GL_DEPTH_COMPONENT -> DepthBufferFormat.DEPTH;
+            case GL14.GL_DEPTH_COMPONENT16 -> DepthBufferFormat.DEPTH16;
+            case GL14.GL_DEPTH_COMPONENT24 -> DepthBufferFormat.DEPTH24;
+            case GL14.GL_DEPTH_COMPONENT32 -> DepthBufferFormat.DEPTH32;
+            case GL30.GL_DEPTH_COMPONENT32F -> DepthBufferFormat.DEPTH32F;
+            case GL30.GL_DEPTH_STENCIL -> DepthBufferFormat.DEPTH_STENCIL;
+            case GL30.GL_DEPTH24_STENCIL8 -> DepthBufferFormat.DEPTH24_STENCIL8;
+            case GL30.GL_DEPTH32F_STENCIL8 -> DepthBufferFormat.DEPTH32F_STENCIL8;
+            default -> null;
+        };
 	}
 
 	public static DepthBufferFormat fromGlEnumOrDefault(int glenum) {

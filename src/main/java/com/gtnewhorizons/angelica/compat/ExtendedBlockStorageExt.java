@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.mixins.early.sodium.MixinExtendedBlockStorage;
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
-import cpw.mods.fml.common.Optional;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 

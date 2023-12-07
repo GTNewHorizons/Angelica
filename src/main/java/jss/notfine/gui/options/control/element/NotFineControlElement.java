@@ -1,6 +1,5 @@
 package jss.notfine.gui.options.control.element;
 
-import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;

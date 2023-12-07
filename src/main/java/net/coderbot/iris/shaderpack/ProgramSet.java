@@ -336,31 +336,31 @@ public class ProgramSet {
 	}
 
 	public Optional<ProgramSource> get(ProgramId programId) {
-		switch (programId) {
-			case Shadow: return getShadow();
-			case Basic: return getGbuffersBasic();
-			case Line: return gbuffersLine.requireValid();
-			case Textured: return getGbuffersTextured();
-			case TexturedLit: return getGbuffersTexturedLit();
-			case SkyBasic: return getGbuffersSkyBasic();
-			case SkyTextured: return getGbuffersSkyTextured();
-			case Clouds: return getGbuffersClouds();
-			case Terrain: return getGbuffersTerrain();
-			case DamagedBlock: return getGbuffersDamagedBlock();
-			case Block: return getGbuffersBlock();
-			case BeaconBeam: return getGbuffersBeaconBeam();
-			case Entities: return getGbuffersEntities();
-			case EntitiesTrans: return getGbuffersEntitiesTrans();
-			case EntitiesGlowing: return getGbuffersEntitiesGlowing();
-			case ArmorGlint: return getGbuffersGlint();
-			case SpiderEyes: return getGbuffersEntityEyes();
-			case Hand: return getGbuffersHand();
-			case Weather: return getGbuffersWeather();
-			case Water: return getGbuffersWater();
-			case HandWater: return getGbuffersHandWater();
-			case Final: return getCompositeFinal();
-			default: return Optional.empty();
-		}
+        return switch (programId) {
+            case Shadow -> getShadow();
+            case Basic -> getGbuffersBasic();
+            case Line -> gbuffersLine.requireValid();
+            case Textured -> getGbuffersTextured();
+            case TexturedLit -> getGbuffersTexturedLit();
+            case SkyBasic -> getGbuffersSkyBasic();
+            case SkyTextured -> getGbuffersSkyTextured();
+            case Clouds -> getGbuffersClouds();
+            case Terrain -> getGbuffersTerrain();
+            case DamagedBlock -> getGbuffersDamagedBlock();
+            case Block -> getGbuffersBlock();
+            case BeaconBeam -> getGbuffersBeaconBeam();
+            case Entities -> getGbuffersEntities();
+            case EntitiesTrans -> getGbuffersEntitiesTrans();
+            case EntitiesGlowing -> getGbuffersEntitiesGlowing();
+            case ArmorGlint -> getGbuffersGlint();
+            case SpiderEyes -> getGbuffersEntityEyes();
+            case Hand -> getGbuffersHand();
+            case Weather -> getGbuffersWeather();
+            case Water -> getGbuffersWater();
+            case HandWater -> getGbuffersHandWater();
+            case Final -> getCompositeFinal();
+            default -> Optional.empty();
+        };
 	}
 
 	public ProgramSource[] getDeferred() {

@@ -2,7 +2,6 @@ package net.coderbot.iris.shadows.frustum;
 
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.util.AxisAlignedBB;
-import org.joml.Matrix4f;
 
 public class CullEverythingFrustum extends Frustrum {
 

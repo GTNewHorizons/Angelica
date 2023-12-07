@@ -20,7 +20,6 @@ import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStor
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
-import net.minecraft.util.MathHelper;
 import org.lwjgl.opengl.Display;
 
 import java.util.ArrayList;
