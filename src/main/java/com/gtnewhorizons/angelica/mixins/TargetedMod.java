@@ -21,6 +21,7 @@ public enum TargetedMod {
     , THAUMCRAFT("Thaumcraft", null, "Thaumcraft")
     , TWILIGHT_FOREST("TwilightForest", null, "TwilightForest")
     , WITCHERY("Witchery", null, "witchery")
+    , NEID_ASM("notenoughIDs", "ru.fewizz.idextender.IEPlugin", "notenoughIDs")
     ;
 
 
