@@ -64,7 +64,7 @@ public class Iris {
      */
     public static final String MODNAME = "AngelicaShaders";
 
-    public static final IrisLogging logger = new IrisLogging(MODNAME + "Shaders");
+    public static final IrisLogging logger = new IrisLogging(MODNAME);
 
     private static Path shaderpacksDirectory;
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;

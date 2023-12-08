@@ -51,8 +51,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class ShadowRenderer {
-	public static Matrix4f MODELVIEW;
-	public static Matrix4f PROJECTION;
+	public static final Matrix4f MODELVIEW = new Matrix4f();
+	public static final Matrix4f PROJECTION = new Matrix4f();
 	public static List<TileEntity> visibleTileEntities;
 	public static boolean ACTIVE = false;
 	private final float halfPlaneLength;
@@ -470,8 +470,7 @@ public class ShadowRenderer {
 
 		// Create our camera
 		final MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
-        // TODO: Render
-		MODELVIEW = new Matrix4f(modelView.peek().getModel());
+		MODELVIEW.set(modelView.peek().getModel());
 
         final Matrix4f shadowProjection;
 		if (this.fov != null) {
@@ -481,8 +480,7 @@ public class ShadowRenderer {
             shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
 		}
 
-        // TODO: Allocations
-		PROJECTION = new Matrix4f().set(shadowProjection);
+		PROJECTION.set(shadowProjection);
 
 		profiler.startSection("terrain_setup");
 
@@ -502,7 +500,6 @@ public class ShadowRenderer {
 		final double cameraZ = cameraPos.z();
 
 		// Center the frustum on the player camera position
-        // TODO: Render
 		terrainFrustumHolder.getFrustum().setPosition(cameraX, cameraY, cameraZ);
 
 		profiler.endSection();
