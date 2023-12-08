@@ -13,8 +13,8 @@ public class ShadowMatrices {
 
 	// NB: These matrices are in column-major order, not row-major order like what you'd expect!
 
-	public static float[] createOrthoMatrix(float halfPlaneLength) {
-		return new float[] {
+	public static Matrix4f createOrthoMatrix(float halfPlaneLength) {
+		return new Matrix4f(
 				// column 1
 				1.0f / halfPlaneLength, 0f, 0f, 0f,
 				// column 2
@@ -23,13 +23,13 @@ public class ShadowMatrices {
 				0f, 0f, 2.0f / (NEAR - FAR), 0f,
 				// column 4
 				0f, 0f, -(FAR + NEAR) / (FAR - NEAR), 1f
-		};
+		);
 	}
 
-	public static float[] createPerspectiveMatrix(float fov) {
+	public static Matrix4f createPerspectiveMatrix(float fov) {
 		// This converts from degrees to radians.
-		float yScale = (float) (1.0f / Math.tan(Math.toRadians(fov) * 0.5f));
-		return new float[] {
+		final float yScale = (float) (1.0f / Math.tan(Math.toRadians(fov) * 0.5f));
+		return new Matrix4f(
 				// column 1
 				yScale, 0f, 0f, 0f,
 				// column 2
@@ -38,11 +38,11 @@ public class ShadowMatrices {
 				0f, 0f, (FAR + NEAR) / (NEAR - FAR), -1.0F,
 				// column 4
 				0f, 0f, 2.0F * FAR * NEAR / (NEAR - FAR), 1f
-		};
+		);
 	}
 
 	public static void createBaselineModelViewMatrix(MatrixStack target, float shadowAngle, float sunPathRotation) {
-		float skyAngle;
+		final float skyAngle;
 
 		if (shadowAngle < 0.25f) {
 			skyAngle = shadowAngle + 0.75f;
@@ -55,9 +55,9 @@ public class ShadowMatrices {
 
 		target.peek().getModel().translate(0.0f, 0.0f, -100.0f);
         target.rotateX(90F * DEGREES_TO_RADIANS);
-        target.rotateZ(sunPathRotation * DEGREES_TO_RADIANS);
         target.rotateZ(skyAngle * -360.0f * DEGREES_TO_RADIANS);
-	}
+        target.rotateX(sunPathRotation * DEGREES_TO_RADIANS);
+    }
 
 	public static void snapModelViewToGrid(MatrixStack target, float shadowIntervalSize, double cameraX, double cameraY, double cameraZ) {
 		if (Math.abs(shadowIntervalSize) == 0.0F) {
@@ -76,7 +76,7 @@ public class ShadowMatrices {
 		float offsetZ = (float) cameraZ % shadowIntervalSize;
 
 		// Halve the size of each grid cell in order to move to the center of it.
-		float halfIntervalSize = shadowIntervalSize / 2.0f;
+		final float halfIntervalSize = shadowIntervalSize / 2.0f;
 
 		// Shift by -halfIntervalSize
 		//
@@ -90,8 +90,7 @@ public class ShadowMatrices {
         target.peek().getModel().translate(offsetX, offsetY, offsetZ);
 	}
 
-	public static void createModelViewMatrix(MatrixStack target, float shadowAngle, float shadowIntervalSize,
-											 float sunPathRotation, double cameraX, double cameraY, double cameraZ) {
+	public static void createModelViewMatrix(MatrixStack target, float shadowAngle, float shadowIntervalSize, float sunPathRotation, double cameraX, double cameraY, double cameraZ) {
 		createBaselineModelViewMatrix(target, shadowAngle, sunPathRotation);
 		snapModelViewToGrid(target, shadowIntervalSize, cameraX, cameraY, cameraZ);
 	}
@@ -100,36 +99,36 @@ public class ShadowMatrices {
 		public static void main(String[] args) {
 			// const float shadowDistance = 32.0;
 			// /* SHADOWHPL:32.0 */
-			float[] expected = new float[] {
+			Matrix4f expected = new Matrix4f(
 					0.03125f, 0f, 0f, 0f,
 					0f, 0.03125f, 0f, 0f,
 					0f, 0f, -0.007814026437699795f, 0f,
 					0f, 0f, -1.000390648841858f, 1f
-			};
+			);
 
 			test("ortho projection hpl=32", expected, createOrthoMatrix(32.0f));
 
 			// const float shadowDistance = 110.0;
 			// /* SHADOWHPL:110.0 */
-			float[] expected110 = new float[] {
+			Matrix4f expected110 = new Matrix4f(
 					0.00909090880304575f, 0, 0, 0,
 					0, 0.00909090880304575f, 0, 0,
 					0, 0, -0.007814026437699795f, 0,
 					0, 0, -1.000390648841858f, 1
-			};
+			);
 
 			test("ortho projection hpl=110", expected110, createOrthoMatrix(110.0f));
 
-			float[] expected90Proj = new float[] {
+			Matrix4f expected90Proj = new Matrix4f(
 					1.0f, 0.0f, 0.0f, 0.0f,
 					0.0f, 1.0f, 0.0f, 0.0f,
 					0.0f, 0.0f, -1.0003906f, -1.0f,
 					0.0f, 0.0f, -0.10001954f, 0.0f
-			};
+			);
 
 			test("perspective projection fov=90", expected90Proj, createPerspectiveMatrix(90.0f));
 
-			float[] expectedModelViewAtDawn = new float[] {
+			Matrix4f expectedModelViewAtDawn = new Matrix4f(
 					// column 1
 					0.21545040607452393f,
 					5.820481518981069E-8f,
@@ -150,7 +149,7 @@ public class ShadowMatrices {
 					1.0264281034469604f,
 					-100.4463119506836f,
 					1
-			};
+			);
 
 			MatrixStack modelView = new MatrixStack();
 
@@ -160,59 +159,19 @@ public class ShadowMatrices {
 			createModelViewMatrix(modelView, 0.03451777f, 2.0f,
 					0.0f, 0.646045982837677f, 82.53274536132812f, -514.0264282226562f);
 
-			test("model view at dawn", expectedModelViewAtDawn, toFloatArray(modelView.peek().getModel()));
+			test("model view at dawn", expectedModelViewAtDawn, modelView.peek().getModel());
 		}
 
-		private static float[] toFloatArray(Matrix4f matrix4f) {
-			final FloatBuffer buffer = FloatBuffer.allocate(16);
-			matrix4f.get((FloatBuffer) buffer);
-
-			return buffer.array();
-		}
-
-		private static void test(String name, float[] expected, float[] created) {
-			if (!areMatricesEqualWithinEpsilon(expected, created)) {
+		private static void test(String name, Matrix4f expected, Matrix4f created) {
+			if (expected.equals(created, 0.0005f)) {
 				System.err.println("test " + name + " failed: ");
 				System.err.println("    expected: ");
-				System.err.print(printMatrix(expected, 8));
+				System.err.print(expected.toString());
 				System.err.println("    created: ");
-				System.err.print(printMatrix(created, 8));
+				System.err.print(created.toString());
 			} else {
 				System.out.println("test " + name + " passed");
 			}
-		}
-
-		private static boolean areMatricesEqualWithinEpsilon(float[] expected, float[] created) {
-			for (int i = 0; i < 16; i++) {
-				if (Math.abs(expected[i] - created[i]) > 0.0005f) {
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		private static String printMatrix(float[] matrix, int spaces) {
-			StringBuilder lines = new StringBuilder();
-
-			for (int row = 0; row < 4; row++) {
-				for (int i = 0; i < spaces; i++) {
-					lines.append(' ');
-				}
-
-				lines.append('[');
-
-				for (int column = 0; column < 4; column++) {
-					lines.append(' ');
-					lines.append(matrix[column * 4 + row]);
-				}
-
-				lines.append(" ]");
-
-				lines.append('\n');
-			}
-
-			return lines.toString();
 		}
 	}
 }
