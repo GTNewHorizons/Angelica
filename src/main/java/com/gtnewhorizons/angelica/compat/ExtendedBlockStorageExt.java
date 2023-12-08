@@ -30,12 +30,9 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
             arrayLen = block16BArray.length;
         }
         else if (AngelicaMod.isOldNEIDLoaded){
-            final byte[] blockLSBArray = Hooks.
-            System.arraycopy(storage.getBlockLSBArray(), 0, blockLSBArray, 0, blockLSBArray.length);
-            if(storage.getBlockMSBArray() != null) {
-                this.setBlockMSBArray(new NibbleArray(blockLSBArray.length, 4));
-                copyNibbleArray((ExtendedNibbleArray) storage.getBlockMSBArray(), (ExtendedNibbleArray) this.getBlockMSBArray());
-            }
+            final short[] blockLSBArray = Hooks.get(this);
+            System.arraycopy(Hooks.get(storage), 0, blockLSBArray, 0, blockLSBArray.length);
+            // getBlockMSBArray is nuked in asm version
             arrayLen = blockLSBArray.length;
         }
         else {
