@@ -65,7 +65,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5.3:dev") // Mixin Version
-    devOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughIds:1.4.7:dev") // ASM Version (local build with COMPUTE_FRAMES)
+    devOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
     compileOnly("com.github.GTNewHorizons:Jabba:1.3.1:dev")
     // HMMMMM
