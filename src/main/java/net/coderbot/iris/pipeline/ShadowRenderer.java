@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
@@ -29,6 +30,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.culling.Frustrum;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
@@ -76,7 +78,7 @@ public class ShadowRenderer {
 	private FrustumHolder entityFrustumHolder;
 	private String debugStringTerrain = "(unavailable)";
 	private int renderedShadowEntities = 0;
-	private int renderedShadowBlockEntities = 0;
+	private int renderedShadowTileEntities = 0;
 	private Profiler profiler;
 
 	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets) {
@@ -151,8 +153,7 @@ public class ShadowRenderer {
 	}
 
 	private static float getSkyAngle() {
-        return getLevel().getWorldTime();
-//		return getLevel().getTimeOfDay(CapturedRenderingState.INSTANCE.getTickDelta());
+        return Minecraft.getMinecraft().theWorld.getCelestialAngle(CapturedRenderingState.INSTANCE.getTickDelta());
 	}
 
 	private static float getSunAngle() {
@@ -197,6 +198,7 @@ public class ShadowRenderer {
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
+    private final IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
 	private void configureDepthSampler(int glTextureId, PackShadowDirectives.DepthSamplingSettings settings) {
 		if (settings.getHardwareFiltering()) {
 			// We have to do this or else shadow hardware filtering breaks entirely!
@@ -206,8 +208,7 @@ public class ShadowRenderer {
 		// Workaround for issues with old shader packs like Chocapic v4.
 		// They expected the driver to put the depth value in z, but it's supposed to only
 		// be available in r. So we set up the swizzle to fix that.
-		// TODO: allocations
-        IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
+        swizzleBuf.rewind();
         swizzleBuf.put(new int[] { GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE }).rewind();
 		IrisRenderSystem.texParameteriv(glTextureId, GL11.GL_TEXTURE_2D, ARBTextureSwizzle.GL_TEXTURE_SWIZZLE_RGBA, swizzleBuf);
 
@@ -216,7 +217,7 @@ public class ShadowRenderer {
 
 	private void configureSampler(int glTextureId, PackShadowDirectives.SamplingSettings settings) {
 		if (settings.getMipmap()) {
-			int filteringMode = settings.getNearest() ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR;
+			final int filteringMode = settings.getNearest() ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR;
 			mipmapPasses.add(new MipmapPass(glTextureId, filteringMode));
 		}
 
@@ -420,32 +421,29 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderBlockEntities(BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum) {
+	private void renderTileEntities(BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
 		profiler.startSection("build blockentities");
 
-		int shadowBlockEntities = 0;
+		int shadowTileEntities = 0;
 		BoxCuller culler = null;
 		if (hasEntityFrustum) {
 			culler = new BoxCuller(halfPlaneLength * (renderDistanceMultiplier * entityShadowDistanceMultiplier));
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 
-		for (TileEntity entity : visibleTileEntities) {
-			if (hasEntityFrustum) {
-				if (culler.isCulled(entity.xCoord - 1, entity.yCoord - 1, entity.zCoord - 1, entity.xCoord + 1, entity.yCoord + 1, entity.zCoord + 1)) {
-					continue;
-				}
+		for (TileEntity tileEntity : visibleTileEntities) {
+			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
+                continue;
 			}
 			modelView.push();
-            // TODO: Render
-			modelView.translate(entity.xCoord - cameraX, entity.yCoord - cameraY, entity.zCoord - cameraZ);
-//			BlockEntityRenderDispatcher.instance.render(entity, tickDelta, modelView, bufferSource);
+			modelView.translate(tileEntity.xCoord - cameraX, tileEntity.yCoord - cameraY, tileEntity.zCoord - cameraZ);
+            TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
 			modelView.pop();
 
-			shadowBlockEntities++;
+			shadowTileEntities++;
 		}
 
-		renderedShadowBlockEntities = shadowBlockEntities;
+		renderedShadowTileEntities = shadowTileEntities;
 
 		profiler.endSection();
 	}
@@ -471,19 +469,20 @@ public class ShadowRenderer {
 		visibleTileEntities = new ArrayList<>();
 
 		// Create our camera
-		MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
+		final MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
         // TODO: Render
 		MODELVIEW = new Matrix4f(modelView.peek().getModel());
-		float[] projMatrix;
+
+        final Matrix4f shadowProjection;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
-			projMatrix = ShadowMatrices.createPerspectiveMatrix(this.fov);
+            shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
 		} else {
-			projMatrix = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
+            shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
 		}
 
         // TODO: Allocations
-		PROJECTION = new Matrix4f().set(projMatrix);
+		PROJECTION = new Matrix4f().set(shadowProjection);
 
 		profiler.startSection("terrain_setup");
 
@@ -496,25 +495,17 @@ public class ShadowRenderer {
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
 
 		// Determine the player camera position
-		Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
-		double cameraX = cameraPos.x();
-		double cameraY = cameraPos.y();
-		double cameraZ = cameraPos.z();
+		final double cameraX = cameraPos.x();
+		final double cameraY = cameraPos.y();
+		final double cameraZ = cameraPos.z();
 
 		// Center the frustum on the player camera position
         // TODO: Render
-//		terrainFrustumHolder.getFrustum().prepare(cameraX, cameraY, cameraZ);
+		terrainFrustumHolder.getFrustum().setPosition(cameraX, cameraY, cameraZ);
 
 		profiler.endSection();
-
-		// Disable chunk occlusion culling - it's a bit complex to get this properly working with shadow rendering
-		// as-is, however in the future it will be good to work on restoring it for a nice performance boost.
-		//
-		// TODO: Get chunk occlusion working with shadows
-        // TODO: Render
-//		boolean wasChunkCullingEnabled = client.smartCull;
-//		client.smartCull = false;
 
 		// Always schedule a terrain update
 		// TODO: Only schedule a terrain update if the sun / moon is moving, or the shadow map camera moved.
@@ -525,6 +516,7 @@ public class ShadowRenderer {
 //		levelRenderer.setShouldRegenerateClouds(regenerateClouds);
 
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
+        mc.renderGlobal.clipRenderersByFrustum(terrainFrustumHolder.getFrustum(), playerCamera.getPartialTicks());
 //		levelRenderer.invokeSetupRender(playerCamera, terrainFrustumHolder.getFrustum(), false, levelRenderer.getFrameId(), false);
 
 		// Don't forget to increment the frame counter! This variable is arbitrary and only used in terrain setup,
@@ -541,8 +533,7 @@ public class ShadowRenderer {
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
             // TODO: Render
-//            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
-//            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
 
 //            levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
@@ -590,7 +581,7 @@ public class ShadowRenderer {
 		}
 
 		if (shouldRenderBlockEntities) {
-//			renderBlockEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+//			renderTileEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
@@ -609,7 +600,9 @@ public class ShadowRenderer {
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
             // TODO: Render
+            // TODO -- This makes everything look... weird
 //            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
 		}
 
@@ -621,7 +614,7 @@ public class ShadowRenderer {
 //		}
 
         // TODO: Render
-//		debugStringTerrain = ((LevelRenderer) levelRenderer).getChunkStatistics();
+		debugStringTerrain = SodiumWorldRenderer.getInstance().getChunksDebugString();
 
 		profiler.endStartSection("generate mipmaps");
 
@@ -661,7 +654,7 @@ public class ShadowRenderer {
 	}
 
 	private String getTileEntitiesDebugString() {
-		return shouldRenderBlockEntities ? (renderedShadowBlockEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "disabled by pack";
+		return shouldRenderBlockEntities ? (renderedShadowTileEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "disabled by pack";
 	}
 
 	private static class MipmapPass {

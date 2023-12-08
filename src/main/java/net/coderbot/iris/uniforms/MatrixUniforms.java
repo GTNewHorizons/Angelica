@@ -23,7 +23,7 @@ public final class MatrixUniforms {
 		// We need to audit Mojang's linear algebra.
 		addMatrix(uniforms, "Projection", RenderingState.INSTANCE::getProjectionMatrix);
 		addShadowMatrix(uniforms, "ModelView", () -> ShadowRenderer.createShadowModelView(directives.getSunPathRotation(), directives.getShadowDirectives().getIntervalSize()).peek().getModel());
-		addShadowArrayMatrix(uniforms, "Projection", () -> ShadowMatrices.createOrthoMatrix(directives.getShadowDirectives().getDistance()));
+        addShadowMatrix(uniforms, "Projection", () -> ShadowMatrices.createOrthoMatrix(directives.getShadowDirectives().getDistance()));
 	}
 
 	private static void addMatrix(UniformHolder uniforms, String name, Supplier<Matrix4f> supplier) {
@@ -37,12 +37,6 @@ public final class MatrixUniforms {
 		uniforms
 				.uniformMatrix(PER_FRAME, "shadow" + name, supplier)
 				.uniformMatrix(PER_FRAME, "shadow" + name + "Inverse", new Inverted(supplier));
-	}
-
-	private static void addShadowArrayMatrix(UniformHolder uniforms, String name, Supplier<float[]> supplier) {
-		uniforms
-				.uniformMatrixFromArray(PER_FRAME, "shadow" + name, supplier)
-				.uniformMatrix(PER_FRAME, "shadow" + name + "Inverse", new InvertedArrayMatrix(supplier));
 	}
 
 	private static class Inverted implements Supplier<Matrix4f> {
