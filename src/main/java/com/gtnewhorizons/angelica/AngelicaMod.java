@@ -18,12 +18,16 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 public class AngelicaMod {
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
+    /** Mixin Version */
     public static boolean isNEIDLoaded;
+    /** ASM Version */
+    public static boolean isOldNEIDLoaded;
     public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         isNEIDLoaded = Loader.isModLoaded("neid");
+        isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
         proxy.preInit(event);
     }
 
