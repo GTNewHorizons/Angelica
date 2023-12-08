@@ -13,6 +13,7 @@ import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.HandRenderer;
+import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
@@ -178,7 +179,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final double z = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
-            MatrixStack matrixStack = new MatrixStack(RenderingState.INSTANCE.getModelViewMatrix());
+            final MatrixStack matrixStack = new MatrixStack(ShadowRenderer.ACTIVE ? ShadowRenderer.MODELVIEW : RenderingState.INSTANCE.getModelViewMatrix());
             this.renderer.drawChunkLayer(BlockRenderPass.VALUES[pass], matrixStack, x, y, z);
         } finally {
             RenderDevice.exitManagedCode();
