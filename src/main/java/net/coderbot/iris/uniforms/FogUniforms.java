@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.client.Shaders;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 
@@ -11,29 +11,25 @@ public class FogUniforms {
 
 	public static void addFogUniforms(DynamicUniformHolder uniforms) {
 		uniforms.uniform1i("fogMode", () -> {
-            if(!Shaders.isFogEnabled())  return 0;
+            if(!GLStateManager.getFogState().mode.isEnabled())  return 0;
 
-            return Shaders.fogMode;
-
-//			GlStateManager.FogState fog = GlStateManagerAccessor.getFOG();
-//			if (!((BooleanStateAccessor) fog.enable).isEnabled()) { return 0; }
-//			return GlStateManagerAccessor.getFOG().mode;
+            return GLStateManager.getFogState().fogMode;
 		}, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogModeNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogDensity", () -> Shaders.fogDensity/*GlStateManagerAccessor.getFOG().density*/, listener -> {
+		uniforms.uniform1f("fogDensity", () -> GLStateManager.getFogState().density, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogDensityNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogStart", () -> Shaders.fogStart/*GlStateManagerAccessor.getFOG().start*/, listener -> {
+		uniforms.uniform1f("fogStart", () -> GLStateManager.getFogState().start, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogStartNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogEnd", () -> Shaders.fogEnd/*GlStateManagerAccessor.getFOG().end*/, listener -> {
+		uniforms.uniform1f("fogEnd", () -> GLStateManager.getFogState().end, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogEndNotifier.setListener(listener);
 		});

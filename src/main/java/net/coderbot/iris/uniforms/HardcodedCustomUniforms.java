@@ -101,7 +101,7 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getHurtFactor() {
-		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+		final EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 		return player.hurtTime > 0 || player.deathTime > 0 ? 0.4f : 0f;
 	}
 

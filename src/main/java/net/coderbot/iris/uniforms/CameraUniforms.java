@@ -1,6 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import lombok.Getter;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import org.joml.Vector3d;
@@ -18,12 +19,13 @@ public class CameraUniforms {
 	}
 
 	public static void addCameraUniforms(UniformHolder uniforms, FrameUpdateNotifier notifier) {
-		CameraPositionTracker tracker = new CameraPositionTracker(notifier);
+		final CameraPositionTracker tracker = new CameraPositionTracker(notifier);
 
 		uniforms
 			.uniform1f(ONCE, "near", () -> 0.05)
 			.uniform1f(PER_FRAME, "far", CameraUniforms::getRenderDistanceInBlocks)
 			.uniform3d(PER_FRAME, "cameraPosition", tracker::getCurrentCameraPosition)
+			.uniform1f(PER_FRAME, "eyeAltitude", tracker::getCurrentCameraPositionY)
 			.uniform3d(PER_FRAME, "previousCameraPosition", tracker::getPreviousCameraPosition);
 	}
 
@@ -46,8 +48,10 @@ public class CameraUniforms {
 		private static final double WALK_RANGE = 30000;
 		private static final double TP_RANGE = 1000;
 
-		private Vector3d previousCameraPosition = new Vector3d();
-		private Vector3d currentCameraPosition = new Vector3d();
+		@Getter
+        private Vector3d previousCameraPosition = new Vector3d();
+		@Getter
+        private Vector3d currentCameraPosition = new Vector3d();
 		private final Vector3d shift = new Vector3d();
 
 		CameraPositionTracker(FrameUpdateNotifier notifier) {
@@ -67,8 +71,8 @@ public class CameraUniforms {
 		 * around a chunk border.
 		 */
 		private void updateShift() {
-			double dX = getShift(currentCameraPosition.x, previousCameraPosition.x);
-			double dZ = getShift(currentCameraPosition.z, previousCameraPosition.z);
+			final double dX = getShift(currentCameraPosition.x, previousCameraPosition.x);
+			final double dZ = getShift(currentCameraPosition.z, previousCameraPosition.z);
 
 			if (dX != 0.0 || dZ != 0.0) {
 				applyShift(dX, dZ);
@@ -99,12 +103,8 @@ public class CameraUniforms {
 			previousCameraPosition.z += dZ;
 		}
 
-		public Vector3d getCurrentCameraPosition() {
-			return currentCameraPosition;
-		}
-
-		public Vector3d getPreviousCameraPosition() {
-			return previousCameraPosition;
+        public double getCurrentCameraPositionY() {
+			return currentCameraPosition.y;
 		}
 	}
 }
