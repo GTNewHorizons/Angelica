@@ -7,6 +7,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodium;
 
+    @Config.Comment("Enable Sodium fluid rendering")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableSodiumFluidRendering;
+
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

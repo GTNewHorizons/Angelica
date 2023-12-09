@@ -127,7 +127,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     // Do regular block rendering
                     for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                        if (block.canRenderInPass(pass.ordinal()) && (!SodiumConfig.ENABLE_FLUID_RENDERER || !(block instanceof IFluidBlock))) {
+                        if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
                             long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                              if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
@@ -138,7 +138,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     }
 
                     // Do fluid rendering without RenderBlocks
-                    if (SodiumConfig.ENABLE_FLUID_RENDERER && block instanceof IFluidBlock) {
+                    if (AngelicaConfig.enableSodiumFluidRendering && block instanceof IFluidBlock) {
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (block.canRenderInPass(pass.ordinal())) {
                                  if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
