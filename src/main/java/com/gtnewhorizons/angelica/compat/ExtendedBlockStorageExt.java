@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
+import ru.fewizz.idextender.Hooks;
 
 public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     public boolean hasSky;
@@ -27,7 +28,14 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                 copyNibbleArray((ExtendedNibbleArray) storage.getBlockMSBArray(), (ExtendedNibbleArray) this.getBlockMSBArray());
             }
             arrayLen = block16BArray.length;
-        }else {
+        }
+        else if (AngelicaMod.isOldNEIDLoaded){
+            final short[] blockLSBArray = Hooks.get(this);
+            System.arraycopy(Hooks.get(storage), 0, blockLSBArray, 0, blockLSBArray.length);
+            // getBlockMSBArray is nuked in asm version
+            arrayLen = blockLSBArray.length;
+        }
+        else {
             final byte[] blockLSBArray = this.getBlockLSBArray();
             System.arraycopy(storage.getBlockLSBArray(), 0, blockLSBArray, 0, blockLSBArray.length);
             if(storage.getBlockMSBArray() != null) {
