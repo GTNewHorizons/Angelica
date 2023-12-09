@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
+import com.gtnewhorizons.angelica.transform.RenderItemTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -29,6 +30,7 @@ public class MixinCompatHackTweaker implements ITweaker {
     @Override
     public String[] getLaunchArguments() {
         // Run after Mixins, but before LWJGl3ify
+        Launch.classLoader.registerTransformer(RenderItemTransformer.class.getName());
         Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
         return new String[0];
     }
