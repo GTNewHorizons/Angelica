@@ -1,12 +1,13 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.client.Shaders;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import org.joml.Math;
+import org.joml.Vector3d;
 
 // These expressions are copied directly from BSL and Complementary.
 
@@ -28,10 +29,10 @@ public class HardcodedCustomUniforms {
 
 		CameraUniforms.CameraPositionTracker tracker = new CameraUniforms.CameraPositionTracker(updateNotifier);
 
-		SmoothedFloat eyeInCave = new SmoothedFloat(6, 12, HardcodedCustomUniforms::getEyeInCave, updateNotifier);
-		SmoothedFloat rainStrengthS = rainStrengthS(updateNotifier, 15, 15);
-		SmoothedFloat rainStrengthShining = rainStrengthS(updateNotifier, 10, 11);
-		SmoothedFloat rainStrengthS2 = rainStrengthS(updateNotifier, 70, 1);
+        final SmoothedFloat eyeInCave = new SmoothedFloat(6, 12, HardcodedCustomUniforms::getEyeInCave, updateNotifier);
+        final SmoothedFloat rainStrengthS = rainStrengthS(updateNotifier, 15, 15);
+        final SmoothedFloat rainStrengthShining = rainStrengthS(updateNotifier, 10, 11);
+		final SmoothedFloat rainStrengthS2 = rainStrengthS(updateNotifier, 70, 1);
 
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "timeAngle", HardcodedCustomUniforms::getTimeAngle);
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "timeBrightness", HardcodedCustomUniforms::getTimeBrightness);
@@ -82,7 +83,7 @@ public class HardcodedCustomUniforms {
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "touchmybody", new SmoothedFloat(0f, 0.1f, HardcodedCustomUniforms::getHurtFactor, updateNotifier));
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "sneakSmooth", new SmoothedFloat(2.0f, 0.9f, HardcodedCustomUniforms::getSneakFactor, updateNotifier));
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "burningSmooth", new SmoothedFloat(1.0f, 2.0f, HardcodedCustomUniforms::getBurnFactor, updateNotifier));
-		SmoothedFloat smoothSpeed = new SmoothedFloat(1.0f, 1.5f, () -> getVelocity(tracker) / SystemTimeUniforms.TIMER.getLastFrameTime(), updateNotifier);
+		final SmoothedFloat smoothSpeed = new SmoothedFloat(1.0f, 1.5f, () -> getVelocity(tracker) / SystemTimeUniforms.TIMER.getLastFrameTime(), updateNotifier);
 		holder.uniform1f(UniformUpdateFrequency.PER_FRAME, "effectStrength", () -> getHyperSpeedStrength(smoothSpeed));
 	}
 
@@ -91,9 +92,8 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getBurnFactor() {
-        // todo: thePlayer.fire > 0 && !thePlayer.fireResistance
-        return 0f;
-//		return Minecraft.getMinecraft().thePlayer.isOnFire() ? 1.0f : 0f;
+        final EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        return player.fire > 0 && !player.isImmuneToFire() ? 1.0f : 0f;
 	}
 
 	private static float getSneakFactor() {
@@ -106,8 +106,8 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getEyeInCave() {
-//		if (client.getCameraEntity().getEyeY() < 5.0) {
-		if (Shaders.getEyePosY() < 5.0) {
+        final Vector3d cameraPosition = RenderingState.INSTANCE.getCameraPosition();
+		if (cameraPosition.y < 5.0) {
 			return 1.0f - getEyeSkyBrightness() / 240F;
 		}
 		return 0.0f;
