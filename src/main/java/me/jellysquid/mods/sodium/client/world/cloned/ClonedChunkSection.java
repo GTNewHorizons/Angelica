@@ -64,7 +64,7 @@ public class ClonedChunkSection {
 
         this.tileEntities.clear();
 
-        // Check for tile entities & fill biome data
+        // Check for tile entities
         for(int y = pos.getMinY(); y <= pos.getMaxY(); y++) {
             for(int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
                 for(int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
@@ -81,8 +81,14 @@ public class ClonedChunkSection {
                             this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord & 15, tileentity.yCoord & 15, tileentity.zCoord & 15)), tileentity);
                         }
                     }
-                    this.biomeData[(lZ << 4) | lX] = world.getBiomeGenForCoords(x, z);
                 }
+            }
+        }
+
+        // Fill biome data
+        for(int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
+            for(int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
+                this.biomeData[((z & 15) << 4) | (x & 15)] = world.getBiomeGenForCoords(x, z);
             }
         }
     }
