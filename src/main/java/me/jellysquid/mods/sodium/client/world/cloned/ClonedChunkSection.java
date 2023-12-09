@@ -88,8 +88,7 @@ public class ClonedChunkSection {
         // Fill biome data
         for(int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
             for(int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
-                int lZ = z & 15;
-                this.biomeData[((z & 15) << 4) | x & 15] = world.getBiomeGenForCoords(x, z);
+                this.biomeData[((z & 15) << 4) | (x & 15)] = world.getBiomeGenForCoords(x, z);
             }
         }
     }
