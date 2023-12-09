@@ -135,14 +135,14 @@ public class ShadowRenderer {
 
 	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Determine the camera position
-		Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
-		double cameraX = cameraPos.x;
-		double cameraY = cameraPos.y;
-		double cameraZ = cameraPos.z;
+		final double cameraX = cameraPos.x;
+		final double cameraY = cameraPos.y;
+		final double cameraZ = cameraPos.z;
 
 		// Set up our modelview matrix stack
-		MatrixStack modelView = new MatrixStack();
+		final MatrixStack modelView = new MatrixStack();
 		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
 
 		return modelView;
@@ -157,7 +157,7 @@ public class ShadowRenderer {
 	}
 
 	private static float getSunAngle() {
-		float skyAngle = getSkyAngle();
+		final float skyAngle = getSkyAngle();
 
 		if (skyAngle < 0.75F) {
 			return skyAngle + 0.25F;
@@ -263,7 +263,7 @@ public class ShadowRenderer {
 
 			if (distance <= 0 || distance > Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by getNormal render distance)";
+					+ " blocks (capped by normal render distance)";
 				cullingInfo = "disabled " + reason;
 				return holder.setInfo(new NonCullingFrustum(), distanceInfo, cullingInfo);
 			} else {
@@ -287,7 +287,7 @@ public class ShadowRenderer {
 
 			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by getNormal render distance)";
+					+ " blocks (capped by normal render distance)";
 				boxCuller = null;
 			} else {
 				distanceInfo = distance + " blocks " + setter;
@@ -328,12 +328,12 @@ public class ShadowRenderer {
 		// However, it only partially resolves issues of light leaking into caves.
 		//
 		// TODO: Better way of preventing light from leaking into places where it shouldn't
-		GL11.glDisable(GL11.GL_CULL_FACE);
+		GLStateManager.disableCull();
 	}
 
 	private void restoreGlState() {
 		// Restore backface culling
-		GL11.glEnable(GL11.GL_CULL_FACE);
+        GLStateManager.enableCull();
 
 		// Make sure to unload the projection matrix
 		IrisRenderSystem.restoreProjectionMatrix();

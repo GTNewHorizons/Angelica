@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.client.Shaders;
+import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.EntityRendererAccessor;
@@ -10,10 +10,13 @@ import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.PackDirectives;
+import net.coderbot.iris.texture.TextureInfoCache;
+import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.coderbot.iris.uniforms.transforms.SmoothedVec2f;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -58,26 +61,24 @@ public final class CommonUniforms {
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
 		//       but we do. How will custom uniforms depending on atlasSize work?
 		uniforms.uniform2i("atlasSize", () -> {
-            return new Vector2i(Shaders.atlasSizeX, Shaders.atlasSizeY);
-//			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
-//
-//			AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
-//			if (texture instanceof TextureAtlas) {
-//				TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-//				return new Vector2i(info.getWidth(), info.getHeight());
-//			}
-//
-//			return ZERO_VECTOR_2i;
+			final int glId = GLStateManager.getTextures()[0].binding;
+
+			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
+			if (texture instanceof TextureAtlas) {
+				final TextureInfoCache.TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+				return new Vector2i(info.getWidth(), info.getHeight());
+			}
+
+			return ZERO_VECTOR_2i;
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
-        // TODO: gTextureSize
-//		uniforms.uniform2i("gtextureSize", () -> {
-//			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
-//
-//			TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-//			return new Vector2i(info.getWidth(), info.getHeight());
-//
-//		}, StateUpdateNotifiers.bindTextureNotifier);
+		uniforms.uniform2i("gtextureSize", () -> {
+			final int glId = GLStateManager.getTextures()[0].binding;
+
+			final TextureInfoCache.TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+			return new Vector2i(info.getWidth(), info.getHeight());
+
+		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
             final BlendState blend = GLStateManager.getBlendState();
@@ -95,11 +96,10 @@ public final class CommonUniforms {
 	public static void generalCommonUniforms(UniformHolder uniforms, FrameUpdateNotifier updateNotifier, PackDirectives directives) {
 		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
 
-		SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
+		final SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
         uniforms
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
-			.uniform1f(PER_FRAME, "eyeAltitude", Shaders::getEyePosY) // Objects.requireNonNull(client.getCameraEntity()).getEyeY())
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
 			.uniform1f(PER_FRAME, "nightVision", CommonUniforms::getNightVision)
@@ -118,7 +118,7 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "playerMood", CommonUniforms::getPlayerMood)
 			.uniform2i(PER_FRAME, "eyeBrightness", CommonUniforms::getEyeBrightness)
 			.uniform2i(PER_FRAME, "eyeBrightnessSmooth", () -> {
-				Vector2f smoothed = eyeBrightnessSmooth.get();
+				final Vector2f smoothed = eyeBrightnessSmooth.get();
 				return new Vector2i((int) smoothed.x(),(int) smoothed.y());
 			})
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
