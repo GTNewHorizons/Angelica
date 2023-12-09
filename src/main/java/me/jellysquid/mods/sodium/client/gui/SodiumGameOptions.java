@@ -34,7 +34,7 @@ public class SodiumGameOptions {
         public boolean useBlockFaceCulling = true;
         public boolean allowDirectMemoryAccess = true;
         public boolean ignoreDriverBlacklist = false;
-        public boolean translucencySorting = false;
+        public boolean translucencySorting = true;
     }
 
     public static class PerformanceSettings {

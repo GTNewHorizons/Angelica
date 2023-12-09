@@ -25,10 +25,10 @@ public class ChunkRenderCacheLocal extends ChunkRenderCache {
         this.worldSlice = new WorldSlice(world);
         this.lightDataCache = new ArrayLightDataCache(this.worldSlice);
 
-        LightPipelineProvider lpp = new LightPipelineProvider(lightDataCache);
+        final LightPipelineProvider lightPipelineProvider = new LightPipelineProvider(lightDataCache);
 
-        this.blockRenderer = new BlockRenderer(client);
-        this.fluidRenderer = new FluidRenderer(lpp);
+        this.blockRenderer = new BlockRenderer(lightPipelineProvider);
+        this.fluidRenderer = new FluidRenderer(lightPipelineProvider);
 
     }
 

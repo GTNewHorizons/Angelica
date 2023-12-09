@@ -2234,7 +2234,7 @@ public class Shaders {
 //            GL11.glMatrixMode(GL11.GL_MODELVIEW);
 //            GL11.glLoadIdentity();
 //            GL11.glTranslatef(0.0f, 0.0f, -100.0f);
-//            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+//            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);-
             float celestialAngle = mc.theWorld.getCelestialAngle(tickDelta);
             sunAngle = (celestialAngle < 0.75f) ? celestialAngle + 0.25f : celestialAngle - 0.75f;
             float angle = celestialAngle * (-360.0f);

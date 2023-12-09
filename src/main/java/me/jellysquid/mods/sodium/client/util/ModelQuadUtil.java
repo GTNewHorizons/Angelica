@@ -69,12 +69,12 @@ public class ModelQuadUtil {
         if (packedLight == 0)
             return calcLight;
 
-        int psl = (packedLight >> 16) & 0xFF;
-        int csl = (calcLight >> 16) & 0xFF;
-        int pbl = (packedLight) & 0xFF;
-        int cbl = (calcLight) & 0xFF;
-        int bl = Math.max(pbl, cbl);
-        int sl = Math.max(psl, csl);
+        final int psl = (packedLight >> 16) & 0xFF;
+        final int csl = (calcLight >> 16) & 0xFF;
+        final int pbl = (packedLight) & 0xFF;
+        final int cbl = (calcLight) & 0xFF;
+        final int bl = Math.max(pbl, cbl);
+        final int sl = Math.max(psl, csl);
         return (sl << 16) | bl;
     }
 }

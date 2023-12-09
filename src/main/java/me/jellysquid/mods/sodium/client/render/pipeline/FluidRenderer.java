@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
 import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -19,6 +20,7 @@ import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.WorldUtil;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -40,6 +42,7 @@ public class FluidRenderer {
     private final ModelQuadViewMutable quad = new ModelQuad();
 
     private final QuadLightData quadLightData = new QuadLightData();
+    private boolean useSeparateAo;
     private final int[] quadColors = new int[4];
 
     public FluidRenderer(LightPipelineProvider lpp) {
@@ -88,6 +91,7 @@ public class FluidRenderer {
     }
 
     public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
+        this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         int posX = pos.x;
         int posY = pos.y;
@@ -358,7 +362,15 @@ public class FluidRenderer {
         }
 
         for (int i = 0; i < 4; i++) {
-            this.quadColors[i] = ColorABGR.mul(biomeColors != null ? biomeColors[i] : 0xFFFFFFFF, light.br[i] * brightness);
+            int color = biomeColors != null ? biomeColors[i] : 0xFFFFFFFF;
+            final float ao = light.br[i] * brightness;
+            if (useSeparateAo) {
+                color &= 0x00FFFFFF;
+                color |= ((int) (ao * 255.0f)) << 24;
+            } else {
+                color = ColorABGR.mul(color, ao);
+            }
+            this.quadColors[i] = color;
         }
     }
 

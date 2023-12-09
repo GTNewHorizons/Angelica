@@ -27,6 +27,18 @@ public enum ModelQuadFacing {
         };
     }
 
+    public static ForgeDirection toDirection(ModelQuadFacing dir) {
+        return switch (dir) {
+            case DOWN -> ForgeDirection.DOWN;
+            case UP -> ForgeDirection.UP;
+            case NORTH -> ForgeDirection.NORTH;
+            case SOUTH -> ForgeDirection.SOUTH;
+            case WEST -> ForgeDirection.WEST;
+            case EAST -> ForgeDirection.EAST;
+            default -> ForgeDirection.UNKNOWN;
+        };
+    }
+
     public static ModelQuadFacing fromVector(Vector3f normal) {
         if(normal.x == 0f) {
             if(normal.y == 0f) {
