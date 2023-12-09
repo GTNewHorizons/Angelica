@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.texture.TextureScaleOverride;
 import org.joml.Vector2i;
@@ -12,30 +13,43 @@ import org.joml.Vector2i;
 import java.util.Set;
 
 public class PackDirectives {
-	private int noiseTextureResolution;
-	private float sunPathRotation;
-	private float ambientOcclusionLevel;
-	private float wetnessHalfLife;
-	private float drynessHalfLife;
-	private float eyeBrightnessHalfLife;
-	private float centerDepthHalfLife;
-	private CloudSetting cloudSetting;
+	@Getter
+    private int noiseTextureResolution;
+	@Getter
+    private float sunPathRotation;
+	@Getter
+    private float ambientOcclusionLevel;
+	@Getter
+    private float wetnessHalfLife;
+	@Getter
+    private float drynessHalfLife;
+	@Getter
+    private float eyeBrightnessHalfLife;
+	@Getter
+    private float centerDepthHalfLife;
+	@Getter
+    private CloudSetting cloudSetting;
 	private boolean underwaterOverlay;
 	private boolean vignette;
 	private boolean sun;
 	private boolean moon;
 	private boolean rainDepth;
 	private boolean separateAo;
-	private boolean oldLighting;
+	@Getter
+    private boolean oldLighting;
 	private boolean concurrentCompute;
-	private boolean oldHandLight;
+	@Getter
+    private boolean oldHandLight;
 	private boolean particlesBeforeDeferred;
-	private boolean prepareBeforeShadow;
+	@Getter
+    private boolean prepareBeforeShadow;
 	private Object2ObjectMap<String, Object2BooleanMap<String>> explicitFlips = new Object2ObjectOpenHashMap<>();
 	private Object2ObjectMap<String, TextureScaleOverride> scaleOverrides = new Object2ObjectOpenHashMap<>();
 
-	private final PackRenderTargetDirectives renderTargetDirectives;
-	private final PackShadowDirectives shadowDirectives;
+	@Getter
+    private final PackRenderTargetDirectives renderTargetDirectives;
+	@Getter
+    private final PackShadowDirectives shadowDirectives;
 
 	private PackDirectives(Set<Integer> supportedRenderTargets, PackShadowDirectives packShadowDirectives) {
 		noiseTextureResolution = 256;
@@ -79,39 +93,7 @@ public class PackDirectives {
 		prepareBeforeShadow = directives.prepareBeforeShadow;
 	}
 
-	public int getNoiseTextureResolution() {
-		return noiseTextureResolution;
-	}
-
-	public float getSunPathRotation() {
-		return sunPathRotation;
-	}
-
-	public float getAmbientOcclusionLevel() {
-		return ambientOcclusionLevel;
-	}
-
-	public float getWetnessHalfLife() {
-		return wetnessHalfLife;
-	}
-
-	public float getDrynessHalfLife() {
-		return drynessHalfLife;
-	}
-
-	public float getEyeBrightnessHalfLife() {
-		return eyeBrightnessHalfLife;
-	}
-
-	public float getCenterDepthHalfLife() {
-		return centerDepthHalfLife;
-	}
-
-	public CloudSetting getCloudSetting() {
-		return cloudSetting;
-	}
-
-	public boolean underwaterOverlay() {
+    public boolean underwaterOverlay() {
 		return underwaterOverlay;
 	}
 
@@ -135,15 +117,7 @@ public class PackDirectives {
 		return separateAo;
 	}
 
-	public boolean isOldLighting() {
-		return oldLighting;
-	}
-
-	public boolean isOldHandLight() {
-		return oldHandLight;
-	}
-
-	public boolean areParticlesBeforeDeferred() {
+    public boolean areParticlesBeforeDeferred() {
 		return particlesBeforeDeferred;
 	}
 
@@ -151,19 +125,7 @@ public class PackDirectives {
 		return concurrentCompute;
 	}
 
-	public boolean isPrepareBeforeShadow() {
-		return prepareBeforeShadow;
-	}
-
-	public PackRenderTargetDirectives getRenderTargetDirectives() {
-		return renderTargetDirectives;
-	}
-
-	public PackShadowDirectives getShadowDirectives() {
-		return shadowDirectives;
-	}
-
-	private static float clamp(float val, float lo, float hi) {
+    private static float clamp(float val, float lo, float hi) {
 		return Math.max(lo, Math.min(hi, val));
 	}
 
@@ -206,7 +168,7 @@ public class PackDirectives {
 			int index = PackRenderTargetDirectives.LEGACY_RENDER_TARGETS.indexOf(buffer);
 
 			if (index == -1 && buffer.startsWith("colortex")) {
-				String id = buffer.substring("colortex".length());
+				final String id = buffer.substring("colortex".length());
 
 				try {
 					index = Integer.parseInt(id);
@@ -231,10 +193,10 @@ public class PackDirectives {
 
 		// TODO: How do custom textures interact with aliases?
 
-		Vector2i scale = new Vector2i();
+		final Vector2i scale = new Vector2i();
 
 		if (index < PackRenderTargetDirectives.LEGACY_RENDER_TARGETS.size()) {
-			String legacyName = PackRenderTargetDirectives.LEGACY_RENDER_TARGETS.get(index);
+			final String legacyName = PackRenderTargetDirectives.LEGACY_RENDER_TARGETS.get(index);
 
 			if (scaleOverrides.containsKey(legacyName)) {
 				scale.set(scaleOverrides.get(legacyName).getX(dimensionX), scaleOverrides.get(legacyName).getY(dimensionY));
