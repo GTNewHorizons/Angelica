@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import static com.gtnewhorizons.angelica.compat.Constants.DEGREES_TO_RADIANS;
+
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal {
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
@@ -50,7 +52,7 @@ public class MixinRenderGlobal {
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F"),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getRainStrength(F)F")))
     private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        GL11.glRotatef(pipeline.get().getSunPathRotation(), 1.0F, 0.0F, 0.0F);
+        GL11.glRotatef(pipeline.get().getSunPathRotation() * DEGREES_TO_RADIANS, 0.0F, 0.0F, 1.0F);
     }
 
 }
