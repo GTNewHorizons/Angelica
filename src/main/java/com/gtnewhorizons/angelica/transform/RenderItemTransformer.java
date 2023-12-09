@@ -69,7 +69,6 @@ public class RenderItemTransformer implements IClassTransformer {
                 // updating if these lines are commented out. This is just the inital testing to see if this
                 // change is smart or stupid. I really don't know, but the tesselator calls seem
                 // completely redundant.
-
                 if (targetNode != null)
                 {
                     for (int i = 0; i < 76; i++)
