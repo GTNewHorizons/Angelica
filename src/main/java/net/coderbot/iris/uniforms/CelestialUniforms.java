@@ -34,7 +34,7 @@ public final class CelestialUniforms {
 	}
 
 	public static float getSunAngle() {
-		float skyAngle = getSkyAngle();
+		final float skyAngle = getSkyAngle();
 
 		if (skyAngle < 0.75F) {
 			return skyAngle + 0.25F;
@@ -89,7 +89,7 @@ public final class CelestialUniforms {
 	private Vector4f getCelestialPosition(float y) {
         Vector4f position = new Vector4f(0.0F, y, 0.0F, 0.0F);
 
-        Matrix4f celestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
+        final Matrix4f celestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.
         celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
@@ -105,7 +105,7 @@ public final class CelestialUniforms {
         Vector4f upVector = new Vector4f(0.0F, 100.0F, 0.0F, 0.0F);
 
 		// Get the current model view matrix, since that is the basis of the celestial model view matrix
-        Matrix4f preCelestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
+        final Matrix4f preCelestial = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix());
 
 		// Apply the fixed -90.0F degrees rotation to mirror the same transformation in renderSky.
 		// But, notably, skip the rotation by the skyAngle.
