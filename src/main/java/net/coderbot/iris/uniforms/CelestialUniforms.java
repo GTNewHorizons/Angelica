@@ -79,7 +79,7 @@ public final class CelestialUniforms {
 		// This is because we need the result of it before it's actually performed in vanilla.
         celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
         celestial.rotateZ(sunPathRotation * Constants.DEGREES_TO_RADIANS);
-        celestial.rotateX(getSkyAngle() * 360.0F);
+        celestial.rotateX(getSkyAngle() * 360.0F * Constants.DEGREES_TO_RADIANS);
 
         celestial.transform(position);
 
@@ -94,7 +94,7 @@ public final class CelestialUniforms {
 		// This is because we need the result of it before it's actually performed in vanilla.
         celestial.rotateY(-90.F * Constants.DEGREES_TO_RADIANS);
         celestial.rotateZ(sunPathRotation * Constants.DEGREES_TO_RADIANS);
-        celestial.rotateX(getSkyAngle() * 360.0F);
+        celestial.rotateX(getSkyAngle() * 360.0F * Constants.DEGREES_TO_RADIANS);
 
         position = celestial.transform(position);
 
