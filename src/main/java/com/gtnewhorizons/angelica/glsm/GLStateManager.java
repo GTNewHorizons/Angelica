@@ -506,11 +506,6 @@ public class GLStateManager {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
         Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         GL11.glDrawArrays(mode, first, count);
-        // Temporary
-        int error = GL11.glGetError();
-        if(error != GL11.GL_NO_ERROR) {
-            throw new RuntimeException("glDrawArrays error: " + error);
-        }
     }
 
     public static void defaultBlendFunc() {
