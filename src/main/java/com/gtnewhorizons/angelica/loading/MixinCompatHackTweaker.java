@@ -1,9 +1,13 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
+<<<<<<< HEAD
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import net.minecraft.launchwrapper.IClassTransformer;
+=======
+import com.gtnewhorizons.angelica.transform.RenderItemTransformer;
+>>>>>>> 8f54cb5 (Potential hud-caching fix)
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -71,8 +75,9 @@ public class MixinCompatHackTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        if (FMLLaunchHandler.side().isClient()) {
-            // Run after Mixins, but before LWJGl3ify
+        if (FMLLaunchHandler.side().isClient()) {// Run after Mixins, but before LWJGl3ify
+
+            Launch.classLoader.registerTransformer(RenderItemTransformer.class.getName());
             Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
         }
         return new String[0];
