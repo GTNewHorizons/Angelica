@@ -70,10 +70,10 @@ public final class CelestialUniforms {
 	}
 
 	private Vector4f getCelestialPositionInWorldSpace(float y) {
-		Vector4f position = new Vector4f(0.0F, y, 0.0F, 0.0F);
+		final Vector4f position = new Vector4f(0.0F, y, 0.0F, 0.0F);
 
 		// TODO: Deduplicate / remove this function.
-		Matrix4f celestial = new Matrix4f().identity();
+		final Matrix4f celestial = new Matrix4f().identity();
 
 		// This is the same transformation applied by renderSky, however, it's been moved to here.
 		// This is because we need the result of it before it's actually performed in vanilla.

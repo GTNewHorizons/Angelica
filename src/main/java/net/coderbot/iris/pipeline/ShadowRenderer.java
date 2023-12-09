@@ -521,15 +521,12 @@ public class ShadowRenderer {
 		// chunks during traversal, and break rendering in concerning ways.
 //		levelRenderer.setFrameId(levelRenderer.getFrameId() + 1);
 
-//		client.smartCull = wasChunkCullingEnabled;
-
 		profiler.endStartSection("terrain");
 
 		setupGlState(PROJECTION);
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
-            // TODO: Render
             rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
 
 //            levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
