@@ -91,9 +91,9 @@ public class Iris {
     private static String IRIS_VERSION;
     private static boolean fallback;
 
-    private static final KeyBinding reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
-    private static final KeyBinding toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
-    private static final KeyBinding shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
+    private static KeyBinding reloadKeybind;
+    private static KeyBinding toggleShadersKeybind;
+    private static KeyBinding shaderpackScreenKeybind;
 
     public static Iris INSTANCE = new Iris();
 
@@ -732,6 +732,9 @@ public class Iris {
     }
 
     public void registerKeybindings() {
+         reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
+         toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
+         shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
         ClientRegistry.registerKeyBinding(reloadKeybind);
         ClientRegistry.registerKeyBinding(toggleShadersKeybind);
         ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
