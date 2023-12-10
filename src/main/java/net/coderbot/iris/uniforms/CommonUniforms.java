@@ -141,13 +141,7 @@ public final class CommonUniforms {
     }
 
     private static boolean isBurning() {
-        // todo: thePlayer.fire > 0 && !thePlayer.fireResistance
-        return false;
-        //        if (client.thePlayer != null) {
-        //            return client.thePlayer.isOnFire();
-        //        } else {
-        //            return false;
-        //        }
+        return client.thePlayer != null && client.thePlayer.fire > 0 && !client.thePlayer.isImmuneToFire();
     }
 
     private static boolean isSneaking() {
@@ -167,7 +161,7 @@ public final class CommonUniforms {
 	}
 
 	static float getBlindness() {
-        EntityLivingBase cameraEntity = client.renderViewEntity;
+        final EntityLivingBase cameraEntity = client.renderViewEntity;
 
         if (cameraEntity instanceof EntityLiving livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
             final PotionEffect blindness = livingEntity.getActivePotionEffect(Potion.blindness);
@@ -207,7 +201,7 @@ public final class CommonUniforms {
         if (client.renderViewEntity == null || client.theWorld == null) {
 			return ZERO_VECTOR_2i;
 		}
-
+        // This is what ShadersMod did in 1.7.10
         final int eyeBrightness = client.renderViewEntity.getBrightnessForRender(CapturedRenderingState.INSTANCE.getTickDelta());
         return new Vector2i((eyeBrightness & 0xffff), (eyeBrightness >> 16));
 

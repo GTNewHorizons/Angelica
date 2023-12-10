@@ -6,9 +6,7 @@ import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import org.joml.Matrix4f;
-import org.lwjgl.BufferUtils;
 
-import java.nio.FloatBuffer;
 import java.util.function.Supplier;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;

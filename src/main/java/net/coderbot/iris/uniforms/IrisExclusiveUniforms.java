@@ -3,6 +3,7 @@ package net.coderbot.iris.uniforms;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.EntityLivingBase;
 import org.joml.Math;
@@ -91,21 +92,22 @@ public class IrisExclusiveUniforms {
 	}
 
 	private static boolean isSpectator() {
-//		return Minecraft.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR;
-        // TODO: AF? EFR?
-        return false;
+        final PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
+        if(controller == null)
+            return false;
+        return controller.currentGameType.getID() == 3;
 	}
 
 	private static Vector3d getEyePosition() {
 //		Objects.requireNonNull(Minecraft.getMinecraft().getCameraEntity());
 //		return new Vector3d(Minecraft.getMinecraft().getCameraEntity().getX(), Minecraft.getMinecraft().getCameraEntity().getEyeY(), Minecraft.getMinecraft().getCameraEntity().getZ());
-        EntityLivingBase eye = Minecraft.getMinecraft().renderViewEntity;
+        final EntityLivingBase eye = Minecraft.getMinecraft().renderViewEntity;
         return new Vector3d(eye.posX, eye.posY, eye.posZ);
 	}
 
 	public static class WorldInfoUniforms {
 		public static void addWorldInfoUniforms(UniformHolder uniforms) {
-			WorldClient level = Minecraft.getMinecraft().theWorld;
+			final WorldClient level = Minecraft.getMinecraft().theWorld;
 			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "bedrockLevel", () -> 0);
             uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudHeight", () -> {
                 if (level != null && level.provider != null) {
