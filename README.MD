@@ -28,4 +28,4 @@ Not yet in an usable state
 * Angelica
   * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto for helping get Angelica up and running!
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
-  * 🖕 to the people who said it couldn't be done
+  * "🖕 to the people who said it couldn't be done" -GitHub Copilot
