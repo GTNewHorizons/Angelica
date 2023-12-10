@@ -1,9 +1,9 @@
 # Angelica
-The little Angle that supports shaders while saving your fps from a certain death -boubou
+The little Angel that supports shaders while saving your fps from a certain death -boubou
 Is it obtuse, or accute? -Caedis
-It's a cute angle -mitchej123
+It's a cute angel -mitchej123
 
-Not yet in an usable state
+**Not yet in an usable state**
 
 # Credits
 * ShadersMod
@@ -24,7 +24,7 @@ Not yet in an usable state
 * Neodymium
   * Makamys for [Neodymium](https://github.com/makamys/Neodymium) - Various Tessellator -> Quad functionality taken under the LGPL 3
 * HUDCaching
-  * Backported from https://github.com/Sk1erLLC/Patcher by Alexdoru under the CC-BY-SA-NC 4.0 license
+  * Created by [Moulberry](https://github.com/Moulberry/MCHUDCaching), backported from [Patcher](https://github.com/Sk1erLLC/Patcher) mod by Alexdoru under the CC-BY-SA-NC 4.0 license
 * Angelica
   * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto for helping get Angelica up and running!
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
