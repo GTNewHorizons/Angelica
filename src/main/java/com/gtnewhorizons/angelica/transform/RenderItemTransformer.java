@@ -147,6 +147,7 @@ public class RenderItemTransformer implements IClassTransformer {
     {
         if (targetNode != null)
         {
+            // 76 is for the opCodes of the tesselator, 12 is for the opcodes of the 3 GL calls after it
             for (int i = 0; i < 76 + 12; i++)
             {
                 targetNode = targetNode.getNext();
