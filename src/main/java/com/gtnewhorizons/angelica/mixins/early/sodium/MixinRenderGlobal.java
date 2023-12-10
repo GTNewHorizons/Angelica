@@ -192,7 +192,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     }
 
     private boolean isSpectatorMode() {
-        PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
+        final PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
         if(controller == null)
             return false;
         return controller.currentGameType.getID() == 3;

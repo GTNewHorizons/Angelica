@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import lombok.Getter;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 
@@ -66,8 +67,10 @@ public final class SystemTimeUniforms {
 	 * of the first frame to the start of the current frame. Updated at the start of each frame.
 	 */
 	public static final class Timer {
-		private float frameTimeCounter;
-		private float lastFrameTime;
+		@Getter
+        private float frameTimeCounter;
+		@Getter
+        private float lastFrameTime;
 
 		// Disabling this because OptionalLong provides a nice wrapper around (boolean valid, long value)
 		@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -80,9 +83,9 @@ public final class SystemTimeUniforms {
 		public void beginFrame(long frameStartTime) {
 			// Track how much time passed since the last time we began rendering a frame.
 			// If this is the first frame, then use a value of 0.
-			long diffNs = frameStartTime - lastStartTime.orElse(frameStartTime);
+			final long diffNs = frameStartTime - lastStartTime.orElse(frameStartTime);
 			// Convert to milliseconds
-			long diffMs = (diffNs / 1000) / 1000;
+			final long diffMs = (diffNs / 1000) / 1000;
 
 			// Convert to seconds with a resolution of 1 millisecond, and store as the time taken for the last frame to complete.
 			lastFrameTime = diffMs / 1000.0F;
@@ -100,15 +103,7 @@ public final class SystemTimeUniforms {
 			lastStartTime = OptionalLong.of(frameStartTime);
 		}
 
-		public float getFrameTimeCounter() {
-			return frameTimeCounter;
-		}
-
-		public float getLastFrameTime() {
-			return lastFrameTime;
-		}
-
-		public void reset() {
+        public void reset() {
 			frameTimeCounter = 0.0F;
 			lastFrameTime = 0.0F;
 			lastStartTime = OptionalLong.empty();

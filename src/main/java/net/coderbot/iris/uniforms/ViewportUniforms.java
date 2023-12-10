@@ -24,10 +24,8 @@ public final class ViewportUniforms {
 		// TODO: What about the custom scale.composite3 property?
 		// NB: It is not safe to cache the render target due to mods like Resolution Control modifying the render target field.
 		uniforms
-//			.uniform1f(PER_FRAME, "viewHeight", () -> Minecraft.getMinecraft().getMainRenderTarget().height)
-			.uniform1f(PER_FRAME, "viewHeight", () -> Minecraft.getMinecraft().displayHeight)
-//			.uniform1f(PER_FRAME, "viewWidth", () -> Minecraft.getMinecraft().getMainRenderTarget().width)
-			.uniform1f(PER_FRAME, "viewWidth", () -> Minecraft.getMinecraft().displayWidth)
+			.uniform1f(PER_FRAME, "viewHeight", () -> Minecraft.getMinecraft().getFramebuffer().framebufferHeight)
+			.uniform1f(PER_FRAME, "viewWidth", () -> Minecraft.getMinecraft().getFramebuffer().framebufferWidth)
 			.uniform1f(PER_FRAME, "aspectRatio", ViewportUniforms::getAspectRatio);
 	}
 
@@ -35,7 +33,6 @@ public final class ViewportUniforms {
 	 * @return the current viewport aspect ratio, calculated from the current Minecraft window size
 	 */
 	private static float getAspectRatio() {
-//		return ((float) Minecraft.getMinecraft().getMainRenderTarget().width) / ((float) Minecraft.getMinecraft().getMainRenderTarget().height);
-		return ((float) Minecraft.getMinecraft().displayWidth) / ((float) Minecraft.getMinecraft().displayHeight);
+		return ((float) Minecraft.getMinecraft().getFramebuffer().framebufferWidth) / ((float) Minecraft.getMinecraft().getFramebuffer().framebufferHeight);
 	}
 }

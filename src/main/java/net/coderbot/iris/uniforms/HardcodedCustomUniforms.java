@@ -145,10 +145,10 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static float getMoving(CameraUniforms.CameraPositionTracker tracker) {
-		float difX = (float) (tracker.getCurrentCameraPosition().x - tracker.getPreviousCameraPosition().x);
-		float difY = (float) (tracker.getCurrentCameraPosition().y - tracker.getPreviousCameraPosition().y);
-		float difZ = (float) (tracker.getCurrentCameraPosition().z - tracker.getPreviousCameraPosition().z);
-		float difSum = Math.abs(difX) + Math.abs(difY) + Math.abs(difZ);
+		final float difX = (float) (tracker.getCurrentCameraPosition().x - tracker.getPreviousCameraPosition().x);
+        final float difY = (float) (tracker.getCurrentCameraPosition().y - tracker.getPreviousCameraPosition().y);
+        final float difZ = (float) (tracker.getCurrentCameraPosition().z - tracker.getPreviousCameraPosition().z);
+        final float difSum = Math.abs(difX) + Math.abs(difY) + Math.abs(difZ);
 		return (difSum > 0.0F && difSum < 1.0F) ? 1 : 0;
 	}
 
@@ -157,12 +157,10 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static int getWorldDayTime() {
-        long  timeOfDay = Minecraft.getMinecraft().theWorld.getWorldTime();
+        return (int) (Minecraft.getMinecraft().theWorld.getWorldTime() % 24000L);
 //		Level level = Minecraft.getMinecraft().theWorld;
 //		long  timeOfDay = level.getDayTime();
 //		long dayTime = ((DimensionTypeAccessor) level.dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
-
-		return (int) timeOfDay;
 	}
 
 	private static float getTimeBrightness() {
