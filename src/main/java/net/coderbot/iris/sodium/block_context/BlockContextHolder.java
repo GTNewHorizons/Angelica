@@ -2,11 +2,10 @@ package net.coderbot.iris.sodium.block_context;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
-import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.minecraft.block.Block;
 
 public class BlockContextHolder {
-	private final Object2IntMap<BlockMatch> blockMatches;
+	private final Object2IntMap<Block> blockMatches;
 
 	public int localPosX;
 	public int localPosY;
@@ -21,7 +20,7 @@ public class BlockContextHolder {
 		this.renderType = -1;
 	}
 
-	public BlockContextHolder(Object2IntMap<BlockMatch> idMap) {
+	public BlockContextHolder(Object2IntMap<Block> idMap) {
 		this.blockMatches = idMap;
 		this.blockId = -1;
 		this.renderType = -1;

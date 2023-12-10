@@ -18,7 +18,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkModelOffset;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.coderbot.iris.sodium.block_context.BlockContextHolder;
 import net.coderbot.iris.sodium.block_context.ChunkBuildBuffersExt;
 import net.coderbot.iris.sodium.block_context.ContextAwareVertexWriter;
@@ -54,9 +53,9 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         this.offset = new ChunkModelOffset();
 
         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-            int passId = pass.ordinal();
+            final int passId = pass.ordinal();
 
-            VertexBufferBuilder[] buffers = this.buffersByLayer[passId];
+            final VertexBufferBuilder[] buffers = this.buffersByLayer[passId];
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), EXPECTED_BUFFER_SIZE / ModelQuadFacing.COUNT);
@@ -64,7 +63,7 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         }
 
         if(AngelicaConfig.enableIris) {
-            Object2IntMap<BlockMatch> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
 
             if (blockMatches != null) {
                 this.iris$contextHolder = new BlockContextHolder(blockMatches);
