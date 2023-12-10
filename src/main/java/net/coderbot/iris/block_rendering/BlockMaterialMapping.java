@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
-import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
@@ -15,11 +14,10 @@ import net.minecraft.util.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class BlockMaterialMapping {
-	public static Object2IntMap<BlockMatch> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
-		Object2IntMap<BlockMatch> blockMatches = new Object2IntOpenHashMap<>();
+	public static Object2IntMap<Block> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
+		Object2IntMap<Block> blockMatches = new Object2IntOpenHashMap<>();
 
 		blockPropertiesMap.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
@@ -59,11 +57,11 @@ public class BlockMaterialMapping {
         };
 	}
 
-	private static void addBlock(BlockEntry entry, Object2IntMap<BlockMatch> idMap, int intId) {
+	private static void addBlock(BlockEntry entry, Object2IntMap<Block> idMap, int intId) {
 		final NamespacedId id = entry.getId();
 		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
 
-		Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
+		final Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
 
 		// If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
 		// TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
@@ -71,18 +69,19 @@ public class BlockMaterialMapping {
 			return;
 		}
 
-        Set<Integer> metas = entry.getMetas();
+        idMap.put(block, intId);
 
-        // All metas match
-		if (metas.isEmpty()) {
-            idMap.putIfAbsent(new BlockMatch(block, null), intId);
-			return;
-		}
-
-        // A subset of metas match
-        for(int meta : metas) {
-            idMap.putIfAbsent(new BlockMatch(block, meta), intId);
-        }
+//        Set<Integer> metas = entry.getMetas();
+//        // All metas match
+//		if (metas.isEmpty()) {
+//            idMap.putIfAbsent(new BlockMatch(block, null), intId);
+//			return;
+//		}
+//
+//        // A subset of metas match
+//        for(int meta : metas) {
+//            idMap.putIfAbsent(new BlockMatch(block, meta), intId);
+//        }
 	}
 
 	// We ignore generics here, the actual types don't matter because we just convert

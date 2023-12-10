@@ -1,10 +1,9 @@
 package net.coderbot.iris.block_rendering;
 
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import lombok.Getter;
-import net.coderbot.iris.shaderpack.materialmap.BlockMatch;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -16,7 +15,7 @@ public class BlockRenderingSettings {
 
 	@Getter
     private boolean reloadRequired;
-	private Object2IntMap<BlockMatch> blockMatches;
+	private Object2IntMap<Block> blockMatches;
 	private Map<Block, RenderLayer> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
 	private float ambientOcclusionLevel;
@@ -39,7 +38,7 @@ public class BlockRenderingSettings {
 	}
 
     @Nullable
-	public Object2IntMap<BlockMatch> getBlockMatches() {
+	public Object2IntMap<Block> getBlockMatches() {
 		return blockMatches;
 	}
 
@@ -53,7 +52,7 @@ public class BlockRenderingSettings {
 		return entityIds;
 	}
 
-	public void setBlockMatches(Object2IntMap<BlockMatch> blockIds) {
+	public void setBlockMatches(Object2IntMap<Block> blockIds) {
 		if (this.blockMatches != null && this.blockMatches.equals(blockIds)) {
 			return;
 		}

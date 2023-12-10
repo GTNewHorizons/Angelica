@@ -1,5 +1,6 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -9,6 +10,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
+@Getter
 public class BlockEntry {
 	private final NamespacedId id;
 	private final Set<Integer> metas;
@@ -30,7 +32,7 @@ public class BlockEntry {
 		}
 
 		// We can assume that this array is of at least array length because the input string is non-empty.
-		String[] splitStates = entry.split(":");
+		final String[] splitStates = entry.split(":");
 
 		// Trivial case: no states, no namespace
 		if (splitStates.length == 1) {
@@ -61,8 +63,8 @@ public class BlockEntry {
 		}
 
 		// Complex case: One or more states involved...
-		int statesStart;
-		NamespacedId id;
+		final int statesStart;
+		final NamespacedId id;
 
 		if (StringUtils.isNumeric(splitStates[1].substring(0, 1))) {
 			// We have an entry of the form "stone:0"
@@ -74,11 +76,11 @@ public class BlockEntry {
 			id = new NamespacedId(splitStates[0], splitStates[1]);
 		}
 
-        Set<Integer> metas = new HashSet<>();
+        final Set<Integer> metas = new HashSet<>();
 
 		for (int index = statesStart; index < splitStates.length; index++) {
 			// Parse out one or more metadata ids
-			String[] metaParts = splitStates[index].split(", ");
+			final String[] metaParts = splitStates[index].split(", ");
 
             for (String metaPart : metaParts) {
                 try {
@@ -93,19 +95,11 @@ public class BlockEntry {
 		return new BlockEntry(id, metas);
 	}
 
-	public NamespacedId getId() {
-		return id;
-	}
-
-	public Set<Integer> getMetas() {
-		return metas;
-	}
-
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		BlockEntry that = (BlockEntry) o;
+		final BlockEntry that = (BlockEntry) o;
 		return Objects.equals(id, that.id) && Objects.equals(metas, that.metas);
 	}
 

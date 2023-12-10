@@ -175,15 +175,15 @@ public class IdMap {
 		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
-			String key = (String) keyObject;
-			String value = (String) valueObject;
+			final String key = (String) keyObject;
+			final String value = (String) valueObject;
 
 			if (!key.startsWith(keyPrefix)) {
 				// Not a valid line, ignore it
 				return;
 			}
 
-			int intId;
+			final int intId;
 
 			try {
 				intId = Integer.parseInt(key.substring(keyPrefix.length()));
@@ -193,7 +193,7 @@ public class IdMap {
 				return;
 			}
 
-			List<BlockEntry> entries = new ArrayList<>();
+			final List<BlockEntry> entries = new ArrayList<>();
 
 			// Split on whitespace groups, not just single spaces
 			for (String part : value.split("\\s+")) {
