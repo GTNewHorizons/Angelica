@@ -1,7 +1,7 @@
 # Angelica
-The little Angel that supports shaders while saving your fps from a certain death -boubou
+The little Angle that supports shaders while saving your fps from a certain death -boubou
 Is it obtuse, or accute? -Caedis
-It's a cute angel -mitchej123
+It's a cute angle -mitchej123
 
 **Not yet in an usable state**
 
