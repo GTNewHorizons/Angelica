@@ -1,6 +1,7 @@
 package net.coderbot.iris.texture.format;
 
 import net.coderbot.iris.texture.mipmap.ChannelMipmapGenerator;
+import net.coderbot.iris.texture.mipmap.CustomMipmapGenerator;
 import net.coderbot.iris.texture.mipmap.DiscreteBlendFunction;
 import net.coderbot.iris.texture.mipmap.LinearBlendFunction;
 import net.coderbot.iris.texture.pbr.PBRType;
@@ -45,13 +46,13 @@ public class LabPBRTextureFormat implements TextureFormat {
 	}
 
     // TODO: PBR
-//	@Override
-//	public @Nullable CustomMipmapGenerator getMipmapGenerator(PBRType pbrType) {
-//		if (pbrType == PBRType.SPECULAR) {
-//			return SPECULAR_MIPMAP_GENERATOR;
-//		}
-//		return null;
-//	}
+	@Override
+	public @Nullable CustomMipmapGenerator getMipmapGenerator(PBRType pbrType) {
+		if (pbrType == PBRType.SPECULAR) {
+			return SPECULAR_MIPMAP_GENERATOR;
+		}
+		return null;
+	}
 
 	@Override
 	public int hashCode() {

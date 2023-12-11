@@ -130,6 +130,8 @@ public enum Mixins {
             ,"shaders.accessors.EntityRendererAccessor"
             ,"shaders.accessors.SimpleTextureAccessor"
             ,"shaders.accessors.TextureAtlasSpriteAccessor"
+            ,"shaders.accessors.TextureMapAccessor"
+            ,"shaders.accessors.AnimationMetadataSectionAccessor"
         )
     ),
 
