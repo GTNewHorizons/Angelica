@@ -5,19 +5,21 @@ import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
+import java.util.List;
+
 @Mixin(TextureAtlasSprite.class)
 public interface TextureAtlasSpriteAccessor {
     @Accessor("animationMetadata")
     AnimationMetadataSection getMetadata();
 
-//    @Accessor("mainImage")
-//    NativeImage[] getMainImage();
-//
-//    @Accessor("x")
-//    int getX();
-//
-//    @Accessor("y")
-//    int getY();
+    @Accessor("framesTextureData")
+    List<int[][]> getFramesTextureData();
+
+    @Accessor("originX")
+    int getX();
+
+    @Accessor("originY")
+    int getY();
 
     @Accessor("frameCounter")
     int getFrame();

@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import net.minecraft.crash.CrashReport;
@@ -21,14 +22,14 @@ import java.util.Map;
 import java.util.Set;
 
 public class PBRAtlasTexture extends AutoClosableAbstractTexture {
-	protected final TextureAtlas atlasTexture;
+	protected final TextureMap texMap;
 	protected final PBRType type;
 	protected final ResourceLocation id;
 	protected final Map<ResourceLocation, TextureAtlasSprite> sprites = new HashMap<>();
 	protected final Set<TextureAtlasSprite> animatedSprites = new HashSet<>();
 
-	public PBRAtlasTexture(TextureAtlas atlasTexture, PBRType type) {
-		this.atlasTexture = atlasTexture;
+	public PBRAtlasTexture(TextureMap textureMap, PBRType type) {
+		this.texMap = textureMap;
 		this.type = type;
 //		id = type.appendToFileLocation(atlasTexture.location());
 
@@ -80,7 +81,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		}
 
 		if (!animatedSprites.isEmpty()) {
-			PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) atlasTexture).getOrCreatePBRHolder();
+			PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getOrCreatePBRHolder();
 			switch (type) {
 			case NORMAL:
 				pbrHolder.setNormalAtlas(this);
@@ -138,7 +139,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 
 	@Override
 	public void close() {
-		PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) atlasTexture).getPBRHolder();
+		PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getPBRHolder();
 		if (pbrHolder != null) {
 			switch (type) {
 			case NORMAL:
