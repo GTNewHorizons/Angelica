@@ -1,5 +1,5 @@
 # Angelica
-* The little Angle that supports shaders while saving your fps from a certain death -boubou
+* The little Angle [sic] that supports shaders while saving your fps from a certain death -boubou
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
 
