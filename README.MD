@@ -1,7 +1,7 @@
 # Angelica
-The little Angle that supports shaders while saving your fps from a certain death -boubou
-Is it obtuse, or accute? -Caedis
-It's a cute angle -mitchej123
+* The little Angle that supports shaders while saving your fps from a certain death -boubou
+* Is it obtuse, or accute? -Caedis
+* It's a cute angle -mitchej123
 
 **Not yet in an usable state**
 
@@ -28,4 +28,3 @@ It's a cute angle -mitchej123
 * Angelica
   * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto for helping get Angelica up and running!
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
-  * "🖕 to the people who said it couldn't be done" -GitHub Copilot
