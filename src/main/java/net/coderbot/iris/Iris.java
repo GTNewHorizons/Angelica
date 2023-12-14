@@ -11,6 +11,7 @@ import lombok.Getter;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.GLDebug;
 import net.coderbot.iris.gl.shader.StandardMacros;
+import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
@@ -125,8 +126,7 @@ public class Iris {
             }
         } else if (shaderpackScreenKeybind.isPressed()) {
             final Minecraft mc = Minecraft.getMinecraft();
-            if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Shaderpack selection screen is not implemented yet!"));
-//            minecraft.setScreen(new ShaderPackScreen(null));
+            mc.displayGuiScreen(new ShaderPackScreen(null));
         }
 
     }
