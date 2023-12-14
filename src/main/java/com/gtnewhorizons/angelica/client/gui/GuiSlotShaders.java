@@ -15,13 +15,7 @@ public class GuiSlotShaders extends GuiSlot {
     public GuiSlotShaders(GuiShaders par1GuiShaders) {
         // super(par1GuiShaders.getMc(), par1GuiShaders.width / 2 + 20, par1GuiShaders.height, 40, par1GuiShaders.height
         // - 70, 16);
-        super(
-                par1GuiShaders.getMc(),
-                par1GuiShaders.width / 2 + 20,
-                par1GuiShaders.height,
-                40,
-                par1GuiShaders.height - 70,
-                16);
+        super(par1GuiShaders.getMc(), par1GuiShaders.width / 2 + 20, par1GuiShaders.height, 40, par1GuiShaders.height - 70, 16);
         this.shadersGui = par1GuiShaders;
         this.shaderslist = Shaders.listofShaders();
     }
@@ -70,12 +64,8 @@ public class GuiSlotShaders extends GuiSlot {
     }
 
     @Override
-    /** drawSlot */
-    protected void drawSlot(int par1, int par2, int par3, int par4, Tessellator par5, int par6, int par7) {
-        this.shadersGui.drawCenteredString(
-                (String) this.shaderslist.get(par1),
-                this.shadersGui.width / 4 + 10,
-                par3 + 1,
-                0xffffff);
+    /** drawEntry */
+    protected void drawSlot(int index, int par2, int par3, int par4, Tessellator par5, int mouseX, int mouseY) {
+        this.shadersGui.drawCenteredString((String) this.shaderslist.get(index), this.shadersGui.width / 4 + 10, par3 + 1, 0xffffff);
     }
 }

@@ -4,8 +4,10 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import net.coderbot.iris.Iris;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -103,7 +105,7 @@ public class SodiumGameOptions {
     }
 
     public void writeChanges() throws IOException {
-        Path dir = this.configPath.getParent();
+        final Path dir = this.configPath.getParent();
 
         if (!Files.exists(dir)) {
             Files.createDirectories(dir);
@@ -111,7 +113,15 @@ public class SodiumGameOptions {
             throw new IOException("Not a directory: " + dir);
         }
 
-        Files.write(this.configPath, GSON.toJson(this)
-                .getBytes(StandardCharsets.UTF_8));
+        Files.write(this.configPath, GSON.toJson(this).getBytes(StandardCharsets.UTF_8));
+        if(AngelicaConfig.enableIris) {
+            try {
+                if (Iris.getIrisConfig() != null) {
+                    Iris.getIrisConfig().save();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

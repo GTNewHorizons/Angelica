@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 public class OptionImpl<S, T> implements Option<T> {
@@ -28,6 +29,7 @@ public class OptionImpl<S, T> implements Option<T> {
     private T value;
     private T modifiedValue;
 
+    private BooleanSupplier iris$dynamicallyEnabled;
     private final boolean enabled;
 
     private OptionImpl(OptionStorage<S> storage,
@@ -93,6 +95,9 @@ public class OptionImpl<S, T> implements Option<T> {
 
     @Override
     public boolean isAvailable() {
+        if (iris$dynamicallyEnabled != null) {
+            return iris$dynamicallyEnabled.getAsBoolean();
+        }
         return this.enabled;
     }
 
@@ -105,6 +110,9 @@ public class OptionImpl<S, T> implements Option<T> {
     public void applyChanges() {
         this.binding.setValue(this.storage.getData(), this.modifiedValue);
         this.value = this.modifiedValue;
+    }
+    public void iris$dynamicallyEnable(BooleanSupplier enabled) {
+        this.iris$dynamicallyEnabled = enabled;
     }
 
     @Override

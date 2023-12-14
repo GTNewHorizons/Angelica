@@ -100,8 +100,7 @@ public class IrisSamplers {
 		if (waterShadowEnabled) {
 			usesShadows = true;
 			samplers.addDynamicSampler(shadowRenderTargets.getDepthTexture()::getTextureId, "shadowtex0", "watershadow");
-			samplers.addDynamicSampler(shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId,
-					"shadowtex1", "shadow");
+			samplers.addDynamicSampler(shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, "shadowtex1", "shadow");
 		} else {
 			usesShadows = samplers.addDynamicSampler(shadowRenderTargets.getDepthTexture()::getTextureId, "shadowtex0", "shadow");
 			usesShadows |= samplers.addDynamicSampler(shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, "shadowtex1");
@@ -130,8 +129,7 @@ public class IrisSamplers {
 			samplers.addExternalSampler(ALBEDO_TEXTURE_UNIT, "tex", "texture", "gtexture");
 		} else {
 			// TODO: Rebind unbound sampler IDs instead of hardcoding a list...
-			samplers.addDynamicSampler(whitePixel::getGlTextureId, "tex", "texture", "gtexture",
-					"gcolor", "colortex0");
+			samplers.addDynamicSampler(whitePixel::getGlTextureId, "tex", "texture", "gtexture", "gcolor", "colortex0");
 		}
 
 		if (availability.lightmap) {
