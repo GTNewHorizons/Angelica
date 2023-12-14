@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.client.gui.GuiShaders;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -19,6 +18,7 @@ import me.jellysquid.mods.sodium.client.gui.utils.Element;
 import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
+import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.EnumChatFormatting;
@@ -63,13 +63,15 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
 
-        if(AngelicaConfig.enableIris)
-            this.pages.add(shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of()));
+        if(AngelicaConfig.enableIris) {
+            shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of());
+            this.pages.add(shaderPacks);
+        }
     }
 
     public void setPage(OptionPage page) {
         if (AngelicaConfig.enableIris && page == shaderPacks) {
-            mc.displayGuiScreen(new GuiShaders(prevScreen, mc.gameSettings));
+            mc.displayGuiScreen(new ShaderPackScreen(this));
             return;
         }
 

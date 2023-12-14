@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -18,11 +19,14 @@ import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
 import org.lwjgl.opengl.Display;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,32 +35,56 @@ public class SodiumGameOptionPages {
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
 
     public static OptionPage general() {
-        List<OptionGroup> groups = new ArrayList<>();
+        final List<OptionGroup> groups = new ArrayList<>();
+        final OptionGroup.Builder firstGroupBuilder = OptionGroup.createBuilder();
 
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(I18n.format("options.renderDistance"))
-                        .setTooltip(I18n.format("sodium.options.view_distance.tooltip"))
-                        .setControl(option -> new SliderControl(option, 2, (int) GameSettings.Options.RENDER_DISTANCE.getValueMax(), 1, ControlValueFormatter.quantity("options.chunks")))
-                        .setBinding((options, value) -> options.renderDistanceChunks = value, options -> options.renderDistanceChunks)
-                        .setImpact(OptionImpact.HIGH)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(I18n.format("options.gamma"))
-                        .setTooltip(I18n.format("sodium.options.brightness.tooltip"))
-                        .setControl(opt -> new SliderControl(opt, 0, 100, 1, ControlValueFormatter.brightness()))
-                        .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
-                        .build())
-                .add(Settings.MODE_SKY.option)
-                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
-                        .setName(I18n.format("sodium.options.clouds.name"))
-                        .setTooltip(I18n.format("sodium.options.clouds.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.clouds = value, (opts) -> opts.clouds)
-                        .setImpact(OptionImpact.LOW)
-                        .build())
+        firstGroupBuilder.add(OptionImpl.createBuilder(int.class, vanillaOpts)
+                .setName(I18n.format("options.renderDistance"))
+                .setTooltip(I18n.format("sodium.options.view_distance.tooltip"))
+                .setControl(option -> new SliderControl(option, 2, (int) GameSettings.Options.RENDER_DISTANCE.getValueMax(), 1, ControlValueFormatter.quantity("options.chunks")))
+                .setBinding((options, value) -> options.renderDistanceChunks = value, options -> options.renderDistanceChunks)
+                .setImpact(OptionImpact.HIGH)
+                .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build());
+
+        if(AngelicaConfig.enableIris) {
+            final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
+                .setName(I18n.format("options.iris.shadowDistance"))
+                .setTooltip(I18n.format("options.iris.shadowDistance.sodium_tooltip"))
+                .setControl(option -> new SliderControl(option, 0, 32, 1, ControlValueFormatter.quantity("options.chunks")))
+                .setBinding((options, value) -> {
+                        IrisVideoSettings.shadowDistance = value;
+                        try {
+                            Iris.getIrisConfig().save();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    },
+                    options -> IrisVideoSettings.getOverriddenShadowDistance(IrisVideoSettings.shadowDistance))
+                .setImpact(OptionImpact.HIGH)
+                .setEnabled(true)
+                .build();
+
+            maxShadowDistanceSlider.iris$dynamicallyEnable(IrisVideoSettings::isShadowDistanceSliderEnabled);
+            firstGroupBuilder.add(maxShadowDistanceSlider).build();
+        }
+
+        firstGroupBuilder.add(OptionImpl.createBuilder(int.class, vanillaOpts)
+                .setName(I18n.format("options.gamma"))
+                .setTooltip(I18n.format("sodium.options.brightness.tooltip"))
+                .setControl(opt -> new SliderControl(opt, 0, 100, 1, ControlValueFormatter.brightness()))
+                .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
+                .build());
+        firstGroupBuilder.add(Settings.MODE_SKY.option);
+        firstGroupBuilder.add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
+                .setName(I18n.format("sodium.options.clouds.name"))
+                .setTooltip(I18n.format("sodium.options.clouds.tooltip"))
+                .setControl(TickBoxControl::new)
+                .setBinding((opts, value) -> opts.clouds = value, (opts) -> opts.clouds)
+                .setImpact(OptionImpact.LOW)
+                .build());
+        groups.add(firstGroupBuilder.build());
+
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -78,7 +106,7 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> {
                             opts.fullScreen = value;
 
-                            Minecraft client = Minecraft.getMinecraft();
+                            final Minecraft client = Minecraft.getMinecraft();
 
                             if (client.isFullScreen() != opts.fullScreen) {
                                 client.toggleFullscreen();
@@ -119,7 +147,7 @@ public class SodiumGameOptionPages {
     }
 
     public static OptionPage quality() {
-        List<OptionGroup> groups = new ArrayList<>();
+        final List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
@@ -234,7 +262,7 @@ public class SodiumGameOptionPages {
     }
 
     public static OptionPage advanced() {
-        List<OptionGroup> groups = new ArrayList<>();
+        final List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
@@ -349,7 +377,7 @@ public class SodiumGameOptionPages {
     }
 
     public static OptionPage performance() {
-        List<OptionGroup> groups = new ArrayList<>();
+        final List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)

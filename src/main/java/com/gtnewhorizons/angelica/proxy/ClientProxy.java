@@ -50,7 +50,7 @@ public class ClientProxy extends CommonProxy {
         if(AngelicaConfig.enableIris) {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
 
-            Iris.INSTANCE.registerKeybindings();
+            Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
 

@@ -158,7 +158,7 @@ public class IrisConfig {
 	 * @throws IOException file exceptions
 	 */
 	public void save() throws IOException {
-		Properties properties = new Properties();
+		final Properties properties = new Properties();
 		properties.setProperty("shaderPack", getShaderPackName().orElse(""));
 		properties.setProperty("enableShaders", enableShaders ? "true" : "false");
 		properties.setProperty("enableDebugOptions", enableDebugOptions ? "true" : "false");

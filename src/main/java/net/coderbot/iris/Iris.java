@@ -1,6 +1,7 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
+import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
@@ -53,10 +54,8 @@ import java.util.zip.ZipError;
 import java.util.zip.ZipException;
 
 public class Iris {
-    final boolean isDevelopmentEnvironment;
+    public final boolean isDevelopmentEnvironment;
     public static ContextCapabilities capabilities;
-
-    public static final String MODID = "angelica";
 
     /**
      * The user-facing name of the mod. Moved into a constant to facilitate easy branding changes (for forks). You'll still need to change this separately in
@@ -70,18 +69,17 @@ public class Iris {
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
 
     private static ShaderPack currentPack;
+    @Getter
     private static String currentPackName;
     @Getter
     private static boolean initialized;
 
     private static PipelineManager pipelineManager;
+    @Getter
     private static IrisConfig irisConfig;
     private static FileSystem zipFileSystem;
-    // TODO: Iris Backport
-    //	private static KeyMapping reloadKeybind;
-    //	private static KeyMapping toggleShadersKeybind;
-    //	private static KeyMapping shaderpackScreenKeybind;
 
+    @Getter
     private static final Map<String, String> shaderPackOptionQueue = new HashMap<>();
     // Flag variable used when reloading
     // Used in favor of queueDefaultShaderPackOptionValues() for resetting as the
@@ -89,6 +87,7 @@ public class Iris {
     private static boolean resetShaderPackOptions = false;
 
     private static String IRIS_VERSION;
+    @Getter
     private static boolean fallback;
 
     private static KeyBinding reloadKeybind;
@@ -97,16 +96,8 @@ public class Iris {
 
     public static Iris INSTANCE = new Iris();
 
-    // Wrapped in try-catch due to early initializing class
     private Iris() {
         isDevelopmentEnvironment = (boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
-        // TODO: Iris Backport
-        //		try {
-        //			FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
-        //			MinecraftForge.EVENT_BUS.addListener(this::onKeyInput);
-        //
-        //			ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
-        //		}catch(Exception ignored) {}
     }
 
     @SubscribeEvent
@@ -158,8 +149,6 @@ public class Iris {
             logger.warn("", e);
         }
 
-        // Minecraft.getMinecraft().mcDataDir.toPath().resolve("shaderpacks")
-        //        Minecraft.getMinecraft().mcDataDir.toPath().resolve("config")
         irisConfig = new IrisConfig(Minecraft.getMinecraft().mcDataDir.toPath().resolve("config").resolve("shaders.properties"));
 
         try {
@@ -169,26 +158,10 @@ public class Iris {
             logger.error("", e);
         }
 
-        // TODO: Iris Backport
-        //		reloadKeybind = new KeyMapping("iris.keybind.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, "iris.keybinds");
-        //		toggleShadersKeybind = new KeyMapping("iris.keybind.toggleShaders", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, "iris.keybinds");
-        //		shaderpackScreenKeybind = new KeyMapping("iris.keybind.shaderPackSelection", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, "iris.keybinds");
 
         initialized = true;
     }
 
-    // TODO: Iris Backport
-    //	public void onInitializeClient(final FMLClientSetupEvent event) {
-    //		IRIS_VERSION = ModList.get().getModContainerById(MODID).get().getModInfo().getVersion().toString();
-    //		ClientRegistry.registerKeyBinding(reloadKeybind);
-    //		ClientRegistry.registerKeyBinding(toggleShadersKeybind);
-    //		ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
-    //	}
-
-    // TODO: Iris Backport
-    //	public void onKeyInput(InputEvent.KeyInputEvent event) {
-    //		handleKeybinds(Minecraft.getMinecraft());
-    //	}
     public static void identifyCapabilities() {
         capabilities = GLContext.getCapabilities();
     }
@@ -227,41 +200,6 @@ public class Iris {
         Iris.getPipelineManager().preparePipeline(DimensionId.OVERWORLD);
     }
 
-    // TODO: Iris Backport
-    //	public static void handleKeybinds(Minecraft minecraft) {
-    //		if (reloadKeybind.consumeClick()) {
-    //			try {
-    //				reload();
-    //
-    //				if (minecraft.thePlayer != null) {
-    //					minecraft.thePlayer.sendChatMessage(I18n.format("iris.shaders.reloaded"), false);
-    //				}
-    //
-    //			} catch (Exception e) {
-    //				logger.error("Error while reloading Shaders for " + MODNAME + "!", e);
-    //
-    //				if (minecraft.thePlayer != null) {
-    //					minecraft.thePlayer.sendChatMessage(I18n.format("iris.shaders.reloaded.failure", Throwables.getRootCause(e).getMessage()).withStyle(
-    //                        ChatFormatting.RED), false);
-    //				}
-    //			}
-    //		} else if (toggleShadersKeybind.consumeClick()) {
-    //			try {
-    //				toggleShaders(minecraft, !irisConfig.areShadersEnabled());
-    //			} catch (Exception e) {
-    //				logger.error("Error while toggling shaders!", e);
-    //
-    //				if (minecraft.thePlayer != null) {
-    //					minecraft.thePlayer.sendChatMessage(I18n.format("iris.shaders.toggled.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED), false);
-    //				}
-    //				setShadersDisabled();
-    //				fallback = true;
-    //			}
-    //		} else if (shaderpackScreenKeybind.consumeClick()) {
-    //			minecraft.setScreen(new ShaderPackScreen(null));
-    //		}
-    //	}
-
     public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
         irisConfig.setShadersEnabled(enabled);
         irisConfig.save();
@@ -290,7 +228,7 @@ public class Iris {
         }
 
         // Attempt to load an external shaderpack if it is available
-        Optional<String> externalName = irisConfig.getShaderPackName();
+        final Optional<String> externalName = irisConfig.getShaderPackName();
 
         if (!externalName.isPresent()) {
             logger.info("Shaders are disabled because no valid shaderpack is selected");
@@ -308,8 +246,8 @@ public class Iris {
     }
 
     private static boolean loadExternalShaderpack(String name) {
-        Path shaderPackRoot;
-        Path shaderPackConfigTxt;
+        final Path shaderPackRoot;
+        final Path shaderPackConfigTxt;
 
         try {
             shaderPackRoot = getShaderpacksDirectory().resolve(name);
@@ -320,10 +258,10 @@ public class Iris {
             return false;
         }
 
-        Path shaderPackPath;
+        final Path shaderPackPath;
 
         if (shaderPackRoot.toString().endsWith(".zip")) {
-            Optional<Path> optionalPath;
+            final Optional<Path> optionalPath;
 
             try {
                 optionalPath = loadExternalZipShaderpack(shaderPackRoot);
@@ -363,7 +301,7 @@ public class Iris {
             return false;
         }
 
-        Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map) properties)
+        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map) properties)
             .orElse(new HashMap<>());
 
         changedConfigs.putAll(shaderPackOptionQueue);
@@ -377,10 +315,10 @@ public class Iris {
         try {
             currentPack = new ShaderPack(shaderPackPath, changedConfigs, StandardMacros.createStandardEnvironmentDefines());
 
-            MutableOptionValues changedConfigsValues = currentPack.getShaderPackOptions().getOptionValues().mutableCopy();
+            final MutableOptionValues changedConfigsValues = currentPack.getShaderPackOptions().getOptionValues().mutableCopy();
 
             // Store changed values from those currently in use by the shader pack
-            Properties configsToSave = new Properties();
+            final Properties configsToSave = new Properties();
             changedConfigsValues.getBooleanValues().forEach((k, v) -> configsToSave.setProperty(k, Boolean.toString(v)));
             changedConfigsValues.getStringValues().forEach(configsToSave::setProperty);
 
@@ -401,13 +339,13 @@ public class Iris {
     }
 
     private static Optional<Path> loadExternalZipShaderpack(Path shaderpackPath) throws IOException {
-        FileSystem zipSystem = FileSystems.newFileSystem(shaderpackPath, Iris.class.getClassLoader());
+        final FileSystem zipSystem = FileSystems.newFileSystem(shaderpackPath, Iris.class.getClassLoader());
         zipFileSystem = zipSystem;
 
         // Should only be one root directory for a zip shaderpack
-        Path root = zipSystem.getRootDirectories().iterator().next();
+        final Path root = zipSystem.getRootDirectories().iterator().next();
 
-        Path potentialShaderDir = zipSystem.getPath("shaders");
+        final Path potentialShaderDir = zipSystem.getPath("shaders");
 
         // If the shaders dir was immediately found return it
         // Otherwise, manually search through each directory path until it ends with "shaders"
@@ -435,7 +373,7 @@ public class Iris {
     // Temp escalation
     public static void setDebug(boolean enable) {
         GLStateManager.assertMainThread();
-        int success;
+        final int success;
         if (enable) {
             success = GLDebug.setupDebugMessageCallback();
         } else {
@@ -461,7 +399,7 @@ public class Iris {
     }
 
     private static Optional<Properties> tryReadConfigProperties(Path path) {
-        Properties properties = new Properties();
+        final Properties properties = new Properties();
 
         if (Files.exists(path)) {
             try (InputStream is = Files.newInputStream(path)) {
@@ -517,7 +455,7 @@ public class Iris {
 
         if (pack.toString().endsWith(".zip")) {
             try (FileSystem zipSystem = FileSystems.newFileSystem(pack, Iris.class.getClassLoader())) {
-                Path root = zipSystem.getRootDirectories().iterator().next();
+                final Path root = zipSystem.getRootDirectories().iterator().next();
                 try (Stream<Path> stream = Files.walk(root)) {
                     return stream.filter(Files::isDirectory).anyMatch(path -> path.endsWith("shaders"));
                 }
@@ -530,10 +468,6 @@ public class Iris {
         }
 
         return false;
-    }
-
-    public static Map<String, String> getShaderPackOptionQueue() {
-        return shaderPackOptionQueue;
     }
 
     public static void queueShaderPackOptionsFromProfile(Profile profile) {
@@ -551,8 +485,8 @@ public class Iris {
         clearShaderPackOptionQueue();
 
         getCurrentPack().ifPresent(pack -> {
-            OptionSet options = pack.getShaderPackOptions().getOptionSet();
-            OptionValues values = pack.getShaderPackOptions().getOptionValues();
+            final OptionSet options = pack.getShaderPackOptions().getOptionSet();
+            final OptionValues values = pack.getShaderPackOptions().getOptionValues();
 
             options.getStringOptions().forEach((key, mOpt) -> {
                 if (values.getStringValue(key).isPresent()) {
@@ -623,7 +557,7 @@ public class Iris {
     public static DimensionId lastDimension = null;
 
     public static DimensionId getCurrentDimension() {
-        WorldClient level = Minecraft.getMinecraft().theWorld;
+        final WorldClient level = Minecraft.getMinecraft().theWorld;
 
         if (level != null) {
             if (level.provider == null) return DimensionId.OVERWORLD;
@@ -649,7 +583,7 @@ public class Iris {
             return new FixedFunctionWorldRenderingPipeline();
         }
 
-        ProgramSet programs = currentPack.getProgramSet(dimensionId);
+        final ProgramSet programs = currentPack.getProgramSet(dimensionId);
 
 
         try {
@@ -677,18 +611,6 @@ public class Iris {
         return Optional.ofNullable(currentPack);
     }
 
-    public static String getCurrentPackName() {
-        return currentPackName;
-    }
-
-    public static IrisConfig getIrisConfig() {
-        return irisConfig;
-    }
-
-    public static boolean isFallback() {
-        return fallback;
-    }
-
     public static String getVersion() {
         if (IRIS_VERSION == null) {
             return "Version info unknown!";
@@ -698,7 +620,7 @@ public class Iris {
     }
 
     public static String getFormattedVersion() {
-        ChatFormatting color;
+        final ChatFormatting color;
         String version = getVersion();
 
         if (version.endsWith("-development-environment")) {
@@ -731,10 +653,12 @@ public class Iris {
         return shaderpacksDirectoryManager;
     }
 
-    public void registerKeybindings() {
-         reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
-         toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
-         shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
+    public void fmlInitEvent() {
+        IRIS_VERSION = Tags.VERSION;
+        reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
+        toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
+        shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
+
         ClientRegistry.registerKeyBinding(reloadKeybind);
         ClientRegistry.registerKeyBinding(toggleShadersKeybind);
         ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
