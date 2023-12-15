@@ -322,7 +322,7 @@ public class BatchingFontRenderer {
             return 0.0f;
         }
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
-        ;
+
         this.beginBatch();
         float curX = anchorX;
         try {
