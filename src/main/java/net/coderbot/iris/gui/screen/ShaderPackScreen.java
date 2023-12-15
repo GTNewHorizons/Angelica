@@ -97,7 +97,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
         if (this.mc.theWorld == null) {
             super.drawDefaultBackground();
-//            this.renderBackground(poseStack);
         } else if (!this.guiHidden) {
             this.drawGradientRect(0, 0, width, height, 0x4F232323, 0x4F232323);
         }
@@ -132,9 +131,9 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             // Draw the comment panel
             if (this.isDisplayingComment()) {
                 // Determine panel height and position
-                int panelHeight = Math.max(50, 18 + (this.hoveredElementCommentBody.size() * 10));
-                int x = (int) (0.5 * this.width) - 157;
-                int y = this.height - (panelHeight + 4);
+                final int panelHeight = Math.max(50, 18 + (this.hoveredElementCommentBody.size() * 10));
+                final int x = (int) (0.5 * this.width) - 157;
+                final int y = this.height - (panelHeight + 4);
                 // Draw panel
                 GuiUtil.drawPanel(x, y, COMMENT_PANEL_WIDTH, panelHeight);
                 // Draw text
@@ -169,13 +168,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         final int topCenter = this.width / 2 - 76;
         final boolean inWorld = this.mc.theWorld != null;
 
-//        this.children.remove(this.shaderPackList);
-//        this.children.remove(this.shaderOptionList);
-
         this.shaderPackList = new ShaderPackSelectionList(this, this.mc, this.width, this.height, 32, this.height - 58, 0, this.width);
 
         if (Iris.getCurrentPack().isPresent() && this.navigation != null) {
-            ShaderPack currentPack = Iris.getCurrentPack().get();
+            final ShaderPack currentPack = Iris.getCurrentPack().get();
 
             this.shaderOptionList = new ShaderPackOptionList(this, this.navigation, currentPack, this.mc, this.width, this.height, 32, this.height - 58, 0, this.width);
             this.navigation.setActiveOptionList(this.shaderOptionList);
@@ -194,14 +190,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         }
 
         this.buttonList.clear();
-//        this.children.clear();
 
         if (!this.guiHidden) {
-//            if (optionMenuOpen && shaderOptionList != null) {
-//                this.children.add(shaderOptionList);
-//            } else {
-//                this.children.add(shaderPackList);
-//            }
 
             this.buttonList.add(new IrisButton(bottomCenter + 104, this.height - 27, 100, 20,
                 I18n.format("gui.done"), button -> this.onClose()));
@@ -253,22 +243,11 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             this.buttonList.add(new IrisButton(
                 x, this.height - 39,
                 20, 20,
-//                this.guiHidden ? 20 : 0, 146, 20,
-//                GuiUtil.IRIS_WIDGETS_TEX,
-//                256, 256,
                 showOrHide,
                 button -> {
                     this.guiHidden = !this.guiHidden;
                     this.initGui();
                 }
-//                ,
-//                (button, i, j) -> {
-//                    this.guiButtonHoverTimer += this.mc.getDeltaFrameTime();
-//                    if (this.guiButtonHoverTimer >= 10.0f) {
-//                        TOP_LAYER_RENDER_QUEUE.add(() -> this.renderTooltip(showOrHide, i, j));
-//                    }
-//                },
-//                showOrHide
             ));
         }
 
@@ -335,35 +314,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         this.notificationDialogTimer = 100;
     }
 
-    public void importPackOptions(Path settingFile) {
-        try (InputStream in = Files.newInputStream(settingFile)) {
-            final Properties properties = new Properties();
-            properties.load(in);
-
-            Iris.queueShaderPackOptionsFromProperties(properties);
-
-            this.notificationDialog = I18n.format(
-                "options.iris.shaderPackOptions.importedSettings",
-                settingFile.getFileName().toString()
-            );
-            this.notificationDialogTimer = 100; // 5 seconds (100 ticks)
-
-            if (this.navigation != null) {
-                this.navigation.refresh();
-            }
-        } catch (Exception e) {
-            // If the file could not be properly parsed or loaded,
-            // log the error and display a message to the user
-            Iris.logger.error("Error importing shader settings file \""+ settingFile.toString() +"\"", e);
-
-            this.notificationDialog = I18n.format(
-                "options.iris.shaderPackOptions.failedImport",
-                settingFile.getFileName().toString()
-            );
-            this.notificationDialogTimer = 100; // 5 seconds (100 ticks)
-        }
-    }
-
     public void onClose() {
         if (!dropChanges) {
             applyChanges();
@@ -415,6 +365,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
 
     private void openUri(URI directoryUri) {
+        // TODO: Borrowed from ShadersMod... doesn't seem to work on Linux
         switch (net.minecraft.util.Util.getOSType()) {
             case OSX: {
                 try {
@@ -460,6 +411,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     // Let the screen know if an element is hovered or not, allowing for accurately updating which element is hovered
     public void setElementHoveredStatus(AbstractElementWidget<?> widget, boolean hovered) {
+        // TODO: Unused, but might be useful for shader options
         if (hovered && widget != this.hoveredElement) {
             this.hoveredElement = widget;
 
