@@ -28,5 +28,12 @@ public abstract class IrisGuiSlot extends GuiSlot {
         return this.width - 6;
     }
 
+    @Override
+    protected void drawSelectionBox(int x, int y, int mouseX, int mouseY) {
+        final int oldPadding = this.headerPadding;
+        this.headerPadding = 2;
+        super.drawSelectionBox(x, y, mouseX, mouseY);
+        this.headerPadding = oldPadding;
+    }
 
 }

@@ -1,5 +1,6 @@
 package net.coderbot.iris.gui.element;
 
+import lombok.Getter;
 import net.coderbot.iris.gui.GuiUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -76,7 +77,7 @@ public class IrisElementRow {
 		int currentX = x;
 
 		for (Element element : this.orderedElements) {
-			int currentWidth = this.elements.get(element);
+			final int currentWidth = this.elements.get(element);
 
 			element.render(currentX, y, currentWidth, height, mouseX, mouseY, tickDelta,
 					rowHovered && sectionHovered(currentX, currentWidth, mouseX, mouseY));
@@ -101,7 +102,7 @@ public class IrisElementRow {
 		int currentX = this.x;
 
 		for (Element element : this.orderedElements) {
-			int currentWidth = this.elements.get(element);
+			final int currentWidth = this.elements.get(element);
 
 			if (sectionHovered(currentX, currentWidth, mx, my)) {
 				return Optional.of(element);
@@ -121,9 +122,9 @@ public class IrisElementRow {
 		return getHovered(mx, my).map(element -> element.mouseReleased(mx, my, button)).orElse(false);
 	}
 
-	public static abstract class Element {
+    public abstract static class Element {
 		public boolean disabled = false;
-		private boolean hovered = false;
+		@Getter private boolean hovered = false;
 
 		public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 			GuiUtil.bindIrisWidgetsTexture();
@@ -143,12 +144,9 @@ public class IrisElementRow {
 			return false;
 		}
 
-		public boolean isHovered() {
-			return hovered;
-		}
-	}
+    }
 
-	public static abstract class ButtonElement<T extends ButtonElement<T>> extends Element {
+    public abstract static class ButtonElement<T extends ButtonElement<T>> extends Element {
 		private final Function<T, Boolean> onClick;
 
 		protected ButtonElement(Function<T, Boolean> onClick) {
@@ -188,8 +186,8 @@ public class IrisElementRow {
 
 		@Override
 		public void renderLabel(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
-			int iconX = x + (int)((width - this.icon.getWidth()) * 0.5);
-			int iconY = y + (int)((height - this.icon.getHeight()) * 0.5);
+			final int iconX = x + (int)((width - this.icon.getWidth()) * 0.5);
+			final int iconY = y + (int)((height - this.icon.getHeight()) * 0.5);
 
 			GuiUtil.bindIrisWidgetsTexture();
 			if (!this.disabled && hovered) {
@@ -216,8 +214,8 @@ public class IrisElementRow {
 
 		@Override
 		public void renderLabel(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
-			int textX = x + (int)((width - this.font.getStringWidth(this.text)) * 0.5);
-			int textY = y + (int)((height - 8) * 0.5);
+			final int textX = x + (int)((width - this.font.getStringWidth(this.text)) * 0.5);
+			final int textY = y + (int)((height - 8) * 0.5);
 
 			this.font.drawStringWithShadow(this.text, textX, textY, 0xFFFFFF);
 		}

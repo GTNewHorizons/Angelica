@@ -1,10 +1,30 @@
 package net.coderbot.iris.gui.screen;
 
+import com.gtnewhorizons.angelica.client.Shaders;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.gui.GuiUtil;
+import net.coderbot.iris.gui.NavigationController;
+import net.coderbot.iris.gui.element.ShaderPackOptionList;
+import net.coderbot.iris.gui.element.ShaderPackSelectionList;
+import net.coderbot.iris.gui.element.widget.AbstractElementWidget;
+import net.coderbot.iris.gui.element.widget.CommentedElementWidget;
+import net.coderbot.iris.gui.element.widget.IrisButton;
+import net.coderbot.iris.gui.entry.ShaderPackEntry;
+import net.coderbot.iris.shaderpack.ShaderPack;
+import net.irisshaders.iris.api.v0.IrisApi;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.resources.I18n;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.Sys;
+import org.lwjgl.input.Keyboard;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,27 +36,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
-import com.gtnewhorizons.angelica.client.Shaders;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import net.coderbot.iris.gui.GuiUtil;
-import net.coderbot.iris.gui.NavigationController;
-import net.coderbot.iris.gui.element.ShaderPackOptionList;
-import net.coderbot.iris.gui.element.widget.AbstractElementWidget;
-import net.coderbot.iris.gui.element.widget.CommentedElementWidget;
-import net.coderbot.iris.gui.element.ShaderPackSelectionList;
-import net.coderbot.iris.gui.element.widget.IrisButton;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.resources.I18n;
-import org.jetbrains.annotations.Nullable;
-
-import net.coderbot.iris.Iris;
-import net.coderbot.iris.shaderpack.ShaderPack;
-import net.irisshaders.iris.api.v0.IrisApi;
-import org.lwjgl.Sys;
-import org.lwjgl.input.Keyboard;
 
 public class ShaderPackScreen extends GuiScreen implements HudHideable {
     /**
@@ -308,7 +307,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     public void refreshScreenSwitchButton() {
         if (this.screenSwitchButton != null) {
             this.screenSwitchButton.displayString = optionMenuOpen ? I18n.format("options.iris.shaderPackList") : I18n.format("options.iris.shaderPackSettings");
-            this.screenSwitchButton.enabled = optionMenuOpen; // || shaderPackList.getTopButtonRow().shadersEnabled;
+            this.screenSwitchButton.enabled = optionMenuOpen || shaderPackList.getTopButtonRow().shadersEnabled;
         }
     }
 
@@ -318,13 +317,17 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             if (this.guiHidden) {
                 this.guiHidden = false;
                 this.initGui();
+                return;
             } else if (this.navigation != null && this.navigation.hasHistory()) {
                 this.navigation.back();
+                return;
             } else if (this.optionMenuOpen) {
                 this.optionMenuOpen = false;
                 this.initGui();
+                return;
             }
         }
+        super.keyTyped(typedChar, keyCode);
     }
 
     public void displayNotification(String String) {
@@ -377,16 +380,11 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
 
     public void applyChanges() {
-        ShaderPackSelectionList.BaseEntry base = this.shaderPackList.getSelected();
+        final ShaderPackEntry entry = this.shaderPackList.getSelected();
 
-        if (!(base instanceof ShaderPackSelectionList.ShaderPackEntry)) {
-            return;
-        }
-
-        ShaderPackSelectionList.ShaderPackEntry entry = (ShaderPackSelectionList.ShaderPackEntry)base;
         this.shaderPackList.setApplied(entry);
 
-        String name = entry.getPackName();
+        final String name = entry.getPackName();
 
         // If the pack is being changed, clear pending options from the previous pack to
         // avoid possible undefined behavior from applying one pack's options to another pack
@@ -394,10 +392,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             Iris.clearShaderPackOptionQueue();
         }
 
-        boolean enabled = true; //this.shaderPackList.getTopButtonRow().shadersEnabled;
+        final boolean enabled = this.shaderPackList.getTopButtonRow().shadersEnabled;
 
-        String previousPackName = Iris.getIrisConfig().getShaderPackName().orElse(null);
-        boolean previousShadersEnabled = Iris.getIrisConfig().areShadersEnabled();
+        final String previousPackName = Iris.getIrisConfig().getShaderPackName().orElse(null);
+        final boolean previousShadersEnabled = Iris.getIrisConfig().areShadersEnabled();
 
         // Only reload if the pack would be different from before, or shaders were toggled, or options were changed, or if we're about to reset options.
         if (!name.equals(previousPackName) || enabled != previousShadersEnabled || !Iris.getShaderPackOptionQueue().isEmpty() || Iris.shouldResetShaderPackOptionsOnNextReload()) {
