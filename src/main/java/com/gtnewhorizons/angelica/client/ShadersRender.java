@@ -76,7 +76,7 @@ public class ShadersRender {
         Shaders.setDrawBuffers(drawBuffers);
         GL11.glPopMatrix();
         GL11.glDepthFunc(GL11.GL_LEQUAL);
-        // really render item or hand
+        // really drawScreen item or hand
         itemRenderer.renderItemInFirstPerson(par1);
     }
 

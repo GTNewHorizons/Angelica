@@ -45,7 +45,7 @@ public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProf
 	}
 
 	@Override
-	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
+	public void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 		this.updateRenderParams(width, width - (Minecraft.getMinecraft().fontRenderer.getStringWidth(PROFILE_LABEL) + 16));
 
 		this.renderOptionWithValue(x, y, width, height, hovered);

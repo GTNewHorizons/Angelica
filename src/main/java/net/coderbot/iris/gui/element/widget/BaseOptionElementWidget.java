@@ -155,7 +155,7 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 //		if (button == GLFW.GLFW_MOUSE_BUTTON_1 || button == GLFW.GLFW_MOUSE_BUTTON_2) {
 //			boolean refresh = false;
 //
-//			if (Screen.hasShiftDown()) {
+//			if (GuiScreen.isShiftKeyDown()) {
 //				refresh = applyOriginalValue();
 //			}
 //			if (!refresh) {

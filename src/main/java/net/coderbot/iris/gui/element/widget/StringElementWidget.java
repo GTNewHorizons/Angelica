@@ -42,7 +42,7 @@ public class StringElementWidget extends BaseOptionElementWidget<OptionMenuStrin
 	}
 
 	@Override
-	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
+	public void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 		this.updateRenderParams(width, 0);
 
 		this.renderOptionWithValue(x, y, width, height, hovered);

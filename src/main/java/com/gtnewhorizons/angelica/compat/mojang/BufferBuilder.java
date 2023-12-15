@@ -112,7 +112,7 @@ public class BufferBuilder implements VertexConsumer, BufferBuilderExt {
 
     @Override
     public void teardownBufferSlice() {
-        // the parameters got popped by the render call, we don't need to worry about them
+        // the parameters got popped by the drawScreen call, we don't need to worry about them
         // make sure to un-set the buffer to prevent anything bad from happening with it.
         this.buffer = null;
 

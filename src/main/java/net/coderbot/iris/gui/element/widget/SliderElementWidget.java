@@ -18,7 +18,7 @@ public class SliderElementWidget extends StringElementWidget {
 	}
 
 	@Override
-	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
+	public void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 		this.updateRenderParams(width, 35);
 
 		if (!hovered) {
