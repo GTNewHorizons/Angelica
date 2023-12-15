@@ -253,7 +253,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
         if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already
-        //pass.startDrawing();
+        // pass.startDrawing();
 
         this.chunkRenderManager.renderLayer(matrixStack, pass, x, y, z);
 

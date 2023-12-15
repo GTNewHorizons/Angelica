@@ -24,14 +24,4 @@ public class PBRSpriteHolder {
 	public void setSpecularSprite(TextureAtlasSprite sprite) {
 		specularSprite = sprite;
 	}
-
-	public void close() {
-        // TODO: AutoClosable
-//		if (normalSprite != null) {
-//			normalSprite.close();
-//		}
-//		if (specularSprite != null) {
-//			specularSprite.close();
-//		}
-	}
 }

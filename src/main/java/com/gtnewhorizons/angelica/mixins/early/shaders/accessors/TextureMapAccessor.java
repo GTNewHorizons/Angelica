@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.accessors;
 
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -17,5 +18,8 @@ public interface TextureMapAccessor {
 
     @Accessor("mipmapLevels")
     int getMipmapLevels();
+
+    @Accessor("locationBlocksTexture")
+    ResourceLocation getLocationBlocksTexture();
 
 }

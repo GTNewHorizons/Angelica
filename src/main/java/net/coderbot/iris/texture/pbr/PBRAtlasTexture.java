@@ -3,10 +3,13 @@ package net.coderbot.iris.texture.pbr;
 import com.gtnewhorizons.angelica.mixins.early.angelica.textures.MixinTextureAtlasSprite;
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
 import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
+import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureAtlasSpriteAccessor;
+import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureMapAccessor;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import net.minecraft.crash.CrashReport;
@@ -31,9 +34,8 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public PBRAtlasTexture(TextureMap textureMap, PBRType type) {
 		this.texMap = textureMap;
 		this.type = type;
-//		id = type.appendToFileLocation(atlasTexture.location());
+		id = type.appendToFileLocation(((TextureMapAccessor)textureMap).getLocationBlocksTexture());
 
-        id = type.appendToFileLocation(new ResourceLocation("stuff", getType().name()));
 	}
 
 	public PBRType getType() {
@@ -47,8 +49,8 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public void addSprite(TextureAtlasSprite sprite) {
         // TODO: PBR - Wants location
 //		sprites.put(sprite.getName(), sprite);
-		sprites.put(new ResourceLocation("stuff", sprite.getIconName()), sprite);
-		if (((MixinTextureAtlasSprite) (Object)sprite).isAnimation()) {
+		sprites.put(texMap.completeResourceLocation(new ResourceLocation(sprite.getIconName()), 0), sprite);
+		if (sprite.hasAnimationMetadata()) {
 			animatedSprites.add(sprite);
 		}
 	}
@@ -112,21 +114,19 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
     }
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
-		if (((MixinTextureAtlasSprite) (Object)sprite).isAnimation()) {
-            MixinTextureAtlasSprite mixinSprite = ((MixinTextureAtlasSprite) (Object) sprite);
-			AnimationMetadataSection metadata = mixinSprite.getMetadata();
-
+        TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
+		if (sprite.hasAnimationMetadata()) {
+			AnimationMetadataSection metadata = accessor.getMetadata();
 			int frameCount = sprite.getFrameCount();
-			for (int frame = mixinSprite.getFrame(); frame >= 0; frame--) {
+			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
 				int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
-					mixinSprite.callUpload(frameIndex);
+                    TextureUtil.uploadTextureMipmap(accessor.getFramesTextureData().get(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
 					return;
 				}
 			}
 		}
-
-//		sprite.uploadFirstFrame();
+		TextureUtil.uploadTextureMipmap(accessor.getFramesTextureData().get(0), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
 	}
 
 	public void cycleAnimationFrames() {
