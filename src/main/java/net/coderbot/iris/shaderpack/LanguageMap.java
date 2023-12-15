@@ -32,19 +32,17 @@ public class LanguageMap {
 		// There is also Files.list which can be used for similar behavior
 		try (Stream<Path> stream = Files.list(root)) {
 			stream.filter(path -> !Files.isDirectory(path)).forEach(path -> {
-				// Shader packs use legacy file name coding which is different than modern minecraft's.
-				// An example of this is using "en_US.lang" compared to "en_us.json"
 				// Also note that OptiFine uses a property scheme for loading language entries to keep parity with other
 				// OptiFine features
-				String currentFileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
+				final String currentFileName = path.getFileName().toString();
 
 				if (!currentFileName.endsWith(".lang")) {
 					// This file lacks a .lang file extension and should be ignored.
 					return;
 				}
 
-				String currentLangCode = currentFileName.substring(0, currentFileName.lastIndexOf("."));
-				Properties properties = new Properties();
+				final String currentLangCode = currentFileName.substring(0, currentFileName.lastIndexOf("."));
+				final Properties properties = new Properties();
 
 				// Use InputStreamReader to avoid the default charset of ISO-8859-1.
 				// This is needed since shader language files are specified to be in UTF-8.
@@ -54,7 +52,7 @@ public class LanguageMap {
 					Iris.logger.error("Failed to parse shader pack language file " + path, e);
 				}
 
-				ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+				final ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
 
 				properties.forEach((key, value) -> builder.put(key.toString(), value.toString()));
 

@@ -11,7 +11,6 @@ import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.shaderpack.ShaderPack;
 import net.coderbot.iris.shaderpack.option.menu.OptionMenuContainer;
 import net.minecraft.client.Minecraft;
-
 import net.minecraft.client.renderer.Tessellator;
 
 import java.util.ArrayList;
@@ -38,6 +37,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 	}
 
 	public void rebuild() {
+        this.entries.clear();
 //		this.clearEntries();
 //		this.setScrollAmount(0);
 		OptionMenuConstructor.constructAndApplyToScreen(this.container, this.screen, this, navigation);
@@ -84,17 +84,19 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 
     @Override
     protected int getSize() {
-        return 0;
+        return entries.size();
     }
 
     @Override
-    protected void elementClicked(int p_148144_1_, boolean p_148144_2_, int p_148144_3_, int p_148144_4_) {
+    protected void elementClicked(int index, boolean doubleClick, int mouseX, int mouseY) {
+        final BaseEntry entry = this.entries.get(index);
+        entry.mouseClicked(mouseX, mouseY, 0);
 
     }
 
     @Override
-    protected boolean isSelected(int p_148131_1_) {
-        return false;
+    protected boolean isSelected(int idx) {
+        return false;//return this.entries.get(idx).equals(this.selected);
     }
 
     @Override

@@ -54,12 +54,12 @@ public final class OptionMenuConstructor {
 
 		ElementWidgetScreenData data = createScreenData(screen);
 
-//		optionList.addHeader(data.heading, data.backButton);
-//		optionList.addWidgets(screen.getColumnCount(), screen.elements.stream().map(element -> {
-//			AbstractElementWidget<OptionMenuElement> widget = (AbstractElementWidget<OptionMenuElement>) createWidget(element);
-//			widget.init(packScreen, navigation);
-//			return widget;
-//		}).collect(Collectors.toList()));
+		optionList.addHeader(data.heading, data.backButton);
+		optionList.addWidgets(screen.getColumnCount(), screen.elements.stream().map(element -> {
+			AbstractElementWidget<OptionMenuElement> widget = (AbstractElementWidget<OptionMenuElement>) createWidget(element);
+			widget.init(packScreen, navigation);
+			return widget;
+		}).collect(Collectors.toList()));
 	}
 
 	static {

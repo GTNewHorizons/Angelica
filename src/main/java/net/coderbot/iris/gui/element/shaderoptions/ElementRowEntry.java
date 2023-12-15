@@ -1,10 +1,10 @@
 package net.coderbot.iris.gui.element.shaderoptions;
 
-import buildcraft.core.lib.utils.MathUtils;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.element.widget.AbstractElementWidget;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.MathHelper;
 
 import java.util.List;
 
@@ -46,9 +46,9 @@ public class ElementRowEntry extends BaseEntry {
     }
 
     public int getHoveredWidget(int mouseX) {
-        final float positionAcrossWidget = ((float) MathUtils.clamp(mouseX - cachedPosX, 0, cachedWidth)) / cachedWidth;
+        final float positionAcrossWidget = ((float) MathHelper.clamp_int(mouseX - cachedPosX, 0, cachedWidth)) / cachedWidth;
 
-        return MathUtils.clamp((int) Math.floor(widgets.size() * positionAcrossWidget), 0, widgets.size() - 1);
+        return MathHelper.clamp_int((int) Math.floor(widgets.size() * positionAcrossWidget), 0, widgets.size() - 1);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
