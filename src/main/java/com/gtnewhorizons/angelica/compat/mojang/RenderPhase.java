@@ -491,13 +491,13 @@ public abstract class RenderPhase {
             super("diffuse_lighting", () -> {
                 if (guiLighting) {
                     throw new RuntimeException("Not Implemented Yet");
-//                    net.minecraft.client.render.DiffuseLighting.enable();
+//                    net.minecraft.client.drawScreen.DiffuseLighting.enable();
                 }
 
             }, () -> {
                 if (guiLighting) {
                     throw new RuntimeException("Not Implemented Yet");
-//                    net.minecraft.client.render.DiffuseLighting.disable();
+//                    net.minecraft.client.drawScreen.DiffuseLighting.disable();
                 }
 
             }, guiLighting);

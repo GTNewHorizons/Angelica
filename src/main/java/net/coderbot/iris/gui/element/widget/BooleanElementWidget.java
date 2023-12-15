@@ -44,7 +44,7 @@ public class BooleanElementWidget extends BaseOptionElementWidget<OptionMenuBool
 	}
 
 	@Override
-	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
+	public void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 		this.updateRenderParams(width, 28);
 
 		this.renderOptionWithValue(x, y, width, height, hovered);

@@ -1,4 +1,4 @@
-package net.coderbot.iris.gui.entry;
+package net.coderbot.iris.gui.element.shaderselection;
 
 import net.coderbot.iris.gui.element.IrisGuiSlot;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;

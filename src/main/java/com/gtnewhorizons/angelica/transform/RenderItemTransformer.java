@@ -95,12 +95,12 @@ public class RenderItemTransformer implements IClassTransformer {
     }
 
     // This essnetially comments out the all tesselator calls completely in renderItemIntoGUI found in the
-    // render item class. More lines need to be removed in this transform like redundant GLState
+    // drawScreen item class. More lines need to be removed in this transform like redundant GLState
     // updating if these lines are commented out. This is just the inital testing to see if this
     // change is smart or stupid. I really don't know, but the tesselator calls seem
     // completely redundant.
 
-    // All of this code is removing items from this block in render item:
+    // All of this code is removing items from this block in drawScreen item:
 
     //    else if (p_77015_3_.getItem().requiresMultipleRenderPasses())
     //    {

@@ -46,10 +46,10 @@ public class AngelicaConfig {
     @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance. [Experimental]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
-    // TODO disabled for now as it doesn't render items with an enchantment glint in the hotbar properly as well as doesn't render the vignette
+    // TODO disabled for now as it doesn't drawScreen items with an enchantment glint in the hotbar properly as well as doesn't drawScreen the vignette
     public static boolean enableHudCaching;
 
-    @Config.Comment("Batch render fonts [Experimental]")
+    @Config.Comment("Batch drawScreen fonts [Experimental]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;

@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * Makes interdimensional teleportation nearly as fast as same-dimension
  * teleportation by removing the "Downloading terrain..." screen. This will cause
  * the player to see partially loaded terrain rather than waiting for the whole
- * render distance to load, but that's also the vanilla behaviour for same-dimension
+ * drawScreen distance to load, but that's also the vanilla behaviour for same-dimension
  * teleportation. [From ArchaicFix]
  */
 @Mixin(value = NetHandlerPlayClient.class, priority = 500)

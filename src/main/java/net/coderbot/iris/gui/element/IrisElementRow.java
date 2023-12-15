@@ -69,7 +69,7 @@ public class IrisElementRow {
 	/**
 	 * Renders the row, with the anchor point being the top left.
 	 */
-	public void render(int x, int y, int height, int mouseX, int mouseY, float tickDelta, boolean rowHovered) {
+	public void drawScreen(int x, int y, int height, int mouseX, int mouseY, float tickDelta, boolean rowHovered) {
 		this.x = x;
 		this.y = y;
 		this.height = height;
@@ -90,7 +90,7 @@ public class IrisElementRow {
 	 * Renders the row, with the anchor point being the top right.
 	 */
 	public void renderRightAligned(int x, int y, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
-		render(x - this.width, y, height, mouseX, mouseY, tickDelta, hovered);
+		drawScreen(x - this.width, y, height, mouseX, mouseY, tickDelta, hovered);
 	}
 
 	private boolean sectionHovered(int sectionX, int sectionWidth, double mx, double my) {

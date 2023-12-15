@@ -1,4 +1,4 @@
-package net.coderbot.iris.gui.entry;
+package net.coderbot.iris.gui.element.shaderselection;
 
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.element.IrisElementRow;
@@ -59,7 +59,7 @@ public class TopButtonRowEntry extends BaseEntry {
         this.buttons.setWidth(this.enableDisableButton, (listWidth - 1) - REFRESH_BUTTON_WIDTH);
         this.enableDisableButton.centerX = x + (int)(listWidth * 0.5);
 
-        this.buttons.render(x - 2, y - 3, 18, mouseX, mouseY, 0, isMouseOver);
+        this.buttons.drawScreen(x - 2, y - 3, 18, mouseX, mouseY, 0, isMouseOver);
     }
 
     private String getEnableDisableLabel() {

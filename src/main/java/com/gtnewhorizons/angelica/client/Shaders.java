@@ -2267,7 +2267,7 @@ public class Shaders {
             shadowModelView.position(0);
             shadowModelViewInverse.position(0);
 
-            // Also render player shadow
+            // Also drawScreen player shadow
             mc.gameSettings.thirdPersonView = 1;
             checkGLError("setCamera");
             return;
@@ -2542,7 +2542,7 @@ public class Shaders {
     }
 
     private static void renderFinal() {
-        // final render target
+        // final drawScreen target
         isRenderingDfb = false;
         if (true) return;
         mc.getFramebuffer().bindFramebuffer(true);

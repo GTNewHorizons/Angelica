@@ -10,7 +10,7 @@ public abstract class MixinGameSettings {
 
     /**
      * @author jss2a98aj
-     * @reason Make clouds render at any render distance.
+     * @reason Make clouds drawScreen at any drawScreen distance.
      */
     @Overwrite
     public boolean shouldRenderClouds() {

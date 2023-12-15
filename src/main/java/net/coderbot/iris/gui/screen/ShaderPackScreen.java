@@ -10,7 +10,7 @@ import net.coderbot.iris.gui.element.ShaderPackSelectionList;
 import net.coderbot.iris.gui.element.widget.AbstractElementWidget;
 import net.coderbot.iris.gui.element.widget.CommentedElementWidget;
 import net.coderbot.iris.gui.element.widget.IrisButton;
-import net.coderbot.iris.gui.entry.ShaderPackEntry;
+import net.coderbot.iris.gui.element.shaderselection.ShaderPackEntry;
 import net.coderbot.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.gui.FontRenderer;
@@ -23,16 +23,12 @@ import org.lwjgl.input.Keyboard;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -144,7 +140,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             }
         }
 
-        // Render everything queued to render last
+        // Render everything queued to drawScreen last
         for (Runnable render : TOP_LAYER_RENDER_QUEUE) {
             render.run();
         }

@@ -44,7 +44,7 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
         return iris$colorBufferVersion;
     }
 
-    // Use a depth texture instead of a depth render buffer
+    // Use a depth texture instead of a depth drawScreen buffer
     @Inject(method="Lnet/minecraft/client/shader/Framebuffer;createBindFramebuffer(II)V", at=@At(value="HEAD"))
     private void iris$useDepthTexture(int width, int height, CallbackInfo ci) {
         if(this.useDepth) {

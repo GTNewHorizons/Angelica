@@ -33,7 +33,7 @@ public class LinkElementWidget extends CommentedElementWidget<OptionMenuLinkElem
 	}
 
 	@Override
-	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
+	public void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
 		GuiUtil.bindIrisWidgetsTexture();
 		GuiUtil.drawButton(x, y, width, height, hovered, false);
 
