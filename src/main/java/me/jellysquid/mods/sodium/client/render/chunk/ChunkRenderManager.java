@@ -499,11 +499,11 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     public void renderLayer(MatrixStack matrixStack, BlockRenderPass pass, double x, double y, double z) {
-        ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
-        ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
+        final ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
+        final ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
 
-        RenderDevice device = RenderDevice.INSTANCE;
-        CommandList commandList = device.createCommandList();
+        final RenderDevice device = RenderDevice.INSTANCE;
+        final CommandList commandList = device.createCommandList();
         if(AngelicaConfig.enableIris) this.backend.iris$begin(matrixStack, pass);
         else this.backend.begin(matrixStack);
 

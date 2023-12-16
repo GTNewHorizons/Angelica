@@ -233,13 +233,13 @@ public class IrisRenderSystem {
 		dsaState.bindTextureToUnit(unit, texture);
 	}
 
+    public static FloatBuffer PROJECTION_MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     public static void setupProjectionMatrix(Matrix4f matrix) {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
-        // TODO: allocations
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-        matrix.get(buffer);
-        GL11.glLoadMatrix(buffer);
+        PROJECTION_MATRIX_BUFFER.clear().rewind();
+        matrix.get(PROJECTION_MATRIX_BUFFER);
+        GL11.glLoadMatrix(PROJECTION_MATRIX_BUFFER);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
