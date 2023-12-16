@@ -151,7 +151,8 @@ public enum Mixins {
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
-            "angelica.hudcaching.MixinGuiIngameForge_HUDCaching")
+            "angelica.hudcaching.MixinGuiIngameForge_HUDCaching",
+            "angelica.hudcaching.MixinRenderItem")
 
     ),
 

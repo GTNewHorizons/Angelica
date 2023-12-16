@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import net.minecraft.launchwrapper.IClassTransformer;
-import com.gtnewhorizons.angelica.transform.RenderItemTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -74,7 +73,6 @@ public class MixinCompatHackTweaker implements ITweaker {
     public String[] getLaunchArguments() {
         if (FMLLaunchHandler.side().isClient()) {
             // Run after Mixins, but before LWJGl3ify
-            Launch.classLoader.registerTransformer(RenderItemTransformer.class.getName());
             Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
         }
 
