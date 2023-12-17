@@ -63,6 +63,8 @@ public enum Mixins {
              "shaders.startup.MixinGameSettings"
             ,"shaders.startup.MixinGuiMainMenu"
             ,"shaders.startup.MixinInitRenderer"
+            ,"shaders.startup.MixinAbstractTexture"
+            ,"shaders.startup.MixinTextureAtlasSprite"
         )
     ),
 
