@@ -73,20 +73,19 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         }
 
         if (normalAtlas != null) {
-            if (normalAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel)) {
+            if (normalAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel, ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
                 pbrTextureConsumer.acceptNormalTexture(normalAtlas);
             }
         }
         if (specularAtlas != null) {
-            if (specularAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel)) {
+            if (specularAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel, ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
                 pbrTextureConsumer.acceptSpecularTexture(specularAtlas);
             }
         }
     }
 
     protected static int fetchAtlasMipLevel(TextureMap texMap) {
-        TextureAtlasSprite missingSprite = texMap.getAtlasSprite("missingno");
-        return ((TextureAtlasSpriteAccessor) missingSprite).getFramesTextureData().size() - 1;
+        return ((TextureMapAccessor) texMap).getMipmapLevels();
     }
 
     @Nullable
@@ -105,7 +104,6 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             if (animationMetadata == null) {
                 animationMetadata = new AnimationMetadataSection(Lists.newArrayList(), -1, -1, -1);
             }
-
 
             Pair<Integer, Integer> frameSize = this.getFrameSize(nativeImage.getWidth(), nativeImage.getHeight(), animationMetadata);
             int frameWidth = frameSize.getLeft();
@@ -151,8 +149,8 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             ResourceLocation pbrSpriteName = new ResourceLocation(spriteName.getResourceDomain(), spriteName.getResourcePath() + pbrType.getSuffix());
             TextureAtlasSpriteInfo pbrSpriteInfo = new PBRTextureAtlasSpriteInfo(pbrSpriteName, frameWidth, frameHeight, animationMetadata, pbrType);
 
-            int x = ((TextureAtlasSpriteAccessor) sprite).getX();
-            int y = ((TextureAtlasSpriteAccessor) sprite).getY();
+            int x = sprite.getOriginX();
+            int y = sprite.getOriginY();
             pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight, x, y, nativeImage, texMap, mipLevel);
             syncAnimation(sprite, pbrSprite);
         } catch (FileNotFoundException e) {
@@ -220,7 +218,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, NativeImage nativeImage, TextureMap texMap, int miplevel) {
             super(info.name().toString());
             super.initSprite(atlasWidth, atlasHeight, x, y, false);
-            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, ((TextureMapAccessor) texMap).getAnisotropicFiltering() == 1);
+            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, (float)((TextureMapAccessor) texMap).getAnisotropicFiltering() > 1.0F);
         }
 
         @Override

@@ -4,6 +4,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 import java.util.List;
 
@@ -14,12 +15,6 @@ public interface TextureAtlasSpriteAccessor {
 
     @Accessor("framesTextureData")
     List<int[][]> getFramesTextureData();
-
-    @Accessor("originX")
-    int getX();
-
-    @Accessor("originY")
-    int getY();
 
     @Accessor("frameCounter")
     int getFrame();
@@ -32,9 +27,4 @@ public interface TextureAtlasSpriteAccessor {
 
     @Accessor("tickCounter")
     void setSubFrame(int subFrame);
-
-
-    //
-//    @Invoker("upload")
-//    void callUpload(int frameIndex);
 }

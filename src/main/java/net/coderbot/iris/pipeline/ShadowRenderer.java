@@ -539,7 +539,7 @@ public class ShadowRenderer {
 		if (shouldRenderTerrain) {
             rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
 
-//            levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
+//          levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
 //			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
 		}
