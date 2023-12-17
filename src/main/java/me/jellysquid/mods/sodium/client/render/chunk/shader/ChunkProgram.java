@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;

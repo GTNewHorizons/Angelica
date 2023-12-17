@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 
 public enum WorldRenderingPhase {
 	NONE,

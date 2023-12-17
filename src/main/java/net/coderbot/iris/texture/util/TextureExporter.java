@@ -1,7 +1,7 @@
 package net.coderbot.iris.texture.util;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.compat.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import net.minecraft.client.Minecraft;
 import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.opengl.GL11;

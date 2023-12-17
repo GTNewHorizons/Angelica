@@ -1,7 +1,7 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import com.gtnewhorizons.angelica.compat.mojang.DrawState;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.DrawState;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import lombok.Getter;
 
 import java.nio.ByteBuffer;

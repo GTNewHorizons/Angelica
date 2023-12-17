@@ -1,10 +1,10 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.DrawState;
-import com.gtnewhorizons.angelica.compat.mojang.MultiBufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.BufferBuilder;
+import com.gtnewhorizons.angelica.compat.toremove.DrawState;
+import com.gtnewhorizons.angelica.compat.toremove.MultiBufferSource;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;

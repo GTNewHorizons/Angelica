@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.shadows.ShadowRenderingState;

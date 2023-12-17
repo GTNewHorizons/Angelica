@@ -13,8 +13,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.gtnewhorizons.angelica.compat.Constants.DEGREES_TO_RADIANS;
-
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal {
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))

@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
+import com.gtnewhorizons.angelica.compat.toremove.TextureAtlas;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.EntityRendererAccessor;

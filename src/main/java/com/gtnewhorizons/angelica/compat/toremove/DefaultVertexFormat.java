@@ -1,6 +1,7 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Type;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Usage;
 

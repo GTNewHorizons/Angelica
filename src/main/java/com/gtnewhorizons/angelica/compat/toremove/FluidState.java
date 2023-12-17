@@ -1,5 +1,6 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import net.minecraft.block.BlockLiquid;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;

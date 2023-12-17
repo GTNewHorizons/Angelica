@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;

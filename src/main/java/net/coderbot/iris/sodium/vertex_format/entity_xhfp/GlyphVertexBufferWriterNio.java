@@ -1,6 +1,6 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import com.gtnewhorizons.angelica.compat.mojang.OverlayTexture;
+import com.gtnewhorizons.angelica.compat.toremove.OverlayTexture;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;

@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
-import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;

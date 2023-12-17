@@ -1,8 +1,8 @@
 package net.coderbot.iris.layer;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.RenderPhase;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;

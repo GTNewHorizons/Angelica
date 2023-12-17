@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
-import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceLinkedOpenHashMap;
 import net.minecraft.world.World;
 

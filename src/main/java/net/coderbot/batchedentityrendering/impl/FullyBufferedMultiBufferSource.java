@@ -2,10 +2,10 @@ package net.coderbot.batchedentityrendering.impl;
 
 import net.coderbot.batchedentityrendering.impl.ordering.GraphTranslucencyRenderOrderManager;
 import net.coderbot.batchedentityrendering.impl.ordering.RenderOrderManager;
-import com.gtnewhorizons.angelica.compat.mojang.BufferBuilder;
-import com.gtnewhorizons.angelica.compat.mojang.BufferSource;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.BufferBuilder;
+import com.gtnewhorizons.angelica.compat.toremove.BufferSource;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import net.coderbot.iris.fantastic.WrappingMultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.Profiler;

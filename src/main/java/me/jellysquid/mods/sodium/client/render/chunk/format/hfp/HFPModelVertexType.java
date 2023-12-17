@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.format.hfp;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeFormat;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;

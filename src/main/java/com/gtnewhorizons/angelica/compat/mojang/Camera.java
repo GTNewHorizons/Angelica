@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import lombok.Getter;
@@ -23,7 +23,7 @@ public class Camera {
 
     public Camera(EntityLivingBase entity, float partialTicks) {
         this.partialTicks = partialTicks;
-        Vector4f offset = new Vector4f(); // third person offset
+        final Vector4f offset = new Vector4f(); // third person offset
         final Matrix4f inverseModelView = new Matrix4f(RenderingState.INSTANCE.getModelViewMatrix()).invert();
         inverseModelView.transform(offset);
 

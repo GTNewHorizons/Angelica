@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad.writer;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad.BasicScreenQuadVertexSink;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;

@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.ImmutableList;
 import it.unimi.dsi.fastutil.Hash;

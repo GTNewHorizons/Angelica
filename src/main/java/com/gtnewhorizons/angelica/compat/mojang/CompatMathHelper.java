@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 public class CompatMathHelper {
     public static int smallestEncompassingPowerOfTwo(int value) {

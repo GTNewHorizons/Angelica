@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.compat.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;

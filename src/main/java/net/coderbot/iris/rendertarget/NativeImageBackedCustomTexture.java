@@ -1,6 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.compat.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.minecraft.client.renderer.texture.DynamicTexture;

@@ -1,7 +1,7 @@
 package net.coderbot.batchedentityrendering.impl.wrappers;
 
 import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;

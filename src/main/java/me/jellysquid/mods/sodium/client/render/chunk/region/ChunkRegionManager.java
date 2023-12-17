@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.region;
 
-import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;

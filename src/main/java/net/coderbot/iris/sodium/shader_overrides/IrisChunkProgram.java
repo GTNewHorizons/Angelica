@@ -1,6 +1,6 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkProgram;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogComponent;

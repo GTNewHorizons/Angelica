@@ -1,8 +1,8 @@
 package net.coderbot.iris.vertices;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.toremove.VertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
 
 public class IrisVertexFormats {

@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
-import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import com.gtnewhorizons.angelica.compat.toremove.VoxelShape;
+import com.gtnewhorizons.angelica.compat.toremove.VoxelShapes;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;

@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.mipmap;
 
-import com.gtnewhorizons.angelica.compat.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import net.coderbot.iris.texture.pbr.loader.TextureAtlasSpriteInfo;
 
 import javax.annotation.Nullable;

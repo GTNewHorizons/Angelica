@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.writer;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;

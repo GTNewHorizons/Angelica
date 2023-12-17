@@ -1,6 +1,4 @@
-package com.gtnewhorizons.angelica.compat;
-
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 // See if we can merge/mixin/extend ChunkCoordIntPair?
 public class ChunkPos {
@@ -42,8 +40,8 @@ public class ChunkPos {
 
     public int hashCode()
     {
-        int i = 1664525 * this.x + 1013904223;
-        int j = 1664525 * (this.z ^ -559038737) + 1013904223;
+        final int i = 1664525 * this.x + 1013904223;
+        final int j = 1664525 * (this.z ^ -559038737) + 1013904223;
         return i ^ j;
     }
 

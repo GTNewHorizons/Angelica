@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.util;
 
-import com.gtnewhorizons.angelica.compat.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 
 public class ImageManipulationUtil {
 	public static NativeImage scaleNearestNeighbor(NativeImage image, int newWidth, int newHeight) {

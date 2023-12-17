@@ -2,7 +2,7 @@ package net.coderbot.iris.texture.pbr.loader;
 
 import com.google.common.collect.Lists;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
-import com.gtnewhorizons.angelica.compat.NativeImage;
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.AnimationMetadataSectionAccessor;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureMapAccessor;

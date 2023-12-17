@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 import java.io.IOException;
 import java.io.InputStream;

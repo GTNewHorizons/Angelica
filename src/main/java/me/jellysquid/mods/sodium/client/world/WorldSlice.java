@@ -2,8 +2,8 @@ package me.jellysquid.mods.sodium.client.world;
 
 import java.util.Arrays;
 
-import com.gtnewhorizons.angelica.compat.ChunkSectionPos;
-import com.gtnewhorizons.angelica.compat.CompatMathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
