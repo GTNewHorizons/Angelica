@@ -1,6 +1,5 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.compat.toremove.TextureAtlas;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.EntityRendererAccessor;
@@ -17,6 +16,7 @@ import net.coderbot.iris.uniforms.transforms.SmoothedVec2f;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -64,7 +64,7 @@ public final class CommonUniforms {
 			final int glId = GLStateManager.getTextures()[0].binding;
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
-			if (texture instanceof TextureAtlas) {
+			if (texture instanceof TextureMap) {
 				final TextureInfoCache.TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 				return new Vector2i(info.getWidth(), info.getHeight());
 			}
