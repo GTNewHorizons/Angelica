@@ -1,10 +1,9 @@
 package net.coderbot.iris.texture.pbr;
 
-import com.gtnewhorizons.angelica.mixins.early.angelica.textures.MixinTextureAtlasSprite;
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
-import com.gtnewhorizons.angelica.compat.mojang.TextureAtlas;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureMapAccessor;
+import lombok.Getter;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -26,7 +25,8 @@ import java.util.Set;
 
 public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	protected final TextureMap texMap;
-	protected final PBRType type;
+	@Getter
+    protected final PBRType type;
 	protected final ResourceLocation id;
 	protected final Map<ResourceLocation, TextureAtlasSprite> sprites = new HashMap<>();
 	protected final Set<TextureAtlasSprite> animatedSprites = new HashSet<>();
@@ -38,17 +38,11 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 
 	}
 
-	public PBRType getType() {
-		return type;
-	}
-
-	public ResourceLocation getAtlasId() {
+    public ResourceLocation getAtlasId() {
 		return id;
 	}
 
 	public void addSprite(TextureAtlasSprite sprite) {
-        // TODO: PBR - Wants location
-//		sprites.put(sprite.getName(), sprite);
 		sprites.put(texMap.completeResourceLocation(new ResourceLocation(sprite.getIconName()), 0), sprite);
 		if (sprite.hasAnimationMetadata()) {
 			animatedSprites.add(sprite);
@@ -66,7 +60,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	}
 
 	public void upload(int atlasWidth, int atlasHeight, int mipLevel, float anisotropicFiltering) {
-		int glId = getGlTextureId();
+		final int glId = getGlTextureId();
 		TextureUtil.allocateTextureImpl(glId, mipLevel, atlasWidth, atlasHeight, anisotropicFiltering);
 		TextureManipulationUtil.fillWithColor(glId, mipLevel, type.getDefaultValue());
 
@@ -83,7 +77,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		}
 
 		if (!animatedSprites.isEmpty()) {
-			PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getOrCreatePBRHolder();
+			final PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getOrCreatePBRHolder();
 			switch (type) {
 			case NORMAL:
 				pbrHolder.setNormalAtlas(this);
@@ -109,18 +103,18 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	}
 
     @Override
-    public void loadTexture(IResourceManager p_110551_1_) throws IOException {
+    public void loadTexture(IResourceManager manager) throws IOException {
         // todo
     }
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
 
-        TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
+        final TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
 		if (accessor.getMetadata().getFrameCount() > 1) {
-			AnimationMetadataSection metadata = accessor.getMetadata();
-			int frameCount = sprite.getFrameCount();
+			final AnimationMetadataSection metadata = accessor.getMetadata();
+			final int frameCount = sprite.getFrameCount();
 			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
-				int frameIndex = metadata.getFrameIndex(frame);
+				final int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
                     TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
 					return;
@@ -133,27 +127,18 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public void cycleAnimationFrames() {
 		bind();
 		for (TextureAtlasSprite sprite : animatedSprites) {
-//			sprite.cycleFrames();
             sprite.updateAnimation();
 		}
 	}
 
 	@Override
 	public void close() {
-		PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getPBRHolder();
+		final PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getPBRHolder();
 		if (pbrHolder != null) {
-			switch (type) {
-			case NORMAL:
-				pbrHolder.setNormalAtlas(null);
-				break;
-			case SPECULAR:
-				pbrHolder.setSpecularAtlas(null);
-				break;
-			}
+            switch (type) {
+                case NORMAL -> pbrHolder.setNormalAtlas(null);
+                case SPECULAR -> pbrHolder.setSpecularAtlas(null);
+            }
 		}
-	}
-
-	@Override
-	public void load(IResourceManager manager) {
 	}
 }

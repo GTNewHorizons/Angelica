@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-// TODO: PBR
 public class LabPBRTextureFormat implements TextureFormat {
 	public static final ChannelMipmapGenerator SPECULAR_MIPMAP_GENERATOR = new ChannelMipmapGenerator(
 			LinearBlendFunction.INSTANCE,
@@ -45,8 +44,7 @@ public class LabPBRTextureFormat implements TextureFormat {
 		return true;
 	}
 
-    // TODO: PBR
-	@Override
+    @Override
 	public @Nullable CustomMipmapGenerator getMipmapGenerator(PBRType pbrType) {
 		if (pbrType == PBRType.SPECULAR) {
 			return SPECULAR_MIPMAP_GENERATOR;

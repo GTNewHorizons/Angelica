@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public abstract class AutoClosableAbstractTexture extends AbstractTexture implements AutoCloseable {
 
-    public abstract void load(IResourceManager manager) throws IOException;
+    public abstract void loadTexture(IResourceManager manager) throws IOException;
 
     @Override
     public void close() throws Exception {}
