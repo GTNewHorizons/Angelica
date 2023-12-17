@@ -3,7 +3,7 @@ description: "Report a bug that you as a developer plan to fix yourself."
 body:
   - type: markdown
     attributes:
-      value: "A bug/crash report that you plan to fix yourself, or that an Angelica developer specifically asked you to post here. If neither applies please don't post issues until the open alpha."
+      value: "A bug/crash report that you plan to fix yourself, or that an Angelica developer specifically asked you to post here. **If neither applies please don't post issues until the open alpha.**"
   - type: input
     id: discord
     attributes:
