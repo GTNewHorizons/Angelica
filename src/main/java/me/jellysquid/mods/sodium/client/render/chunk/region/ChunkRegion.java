@@ -21,7 +21,7 @@ public class ChunkRegion<T extends ChunkGraphicsState> {
 
     private GlTessellation tessellation;
 
-    public final int x, y, z;
+    private final int x, y, z;
 
     public float camDistance;
 
@@ -37,6 +37,18 @@ public class ChunkRegion<T extends ChunkGraphicsState> {
         this.x = x;
         this.y = y;
         this.z = z;
+    }
+
+    public int getCenterBlockX() {
+        return (this.x * ChunkRegionManager.BUFFER_WIDTH * 16) + (ChunkRegionManager.BUFFER_WIDTH / 2 * 16);
+    }
+
+    public int getCenterBlockY() {
+        return (this.y * ChunkRegionManager.BUFFER_HEIGHT * 16) + (ChunkRegionManager.BUFFER_HEIGHT / 2 * 16);
+    }
+
+    public int getCenterBlockZ() {
+        return (this.z * ChunkRegionManager.BUFFER_LENGTH * 16) + (ChunkRegionManager.BUFFER_LENGTH / 2 * 16);
     }
 
     public GlBufferArena getBufferArena() {

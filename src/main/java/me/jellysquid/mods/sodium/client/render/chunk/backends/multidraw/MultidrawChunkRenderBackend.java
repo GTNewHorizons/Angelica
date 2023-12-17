@@ -264,9 +264,9 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         if(this.reverseRegions) {
             ChunkCameraContext camera = this.regionCamera;
             for (ChunkRegion<?> region : this.pendingBatches) {
-                float x = camera.getChunkModelOffset(region.x * 16, camera.blockOriginX, camera.originX);
-                float y = camera.getChunkModelOffset(region.y * 16, camera.blockOriginY, camera.originY);
-                float z = camera.getChunkModelOffset(region.z * 16, camera.blockOriginZ, camera.originZ);
+                float x = camera.getChunkModelOffset(region.getCenterBlockX(), camera.blockOriginX, camera.originX);
+                float y = camera.getChunkModelOffset(region.getCenterBlockY(), camera.blockOriginY, camera.originY);
+                float z = camera.getChunkModelOffset(region.getCenterBlockZ(), camera.blockOriginZ, camera.originZ);
                 region.camDistance = x * x + y * y + z * z;
             }
 
