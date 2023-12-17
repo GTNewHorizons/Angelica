@@ -73,12 +73,12 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         }
 
         if (normalAtlas != null) {
-            if (normalAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel)) {
+            if (normalAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel, ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
                 pbrTextureConsumer.acceptNormalTexture(normalAtlas);
             }
         }
         if (specularAtlas != null) {
-            if (specularAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel)) {
+            if (specularAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel, ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
                 pbrTextureConsumer.acceptSpecularTexture(specularAtlas);
             }
         }
@@ -218,7 +218,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, NativeImage nativeImage, TextureMap texMap, int miplevel) {
             super(info.name().toString());
             super.initSprite(atlasWidth, atlasHeight, x, y, false);
-//            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, ((TextureMapAccessor) texMap).getAnisotropicFiltering() == 1);
+            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, (float)((TextureMapAccessor) texMap).getAnisotropicFiltering() > 1.0F);
         }
 
         @Override

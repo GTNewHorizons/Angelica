@@ -65,9 +65,9 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		animatedSprites.clear();
 	}
 
-	public void upload(int atlasWidth, int atlasHeight, int mipLevel) {
+	public void upload(int atlasWidth, int atlasHeight, int mipLevel, float anisotropicFiltering) {
 		int glId = getGlTextureId();
-//		TextureUtil.prepareImage(glId, mipLevel, atlasWidth, atlasHeight);
+		TextureUtil.allocateTextureImpl(glId, mipLevel, atlasWidth, atlasHeight, anisotropicFiltering);
 		TextureManipulationUtil.fillWithColor(glId, mipLevel, type.getDefaultValue());
 
 		for (TextureAtlasSprite sprite : sprites.values()) {
@@ -99,9 +99,9 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		}
 	}
 
-	public boolean tryUpload(int atlasWidth, int atlasHeight, int mipLevel) {
+	public boolean tryUpload(int atlasWidth, int atlasHeight, int mipLevel, float anisotropicFiltering) {
 		try {
-			upload(atlasWidth, atlasHeight, mipLevel);
+			upload(atlasWidth, atlasHeight, mipLevel, anisotropicFiltering);
 			return true;
 		} catch (Throwable t) {
 			return false;
@@ -114,19 +114,20 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
     }
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
+
         TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
-		if (sprite.hasAnimationMetadata()) {
+		if (accessor.getMetadata().getFrameCount() > 1) {
 			AnimationMetadataSection metadata = accessor.getMetadata();
 			int frameCount = sprite.getFrameCount();
 			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
 				int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
-                    TextureUtil.uploadTextureMipmap(accessor.getFramesTextureData().get(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
+                    TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
 					return;
 				}
 			}
 		}
-		TextureUtil.uploadTextureMipmap(accessor.getFramesTextureData().get(0), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
+		TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(0), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
 	}
 
 	public void cycleAnimationFrames() {
