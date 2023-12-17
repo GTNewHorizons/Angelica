@@ -158,8 +158,13 @@ public class BlockRenderer {
 
             if(quad.normal != facing)
                 continue;
+
             final QuadLightData light = this.cachedQuadLightData;
-            lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
+
+            // TODO: use Sodium pipeline always
+            if(this.useSeparateAo) {
+                lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
+            }
 
 
             this.renderQuad(sink, quad, light, renderData);
@@ -170,13 +175,7 @@ public class BlockRenderer {
 
     private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
 
-        final ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);;
-
-        int[] colors = null;
-
-        if (quad.hasColor()) {
-            colors = quad.getColors();
-        }
+        final ModelQuadOrientation order = useSeparateAo ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
@@ -185,20 +184,18 @@ public class BlockRenderer {
             final float y = quad.getY(srcIndex);
             final float z = quad.getZ(srcIndex);
 
-//            int color = quad.getColor(srcIndex);
-            int color = colors != null ? colors[srcIndex] : quad.getColor(srcIndex);
+            int color = quad.getColor(srcIndex);
             final float ao = light.br[srcIndex];
             if (useSeparateAo) {
                 color &= 0x00FFFFFF;
                 color |= ((int) (ao * 255.0f)) << 24;
-            } else {
-                color = ColorABGR.mul(color, ao);
             }
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int lm = ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]);
+            int quadLight = quad.getLight(srcIndex);
+            final int lm = useSeparateAo ? ModelQuadUtil.mergeBakedLight(quadLight, light.lm[srcIndex]) : quadLight;
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }

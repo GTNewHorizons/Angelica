@@ -1,34 +1,24 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks {
-    @Shadow
-    public abstract boolean renderStandardBlockWithColorMultiplier(Block block, int x, int y, int z, float f, float f1, float f2);
+    @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
+    private boolean checkAOEnabled() {
+        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo()) {
+            return false; // force Sodium pipeline
+        }
 
-    /**
-     * @author mitchej123
-     * @reason Let sodium handle AO
-     */
-    @Overwrite
-    public boolean renderStandardBlockWithAmbientOcclusion(Block block, int x, int y, int z, float f, float f1, float f2) {
-        return renderStandardBlockWithColorMultiplier(block, x, y, z, f, f1, f2);
+        return Minecraft.isAmbientOcclusionEnabled();
     }
-
-    /**
-     * @author mitchej123
-     * @reason Let sodium handle AO
-     */
-    @Overwrite
-    public boolean renderStandardBlockWithAmbientOcclusionPartial(Block block, int x, int y, int z, float f, float f1, float f2) {
-        return renderStandardBlockWithColorMultiplier(block, x, y, z, f, f1, f2);
-    }
-
-
-
 }
