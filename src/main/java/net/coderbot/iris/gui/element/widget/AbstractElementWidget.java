@@ -20,7 +20,7 @@ public abstract class AbstractElementWidget<T extends OptionMenuElement> {
 
 	public abstract void drawScreen(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered);
 
-	public boolean mouseClicked(double mx, double my, int button) {
+	public boolean mouseClicked(int mouseX, int mouseY, int button) {
 		return false;
 	}
 

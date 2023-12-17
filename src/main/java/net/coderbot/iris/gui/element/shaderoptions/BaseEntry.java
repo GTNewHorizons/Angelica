@@ -11,7 +11,7 @@ public abstract class BaseEntry {
         this.navigation = navigation;
     }
 
-    public abstract boolean mouseClicked(double mouseX, double mouseY, int button);
+    public abstract boolean mouseClicked(int mouseX, int mouseY, int button);
 
 
     public abstract void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver);

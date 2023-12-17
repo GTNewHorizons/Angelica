@@ -51,12 +51,12 @@ public class ElementRowEntry extends BaseEntry {
         return MathHelper.clamp_int((int) Math.floor(widgets.size() * positionAcrossWidget), 0, widgets.size() - 1);
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return this.widgets.get(getHoveredWidget((int) mouseX)).mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(int mouseX, int mouseY, int button) {
+        return this.widgets.get(getHoveredWidget(mouseX)).mouseClicked(mouseX, mouseY, button);
     }
 
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return this.widgets.get(getHoveredWidget((int) mouseX)).mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(int mouseX, int mouseY, int button) {
+        return this.widgets.get(getHoveredWidget(mouseX)).mouseReleased(mouseX, mouseY, button);
     }
 
 }

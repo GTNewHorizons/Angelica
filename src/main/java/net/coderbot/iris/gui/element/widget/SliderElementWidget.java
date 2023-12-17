@@ -85,7 +85,7 @@ public class SliderElementWidget extends StringElementWidget {
 	}
 
 	@Override
-	public boolean mouseClicked(double mx, double my, int button) {
+	public boolean mouseClicked(int mouseX, int mouseY, int button) {
 		if (button == 0) {
 			if (GuiScreen.isShiftKeyDown()) {
 				if (this.applyOriginalValue()) {

@@ -114,16 +114,22 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
     }
 
     @Override
-    protected void elementClicked(int index, boolean doubleClick, int mouseX, int mouseY) {
+    protected boolean elementClicked(int index, boolean doubleClick, int mouseX, int mouseY, int mouseButton) {
+        // Only do anything on left-click
+        if (mouseButton != 0) {
+            return false;
+        }
         final BaseEntry entry = this.entries.get(index);
         if(entry instanceof ShaderPackEntry shaderPackEntry) {
             this.setSelected(shaderPackEntry);
             if (!topButtonRow.shadersEnabled) {
                 topButtonRow.setShadersEnabled(true);
             }
+            return true;
         } else if( entry instanceof TopButtonRowEntry topButtonRowEntry) {
-            topButtonRowEntry.mouseClicked(mouseX, mouseY, 0);
+            return topButtonRowEntry.mouseClicked(mouseX, mouseY, 0);
         }
+        return false;
    }
 
     @Override
@@ -138,7 +144,7 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
 
     @Override
     protected void drawBackground() {
-
+        // Do nothing
     }
 
 

@@ -25,7 +25,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     private final List<BaseEntry> entries = new ArrayList<>();
 
 	public ShaderPackOptionList(ShaderPackScreen screen, NavigationController navigation, ShaderPack pack, Minecraft client, int width, int height, int top, int bottom, int left, int right) {
-		super(client, width, height, top, bottom, 24);
+		super(client, width, height, top, bottom, 20);
 		this.navigation = navigation;
 		this.screen = screen;
 
@@ -38,8 +38,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 
 	public void rebuild() {
         this.entries.clear();
-//		this.clearEntries();
-//		this.setScrollAmount(0);
+        this.amountScrolled = 0;
 		OptionMenuConstructor.constructAndApplyToScreen(this.container, this.screen, this, navigation);
 	}
 
@@ -88,10 +87,9 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     }
 
     @Override
-    protected void elementClicked(int index, boolean doubleClick, int mouseX, int mouseY) {
+    protected boolean elementClicked(int index, boolean doubleClick, int mouseX, int mouseY, int mouseButton) {
         final BaseEntry entry = this.entries.get(index);
-        entry.mouseClicked(mouseX, mouseY, 0);
-
+        return entry.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
@@ -101,7 +99,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 
     @Override
     protected void drawBackground() {
-
+        // noop
     }
 
     @Override
@@ -111,7 +109,6 @@ public class ShaderPackOptionList extends IrisGuiSlot {
         entry.drawEntry(screen, index, x - 2, y + 4, this.getListWidth(), this.slotHeight, tessellator, mouseX, mouseY, isMouseOver);
     }
 
-//
 
 
 }

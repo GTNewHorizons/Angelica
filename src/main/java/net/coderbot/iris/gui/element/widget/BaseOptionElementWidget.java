@@ -151,29 +151,29 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 	}
 
 	@Override
-	public boolean mouseClicked(double mx, double my, int button) {
-//		if (button == GLFW.GLFW_MOUSE_BUTTON_1 || button == GLFW.GLFW_MOUSE_BUTTON_2) {
-//			boolean refresh = false;
-//
-//			if (GuiScreen.isShiftKeyDown()) {
-//				refresh = applyOriginalValue();
-//			}
-//			if (!refresh) {
-//				if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
-//					refresh = applyNextValue();
-//				} else {
-//					refresh = applyPreviousValue();
-//				}
-//			}
-//
-//			if (refresh) {
-//				this.navigation.refresh();
-//			}
-//
-//			GuiUtil.playButtonClickSound();
-//
-//			return true;
-//		}
-		return super.mouseClicked(mx, my, button);
+	public boolean mouseClicked(int mouseX, int mouseY, int button) {
+		if (button == 0 || button == 1) {
+			boolean refresh = false;
+
+			if (GuiScreen.isShiftKeyDown()) {
+				refresh = applyOriginalValue();
+			}
+			if (!refresh) {
+				if (button == 0) {
+					refresh = applyNextValue();
+				} else {
+					refresh = applyPreviousValue();
+				}
+			}
+
+			if (refresh) {
+				this.navigation.refresh();
+			}
+
+			GuiUtil.playButtonClickSound();
+
+			return true;
+		}
+		return super.mouseClicked(mouseX, mouseY, button);
 	}
 }

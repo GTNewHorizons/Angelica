@@ -7,10 +7,11 @@ import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.element.ShaderPackOptionList;
 import net.coderbot.iris.gui.element.ShaderPackSelectionList;
+import net.coderbot.iris.gui.element.shaderselection.ShaderPackEntry;
 import net.coderbot.iris.gui.element.widget.AbstractElementWidget;
 import net.coderbot.iris.gui.element.widget.CommentedElementWidget;
 import net.coderbot.iris.gui.element.widget.IrisButton;
-import net.coderbot.iris.gui.element.shaderselection.ShaderPackEntry;
+import net.coderbot.iris.gui.element.widget.IrisImageButton;
 import net.coderbot.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.gui.FontRenderer;
@@ -20,6 +21,7 @@ import net.minecraft.client.resources.I18n;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.Sys;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,6 +72,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     private String updateComponent;
 
     private boolean guiHidden = false;
+    private boolean dirty = false;
     private float guiButtonHoverTimer = 0.0f;
 
     public ShaderPackScreen(GuiScreen parent) {
@@ -90,6 +93,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
+        if(dirty) {
+            dirty = false;
+            this.initGui();
+        }
 
         if (this.mc.theWorld == null) {
             super.drawDefaultBackground();
@@ -236,13 +243,14 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
                 x = (int) (endOfLastButton + (freeSpace / 2.0f)) - 10;
             }
 
-            this.buttonList.add(new IrisButton(
+            this.buttonList.add(new IrisImageButton(
                 x, this.height - 39,
                 20, 20,
-                showOrHide,
+                this.guiHidden ? 20 : 0, 146, 20,
+                GuiUtil.IRIS_WIDGETS_TEX,
                 button -> {
                     this.guiHidden = !this.guiHidden;
-                    this.initGui();
+                    this.dirty = true;
                 }
             ));
         }
@@ -252,6 +260,45 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         this.hoveredElement = null;
         this.hoveredElementCommentTimer = 0;
     }
+
+
+    /**
+     * Called when the mouse is clicked.
+     */
+    @Override
+    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        boolean handled = false;
+        if (!this.guiHidden) {
+            if (optionMenuOpen && this.shaderOptionList != null ) {
+                handled = this.shaderOptionList.mouseClicked(mouseX, mouseY, mouseButton);
+            } else {
+                handled = this.shaderPackList.mouseClicked(mouseX, mouseY, mouseButton);
+            }
+        }
+        if(!handled) {
+            super.mouseClicked(mouseX, mouseY, mouseButton);
+        }
+    }
+
+    /**
+     * Called when the mouse is moved or a mouse button is released.  Signature: (mouseX, mouseY, which) which==-1 is
+     * mouseMove, which==0 or which==1 is mouseUp
+     */
+    @Override
+    protected void mouseMovedOrUp(int mouseX, int mouseY, int state) {
+        boolean handled = false;
+        if (!this.guiHidden && state != -1) {
+            if (optionMenuOpen && this.shaderOptionList != null) {
+                handled = this.shaderOptionList.mouseReleased(mouseX, mouseY, Mouse.getEventButton());
+            } else {
+                handled = this.shaderPackList.mouseReleased(mouseX, mouseY, Mouse.getEventButton());
+            }
+        }
+        if(!handled) {
+            super.mouseMovedOrUp(mouseX, mouseY, state);
+        }
+    }
+
 
     @Override
     protected void actionPerformed(GuiButton guiButton) {
