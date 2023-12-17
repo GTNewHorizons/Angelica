@@ -1,0 +1,51 @@
+name: Report Bug
+description: "Report a bug that you as a developer plan to fix yourself."
+body:
+  - type: markdown
+    attributes:
+      value: "A bug/crash report that you plan to fix yourself, or that an Angelica developer specifically asked you to post here. If neither applies please don't post issues until the open alpha."
+  - type: input
+    id: discord
+    attributes:
+      label: Your GTNH Discord Username
+      description: Leave empty if you don't have one, but this will make it harder to contact you if we need additional info.
+      placeholder: "Example: Fake#1234"
+  - type: input
+    id: version
+    attributes:
+      label: Mod Version
+      description: "What version of the Mod are you using?  (Note: None have been officially released yet)"
+      placeholder: "Example: 0.0.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: java
+    attributes:
+      label: Java Version
+      description: What Java version are you using? It's worth mentioning that if you play on Java9+ you should try update to latest minor release (e.g. prefer Java 17.0.6 over 17.0.2) of that version.
+      options:
+        - Java 8
+        - Java 9
+        - Java 11
+        - Java 17
+        - Java 19
+        - Java 20
+        - Java 21
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Bug Report Report
+      description: "Relevant information, as well as relevant logs attached such as `logs/fml-client-latest.log."
+      placeholder: "Example: pastebin/something OR submit the file to github by dragging it to this textbox."
+    validations:
+      required: true
+  - type: checkboxes
+    id: final
+    attributes:
+      label: Final Checklist
+      description: Certify that you read things
+      options:
+        - label: "I am either a mod developer and plan to fix the issue myself, or an Angelica developer specifically asked me to post an issue here."
+          required: true
