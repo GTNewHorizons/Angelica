@@ -1,6 +1,5 @@
 package net.coderbot.iris.gui.screen;
 
-import com.gtnewhorizons.angelica.client.Shaders;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
@@ -407,48 +406,49 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         CompletableFuture.runAsync(() -> openUri(Iris.getShaderpacksDirectoryManager().getDirectoryUri()));
     }
 
-    private void openUri(URI directoryUri) {
-        // TODO: Borrowed from ShadersMod... doesn't seem to work on Linux
+    private void openUri(URI uri) {
         switch (net.minecraft.util.Util.getOSType()) {
-            case OSX: {
+            case OSX -> {
                 try {
-                    Runtime.getRuntime().exec(new String[] { "/usr/bin/open", directoryUri.toString() });
+                    Runtime.getRuntime().exec(new String[] { "/usr/bin/open", uri.toString() });
                     return;
-                } catch (IOException var7) {
-                    var7.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
-            break;
-            case WINDOWS: {
-                String var2 = String.format(
-                    "cmd.exe /C start \"Open file\" \"%s\"",
-                    new Object[] { directoryUri.toString() });
-
+            case WINDOWS -> {
                 try {
-                    Runtime.getRuntime().exec(var2);
+                    Runtime.getRuntime().exec(new String[] { "rundll32", "url.dll,FileProtocolHandler", uri.toString() });
                     return;
-                } catch (IOException var6) {
-                    var6.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
-            break;
-            default:
-                break;
+            case LINUX -> {
+                try {
+                    Runtime.getRuntime().exec(new String[] { "xdg-open", uri.toString() });
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            default -> {
+            }
         }
         boolean openViaSystemClass = false;
 
         try {
             final Class<?> aClass = Class.forName("java.awt.Desktop");
             final Object getDesktop = aClass.getMethod("getDesktop").invoke((Object) null);
-            aClass.getMethod("browse", URI.class).invoke(getDesktop, (new File(this.mc.mcDataDir, Shaders.shaderpacksdirname)).toURI());
-        } catch (Throwable var5) {
-            var5.printStackTrace();
+            aClass.getMethod("browse", URI.class).invoke(getDesktop, uri);
+        } catch (Exception e) {
+            e.printStackTrace();
             openViaSystemClass = true;
         }
 
         if (openViaSystemClass) {
             AngelicaTweaker.LOGGER.debug("Opening via system class!");
-            Sys.openURL("file://" + Shaders.shaderpacksdir.getAbsolutePath());
+            Sys.openURL("file://" + uri);
         }
     }
 
