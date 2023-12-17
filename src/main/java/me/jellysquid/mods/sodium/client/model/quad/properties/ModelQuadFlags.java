@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.quad.properties;
 
-import com.gtnewhorizons.angelica.compat.Axis;
+import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import net.minecraftforge.common.util.ForgeDirection;
 

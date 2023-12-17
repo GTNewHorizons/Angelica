@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.Queues;
 import org.joml.Matrix3f;
@@ -14,7 +14,7 @@ public class MatrixStack {
         this.matrixStack = Queues.newArrayDeque();
         matrixStack.add(new Entry(new Matrix4f().identity(), new Matrix3f().identity()));
     }
-    
+
     public MatrixStack(Matrix4f initial) {
         this.matrixStack = Queues.newArrayDeque();
         Matrix3f normal = new Matrix3f();

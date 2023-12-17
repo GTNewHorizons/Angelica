@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;

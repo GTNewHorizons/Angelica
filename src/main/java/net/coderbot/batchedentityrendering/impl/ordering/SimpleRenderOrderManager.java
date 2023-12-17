@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 
 import java.util.LinkedHashSet;
 

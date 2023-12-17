@@ -1,6 +1,6 @@
 package net.coderbot.iris.layer;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
+import com.gtnewhorizons.angelica.compat.toremove.RenderPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 
 public final class BlockEntityRenderStateShard extends RenderPhase {

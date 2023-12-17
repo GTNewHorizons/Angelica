@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 @Deprecated
 public enum VoxelShape {

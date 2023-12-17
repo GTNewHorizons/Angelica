@@ -1,9 +1,9 @@
 package net.coderbot.iris.pipeline;
 
 import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
-import com.gtnewhorizons.angelica.compat.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
-import com.gtnewhorizons.angelica.compat.mojang.MatrixStack;
+import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderGlobal;

@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 

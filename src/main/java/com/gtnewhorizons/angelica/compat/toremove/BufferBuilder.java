@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package com.gtnewhorizons.angelica.compat.toremove;
 
 import net.coderbot.batchedentityrendering.impl.BufferBuilderExt;
 import org.apache.commons.lang3.tuple.Pair;

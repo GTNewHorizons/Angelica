@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.vertex.type;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.VertexSink;
 
 /**

@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.common.util;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.VoxelShape;
-import com.gtnewhorizons.angelica.compat.mojang.VoxelShapes;
+import com.gtnewhorizons.angelica.compat.toremove.VoxelShape;
+import com.gtnewhorizons.angelica.compat.toremove.VoxelShapes;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;

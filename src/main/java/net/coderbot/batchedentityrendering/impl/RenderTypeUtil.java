@@ -1,6 +1,6 @@
 package net.coderbot.batchedentityrendering.impl;
 
-import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import org.lwjgl.opengl.GL11;
 
 public class RenderTypeUtil {

@@ -1,6 +1,5 @@
-package com.gtnewhorizons.angelica.compat;
+package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import org.joml.Vector3i;
 
 // See if we can merge/mixin/extend ChunkPosition maybe?

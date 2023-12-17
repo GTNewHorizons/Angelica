@@ -1,7 +1,7 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer.QuadVertexWriterFallback;

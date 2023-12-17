@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
 import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
-import com.gtnewhorizons.angelica.compat.CompatMathHelper;
+import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import org.lwjgl.MemoryUtil;
 

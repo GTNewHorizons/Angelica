@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.compat.forge;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexConsumer;
+import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 
 public class VertexBufferConsumer {
 
