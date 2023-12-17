@@ -15,6 +15,9 @@ public abstract class IrisGuiSlot extends GuiSlot {
 
     protected IrisGuiSlot(Minecraft mc, int width, int height, int top, int bottom, int slotHeight) {
         super(mc, width, height, top, bottom, slotHeight);
+        // Set Center Vertically to false
+        this.field_148163_i = false;
+
     }
 
     @Override
