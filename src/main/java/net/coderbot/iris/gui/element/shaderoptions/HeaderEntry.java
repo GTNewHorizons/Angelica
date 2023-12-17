@@ -101,7 +101,7 @@ public class HeaderEntry extends BaseEntry {
         ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(font, text, x - (font.getStringWidth(text) + 10), y - 16));
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(int mouseX, int mouseY, int button) {
         final boolean backButtonResult = backButton != null && backButton.mouseClicked(mouseX, mouseY, button);
         final boolean utilButtonResult = utilityButtons.mouseClicked(mouseX, mouseY, button);
 
