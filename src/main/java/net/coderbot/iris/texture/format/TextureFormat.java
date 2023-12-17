@@ -55,7 +55,6 @@ public interface TextureFormat {
 		}
 	}
 
-    // TODO: PBR
 	@Nullable
     CustomMipmapGenerator getMipmapGenerator(PBRType pbrType);
 
