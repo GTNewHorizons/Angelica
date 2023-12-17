@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.textures;
 
-import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import me.jellysquid.mods.sodium.client.render.texture.SpriteUtil;
 import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.Tessellator;

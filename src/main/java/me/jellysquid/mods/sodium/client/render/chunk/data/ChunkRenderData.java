@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
-import com.gtnewhorizons.angelica.client.textures.ISpriteExt;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
