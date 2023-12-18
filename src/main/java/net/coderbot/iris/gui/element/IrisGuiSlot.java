@@ -12,6 +12,7 @@ import org.lwjgl.opengl.GL11;
 // TODO: look into GuiListExtended & GuiSelectStringEntries
 public abstract class IrisGuiSlot extends GuiSlot {
     @Setter @Getter protected boolean renderBackground = true;
+    boolean scrolling = false;
 
     protected IrisGuiSlot(Minecraft mc, int width, int height, int top, int bottom, int slotHeight) {
         super(mc, width, height, top, bottom, slotHeight);
@@ -22,7 +23,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
 
     @Override
     protected void drawContainerBackground(Tessellator tessellator) {
-        if(this.renderBackground) {
+        if (this.renderBackground) {
             super.drawContainerBackground(tessellator);
         }
     }
@@ -41,6 +42,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
         super.drawSelectionBox(x, y, mouseX, mouseY);
         this.headerPadding = oldPadding;
     }
+
     @Override
     protected void elementClicked(int index, boolean doubleClick, int mouseX, int mouseY) {
         // Do nothing
@@ -51,7 +53,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
     }
 
     public boolean mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        if(!this.func_148125_i/*enabled*/()) {
+        if (!this.func_148125_i/*enabled*/()) {
             return false;
         }
         final int size = this.getSize();
@@ -63,17 +65,14 @@ public abstract class IrisGuiSlot extends GuiSlot {
         boolean handled = false;
         final boolean leftMouseDown = Mouse.isButtonDown(0);
         final boolean rightMouseDown = Mouse.isButtonDown(1);
-        boolean scrolling = false;
 
         if (mouseX <= this.left || mouseX >= this.right || mouseY <= this.top || mouseY >= this.bottom) {
             return handled;
         }
         if (leftMouseDown && mouseX >= scrollBarX && mouseX <= rightEdge) {
-            // TODO: Handle scrolling
             scrolling = true;
-        }
-
-        if ((leftMouseDown || rightMouseDown)) {
+            this.initialClickY = (float) mouseY;
+        } else if ((leftMouseDown || rightMouseDown)) {
             final int index = relativeY / this.slotHeight;
 
             if (mouseX >= elementLeft && mouseX <= elementRight && index >= 0 && relativeY >= 0 && index < size) {
@@ -91,6 +90,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
     }
 
     public boolean mouseReleased(int mouseX, int mouseY, int button) {
+        scrolling = false;
         return false;
     }
 
@@ -104,18 +104,23 @@ public abstract class IrisGuiSlot extends GuiSlot {
         final byte offset = 4;
 
 
-        // Scrollwheel nonsense
-        for (; !this.mc.gameSettings.touchscreen && Mouse.next(); this.mc.currentScreen.handleMouseInput()) {
-            int dWheel = Mouse.getEventDWheel();
+        // Scrollbar nonsense
+        if (scrolling) {
+            this.amountScrolled += ((float) mouseY - this.initialClickY);
+            this.initialClickY = mouseY;
+        } else {
+            for (; !this.mc.gameSettings.touchscreen && Mouse.next(); this.mc.currentScreen.handleMouseInput()) {
+                int dWheel = Mouse.getEventDWheel();
 
-            if (dWheel != 0) {
-                if (dWheel > 0) {
-                    dWheel = -1;
-                } else {
-                    dWheel = 1;
+                if (dWheel != 0) {
+                    if (dWheel > 0) {
+                        dWheel = -1;
+                    } else {
+                        dWheel = 1;
+                    }
+
+                    this.amountScrolled += (dWheel * this.slotHeight / 2.0f);
                 }
-
-                this.amountScrolled += (dWheel * this.slotHeight / 2.0f);
             }
         }
 
