@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.glint;
 
+import com.prupe.mcpatcher.cit.CITUtils;
 import jss.notfine.core.Settings;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
@@ -19,7 +20,8 @@ public abstract class MixinItemRenderer {
         remap = false
     )
     private boolean notFine$toggleGlint(ItemStack stack, int pass) {
-        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.hasEffect(pass);
+        //TODO: ensure this goes back to separate mixins
+        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.hasEffect(pass) && !CITUtils.renderEnchantmentHeld(stack, pass);
     }
 
 }
