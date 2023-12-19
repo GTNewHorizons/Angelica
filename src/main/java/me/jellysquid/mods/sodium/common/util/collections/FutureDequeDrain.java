@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.common.util.collections;
 
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -30,6 +32,7 @@ public class FutureDequeDrain<T> implements Iterator<T> {
             CompletableFuture<T> future = deque.remove();
 
             try {
+                AngelicaRenderQueue.managedBlock(future::isDone);
                 next = future.join();
                 return;
             } catch (CancellationException e) {
