@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
@@ -100,6 +101,15 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         LOGGER.info("Started {} worker threads", this.threads.size());
     }
 
+    private boolean workersAlive() {
+        for (Thread thread : this.threads) {
+            if (thread.isAlive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Notifies all worker threads to stop and blocks until all workers terminate. After the workers have been shut
      * down, all tasks are cancelled and the pending queues are cleared. If the builder is already stopped, this
@@ -121,7 +131,10 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             this.jobNotifier.notifyAll();
         }
 
-        // Wait for every remaining thread to terminate
+        // Keep processing the main thread tasks so the workers don't block forever
+        AngelicaRenderQueue.managedBlock(() -> !workersAlive());
+
+        // Ensure every remaining thread has terminated
         for (Thread thread : this.threads) {
             try {
                 thread.join();

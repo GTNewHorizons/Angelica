@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 
 import lombok.Getter;
@@ -134,6 +135,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public boolean updateRenderers(EntityLivingBase e, boolean b){
+        AngelicaRenderQueue.processTasks(1);
         return true;
     }
 

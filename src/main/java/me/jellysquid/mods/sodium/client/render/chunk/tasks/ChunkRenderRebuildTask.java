@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -30,6 +31,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Rebuilds all the meshes of a chunk for each given render pass with non-occluded blocks. The result is then uploaded
@@ -82,6 +86,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         return false;
     }
 
+    private boolean rendersOffThread(int type) {
+        return type < 42 && type != 22;
+    }
+
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
         // COMPATIBLITY NOTE: Oculus relies on the LVT of this method being unchanged, at least in 16.5
@@ -104,6 +112,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         BlockPos renderOffset = this.offset;
         final Tessellator tessellator = TessellatorManager.get();
 
+        boolean hasMainThreadBlocks = false;
+
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
                 return null;
@@ -116,6 +126,11 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
                     // can abuse it for all sorts of things
                     if (block.getMaterial() == Material.air) {
+                        continue;
+                    }
+
+                    if (!rendersOffThread(block.getRenderType())) {
+                        hasMainThreadBlocks = true;
                         continue;
                     }
 
@@ -168,6 +183,20 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             }
         }
 
+        if(hasMainThreadBlocks) {
+            // Render the other blocks on the main thread
+            try {
+                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds), AngelicaRenderQueue.executor()).get();
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch(ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+            // Check if cancellation happened during that, so we don't render an incomplete chunk
+            if(cancellationSource.isCancelled()) return null;
+        }
+
         render.setRebuildForTranslucents(false);
         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
             ChunkMeshData mesh = buffers.createMesh(pass, (float)camera.x - offset.getX(), (float)camera.y - offset.getY(), (float)camera.z - offset.getZ(), this.translucencySorting);
@@ -183,6 +212,57 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         renderData.setBounds(bounds.build(this.render.getChunkPos()));
 
         return new ChunkBuildResult<>(this.render, renderData.build());
+    }
+
+    /**
+     * Render the blocks that should be rendered on the main thread.
+     *
+     * TODO: Deduplicate this with the main method above.
+     */
+    private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds) {
+        WorldSlice slice = cache.getWorldSlice();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int baseX = this.render.getOriginX();
+        int baseY = this.render.getOriginY();
+        int baseZ = this.render.getOriginZ();
+        BlockPos renderOffset = this.offset;
+        RenderBlocks rb = new RenderBlocks(slice);
+        for (int relY = 0; relY < 16; relY++) {
+            if (cancellationSource.isCancelled()) {
+                return;
+            }
+            for (int relZ = 0; relZ < 16; relZ++) {
+                for (int relX = 0; relX < 16; relX++) {
+                    Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+
+                    // Only render blocks that need main thread assistance
+                    if (block.getMaterial() == Material.air || rendersOffThread(block.getRenderType())) {
+                        continue;
+                    }
+
+                    // TODO: Collect data on which render types are hitting this code path most often
+                    // so mods can be updated slowly
+
+                    int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
+
+                    pos.set(baseX + relX, baseY + relY, baseZ + relZ);
+                    buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
+                    if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
+
+                    // Do regular block rendering
+                    for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+                        if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                            long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
+                            if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+
+                            if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), Tessellator.instance, rb, block, meta, pos, buffers.get(pass), true, seed)) {
+                                bounds.addBlock(relX, relY, relZ);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Override
