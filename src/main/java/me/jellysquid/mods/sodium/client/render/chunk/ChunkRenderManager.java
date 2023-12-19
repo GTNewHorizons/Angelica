@@ -580,6 +580,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         // Try to complete some other work on the main thread while we wait for rebuilds to complete
         this.dirty |= this.builder.performPendingUploads();
 
+        // See if there are failed builds
+        this.builder.handleFailures();
+
         if (!futures.isEmpty()) {
             this.dirty = true;
             this.backend.upload(RenderDevice.INSTANCE.createCommandList(), this.builder.filterChunkBuilds(new FutureDequeDrain<>(futures)));
