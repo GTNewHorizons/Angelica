@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -86,8 +87,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         return false;
     }
 
-    private boolean rendersOffThread(int type) {
-        return type < 42 && type != 22;
+    private boolean rendersOffThread(Block block) {
+        int type = block.getRenderType();
+        return type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block);
     }
 
     @Override
@@ -129,7 +131,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         continue;
                     }
 
-                    if (!rendersOffThread(block.getRenderType())) {
+                    if (!rendersOffThread(block)) {
                         hasMainThreadBlocks = true;
                         continue;
                     }
@@ -236,7 +238,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
 
                     // Only render blocks that need main thread assistance
-                    if (block.getMaterial() == Material.air || rendersOffThread(block.getRenderType())) {
+                    if (block.getMaterial() == Material.air || rendersOffThread(block)) {
                         continue;
                     }
 
