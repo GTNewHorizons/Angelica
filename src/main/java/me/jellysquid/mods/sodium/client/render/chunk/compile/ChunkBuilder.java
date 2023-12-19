@@ -22,6 +22,7 @@ import me.jellysquid.mods.sodium.common.util.collections.DequeDrain;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.util.MathHelper;
+import net.minecraft.util.ReportedException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3d;
@@ -45,6 +46,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
 
     private final Deque<WrappedTask<T>> buildQueue = new ConcurrentLinkedDeque<>();
     private final Deque<ChunkBuildResult<T>> uploadQueue = new ConcurrentLinkedDeque<>();
+    private final Deque<Throwable> failureQueue = new ConcurrentLinkedDeque<>();
 
     private final Object jobNotifier = new Object();
 
@@ -150,6 +152,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
 
         // Drop any pending work queues and cancel futures
         this.uploadQueue.clear();
+        this.failureQueue.clear();
 
         for (WrappedTask<?> job : this.buildQueue) {
             job.future.cancel(true);
@@ -200,6 +203,22 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         this.backend.upload(RenderDevice.INSTANCE.createCommandList(), filterChunkBuilds(new DequeDrain<>(this.uploadQueue)));
 
         return true;
+    }
+
+    public void handleFailures() {
+        Iterator<Throwable> errorIterator = new DequeDrain<>(this.failureQueue);
+
+        if (errorIterator.hasNext()) {
+            // If there is any exception from the build failure queue, throw it
+            Throwable ex = errorIterator.next();
+
+            if (ex instanceof ReportedException) {
+                // Propagate ReportedExceptions directly to provide extra information
+                throw (ReportedException)ex;
+            } else {
+                throw new RuntimeException("Chunk build failed", ex);
+            }
+        }
     }
 
     public CompletableFuture<ChunkBuildResult<T>> schedule(ChunkRenderBuildTask<T> task) {
@@ -275,6 +294,16 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         return Runtime.getRuntime().availableProcessors();
     }
 
+    private void handleCompletion(CompletableFuture<ChunkBuildResult<T>> future) {
+        future.whenComplete((res, ex) -> {
+            if (ex != null) {
+                this.failureQueue.add(ex);
+            } else if (res != null) {
+                this.enqueueUpload(res);
+            }
+        });
+    }
+
     /**
      * Creates a rebuild task and defers it to the work queue. When the task is completed, it will be moved onto the
      * completed uploads queued which will then be drained during the next available synchronization point with the
@@ -282,8 +311,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * @param render The render to rebuild
      */
     public void deferRebuild(ChunkRenderContainer<T> render) {
-        this.scheduleRebuildTaskAsync(render)
-                .thenAccept(this::enqueueUpload);
+        handleCompletion(this.scheduleRebuildTaskAsync(render));
     }
 
     /**
@@ -293,8 +321,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * @param render The render to rebuild
      */
     public void deferSort(ChunkRenderContainer<T> render) {
-        this.scheduleSortTaskAsync(render)
-                .thenAccept(this::enqueueUpload);
+        handleCompletion(this.scheduleSortTaskAsync(render));
     }
 
 
