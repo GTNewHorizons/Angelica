@@ -25,7 +25,7 @@
   * Makamys for [Neodymium](https://github.com/makamys/Neodymium) - Various Tessellator -> Quad functionality taken under the LGPL 3
 * MCPatcherForge
   * Original [MCPatcher](https://bitbucket.org/prupe/mcpatcher/src/master/): Paul Rupe
-  * [Forge version](https://bitbucket.org/prupe/mcpatcher/src/master/): Mist475 with default ctm textures for glass and bookshelves by DarkBum under CC-BY-SA
+  * [Forge version](https://bitbucket.org/prupe/mcpatcher/src/master/): Mist475 under LGPL 3.0 with default ctm textures for glass and bookshelves by DarkBum under CC-BY-SA
 * HUDCaching
   * Created by [Moulberry](https://github.com/Moulberry/MCHUDCaching), backported from [Patcher](https://github.com/Sk1erLLC/Patcher) mod by Alexdoru under the CC-BY-SA-NC 4.0 license
 * Angelica
