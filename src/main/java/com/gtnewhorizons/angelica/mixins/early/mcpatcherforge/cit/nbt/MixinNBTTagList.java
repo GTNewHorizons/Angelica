@@ -14,7 +14,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.NBTTagListExpansion;
 public class MixinNBTTagList implements NBTTagListExpansion {
 
     @Shadow
-    private List<NBTBase> tagList;
+    public List<NBTBase> tagList;
 
     public NBTBase tagAt(final int n) {
         return this.tagList.get(n);

@@ -18,7 +18,7 @@ import com.prupe.mcpatcher.sky.SkyRenderer;
 public abstract class MixinRenderGlobal {
 
     @Shadow
-    private WorldClient theWorld;
+    public WorldClient theWorld;
 
     @Inject(method = "renderSky(F)V", at = @At("HEAD"))
     private void modifyRenderSky1(float partialTick, CallbackInfo ci) {

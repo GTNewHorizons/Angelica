@@ -59,10 +59,10 @@ public class CTMUtils {
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CONNECTED_TEXTURES, 3) {
 
             @Override
-            public synchronized void initialize() {}
+            public void initialize() {}
 
             @Override
-            public synchronized void beforeChange() {
+            public void beforeChange() {
                 RenderPassAPI.instance.clear();
                 try {
                     GlassPaneRenderer.clear();

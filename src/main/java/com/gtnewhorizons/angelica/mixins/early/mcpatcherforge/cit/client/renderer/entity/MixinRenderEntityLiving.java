@@ -30,9 +30,9 @@ public abstract class MixinRenderEntityLiving extends Render {
     @Shadow
     private static ResourceLocation RES_ITEM_GLINT;
     @Shadow
-    protected ModelBase mainModel;
+    public ModelBase mainModel;
     @Shadow
-    protected ModelBase renderPassModel;
+    public ModelBase renderPassModel;
 
     @Shadow
     protected abstract float interpolateRotation(float angle1, float angle2, float p_77034_3_);
