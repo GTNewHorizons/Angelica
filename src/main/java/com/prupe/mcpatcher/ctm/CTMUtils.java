@@ -59,10 +59,10 @@ public class CTMUtils {
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CONNECTED_TEXTURES, 3) {
 
             @Override
-            public void initialize() {}
+            public synchronized void initialize() {}
 
             @Override
-            public void beforeChange() {
+            public synchronized void beforeChange() {
                 RenderPassAPI.instance.clear();
                 try {
                     GlassPaneRenderer.clear();
@@ -125,7 +125,7 @@ public class CTMUtils {
         haveBlockFace = false;
     }
 
-    public static IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess,
+    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess,
         int i, int j, int k, int face) {
         lastOverride = null;
         if (blockAccess != null && checkFace(face)) {
@@ -142,7 +142,7 @@ public class CTMUtils {
         return lastOverride == null && skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : icon;
     }
 
-    public static IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, int face, int metadata) {
+    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, int face, int metadata) {
         lastOverride = null;
         if (checkFace(face) && checkRenderType(block)) {
             renderBlockState.setBlockMetadata(block, metadata, face);
@@ -172,11 +172,11 @@ public class CTMUtils {
         };
     }
 
-    private static boolean skipDefaultRendering(Block block) {
+    private static synchronized boolean skipDefaultRendering(Block block) {
         return RenderPassAPI.instance.skipDefaultRendering(block);
     }
 
-    private static void registerOverride(ITileOverride override) {
+    private static synchronized void registerOverride(ITileOverride override) {
         if (override != null && !override.isDisabled()) {
             boolean registered = false;
             List<BlockStateMatcher> matchingBlocks = override.getMatchingBlocks();
@@ -207,7 +207,7 @@ public class CTMUtils {
         }
     }
 
-    public static void setBlankResource() {
+    public static synchronized void setBlankResource() {
         RenderBlocksUtils.blankIcon = tileLoader.getIcon(RenderPassAPI.instance.getBlankResource());
     }
 
