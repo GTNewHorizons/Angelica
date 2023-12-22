@@ -202,9 +202,9 @@ public enum Mixins {
              "notfine.leaves.witchery.MixinBlockWitchLeaves"
         )),
 
-    MCPATCHERFORGE_BASE_MOD(new Builder("Base mod (can't be disabled, sorry)").setSide(Side.CLIENT)
+    MCPATCHERFORGE_BASE_MOD(new Builder("Base MCPatcher mixins").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> true)
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix(
             "mcpatcherforge.",
@@ -229,12 +229,12 @@ public enum Mixins {
 
     MCPATCHERFORGE_CUSTOM_COLOURS(new Builder("Custom colors").setSide(Mixins.Side.CLIENT)
         .setPhase(Mixins.Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
         "mcpatcherforge.cc.",
-                "block.material.MixinMapColor",
+             "block.material.MixinMapColor",
 
             "block.MixinBlock",
             "block.MixinBlockDoublePlant",
@@ -286,12 +286,12 @@ public enum Mixins {
 
     MCPATCHERFORGE_CUSTOM_ITEM_TEXTURES(new Mixins.Builder("Custom Item Textures").setSide(Mixins.Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
         "mcpatcherforge.cit.",
-                "client.renderer.entity.MixinRenderBiped",
+            "client.renderer.entity.MixinRenderBiped",
             "client.renderer.entity.MixinRenderEntityLiving",
             "client.renderer.entity.MixinRenderItem",
             "client.renderer.entity.MixinRenderPlayer",
@@ -303,25 +303,25 @@ public enum Mixins {
 
     MCPATCHERFORGE_CONNECTED_TEXTURES(new Builder("Connected Textures").setSide(Side.CLIENT)
         .setPhase(Mixins.Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses("mcpatcherforge.ctm.MixinRenderBlocks")),
 
     MCPATCHERFORGE_EXTENDED_HD(new Builder("Extended hd").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix("mcpatcherforge.hd.", "MixinFontRenderer", "MixinTextureClock", "MixinTextureCompass", "MixinTextureManager"))),
 
     MCPATCHERFORGE_RANDOM_MOBS(new Builder("Random Mobs").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.RANDOM_MOBS, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.RANDOM_MOBS, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
         "mcpatcherforge.mob.",
-                "MixinRender",
+            "MixinRender",
             "MixinRenderEnderman",
             "MixinRenderFish",
             "MixinRenderLiving",
@@ -334,7 +334,7 @@ public enum Mixins {
 
     MCPATCHERFORGE_SKY(new Builder("Sky").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> Config.getBoolean(MCPatcherUtils.BETTER_SKIES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.BETTER_SKIES, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("mcpatcherforge.sky.", "MixinEffectRenderer", "MixinRenderGlobal"
         ))),
@@ -342,7 +342,7 @@ public enum Mixins {
     MCPATCHERFORGE_CTM_OR_CC(new Builder("Connected textures or Custom Colors enabled").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
         .setApplyIf(
-            () -> Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)
         || Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("mcpatcherforge.ctm_cc.", "MixinRenderBlocks", "MixinTextureMap")))
