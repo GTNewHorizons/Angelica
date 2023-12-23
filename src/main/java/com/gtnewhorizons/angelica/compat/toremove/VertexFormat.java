@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;

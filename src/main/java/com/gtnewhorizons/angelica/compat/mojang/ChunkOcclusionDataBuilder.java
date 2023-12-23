@@ -22,8 +22,6 @@ public class ChunkOcclusionDataBuilder {
     private static final int[] EDGE_POINTS = new int[1352];
 
     static {
-        int i = 0;
-        int j = 15;
         int k = 0;
 
         for(int l = 0; l < 16; ++l) {
@@ -52,7 +50,7 @@ public class ChunkOcclusionDataBuilder {
     }
 
     public ChunkOcclusionData build() {
-        ChunkOcclusionData lv = new ChunkOcclusionData();
+        final ChunkOcclusionData lv = new ChunkOcclusionData();
         if (4096 - this.openCount < 256) {
             lv.fill(true);
         } else if (this.openCount == 0) {
@@ -69,17 +67,17 @@ public class ChunkOcclusionDataBuilder {
     }
 
     private Set<ForgeDirection> getOpenFaces(int pos) {
-        Set<ForgeDirection> set = EnumSet.noneOf(ForgeDirection.class);
-        IntPriorityQueue intPriorityQueue = new IntArrayFIFOQueue();
+        final Set<ForgeDirection> set = EnumSet.noneOf(ForgeDirection.class);
+        final IntPriorityQueue intPriorityQueue = new IntArrayFIFOQueue();
         intPriorityQueue.enqueue(pos);
         this.closed.set(pos, true);
 
         while(!intPriorityQueue.isEmpty()) {
-            int j = intPriorityQueue.dequeueInt();
+            final int j = intPriorityQueue.dequeueInt();
             this.addEdgeFaces(j, set);
 
             for(ForgeDirection lv : DIRECTIONS) {
-                int k = this.offset(j, lv);
+                final int k = this.offset(j, lv);
                 if (k >= 0 && !this.closed.get(k)) {
                     this.closed.set(k, true);
                     intPriorityQueue.enqueue(k);
@@ -91,21 +89,21 @@ public class ChunkOcclusionDataBuilder {
     }
 
     private void addEdgeFaces(int pos, Set<ForgeDirection> openFaces) {
-        int j = pos >> 0 & 15;
+        final int j = pos >> 0 & 15;
         if (j == 0) {
             openFaces.add(ForgeDirection.WEST);
         } else if (j == 15) {
             openFaces.add(ForgeDirection.EAST);
         }
 
-        int k = pos >> 8 & 15;
+        final int k = pos >> 8 & 15;
         if (k == 0) {
             openFaces.add(ForgeDirection.DOWN);
         } else if (k == 15) {
             openFaces.add(ForgeDirection.UP);
         }
 
-        int l = pos >> 4 & 15;
+        final int l = pos >> 4 & 15;
         if (l == 0) {
             openFaces.add(ForgeDirection.NORTH);
         } else if (l == 15) {
@@ -114,45 +112,44 @@ public class ChunkOcclusionDataBuilder {
     }
 
     private int offset(int pos, ForgeDirection arg) {
-        switch(arg) {
-            case DOWN:
+        return switch (arg) {
+            case DOWN -> {
                 if ((pos >> 8 & 15) == 0) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos - STEP_Y;
-            case UP:
+                yield pos - STEP_Y;
+            }
+            case UP -> {
                 if ((pos >> 8 & 15) == 15) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos + STEP_Y;
-            case NORTH:
+                yield pos + STEP_Y;
+            }
+            case NORTH -> {
                 if ((pos >> 4 & 15) == 0) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos - STEP_Z;
-            case SOUTH:
+                yield pos - STEP_Z;
+            }
+            case SOUTH -> {
                 if ((pos >> 4 & 15) == 15) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos + STEP_Z;
-            case WEST:
+                yield pos + STEP_Z;
+            }
+            case WEST -> {
                 if ((pos >> 0 & 15) == 0) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos - STEP_X;
-            case EAST:
+                yield pos - STEP_X;
+            }
+            case EAST -> {
                 if ((pos >> 0 & 15) == 15) {
-                    return -1;
+                    yield -1;
                 }
-
-                return pos + STEP_X;
-            default:
-                return -1;
-        }
+                yield pos + STEP_X;
+            }
+            default -> -1;
+        };
     }
 }

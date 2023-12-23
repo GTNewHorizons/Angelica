@@ -1,15 +1,12 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
-
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
-
-import com.gtnewhorizons.angelica.rendering.RenderingState;
 
 @Getter
 public class Camera {

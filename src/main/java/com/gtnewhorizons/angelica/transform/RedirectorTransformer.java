@@ -205,7 +205,8 @@ public class RedirectorTransformer implements IClassTransformer {
                             remaps++;
                         }
                     }
-                } else if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
+                }
+                else if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
                     if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals(TessellatorClass)) {
                         if (IrisLogging.ENABLE_SPAM) {
                             AngelicaTweaker.LOGGER.info("Redirecting Tessellator.instance field in {} to TessellatorManager.get()", transformedName);
@@ -213,7 +214,8 @@ public class RedirectorTransformer implements IClassTransformer {
                         mn.instructions.set(node, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/gtnewhorizons/angelica/glsm/TessellatorManager", "get", "()Lnet/minecraft/client/renderer/Tessellator;", false));
                         changed = true;
                     }
-                } else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                }
+                else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if(fNode.owner.equals(BlockClass)) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
@@ -236,7 +238,7 @@ public class RedirectorTransformer implements IClassTransformer {
                             } else if(node.getOpcode() == Opcodes.PUTFIELD) {
                                 // FIXME: this code assumes doubles
                                 // Stack: Block, double
-                                InsnList beforePut = new InsnList();
+                                final InsnList beforePut = new InsnList();
                                 beforePut.add(new InsnNode(Opcodes.DUP2_X1));
                                 // Stack: double, Block, double
                                 beforePut.add(new InsnNode(Opcodes.POP2));
