@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import it.unimi.dsi.fastutil.objects.Reference2ReferenceLinkedOpenHashMap;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
@@ -27,6 +28,7 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -164,6 +166,29 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
     }
 
     /**
+     * Prevent sort updates from taking priority over rebuild updates in the upload queue.
+     */
+    public Iterator<ChunkBuildResult<T>> filterChunkBuilds(Iterator<ChunkBuildResult<T>> uploadIterator) {
+        Reference2ReferenceLinkedOpenHashMap<ChunkRenderContainer<T>, ChunkBuildResult<T>> map = new Reference2ReferenceLinkedOpenHashMap<>();
+
+        while (uploadIterator.hasNext()) {
+            ChunkBuildResult<T> result = uploadIterator.next();
+            ChunkRenderContainer<T> section = result.render;
+
+            ChunkBuildResult<T> oldResult = map.get(section);
+
+            // Allow a result to replace the previous result in the map if one of the following conditions hold:
+            // * There is no previous upload in the queue
+            // * The new upload replaces more render types than the old one (in practice, is a rebuild while the other is a sort)
+            if(oldResult == null || result.passesToUpload.length >= oldResult.passesToUpload.length) {
+                map.put(section, result);
+            }
+        }
+
+        return map.values().iterator();
+    }
+
+    /**
      * Processes all pending build task uploads using the chunk render backend.
      */
     // TODO: Limit the amount of time this can take per frame
@@ -172,7 +197,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             return false;
         }
 
-        this.backend.upload(RenderDevice.INSTANCE.createCommandList(), new DequeDrain<>(this.uploadQueue));
+        this.backend.upload(RenderDevice.INSTANCE.createCommandList(), filterChunkBuilds(new DequeDrain<>(this.uploadQueue)));
 
         return true;
     }
