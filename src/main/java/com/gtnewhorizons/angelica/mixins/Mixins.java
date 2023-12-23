@@ -178,14 +178,22 @@ public enum Mixins {
 
     NOTFINE_FEATURES(new Builder("NotFine Features").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
-            "notfine.glint.MixinItemRenderer"
-            ,"notfine.glint.MixinRenderBiped"
+            "notfine.glint.MixinRenderBiped"
             ,"notfine.glint.MixinRenderItem"
             ,"notfine.glint.MixinRenderPlayer"
             ,"notfine.gui.MixinGuiSlot"
             ,"notfine.renderer.MixinRenderGlobal"
             ,"notfine.settings.MixinGameSettings"
         )),
+
+    NOTFINE_FEATURES_NO_MCPF_CIT(new Builder("NotFine Features which clash with mcpf cit (compat handled in MCPF_NF mixin)").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures &&
+            !(AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+        ).addMixinClasses(
+            "notfine.glint.MixinItemRenderer",
+            "notfine.glint.MixinRenderItemGlint"
+        )),
+
     NOTFINE_LATE_TWILIGHT_FORESTLEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.TWILIGHT_FOREST).setSide(Side.CLIENT)
         .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
              "notfine.leaves.twilightforest.MixinBlockTFLeaves"
@@ -201,6 +209,15 @@ public enum Mixins {
         .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
              "notfine.leaves.witchery.MixinBlockWitchLeaves"
         )),
+
+    MCPATCHERFORGE_NOTFINE_COMPAT(new Builder("Notfine features and MCPF features where the 2 would clash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures &&
+            AngelicaConfig.enableMCPatcherForgeFeatures &&
+            Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+        .addMixinClasses(addPrefix(
+            "notfine_mcpf_compat.",
+            "MixinRenderItem",
+            "MixinItemRenderer"))),
 
     MCPATCHERFORGE_BASE_MOD(new Builder("Base MCPatcher mixins").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
@@ -300,6 +317,16 @@ public enum Mixins {
             "item.MixinItem",
             "nbt.MixinNBTTagCompound",
             "nbt.MixinNBTTagList"))),
+
+    MCPATCHERFORGE_CUSTOM_ITEM_TEXTURES_NO_NF(new Mixins.Builder("Custom Item Textures without notfine features").setSide(Mixins.Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> (AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)) && !AngelicaConfig.enableNotFineFeatures)
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses(addPrefix(
+             "mcpatcherforge.cit.client.renderer.",
+            "entity.MixinRenderItemRenderDroppedItem",
+            "MixinItemRenderer_NO_NF"
+                ))),
 
     MCPATCHERFORGE_CONNECTED_TEXTURES(new Builder("Connected Textures").setSide(Side.CLIENT)
         .setPhase(Mixins.Phase.EARLY)

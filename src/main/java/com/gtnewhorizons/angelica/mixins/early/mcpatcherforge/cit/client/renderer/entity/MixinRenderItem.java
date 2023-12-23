@@ -46,17 +46,6 @@ public abstract class MixinRenderItem extends Render {
         return CITUtils.getIcon(item.getIcon(itemStack, pass), itemStack, pass);
     }
 
-    /*
-    @Redirect(
-        method = "renderDroppedItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/util/IIcon;IFFFFI)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;hasEffect(I)Z", remap = false),
-        remap = false)
-    private boolean modifyRenderDroppedItem(ItemStack instance, int pass) {
-        return !CITUtils.renderEnchantmentDropped(instance) && instance.hasEffect(pass);
-    }
-
-     */
-
     @Inject(
         method = "renderItemIntoGUI(Lnet/minecraft/client/gui/FontRenderer;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/item/ItemStack;IIZ)V",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glColorMask(ZZZZ)V", remap = false, ordinal = 0),
