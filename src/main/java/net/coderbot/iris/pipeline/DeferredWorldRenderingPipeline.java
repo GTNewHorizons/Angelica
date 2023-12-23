@@ -1084,7 +1084,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		isPostChain = false;
 		phase = WorldRenderingPhase.NONE;
 		overridePhase = null;
-		HandRenderer.INSTANCE.getBufferSource().resetDrawCalls();
+//		HandRenderer.INSTANCE.getBufferSource().resetDrawCalls();
 
 		checkWorld();
 

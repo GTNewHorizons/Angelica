@@ -150,7 +150,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             pipeline = null;
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
-//            pipeline.setPhase(WorldRenderingPhase.fromTerrainRenderType(renderType));
             pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
 
             if(pass == 1) {
@@ -158,7 +157,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
                 // iris$beginTranslucents
                 pipeline.beginHand();
-                HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, null /*gameRenderer*/, pipeline);
+                HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, mc.renderGlobal, pipeline);
                 mc.mcProfiler.endStartSection("iris_pre_translucent");
                 pipeline.beginTranslucents();
             }

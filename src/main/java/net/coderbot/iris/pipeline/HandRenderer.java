@@ -1,6 +1,5 @@
 package net.coderbot.iris.pipeline;
 
-import net.coderbot.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
@@ -18,15 +17,13 @@ public class HandRenderer {
 
 	private boolean ACTIVE;
 	private boolean renderingSolid;
-	private final FullyBufferedMultiBufferSource bufferSource = new FullyBufferedMultiBufferSource();
-
 	public static final float DEPTH = 0.125F;
 
 	private void setupGlState(RenderGlobal gameRenderer, Camera camera, MatrixStack poseStack, float tickDelta) {
-        final MatrixStack.Entry pose = poseStack.peek();
+//        final MatrixStack.Entry pose = poseStack.peek();
 
 		// We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
-        Matrix4f scaleMatrix = new Matrix4f().scale(1F, 1F, DEPTH);
+//        Matrix4f scaleMatrix = new Matrix4f().scale(1F, 1F, DEPTH);
         // TODO: ProjectionMatrix
 //        scaleMatrix.multiply(gameRenderer.getProjectionMatrix(camera, tickDelta, false));
 //		scaleMatrix.mul(projectionMatrix);
@@ -35,14 +32,14 @@ public class HandRenderer {
 //        RenderSystem.multMatrix(arg);
 //        RenderSystem.matrixMode(5888);
 
-		pose.getModel().identity();
-        pose.getNormal().identity();
+//		pose.getModel().identity();
+//        pose.getNormal().identity();
 
 //		gameRenderer.invokeBobHurt(poseStack, tickDelta);
-
-		if (Minecraft.getMinecraft().gameSettings.viewBobbing) {
-//			gameRenderer.invokeBobView(poseStack, tickDelta);
-		}
+//
+//		if (Minecraft.getMinecraft().gameSettings.viewBobbing) {
+////			gameRenderer.invokeBobView(poseStack, tickDelta);
+//		}
 	}
 
 	private boolean canRender(Camera camera, RenderGlobal gameRenderer) {
@@ -103,7 +100,7 @@ public class HandRenderer {
 
 //		poseStack.pop();
 
-		bufferSource.endBatch();
+//		bufferSource.endBatch();
 
 		renderingSolid = false;
 
@@ -137,7 +134,7 @@ public class HandRenderer {
         // TODO: ProjectionMatrix
 //		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
-		bufferSource.endBatch();
+//		bufferSource.endBatch();
 
 		pipeline.setPhase(WorldRenderingPhase.NONE);
 
@@ -152,7 +149,4 @@ public class HandRenderer {
 		return renderingSolid;
 	}
 
-	public FullyBufferedMultiBufferSource getBufferSource() {
-		return bufferSource;
-	}
 }

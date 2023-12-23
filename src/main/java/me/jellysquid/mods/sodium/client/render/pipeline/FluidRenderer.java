@@ -1,8 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.toremove.VoxelShape;
-import com.gtnewhorizons.angelica.compat.toremove.VoxelShapes;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
@@ -72,19 +70,15 @@ public class FluidRenderer {
         Block block = world.getBlock(pos.x, pos.y, pos.z);
 
         if (block.getMaterial().isOpaque()) {
-            VoxelShape shape = WorldUtil.getCullingShape(block);
+            final boolean renderAsFullCube =  block.renderAsNormalBlock();
 
             // Hoist these checks to avoid allocating the shape below
-            if (shape == VoxelShapes.fullCube()) {
+            if (renderAsFullCube) {
                 // The top face always be inset, so if the shape above is a full cube it can't possibly occlude
                 return dir == ForgeDirection.UP;
-            } else if (shape.isEmpty()) {
+            } else {
                 return true;
             }
-
-            VoxelShape threshold = VoxelShapes.cuboid(0.0D, 0.0D, 0.0D, 1.0D, height, 1.0D);
-
-            return !VoxelShapes.isSideCovered(threshold, shape, dir);
         }
 
         return true;

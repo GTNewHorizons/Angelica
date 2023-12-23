@@ -1,7 +1,6 @@
 package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.toremove.BufferSource;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -349,7 +348,7 @@ public class ShadowRenderer {
 		targets.copyPreTranslucentDepth();
 	}
 
-	private void renderEntities(EntityRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderEntities(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -394,7 +393,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
+	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
         // TODO: Render
 //		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
 
@@ -431,7 +430,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderTileEntities(BufferSource bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
+	private void renderTileEntities(Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
 		profiler.startSection("build blockentities");
 
 		int shadowTileEntities = 0;
@@ -577,10 +576,9 @@ public class ShadowRenderer {
 //		}
 
 //		BufferSource bufferSource = buffers.bufferSource();
-		BufferSource bufferSource = null;
 
 		if (shouldRenderEntities) {
-			renderEntities(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		} else if (shouldRenderPlayer) {
 //			renderPlayerEntity(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		}

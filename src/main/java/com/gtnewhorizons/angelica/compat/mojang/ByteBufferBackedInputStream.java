@@ -1,10 +1,12 @@
-package com.gtnewhorizons.angelica.compat.toremove;
+package com.gtnewhorizons.angelica.compat.mojang;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-@Deprecated
+
 public class ByteBufferBackedInputStream extends InputStream {
 
     ByteBuffer buf;
@@ -20,8 +22,8 @@ public class ByteBufferBackedInputStream extends InputStream {
         return buf.get() & 0xFF;
     }
 
-    public int read(byte[] bytes, int off, int len)
-            throws IOException {
+    @Override
+    public int read(byte @NotNull [] bytes, int off, int len) throws IOException {
         if (!buf.hasRemaining()) {
             return -1;
         }

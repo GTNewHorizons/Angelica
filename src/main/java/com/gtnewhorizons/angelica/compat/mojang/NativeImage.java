@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.toremove.ByteBufferBackedInputStream;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.lwjgl.BufferUtils;

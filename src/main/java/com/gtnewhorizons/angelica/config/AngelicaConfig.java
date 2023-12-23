@@ -18,12 +18,12 @@ public class AngelicaConfig {
     public static boolean enableIris;
 
     @Config.Comment("Enable NotFine optimizations")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableNotFineOptimizations;
 
     @Config.Comment("Enable NotFine features")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableNotFineFeatures;
 
@@ -46,11 +46,10 @@ public class AngelicaConfig {
     @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance. [Experimental]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
-    // TODO disabled for now as it doesn't drawScreen items with an enchantment glint in the hotbar properly as well as doesn't drawScreen the vignette
     public static boolean enableHudCaching;
 
     @Config.Comment("Batch drawScreen fonts [Experimental]")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 }

@@ -28,19 +28,4 @@ public enum WorldRenderingPhase {
 	WORLD_BORDER,
 	HAND_TRANSLUCENT;
 
-	public static WorldRenderingPhase fromTerrainRenderType(RenderLayer renderType) {
-		if (renderType == RenderLayer.solid()) {
-			return WorldRenderingPhase.TERRAIN_SOLID;
-		} else if (renderType == RenderLayer.cutout()) {
-			return WorldRenderingPhase.TERRAIN_CUTOUT;
-		} else if (renderType == RenderLayer.cutoutMipped()) {
-			return WorldRenderingPhase.TERRAIN_CUTOUT_MIPPED;
-		} else if (renderType == RenderLayer.translucent()) {
-			return WorldRenderingPhase.TERRAIN_TRANSLUCENT;
-		} else if (renderType == RenderLayer.tripwire()) {
-			return WorldRenderingPhase.TRIPWIRE;
-		} else {
-			throw new IllegalStateException("Illegal render type!");
-		}
-	}
 }
