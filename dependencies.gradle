@@ -35,7 +35,7 @@
  */
 
 dependencies {
-    api("com.github.GTNewHorizons:Hodgepodge:2.3.37")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.3.37")
 
     compileOnly("org.projectlombok:lombok:1.18.22") {transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.22")
@@ -52,26 +52,26 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
-    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.4.9-GTNH:dev')
-    devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.2.0:dev')
+    compileOnly('com.github.GTNewHorizons:NotEnoughItems:2.4.9-GTNH:dev')
+    compileOnly('com.github.GTNewHorizons:CodeChickenCore:1.2.0:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
     runtimeOnly("com.github.GTNewHorizons:Baubles:1.0.1.16:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.5.1:dev") {transitive = false }
-    devOnlyNonPublishable(rfg.deobf('curse.maven:witchery-69673:2234410'))
+    compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
 
 
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5.3:dev") // Mixin Version
-    devOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
     compileOnly("com.github.GTNewHorizons:Jabba:1.3.1:dev")
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
 
-//    runtimeOnly(deobf("https://github.com/makamys/CoreTweaks/releases/download/0.3.0.4/CoreTweaks-1.7.10-0.3.0.4+nomixin.jar"))
+    runtimeOnly(deobf("https://github.com/makamys/CoreTweaks/releases/download/0.3.3.2/CoreTweaks-1.7.10-0.3.3.2+nomixin.jar"))
 
 }
