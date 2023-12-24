@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Random;
 
 public class BlockRenderer {
-    public static Vector3d ZERO = new Vector3d(0, 0, 0);
-    private static final MatrixStack EMPTY_STACK = new MatrixStack();
 
     private final Random random = new XoRoShiRoRandom();
 

@@ -105,11 +105,6 @@ public enum Mixins {
         )
     ),
 
-    SODIUM_JABBA_COMPAT(new Builder("Sodium Jabba Compat").addTargetedMod(TargetedMod.JABBA).setSide(Side.CLIENT)
-        .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableSodium)
-        .addMixinClasses("compat.MixinJabba")
-    ),
-
     // Required for Sodium's FluidRenderer, so it treats vanilla liquids as IFluidBlocks
     SODIUM_WISHLIST(new Builder("Sodiumer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.BOTH)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodiumFluidRendering).addMixinClasses(
