@@ -53,6 +53,7 @@ dependencies {
 
     // Because who doesn't want NEI
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.4.9-GTNH:dev')
+    api('com.github.GTNewHorizons:CodeChickenCore:1.2.0:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
