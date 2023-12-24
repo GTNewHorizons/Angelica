@@ -1,8 +1,11 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.mitchej123.hodgepodge.Common;
+import com.mitchej123.hodgepodge.client.HodgepodgeClient;
 import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -27,12 +30,14 @@ import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.ChatComponentText;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GLContext;
 
@@ -130,6 +135,18 @@ public class Iris {
         }
 
     }
+
+    @SubscribeEvent
+    public void keyUp(InputEvent.KeyInputEvent event) {
+        final int key = Keyboard.getEventKey();
+        final boolean released = !Keyboard.getEventKeyState();
+        if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
+            if (key == Keyboard.KEY_N) {
+                AngelicaMod.animationsMode.next();
+            }
+        }
+    }
+
     /**
      * Called very early on in Minecraft initialization. At this point we *cannot* safely access OpenGL, but we can do some very basic setup, config loading,
      * and environment checks.

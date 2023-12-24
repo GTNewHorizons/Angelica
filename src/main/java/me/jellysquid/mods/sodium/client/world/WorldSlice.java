@@ -10,6 +10,7 @@ import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
 import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.EnumSkyBlock;
@@ -90,7 +91,7 @@ public class WorldSlice implements IBlockAccess {
             return null;
         }
 
-        StructureBoundingBox volume = new StructureBoundingBox(origin.getMinX() - NEIGHBOR_BLOCK_RADIUS,
+        final StructureBoundingBox volume = new StructureBoundingBox(origin.getMinX() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMinY() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMinZ() - NEIGHBOR_BLOCK_RADIUS,
                 origin.getMaxX() + NEIGHBOR_BLOCK_RADIUS,
@@ -106,7 +107,7 @@ public class WorldSlice implements IBlockAccess {
         final int maxChunkY = origin.y + NEIGHBOR_CHUNK_RADIUS;
         final int maxChunkZ = origin.z + NEIGHBOR_CHUNK_RADIUS;
 
-        ClonedChunkSection[] sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
+        final ClonedChunkSection[] sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
 
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
@@ -162,7 +163,7 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
-        int skyBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Sky, x, y, z);
+        final int skyBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Sky, x, y, z);
         int blockBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Block, x, y, z);
 
         if (blockBrightness < min) {
@@ -178,10 +179,10 @@ public class WorldSlice implements IBlockAccess {
         }
         if (this.getBlock(x, y, z).getUseNeighborBrightness()) {
             int yp = this.getLightLevel(skyBlock, x, y + 1, z);
-            int xp = this.getLightLevel(skyBlock, x + 1, y, z);
-            int xm = this.getLightLevel(skyBlock, x - 1, y, z);
-            int zp = this.getLightLevel(skyBlock, x, y, z + 1);
-            int zm = this.getLightLevel(skyBlock, x, y, z - 1);
+            final int xp = this.getLightLevel(skyBlock, x + 1, y, z);
+            final int xm = this.getLightLevel(skyBlock, x - 1, y, z);
+            final int zp = this.getLightLevel(skyBlock, x, y, z + 1);
+            final int zm = this.getLightLevel(skyBlock, x, y, z - 1);
 
             if (xp > yp) yp = xp;
             if (xm > yp) yp = xm;
@@ -206,9 +207,9 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        int relX = x - this.baseX;
-        int relY = 0;
-        int relZ = z - this.baseZ;
+        final int relX = x - this.baseX;
+        final int relY = 0;
+        final int relZ = z - this.baseZ;
 
         BiomeGenBase biome = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
             [(x & 15) | (z & 15) << 4];
@@ -255,14 +256,14 @@ public class WorldSlice implements IBlockAccess {
     private void unpackBlockDataR(Block[] blocks, int metas[], ClonedChunkSection section, StructureBoundingBox box) {
         ChunkSectionPos pos = section.getPosition();
 
-        int minBlockX = Math.max(box.minX, pos.getMinX());
-        int maxBlockX = Math.min(box.maxX, pos.getMaxX());
+        final int minBlockX = Math.max(box.minX, pos.getMinX());
+        final int maxBlockX = Math.min(box.maxX, pos.getMaxX());
 
-        int minBlockY = Math.max(box.minY, pos.getMinY());
-        int maxBlockY = Math.min(box.maxY, pos.getMaxY());
+        final int minBlockY = Math.max(box.minY, pos.getMinY());
+        final int maxBlockY = Math.min(box.maxY, pos.getMaxY());
 
-        int minBlockZ = Math.max(box.minZ, pos.getMinZ());
-        int maxBlockZ = Math.min(box.maxZ, pos.getMaxZ());
+        final int minBlockZ = Math.max(box.minZ, pos.getMinZ());
+        final int maxBlockZ = Math.min(box.maxZ, pos.getMaxZ());
 
         copyBlocks(blocks, metas, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
@@ -271,25 +272,25 @@ public class WorldSlice implements IBlockAccess {
         // TODO: Look into a faster copy for this?
         final ChunkSectionPos pos = section.getPosition();
 
-        int minBlockX = pos.getMinX();
-        int maxBlockX = pos.getMaxX();
+        final int minBlockX = pos.getMinX();
+        final int maxBlockX = pos.getMaxX();
 
-        int minBlockY = pos.getMinY();
-        int maxBlockY = pos.getMaxY();
+        final int minBlockY = pos.getMinY();
+        final int maxBlockY = pos.getMaxY();
 
-        int minBlockZ = pos.getMinZ();
-        int maxBlockZ = pos.getMaxZ();
+        final int minBlockZ = pos.getMinZ();
+        final int maxBlockZ = pos.getMaxZ();
 
         // TODO: Can this be optimized?
         copyBlocks(blocks, metas, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
     }
 
     public Block getBlock(int x, int y, int z) {
-        int relX = x - this.baseX;
-        int relY = y - this.baseY;
-        int relZ = z - this.baseZ;
-
-        return this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
+        final Block block = this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
+        return block == null ? Blocks.air : block;
     }
 
     public Block getBlockRelative(int x, int y, int z) {
@@ -302,9 +303,9 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public int getBlockMetadata(int x, int y, int z) {
-        int relX = x - this.baseX;
-        int relY = y - this.baseY;
-        int relZ = z - this.baseZ;
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
 
         return this.metadataArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }

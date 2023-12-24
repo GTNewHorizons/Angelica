@@ -3,8 +3,8 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.mitchej123.hodgepodge.Common;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
-import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -152,17 +152,31 @@ public enum Mixins {
 
     ),
 
-    // TODO: Iris
-//    SHADERSMOD_COMPAT_PR_ILLUMINATION(
-//            new Builder("ProjectRed Illumination compat").addTargetedMod(TargetedMod.PROJECTRED_ILLUMINATION)
-//                    .setSide(Side.CLIENT).addMixinClasses("compat.MixinRenderHalo")),
-//
-//    SHADERSMOD_COMPAT_SMART_RENDER(new Builder("Smart Render compat").addTargetedMod(TargetedMod.SMART_RENDER).setSide(Side.CLIENT)
-//            .addMixinClasses("compat.MixinModelRotationRenderer"))
+    OPTIMIZE_WORLD_UPDATE_LIGHT(new Builder("Optimize world updateLightByType method").setPhase(Phase.EARLY)
+        .setSide(Side.BOTH).addTargetedMod(TargetedMod.VANILLA).setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
+        .addMixinClasses("angelica.lighting.MixinWorld_FixLightUpdateLag")),
+
+
+    SPEEDUP_VANILLA_ANIMATIONS(new Builder("Speedup Vanilla Animations").setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.speedupAnimations).setSide(Side.CLIENT).addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses(
+            "angelica.animation.MixinTextureAtlasSprite",
+            "angelica.animation.MixinTextureMap",
+            "angelica.animation.MixinBlockFire",
+            "angelica.animation.MixinMinecraftForgeClient",
+            "angelica.animation.MixinChunkCache",
+            "angelica.animation.MixinRenderBlocks",
+            "angelica.animation.MixinRenderBlockFluid",
+            "angelica.animation.MixinWorldRenderer",
+            "angelica.animation.MixinRenderItem")),
+
+    OPTIMIZE_TEXTURE_LOADING(new Builder("Optimize Texture Loading").setPhase(Phase.EARLY)
+        .addMixinClasses("angelica.textures.MixinTextureUtil_OptimizeMipmap").addTargetedMod(TargetedMod.VANILLA)
+        .setApplyIf(() -> AngelicaConfig.optimizeTextureLoading).setSide(Side.CLIENT)),
 
     NOTFINE_OPTIMIZATION(new Builder("NotFine Optimizations").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineOptimizations).addMixinClasses(
-            "notfine.faceculling.MixinBlock"
+             "notfine.faceculling.MixinBlock"
             ,"notfine.faceculling.MixinBlockSlab"
             ,"notfine.faceculling.MixinBlockSnow"
             ,"notfine.faceculling.MixinBlockStairs"
@@ -170,7 +184,7 @@ public enum Mixins {
 
     NOTFINE_FEATURES(new Builder("NotFine Features").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
-            "notfine.glint.MixinItemRenderer"
+             "notfine.glint.MixinItemRenderer"
             ,"notfine.glint.MixinRenderBiped"
             ,"notfine.glint.MixinRenderItem"
             ,"notfine.glint.MixinRenderPlayer"

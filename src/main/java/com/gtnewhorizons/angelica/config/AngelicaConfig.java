@@ -36,6 +36,7 @@ public class AngelicaConfig {
     public static boolean showBlockDebugInfo;
 
     @Config.DefaultBoolean(true)
+    @Config.Comment("Hide downloading terrain screen. [From ArchaicFix]")
     public static boolean hideDownloadingTerrainScreen;
 
     @Config.Comment("Show memory usage during game load. [From ArchaicFix]")
@@ -52,4 +53,19 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
+
+    @Config.Comment("Optimize world update light. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeWorldUpdateLight;
+
+    @Config.Comment("Speedup Animations. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean speedupAnimations;
+
+    @Config.Comment("Optimize Texture Loading. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeTextureLoading;
 }

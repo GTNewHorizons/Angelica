@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
+import com.gtnewhorizons.angelica.utils.AnimationMode;
+import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
@@ -12,7 +14,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         modid = "angelica",
         name = "Angelica",
         version = Tags.VERSION,
-        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.3.35,);" + " after:CodeChickenCore@[1.2.0,);",
+        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.4.3,);" + " after:CodeChickenCore@[1.2.0,);",
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*")
 public class AngelicaMod {
@@ -23,6 +25,8 @@ public class AngelicaMod {
     /** ASM Version */
     public static boolean isOldNEIDLoaded;
     public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
+
+    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {

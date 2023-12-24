@@ -47,24 +47,6 @@
       "useDependencyInformation": true
     },
     {
-      "modid": "archaicfix",
-      "name": "ArchaicFix",
-      "description": "Swiss army knife of bugfixes for 1.7.",
-      "version": "${modVersion}",
-      "mcversion": "${minecraftVersion}",
-      "url": "",
-      "updateUrl": "",
-      "authorList": [
-        "embeddedt"
-      ],
-      "credits": "The Forge and FML guys, for making this example",
-      "logoFile": "",
-      "screenshots": [],
-      "dependencies": [
-        "required-after:gtnhmixins@[2.0.0,)"
-      ]
-    },
-    {
       "modid": "embeddium",
       "name": "Embeddium",
       "version": "${modVersion}",
