@@ -16,7 +16,10 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -122,6 +125,31 @@ public class ClientProxy extends CommonProxy {
                     event.left.set(i + 2, String.format("Chunk: %d %d %d", blockX >> 4, blockY >> 4, blockZ >> 4));
                     event.left.set(i + 3, String.format("Facing: %s (%s) (%.1f / %.1f)", Direction.directions[heading].toLowerCase(Locale.ROOT), heading_str, MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw), MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
                 }
+            }
+            event.setCanceled(true);
+            /* render ourselves for modern background */
+            FontRenderer fontrenderer = mc.fontRenderer;
+            int fontColor = 0xe0e0e0;
+            int rectColor = 0x90505050;
+            for (int x = 0; x < event.left.size(); x++)
+            {
+                String msg = event.left.get(x);
+                if (msg == null) continue;
+                int strX = 2;
+                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
+                Gui.drawRect(1, strY - 1, strX + fontrenderer.getStringWidth(msg) + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
+                fontrenderer.drawString(msg, strX, strY, fontColor);
+            }
+            int width = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaledWidth();
+            for (int x = 0; x < event.right.size(); x++)
+            {
+                String msg = event.right.get(x);
+                if (msg == null) continue;
+                int w = fontrenderer.getStringWidth(msg);
+                int strX = width - w - 2;
+                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
+                Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
+                fontrenderer.drawString(msg, strX, strY, fontColor);
             }
         }
     }
