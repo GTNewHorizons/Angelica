@@ -37,7 +37,7 @@ body:
   - type: textarea
     id: report
     attributes:
-      label: Bug Report Report
+      label: Bug Report
       description: "Relevant information, as well as relevant logs attached such as `logs/fml-client-latest.log."
       placeholder: "Example: https://mclo.gs/ OR submit the file to github by dragging it to this textbox."
     validations:
