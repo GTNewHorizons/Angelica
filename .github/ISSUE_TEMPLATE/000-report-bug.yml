@@ -1,9 +1,9 @@
 name: Report Bug
-description: "Report a bug that you as a developer plan to fix yourself."
+description: "Report a bug."
 body:
   - type: markdown
     attributes:
-      value: "A bug/crash report that you plan to fix yourself, or that an Angelica developer specifically asked you to post here. **If neither applies please don't post issues until the open alpha.**"
+      value: "A bug/crash report with sufficient information and logs to reproduce and track down."
   - type: input
     id: discord
     attributes:
@@ -15,7 +15,7 @@ body:
     attributes:
       label: Mod Version
       description: "What version of the Mod are you using?  (Note: None have been officially released yet)"
-      placeholder: "Example: 0.0.2"
+      placeholder: "Example: 1.0.0-alpha1"
     validations:
       required: true
   - type: dropdown
@@ -31,6 +31,7 @@ body:
         - Java 19
         - Java 20
         - Java 21
+        - Other (Please Specify)
     validations:
       required: true
   - type: textarea
@@ -38,7 +39,15 @@ body:
     attributes:
       label: Bug Report Report
       description: "Relevant information, as well as relevant logs attached such as `logs/fml-client-latest.log."
-      placeholder: "Example: pastebin/something OR submit the file to github by dragging it to this textbox."
+      placeholder: "Example: https://mclo.gs/ OR submit the file to github by dragging it to this textbox."
+    validations:
+      required: true
+  - type: textarea
+    id: modlist
+    attributes:
+      label: Mod List
+      "List of mods, ideally a minimal reproducible set (can be retrieved from latest.log)"
+      placeholder: "List of mods go here"
     validations:
       required: true
   - type: checkboxes
@@ -47,5 +56,8 @@ body:
       label: Final Checklist
       description: Certify that you read things
       options:
-        - label: "I am either a mod developer and plan to fix the issue myself, or an Angelica developer specifically asked me to post an issue here."
+        - label: "I have searched the issues and haven't found a similar issue."
           required: true
+        - label: "I have read the known incompatibilities and this is not related to one of those."
+          required: true
+          
