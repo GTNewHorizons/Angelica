@@ -46,7 +46,7 @@ body:
     id: modlist
     attributes:
       label: Mod List
-      "List of mods, ideally a minimal reproducible set (can be retrieved from latest.log)"
+      description: "List of mods, ideally a minimal reproducible set (can be retrieved from latest.log)"
       placeholder: "List of mods go here"
     validations:
       required: true
