@@ -1,12 +1,47 @@
 package com.gtnewhorizons.angelica;
 
+import com.gtnewhorizons.angelica.proxy.CommonProxy;
+import com.gtnewhorizons.angelica.utils.AnimationMode;
+import com.gtnewhorizons.angelica.utils.ManagedEnum;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(
         modid = "angelica",
         name = "Angelica",
         version = Tags.VERSION,
+        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.4.3,);" + " after:CodeChickenCore@[1.2.0,);",
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*")
 public class AngelicaMod {
+    @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
+    public static CommonProxy proxy;
+    /** Mixin Version */
+    public static boolean isNEIDLoaded;
+    /** ASM Version */
+    public static boolean isOldNEIDLoaded;
+    public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
+
+    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
+
+    @Mod.EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        isNEIDLoaded = Loader.isModLoaded("neid");
+        isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
+        proxy.preInit(event);
+    }
+
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.init(event);
+    }
+
+    @Mod.EventHandler
+    public void postInit(FMLPostInitializationEvent event) {
+        proxy.postInit(event);
+    }
 }

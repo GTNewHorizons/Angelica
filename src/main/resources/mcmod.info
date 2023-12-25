@@ -1,17 +1,62 @@
-[
 {
-  "modid": "${modId}",
-  "name": "${modName}",
-  "description": "The little angle that supports shaders while saving your FPS from a certain death",
-  "version": "${modVersion}",
-  "mcversion": "1.7.10",
-  "url": "",
-  "updateUrl": "",
-  "authors": ["eigenraven","vlaetansky","karyonix","sonic ether","id_miner","daxnitro"],
-  "credits": "Based on daxnitro's GLSL Shaders Mod.",
-  "logoFile": "",
-  "screenshots": [],
-  "parent":"",
-  "dependencies": []
+  "modListVersion": 2,
+  "modList": [
+    {
+      "modid": "${modId}",
+      "name": "${modName}",
+      "description": "The little angle that supports shaders while saving your FPS from a certain death",
+      "version": "${modVersion}",
+      "mcversion": "1.7.10",
+      "url": "https://github.com/GTNewHorizons/angelica",
+      "updateUrl": "",
+      "authors": [
+        "eigenraven",
+        "mitchej123",
+        "glowredman",
+        "caedis",
+        "vlaetansky",
+        "karyonix",
+        "sonic ether",
+        "id_miner",
+        "daxnitro"
+      ],
+      "credits": "Based on daxnitro's GLSL Shaders Mod.  Includes backported code from Oculus and Iris",
+      "logoFile": "",
+      "screenshots": [],
+      "parent": "",
+      "dependencies": []
+    },
+    {
+      "modid": "notfine",
+      "name": "NotFine",
+      "description": "Extra video settings for Minecraft 1.7.10 implemented with Mixins",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "url": "https://github.com/jss2a98aj/NotFine",
+      "updateUrl": "",
+      "authorList": [
+        "jss2a98aj"
+      ],
+      "credits": "",
+      "logoFile": "",
+      "screenshots": [],
+      "parent": "",
+      "requiredMods": [],
+      "dependencies": [],
+      "dependants": [],
+      "useDependencyInformation": true
+    },
+    {
+      "modid": "embeddium",
+      "name": "Embeddium",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "authorList": [
+        "embeddedt",
+        "NanoLive",
+        "CaffeineMC"
+      ]
+    }
+  ]
 }
-]
+

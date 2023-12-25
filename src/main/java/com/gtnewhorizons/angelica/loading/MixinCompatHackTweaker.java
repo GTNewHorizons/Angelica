@@ -1,36 +1,59 @@
 package com.gtnewhorizons.angelica.loading;
 
-import java.io.File;
-import java.lang.reflect.Field;
-import java.util.List;
-
+import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
-import com.gtnewhorizons.angelica.transform.AClassTransformer;
+import java.io.File;
+import java.lang.reflect.Field;
+import java.util.List;
 
-import cpw.mods.fml.common.asm.transformers.TerminalTransformer;
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class MixinCompatHackTweaker implements ITweaker {
-
+    public static final boolean DISABLE_OPTIFINE_AND_FASTCRAFT = true;
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-        LaunchClassLoader lcl = Launch.classLoader;
+        if(DISABLE_OPTIFINE_AND_FASTCRAFT) {
+            LOGGER.info("Disabling Optifine and Fastcraft (if present)");
+            disableOptifineAndFastcraft();
+        }
+    }
+
+    private void disableOptifineAndFastcraft() {
+        // Remove Optifine and Fastcraft transformers & Mod Containers
         try {
+            LaunchClassLoader lcl = Launch.classLoader;
             Field xformersField = lcl.getClass().getDeclaredField("transformers");
             xformersField.setAccessible(true);
             @SuppressWarnings("unchecked")
             List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
-            int terminalIndex;
-            for (terminalIndex = 1; terminalIndex < xformers.size(); terminalIndex++) {
-                if (xformers.get(terminalIndex) instanceof TerminalTransformer) {
-                    break;
+            for (int idx = xformers.size() - 1; idx >= 0; idx--) {
+                final String name = xformers.get(idx).getClass().getName();
+                if (name.startsWith("optifine") || name.startsWith("fastcraft")) {
+                    LOGGER.info("Removing transformer " + name);
+                    xformers.remove(idx);
                 }
             }
-            xformers.add(terminalIndex - 1, new AClassTransformer());
-            AngelicaTweaker.LOGGER.info("Hacked in asm class transformer in position {}", terminalIndex - 1);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            Field injectedContainersField = Loader.class.getDeclaredField("injectedContainers");
+            injectedContainersField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<String> containers = (List<String> ) injectedContainersField.get(Loader.class);
+            for (int idx = containers.size() - 1; idx >= 0; idx--) {
+                final String name = containers.get(idx);
+                if (name.startsWith("optifine") || name.startsWith("fastcraft")) {
+                    LOGGER.info("Removing mod container " + name);
+                    containers.remove(idx);
+                }
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -48,6 +71,11 @@ public class MixinCompatHackTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
+        if (FMLLaunchHandler.side().isClient()) {
+            // Run after Mixins, but before LWJGl3ify
+            Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
+        }
+
         return new String[0];
     }
 }
