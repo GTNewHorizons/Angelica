@@ -32,18 +32,24 @@ public class IrisRenderSystem {
 	private static boolean supportsCompute;
 
 	public static void initRenderer() {
-		if (Iris.capabilities.OpenGL45) {
-			dsaState = new DSACore();
-			Iris.logger.info("OpenGL 4.5 detected, enabling DSA.");
-		} else if (Iris.capabilities.GL_ARB_direct_state_access) {
-			dsaState = new DSAARB();
-			Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
-		} else {
-			dsaState = new DSAUnsupported();
-			Iris.logger.info("DSA support not detected.");
-		}
+        try {
+            if (Iris.capabilities.OpenGL45) {
+                dsaState = new DSACore();
+                Iris.logger.info("OpenGL 4.5 detected, enabling DSA.");
+            }
+            hasMultibind = Iris.capabilities.OpenGL45;
 
-        hasMultibind = Iris.capabilities.OpenGL45 || Iris.capabilities.GL_ARB_multi_bind;
+        } catch (Exception ignored) {}
+        try {
+            if (dsaState == null && Iris.capabilities.GL_ARB_direct_state_access) {
+                dsaState = new DSAARB();
+                Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            hasMultibind |= Iris.capabilities.GL_ARB_multi_bind;
+        } catch (Exception ignored) {}
 
 		supportsCompute = supportsCompute();
 	}
@@ -487,6 +493,10 @@ public class IrisRenderSystem {
 
 	// TODO: Proper notification of compute support
 	public static boolean supportsCompute() {
-        return Iris.capabilities.GL_ARB_compute_shader;
+        try {
+            return Iris.capabilities.GL_ARB_compute_shader;
+        } catch(Exception ignored) {
+            return false;
+        }
 	}
 }
