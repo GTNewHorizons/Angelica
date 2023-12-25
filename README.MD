@@ -14,6 +14,7 @@
 # Permanent Incompatibilities
 * Optifine [Disabled, won't fix]
 * Fastcraft [Disable, won't fix]
+* LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
 * Hodgepodge 2.4.2 and below - Use 2.4.3 or above
 * CodeChickenCore/Lib <1.2.0 - Threading issues, use 1.2.0+
