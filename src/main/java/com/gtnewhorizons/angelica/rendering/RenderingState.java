@@ -27,6 +27,7 @@ public class RenderingState {
     }
 
     public void captureProjectionMatrix() {
+        // Not very fast, but given we're not on 3.2+ core and are still using the opengl matrix stack, we don't have much alternative
         projectionBuffer.position(0);
         GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
         projectionMatrix.set(projectionBuffer);
