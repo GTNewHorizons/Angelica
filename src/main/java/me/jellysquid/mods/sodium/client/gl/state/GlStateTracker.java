@@ -3,8 +3,8 @@ package me.jellysquid.mods.sodium.client.gl.state;
 import me.jellysquid.mods.sodium.client.gl.array.GlVertexArray;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBuffer;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBufferTarget;
-import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL30;
+import me.jellysquid.mods.sodium.client.gl.func.GlFunctions;
+import org.lwjgl.opengl.*;
 
 import java.util.Arrays;
 
@@ -49,8 +49,9 @@ public class GlStateTracker {
         for (int i = 0; i < GlBufferTarget.COUNT; i++) {
             GL15.glBindBuffer(GlBufferTarget.VALUES[i].getTargetParameter(), 0);
         }
-
-        GL30.glBindVertexArray(0);
+        if(GlFunctions.isVertexArraySupported()) {
+            GL30.glBindVertexArray(0);
+        }
     }
 
     public void clearRestoreState() {
