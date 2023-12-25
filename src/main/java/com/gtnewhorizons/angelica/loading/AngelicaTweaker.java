@@ -9,6 +9,8 @@ import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import mist475.mcpatcherforge.asm.AsmTransformers;
+import mist475.mcpatcherforge.asm.mappings.Namer;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,6 +33,8 @@ import java.util.Set;
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
+
+    private String[] transformerClasses;
 
     static {
         try {
@@ -55,7 +59,12 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         }
 
         // Return any others here
-        return null;
+
+        if (transformerClasses == null) {
+            Namer.initNames();
+            transformerClasses = AsmTransformers.getTransformers();
+        }
+        return transformerClasses;
     }
 
     @Override
