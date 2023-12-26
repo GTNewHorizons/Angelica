@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
@@ -400,9 +401,11 @@ public class GLStateManager {
 
     public static void glBindTexture(int target, int texture) {
         if(inGLNewList) {
-            // Binding a texture, while building a list, is not allowed and is a silent noop
-            Throwable throwable = new Throwable();
-            LOGGER.info("Naughty naughty, someone's making a texture binding in a display list!", throwable);
+            if(AngelicaMod.lwjglDebug) {
+                // Binding a texture, while building a list, is not allowed and is a silent noop
+                final Throwable throwable = new Throwable();
+                LOGGER.info("Naughty naughty, someone's making a texture binding in a display list!", throwable);
+            }
             return;
         }
 
