@@ -355,4 +355,8 @@ public class WorldSlice implements IBlockAccess {
             case UNKNOWN -> 1.0f;
         };
     }
+
+    public World getWorld() {
+        return this.world;
+    }
 }
