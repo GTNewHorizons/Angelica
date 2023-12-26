@@ -672,7 +672,7 @@ public class GLStateManager {
     public static void glPushAttrib(int mask) {
         // TODO: Proper state tracking; but at least for now the current cases of this didn't do anything related to textures and
         // just overly broadly set ALL_BITS :facepalm:
-        GL11.glPushAttrib(mask & ~(GL11.GL_TEXTURE_BIT));
+        GL11.glPushAttrib(GLStateManager.BYPASS_CACHE ? mask : (mask & ~(GL11.GL_TEXTURE_BIT)));
     }
 
     public static void glPopAttrib() {
