@@ -45,9 +45,9 @@ body:
   - type: textarea
     id: modlist
     attributes:
-      label: Mod List
-      description: "List of mods, ideally a minimal reproducible set (can be retrieved from latest.log)"
-      placeholder: "List of mods go here"
+      label: Mod List or GTNH Pack Version
+      description: "List of mods, ideally a minimal reproducible set (can be retrieved from latest.log).  If using GTNH please indicate pack version and any changed mods, not the entire modlist."
+      placeholder: "List of mods or GTNH Pack version goes here"
     validations:
       required: true
   - type: checkboxes
