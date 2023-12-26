@@ -26,6 +26,7 @@ import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
+import org.joml.Matrix4d;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
@@ -37,6 +38,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.stream.IntStream;
@@ -737,6 +739,15 @@ public class GLStateManager {
     public static void glMultMatrix(FloatBuffer matrix) {
         GL11.glMultMatrix(matrix);
         matrixState.multiply(matrix);
+    }
+
+    public static final Matrix4d conersionMatrix4d = new Matrix4d();
+    public static final Matrix4f conersionMatrix4f = new Matrix4f();
+    public static void glMultMatrix(DoubleBuffer matrix) {
+        GL11.glMultMatrix(matrix);
+        conersionMatrix4d.set(matrix);
+        conersionMatrix4f.set(conersionMatrix4d);
+        matrixState.multiply(conersionMatrix4f);
     }
 
     public static void glRotatef(float angle, float x, float y, float z) {
