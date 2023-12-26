@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium.startup;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
@@ -19,7 +20,7 @@ public class MixinInitDebug {
         }
         // Temp -- move this into common debug code
         Iris.identifyCapabilities();
-        Iris.setDebug(true);
+        Iris.setDebug(AngelicaMod.lwjglDebug);
     }
 
 }
