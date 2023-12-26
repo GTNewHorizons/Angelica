@@ -39,4 +39,13 @@ public class RenderingState {
         modelViewMatrix.set(modelViewBuffer);
     }
 
+    public void setProjectionMatrix(FloatBuffer projection) {
+        projectionMatrix.set(projection);
+        projectionMatrix.get(0, projectionBuffer);
+    }
+
+    public void setModelViewMatrix(FloatBuffer modelview) {
+        modelViewMatrix.set(modelview);
+        modelViewMatrix.get(0, modelViewBuffer);
+    }
 }
