@@ -8,12 +8,14 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 public class GlStateTracker {
     private static final int UNASSIGNED_HANDLE = -1;
 
     private final int[] bufferState = new int[GlBufferTarget.COUNT];
     //private final int[] bufferRestoreState = new int[GlBufferTarget.COUNT];
+    private final EnumSet<GlBufferTarget> mutatedBuffers = EnumSet.noneOf(GlBufferTarget.class);
 
     private int vertexArrayState;
     //private int vertexArrayRestoreState;
@@ -31,6 +33,8 @@ public class GlStateTracker {
 
         this.bufferState[target.ordinal()] = buffer;
 
+        mutatedBuffers.add(target);
+
         return prevBuffer != buffer;
     }
 
@@ -47,9 +51,10 @@ public class GlStateTracker {
     }
 
     public void applyRestoreState() {
-        for (int i = 0; i < GlBufferTarget.COUNT; i++) {
-            GL15.glBindBuffer(GlBufferTarget.VALUES[i].getTargetParameter(), 0);
-        }
+        mutatedBuffers.forEach(target -> {
+            GL15.glBindBuffer(target.getTargetParameter(), 0);
+        });
+        mutatedBuffers.clear();
         if(GlFunctions.isVertexArraySupported()) {
             GL30.glBindVertexArray(0);
         }
