@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
 import com.gtnewhorizons.angelica.glsm.states.MatrixState;
 import com.gtnewhorizons.angelica.glsm.states.TextureState;
+import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
@@ -59,6 +60,7 @@ public class GLStateManager {
     @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
     @Getter private static final BooleanState rescaleNormalState = new BooleanState(GL12.GL_RESCALE_NORMAL);
     @Getter private static final MatrixState matrixState = new MatrixState();
+    @Getter private static final ViewportState viewportState = new ViewportState();
 
     private static long dirty = 0;
 
@@ -772,6 +774,11 @@ public class GLStateManager {
 
         matrixState.multiply(perspectiveMatrix);
 
+    }
+
+    public static void glViewport(int x, int y, int width, int height) {
+        GL11.glViewport(x, y, width, height);
+        viewportState.set(x, y, width, height);
     }
 
 }

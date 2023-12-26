@@ -128,6 +128,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glFrustum")
             .add("glPushMatrix")
             .add("glPopMatrix")
+            .add("glViewport")
         );
         methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
         methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate", "tryBlendFuncSeparate"));
