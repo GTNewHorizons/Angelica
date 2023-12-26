@@ -23,7 +23,7 @@ public class MixinActiveRenderInfo {
         RenderingState.INSTANCE.setModelViewMatrix(modelview);
     }
 
-    @Redirect(method = "updateRenderInfo", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetFloat(ILjava/nio/FloatBuffer;)V", ordinal = 0))
+    @Redirect(method = "updateRenderInfo", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetFloat(ILjava/nio/FloatBuffer;)V"), remap = false)
     private static void angelica$glGetFloat(int pname, FloatBuffer params) {
         if(pname == GL11.GL_MODELVIEW_MATRIX) {
             GLStateManager.getMatrixState().modelViewMatrix.get(0, params);

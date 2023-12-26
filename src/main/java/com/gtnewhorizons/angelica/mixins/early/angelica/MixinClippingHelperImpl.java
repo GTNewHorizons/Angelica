@@ -11,7 +11,7 @@ import java.nio.FloatBuffer;
 
 @Mixin(ClippingHelperImpl.class)
 public class MixinClippingHelperImpl {
-    @Redirect(method="init", at=@At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glGetFloat(ILjava/nio/FloatBuffer;)V"))
+    @Redirect(method="init", at=@At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glGetFloat(ILjava/nio/FloatBuffer;)V"), remap = false)
     private void angelica$glGetFloat(int pname, FloatBuffer params) {
         if(pname == GL11.GL_MODELVIEW_MATRIX) {
             GLStateManager.getMatrixState().modelViewMatrix.get(0, params);
