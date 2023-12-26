@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -27,25 +28,34 @@ public class RenderingState {
     }
 
     public void captureProjectionMatrix() {
-        // Not very fast, but given we're not on 3.2+ core and are still using the opengl matrix stack, we don't have much alternative
-        projectionBuffer.position(0);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
-        projectionMatrix.set(projectionBuffer);
+//        projectionBuffer.position(0);
+//        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
+//        projectionMatrix.set(projectionBuffer);
+//        boolean same = projectionMatrix == GLStateManager.getMatrixState().projectionMatrix;
+//        projectionMatrix.set(GLStateManager.getMatrixState().projectionMatrix);
+//        projectionMatrix.get(0, projectionBuffer);
     }
 
     public void captureModelViewMatrix() {
-        modelViewBuffer.position(0);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
-        modelViewMatrix.set(modelViewBuffer);
+//        modelViewBuffer.position(0);
+//        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
+//        modelViewMatrix.set(modelViewBuffer);
+//        boolean same = modelViewMatrix == GLStateManager.getMatrixState().modelViewMatrix;
+
+//        modelViewMatrix.set(GLStateManager.getMatrixState().modelViewMatrix);
+//        modelViewMatrix.get(0, modelViewBuffer);
     }
 
     public void setProjectionMatrix(FloatBuffer projection) {
         projectionMatrix.set(projection);
         projectionMatrix.get(0, projectionBuffer);
+//        boolean equal = projectionMatrix.equals(GLStateManager.getMatrixState().projectionMatrix);
+
     }
 
     public void setModelViewMatrix(FloatBuffer modelview) {
         modelViewMatrix.set(modelview);
         modelViewMatrix.get(0, modelViewBuffer);
+//        boolean equal = modelViewMatrix.equals(GLStateManager.getMatrixState().modelViewMatrix);
     }
 }
