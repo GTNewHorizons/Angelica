@@ -229,7 +229,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         int baseY = this.render.getOriginY();
         int baseZ = this.render.getOriginZ();
         BlockPos renderOffset = this.offset;
-        RenderBlocks rb = new RenderBlocks(slice);
+        RenderBlocks rb = new RenderBlocks(slice.getWorld());
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
                 return;
@@ -258,7 +258,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                             if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
-                            if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), Tessellator.instance, rb, block, meta, pos, buffers.get(pass), true, seed)) {
+                            if (cache.getBlockRenderer().renderModel(slice.getWorld(), Tessellator.instance, rb, block, meta, pos, buffers.get(pass), true, seed)) {
                                 bounds.addBlock(relX, relY, relZ);
                             }
                         }
