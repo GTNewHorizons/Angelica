@@ -44,7 +44,7 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
-    private static final String PROJECT = "org/lwjgl/util/glu/Project";
+    private static final String Project = "org/lwjgl/util/glu/Project";
 
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
@@ -68,7 +68,8 @@ public class RedirectorTransformer implements IClassTransformer {
         Pair.of("maxZ", "field_149757_G")
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass,
+        Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final List<String> TransformerExclusions = Arrays.asList(
@@ -137,7 +138,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("func_148821_a", "tryBlendFuncSeparate"));
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
-        methodRedirects.put(PROJECT, RedirectMap.newMap().add("gluPerspective"));
+        methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
     }
 
     @Override

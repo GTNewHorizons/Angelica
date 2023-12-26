@@ -392,6 +392,10 @@ public class GLStateManager {
         }
     }
 
+    public static int getBoundTexture() {
+        return Textures[activeTexture].binding;
+    }
+
     public static void glBindTexture(int target, int texture) {
         if(inGLNewList) {
             // Binding a texture, while building a list, is not allowed and is a silent noop
