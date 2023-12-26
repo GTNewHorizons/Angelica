@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -26,22 +27,10 @@ public class RenderingState {
         cameraPosition.set(x, y, z);
     }
 
-    public void captureProjectionMatrix() {
-        // Not very fast, but given we're not on 3.2+ core and are still using the opengl matrix stack, we don't have much alternative
-        projectionBuffer.position(0);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
-        projectionMatrix.set(projectionBuffer);
-    }
-
-    public void captureModelViewMatrix() {
-        modelViewBuffer.position(0);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
-        modelViewMatrix.set(modelViewBuffer);
-    }
-
     public void setProjectionMatrix(FloatBuffer projection) {
         projectionMatrix.set(projection);
         projectionMatrix.get(0, projectionBuffer);
+
     }
 
     public void setModelViewMatrix(FloatBuffer modelview) {

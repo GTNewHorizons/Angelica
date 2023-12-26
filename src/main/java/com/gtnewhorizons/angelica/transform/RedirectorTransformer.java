@@ -44,6 +44,8 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
+    private static final String Project = "org/lwjgl/util/glu/Project";
+
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
@@ -66,7 +68,8 @@ public class RedirectorTransformer implements IClassTransformer {
         Pair.of("maxZ", "field_149757_G")
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass,
+        Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final List<String> TransformerExclusions = Arrays.asList(
@@ -113,6 +116,20 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glPopAttrib")
             .add("glShadeModel")
             .add("glTexImage2D")
+            .add("glMatrixMode")
+            .add("glLoadIdentity")
+            .add("glTranslatef")
+            .add("glTranslated")
+            .add("glScalef")
+            .add("glScaled")
+            .add("glMultMatrix")
+            .add("glRotatef")
+            .add("glRotated")
+            .add("glOrtho")
+            .add("glFrustum")
+            .add("glPushMatrix")
+            .add("glPopMatrix")
+            .add("glViewport")
         );
         methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
         methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate", "tryBlendFuncSeparate"));
@@ -121,6 +138,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("func_148821_a", "tryBlendFuncSeparate"));
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
+        methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
     }
 
     @Override

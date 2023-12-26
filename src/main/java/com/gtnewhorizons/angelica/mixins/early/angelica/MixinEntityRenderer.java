@@ -21,8 +21,5 @@ public abstract class MixinEntityRenderer {
             viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks,
             viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks
         );
-//        RenderingState.INSTANCE.captureProjectionMatrix();
-//        RenderingState.INSTANCE.captureModelViewMatrix();
-
     }
 }

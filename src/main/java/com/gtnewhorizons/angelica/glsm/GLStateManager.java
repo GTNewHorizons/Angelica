@@ -8,7 +8,9 @@ import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
+import com.gtnewhorizons.angelica.glsm.states.MatrixState;
 import com.gtnewhorizons.angelica.glsm.states.TextureState;
+import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
@@ -24,7 +26,9 @@ import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
+import org.joml.Matrix4f;
 import org.joml.Vector3d;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.Drawable;
@@ -55,6 +59,8 @@ public class GLStateManager {
     @Getter private static final AlphaState alphaState = new AlphaState();
     @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
     @Getter private static final BooleanState rescaleNormalState = new BooleanState(GL12.GL_RESCALE_NORMAL);
+    @Getter private static final MatrixState matrixState = new MatrixState();
+    @Getter private static final ViewportState viewportState = new ViewportState();
 
     private static long dirty = 0;
 
@@ -386,6 +392,10 @@ public class GLStateManager {
         }
     }
 
+    public static int getBoundTexture() {
+        return Textures[activeTexture].binding;
+    }
+
     public static void glBindTexture(int target, int texture) {
         if(inGLNewList) {
             // Binding a texture, while building a list, is not allowed and is a silent noop
@@ -694,4 +704,85 @@ public class GLStateManager {
     public static void dirty(long dirtyFlag) {
         dirty |= dirtyFlag;
     }
+
+    // Matrix Operations
+    public static void glMatrixMode(int mode) {
+        matrixState.setMode(mode);
+        GL11.glMatrixMode(mode);
+    }
+    public static void glLoadIdentity() {
+        GL11.glLoadIdentity();
+        matrixState.identity();
+    }
+
+    public static void glTranslatef(float x, float y, float z) {
+        GL11.glTranslatef(x, y, z);
+        matrixState.translate(x, y, z);
+    }
+    public static void glTranslated(double x, double y, double z) {
+        GL11.glTranslated(x, y, z);
+        matrixState.translate((float) x, (float) y, (float) z);
+    }
+
+    public static void glScalef(float x, float y, float z) {
+        GL11.glScalef(x, y, z);
+        matrixState.scale(x, y, z);
+    }
+
+    public static void glScaled(double x, double y, double z) {
+        GL11.glScaled(x, y, z);
+        matrixState.scale((float) x, (float) y, (float) z);
+    }
+
+    public static void glMultMatrix(FloatBuffer matrix) {
+        GL11.glMultMatrix(matrix);
+        matrixState.multiply(matrix);
+    }
+
+    public static void glRotatef(float angle, float x, float y, float z) {
+        GL11.glRotatef(angle, x, y, z);
+        matrixState.rotate((float)Math.toRadians(angle), x, y, z);
+    }
+
+    public static void glRotated(double angle, double x, double y, double z) {
+        GL11.glRotated(angle, x, y, z);
+        matrixState.rotate((float)Math.toRadians(angle), (float) x, (float) y, (float) z);
+    }
+
+    public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
+        GL11.glOrtho(left, right, bottom, top, zNear, zFar);
+        matrixState.ortho(left, right, bottom, top, zNear, zFar);
+    }
+
+    public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
+        GL11.glFrustum(left, right, bottom, top, zNear, zFar);
+        matrixState.frustum(left, right, bottom, top, zNear, zFar);
+    }
+    public static void glPushMatrix() {
+        GL11.glPushMatrix();
+        matrixState.push();
+    }
+
+    public static void glPopMatrix() {
+        GL11.glPopMatrix();
+        matrixState.pop();
+    }
+
+    private static final Matrix4f perspectiveMatrix = new Matrix4f();
+    private static final FloatBuffer perspectiveBuffer = BufferUtils.createFloatBuffer(16);
+    public static void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
+        perspectiveMatrix.identity().perspective((float)Math.toRadians(fovy), aspect, zNear, zFar);
+
+        perspectiveMatrix.get(0, perspectiveBuffer);
+        GL11.glMultMatrix(perspectiveBuffer);
+
+        matrixState.multiply(perspectiveMatrix);
+
+    }
+
+    public static void glViewport(int x, int y, int width, int height) {
+        GL11.glViewport(x, y, width, height);
+        viewportState.set(x, y, width, height);
+    }
+
 }

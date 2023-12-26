@@ -25,8 +25,9 @@ public enum Mixins {
 
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
-             "angelica.MixinEntityRenderer"
-            ,"angelica.MixinActiveRenderInfo"
+             "angelica.MixinActiveRenderInfo"
+            ,"angelica.MixinClippingHelperImpl"
+            ,"angelica.MixinEntityRenderer"
         )
     ),
 
@@ -134,6 +135,11 @@ public enum Mixins {
             ,"shaders.accessors.AnimationMetadataSectionAccessor"
         )
     ),
+
+    OPTIMIZE_JABBA_GET_INTEGER(new Builder("Optimize Jabba getInteger").setPhase(Phase.LATE)
+        .addTargetedMod(TargetedMod.JABBA).setSide(Side.CLIENT)
+        .setApplyIf(() -> AngelicaConfig.optimizeJabbaGetInteger)
+        .addMixinClasses("client.jabba.MixinTileEntityBaseRenderer")),
 
 
     ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)

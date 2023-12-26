@@ -243,8 +243,7 @@ public class IrisRenderSystem {
     public static void setupProjectionMatrix(Matrix4f matrix) {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
-        PROJECTION_MATRIX_BUFFER.clear().rewind();
-        matrix.get(PROJECTION_MATRIX_BUFFER);
+        matrix.get(0, PROJECTION_MATRIX_BUFFER);
         GL11.glLoadMatrix(PROJECTION_MATRIX_BUFFER);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
