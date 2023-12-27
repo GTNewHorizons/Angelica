@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.transform.BlockTransformer.*;
 
@@ -71,6 +72,8 @@ public class RedirectorTransformer implements IClassTransformer {
         "me.eigenraven.lwjgl3ify"
     );
     private static int remaps = 0;
+
+    private static final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -131,6 +134,7 @@ public class RedirectorTransformer implements IClassTransformer {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        blockSubclasses.add(BlockClass);
     }
 
     @Override
@@ -152,6 +156,11 @@ public class RedirectorTransformer implements IClassTransformer {
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
         cr.accept(cn, 0);
+
+        // Track subclasses of Block
+        if (blockSubclasses.contains(cn.superName)) {
+            blockSubclasses.add(cn.name);
+        }
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
@@ -226,7 +235,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(fNode.owner.equals(BlockClass)) {
+                    if(blockSubclasses.contains(fNode.owner)) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
