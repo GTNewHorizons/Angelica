@@ -86,7 +86,7 @@ public class GLStateManager {
     private static Thread CurrentThread = MainThread;
     private static boolean runningSplash = false;
 
-    private static boolean inGLNewList = false;
+    private static int glListMode = 0;
 
     private static boolean hudCaching$blendEnabled;
 
@@ -400,7 +400,7 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if(inGLNewList) {
+        if(glListMode == GL11.GL_COMPILE ) {
             if(AngelicaMod.lwjglDebug) {
                 // Binding a texture, while building a list, is not allowed and is a silent noop
                 final Throwable throwable = new Throwable();
@@ -669,18 +669,19 @@ public class GLStateManager {
     }
 
     public static void glNewList(int list, int mode) {
-        if(inGLNewList) {
+        if(glListMode > 0) {
             throw new RuntimeException("glNewList called inside of a display list!");
         }
-        inGLNewList = true;
+
+        glListMode = mode;
         GL11.glNewList(list, mode);
     }
 
     public static void glEndList() {
-        if(!inGLNewList) {
+        if(glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
-        inGLNewList = false;
+        glListMode = 0;
         GL11.glEndList();
     }
 
