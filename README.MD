@@ -10,6 +10,7 @@
 * ProjectRed Frames - Currently non Thread Safe; safe if not in use
 * EndlessIDs - Future compat planned
 * FalseTweaks - Future compat planned
+* SmoothFont - Future compat planned
 * RPLE - Future compat planned
 
 # Permanent Incompatibilities
