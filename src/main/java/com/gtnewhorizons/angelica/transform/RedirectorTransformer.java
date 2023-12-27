@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.gtnewhorizons.angelica.transform.BlockTransformer.*;
+
 /**
  * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
  * As well as redirect some GL calls to our custom GLStateManager
@@ -50,22 +52,12 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
-    private static final String BlockClass = "net/minecraft/block/Block";
     private static final String MinecraftClient = "net.minecraft.client";
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
-    );
-
-    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
-        Pair.of("minX", "field_149759_B"),
-        Pair.of("minY", "field_149760_C"),
-        Pair.of("minZ", "field_149754_D"),
-        Pair.of("maxX", "field_149755_E"),
-        Pair.of("maxY", "field_149756_F"),
-        Pair.of("maxZ", "field_149757_G")
     );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass,
