@@ -39,17 +39,17 @@ public class IrisRenderSystem {
             }
             hasMultibind = Iris.capabilities.OpenGL45;
 
-        } catch (Exception ignored) {}
+        } catch (NoSuchFieldError ignored) {}
         try {
             if (dsaState == null && Iris.capabilities.GL_ARB_direct_state_access) {
                 dsaState = new DSAARB();
                 Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
             }
-        } catch (Exception ignored) {}
+        } catch (NoSuchFieldError ignored) {}
 
         try {
             hasMultibind |= Iris.capabilities.GL_ARB_multi_bind;
-        } catch (Exception ignored) {}
+        } catch (NoSuchFieldError ignored) {}
 
 		supportsCompute = supportsCompute();
 	}
