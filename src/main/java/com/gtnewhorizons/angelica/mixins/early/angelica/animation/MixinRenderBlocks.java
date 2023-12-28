@@ -32,7 +32,7 @@ public class MixinRenderBlocks {
      *         visible (on the viewport) at the moment)
      */
     @Inject(method = "*(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", at = @At("HEAD"))
-    public void hodgepodge$beforeRenderFace(Block p_147761_1_, double p_147761_2_, double p_147761_4_,
+    public void angelica$beforeRenderFace(Block p_147761_1_, double p_147761_2_, double p_147761_4_,
             double p_147761_6_, IIcon icon, CallbackInfo ci) {
         if (overrideBlockTexture != null) {
             icon = overrideBlockTexture;
@@ -42,14 +42,14 @@ public class MixinRenderBlocks {
     }
 
     @Inject(method = "renderBlockFire", at = @At("HEAD"))
-    public void hodgepodge$markFireBlockAnimationForUpdate(BlockFire instance, int x, int y, int z,
+    public void angelica$markFireBlockAnimationForUpdate(BlockFire instance, int x, int y, int z,
             CallbackInfoReturnable<Boolean> cir) {
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(0), blockAccess);
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
 
     @ModifyVariable(method = "renderBlockLiquid", at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
-    public IIcon hodgepodge$markFluidAnimationForUpdate(IIcon icon) {
+    public IIcon angelica$markFluidAnimationForUpdate(IIcon icon) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
         return icon;

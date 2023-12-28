@@ -12,6 +12,7 @@ public enum TargetedMod {
     , COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore")
     , EXTRAUTILS("ExtraUtilities", null, "ExtraUtilities")
     , GTNHLIB("GTNHLib", "com.gtnewhorizon.gtnhlib.core.GTNHLibCore", "gtnhlib")
+    , IC2("IC2", "ic2.core.coremod.IC2core", "IC2")
     , JABBA("JABBA", null, "JABBA")
     , JOURNEYMAP("JourneyMap", null, "journeymap")
     , LWJGL3IFY("lwjgl3ify", "me.eigenraven.lwjgl3ify.core.Lwjgl3ifyCoremod", "lwjgl3ify")
