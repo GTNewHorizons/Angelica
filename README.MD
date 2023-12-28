@@ -20,6 +20,7 @@
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
 * Hodgepodge 2.4.2 and below - Use 2.4.3 or above
 * CodeChickenCore/Lib <1.2.0 - Threading issues, use 1.2.0+
+* Neodymium - Untested, but unlikely to be compatible.  (Chunk Meshing is definitely incompatible, other features might work depending on config)
 
 # Credits
 * ShadersMod
