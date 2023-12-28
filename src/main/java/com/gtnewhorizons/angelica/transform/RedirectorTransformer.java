@@ -162,6 +162,7 @@ public class RedirectorTransformer implements IClassTransformer {
         // Track subclasses of Block
         if (blockSubclasses.contains(cn.superName)) {
             blockSubclasses.add(cn.name);
+            cstPoolParser.addString(cn.name);
         }
 
         boolean changed = false;
