@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
-import lombok.val;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
@@ -17,34 +19,41 @@ public class Feature {
         GL13.GL_MULTISAMPLE_BIT, GL11.GL_PIXEL_MODE_BIT, GL11.GL_POINT_BIT, GL11.GL_POLYGON_BIT, GL11.GL_POLYGON_STIPPLE_BIT, GL11.GL_SCISSOR_BIT,
         GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_TEXTURE_BIT, GL11.GL_TRANSFORM_BIT, GL11.GL_VIEWPORT_BIT };
 
+    static final Int2ObjectMap<Set<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
+
     static Set<IStateStack<?>> maskToFeatures(int mask) {
+        if(maskToFeaturesMap.containsKey(mask)) {
+            return maskToFeaturesMap.get(mask);
+        }
+
         final Set<IStateStack<?>> features = new HashSet<>();
         for(int attrib : Feature.supportedAttribs) {
             if((mask & attrib) == attrib) {
                 features.addAll(getFeatures(attrib));
             }
         }
+        maskToFeaturesMap.put(mask, features);
         return features;
     }
 
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
     static {
-        attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, FeatureSet.newMap()
-            .put(GLStateManager.alphaTest)  // GL_ALPHA_TEST enable bit
-            .put(GLStateManager.alphaState) // Alpha test function and reference value
-            .put(GLStateManager.blendMode)  // 	GL_BLEND enable bit
-            .put(GLStateManager.blendState) // 	Blending source and destination functions
-            // 	Constant blend color
-            // 	Blending equation
-            // 	GL_DITHER enable bit
+        attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
+             GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
+            ,GLStateManager.alphaState // Alpha test function and reference value
+            ,GLStateManager.blendMode  // GL_BLEND enable bit
+            ,GLStateManager.blendState // Blending source and destination functions
+            // Constant blend color
+            // Blending equation
+            // GL_DITHER enable bit
             // GL_DRAW_BUFFER setting
             // GL_COLOR_LOGIC_OP enable bit
             // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
             // TODO: Color mode and index mode clear values
             // TODO: Color mode and index mode writemasks
-        );
-        attribToFeatures.put(GL11.GL_CURRENT_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
             // Current RGBA color
             // Current color index
             // Current normal vector
@@ -55,23 +64,23 @@ public class Feature {
             // Color index associated with current raster position
             // Texture coordinates associated with current raster position
             // GL_EDGE_FLAG flag
-        );
-        attribToFeatures.put(GL11.GL_DEPTH_BUFFER_BIT, FeatureSet.newMap()
-            .put(GLStateManager.depthTest) // 	GL_DEPTH_TEST enable bit
-            .put(GLStateManager.depthState) // 	Depth buffer test function
-            // 	Depth buffer clear value
-            // 	GL_DEPTH_WRITEMASK enable bit
-        );
-        attribToFeatures.put(GL11.GL_ENABLE_BIT, FeatureSet.newMap()
-            .put(GLStateManager.alphaTest) // GL_ALPHA_TEST flag
-            // 	GL_AUTO_NORMAL flag
-            .put(GLStateManager.blendMode) // GL_BLEND flag
-            // 	Enable bits for the user-definable clipping planes
-            // 	GL_COLOR_MATERIAL
-            .put(GLStateManager.cullState) // GL_CULL_FACE flag
-            .put(GLStateManager.depthTest) // GL_DEPTH_TEST flag
-            // 	GL_DITHER flag
-            .put(GLStateManager.fogMode) // GL_FOG flag
+        ));
+        attribToFeatures.put(GL11.GL_DEPTH_BUFFER_BIT, ImmutableSet.of(
+             GLStateManager.depthTest     // GL_DEPTH_TEST enable bit
+            ,GLStateManager.depthState    // Depth buffer test function
+            // Depth buffer clear value
+            // GL_DEPTH_WRITEMASK enable bit
+        ));
+        attribToFeatures.put(GL11.GL_ENABLE_BIT, ImmutableSet.of(
+             GLStateManager.alphaTest // GL_ALPHA_TEST flag
+            // GL_AUTO_NORMAL flag
+            ,GLStateManager.blendMode // GL_BLEND flag
+            // Enable bits for the user-definable clipping planes
+            // GL_COLOR_MATERIAL
+            ,GLStateManager.cullState // GL_CULL_FACE flag
+            ,GLStateManager.depthTest // GL_DEPTH_TEST flag
+            // GL_DITHER flag
+            ,GLStateManager.fogMode // GL_FOG flag
             // GL_LIGHTi where 0 <= i < GL_MAX_LIGHTS
             // GL_LIGHTING flag
             // GL_LINE_SMOOTH flag
@@ -95,28 +104,28 @@ public class Feature {
             // GL_STENCIL_TEST flag
             // GL_TEXTURE_1D flag
             // TODO: Texture Stack
-            // .put(GLStateManager.texture2D) // GL_TEXTURE_2D flag
+            //  GLStateManager.texture2D // GL_TEXTURE_2D flag
             // GL_TEXTURE_3D flag
             // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
 
-        );
-        attribToFeatures.put(GL11.GL_EVAL_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_EVAL_BIT, ImmutableSet.of(
             // GL_MAP1_x enable bits, where x is a map type
             // GL_MAP2_x enable bits, where x is a map type
             // 1D grid endpoints and divisions
             // 2D grid endpoints and divisions
             // GL_AUTO_NORMAL enable bit
-        );
-        attribToFeatures.put(GL11.GL_FOG_BIT, FeatureSet.newMap()
-            .put(GLStateManager.fogMode)    // GL_FOG enable bit
-            .put(GLStateManager.fogState)   // Fog color
-                                            // ^^ Fog density
-                                            // ^^ Linear fog start
-                                            // ^^ Linear fog end
+        ));
+        attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
+             GLStateManager.fogMode    // GL_FOG enable bit
+            ,GLStateManager.fogState   // Fog color
+                                       // ^^ Fog density
+                                       // ^^ Linear fog start
+                                       // ^^ Linear fog end
             // Fog index
-                                            // ^^ GL_FOG_MODE value
-        );
-        attribToFeatures.put(GL11.GL_HINT_BIT, FeatureSet.newMap()
+                                       // ^^ GL_FOG_MODE value
+        ));
+        attribToFeatures.put(GL11.GL_HINT_BIT, ImmutableSet.of(
             // GL_PERSPECTIVE_CORRECTION_HINT setting
             // GL_POINT_SMOOTH_HINT setting
             // GL_LINE_SMOOTH_HINT setting
@@ -124,8 +133,8 @@ public class Feature {
             // GL_FOG_HINT setting
             // GL_GENERATE_MIPMAP_HINT setting
             // GL_TEXTURE_COMPRESSION_HINT setting
-        );
-        attribToFeatures.put(GL11.GL_LIGHTING_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_LIGHTING_BIT, ImmutableSet.of(
             // GL_COLOR_MATERIAL enable bit
             // GL_COLOR_MATERIAL_FACE value
             // Color material parameters that are tracking the current color
@@ -141,25 +150,25 @@ public class Feature {
             // Ambient, diffuse, and specular color indices for each material
             // Specular exponent for each material
             // GL_SHADE_MODEL setting
-        );
-        attribToFeatures.put(GL11.GL_LINE_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(
             // GL_LINE_SMOOTH flag
             // GL_LINE_STIPPLE enable bit
             // Line stipple pattern and repeat counter
             // Line width
-        );
-        attribToFeatures.put(GL11.GL_LIST_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_LIST_BIT, ImmutableSet.of(
             // GL_LIST_BASE setting
-        );
-        attribToFeatures.put(GL13.GL_MULTISAMPLE_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL13.GL_MULTISAMPLE_BIT, ImmutableSet.of(
             // GL_MULTISAMPLE enable bit
             // GL_SAMPLE_ALPHA_TO_COVERAGE flag
             // GL_SAMPLE_ALPHA_TO_ONE flag
             // GL_SAMPLE_COVERAGE flag
             // GL_SAMPLE_COVERAGE_VALUE value
             // GL_SAMPLE_COVERAGE_INVERT value
-        );
-        attribToFeatures.put(GL11.GL_PIXEL_MODE_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_PIXEL_MODE_BIT, ImmutableSet.of(
             // GL_RED_BIAS and GL_RED_SCALE settings
             // GL_GREEN_BIAS and GL_GREEN_SCALE values
             // GL_BLUE_BIAS and GL_BLUE_SCALE
@@ -169,14 +178,14 @@ public class Feature {
             // GL_MAP_COLOR and GL_MAP_STENCIL flags
             // GL_ZOOM_X and GL_ZOOM_Y factors
             // GL_READ_BUFFER setting
-        );
-        attribToFeatures.put(GL11.GL_POINT_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_POINT_BIT, ImmutableSet.of(
             // GL_POINT_SMOOTH flag
             // Point size
-        );
-        attribToFeatures.put(GL11.GL_POLYGON_BIT, FeatureSet.newMap()
-            .put(GLStateManager.cullState) // GL_CULL_FACE enable bit
-            .put(GLStateManager.cullState)// GL_CULL_FACE_MODE value
+        ));
+        attribToFeatures.put(GL11.GL_POLYGON_BIT, ImmutableSet.of(
+              GLStateManager.cullState // GL_CULL_FACE enable bit
+            // GL_CULL_FACE_MODE value
             // GL_FRONT_FACE indicator
             // GL_POLYGON_MODE setting
             // GL_POLYGON_SMOOTH flag
@@ -186,23 +195,23 @@ public class Feature {
             // GL_POLYGON_OFFSET_POINT flag
             // GL_POLYGON_OFFSET_FACTOR
             // GL_POLYGON_OFFSET_UNITS
-        );
-        attribToFeatures.put(GL11.GL_POLYGON_STIPPLE_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_POLYGON_STIPPLE_BIT, ImmutableSet.of(
             // Polygon stipple pattern
-        );
-        attribToFeatures.put(GL11.GL_SCISSOR_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_SCISSOR_BIT, ImmutableSet.of(
             // GL_SCISSOR_TEST enable bit
             // Scissor box
-        );
-        attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, ImmutableSet.of(
             // GL_STENCIL_TEST enable bit
             // Stencil function and reference value
             // Stencil value mask
             // Stencil fail, pass, and depth buffer pass actions
             // Stencil buffer clear value
             // Stencil buffer writemask
-        );
-        attribToFeatures.put(GL11.GL_TEXTURE_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_TEXTURE_BIT, ImmutableSet.of(
             // Enable bits for the four texture coordinates
             // Border color for each texture image
             // Minification function for each texture image
@@ -212,34 +221,23 @@ public class Feature {
             // Enable bits GL_TEXTURE_GEN_x, x is S, T, R, and Q
             // GL_TEXTURE_GEN_MODE setting for S, T, R, and Q
             // glTexGen plane equations for S, T, R, and Q
-        );
-        attribToFeatures.put(GL11.GL_TRANSFORM_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes
-            .put(GLStateManager.matrixMode)
+             GLStateManager.matrixMode
             // GL_NORMALIZE flag
             // GL_RESCALE_NORMAL flag
-        );
-        attribToFeatures.put(GL11.GL_VIEWPORT_BIT, FeatureSet.newMap()
+        ));
+        attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
             // Depth range (near and far)
-            .put(GLStateManager.viewportState)
-        );
+            GLStateManager.viewportState
+        ));
     }
 
     public static Set<IStateStack<?>> getFeatures(int attrib) {
         return attribToFeatures.getOrDefault(attrib, Collections.emptySet());
     }
 
-    private static class FeatureSet<K> extends HashSet<K> {
-
-        public static FeatureSet<IStateStack<?>> newMap() {
-            return new FeatureSet<>();
-        }
-
-        public final FeatureSet<K> put(K key) {
-            super.add(key);
-            return this;
-        }
-    }
 
 }
