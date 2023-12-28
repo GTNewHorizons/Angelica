@@ -60,4 +60,6 @@ body:
           required: true
         - label: "I have read the known incompatibilities and this is not related to one of those."
           required: true
-          
+        - label: "This issue is not shader related  (they aren't ready yet for testing)"
+          required: true
+                    
