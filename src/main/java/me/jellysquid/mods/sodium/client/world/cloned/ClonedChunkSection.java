@@ -56,7 +56,7 @@ public class ClonedChunkSection {
         }
 
         this.pos = pos;
-        this.data = new ExtendedBlockStorageExt(section);
+        this.data = new ExtendedBlockStorageExt(chunk, section);
 
         this.biomeData = new BiomeGenBase[chunk.getBiomeArray().length];
 

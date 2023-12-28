@@ -75,6 +75,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:twilightforest:2.5.1:dev") {transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
 
+    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.0:api")
 
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))

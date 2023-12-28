@@ -9,5 +9,9 @@ repositories {
             artifact()
         }
     }
+    maven {
+        name = 'mavenpattern'
+        url = 'https://mvn.falsepattern.com/releases'
+    }
     mavenLocal()
 }
