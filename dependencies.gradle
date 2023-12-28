@@ -39,11 +39,13 @@ configurations {
     transformedModCompileOnly
     transformedModCompileOnly.canBeConsumed = false
 
-    // Add the transformed mod dependencies to the compilation and runtime classpaths, but don't publish them in the Maven metadata
+    // Add the transformed mod dependencies to the compilation classpaths, but don't publish them in the Maven metadata
     compileClasspath.extendsFrom(transformedMod, transformedModCompileOnly)
-    runtimeClasspath.extendsFrom(transformedMod)
     testCompileClasspath.extendsFrom(transformedMod, transformedModCompileOnly)
-    testRuntimeClasspath.extendsFrom(transformedMod)
+
+    // Can be enabled for testing if desired
+    // runtimeClasspath.extendsFrom(transformedMod)
+    // testRuntimeClasspath.extendsFrom(transformedMod)
 }
 
 dependencies {
