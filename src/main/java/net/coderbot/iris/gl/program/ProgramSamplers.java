@@ -46,7 +46,7 @@ public class ProgramSamplers {
 
 		// We need to keep the active texture intact, since if we mess it up
 		// in the middle of RenderType setup, bad things will happen.
-		int activeTexture = GLStateManager.getActiveTexture();
+		int activeTexture = GLStateManager.getActiveTextureUnit();
 
 		for (SamplerBinding samplerBinding : samplerBindings) {
 			samplerBinding.update();

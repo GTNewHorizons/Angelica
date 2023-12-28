@@ -5,23 +5,25 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.Color4Stack;
+import com.gtnewhorizons.angelica.glsm.stacks.ColorMaskStack;
 import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import com.gtnewhorizons.angelica.glsm.states.ColorMask;
-import com.gtnewhorizons.angelica.glsm.states.TextureState;
-import com.gtnewhorizons.angelica.glsm.states.ViewportState;
+import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
+import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntStack;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
-import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -40,14 +42,12 @@ import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.stream.IntStream;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -58,10 +58,15 @@ public class GLStateManager {
     public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
     public static final int MAX_PROJECTION_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
     public static final int MAX_TEXTURE_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_STACK_DEPTH);
+    public static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
 
     // GLStateManager State Trackers
-    private static final Deque<Integer> attribs = new ArrayDeque<>(MAX_ATTRIB_STACK_DEPTH);
-    @Getter private static int activeTexture;
+    private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
+    private static final IntStack activeTextureUnit = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
+    static {
+        activeTextureUnit.push(0); // GL_TEXTURE0
+    }
+    @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
     @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
     @Getter protected static final DepthStateStack depthState = new DepthStateStack();
@@ -70,9 +75,9 @@ public class GLStateManager {
 //    @Getter private static final FogState fogState = new FogState();
     @Getter protected static final FogStateStack fogState = new FogStateStack();
     @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
-    @Getter protected static final Color4 color = new Color4(); // TODO
-    @Getter protected static final Color4 clearColor = new Color4(); // TODO
-    @Getter protected static final ColorMask colorMask = new ColorMask(); // TODO
+    @Getter protected static final Color4Stack color = new Color4Stack();
+    @Getter protected static final Color4Stack clearColor = new Color4Stack();
+    @Getter protected static final ColorMaskStack colorMask = new ColorMaskStack();
     @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
     @Getter protected static final BooleanStateStack alphaTest = new BooleanStateStack(GL11.GL_ALPHA_TEST);
@@ -92,7 +97,7 @@ public class GLStateManager {
     private static int modelShadeMode;
 
     @Getter
-    private static TextureState[] Textures;
+//    private static TextureState[] Textures;
 
     // Iris Listeners
     private static Runnable blendFuncListener = null;
@@ -121,8 +126,6 @@ public class GLStateManager {
             StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
             StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
-        // We want textures regardless of Iris being initialized, and using SamplerLimits is isolated enough
-        Textures = IntStream.range(0, SamplerLimits.get().getMaxTextureUnits()).mapToObj(i -> new TextureState()).toArray(TextureState[]::new);
     }
 
     public static void assertMainThread() {
@@ -339,19 +342,20 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (GLStateManager.BYPASS_CACHE || red != color.red || green != color.green || blue != color.blue || alpha != color.alpha || checkDirty(Dirty.COLOR)) {
-            color.red = red;
-            color.green = green;
-            color.blue = blue;
-            color.alpha = alpha;
+        if (GLStateManager.BYPASS_CACHE || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha() || checkDirty(Dirty.COLOR)) {
+            color.setRed(red);
+            color.setGreen(green);
+            color.setBlue(blue);
+            color.setAlpha(alpha);
             return true;
         }
         return false;
     }
 
+    private static final Color4 DirtyColor = new Color4(-1.0F, -1.0F, -1.0F, -1.0F);
     public static void clearCurrentColor() {
         // Marks the cache dirty, doesn't actually reset the color
-        dirty(Dirty.COLOR);
+        color.set(DirtyColor);
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
@@ -372,11 +376,11 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != clearColor.red || green != clearColor.green || blue != clearColor.blue || alpha != clearColor.alpha || checkDirty(Dirty.CLEAR_COLOR)) {
-            clearColor.red = red;
-            clearColor.green = green;
-            clearColor.blue = blue;
-            clearColor.alpha = alpha;
+        if (GLStateManager.BYPASS_CACHE || red != clearColor.getRed() || green != clearColor.getGreen() || blue != clearColor.getBlue() || alpha != clearColor.getAlpha() || checkDirty(Dirty.CLEAR_COLOR)) {
+            clearColor.setRed(red);
+            clearColor.setGreen(green);
+            clearColor.setBlue(blue);
+            clearColor.setAlpha(alpha);
             GL11.glClearColor(red, green, blue, alpha);
         }
     }
@@ -417,25 +421,33 @@ public class GLStateManager {
     // Textures
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
-            activeTexture = newTexture;
+        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
+            activeTextureUnit.popInt();
+            activeTextureUnit.push(newTexture);
             GL13.glActiveTexture(texture);
         }
     }
 
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || activeTexture != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
-            activeTexture = newTexture;
+        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
+            activeTextureUnit.popInt();
+            activeTextureUnit.push(newTexture);
             ARBMultitexture.glActiveTextureARB(texture);
         }
     }
 
     public static int getBoundTexture() {
-        return Textures[activeTexture].binding;
+        return textures.getTextureUnitBindings(activeTextureUnit.topInt()).getBinding();
     }
 
     public static void glBindTexture(int target, int texture) {
+        if(target != GL11.GL_TEXTURE_2D) {
+            // We're only supporting 2D textures for now
+            GL11.glBindTexture(target, texture);
+            return;
+        }
+
         if(glListMode == GL11.GL_COMPILE ) {
             if(AngelicaMod.lwjglDebug) {
                 // Binding a texture, while building a list, is not allowed and is a silent noop
@@ -445,11 +457,11 @@ public class GLStateManager {
             return;
         }
 
-        // TODO: Do we need to do the check dirty for each bound texture?
-        if (GLStateManager.BYPASS_CACHE || Textures[activeTexture].binding != texture || runningSplash || checkDirty(Dirty.BOUND_TEXTURE)) {
-            GL11.glBindTexture(target, texture);
+        final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
-            Textures[activeTexture].binding = texture;
+        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash || checkDirty(Dirty.BOUND_TEXTURE)) {
+            GL11.glBindTexture(target, texture);
+            textureUnit.setBinding(texture);
             if (AngelicaConfig.enableIris) {
                 TextureTracker.INSTANCE.onBindTexture(texture);
             }
@@ -482,7 +494,7 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             iris$onDeleteTexture(id);
         }
-        Textures[activeTexture].binding = -1;
+        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
@@ -492,21 +504,22 @@ public class GLStateManager {
                 iris$onDeleteTexture(ids.get(i));
             }
         }
-        Textures[activeTexture].binding = -1;
+        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
 
     public static void enableTexture() {
+        final int textureUnit = getActiveTextureUnit();
         if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
-            if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = true;
                 updatePipeline = true;
-            } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = true;
                 updatePipeline = true;
-            } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+            } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.overlaySampler = true;
                 updatePipeline = true;
             }
@@ -515,20 +528,21 @@ public class GLStateManager {
                 Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
             }
         }
-        Textures[activeTexture].mode.enable();
+        textures.getTextureUnitStates(textureUnit).enable();
     }
 
     public static void disableTexture() {
+        final int textureUnit = getActiveTextureUnit();
         if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
-            if (activeTexture == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
+            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = false;
                 updatePipeline = true;
-            } else if (activeTexture == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
+            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = false;
                 updatePipeline = true;
-            } else if (activeTexture == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
+            } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.overlaySampler = false;
                 updatePipeline = true;
             }
@@ -537,7 +551,7 @@ public class GLStateManager {
                 Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
             }
         }
-        Textures[activeTexture].mode.disable();
+        textures.getTextureUnitStates(textureUnit).disable();
     }
 
     public static void setFilter(boolean bilinear, boolean mipmap) {
@@ -860,4 +874,7 @@ public class GLStateManager {
         viewportState.setViewPort(x, y, width, height);
     }
 
+    public static int getActiveTextureUnit() {
+        return activeTextureUnit.topInt();
+    }
 }

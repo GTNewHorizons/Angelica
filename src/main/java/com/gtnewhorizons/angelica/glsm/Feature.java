@@ -71,16 +71,17 @@ public class Feature {
             // Depth buffer clear value
             // GL_DEPTH_WRITEMASK enable bit
         ));
-        attribToFeatures.put(GL11.GL_ENABLE_BIT, ImmutableSet.of(
-             GLStateManager.alphaTest // GL_ALPHA_TEST flag
+
+        final HashSet<IStateStack<?>> enableBits = new HashSet<>(ImmutableSet.of(
+            GLStateManager.alphaTest // GL_ALPHA_TEST flag
             // GL_AUTO_NORMAL flag
-            ,GLStateManager.blendMode // GL_BLEND flag
+            , GLStateManager.blendMode // GL_BLEND flag
             // Enable bits for the user-definable clipping planes
             // GL_COLOR_MATERIAL
-            ,GLStateManager.cullState // GL_CULL_FACE flag
-            ,GLStateManager.depthTest // GL_DEPTH_TEST flag
+            , GLStateManager.cullState // GL_CULL_FACE flag
+            , GLStateManager.depthTest // GL_DEPTH_TEST flag
             // GL_DITHER flag
-            ,GLStateManager.fogMode // GL_FOG flag
+            , GLStateManager.fogMode // GL_FOG flag
             // GL_LIGHTi where 0 <= i < GL_MAX_LIGHTS
             // GL_LIGHTING flag
             // GL_LINE_SMOOTH flag
@@ -103,12 +104,17 @@ public class Feature {
             // GL_SCISSOR_TEST flag
             // GL_STENCIL_TEST flag
             // GL_TEXTURE_1D flag
-            // TODO: Texture Stack
-            //  GLStateManager.texture2D // GL_TEXTURE_2D flag
+            // GL_TEXTURE_2D flag - Below
             // GL_TEXTURE_3D flag
             // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
-
         ));
+
+        // GL_TEXTURE_2D flag
+        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            enableBits.add(GLStateManager.textures.getTextureUnitStates(i));
+        }
+
+        attribToFeatures.put(GL11.GL_ENABLE_BIT, enableBits);
         attribToFeatures.put(GL11.GL_EVAL_BIT, ImmutableSet.of(
             // GL_MAP1_x enable bits, where x is a map type
             // GL_MAP2_x enable bits, where x is a map type
@@ -211,17 +217,25 @@ public class Feature {
             // Stencil buffer clear value
             // Stencil buffer writemask
         ));
-        attribToFeatures.put(GL11.GL_TEXTURE_BIT, ImmutableSet.of(
-            // Enable bits for the four texture coordinates
-            // Border color for each texture image
-            // Minification function for each texture image
-            // Magnification function for each texture image
-            // Texture coordinates and wrap mode for each texture image
-            // Color and mode for each texture environment
-            // Enable bits GL_TEXTURE_GEN_x, x is S, T, R, and Q
-            // GL_TEXTURE_GEN_MODE setting for S, T, R, and Q
-            // glTexGen plane equations for S, T, R, and Q
+        final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
+                // Enable bits for the four texture coordinates
+                // Border color for each texture image
+                // Minification function for each texture image
+                // Magnification function for each texture image
+                // Texture coordinates and wrap mode for each texture image
+                // Color and mode for each texture environment
+                // Enable bits GL_TEXTURE_GEN_x, x is S, T, R, and Q
+                // GL_TEXTURE_GEN_MODE setting for S, T, R, and Q
+                // glTexGen plane equations for S, T, R, and Q
+                // Current texture bindings (for example, GL_TEXTURE_BINDING_2D) - Below
         ));
+
+        // Current Texture Bindings - GL_TEXTURE_BINDING_2D
+        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            textureAttribs.add(GLStateManager.textures.getTextureUnitBindings(i));
+        }
+
+        attribToFeatures.put(GL11.GL_TEXTURE_BIT, textureAttribs);
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes
