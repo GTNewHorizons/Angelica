@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-public class GLColorMask {
+public class ColorMask {
     public boolean red = true;
     public boolean green = true;
     public boolean blue = true;

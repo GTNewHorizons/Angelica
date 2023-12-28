@@ -2,14 +2,16 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.states.AlphaState;
-import com.gtnewhorizons.angelica.glsm.states.BlendState;
-import com.gtnewhorizons.angelica.glsm.states.BooleanState;
+import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
+import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import com.gtnewhorizons.angelica.glsm.states.DepthState;
-import com.gtnewhorizons.angelica.glsm.states.FogState;
-import com.gtnewhorizons.angelica.glsm.states.GLColorMask;
-import com.gtnewhorizons.angelica.glsm.states.MatrixState;
+import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.states.TextureState;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -29,6 +31,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
@@ -42,6 +45,8 @@ import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.stream.IntStream;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
@@ -49,21 +54,38 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
     public static final boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
+    public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
+    public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
+    public static final int MAX_PROJECTION_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
+    public static final int MAX_TEXTURE_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_STACK_DEPTH);
 
     // GLStateManager State Trackers
+    private static final Deque<Integer> attribs = new ArrayDeque<>(MAX_ATTRIB_STACK_DEPTH);
     @Getter private static int activeTexture;
-    @Getter private static final BlendState blendState = new BlendState();
-    @Getter private static final DepthState depthState = new DepthState();
-    @Getter private static final FogState fogState = new FogState();
-    @Getter private static final Color4 Color = new Color4();
-    @Getter private static final Color4 ClearColor = new Color4();
-    @Getter private static final GLColorMask ColorMask = new GLColorMask();
-    @Getter private static final BooleanState cullState = new BooleanState(GL11.GL_CULL_FACE);
-    @Getter private static final AlphaState alphaState = new AlphaState();
-    @Getter private static final BooleanState lightingState = new BooleanState(GL11.GL_LIGHTING);
-    @Getter private static final BooleanState rescaleNormalState = new BooleanState(GL12.GL_RESCALE_NORMAL);
-    @Getter private static final MatrixState matrixState = new MatrixState();
-    @Getter private static final ViewportState viewportState = new ViewportState();
+    @Getter protected static final BlendStateStack blendState = new BlendStateStack();
+    @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
+    @Getter protected static final DepthStateStack depthState = new DepthStateStack();
+    @Getter protected static final BooleanStateStack depthTest = new BooleanStateStack(GL11.GL_DEPTH_TEST);
+
+//    @Getter private static final FogState fogState = new FogState();
+    @Getter protected static final FogStateStack fogState = new FogStateStack();
+    @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
+    @Getter protected static final Color4 color = new Color4(); // TODO
+    @Getter protected static final Color4 clearColor = new Color4(); // TODO
+    @Getter protected static final ColorMask colorMask = new ColorMask(); // TODO
+    @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
+    @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
+    @Getter protected static final BooleanStateStack alphaTest = new BooleanStateStack(GL11.GL_ALPHA_TEST);
+
+    @Getter protected static final BooleanStateStack lightingState = new BooleanStateStack(GL11.GL_LIGHTING);
+    @Getter protected static final BooleanStateStack rescaleNormalState = new BooleanStateStack(GL12.GL_RESCALE_NORMAL);
+
+    @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
+    @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
+    @Getter protected static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
+    @Getter protected static final Matrix4fStack textureMatrix = new Matrix4fStack(MAX_TEXTURE_STACK_DEPTH);
+
+    @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
     private static long dirty = 0;
 
@@ -138,6 +160,19 @@ public class GLStateManager {
         }
     }
 
+    public static void glGetFloat(int pname, FloatBuffer params) {
+        switch (pname) {
+            case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(params);
+            case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
+            case GL11.GL_TEXTURE_MATRIX -> textureMatrix.get(params);
+            default -> GL11.glGetFloat(pname, params);
+        }
+    }
+
+    public static float glGetFloat(int pname) {
+        return GL11.glGetFloat(pname);
+    }
+
     // GLStateManager Functions
 
     public static void enableBlend() {
@@ -148,7 +183,7 @@ public class GLStateManager {
             }
         }
         hudCaching$blendEnabled = true;
-        blendState.mode.enable();
+        blendMode.enable();
     }
 
     public static void disableBlend() {
@@ -159,7 +194,7 @@ public class GLStateManager {
             }
         }
         hudCaching$blendEnabled = false;
-        blendState.mode.disable();
+        blendMode.disable();
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
@@ -170,17 +205,17 @@ public class GLStateManager {
             }
         }
         if (HUDCaching.renderingCacheOverride) {
-            blendState.srcRgb = srcFactor;
-            blendState.dstRgb = dstFactor;
-            blendState.srcAlpha = GL11.GL_ONE;
-            blendState.dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
+            blendState.setSrcRgb(srcFactor);
+            blendState.setDstRgb(dstFactor);
+            blendState.setSrcAlpha(GL11.GL_ONE);
+            blendState.setDstAlpha(GL11.GL_ONE_MINUS_SRC_ALPHA);
             OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             clean(Dirty.BLEND_STATE);
             return;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcFactor || blendState.dstRgb != dstFactor || checkDirty(Dirty.BLEND_STATE)) {
-            blendState.srcRgb = srcFactor;
-            blendState.dstRgb = dstFactor;
+        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor || checkDirty(Dirty.BLEND_STATE)) {
+            blendState.setSrcRgb(srcFactor);
+            blendState.setDstRgb(dstFactor);
             GL11.glBlendFunc(srcFactor, dstFactor);
         }
 
@@ -199,11 +234,12 @@ public class GLStateManager {
             srcAlpha = GL11.GL_ONE;
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.srcRgb != srcRgb || blendState.dstRgb != dstRgb || blendState.srcAlpha != srcAlpha || blendState.dstAlpha != dstAlpha || checkDirty(Dirty.BLEND_STATE)) {
-            blendState.srcRgb = srcRgb;
-            blendState.dstRgb = dstRgb;
-            blendState.srcAlpha = srcAlpha;
-            blendState.dstAlpha = dstAlpha;
+        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcRgb || blendState.getDstRgb() != dstRgb || blendState.getSrcAlpha()
+            != srcAlpha || blendState.getDstAlpha() != dstAlpha || checkDirty(Dirty.BLEND_STATE)) {
+            blendState.setSrcRgb(srcRgb);
+            blendState.setDstRgb(dstRgb);
+            blendState.setSrcAlpha(srcAlpha);
+            blendState.setDstAlpha(dstAlpha);
             OpenGlHelper.glBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
 
@@ -213,8 +249,8 @@ public class GLStateManager {
 
     public static void glDepthFunc(int func) {
         // Hacky workaround for now, need to figure out why this isn't being applied...
-        if (GLStateManager.BYPASS_CACHE || func != depthState.func || GLStateManager.runningSplash || checkDirty(Dirty.DEPTH_FUNC)) {
-            depthState.func = func;
+        if (GLStateManager.BYPASS_CACHE || func != depthState.getFunc() || GLStateManager.runningSplash || checkDirty(Dirty.DEPTH_FUNC)) {
+            depthState.setFunc(func);
             GL11.glDepthFunc(func);
         }
     }
@@ -227,8 +263,8 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.mask || checkDirty(Dirty.DEPTH_MASK)) {
-            depthState.mask = mask;
+        if (mask != depthState.isMask() || checkDirty(Dirty.DEPTH_MASK)) {
+            depthState.setMask(mask);
             GL11.glDepthMask(mask);
         }
     }
@@ -303,11 +339,11 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (GLStateManager.BYPASS_CACHE || red != Color.red || green != Color.green || blue != Color.blue || alpha != Color.alpha || checkDirty(Dirty.COLOR)) {
-            Color.red = red;
-            Color.green = green;
-            Color.blue = blue;
-            Color.alpha = alpha;
+        if (GLStateManager.BYPASS_CACHE || red != color.red || green != color.green || blue != color.blue || alpha != color.alpha || checkDirty(Dirty.COLOR)) {
+            color.red = red;
+            color.green = green;
+            color.blue = blue;
+            color.alpha = alpha;
             return true;
         }
         return false;
@@ -325,22 +361,22 @@ public class GLStateManager {
                 return;
             }
         }
-        if (GLStateManager.BYPASS_CACHE || red != ColorMask.red || green != ColorMask.green || blue != ColorMask.blue || alpha != ColorMask.alpha || checkDirty(Dirty.COLOR_MASK)) {
-            ColorMask.red = red;
-            ColorMask.green = green;
-            ColorMask.blue = blue;
-            ColorMask.alpha = alpha;
+        if (GLStateManager.BYPASS_CACHE || red != colorMask.red || green != colorMask.green || blue != colorMask.blue || alpha != colorMask.alpha || checkDirty(Dirty.COLOR_MASK)) {
+            colorMask.red = red;
+            colorMask.green = green;
+            colorMask.blue = blue;
+            colorMask.alpha = alpha;
             GL11.glColorMask(red, green, blue, alpha);
         }
     }
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != ClearColor.red || green != ClearColor.green || blue != ClearColor.blue || alpha != ClearColor.alpha || checkDirty(Dirty.CLEAR_COLOR)) {
-            ClearColor.red = red;
-            ClearColor.green = green;
-            ClearColor.blue = blue;
-            ClearColor.alpha = alpha;
+        if (GLStateManager.BYPASS_CACHE || red != clearColor.red || green != clearColor.green || blue != clearColor.blue || alpha != clearColor.alpha || checkDirty(Dirty.CLEAR_COLOR)) {
+            clearColor.red = red;
+            clearColor.green = green;
+            clearColor.blue = blue;
+            clearColor.alpha = alpha;
             GL11.glClearColor(red, green, blue, alpha);
         }
     }
@@ -353,7 +389,7 @@ public class GLStateManager {
                 return;
             }
         }
-        alphaState.mode.enable();
+        alphaTest.enable();
     }
 
     public static void disableAlphaTest() {
@@ -363,7 +399,7 @@ public class GLStateManager {
                 return;
             }
         }
-        alphaState.mode.disable();
+        alphaTest.disable();
     }
 
     public static void glAlphaFunc(int function, float reference) {
@@ -373,8 +409,8 @@ public class GLStateManager {
                 return;
             }
         }
-        alphaState.function = function;
-        alphaState.reference = reference;
+        alphaState.setFunction(function);
+        alphaState.setReference(reference);
         GL11.glAlphaFunc(function, reference);
     }
 
@@ -536,11 +572,11 @@ public class GLStateManager {
     }
 
     public static void enableDepthTest() {
-        depthState.mode.enable();
+        depthTest.enable();
     }
 
     public static void disableDepthTest() {
-        depthState.mode.disable();
+        depthTest.disable();
     }
 
     public static void enableLighting() {
@@ -560,14 +596,14 @@ public class GLStateManager {
     }
 
     public static void enableFog() {
-        fogState.mode.enable();
+        fogMode.enable();
         if (fogToggleListener != null) {
             fogToggleListener.run();
         }
     }
 
     public static void disableFog() {
-        fogState.mode.disable();
+        fogMode.disable();
         if (fogToggleListener != null) {
             fogToggleListener.run();
         }
@@ -581,44 +617,45 @@ public class GLStateManager {
             final float green = param.get(1);
             final float blue = param.get(2);
 
-            fogState.fogColor.set(red, green, blue);
-            fogState.fogAlpha = param.get(3);
-            fogState.fogColorBuffer.clear();
-            fogState.fogColorBuffer.put((FloatBuffer) param.position(0)).flip();
+            fogState.getFogColor().set(red, green, blue);
+            fogState.setFogAlpha(param.get(3));
+            fogState.getFogColorBuffer().clear();
+            fogState.getFogColorBuffer().put((FloatBuffer) param.position(0)).flip();
         }
     }
 
     public static Vector3d getFogColor() {
-        return fogState.fogColor;
+        return fogState.getFogColor();
     }
 
     public static void fogColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != fogState.fogColor.x || green != fogState.fogColor.y || blue != fogState.fogColor.z || alpha != fogState.fogAlpha) {
-            fogState.fogColor.set(red, green, blue);
-            fogState.fogAlpha = alpha;
-            fogState.fogColorBuffer.clear();
-            fogState.fogColorBuffer.put(red).put(green).put(blue).put(alpha).flip();
-            GL11.glFog(GL11.GL_FOG_COLOR, fogState.fogColorBuffer);
+        if (GLStateManager.BYPASS_CACHE || red != fogState.getFogColor().x || green != fogState.getFogColor().y || blue != fogState.getFogColor().z || alpha != fogState.getFogAlpha()) {
+            fogState.getFogColor().set(red, green, blue);
+            fogState.setFogAlpha(alpha);
+            fogState.getFogColorBuffer().clear();
+            fogState.getFogColorBuffer().put(red).put(green).put(blue).put(alpha).flip();
+            GL11.glFog(GL11.GL_FOG_COLOR, fogState.getFogColorBuffer());
         }
     }
 
     public static void glFogf(int pname, float param) {
         GL11.glFogf(pname, param);
+        // Note: Does not handle GL_FOG_INDEX
         switch (pname) {
             case GL11.GL_FOG_DENSITY -> {
-                fogState.density = param;
+                fogState.setDensity(param);
                 if (fogDensityListener != null) {
                     fogDensityListener.run();
                 }
             }
             case GL11.GL_FOG_START -> {
-                fogState.start = param;
+                fogState.setStart(param);
                 if (fogStartListener != null) {
                     fogStartListener.run();
                 }
             }
             case GL11.GL_FOG_END -> {
-                fogState.end = param;
+                fogState.setEnd(param);
                 if (fogEndListener != null) {
                     fogEndListener.run();
                 }
@@ -629,7 +666,7 @@ public class GLStateManager {
     public static void glFogi(int pname, int param) {
         GL11.glFogi(pname, param);
         if (pname == GL11.GL_FOG_MODE) {
-            fogState.fogMode = param;
+            fogState.setFogMode(param);
             if (fogModeListener != null) {
                 fogModeListener.run();
             }
@@ -685,14 +722,20 @@ public class GLStateManager {
         GL11.glEndList();
     }
 
+
     public static void glPushAttrib(int mask) {
-        // TODO: Proper state tracking; but at least for now the current cases of this didn't do anything related to textures and
-        // just overly broadly set ALL_BITS :facepalm:
-        GL11.glPushAttrib(GLStateManager.BYPASS_CACHE ? mask : (mask & ~(GL11.GL_TEXTURE_BIT)));
+        attribs.push(mask);
+        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
+            stack.push();
+        }
+        GL11.glPushAttrib(mask);
     }
 
     public static void glPopAttrib() {
-        dirty = Dirty.ALL;
+        final int mask = attribs.pop();
+        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
+            stack.pop();
+        }
         GL11.glPopAttrib();
     }
 
@@ -713,36 +756,53 @@ public class GLStateManager {
 
     // Matrix Operations
     public static void glMatrixMode(int mode) {
-        matrixState.setMode(mode);
-        GL11.glMatrixMode(mode);
+        matrixMode.setMode(mode);
     }
+
+    public static Matrix4fStack getMatrixStack() {
+        switch (matrixMode.getMode()) {
+            case GL11.GL_MODELVIEW -> {
+                return modelViewMatrix;
+            }
+            case GL11.GL_PROJECTION -> {
+                return projectionMatrix;
+            }
+            case GL11.GL_TEXTURE -> {
+                return textureMatrix;
+            }
+            default -> throw new IllegalStateException("Unknown matrix mode: " + matrixMode.getMode());
+        }
+    }
+
     public static void glLoadIdentity() {
         GL11.glLoadIdentity();
-        matrixState.identity();
+        getMatrixStack().identity();
     }
 
     public static void glTranslatef(float x, float y, float z) {
         GL11.glTranslatef(x, y, z);
-        matrixState.translate(x, y, z);
+        getMatrixStack().translate(x, y, z);
     }
     public static void glTranslated(double x, double y, double z) {
         GL11.glTranslated(x, y, z);
-        matrixState.translate((float) x, (float) y, (float) z);
+        getMatrixStack().translate((float) x, (float) y, (float) z);
     }
 
     public static void glScalef(float x, float y, float z) {
         GL11.glScalef(x, y, z);
-        matrixState.scale(x, y, z);
+        getMatrixStack().scale(x, y, z);
     }
 
     public static void glScaled(double x, double y, double z) {
         GL11.glScaled(x, y, z);
-        matrixState.scale((float) x, (float) y, (float) z);
+        getMatrixStack().scale((float) x, (float) y, (float) z);
     }
 
-    public static void glMultMatrix(FloatBuffer matrix) {
-        GL11.glMultMatrix(matrix);
-        matrixState.multiply(matrix);
+    private static final Matrix4f tempMatrix4f = new Matrix4f();
+    public static void glMultMatrix(FloatBuffer floatBuffer) {
+        GL11.glMultMatrix(floatBuffer);
+        tempMatrix4f.set(floatBuffer);
+        getMatrixStack().mul(conersionMatrix4f);
     }
 
     public static final Matrix4d conersionMatrix4d = new Matrix4d();
@@ -751,36 +811,36 @@ public class GLStateManager {
         GL11.glMultMatrix(matrix);
         conersionMatrix4d.set(matrix);
         conersionMatrix4f.set(conersionMatrix4d);
-        matrixState.multiply(conersionMatrix4f);
+        getMatrixStack().mul(conersionMatrix4f);
     }
 
     public static void glRotatef(float angle, float x, float y, float z) {
         GL11.glRotatef(angle, x, y, z);
-        matrixState.rotate((float)Math.toRadians(angle), x, y, z);
+        getMatrixStack().rotate((float)Math.toRadians(angle), x, y, z);
     }
 
     public static void glRotated(double angle, double x, double y, double z) {
         GL11.glRotated(angle, x, y, z);
-        matrixState.rotate((float)Math.toRadians(angle), (float) x, (float) y, (float) z);
+        getMatrixStack().rotate((float)Math.toRadians(angle), (float) x, (float) y, (float) z);
     }
 
     public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         GL11.glOrtho(left, right, bottom, top, zNear, zFar);
-        matrixState.ortho(left, right, bottom, top, zNear, zFar);
+        getMatrixStack().ortho((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar);
     }
 
     public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         GL11.glFrustum(left, right, bottom, top, zNear, zFar);
-        matrixState.frustum(left, right, bottom, top, zNear, zFar);
+        getMatrixStack().frustum((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar);
     }
     public static void glPushMatrix() {
         GL11.glPushMatrix();
-        matrixState.push();
+        getMatrixStack().pushMatrix();
     }
 
     public static void glPopMatrix() {
         GL11.glPopMatrix();
-        matrixState.pop();
+        getMatrixStack().popMatrix();
     }
 
     private static final Matrix4f perspectiveMatrix = new Matrix4f();
@@ -791,13 +851,13 @@ public class GLStateManager {
         perspectiveMatrix.get(0, perspectiveBuffer);
         GL11.glMultMatrix(perspectiveBuffer);
 
-        matrixState.multiply(perspectiveMatrix);
+        getMatrixStack().mul(perspectiveMatrix);
 
     }
 
     public static void glViewport(int x, int y, int width, int height) {
         GL11.glViewport(x, y, width, height);
-        viewportState.set(x, y, width, height);
+        viewportState.setViewPort(x, y, width, height);
     }
 
 }

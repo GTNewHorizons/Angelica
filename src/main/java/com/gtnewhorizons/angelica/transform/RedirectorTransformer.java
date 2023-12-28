@@ -86,6 +86,7 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
         glCapRedirects.put(org.lwjgl.opengl.GL12.GL_RESCALE_NORMAL, "RescaleNormal");
         methodRedirects.put(GL11, RedirectMap.newMap()
+            .add("glGetFloat")
             .add("glAlphaFunc")
             .add("glBindTexture")
             .add("glBlendFunc")

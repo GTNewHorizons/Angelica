@@ -81,9 +81,9 @@ public final class CommonUniforms {
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
-            final BlendState blend = GLStateManager.getBlendState();
-            if(blend.mode.isEnabled()) {
-                return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
+            if(GLStateManager.getBlendMode().isEnabled()) {
+                final BlendState blend = GLStateManager.getBlendState();
+                return new Vector4i(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
             }
             return ZERO_VECTOR_4i;
 		}, StateUpdateNotifiers.blendFuncNotifier);
