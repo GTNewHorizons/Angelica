@@ -92,8 +92,6 @@ public class GLStateManager {
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
-    private static long dirty = 0;
-
     private static int modelShadeMode;
 
     // Iris Listeners
@@ -210,10 +208,9 @@ public class GLStateManager {
             blendState.setSrcAlpha(GL11.GL_ONE);
             blendState.setDstAlpha(GL11.GL_ONE_MINUS_SRC_ALPHA);
             OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            clean(Dirty.BLEND_STATE);
             return;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor || checkDirty(Dirty.BLEND_STATE)) {
+        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor) {
             blendState.setSrcRgb(srcFactor);
             blendState.setDstRgb(dstFactor);
             GL11.glBlendFunc(srcFactor, dstFactor);
@@ -235,7 +232,7 @@ public class GLStateManager {
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
         if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcRgb || blendState.getDstRgb() != dstRgb || blendState.getSrcAlpha()
-            != srcAlpha || blendState.getDstAlpha() != dstAlpha || checkDirty(Dirty.BLEND_STATE)) {
+            != srcAlpha || blendState.getDstAlpha() != dstAlpha) {
             blendState.setSrcRgb(srcRgb);
             blendState.setDstRgb(dstRgb);
             blendState.setSrcAlpha(srcAlpha);
@@ -249,7 +246,7 @@ public class GLStateManager {
 
     public static void glDepthFunc(int func) {
         // Hacky workaround for now, need to figure out why this isn't being applied...
-        if (GLStateManager.BYPASS_CACHE || func != depthState.getFunc() || GLStateManager.runningSplash || checkDirty(Dirty.DEPTH_FUNC)) {
+        if (GLStateManager.BYPASS_CACHE || func != depthState.getFunc() || GLStateManager.runningSplash) {
             depthState.setFunc(func);
             GL11.glDepthFunc(func);
         }
@@ -263,7 +260,7 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.isMask() || checkDirty(Dirty.DEPTH_MASK)) {
+        if (mask != depthState.isMask()) {
             depthState.setMask(mask);
             GL11.glDepthMask(mask);
         }
@@ -339,7 +336,7 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (GLStateManager.BYPASS_CACHE || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha() || checkDirty(Dirty.COLOR)) {
+        if (GLStateManager.BYPASS_CACHE || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha()) {
             color.setRed(red);
             color.setGreen(green);
             color.setBlue(blue);
@@ -362,7 +359,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (GLStateManager.BYPASS_CACHE || red != colorMask.red || green != colorMask.green || blue != colorMask.blue || alpha != colorMask.alpha || checkDirty(Dirty.COLOR_MASK)) {
+        if (GLStateManager.BYPASS_CACHE || red != colorMask.red || green != colorMask.green || blue != colorMask.blue || alpha != colorMask.alpha) {
             colorMask.red = red;
             colorMask.green = green;
             colorMask.blue = blue;
@@ -373,7 +370,7 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != clearColor.getRed() || green != clearColor.getGreen() || blue != clearColor.getBlue() || alpha != clearColor.getAlpha() || checkDirty(Dirty.CLEAR_COLOR)) {
+        if (GLStateManager.BYPASS_CACHE || red != clearColor.getRed() || green != clearColor.getGreen() || blue != clearColor.getBlue() || alpha != clearColor.getAlpha()) {
             clearColor.setRed(red);
             clearColor.setGreen(green);
             clearColor.setBlue(blue);
@@ -418,7 +415,7 @@ public class GLStateManager {
     // Textures
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
+        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture) {
             activeTextureUnit.popInt();
             activeTextureUnit.push(newTexture);
             GL13.glActiveTexture(texture);
@@ -427,7 +424,7 @@ public class GLStateManager {
 
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture || checkDirty(Dirty.ACTIVE_TEXTURE)) {
+        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture) {
             activeTextureUnit.popInt();
             activeTextureUnit.push(newTexture);
             ARBMultitexture.glActiveTextureARB(texture);
@@ -456,7 +453,7 @@ public class GLStateManager {
 
         final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
-        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash || checkDirty(Dirty.BOUND_TEXTURE)) {
+        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
             GL11.glBindTexture(target, texture);
             textureUnit.setBinding(texture);
             if (AngelicaConfig.enableIris) {
@@ -689,7 +686,7 @@ public class GLStateManager {
     }
 
     public static void glShadeModel(int mode) {
-        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode || checkDirty(Dirty.SHADE_MODEL)) {
+        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode) {
             modelShadeMode = mode;
             GL11.glShadeModel(mode);
         }
@@ -748,21 +745,6 @@ public class GLStateManager {
             stack.pop();
         }
         GL11.glPopAttrib();
-    }
-
-    public static boolean checkDirty(long flag) {
-        if((dirty & flag ) == flag) {
-            dirty &= ~flag;
-            return true;
-        }
-        return false;
-    }
-    public static void clean(long dirtyFlag) {
-        dirty &= ~dirtyFlag;
-    }
-
-    public static void dirty(long dirtyFlag) {
-        dirty |= dirtyFlag;
     }
 
     // Matrix Operations

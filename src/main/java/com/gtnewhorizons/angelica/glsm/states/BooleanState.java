@@ -27,7 +27,7 @@ public class BooleanState implements ISettableState<BooleanState> {
     }
 
     public void setEnabled(boolean enabled) {
-        if (GLStateManager.BYPASS_CACHE || enabled != this.enabled || GLStateManager.checkDirty(this.dirtyFlag)) {
+        if (GLStateManager.BYPASS_CACHE || enabled != this.enabled) {
             this.enabled = enabled;
             if (enabled) {
                 GL11.glEnable(this.glCap);
