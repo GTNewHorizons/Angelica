@@ -51,7 +51,7 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
             Iris.logger.error("Error reading files while constructing selection UI", e);
 
             // Not translating this since it's going to be seen very rarely,
-            // We're just trying to getTextureUnit more information on a seemingly untraceable bug:
+            // We're just trying to get more information on a seemingly untraceable bug:
             // - https://github.com/IrisShaders/Iris/issues/785
             this.addLabelEntries(
                 "",
