@@ -96,9 +96,6 @@ public class GLStateManager {
 
     private static int modelShadeMode;
 
-    @Getter
-//    private static TextureState[] Textures;
-
     // Iris Listeners
     private static Runnable blendFuncListener = null;
     private static Runnable fogToggleListener = null;
