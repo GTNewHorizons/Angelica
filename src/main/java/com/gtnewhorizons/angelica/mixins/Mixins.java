@@ -26,7 +26,6 @@ public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinActiveRenderInfo"
-            ,"angelica.MixinClippingHelperImpl"
             ,"angelica.MixinEntityRenderer"
         )
     ),

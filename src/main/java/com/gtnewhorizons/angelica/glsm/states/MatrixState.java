@@ -30,7 +30,8 @@ public class MatrixState {
         switch (mode) {
             case GL11.GL_MODELVIEW -> this.mode = MatrixMode.MODELVIEW;
             case GL11.GL_PROJECTION -> this.mode = MatrixMode.PROJECTION;
-            default -> this.mode = MatrixMode.NONE;
+            case GL11.GL_TEXTURE -> this.mode = MatrixMode.TEXTURE;
+            default -> throw new RuntimeException("Unsupported matrix mode: " + mode);
         }
     }
 
@@ -129,6 +130,7 @@ public class MatrixState {
     enum MatrixMode {
         NONE,
         MODELVIEW,
-        PROJECTION
+        PROJECTION,
+        TEXTURE
     }
 }

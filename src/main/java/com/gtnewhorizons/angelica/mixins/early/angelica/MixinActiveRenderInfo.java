@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.minecraft.client.renderer.ActiveRenderInfo;
 import org.lwjgl.opengl.GL11;
@@ -24,16 +23,6 @@ public class MixinActiveRenderInfo {
         RenderingState.INSTANCE.setModelViewMatrix(modelview);
     }
 
-    @Redirect(method = "updateRenderInfo", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetFloat(ILjava/nio/FloatBuffer;)V"), remap = false)
-    private static void angelica$glGetFloat(int pname, FloatBuffer params) {
-        if(pname == GL11.GL_MODELVIEW_MATRIX) {
-            GLStateManager.getMatrixState().modelViewMatrix.get(0, params);
-        } else if(pname == GL11.GL_PROJECTION_MATRIX) {
-            GLStateManager.getMatrixState().projectionMatrix.get(0, params);
-        } else {
-            GL11.glGetFloat(pname, params);
-        }
-    }
     @Redirect(method = "updateRenderInfo", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetInteger(ILjava/nio/IntBuffer;)V"), remap = false)
     private static void angelica$glGetInteger(int pname, java.nio.IntBuffer params) {
         if(pname == GL11.GL_VIEWPORT) {

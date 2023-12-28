@@ -15,8 +15,8 @@ public class AlphaTestStorage {
             final AlphaState alphaState = GLStateManager.getAlphaState();
 
 			// Only save the previous state if the alpha test wasn't already locked
-			originalAlphaTestEnable = alphaState.mode.isEnabled();
-			originalAlphaTest = new AlphaTest(AlphaTestFunction.fromGlId(alphaState.function).orElse(AlphaTestFunction.ALWAYS), alphaState.reference);
+			originalAlphaTestEnable = GLStateManager.getAlphaTest().isEnabled();
+			originalAlphaTest = new AlphaTest(AlphaTestFunction.fromGlId(alphaState.getFunction()).orElse(AlphaTestFunction.ALWAYS), alphaState.getReference());
 		}
 
 		alphaTestLocked = false;

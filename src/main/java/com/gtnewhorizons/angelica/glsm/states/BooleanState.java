@@ -5,17 +5,17 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 
-public class BooleanState {
-    private final int cap;
+public class BooleanState implements ISettableState<BooleanState> {
+    private final int glCap;
 
     private final long dirtyFlag;
 
     @Getter
     private boolean enabled;
 
-    public BooleanState(int cap) {
-        this.cap = cap;
-        this.dirtyFlag = Dirty.getFlagFromCap(this.cap);
+    public BooleanState(int glCap) {
+        this.glCap = glCap;
+        this.dirtyFlag = Dirty.getFlagFromCap(this.glCap);
     }
 
     public void disable() {
@@ -30,10 +30,16 @@ public class BooleanState {
         if (GLStateManager.BYPASS_CACHE || enabled != this.enabled || GLStateManager.checkDirty(this.dirtyFlag)) {
             this.enabled = enabled;
             if (enabled) {
-                GL11.glEnable(this.cap);
+                GL11.glEnable(this.glCap);
             } else {
-                GL11.glDisable(this.cap);
+                GL11.glDisable(this.glCap);
             }
         }
+    }
+
+    @Override
+    public BooleanState set(BooleanState state) {
+        this.enabled = state.enabled;
+        return this;
     }
 }

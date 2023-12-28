@@ -39,7 +39,7 @@ public class TextureTracker {
 		if (lockBindCallback) {
 			return;
 		}
-		if (GLStateManager.getActiveTexture() == 0) {
+		if (GLStateManager.getActiveTextureUnit() == 0) {
 			lockBindCallback = true;
 			if (bindTextureListener != null) {
 				bindTextureListener.run();
