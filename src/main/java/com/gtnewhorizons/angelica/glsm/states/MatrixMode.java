@@ -9,11 +9,9 @@ public class MatrixMode implements ISettableState<MatrixMode> {
     protected int mode = GL11.GL_MODELVIEW;
 
     public void setMode(int mode) {
-        // Handle buggy mods
-        if(mode == GL11.GL_MODELVIEW_MATRIX) {
-            mode = GL11.GL_MODELVIEW;
-        } else if(mode == GL11.GL_PROJECTION_MATRIX) {
-            mode = GL11.GL_PROJECTION;
+        if(mode != GL11.GL_MODELVIEW && mode != GL11.GL_PROJECTION && mode != GL11.GL_TEXTURE && mode != GL11.GL_COLOR) {
+            // Invalid mode, do nothing
+            return;
         }
 
         if(this.mode != mode || GLStateManager.BYPASS_CACHE) {
