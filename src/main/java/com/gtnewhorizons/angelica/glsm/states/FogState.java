@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
 import lombok.Getter;
 import lombok.Setter;
 import org.joml.Vector3d;
@@ -9,7 +8,7 @@ import org.lwjgl.opengl.GL11;
 import java.nio.FloatBuffer;
 
 @Getter @Setter
-public class FogState implements IStackableState<FogState> {
+public class FogState implements ISettableState<FogState> {
     protected int fogMode = GL11.GL_EXP;
     protected final Vector3d fogColor = new Vector3d(0.0F, 0.0F, 0.0F);
     protected float fogAlpha = 1.0F;

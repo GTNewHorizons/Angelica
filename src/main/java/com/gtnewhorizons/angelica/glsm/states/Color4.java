@@ -1,11 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class Color4 implements IStackableState<Color4> {
+public class Color4 implements ISettableState<Color4> {
     protected float red = 1.0F;
     protected float green = 1.0F;
     protected float blue = 1.0F;

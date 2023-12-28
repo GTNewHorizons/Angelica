@@ -2,11 +2,10 @@ package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.Dirty;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 
-public class BooleanState implements IStackableState<BooleanState> {
+public class BooleanState implements ISettableState<BooleanState> {
     private final int glCap;
 
     private final long dirtyFlag;

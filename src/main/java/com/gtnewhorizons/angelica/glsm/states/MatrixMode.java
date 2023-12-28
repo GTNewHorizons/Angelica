@@ -1,12 +1,11 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 
 @Getter
-public class MatrixMode implements IStackableState<MatrixMode> {
+public class MatrixMode implements ISettableState<MatrixMode> {
     protected int mode = GL11.GL_MODELVIEW;
 
     public void setMode(int mode) {

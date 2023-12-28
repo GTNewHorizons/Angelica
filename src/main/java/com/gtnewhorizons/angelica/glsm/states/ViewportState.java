@@ -1,10 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
-
 import java.nio.IntBuffer;
 
-public class ViewportState implements IStackableState<ViewportState> {
+public class ViewportState implements ISettableState<ViewportState> {
     public int x;
     public int y;
     public int width;

@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
-
-public class ColorMask implements IStackableState<ColorMask> {
+public class ColorMask implements ISettableState<ColorMask> {
     public boolean red = true;
     public boolean green = true;
     public boolean blue = true;

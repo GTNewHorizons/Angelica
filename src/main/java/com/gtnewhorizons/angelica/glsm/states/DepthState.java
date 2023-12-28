@@ -1,12 +1,11 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.stacks.IStackableState;
 import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.opengl.GL11;
 
 @Getter @Setter
-public class DepthState implements IStackableState<DepthState> {
+public class DepthState implements ISettableState<DepthState> {
     protected boolean mask = true;
     protected int func = GL11.GL_LESS;
 
