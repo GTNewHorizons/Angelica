@@ -173,7 +173,9 @@ public class RedirectorTransformer implements IClassTransformer {
             // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
             // superclass
             boolean doWeShadow;
-            if(blockOwnerExclusions.contains(cn.superName)) {
+            if(cn.name.equals(BlockClass)) {
+                doWeShadow = false; // by definition
+            } else if(blockOwnerExclusions.contains(cn.superName)) {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
