@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static com.gtnewhorizons.angelica.transform.BlockTransformer.*;
 
@@ -75,6 +76,8 @@ public class RedirectorTransformer implements IClassTransformer {
     private static int remaps = 0;
 
     private static final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    // Block owners we *shouldn't* redirect because they shadow one of our fields
+    private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -165,6 +168,24 @@ public class RedirectorTransformer implements IClassTransformer {
             cstPoolParser.addString(cn.name);
         }
 
+        // Check if this class shadows any fields of the parent class
+        if(blockSubclasses.contains(cn.name)) {
+            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
+            // superclass
+            boolean doWeShadow;
+            if(blockOwnerExclusions.contains(cn.superName)) {
+                doWeShadow = true;
+            } else {
+                // Check if we declare any known field names
+                Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
+                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight())));
+            }
+            if(doWeShadow) {
+                AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
+                blockOwnerExclusions.add(cn.name);
+            }
+        }
+
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
             if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
@@ -238,7 +259,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(blockSubclasses.contains(fNode.owner)) {
+                    if(!blockOwnerExclusions.contains(fNode.owner) && blockSubclasses.contains(fNode.owner)) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
