@@ -33,9 +33,21 @@
  *
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
+configurations {
+    transformedMod // Mods that can be transformed - used for compiling angelica, but not necessary at runtime
+    transformedMod.canBeConsumed = false
+    transformedModCompileOnly
+    transformedModCompileOnly.canBeConsumed = false
+
+    // Add the transformed mod dependencies to the compilation and runtime classpaths, but don't publish them in the Maven metadata
+    compileClasspath.extendsFrom(transformedMod, transformedModCompileOnly)
+    runtimeClasspath.extendsFrom(transformedMod)
+    testCompileClasspath.extendsFrom(transformedMod, transformedModCompileOnly)
+    testRuntimeClasspath.extendsFrom(transformedMod)
+}
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.4.3")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.4.4")
 
     compileOnly("org.projectlombok:lombok:1.18.22") {transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.22")
@@ -74,4 +86,6 @@ dependencies {
 
     runtimeOnly(deobf("https://github.com/makamys/CoreTweaks/releases/download/0.3.3.2/CoreTweaks-1.7.10-0.3.3.2+nomixin.jar"))
 
+    // Hodgepodge
+    transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
 }
