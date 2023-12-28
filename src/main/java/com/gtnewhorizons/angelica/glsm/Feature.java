@@ -39,10 +39,10 @@ public class Feature {
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
     static {
         attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
-             GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
-            ,GLStateManager.alphaState // Alpha test function and reference value
-            ,GLStateManager.blendMode  // GL_BLEND enable bit
-            ,GLStateManager.blendState // Blending source and destination functions
+              GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
+            , GLStateManager.alphaState // Alpha test function and reference value
+            , GLStateManager.blendMode  // GL_BLEND enable bit
+            , GLStateManager.blendState // Blending source and destination functions
             // Constant blend color
             // Blending equation
             // GL_DITHER enable bit
@@ -50,8 +50,9 @@ public class Feature {
             // GL_COLOR_LOGIC_OP enable bit
             // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
-            // TODO: Color mode and index mode clear values
-            // TODO: Color mode and index mode writemasks
+            , GLStateManager.colorMask  // Color mode and index mode writemasks
+            , GLStateManager.color      // Color mode and index mode writemasks
+            , GLStateManager.clearColor // Color mode and index mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
             // Current RGBA color
@@ -66,14 +67,14 @@ public class Feature {
             // GL_EDGE_FLAG flag
         ));
         attribToFeatures.put(GL11.GL_DEPTH_BUFFER_BIT, ImmutableSet.of(
-             GLStateManager.depthTest     // GL_DEPTH_TEST enable bit
-            ,GLStateManager.depthState    // Depth buffer test function
+              GLStateManager.depthTest     // GL_DEPTH_TEST enable bit
+            , GLStateManager.depthState    // Depth buffer test function
             // Depth buffer clear value
             // GL_DEPTH_WRITEMASK enable bit
         ));
 
         final HashSet<IStateStack<?>> enableBits = new HashSet<>(ImmutableSet.of(
-            GLStateManager.alphaTest // GL_ALPHA_TEST flag
+              GLStateManager.alphaTest // GL_ALPHA_TEST flag
             // GL_AUTO_NORMAL flag
             , GLStateManager.blendMode // GL_BLEND flag
             // Enable bits for the user-definable clipping planes
@@ -123,8 +124,8 @@ public class Feature {
             // GL_AUTO_NORMAL enable bit
         ));
         attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
-             GLStateManager.fogMode    // GL_FOG enable bit
-            ,GLStateManager.fogState   // Fog color
+              GLStateManager.fogMode    // GL_FOG enable bit
+            , GLStateManager.fogState   // Fog color
                                        // ^^ Fog density
                                        // ^^ Linear fog start
                                        // ^^ Linear fog end
