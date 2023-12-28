@@ -91,15 +91,18 @@ public class ClassConstantPoolParser {
                 case UTF8:
                     final int strLen = readUnsignedShort(index + 1, basicClass);
                     size = 3 + strLen;
-                    label:
                     for (byte[] bytes : BYTES_TO_SEARCH) {
                         if (strLen == bytes.length) {
+                            boolean found = true;
                             for (int j = index + 3; j < index + 3 + strLen; j++) {
                                 if (basicClass[j] != bytes[j - (index + 3)]) {
-                                    break label;
+                                    found = false;
+                                    break;
                                 }
                             }
-                            return true;
+                            if (found) {
+                                return true;
+                            }
                         }
                     }
                     break;
