@@ -24,6 +24,9 @@ public class AngelicaMod {
     public static boolean isNEIDLoaded;
     /** ASM Version */
     public static boolean isOldNEIDLoaded;
+
+    public static boolean isLotrLoaded;
+
     public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
@@ -32,6 +35,7 @@ public class AngelicaMod {
     public void preInit(FMLPreInitializationEvent event) {
         isNEIDLoaded = Loader.isModLoaded("neid");
         isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
+        isLotrLoaded = Loader.isModLoaded("lotr");
         proxy.preInit(event);
     }
 

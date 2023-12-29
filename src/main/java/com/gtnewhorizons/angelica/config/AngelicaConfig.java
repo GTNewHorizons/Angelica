@@ -79,6 +79,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeJabbaGetInteger;
 
+    @Config.Comment("Fix thread-safety in lotrs rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixLotrSodiumCompat;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
