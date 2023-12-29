@@ -11,6 +11,7 @@ import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import mist475.mcpatcherforge.asm.AsmTransformers;
 import mist475.mcpatcherforge.asm.mappings.Namer;
+import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,7 +44,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
             Configuration config = ctx.getConfiguration();
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-            loggerConfig.setLevel(Level.DEBUG);
+            if (AngelicaConfig.enableDebugLogging || (boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment")) {
+                loggerConfig.setLevel(Level.DEBUG);
+            }
             ctx.updateLoggers();
         } catch (ConfigException e) {
             throw new RuntimeException(e);
