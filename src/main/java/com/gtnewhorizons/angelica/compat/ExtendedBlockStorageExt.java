@@ -23,7 +23,9 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
         super(((MixinExtendedBlockStorage) storage).getYBase(), storage.getSkylightArray() != null);
 
         if (AngelicaMod.isChunkAPILoaded) {
-            hasSky = !chunk.worldObj.provider.hasNoSky;
+            if (storage.getSkylightArray() != null) {
+                hasSky = true;
+            }
             DataRegistry.cloneSubChunk(chunk, storage, this);
         } else {
             int arrayLen;
