@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntStack;
 import lombok.Getter;
@@ -828,12 +829,24 @@ public class GLStateManager {
     }
     public static void glPushMatrix() {
         GL11.glPushMatrix();
-        getMatrixStack().pushMatrix();
+        try {
+            getMatrixStack().pushMatrix();
+        } catch(IllegalStateException ignored) {
+            // Ignore
+            if(AngelicaMod.lwjglDebug)
+                AngelicaTweaker.LOGGER.warn("Matrix stack overflow ", new Throwable());
+        }
     }
 
     public static void glPopMatrix() {
         GL11.glPopMatrix();
-        getMatrixStack().popMatrix();
+        try {
+            getMatrixStack().popMatrix();
+        } catch(IllegalStateException ignored) {
+            // Ignore
+            if(AngelicaMod.lwjglDebug)
+                AngelicaTweaker.LOGGER.warn("Matrix stack underflow ", new Throwable());
+        }
     }
 
     private static final Matrix4f perspectiveMatrix = new Matrix4f();
