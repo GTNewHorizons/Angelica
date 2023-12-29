@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
+import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -58,7 +60,13 @@ public class ClonedChunkSection {
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(chunk, section);
 
-        this.biomeData = new BiomeGenBase[chunk.getBiomeArray().length];
+        int bArrLength;
+        if (AngelicaMod.isEIDBiomeLoaded) {
+            bArrLength = ((ChunkBiomeHook)chunk).getBiomeShortArray().length;
+        } else {
+            bArrLength = chunk.getBiomeArray().length;
+        }
+        this.biomeData = new BiomeGenBase[bArrLength];
 
         StructureBoundingBox box = new StructureBoundingBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
 
