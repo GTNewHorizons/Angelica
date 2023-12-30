@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
@@ -11,6 +12,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -32,6 +34,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientProxy extends CommonProxy {
 
@@ -62,7 +65,17 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
-        // Nothing to do here (yet)
+        if (AngelicaMod.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
+            try {
+                Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
+                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"naturalBlockClassTable");
+                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"naturalBlockTable");
+                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"cachedNaturalBlocks");
+            }
+            catch (ClassNotFoundException e) {
+                AngelicaTweaker.LOGGER.error("Could net replace LOTR handle render code with thread safe version");
+            }
+        }
     }
 
     float lastIntegratedTickTime;
