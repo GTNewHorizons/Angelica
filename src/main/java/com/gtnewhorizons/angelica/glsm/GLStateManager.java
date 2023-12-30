@@ -36,6 +36,7 @@ import org.joml.Matrix4d;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
@@ -160,6 +161,11 @@ public class GLStateManager {
     }
 
     public static void glGetFloat(int pname, FloatBuffer params) {
+        if(GLStateManager.BYPASS_CACHE) {
+            GL11.glGetFloat(pname, params);
+            return;
+        }
+
         switch (pname) {
             case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(params);
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
@@ -808,14 +814,17 @@ public class GLStateManager {
         getMatrixStack().mul(conersionMatrix4f);
     }
 
+    private static final Vector3f rotation = new Vector3f();
     public static void glRotatef(float angle, float x, float y, float z) {
         GL11.glRotatef(angle, x, y, z);
-        getMatrixStack().rotate((float)Math.toRadians(angle), x, y, z);
+        rotation.set(x, y, z).normalize();
+        getMatrixStack().rotate((float)Math.toRadians(angle), rotation);
     }
 
     public static void glRotated(double angle, double x, double y, double z) {
         GL11.glRotated(angle, x, y, z);
-        getMatrixStack().rotate((float)Math.toRadians(angle), (float) x, (float) y, (float) z);
+        rotation.set(x, y, z).normalize();
+        getMatrixStack().rotate((float)Math.toRadians(angle), rotation);
     }
 
     public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
