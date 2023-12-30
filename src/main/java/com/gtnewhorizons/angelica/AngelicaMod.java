@@ -27,7 +27,11 @@ public class AngelicaMod {
 
     public static boolean isLotrLoaded;
 
-    public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
+    public static boolean isChunkAPILoaded;
+
+    public static boolean isEIDBiomeLoaded;
+
+  public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
@@ -36,6 +40,8 @@ public class AngelicaMod {
         isNEIDLoaded = Loader.isModLoaded("neid");
         isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
         isLotrLoaded = Loader.isModLoaded("lotr");
+        isChunkAPILoaded = Loader.isModLoaded("chunkapi");
+        isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         proxy.preInit(event);
     }
 
