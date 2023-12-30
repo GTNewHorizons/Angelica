@@ -2,11 +2,10 @@
 
 repositories {
     maven {
-        name = 'covers1624 maven'
-        url = 'https://nexus.covers1624.net/repository/maven-hosted/'
-        metadataSources {
-            mavenPom()
-            artifact()
+        name = 'mavenpattern'
+        url = 'https://mvn.falsepattern.com/releases'
+        content {
+            includeGroup "com.falsepattern"
         }
     }
     mavenLocal()

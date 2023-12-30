@@ -9,6 +9,8 @@
 * Forge Relocation - Currently non Thread Safe; safe if not in use
 * ProjectRed Frames - Currently non Thread Safe; safe if not in use
 * EndlessIDs - Future compat planned
+* FalseTweaks - Future compat planned
+* SmoothFont - Future compat planned
 * RPLE - Future compat planned
 
 # Permanent Incompatibilities
@@ -16,8 +18,9 @@
 * Fastcraft [Disable, won't fix]
 * LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
-* Hodgepodge 2.4.2 and below - Use 2.4.3 or above
+* Hodgepodge 2.4.3 and below - Use 2.4.4 or above
 * CodeChickenCore/Lib <1.2.0 - Threading issues, use 1.2.0+
+* Neodymium - Untested, but unlikely to be compatible.  (Chunk Meshing is definitely incompatible, other features might work depending on config)
 
 # Credits
 * ShadersMod

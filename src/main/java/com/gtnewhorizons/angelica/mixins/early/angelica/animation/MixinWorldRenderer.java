@@ -25,13 +25,13 @@ public class MixinWorldRenderer implements ITexturesCache {
     private Set<IIcon> renderedIcons;
 
     @ModifyArg(method = "updateRenderer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;<init>(Lnet/minecraft/world/IBlockAccess;)V"))
-    private IBlockAccess hodgepodge$onUpdateRenderer(IBlockAccess chunkCache) {
+    private IBlockAccess angelica$onUpdateRenderer(IBlockAccess chunkCache) {
         renderedIcons = ((ITexturesCache) chunkCache).getRenderedTextures();
         return chunkCache;
     }
 
     @Inject(method = "getGLCallListForPass", at = @At("HEAD"))
-    private void hodgepodge$getGLCallListForPass(int pass, CallbackInfoReturnable<Integer> cir) {
+    private void angelica$getGLCallListForPass(int pass, CallbackInfoReturnable<Integer> cir) {
         if (isInFrustum && pass == 0 && renderedIcons != null) {
             for (IIcon icon : renderedIcons) {
                 ((IPatchedTextureAtlasSprite) icon).markNeedsAnimationUpdate();

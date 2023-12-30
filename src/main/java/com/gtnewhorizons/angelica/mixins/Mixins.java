@@ -26,7 +26,6 @@ public enum Mixins {
     ANGELICA(new Builder("Angelica").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinActiveRenderInfo"
-            ,"angelica.MixinClippingHelperImpl"
             ,"angelica.MixinEntityRenderer"
         )
     ),
@@ -177,6 +176,10 @@ public enum Mixins {
             "angelica.animation.MixinRenderBlockFluid",
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
+
+    IC2_FLUID_RENDER_FIX(new Builder("IC2 Fluid Render Fix").setPhase(Phase.EARLY).setSide(Side.CLIENT)
+        .addTargetedMod(TargetedMod.IC2).setApplyIf(() -> AngelicaConfig.speedupAnimations)
+        .addMixinClasses("angelica.textures.ic2.MixinRenderLiquidCell")),
 
     OPTIMIZE_TEXTURE_LOADING(new Builder("Optimize Texture Loading").setPhase(Phase.EARLY)
         .addMixinClasses("angelica.textures.MixinTextureUtil_OptimizeMipmap").addTargetedMod(TargetedMod.VANILLA)

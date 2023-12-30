@@ -11,25 +11,25 @@ public class FogUniforms {
 
 	public static void addFogUniforms(DynamicUniformHolder uniforms) {
 		uniforms.uniform1i("fogMode", () -> {
-            if(!GLStateManager.getFogState().mode.isEnabled())  return 0;
+            if(!GLStateManager.getFogMode().isEnabled())  return 0;
 
-            return GLStateManager.getFogState().fogMode;
+            return GLStateManager.getFogState().getFogMode();
 		}, listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogModeNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogDensity", () -> GLStateManager.getFogState().density, listener -> {
+		uniforms.uniform1f("fogDensity", () -> GLStateManager.getFogState().getDensity(), listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogDensityNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogStart", () -> GLStateManager.getFogState().start, listener -> {
+		uniforms.uniform1f("fogStart", () -> GLStateManager.getFogState().getStart(), listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogStartNotifier.setListener(listener);
 		});
 
-		uniforms.uniform1f("fogEnd", () -> GLStateManager.getFogState().end, listener -> {
+		uniforms.uniform1f("fogEnd", () -> GLStateManager.getFogState().getEnd(), listener -> {
 			StateUpdateNotifiers.fogToggleNotifier.setListener(listener);
 			StateUpdateNotifiers.fogEndNotifier.setListener(listener);
 		});

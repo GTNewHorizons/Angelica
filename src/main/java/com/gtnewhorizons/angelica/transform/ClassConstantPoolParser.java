@@ -25,6 +25,7 @@ package com.gtnewhorizons.angelica.transform;
 import org.objectweb.asm.Opcodes;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 /**
  * Using this class to search for a (single) String reference is > 40 times faster than parsing a class with a ClassReader +
@@ -44,15 +45,17 @@ public class ClassConstantPoolParser {
     private static final int HANDLE = 15;
     private static final int INDY = 18;
 
-    private final byte[][] BYTES_TO_SEARCH;
+    private final ArrayList<byte[]> BYTES_TO_SEARCH;
 
     public ClassConstantPoolParser(String... strings) {
-        BYTES_TO_SEARCH = new byte[strings.length][];
-        for (int i = 0; i < BYTES_TO_SEARCH.length; i++) {
-            BYTES_TO_SEARCH[i] = strings[i].getBytes(StandardCharsets.UTF_8);
+        BYTES_TO_SEARCH = new ArrayList<>(strings.length);
+        for (int i = 0; i < strings.length; i++) {
+            BYTES_TO_SEARCH.add(i, strings[i].getBytes(StandardCharsets.UTF_8));
         }
     }
-
+    public void addString(String string) {
+        BYTES_TO_SEARCH.add(string.getBytes(StandardCharsets.UTF_8));
+    }
     /**
      * Returns true if the constant pool of the class represented by this byte array contains one of the Strings we are looking
      * for
@@ -66,10 +69,10 @@ public class ClassConstantPoolParser {
             return false;
         }
         // parses the constant pool
-        int n = readUnsignedShort(8, basicClass);
+        final int n = readUnsignedShort(8, basicClass);
         int index = 10;
         for (int i = 1; i < n; ++i) {
-            int size;
+            final int size;
             switch (basicClass[index]) {
                 case FIELD:
                 case METH:
@@ -88,15 +91,18 @@ public class ClassConstantPoolParser {
                 case UTF8:
                     final int strLen = readUnsignedShort(index + 1, basicClass);
                     size = 3 + strLen;
-                    label:
                     for (byte[] bytes : BYTES_TO_SEARCH) {
                         if (strLen == bytes.length) {
+                            boolean found = true;
                             for (int j = index + 3; j < index + 3 + strLen; j++) {
                                 if (basicClass[j] != bytes[j - (index + 3)]) {
-                                    break label;
+                                    found = false;
+                                    break;
                                 }
                             }
-                            return true;
+                            if (found) {
+                                return true;
+                            }
                         }
                     }
                     break;

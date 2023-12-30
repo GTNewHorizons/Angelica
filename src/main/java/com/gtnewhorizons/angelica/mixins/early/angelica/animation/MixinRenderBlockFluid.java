@@ -22,7 +22,7 @@ public abstract class MixinRenderBlockFluid {
     private IBlockAccess currentBlockAccess;
 
     @Inject(method = "renderWorldBlock", at = @At(value = "HEAD"))
-    private void hodgepodge$saveCurrentBlockAccess(IBlockAccess world, int x, int y, int z, Block block, int modelId,
+    private void angelica$saveCurrentBlockAccess(IBlockAccess world, int x, int y, int z, Block block, int modelId,
             RenderBlocks renderer, CallbackInfoReturnable<Boolean> cir) {
         currentBlockAccess = world;
     }

@@ -11,24 +11,24 @@ public class FogHelper {
     public static float red, green, blue;
 
     public static float getFogEnd() {
-    	return GLStateManager.getFogState().end;
+    	return GLStateManager.getFogState().getEnd();
     }
 
     public static float getFogStart() {
-    	return GLStateManager.getFogState().start;
+    	return GLStateManager.getFogState().getStart();
     }
 
     public static float getFogDensity() {
-    	return GLStateManager.getFogState().density;
+    	return GLStateManager.getFogState().getDensity();
     }
 
     /**
      * Retrieves the current fog mode from the fixed-function pipeline.
      */
     public static ChunkFogMode getFogMode() {
-        int mode = GLStateManager.getFogState().fogMode;
+        final int mode = GLStateManager.getFogState().getFogMode();
 
-        if(mode == 0 || !GLStateManager.getFogState().mode.isEnabled())
+        if(mode == 0 || !GLStateManager.getFogMode().isEnabled())
         	return ChunkFogMode.NONE;
 
         return switch (mode) {
@@ -39,7 +39,7 @@ public class FogHelper {
     }
 
     public static float getFogCutoff() {
-    	int mode = GLStateManager.getFogState().fogMode;
+    	int mode = GLStateManager.getFogState().getFogMode();
 
         return switch (mode) {
             case GL11.GL_LINEAR -> getFogEnd();

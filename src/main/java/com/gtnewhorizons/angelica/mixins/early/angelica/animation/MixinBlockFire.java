@@ -16,7 +16,7 @@ public class MixinBlockFire {
     private IIcon[] field_149850_M;
 
     @Inject(method = "getFireIcon", at = @At("HEAD"))
-    private void hodgepodge$markFireAnimationForUpdate(int p_149840_1_, CallbackInfoReturnable<IIcon> cir) {
+    private void angelica$markFireAnimationForUpdate(int p_149840_1_, CallbackInfoReturnable<IIcon> cir) {
         AnimationsRenderUtils.markBlockTextureForUpdate(field_149850_M[p_149840_1_]);
     }
 }

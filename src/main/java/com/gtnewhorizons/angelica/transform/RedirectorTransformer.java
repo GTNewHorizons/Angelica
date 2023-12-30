@@ -26,10 +26,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import static com.gtnewhorizons.angelica.transform.BlockTransformer.*;
 
 /**
  * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
@@ -50,22 +55,12 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
-    private static final String BlockClass = "net/minecraft/block/Block";
     private static final String MinecraftClient = "net.minecraft.client";
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
-    );
-
-    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
-        Pair.of("minX", "field_149759_B"),
-        Pair.of("minY", "field_149760_C"),
-        Pair.of("minZ", "field_149754_D"),
-        Pair.of("maxX", "field_149755_E"),
-        Pair.of("maxY", "field_149756_F"),
-        Pair.of("maxZ", "field_149757_G")
     );
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass,
@@ -80,6 +75,10 @@ public class RedirectorTransformer implements IClassTransformer {
     );
     private static int remaps = 0;
 
+    private static final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    // Block owners we *shouldn't* redirect because they shadow one of our fields
+    private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_BLEND, "Blend");
@@ -90,6 +89,7 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
         glCapRedirects.put(org.lwjgl.opengl.GL12.GL_RESCALE_NORMAL, "RescaleNormal");
         methodRedirects.put(GL11, RedirectMap.newMap()
+            .add("glGetFloat")
             .add("glAlphaFunc")
             .add("glBindTexture")
             .add("glBlendFunc")
@@ -139,6 +139,7 @@ public class RedirectorTransformer implements IClassTransformer {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        blockSubclasses.add(BlockClass);
     }
 
     @Override
@@ -160,6 +161,32 @@ public class RedirectorTransformer implements IClassTransformer {
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
         cr.accept(cn, 0);
+
+        // Track subclasses of Block
+        if (blockSubclasses.contains(cn.superName)) {
+            blockSubclasses.add(cn.name);
+            cstPoolParser.addString(cn.name);
+        }
+
+        // Check if this class shadows any fields of the parent class
+        if(blockSubclasses.contains(cn.name)) {
+            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
+            // superclass
+            boolean doWeShadow;
+            if(cn.name.equals(BlockClass)) {
+                doWeShadow = false; // by definition
+            } else if(blockOwnerExclusions.contains(cn.superName)) {
+                doWeShadow = true;
+            } else {
+                // Check if we declare any known field names
+                Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
+                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
+            }
+            if(doWeShadow) {
+                AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
+                blockOwnerExclusions.add(cn.name);
+            }
+        }
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
@@ -234,7 +261,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(fNode.owner.equals(BlockClass)) {
+                    if(!blockOwnerExclusions.contains(fNode.owner) && blockSubclasses.contains(fNode.owner)) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {

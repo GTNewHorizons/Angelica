@@ -16,7 +16,7 @@ public class MixinRenderItem {
      * Some mods may call it to render their internally stored icons, so we make sure we mark those for an update
      */
     @Inject(method = "renderIcon", at = @At("HEAD"))
-    private void hodgepodge$beforeRenderIcon(int p_94149_1_, int p_94149_2_, IIcon icon, int p_94149_4_, int p_94149_5_,
+    private void angelica$beforeRenderIcon(int p_94149_1_, int p_94149_2_, IIcon icon, int p_94149_4_, int p_94149_5_,
             CallbackInfo ci) {
         if (icon instanceof TextureAtlasSprite) {
             ((IPatchedTextureAtlasSprite) icon).markNeedsAnimationUpdate();
