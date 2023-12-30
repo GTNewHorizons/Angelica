@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.transform.BlockTransformer;
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.Loader;
@@ -75,7 +76,9 @@ public class MixinCompatHackTweaker implements ITweaker {
         if (FMLLaunchHandler.side().isClient()) {
             // Run after Mixins, but before LWJGl3ify
             Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
-            Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
+            if(AngelicaConfig.enableSodium) {
+                Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
+            }
         }
 
         return new String[0];
