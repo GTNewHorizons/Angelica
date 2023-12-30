@@ -17,7 +17,7 @@ public class TessellatorManager {
     }
 
     public static boolean isMainInstance(Object instance) {
-        return instance == Tessellator.instance;
+        return instance == Tessellator.instance || isOnMainThread();
     }
 
     static {
