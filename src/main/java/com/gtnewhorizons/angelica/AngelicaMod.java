@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -20,28 +20,14 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 public class AngelicaMod {
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
-    /** Mixin Version */
-    public static boolean isNEIDLoaded;
-    /** ASM Version */
-    public static boolean isOldNEIDLoaded;
 
-    public static boolean isLotrLoaded;
-
-    public static boolean isChunkAPILoaded;
-
-    public static boolean isEIDBiomeLoaded;
-
-  public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
+    public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        isNEIDLoaded = Loader.isModLoaded("neid");
-        isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
-        isLotrLoaded = Loader.isModLoaded("lotr");
-        isChunkAPILoaded = Loader.isModLoaded("chunkapi");
-        isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
+        ModStatus.preInit();
         proxy.preInit(event);
     }
 

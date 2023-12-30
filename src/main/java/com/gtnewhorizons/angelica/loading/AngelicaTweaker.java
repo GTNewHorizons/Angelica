@@ -11,7 +11,6 @@ import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import mist475.mcpatcherforge.asm.AsmTransformers;
 import mist475.mcpatcherforge.asm.mappings.Namer;
-import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
