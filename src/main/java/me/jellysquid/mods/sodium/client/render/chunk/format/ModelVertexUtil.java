@@ -19,7 +19,7 @@ public class ModelVertexUtil {
      * @return The resulting de-normalized unsigned short
      */
     public static short denormalizeVertexTextureFloatAsShort(float value) {
-        return (short) (Math.min(0.99999997F, value) * 32768.0f);
+        return (short) (Math.round(value * 32768.0F) & 0xFFFF);
     }
 
     /**
