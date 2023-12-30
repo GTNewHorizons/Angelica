@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
@@ -65,7 +65,7 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
-        if (AngelicaMod.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
+        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"naturalBlockClassTable");

@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.falsepattern.chunk.api.DataRegistry;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.mixins.early.sodium.MixinExtendedBlockStorage;
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
@@ -22,14 +21,14 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     public ExtendedBlockStorageExt(Chunk chunk, ExtendedBlockStorage storage) {
         super(((MixinExtendedBlockStorage) storage).getYBase(), storage.getSkylightArray() != null);
 
-        if (AngelicaMod.isChunkAPILoaded) {
+        if (ModStatus.isChunkAPILoaded) {
             if (storage.getSkylightArray() != null) {
                 hasSky = true;
             }
             DataRegistry.cloneSubChunk(chunk, storage, this);
         } else {
             int arrayLen;
-            if (AngelicaMod.isNEIDLoaded){
+            if (ModStatus.isNEIDLoaded){
                 final short[] block16BArray = ((IExtendedBlockStorageMixin)(Object)this).getBlock16BArray();
                 System.arraycopy(((IExtendedBlockStorageMixin)(Object)storage).getBlock16BArray(), 0, block16BArray, 0, block16BArray.length);
                 if(storage.getBlockMSBArray() != null) {
@@ -38,7 +37,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                 }
                 arrayLen = block16BArray.length;
             }
-            else if (AngelicaMod.isOldNEIDLoaded){
+            else if (ModStatus.isOldNEIDLoaded){
                 final short[] blockLSBArray = Hooks.get(this);
                 System.arraycopy(Hooks.get(storage), 0, blockLSBArray, 0, blockLSBArray.length);
                 // getBlockMSBArray is nuked in asm version

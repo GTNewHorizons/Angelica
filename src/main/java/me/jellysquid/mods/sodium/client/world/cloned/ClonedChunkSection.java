@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.world.cloned;
 
 import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
@@ -61,7 +61,7 @@ public class ClonedChunkSection {
         this.data = new ExtendedBlockStorageExt(chunk, section);
 
         int bArrLength;
-        if (AngelicaMod.isEIDBiomeLoaded) {
+        if (ModStatus.isEIDBiomeLoaded) {
             bArrLength = ((ChunkBiomeHook)chunk).getBiomeShortArray().length;
         } else {
             bArrLength = chunk.getBiomeArray().length;
