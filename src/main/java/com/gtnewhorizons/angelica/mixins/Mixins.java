@@ -42,6 +42,13 @@ public enum Mixins {
             "angelica.debug.MixinSplashProgress"
         )
     ),
+
+    ANGELICA_THAUMCRAFT_COMPAT(new Builder("Angelica Thaumcraft Compat").addTargetedMod(TargetedMod.THAUMCRAFT).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
+            "angelica.thaumcraft.MixinClientTickEventsFML"
+        )
+    ),
+
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(
