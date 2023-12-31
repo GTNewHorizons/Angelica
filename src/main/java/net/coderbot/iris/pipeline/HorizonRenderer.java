@@ -1,13 +1,11 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
+import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 /**
@@ -59,32 +57,12 @@ public class HorizonRenderer {
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
-        final ByteBuffer buf = tessellatorToBuffer(tessellator);
-        ((ITessellatorInstance) tessellator).discard();
 
 		this.vertexBuffer = new VertexBuffer();
 		this.vertexBuffer.bind();
-		this.vertexBuffer.upload(buf, tessellator.vertexCount);
+		this.vertexBuffer.upload(tessellator, DefaultVertexFormat.POSITION);
 		this.vertexBuffer.unbind();
 	}
-
-    /* Convert the tessellator's data into a buffer that can be uploaded to the GPU. */
-    private ByteBuffer tessellatorToBuffer(Tessellator tessellator) {
-        final int[] rawBuffer = tessellator.rawBuffer;
-        final int byteSize = (tessellator.vertexCount * 3) << 2;
-        ByteBuffer byteBuffer = BufferUtils.createByteBuffer(byteSize);
-
-        for(int quadI = 0 ; quadI < tessellator.vertexCount / 4 ; quadI++) {
-            for(int vertexI = 0 ; vertexI < 4 ; vertexI++) {
-                int i = (quadI * 4 * 8 ) + (vertexI * 8);
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 0]));
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 1]));
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 2]));
-            }
-        }
-
-        return (ByteBuffer) byteBuffer.rewind();
-    }
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {
 		consumer.addVertex(x1, BOTTOM, z1);
