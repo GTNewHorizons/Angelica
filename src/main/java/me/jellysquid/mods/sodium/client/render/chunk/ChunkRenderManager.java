@@ -312,27 +312,27 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         // Always render groups of vertices not belonging to any given face
         int visibleFaces = ChunkFaceFlags.UNASSIGNED;
 
-        if (this.cameraY > bounds.y1) {
+        if (this.cameraY > (bounds.y1 - 3)) {
             visibleFaces |= ChunkFaceFlags.UP;
         }
 
-        if (this.cameraY < bounds.y2) {
+        if (this.cameraY < (bounds.y2 + 3)) {
             visibleFaces |= ChunkFaceFlags.DOWN;
         }
 
-        if (this.cameraX > bounds.x1) {
+        if (this.cameraX > (bounds.x1 - 3)) {
             visibleFaces |= ChunkFaceFlags.EAST;
         }
 
-        if (this.cameraX < bounds.x2) {
+        if (this.cameraX < (bounds.x2 + 3)) {
             visibleFaces |= ChunkFaceFlags.WEST;
         }
 
-        if (this.cameraZ > bounds.z1) {
+        if (this.cameraZ > (bounds.z1 - 3)) {
             visibleFaces |= ChunkFaceFlags.SOUTH;
         }
 
-        if (this.cameraZ < bounds.z2) {
+        if (this.cameraZ < (bounds.z2 + 3)) {
             visibleFaces |= ChunkFaceFlags.NORTH;
         }
 
