@@ -88,16 +88,16 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     }
 
     private boolean rendersOffThread(Block block) {
-        int type = block.getRenderType();
+        final int type = block.getRenderType();
         return type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block);
     }
 
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
         // COMPATIBLITY NOTE: Oculus relies on the LVT of this method being unchanged, at least in 16.5
-        ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
-        ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
-        ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
+        final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
+        final ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
+        final ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
 
         buffers.init(renderData);
 
@@ -106,12 +106,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final WorldSlice slice = cache.getWorldSlice();
         final RenderBlocks renderBlocks = new RenderBlocks(slice);
 
-        int baseX = this.render.getOriginX();
-        int baseY = this.render.getOriginY();
-        int baseZ = this.render.getOriginZ();
+        final int baseX = this.render.getOriginX();
+        final int baseY = this.render.getOriginY();
+        final int baseZ = this.render.getOriginZ();
 
-        BlockPos.Mutable pos = new BlockPos.Mutable();
-        BlockPos renderOffset = this.offset;
+        final BlockPos.Mutable pos = new BlockPos.Mutable();
+        final BlockPos renderOffset = this.offset;
         final Tessellator tessellator = TessellatorManager.get();
 
         boolean hasMainThreadBlocks = false;
@@ -123,7 +123,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
-                    Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+                    final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
 
                     // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
                     // can abuse it for all sorts of things
@@ -131,7 +131,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         continue;
                     }
 
-                    int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
+                    final int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
 
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
@@ -142,7 +142,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         // Do regular block rendering
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
-                                long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
+                                final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                                 if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                                 if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), tessellator, renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
@@ -170,7 +170,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
 
                     if (block.hasTileEntity(meta)) {
-                        TileEntity entity = slice.getTileEntity(pos.x, pos.y, pos.z);
+                        final TileEntity entity = slice.getTileEntity(pos.x, pos.y, pos.z);
 
                         final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(entity);
                         if (entity != null && renderer != null) {
@@ -202,7 +202,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         render.setRebuildForTranslucents(false);
         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-            ChunkMeshData mesh = buffers.createMesh(pass, (float)camera.x - offset.getX(), (float)camera.y - offset.getY(), (float)camera.z - offset.getZ(), this.translucencySorting);
+            final ChunkMeshData mesh = buffers.createMesh(pass, (float)camera.x - offset.getX(), (float)camera.y - offset.getY(), (float)camera.z - offset.getZ(), this.translucencySorting);
 
             if (mesh != null) {
                 renderData.setMesh(pass, mesh);
@@ -223,20 +223,20 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
      * TODO: Deduplicate this with the main method above.
      */
     private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds) {
-        WorldSlice slice = cache.getWorldSlice();
-        BlockPos.Mutable pos = new BlockPos.Mutable();
-        int baseX = this.render.getOriginX();
-        int baseY = this.render.getOriginY();
-        int baseZ = this.render.getOriginZ();
-        BlockPos renderOffset = this.offset;
-        RenderBlocks rb = new RenderBlocks(slice.getWorld());
+        final WorldSlice slice = cache.getWorldSlice();
+        final BlockPos.Mutable pos = new BlockPos.Mutable();
+        final int baseX = this.render.getOriginX();
+        final int baseY = this.render.getOriginY();
+        final int baseZ = this.render.getOriginZ();
+        final BlockPos renderOffset = this.offset;
+        final RenderBlocks rb = new RenderBlocks(slice.getWorld());
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
                 return;
             }
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
-                    Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+                    final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
 
                     // Only render blocks that need main thread assistance
                     if (block.getMaterial() == Material.air || rendersOffThread(block)) {
@@ -246,7 +246,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     // TODO: Collect data on which render types are hitting this code path most often
                     // so mods can be updated slowly
 
-                    int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
+                    final int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
 
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
@@ -255,7 +255,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     // Do regular block rendering
                     for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                         if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
-                            long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
+                            final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                             if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                             if (cache.getBlockRenderer().renderModel(slice.getWorld(), Tessellator.instance, rb, block, meta, pos, buffers.get(pass), true, seed)) {

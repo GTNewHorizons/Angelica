@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import lombok.Getter;
 
 @Deprecated

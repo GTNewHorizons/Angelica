@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.toremove.VertexFormat;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.BufferUtils;
@@ -38,30 +37,33 @@ public class VertexBuffer implements AutoCloseable {
     }
 
     public ByteBuffer tessellatorToBuffer(Tessellator tessellator, VertexFormat format) {
-        if(tessellator.drawMode != GL11.GL_QUADS) {
-            throw new IllegalArgumentException("Only GL_QUADS are supported");
-        }
+
+        final int verticesPerPrimitive = tessellator.drawMode == GL11.GL_QUADS ? 4 : 3;
 
         final int[] rawBuffer = tessellator.rawBuffer;
         final int byteSize = format.getVertexSize() * tessellator.vertexCount * 4;
         final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(byteSize);
 
-        for(int quadI = 0 ; quadI < tessellator.vertexCount / 4 ; quadI++) {
+
+
+        for(int quadI = 0 ; quadI < tessellator.vertexCount / verticesPerPrimitive ; quadI++) {
             for(int vertexI = 0 ; vertexI < 4 ; vertexI++) {
                 final int i = (quadI * 4 * 8 ) + (vertexI * 8);
+
+                // Position
                 byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 0]));
                 byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 1]));
                 byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 2]));
-                if(tessellator.hasTexture) {
-                    byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 3]));
-                    byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 4]));
-                }
-                if(tessellator.hasNormals) {
-                    final int normals = rawBuffer[i + 6];
-                    byteBuffer.put((byte)(normals & 255));
-                    byteBuffer.put((byte)((normals >> 8) & 255));
-                    byteBuffer.put((byte)((normals >> 16) & 255));
-                }
+
+                // Texture
+                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 3]));
+                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 4]));
+
+                // Normals
+                final int normals = rawBuffer[i + 6];
+                byteBuffer.put((byte)(normals & 255));
+                byteBuffer.put((byte)((normals >> 8) & 255));
+                byteBuffer.put((byte)((normals >> 16) & 255));
             }
         }
 

@@ -27,9 +27,9 @@ public class HFPModelVertexBufferWriterNio extends VertexBufferWriterNio impleme
     }
 
     private void writeQuadInternal(short x, short y, short z, int color, short u, short v, int light) {
-        int i = this.writeOffset;
+        final int i = this.writeOffset;
 
-        ByteBuffer buffer = this.byteBuffer;
+        final ByteBuffer buffer = this.byteBuffer;
         buffer.putShort(i, x);
         buffer.putShort(i + 2, y);
         buffer.putShort(i + 4, z);

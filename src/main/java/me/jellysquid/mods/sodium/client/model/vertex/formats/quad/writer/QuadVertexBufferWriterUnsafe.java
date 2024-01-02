@@ -13,7 +13,7 @@ public class QuadVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe imple
 
     @Override
     public void writeQuad(float x, float y, float z, int color, float u, float v, int light, int overlay, int normal) {
-        long i = this.writePointer;
+        final long i = this.writePointer;
 
         CompatMemoryUtil.memPutFloat(i, x);
         CompatMemoryUtil.memPutFloat(i + 4, y);

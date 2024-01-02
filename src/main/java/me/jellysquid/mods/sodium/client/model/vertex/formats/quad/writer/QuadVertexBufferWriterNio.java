@@ -14,9 +14,9 @@ public class QuadVertexBufferWriterNio extends VertexBufferWriterNio implements 
 
     @Override
     public void writeQuad(float x, float y, float z, int color, float u, float v, int light, int overlay, int normal) {
-        int i = this.writeOffset;
+        final int i = this.writeOffset;
 
-        ByteBuffer buf = this.byteBuffer;
+        final ByteBuffer buf = this.byteBuffer;
         buf.putFloat(i, x);
         buf.putFloat(i + 4, y);
         buf.putFloat(i + 8, z);

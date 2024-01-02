@@ -131,7 +131,7 @@ public class GLRenderDevice implements RenderDevice {
 
         @Override
         public void deleteBuffer(GlBuffer buffer) {
-            int handle = buffer.handle();
+            final int handle = buffer.handle();
             buffer.invalidateHandle();
 
             GL15.glDeleteBuffers(handle);
@@ -139,7 +139,7 @@ public class GLRenderDevice implements RenderDevice {
 
         @Override
         public void deleteVertexArray(GlVertexArray array) {
-            int handle = array.handle();
+            final int handle = array.handle();
             array.invalidateHandle();
 
             GlFunctions.VERTEX_ARRAY.glDeleteVertexArrays(handle);
@@ -176,7 +176,7 @@ public class GLRenderDevice implements RenderDevice {
         @Override
         public GlTessellation createTessellation(GlPrimitiveType primitiveType, TessellationBinding[] bindings) {
             if (GlVertexArrayTessellation.isSupported()) {
-                GlVertexArrayTessellation tessellation = new GlVertexArrayTessellation(new GlVertexArray(GLRenderDevice.this), primitiveType, bindings);
+                final GlVertexArrayTessellation tessellation = new GlVertexArrayTessellation(new GlVertexArray(GLRenderDevice.this), primitiveType, bindings);
                 tessellation.init(this);
 
                 return tessellation;
@@ -193,13 +193,13 @@ public class GLRenderDevice implements RenderDevice {
 
         @Override
         public void multiDrawArrays(IntBuffer first, IntBuffer count) {
-            GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
+            final GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
             GL14.glMultiDrawArrays(primitiveType.getId(), first, count);
         }
 
         @Override
         public void multiDrawArraysIndirect(long pointer, int count, int stride) {
-            GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
+            final GlPrimitiveType primitiveType = GLRenderDevice.this.activeTessellation.getPrimitiveType();
             GlFunctions.INDIRECT_DRAW.glMultiDrawArraysIndirect(primitiveType.getId(), pointer, count, stride);
         }
 

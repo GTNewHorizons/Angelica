@@ -86,27 +86,10 @@ public class BlockRenderer {
         // Adapted from Neodymium
         tesselatorDataCount++;
 
-//        List<String> errors = new ArrayList<>();
-//        List<String> warnings = new ArrayList<>();
-//        if(t.drawMode != GL11.GL_QUADS && t.drawMode != GL11.GL_TRIANGLES) {
-//            errors.add("Unsupported draw mode: " + t.drawMode);
-//        }
-//        if(!t.hasTexture) {
-//            errors.add("Texture data is missing.");
-//        }
-//        if(!t.hasBrightness) {
-//            warnings.add("Brightness data is missing");
-//        }
-//        if(!t.hasColor) {
-//            warnings.add("Color data is missing");
-//        }
-//        if(t.hasNormals && GL11.glIsEnabled(GL11.GL_LIGHTING)) {
-//            errors.add("Chunk uses GL lighting, this is not implemented.");
-//        }
         FLAGS.hasBrightness = t.hasBrightness;
         FLAGS.hasColor = t.hasColor;
 
-        int verticesPerPrimitive = t.drawMode == GL11.GL_QUADS ? 4 : 3;
+        final int verticesPerPrimitive = t.drawMode == GL11.GL_QUADS ? 4 : 3;
 
         for(int quadI = 0; quadI < t.vertexCount / verticesPerPrimitive; quadI++) {
             final Quad quad = quadBuf.next();
@@ -117,24 +100,6 @@ public class BlockRenderer {
                 quadBuf.remove();
             }
         }
-//        final boolean silenceErrors = false;
-//
-//        if(!quadBuf.isEmpty() && (!errors.isEmpty() || !warnings.isEmpty()) && /*!Config.silenceErrors*/!silenceErrors) {
-//            for(String error : errors) {
-//                LOGGER.error("Error: " + error);
-//            }
-//            for(String warning : warnings) {
-//                LOGGER.error("Warning: " + warning);
-//            }
-//            LOGGER.error("(Tessellator pos: ({}, {}, {}), Tessellation count: {}", t.xOffset, t.yOffset, t.zOffset, tesselatorDataCount);
-//            LOGGER.error("Stack trace:");
-//            try {
-//                // Generate a stack trace
-//                throw new IllegalArgumentException();
-//            } catch(IllegalArgumentException e) {
-//                e.printStackTrace();
-//            }
-//        }
         final List<Quad> quads = quadBuf.getAsList();
         quadBuf.reset();
         return quads;
@@ -191,7 +156,7 @@ public class BlockRenderer {
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            int quadLight = quad.getLight(srcIndex);
+            final int quadLight = quad.getLight(srcIndex);
             final int lm = useSeparateAo ? ModelQuadUtil.mergeBakedLight(quadLight, light.lm[srcIndex]) : quadLight;
 
             sink.writeQuad(x, y, z, color, u, v, lm);
