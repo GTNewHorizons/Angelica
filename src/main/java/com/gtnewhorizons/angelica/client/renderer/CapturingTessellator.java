@@ -3,15 +3,13 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
-import lombok.Getter;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class CapturingTessellator extends Tessellator {
-    @Getter protected final ArrayList<Quad> quads = new ArrayList<>();
     protected final VertexFormat format;
 
     private final BlockRenderer.Flags FLAGS = new BlockRenderer.Flags(true, true, true, false);
@@ -38,11 +36,14 @@ public class CapturingTessellator extends Tessellator {
                 quadBuf.remove();
             }
         }
-        quads.addAll(quadBuf.getAsList());
 
         final int i = this.rawBufferIndex * 4;
         this.reset();
         this.isDrawing = false;
         return i;
+    }
+
+    public List<Quad> getQuads() {
+        return quadBuf.getAsList();
     }
 }
