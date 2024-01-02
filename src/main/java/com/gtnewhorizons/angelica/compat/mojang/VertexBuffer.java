@@ -41,7 +41,7 @@ public class VertexBuffer implements AutoCloseable {
         final int verticesPerPrimitive = tessellator.drawMode == GL11.GL_QUADS ? 4 : 3;
 
         final int[] rawBuffer = tessellator.rawBuffer;
-        final int byteSize = format.getVertexSize() * tessellator.vertexCount * 4;
+        final int byteSize = format.getVertexSize() * tessellator.vertexCount;
         final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(byteSize);
 
 
