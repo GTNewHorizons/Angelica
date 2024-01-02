@@ -60,10 +60,7 @@ public class VertexBuffer implements AutoCloseable {
                 byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 4]));
 
                 // Normals
-                final int normals = rawBuffer[i + 6];
-                byteBuffer.put((byte)(normals & 255));
-                byteBuffer.put((byte)((normals >> 8) & 255));
-                byteBuffer.put((byte)((normals >> 16) & 255));
+                byteBuffer.putInt(rawBuffer[i + 6]);
             }
         }
 

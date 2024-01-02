@@ -32,7 +32,7 @@ public class CapturingTessellator extends Tessellator {
 
         for(int quadI = 0; quadI < this.vertexCount / verticesPerPrimitive; quadI++) {
             final Quad quad = quadBuf.next();
-            quad.setState(this.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, this.drawMode, (float) xOffset, (float) yOffset, (float) zOffset);
+            quad.setState(this.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, this.drawMode, 0f, 0f, 0f);
 
             if(quad.deleted) {
                 quadBuf.remove();
