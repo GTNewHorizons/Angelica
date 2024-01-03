@@ -15,6 +15,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelB
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
+import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.WorldUtil;
@@ -28,6 +29,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
+
+import java.util.Arrays;
 
 import static org.joml.Math.lerp;
 
@@ -193,7 +196,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, h3, 1.0F, u3, v3);
             this.setVertex(quad, 3, 1.0F, h4, 0.0f, u4, v4);
 
-            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.UP, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.UP, 1.0F, hc, slice);
             this.flushQuad(buffers, quad, facing, false);
 
             if (WorldUtil.method_15756(slice, this.scratchPos.set(posX, posY + 1, posZ), fluid)) {
@@ -222,7 +225,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, yOffset, 0.0f, maxU, minV);
             this.setVertex(quad, 3, 1.0F, yOffset, 1.0F, maxU, maxV);
 
-            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.DOWN, 1.0F, hc);
+            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.DOWN, 1.0F, hc, slice);
             this.flushQuad(buffers, quad, ModelQuadFacing.DOWN, false);
 
             rendered = true;
@@ -326,7 +329,7 @@ public class FluidRenderer {
 
                 ModelQuadFacing facing = ModelQuadFacing.fromDirection(dir);
 
-                this.calculateQuadColors(quad, pos, lighter, dir, br, hc);
+                this.calculateQuadColors(quad, pos, lighter, dir, br, hc, slice);
                 this.flushQuad(buffers, quad, facing, false);
 
                 if (sprite != oSprite) {
@@ -345,14 +348,16 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
         QuadLightData light = this.quadLightData;
         lighter.calculate(quad, pos, light, null, dir, false);
 
         int[] biomeColors = null;
 
         if (colorized) {
-            // TODO: Sodium - Colorizer
+            biomeColors = new int[4];
+            int color = slice.getBlock(pos.x,pos.y,pos.z).colorMultiplier(slice,pos.x,pos.y,pos.z);
+            Arrays.fill(biomeColors,ColorARGB.toABGR(color));
         }
 
         for (int i = 0; i < 4; i++) {
