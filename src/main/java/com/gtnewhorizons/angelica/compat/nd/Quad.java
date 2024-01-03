@@ -21,9 +21,9 @@ public class Quad implements ModelQuadView {
     public float[] zs = new float[4];
     public float[] us = new float[4];
     public float[] vs = new float[4];
-    public int[] bs = new int[4];
     public int[] cs = new int[4];
     public int[] ns = new int[4];
+    public int[] bs = new int[4];
 
     public boolean deleted;
 
