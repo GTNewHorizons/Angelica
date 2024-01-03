@@ -11,8 +11,8 @@ public class DefaultVertexFormat {
 
     public static final VertexFormatElement POSITION_ELEMENT = new VertexFormatElement(0, Type.FLOAT, Usage.POSITION, 3);
     public static final VertexFormatElement COLOR_ELEMENT = new VertexFormatElement(0, Type.UBYTE, Usage.COLOR, 4);
-    public static final VertexFormatElement TEXTURE_ELEMENT = new VertexFormatElement(OpenGlHelper.defaultTexUnit, Type.FLOAT, Usage.UV, 2);
-    public static final VertexFormatElement LIGHT_ELEMENT = new VertexFormatElement(OpenGlHelper.lightmapTexUnit, Type.SHORT, Usage.UV, 2);
+    public static final VertexFormatElement TEXTURE_ELEMENT = new VertexFormatElement(0, Type.FLOAT, Usage.UV, 2);
+    public static final VertexFormatElement LIGHT_ELEMENT = new VertexFormatElement(1, Type.SHORT, Usage.UV, 2);
     // TODO: The overlay element index is wrong, need to find a 1.7.10 equivalent
     public static final VertexFormatElement OVERLAY_ELEMENT = new VertexFormatElement(1, Type.SHORT, Usage.UV, 2);
     public static final VertexFormatElement NORMAL_ELEMENT = new VertexFormatElement(0, Type.BYTE, Usage.NORMAL, 3);
