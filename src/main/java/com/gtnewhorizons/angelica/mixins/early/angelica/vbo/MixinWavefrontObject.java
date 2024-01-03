@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
+import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelCustomExt;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraftforge.client.model.obj.GroupObject;
@@ -11,6 +14,9 @@ import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 @Mixin(value = WavefrontObject.class, remap = false)
 public abstract class MixinWavefrontObject implements IModelCustomExt {
@@ -30,13 +36,16 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         if (this.vertexBuffer != null) {
             this.vertexBuffer.close();
         }
-        final Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawing(currentGroupObject.glDrawingMode);
-        tessellateAll(tessellator);
+        TessellatorManager.startCapturing();
+        final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+        tess.startDrawing(currentGroupObject.glDrawingMode);
+        tessellateAll(tess);
+        List<Quad> quads = TessellatorManager.stopCapturing();
+        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, format);
 
         this.vertexBuffer = new VertexBuffer();
         this.vertexBuffer.bind();
-        this.vertexBuffer.upload(tessellator, format);
+        vertexBuffer.upload(byteBuffer, quads.size() * 4);
         this.vertexBuffer.unbind();
     }
 

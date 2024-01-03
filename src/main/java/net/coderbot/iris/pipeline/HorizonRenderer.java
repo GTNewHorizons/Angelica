@@ -1,12 +1,17 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.List;
 
 /**
  * Renders the sky horizon. Vanilla Minecraft simply uses the "clear color" for its horizon, and then draws a plane
@@ -52,15 +57,18 @@ public class HorizonRenderer {
 		if (this.vertexBuffer != null) {
 			this.vertexBuffer.close();
 		}
-        final Tessellator tessellator = Tessellator.instance;
+        TessellatorManager.startCapturing();
+        final CapturingTessellator tessellator = (CapturingTessellator) TessellatorManager.get();
 
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
+        List<Quad> quads = TessellatorManager.stopCapturing();
+        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, DefaultVertexFormat.POSITION);
 
 		this.vertexBuffer = new VertexBuffer();
 		this.vertexBuffer.bind();
-		this.vertexBuffer.upload(tessellator, DefaultVertexFormat.POSITION);
+		this.vertexBuffer.upload(byteBuffer, quads.size() * 4);
 		this.vertexBuffer.unbind();
 	}
 

@@ -1,4 +1,4 @@
-//version: 1699290261
+//version: 1704135167
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -28,27 +28,11 @@ import java.util.concurrent.TimeUnit
 
 buildscript {
     repositories {
-        mavenCentral()
-
-        maven {
-            name 'forge'
-            url 'https://maven.minecraftforge.net'
-        }
         maven {
             // GTNH RetroFuturaGradle and ASM Fork
             name "GTNH Maven"
-            url "http://jenkins.usrv.eu:8081/nexus/content/groups/public/"
-            allowInsecureProtocol = true
+            url "https://nexus.gtnewhorizons.com/repository/public/"
         }
-        maven {
-            name 'sonatype'
-            url 'https://oss.sonatype.org/content/repositories/snapshots/'
-        }
-        maven {
-            name 'Scala CI dependencies'
-            url 'https://repo1.maven.org/maven2/'
-        }
-
         mavenLocal()
     }
 }
@@ -64,12 +48,12 @@ plugins {
     id 'org.ajoberstar.grgit' version '4.1.1' // 4.1.1 is the last jvm8 supporting version, unused, available for addon.gradle
     id 'com.github.johnrengelman.shadow' version '8.1.1' apply false
     id 'com.palantir.git-version' version '3.0.0' apply false
-    id 'de.undercouch.download' version '5.4.0'
+    id 'de.undercouch.download' version '5.5.0'
     id 'com.github.gmazzo.buildconfig' version '3.1.0' apply false // Unused, available for addon.gradle
     id 'com.diffplug.spotless' version '6.13.0' apply false // 6.13.0 is the last jvm8 supporting version
     id 'com.modrinth.minotaur' version '2.+' apply false
     id 'com.matthewprenger.cursegradle' version '1.4.0' apply false
-    id 'com.gtnewhorizons.retrofuturagradle' version '1.3.24'
+    id 'com.gtnewhorizons.retrofuturagradle' version '1.3.26'
 }
 
 print("You might want to check out './gradlew :faq' if your build fails.\n")
@@ -133,7 +117,7 @@ propertyDefaultIfUnset("forceEnableMixins", false)
 propertyDefaultIfUnset("channel", "stable")
 propertyDefaultIfUnset("mappingsVersion", "12")
 propertyDefaultIfUnset("usesMavenPublishing", true)
-propertyDefaultIfUnset("mavenPublishUrl", "http://jenkins.usrv.eu:8081/nexus/content/repositories/releases")
+propertyDefaultIfUnset("mavenPublishUrl", "https://nexus.gtnewhorizons.com/repository/releases/")
 propertyDefaultIfUnset("modrinthProjectId", "")
 propertyDefaultIfUnset("modrinthRelations", "")
 propertyDefaultIfUnset("curseForgeProjectId", "")
@@ -588,13 +572,15 @@ afterEvaluate {
 
 repositories {
     maven {
-        name 'Overmind forge repo mirror'
-        url 'https://gregtech.overminddl1.com/'
+        name = "GTNH Maven"
+        url = "https://nexus.gtnewhorizons.com/repository/public/"
+        // Links for convenience:
+        // Simple HTML browsing: https://nexus.gtnewhorizons.com/service/rest/repository/browse/releases/
+        // Rich web UI browsing: https://nexus.gtnewhorizons.com/#browse/browse:releases
     }
     maven {
-        name = "GTNH Maven"
-        url = "http://jenkins.usrv.eu:8081/nexus/content/groups/public/"
-        allowInsecureProtocol = true
+        name 'Overmind forge repo mirror'
+        url 'https://gregtech.overminddl1.com/'
     }
     maven {
         name 'sonatype'
@@ -687,6 +673,8 @@ configurations.all {
         substitute module('com.github.GTNewHorizons:SpongePoweredMixin') using module(mixinProviderSpecNoClassifer) withClassifier("dev") because("Unimixins replaces other mixin mods")
         substitute module('com.github.GTNewHorizons:SpongeMixins') using module(mixinProviderSpecNoClassifer) withClassifier("dev") because("Unimixins replaces other mixin mods")
         substitute module('io.github.legacymoddingmc:unimixins') using module(mixinProviderSpecNoClassifer) withClassifier("dev") because("Our previous unimixins upload was missing the dev classifier")
+
+        substitute module('org.scala-lang:scala-library:2.11.1') using module('org.scala-lang:scala-library:2.11.5') because('To allow mixing with Java 8 targets')
     }
 }
 
@@ -793,7 +781,7 @@ ext.java17PatchDependenciesCfg = configurations.create("java17PatchDependencies"
 }
 
 dependencies {
-    def lwjgl3ifyVersion = '1.5.4'
+    def lwjgl3ifyVersion = '1.5.7'
     if (modId != 'lwjgl3ify') {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
@@ -972,6 +960,9 @@ if (usesShadowedDependencies.toBoolean()) {
     configurations.apiElements.outgoing.artifacts.clear()
     configurations.runtimeElements.outgoing.artifact(tasks.named("shadowJar", ShadowJar))
     configurations.apiElements.outgoing.artifact(tasks.named("shadowJar", ShadowJar))
+    tasks.named("jar", Jar) {
+        archiveClassifier.set('dev-preshadow')
+    }
     tasks.named("reobfJar", ReobfuscatedJar) {
         inputJar.set(tasks.named("shadowJar", ShadowJar).flatMap({it.archiveFile}))
     }
@@ -1182,7 +1173,7 @@ publishing {
         if (usesMavenPublishing.toBoolean() && System.getenv("MAVEN_USER") != null) {
             maven {
                 url = mavenPublishUrl
-                allowInsecureProtocol = mavenPublishUrl.startsWith("http://") // Mostly for the GTNH maven
+                allowInsecureProtocol = mavenPublishUrl.startsWith("http://")
                 credentials {
                     username = System.getenv("MAVEN_USER") ?: "NONE"
                     password = System.getenv("MAVEN_PASSWORD") ?: "NONE"
@@ -1301,7 +1292,7 @@ def addCurseForgeRelation(String type, String name) {
 
 // Updating
 
-def buildscriptGradleVersion = "8.2.1"
+def buildscriptGradleVersion = "8.5"
 
 tasks.named('wrapper', Wrapper).configure {
     gradleVersion = buildscriptGradleVersion

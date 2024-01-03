@@ -46,6 +46,9 @@ public class IrisRenderSystem {
                 Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
             }
         } catch (NoSuchFieldError ignored) {}
+        if (dsaState == null) {
+            dsaState = new DSAUnsupported();
+        }
 
         try {
             hasMultibind |= Iris.capabilities.GL_ARB_multi_bind;
