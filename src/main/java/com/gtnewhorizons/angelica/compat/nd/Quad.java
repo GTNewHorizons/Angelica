@@ -127,9 +127,9 @@ public class Quad implements ModelQuadView {
             ns[vi] = flags.hasNormals ? rawBuffer[i + 6] : 0;
             bs[vi] = flags.hasBrightness ? rawBuffer[i + 7] : DEFAULT_BRIGHTNESS;
 
-            this.hasColor |= flags.hasColor;
-            this.hasShade |= flags.hasBrightness;
-            this.hasNormals |= flags.hasNormals;
+            this.hasColor = flags.hasColor;
+            this.hasShade = flags.hasBrightness;
+            this.hasNormals = flags.hasNormals;
 
 
             i += 8;
