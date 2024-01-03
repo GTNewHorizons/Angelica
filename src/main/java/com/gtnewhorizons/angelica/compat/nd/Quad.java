@@ -8,7 +8,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -21,12 +20,6 @@ public class Quad implements ModelQuadView {
     public float[] xs = new float[4];
     public float[] ys = new float[4];
     public float[] zs = new float[4];
-    public float minX = Float.POSITIVE_INFINITY;
-    public float minY = Float.POSITIVE_INFINITY;
-    public float minZ = Float.POSITIVE_INFINITY;
-    public float maxX = Float.NEGATIVE_INFINITY;
-    public float maxY = Float.NEGATIVE_INFINITY;
-    public float maxZ = Float.NEGATIVE_INFINITY;
     public float[] us = new float[4];
     public float[] vs = new float[4];
     public int[] bs = new int[4];
@@ -36,17 +29,6 @@ public class Quad implements ModelQuadView {
     public boolean deleted;
 
     public ModelQuadFacing normal;
-    public int offset;
-    public BlockRenderer.Flags flags;
-
-    // Is positive U direction parallel to edge 0-1?
-    public boolean uDirectionIs01;
-
-    public boolean isRectangle;
-
-    // 0: quads glued together on edge 1-2 or 3-0 ("megaquad row length")
-    // 1: quads glued together on edge 0-1 or 2-3 ("megaquad column length")
-    private final int[] quadCountByDirection = {1, 1};
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
@@ -180,11 +162,6 @@ public class Quad implements ModelQuadView {
             return;
         }
 
-        uDirectionIs01 = us[0] != us[1];
-
-        updateMinMaxXYZ();
-        updateIsRectangle();
-
         vectorA.set(xs[1] - xs[0], ys[1] - ys[0], zs[1] - zs[0]);
         vectorB.set(xs[2] - xs[1], ys[2] - ys[1], zs[2] - zs[1]);
         vectorA.cross(vectorB, vectorC);
@@ -201,116 +178,16 @@ public class Quad implements ModelQuadView {
         Arrays.fill(bs, 0);
         Arrays.fill(cs, 0);
 
-        minX = Float.POSITIVE_INFINITY;
-        minY = Float.POSITIVE_INFINITY;
-        minZ = Float.POSITIVE_INFINITY;
-        maxX = Float.NEGATIVE_INFINITY;
-        maxY = Float.NEGATIVE_INFINITY;
-        maxZ = Float.NEGATIVE_INFINITY;
-
         deleted = false;
         normal = null;
-        offset = 0;
-        flags = null;
-        uDirectionIs01 = false;
-        Arrays.fill(quadCountByDirection, 1);
-    }
-
-    public int quadCountByUVDirection(boolean v) {
-        if(v) {
-            return quadCountByDirection[uDirectionIs01 ? 0 : 1];
-        } else {
-            return quadCountByDirection[uDirectionIs01 ? 1 : 0];
-        }
-    }
-
-    public static int getStride() {
-        return
-                3 * 4                                       // XYZ          (float)
-                + 2 * (/*Config.shortUV*/false ? 2 : 4)     // UV           (float)
-                + 4                                         // B            (int)
-                + 4                                         // C            (int)
-                ;
-    }
-
-    private boolean isTranslatedCopyOf(Quad o, boolean checkValid) {
-        if((!isValid(this) && checkValid) || !isValid(o) || normal != o.normal) return false;
-
-        for(int i = 1; i < 4; i++) {
-            double relX = xs[i] - xs[0];
-            double relY = ys[i] - ys[0];
-            double relZ = zs[i] - zs[0];
-
-            if(o.xs[i] != o.xs[0] + relX || o.ys[i] != o.ys[0] + relY || o.zs[i] != o.zs[0] + relZ) {
-                return false;
-            }
-        }
-
-        for(int i = 0; i < 4; i++) {
-            if(us[i] != o.us[i] || vs[i] != o.vs[i] || bs[i] != o.bs[i] || cs[i] != o.cs[i]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private void copyVertexFrom(Quad o, int src, int dest) {
-        xs[dest] = o.xs[src];
-        ys[dest] = o.ys[src];
-        zs[dest] = o.zs[src];
-        us[dest] = o.us[src];
-        vs[dest] = o.vs[src];
-        bs[dest] = o.bs[src];
-        cs[dest] = o.cs[src];
-        ns[dest] = o.ns[src];
-
-        updateMinMaxXYZ(); // TODO isn't doing this a waste? I should get rid of the min/maxXYZ variables entirely.
-    }
-
-    private void updateMinMaxXYZ() {
-        for(int i = 0; i < 4; i++) {
-            minX = Math.min(minX, xs[i]);
-            minY = Math.min(minY, ys[i]);
-            minZ = Math.min(minZ, zs[i]);
-            maxX = Math.max(maxX, xs[i]);
-            maxY = Math.max(maxY, ys[i]);
-            maxZ = Math.max(maxZ, zs[i]);
-        }
-    }
-
-    private void updateIsRectangle() {
-        isRectangle =
-                vertexExists(minX, minY, minZ) &&
-                vertexExists(minX, minY, maxZ) &&
-                vertexExists(minX, maxY, minZ) &&
-                vertexExists(minX, maxY, maxZ) &&
-                vertexExists(maxX, minY, minZ) &&
-                vertexExists(maxX, minY, maxZ) &&
-                vertexExists(maxX, maxY, minZ) &&
-                vertexExists(maxX, maxY, maxZ);
-    }
-
-    private boolean vertexExists(float x, float y, float z) {
-        for(int i = 0; i < 4; i++) {
-            if(xs[i] == x && ys[i] == y && zs[i] == z) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static boolean isValid(Quad q) {
         return q != null && !q.deleted;
     }
 
-    public boolean isClockwiseXZ() {
-        return (xs[1] - xs[0]) * (zs[2] - zs[0]) - (xs[2] - xs[0]) * (zs[1] - zs[0]) < 0;
-    }
-
     @Override
     public String toString() {
-        return String.format(Locale.ENGLISH, "%s(%.1f, %.1f, %.1f -- %.1f, %.1f, %.1f)", deleted ? "XXX " : "", minX, minY, minZ, maxX, maxY, maxZ);
-        //return String.format(Locale.ENGLISH, "%s[(%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f)]", deleted ? "XXX " : "", xs[0], ys[0], zs[0], xs[1], ys[1], zs[1], xs[2], ys[2], zs[2], xs[3], ys[3], zs[3]);
+        return String.format(Locale.ENGLISH, "%s[(%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f), (%.1f, %.1f, %.1f)]", deleted ? "XXX " : "", xs[0], ys[0], zs[0], xs[1], ys[1], zs[1], xs[2], ys[2], zs[2], xs[3], ys[3], zs[3]);
     }
 }
