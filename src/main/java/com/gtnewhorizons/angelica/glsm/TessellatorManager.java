@@ -13,7 +13,6 @@ public class TessellatorManager {
     private static final ThreadLocal<CapturingTessellator> capturingTessellator = ThreadLocal.withInitial(CapturingTessellator::new);
 
     private static final ThreadLocal<Boolean> currentlyCapturing = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    private static final ThreadLocal<Tessellator> theTessellator = ThreadLocal.withInitial(Tessellator::new);
     private static final Thread mainThread = Thread.currentThread();
 
     public static Tessellator get() {
@@ -21,8 +20,11 @@ public class TessellatorManager {
             return capturingTessellator.get();
         } else if(isOnMainThread()) {
             return Tessellator.instance;
+        } else {
+            // TODO: Verify this works correctly and nothing unexpected is grabbing a tessellator off the main thread
+            // when not capturing
+            throw new IllegalStateException("Tried to get the Tessellator off the main thread when not capturing!");
         }
-        return theTessellator.get();
     }
 
     public static boolean isOnMainThread() {
