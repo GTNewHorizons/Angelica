@@ -80,9 +80,9 @@ public class CapturingTessellator extends Tessellator {
     }
 
     public static ByteBuffer quadsToBuffer(List<Quad> quads, VertexFormat format) {
-        if(format != DefaultVertexFormat.VBO) {
+        if(format != DefaultVertexFormat.ITEM_VBO) {
             // TODO: Support more vertex formats
-            throw new IllegalStateException("Currently only supports DefaultVertexFormat.VBO");
+            throw new IllegalStateException("Currently only supports DefaultVertexFormat.ITEM_VBO");
         }
         final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(format.getVertexSize() * quads.size() * 4);
 

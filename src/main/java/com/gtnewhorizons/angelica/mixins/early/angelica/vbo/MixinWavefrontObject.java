@@ -20,7 +20,7 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
 
     @Shadow public abstract void tessellateAll(Tessellator tessellator);
 
-    @Unique VertexFormat format = DefaultVertexFormat.VBO;
+    @Unique VertexFormat format = DefaultVertexFormat.ITEM_VBO;
 
     @Override
     public void rebuildVBO() {

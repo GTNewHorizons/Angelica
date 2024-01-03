@@ -17,7 +17,7 @@ public class DefaultVertexFormat {
     public static final VertexFormatElement OVERLAY_ELEMENT = new VertexFormatElement(1, Type.SHORT, Usage.UV, 2);
     public static final VertexFormatElement NORMAL_ELEMENT = new VertexFormatElement(0, Type.BYTE, Usage.NORMAL, 3);
     public static final VertexFormatElement PADDING_ELEMENT = new VertexFormatElement(0, Type.BYTE, Usage.PADDING, 1);
-    public static final VertexFormat VBO = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(NORMAL_ELEMENT).add(PADDING_ELEMENT).build());
+    public static final VertexFormat ITEM_VBO = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(NORMAL_ELEMENT).add(PADDING_ELEMENT).build());
     public static final VertexFormat POSITION_COLOR_TEXTURE_LIGHT_NORMAL = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).add(LIGHT_ELEMENT).add(NORMAL_ELEMENT).add(PADDING_ELEMENT).build());
     public static final VertexFormat POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).add(OVERLAY_ELEMENT).add(LIGHT_ELEMENT).add(NORMAL_ELEMENT).add(PADDING_ELEMENT).build());
     public static final VertexFormat POSITION_TEXTURE_COLOR_LIGHT = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(COLOR_ELEMENT).add(LIGHT_ELEMENT).build());
