@@ -8,7 +8,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
-import java.util.Arrays;
 import java.util.Locale;
 
 public class Quad implements ModelQuadView {
@@ -152,7 +151,7 @@ public class Quad implements ModelQuadView {
     }
 
     public void setState(int[] rawBuffer, int offset, BlockRenderer.Flags flags, int drawMode, float offsetX, float offsetY, float offsetZ) {
-        resetState();
+        deleted = false;
 
         read(rawBuffer, offset, offsetX, offsetY, offsetZ, drawMode, flags);
 
@@ -167,19 +166,6 @@ public class Quad implements ModelQuadView {
         vectorA.cross(vectorB, vectorC);
 
         normal = ModelQuadFacing.fromVector(vectorC);
-    }
-
-    private void resetState() {
-        Arrays.fill(xs, 0);
-        Arrays.fill(ys, 0);
-        Arrays.fill(zs, 0);
-        Arrays.fill(us, 0);
-        Arrays.fill(vs, 0);
-        Arrays.fill(bs, 0);
-        Arrays.fill(cs, 0);
-
-        deleted = false;
-        normal = null;
     }
 
     public static boolean isValid(Quad q) {
