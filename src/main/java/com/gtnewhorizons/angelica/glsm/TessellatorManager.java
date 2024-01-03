@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
@@ -52,7 +51,7 @@ public class TessellatorManager {
         final List<Quad> quads = tess.getQuads();
         ((ITessellatorInstance)tess).discard();
 
-        tess.resetQuadBuf();
+        tess.clearQuads();
         return quads;
     }
 
@@ -66,7 +65,7 @@ public class TessellatorManager {
             currentlyCapturing.set(false);
             final CapturingTessellator tess = capturingTessellator.get();
             ((ITessellatorInstance)tess).discard();
-            tess.resetQuadBuf();
+            tess.clearQuads();
         }
     }
 }

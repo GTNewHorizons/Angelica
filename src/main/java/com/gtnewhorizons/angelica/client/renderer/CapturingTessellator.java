@@ -74,7 +74,7 @@ public class CapturingTessellator extends Tessellator {
         return quadBuf.getAsList();
     }
 
-    public void resetQuadBuf() {
+    public void clearQuads() {
         this.quadBuf.reset();
     }
 
