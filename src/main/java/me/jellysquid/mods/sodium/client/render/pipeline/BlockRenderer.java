@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
+import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -21,12 +21,9 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
-import org.joml.Vector3d;
-import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 import java.util.Random;
@@ -52,7 +49,7 @@ public class BlockRenderer {
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
     }
 
-    public boolean renderModel(IBlockAccess world, Tessellator tessellator, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = this.getLightingMode(block);
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
@@ -61,48 +58,26 @@ public class BlockRenderer {
         boolean rendered = false;
 
         try {
-            tessellator.startDrawingQuads();
+            TessellatorManager.startCapturing();
+            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            tess.startDrawingQuads();
+            tess.setOffset(pos);
+
             renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-
-
-            final List<Quad> all = tessellatorToQuadList(tessellator, pos);
+            final List<Quad> quads = TessellatorManager.stopCapturing();
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, all, facing);
+                this.renderQuadList(pos, lighter, buffers, quads, facing);
             }
 
-            if (!all.isEmpty()) rendered = true;
+            if (!quads.isEmpty()) rendered = true;
         } finally {
-            ((ITessellatorInstance) tessellator).discard();
+            TessellatorManager.cleanup();
         }
 
 
         return rendered;
-    }
-
-    private int tesselatorDataCount;
-    private List<Quad> tessellatorToQuadList(Tessellator t, BlockPos pos) {
-        // Adapted from Neodymium
-        tesselatorDataCount++;
-
-        FLAGS.hasBrightness = t.hasBrightness;
-        FLAGS.hasColor = t.hasColor;
-
-        final int verticesPerPrimitive = t.drawMode == GL11.GL_QUADS ? 4 : 3;
-
-        for(int quadI = 0; quadI < t.vertexCount / verticesPerPrimitive; quadI++) {
-            final Quad quad = quadBuf.next();
-            // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
-            quad.setState(t.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, t.drawMode, -pos.x, -pos.y, -pos.z);
-
-            if(quad.deleted) {
-                quadBuf.remove();
-            }
-        }
-        final List<Quad> quads = quadBuf.getAsList();
-        quadBuf.reset();
-        return quads;
     }
 
     private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {

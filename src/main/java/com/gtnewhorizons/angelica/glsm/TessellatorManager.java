@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
 
 import java.util.List;
@@ -35,17 +37,34 @@ public class TessellatorManager {
         if(currentlyCapturing.get()) throw new IllegalStateException("Tried to start capturing when already capturing!");
         currentlyCapturing.set(true);
     }
+
+
     public static List<Quad> stopCapturing() {
         if(!currentlyCapturing.get()) throw new IllegalStateException("Tried to stop capturing when not capturing!");
         currentlyCapturing.set(false);
         final CapturingTessellator tess = capturingTessellator.get();
+
+        // Be sure we got all the quads
+        if(tess.isDrawing) tess.draw();
+
         final List<Quad> quads = tess.getQuads();
-        tess.reset();
+        ((ITessellatorInstance)tess).discard();
+
         tess.resetQuadBuf();
         return quads;
     }
 
     static {
         System.out.println("[TessellatorManager] Initialized on thread " + mainThread.getName());
+    }
+
+    public static void cleanup() {
+        // Ensure we've cleaned everything up
+        if(currentlyCapturing.get()) {
+            currentlyCapturing.set(false);
+            final CapturingTessellator tess = capturingTessellator.get();
+            ((ITessellatorInstance)tess).discard();
+            tess.resetQuadBuf();
+        }
     }
 }

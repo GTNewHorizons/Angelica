@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -20,12 +19,10 @@ import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
-import me.jellysquid.mods.sodium.common.config.SodiumConfig;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -112,7 +109,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         final BlockPos.Mutable pos = new BlockPos.Mutable();
         final BlockPos renderOffset = this.offset;
-        final Tessellator tessellator = TessellatorManager.get();
 
         boolean hasMainThreadBlocks = false;
 
@@ -145,7 +141,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                                 final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                                 if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
-                                if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), tessellator, renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
+                                if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
                                     bounds.addBlock(relX, relY, relZ);
                                 }
                             }
@@ -258,7 +254,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                             if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
-                            if (cache.getBlockRenderer().renderModel(slice.getWorld(), Tessellator.instance, rb, block, meta, pos, buffers.get(pass), true, seed)) {
+                            if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
                                 bounds.addBlock(relX, relY, relZ);
                             }
                         }
