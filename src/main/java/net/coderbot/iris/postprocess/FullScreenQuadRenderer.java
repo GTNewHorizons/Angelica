@@ -2,7 +2,7 @@ package net.coderbot.iris.postprocess;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.IrisRenderSystem;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;

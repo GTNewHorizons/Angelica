@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelCustomExt;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraftforge.client.model.obj.GroupObject;

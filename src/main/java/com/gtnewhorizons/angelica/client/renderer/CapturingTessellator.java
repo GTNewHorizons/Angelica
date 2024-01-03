@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.BufferUtils;
@@ -80,30 +79,13 @@ public class CapturingTessellator extends Tessellator {
     }
 
     public static ByteBuffer quadsToBuffer(List<Quad> quads, VertexFormat format) {
-        if(format != DefaultVertexFormat.ITEM_VBO) {
-            // TODO: Support more vertex formats
-            throw new IllegalStateException("Currently only supports DefaultVertexFormat.ITEM_VBO");
+        if(!format.canWriteQuads()) {
+            throw new IllegalStateException("Vertex format has no quad writer: " + format);
         }
         final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(format.getVertexSize() * quads.size() * 4);
-
         // noinspection ForLoopReplaceableByForEach
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
-            final Quad quad = quads.get(i);
-            for (int idx = 0; idx < 4; idx++) {
-                // TODO: Actually use the format for deciding what elements to write, currently hardcoded to assume DefaultVertexFormat.VBO
-
-                // Position
-                byteBuffer.putFloat(quad.getX(idx));
-                byteBuffer.putFloat(quad.getY(idx));
-                byteBuffer.putFloat(quad.getZ(idx));
-
-                // Texture
-                byteBuffer.putFloat(quad.getTexU(idx));
-                byteBuffer.putFloat(quad.getTexV(idx));
-
-                // Normals
-                byteBuffer.putInt(quad.getNormal(idx));
-            }
+            format.writeQuad(quads.get(i), byteBuffer);
         }
         byteBuffer.rewind();
         return byteBuffer;

@@ -1,7 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;

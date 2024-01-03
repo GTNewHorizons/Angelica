@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.nd.IWriteQuads;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;
@@ -9,6 +10,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ImmediateState;
 import net.coderbot.iris.vertices.IrisVertexFormats;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class VertexFormat {
@@ -18,7 +20,13 @@ public class VertexFormat {
     @Getter
     protected final int vertexSize;
 
+    protected IWriteQuads quadWriter;
+
     public VertexFormat(ImmutableList<VertexFormatElement> elements) {
+        this(elements, null);
+    }
+
+    public VertexFormat(ImmutableList<VertexFormatElement> elements, IWriteQuads quadWriter) {
         this.elements = elements;
         int i = 0;
         for (VertexFormatElement element : elements) {
@@ -26,6 +34,7 @@ public class VertexFormat {
             i += element.getByteSize();
         }
         vertexSize = i;
+        this.quadWriter = quadWriter;
     }
 
     public void setupBufferState(long l) {
@@ -62,4 +71,14 @@ public class VertexFormat {
         }
     }
 
+    public boolean canWriteQuads() {
+        return quadWriter != null;
+    }
+
+    public void writeQuad(Quad quad, ByteBuffer byteBuffer) {
+        if(quadWriter == null) {
+            throw new IllegalStateException("No quad writer set");
+        }
+        quadWriter.writeQuad(quad, byteBuffer);
+    }
 }
