@@ -1,8 +1,8 @@
 package net.coderbot.iris.vertices;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.toremove.VertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
 
 public class IrisVertexFormats {
@@ -25,7 +25,7 @@ public class IrisVertexFormats {
 
 		terrainElements.add(DefaultVertexFormat.POSITION_ELEMENT); // 12
 		terrainElements.add(DefaultVertexFormat.COLOR_ELEMENT); // 16
-		terrainElements.add(DefaultVertexFormat.TEXTURE_0_ELEMENT); // 24
+		terrainElements.add(DefaultVertexFormat.TEXTURE_ELEMENT); // 24
 		terrainElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 28
 		terrainElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 31
 		terrainElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 32
@@ -37,7 +37,7 @@ public class IrisVertexFormats {
 
 		entityElements.add(DefaultVertexFormat.POSITION_ELEMENT); // 12
 		entityElements.add(DefaultVertexFormat.COLOR_ELEMENT); // 16
-		entityElements.add(DefaultVertexFormat.TEXTURE_0_ELEMENT); // 24
+		entityElements.add(DefaultVertexFormat.TEXTURE_ELEMENT); // 24
 		entityElements.add(DefaultVertexFormat.OVERLAY_ELEMENT); // 28
 		entityElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 32
 		entityElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 35

@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import lombok.Getter;

@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gl.attribute;
 
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkMeshAttribute;
 
 import java.util.EnumMap;
@@ -18,6 +19,12 @@ public class GlVertexFormat<T extends Enum<T>> implements BufferVertexFormat {
     private final EnumMap<T, GlVertexAttribute> attributesKeyed;
     private final GlVertexAttribute[] attributesArray;
 
+    /**
+     * -- GETTER --
+     *
+     * The stride (or the size of) the vertex format in bytes
+     */
+    @Getter
     private final int stride;
 
     public GlVertexFormat(Class<T> attributeEnum, EnumMap<T, GlVertexAttribute> attributesKeyed, int stride) {
@@ -36,20 +43,13 @@ public class GlVertexFormat<T extends Enum<T>> implements BufferVertexFormat {
      * @throws NullPointerException If the attribute does not exist in this format
      */
     public GlVertexAttribute getAttribute(T name) {
-        GlVertexAttribute attr = this.attributesKeyed.get(name);
+        final GlVertexAttribute attr = this.attributesKeyed.get(name);
 
         if (attr == null) {
             throw new NullPointerException("No attribute exists for " + name.toString());
         }
 
         return attr;
-    }
-
-    /**
-     * @return The stride (or the size of) the vertex format in bytes
-     */
-    public int getStride() {
-        return this.stride;
     }
 
     @Override

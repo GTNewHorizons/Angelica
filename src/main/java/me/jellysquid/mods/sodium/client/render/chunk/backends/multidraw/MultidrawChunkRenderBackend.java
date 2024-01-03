@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Setter;
 import me.jellysquid.mods.sodium.client.gl.arena.GlBufferArena;
 import me.jellysquid.mods.sodium.client.gl.arena.GlBufferSegment;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttribute;
@@ -123,20 +124,20 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         commandList.bindBuffer(GlBufferTarget.ARRAY_BUFFER, this.uploadBuffer);
 
         while (!this.pendingUploads.isEmpty()) {
-            ChunkRegion<MultidrawGraphicsState> region = this.pendingUploads.dequeue();
+            final ChunkRegion<MultidrawGraphicsState> region = this.pendingUploads.dequeue();
 
-            GlBufferArena arena = region.getBufferArena();
-            GlBuffer buffer = arena.getBuffer();
+            final GlBufferArena arena = region.getBufferArena();
+            final GlBuffer buffer = arena.getBuffer();
 
-            ObjectArrayList<ChunkBuildResult<MultidrawGraphicsState>> uploadQueue = region.getUploadQueue();
+            final ObjectArrayList<ChunkBuildResult<MultidrawGraphicsState>> uploadQueue = region.getUploadQueue();
             arena.prepareBuffer(commandList, getUploadQueuePayloadSize(uploadQueue));
 
             for (ChunkBuildResult<MultidrawGraphicsState> result : uploadQueue) {
-                ChunkRenderContainer<MultidrawGraphicsState> render = result.render;
-                ChunkRenderData data = result.data;
+                final ChunkRenderContainer<MultidrawGraphicsState> render = result.render;
+                final ChunkRenderData data = result.data;
 
                 for (BlockRenderPass pass : result.passesToUpload) {
-                    MultidrawGraphicsState graphics = render.getGraphicsState(pass);
+                    final MultidrawGraphicsState graphics = render.getGraphicsState(pass);
 
                     // De-allocate the existing buffer arena for this render
                     // This will allow it to be cheaply re-allocated just below
@@ -144,16 +145,16 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
                         graphics.delete(commandList);
                     }
 
-                    ChunkMeshData meshData = data.getMesh(pass);
+                    final ChunkMeshData meshData = data.getMesh(pass);
 
                     if (meshData.hasVertexData()) {
-                        VertexData upload = meshData.takeVertexData();
+                        final VertexData upload = meshData.takeVertexData();
 
                         commandList.uploadData(this.uploadBuffer, upload.buffer);
 
-                        GlBufferSegment segment = arena.uploadBuffer(commandList, this.uploadBuffer, 0, upload.buffer.capacity());
+                        final GlBufferSegment segment = arena.uploadBuffer(commandList, this.uploadBuffer, 0, upload.buffer.capacity());
 
-                        MultidrawGraphicsState graphicsState = new MultidrawGraphicsState(render, region, segment, meshData, this.vertexFormat);
+                        final MultidrawGraphicsState graphicsState = new MultidrawGraphicsState(render, region, segment, meshData, this.vertexFormat);
                         if(pass.isTranslucent()) {
                             upload.buffer.limit(upload.buffer.capacity());
                             upload.buffer.position(0);
@@ -217,15 +218,13 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
 
     }
 
+    /**
+     * -- SETTER --
+     *  Sets whether to reverse the order in which regions are drawn
+     */
+    @Setter
     private boolean reverseRegions = false;
     private ChunkCameraContext regionCamera;
-
-    /**
-     * Sets whether to reverse the order in which regions are drawn (fixes
-     */
-    public void setReverseRegions(boolean flag) {
-        this.reverseRegions = flag;
-    }
 
     @Override
     public void render(CommandList commandList, ChunkRenderListIterator<MultidrawGraphicsState> renders, ChunkCameraContext camera) {
@@ -242,7 +241,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         long pointer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBufferAddress() : 0L;
 
         for (ChunkRegion<?> region : this.pendingBatches) {
-            ChunkDrawCallBatcher batch = region.getDrawBatcher();
+            final ChunkDrawCallBatcher batch = region.getDrawBatcher();
 
             if (!batch.isEmpty()) {
 	            try (DrawCommandList drawCommandList = commandList.beginTessellating(region.getTessellation())) {
@@ -262,11 +261,11 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         this.commandClientBufferBuilder.begin();
 
         if(this.reverseRegions) {
-            ChunkCameraContext camera = this.regionCamera;
+            final ChunkCameraContext camera = this.regionCamera;
             for (ChunkRegion<?> region : this.pendingBatches) {
-                float x = camera.getChunkModelOffset(region.getCenterBlockX(), camera.blockOriginX, camera.originX);
-                float y = camera.getChunkModelOffset(region.getCenterBlockY(), camera.blockOriginY, camera.originY);
-                float z = camera.getChunkModelOffset(region.getCenterBlockZ(), camera.blockOriginZ, camera.originZ);
+                final float x = camera.getChunkModelOffset(region.getCenterBlockX(), camera.blockOriginX, camera.originX);
+                final float y = camera.getChunkModelOffset(region.getCenterBlockY(), camera.blockOriginY, camera.originY);
+                final float z = camera.getChunkModelOffset(region.getCenterBlockZ(), camera.blockOriginZ, camera.originZ);
                 region.camDistance = x * x + y * y + z * z;
             }
 
@@ -274,7 +273,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         }
 
         for (ChunkRegion<?> region : this.pendingBatches) {
-            ChunkDrawCallBatcher batcher = region.getDrawBatcher();
+            final ChunkDrawCallBatcher batcher = region.getDrawBatcher();
             batcher.end();
 
             this.commandClientBufferBuilder.pushCommandBuffer(batcher);
@@ -285,13 +284,13 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
 
     private void setupUploadBatches(Iterator<ChunkBuildResult<MultidrawGraphicsState>> renders) {
         while (renders.hasNext()) {
-            ChunkBuildResult<MultidrawGraphicsState> result = renders.next();
+            final ChunkBuildResult<MultidrawGraphicsState> result = renders.next();
 
             if(result == null) {
                 continue;
             }
 
-            ChunkRenderContainer<MultidrawGraphicsState> render = result.render;
+            final ChunkRenderContainer<MultidrawGraphicsState> render = result.render;
 
             ChunkRegion<MultidrawGraphicsState> region = this.bufferManager.getRegion(render.getChunkX(), render.getChunkY(), render.getChunkZ());
 
@@ -304,7 +303,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
                 region = this.bufferManager.getOrCreateRegion(render.getChunkX(), render.getChunkY(), render.getChunkZ());
             }
 
-            ObjectArrayList<ChunkBuildResult<MultidrawGraphicsState>> uploadQueue = region.getUploadQueue();
+            final ObjectArrayList<ChunkBuildResult<MultidrawGraphicsState>> uploadQueue = region.getUploadQueue();
 
             if (uploadQueue.isEmpty()) {
                 this.pendingUploads.enqueue(region);
@@ -321,18 +320,18 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         int drawCount = 0;
 
         while (it.hasNext()) {
-            MultidrawGraphicsState state = it.getGraphicsState();
-            int visible = it.getVisibleFaces();
+            final MultidrawGraphicsState state = it.getGraphicsState();
+            final int visible = it.getVisibleFaces();
 
-            int index = drawCount++;
-            float x = camera.getChunkModelOffset(state.getX(), camera.blockOriginX, camera.originX);
-            float y = camera.getChunkModelOffset(state.getY(), camera.blockOriginY, camera.originY);
-            float z = camera.getChunkModelOffset(state.getZ(), camera.blockOriginZ, camera.originZ);
+            final int index = drawCount++;
+            final float x = camera.getChunkModelOffset(state.getX(), camera.blockOriginX, camera.originX);
+            final float y = camera.getChunkModelOffset(state.getY(), camera.blockOriginY, camera.originY);
+            final float z = camera.getChunkModelOffset(state.getZ(), camera.blockOriginZ, camera.originZ);
 
             this.uniformBufferBuilder.pushChunkDrawParams(x, y, z);
 
-            ChunkRegion<MultidrawGraphicsState> region = state.getRegion();
-            ChunkDrawCallBatcher batch = region.getDrawBatcher();
+            final ChunkRegion<MultidrawGraphicsState> region = state.getRegion();
+            final ChunkDrawCallBatcher batch = region.getDrawBatcher();
 
             if (!batch.isBuilding()) {
                 batch.begin();
@@ -440,7 +439,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
             return false;
         }
 
-        Matcher matcher = INTEL_BUILD_MATCHER.matcher(version);
+        final Matcher matcher = INTEL_BUILD_MATCHER.matcher(version);
 
         // If the version pattern doesn't match, assume we're dealing with something special
         if (!matcher.matches()) {
@@ -459,7 +458,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
 
     @Override
     public List<String> getDebugStrings() {
-        List<String> list = new ArrayList<>();
+        final List<String> list = new ArrayList<>();
         list.add(String.format("Active Buffers: %s", this.bufferManager.getAllocatedRegionCount()));
         list.add(String.format("Submission Mode: %s", this.commandBuffer != null ? EnumChatFormatting.AQUA + "Buffer" : EnumChatFormatting.LIGHT_PURPLE + "Client Memory"));
 

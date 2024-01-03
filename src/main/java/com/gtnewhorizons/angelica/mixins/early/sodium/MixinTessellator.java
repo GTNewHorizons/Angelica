@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
@@ -84,7 +85,5 @@ public abstract class MixinTessellator implements ITessellatorInstance {
     public float getMidTextureV() {
         return angelica$midTextureV;
     }
-
-
 
 }

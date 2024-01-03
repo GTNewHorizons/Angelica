@@ -11,7 +11,7 @@ public class AngelicaBlockSafetyRegistry {
     private static final StampedLock LOCK = new StampedLock();
 
     public static boolean canBlockRenderOffThread(Block block) {
-        long stamp = LOCK.readLock();
+        final long stamp = LOCK.readLock();
         boolean isOffThread, shouldPopulate;
         try {
             isOffThread = SAFETY_MAP.getBoolean(block);
@@ -32,9 +32,9 @@ public class AngelicaBlockSafetyRegistry {
     }
 
     private static boolean populateCanRenderOffThread(Block block) {
-        boolean canBeOffThread = !(block.getClass().getName().startsWith("gregtech."));
+        final boolean canBeOffThread = !(block.getClass().getName().startsWith("gregtech."));
 
-        long stamp = LOCK.writeLock();
+        final long stamp = LOCK.writeLock();
 
         try {
             SAFETY_MAP.put(block, canBeOffThread);

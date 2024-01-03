@@ -1,7 +1,8 @@
-package com.gtnewhorizons.angelica.compat.toremove;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
+import com.gtnewhorizons.angelica.compat.nd.IWriteQuads;
+import com.gtnewhorizons.angelica.compat.nd.Quad;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;
@@ -9,6 +10,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ImmediateState;
 import net.coderbot.iris.vertices.IrisVertexFormats;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class VertexFormat {
@@ -18,7 +20,13 @@ public class VertexFormat {
     @Getter
     protected final int vertexSize;
 
+    protected IWriteQuads quadWriter;
+
     public VertexFormat(ImmutableList<VertexFormatElement> elements) {
+        this(elements, null);
+    }
+
+    public VertexFormat(ImmutableList<VertexFormatElement> elements, IWriteQuads quadWriter) {
         this.elements = elements;
         int i = 0;
         for (VertexFormatElement element : elements) {
@@ -26,9 +34,9 @@ public class VertexFormat {
             i += element.getByteSize();
         }
         vertexSize = i;
+        this.quadWriter = quadWriter;
     }
 
-    @Deprecated
     public void setupBufferState(long l) {
         if (BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat() && ImmediateState.renderWithExtendedVertexFormat) {
             if (this == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL || this == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
@@ -44,11 +52,10 @@ public class VertexFormat {
         final List<VertexFormatElement> list = this.getElements();
 
         for(int j = 0; j < list.size(); ++j) {
-            ((VertexFormatElement)list.get(j)).setupBufferState(l + (long)this.offsets.getInt(j), i);
+            list.get(j).setupBufferState(l + this.offsets.getInt(j), i);
         }
     }
 
-    @Deprecated
     public void clearBufferState() {
         if (BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat() && ImmediateState.renderWithExtendedVertexFormat) {
             if (this == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL || this == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
@@ -64,4 +71,14 @@ public class VertexFormat {
         }
     }
 
+    public boolean canWriteQuads() {
+        return quadWriter != null;
+    }
+
+    public void writeQuad(Quad quad, ByteBuffer byteBuffer) {
+        if(quadWriter == null) {
+            throw new IllegalStateException("No quad writer set");
+        }
+        quadWriter.writeQuad(quad, byteBuffer);
+    }
 }

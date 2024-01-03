@@ -22,10 +22,10 @@ public class VertexBufferBuilder implements VertexBufferView {
 
     private void grow(int len) {
         // The new capacity will at least as large as the write it needs to service
-        int cap = Math.max(this.capacity * 2, this.capacity + len);
+        final int cap = Math.max(this.capacity * 2, this.capacity + len);
 
         // Allocate a new buffer and copy the old buffer's contents into it
-        ByteBuffer buffer = BufferUtils.createByteBuffer(cap);
+        final ByteBuffer buffer = BufferUtils.createByteBuffer(cap);
         this.buffer.rewind();
         buffer.put(this.buffer);
         buffer.position(0);

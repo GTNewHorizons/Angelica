@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad;
 
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
-import com.gtnewhorizons.angelica.compat.toremove.VertexFormat;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad.writer.BasicScreenQuadVertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad.writer.BasicScreenQuadVertexBufferWriterUnsafe;
