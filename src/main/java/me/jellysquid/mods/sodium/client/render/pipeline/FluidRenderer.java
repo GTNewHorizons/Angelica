@@ -355,7 +355,6 @@ public class FluidRenderer {
         int[] biomeColors = null;
 
         if (colorized) {
-            // TODO: Sodium - Colorizer
             biomeColors = new int[4];
             int color = slice.getBlock(pos.x,pos.y,pos.z).colorMultiplier(slice,pos.x,pos.y,pos.z);
             Arrays.fill(biomeColors,ColorARGB.toABGR(color));
