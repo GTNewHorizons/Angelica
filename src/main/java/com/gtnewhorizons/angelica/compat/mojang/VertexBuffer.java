@@ -26,47 +26,6 @@ public class VertexBuffer implements AutoCloseable {
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
-    public void upload(Tessellator tessellator, VertexFormat format) {
-        try {
-            this.upload(tessellatorToBuffer(tessellator, format), tessellator.vertexCount);
-        } catch(Exception e) {
-            throw new RuntimeException("Failed to upload vertex buffer", e);
-        } finally {
-            ((ITessellatorInstance) tessellator).discard();
-        }
-    }
-
-    public ByteBuffer tessellatorToBuffer(Tessellator tessellator, VertexFormat format) {
-
-        final int verticesPerPrimitive = tessellator.drawMode == GL11.GL_QUADS ? 4 : 3;
-
-        final int[] rawBuffer = tessellator.rawBuffer;
-        final int byteSize = format.getVertexSize() * tessellator.vertexCount;
-        final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(byteSize);
-
-
-
-        for(int quadI = 0 ; quadI < tessellator.vertexCount / verticesPerPrimitive ; quadI++) {
-            for(int vertexI = 0 ; vertexI < 4 ; vertexI++) {
-                final int i = (quadI * 4 * 8 ) + (vertexI * 8);
-
-                // Position
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 0]));
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 1]));
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 2]));
-
-                // Texture
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 3]));
-                byteBuffer.putFloat(Float.intBitsToFloat(rawBuffer[i + 4]));
-
-                // Normals
-                byteBuffer.putInt(rawBuffer[i + 6]);
-            }
-        }
-
-        return (ByteBuffer) byteBuffer.rewind();
-    }
-
     public void upload(ByteBuffer buffer, int vertexCount) {
         if (this.id == -1) return;
         this.vertexCount = vertexCount;
