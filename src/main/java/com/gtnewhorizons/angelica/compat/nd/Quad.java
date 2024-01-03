@@ -31,7 +31,8 @@ public class Quad implements ModelQuadView {
     public float[] vs = new float[4];
     public int[] bs = new int[4];
     public int[] cs = new int[4];
-    // TODO normals?
+    public int[] ns = new int[4];
+
     public boolean deleted;
 
     public ModelQuadFacing normal;
@@ -51,6 +52,7 @@ public class Quad implements ModelQuadView {
 
     private boolean hasColor;
     private boolean hasShade;
+    private boolean hasNormals;
 
     public boolean hasColor() {
         return this.hasColor;
@@ -62,6 +64,10 @@ public class Quad implements ModelQuadView {
 
     public boolean hasShade() {
         return this.hasShade;
+    }
+
+    public boolean hasNormals() {
+        return this.hasNormals;
     }
 
     public ForgeDirection getFace() {
@@ -111,7 +117,7 @@ public class Quad implements ModelQuadView {
 
     @Override
     public int getNormal(int idx) {
-        return 0;
+        return ns[idx];
     }
 
     @Override
@@ -136,10 +142,14 @@ public class Quad implements ModelQuadView {
             us[vi] = Float.intBitsToFloat(rawBuffer[i + 3]);
             vs[vi] = Float.intBitsToFloat(rawBuffer[i + 4]);
 
-            bs[vi] = flags.hasBrightness ? rawBuffer[i + 7] : DEFAULT_BRIGHTNESS;
             cs[vi] = flags.hasColor ? rawBuffer[i + 5] : DEFAULT_COLOR;
+            ns[vi] = flags.hasNormals ? rawBuffer[i + 6] : 0;
+            bs[vi] = flags.hasBrightness ? rawBuffer[i + 7] : DEFAULT_BRIGHTNESS;
+
             this.hasColor |= flags.hasColor;
             this.hasShade |= flags.hasBrightness;
+            this.hasNormals |= flags.hasNormals;
+
 
             i += 8;
         }
@@ -155,6 +165,7 @@ public class Quad implements ModelQuadView {
 
             bs[3] = bs[2];
             cs[3] = cs[2];
+            ns[3] = ns[2];
         }
     }
 
@@ -205,39 +216,6 @@ public class Quad implements ModelQuadView {
         Arrays.fill(quadCountByDirection, 1);
     }
 
-    public void writeToBuffer(BufferWriter out) throws IOException {
-        for(int vertexI = 0; vertexI < 4; vertexI++) {
-            int vi = vertexI;
-            int provokingI = 3;
-
-            float x = xs[vi];
-            float y = ys[vi];
-            float z = zs[vi];
-
-            out.writeFloat(x);
-            out.writeFloat(y);
-            out.writeFloat(z);
-
-            float u = us[vi];
-            float v = vs[vi];
-
-            out.writeFloat(u);
-            out.writeFloat(v);
-
-            int b = bs[vi];
-
-            out.writeInt(b);
-
-            int c = cs[vi];
-
-            out.writeInt(c);
-
-            assert out.position() % getStride() == 0;
-
-            //System.out.println("[" + vertexI + "] x: " + x + ", y: " + y + " z: " + z + ", u: " + u + ", v: " + v + ", b: " + b + ", c: " + c);
-        }
-    }
-
     public int quadCountByUVDirection(boolean v) {
         if(v) {
             return quadCountByDirection[uDirectionIs01 ? 0 : 1];
@@ -285,6 +263,7 @@ public class Quad implements ModelQuadView {
         vs[dest] = o.vs[src];
         bs[dest] = o.bs[src];
         cs[dest] = o.cs[src];
+        ns[dest] = o.ns[src];
 
         updateMinMaxXYZ(); // TODO isn't doing this a waste? I should get rid of the min/maxXYZ variables entirely.
     }

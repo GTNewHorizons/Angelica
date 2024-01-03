@@ -8,14 +8,17 @@ import java.util.List;
 
 @SuppressWarnings("unused")
 public class TessellatorManager {
-    private static CapturingTessellator capturingTessellator = null;
+    private static final ThreadLocal<CapturingTessellator> capturingTessellator = ThreadLocal.withInitial(CapturingTessellator::new);
 
+    private static final ThreadLocal<Boolean> currentlyCapturing = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private static final ThreadLocal<Tessellator> theTessellator = ThreadLocal.withInitial(Tessellator::new);
     private static final Thread mainThread = Thread.currentThread();
 
     public static Tessellator get() {
-        if(isOnMainThread()) {
-            return capturingTessellator != null ? capturingTessellator : Tessellator.instance;
+        if(currentlyCapturing.get()) {
+            return capturingTessellator.get();
+        } else if(isOnMainThread()) {
+            return Tessellator.instance;
         }
         return theTessellator.get();
     }
@@ -28,15 +31,17 @@ public class TessellatorManager {
         return instance == Tessellator.instance || isOnMainThread();
     }
 
-    public static void startCapturing(CapturingTessellator tessellator) {
-        if(capturingTessellator != null) throw new IllegalStateException("Tried to start capturing when already capturing!");
-        capturingTessellator = tessellator;
+    public static void startCapturing() {
+        if(currentlyCapturing.get()) throw new IllegalStateException("Tried to start capturing when already capturing!");
+        currentlyCapturing.set(true);
     }
     public static List<Quad> stopCapturing() {
-        if(capturingTessellator == null) throw new IllegalStateException("Tried to stop capturing when not capturing!");
-
-        final List<Quad> quads = capturingTessellator.getQuads();
-        capturingTessellator = null;
+        if(!currentlyCapturing.get()) throw new IllegalStateException("Tried to stop capturing when not capturing!");
+        currentlyCapturing.set(false);
+        final CapturingTessellator tess = capturingTessellator.get();
+        final List<Quad> quads = tess.getQuads();
+        tess.reset();
+        tess.resetQuadBuf();
         return quads;
     }
 

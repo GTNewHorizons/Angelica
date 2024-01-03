@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
+import com.gtnewhorizons.angelica.compat.toremove.DefaultVertexFormat;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.BufferUtils;
@@ -22,14 +23,8 @@ import java.util.List;
  */
 @SuppressWarnings("unused")
 public class CapturingTessellator extends Tessellator {
-    protected final VertexFormat format;
-
-    private final BlockRenderer.Flags FLAGS = new BlockRenderer.Flags(true, true, true, false);
+    private final BlockRenderer.Flags FLAGS = new BlockRenderer.Flags(true, true, true, true);
     private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
-    public CapturingTessellator(VertexFormat format) {
-        super();
-        this.format = format;
-    }
 
     @Override
     public int draw() {
@@ -38,7 +33,13 @@ public class CapturingTessellator extends Tessellator {
         FLAGS.hasBrightness = this.hasBrightness;
         FLAGS.hasColor = this.hasColor;
 
+        // TODO: Support GL_TRIANGLES
+        if(this.drawMode != GL11.GL_QUADS) {
+            throw new IllegalStateException("Currently only supports GL_QUADS");
+
+        }
         final int verticesPerPrimitive = this.drawMode == GL11.GL_QUADS ? 4 : 3;
+
 
         for(int quadI = 0; quadI < this.vertexCount / verticesPerPrimitive; quadI++) {
             final Quad quad = quadBuf.next();
@@ -59,8 +60,15 @@ public class CapturingTessellator extends Tessellator {
         return quadBuf.getAsList();
     }
 
+    public void resetQuadBuf() {
+        this.quadBuf.reset();
+    }
 
     public static ByteBuffer quadsToBuffer(List<Quad> quads, VertexFormat format) {
+        if(format != DefaultVertexFormat.VBO) {
+            // TODO: Support more vertex formats
+            throw new IllegalStateException("Currently only supports DefaultVertexFormat.VBO");
+        }
         final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(format.getVertexSize() * quads.size() * 4);
 
         // noinspection ForLoopReplaceableByForEach

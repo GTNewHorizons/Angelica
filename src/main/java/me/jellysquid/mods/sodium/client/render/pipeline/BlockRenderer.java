@@ -179,7 +179,7 @@ public class BlockRenderer {
         boolean hasTexture;
         public boolean hasBrightness;
         public boolean hasColor;
-        boolean hasNormals;
+        public boolean hasNormals;
 
         public Flags(byte flags) {
             hasTexture = (flags & 1) != 0;
