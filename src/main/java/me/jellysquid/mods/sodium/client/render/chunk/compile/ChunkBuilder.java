@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 public class ChunkBuilder<T extends ChunkGraphicsState> {
     /**
@@ -365,6 +367,8 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
                 if (result != null) {
                     // Notify the future that the result is now available
                     job.future.complete(result);
+                    // Unpark the main thread so it wakes up if it was blocking on the future having completed
+                    LockSupport.unpark(GLStateManager.getMainThread());
                 } else if (!job.isCancelled()) {
                     // If the job wasn't cancelled and no result was produced, we've hit a bug
                     job.future.completeExceptionally(new RuntimeException("No result was produced by the task"));
