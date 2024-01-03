@@ -68,7 +68,7 @@ public class HorizonRenderer {
 
 		this.vertexBuffer = new VertexBuffer();
 		this.vertexBuffer.bind();
-		this.vertexBuffer.upload(byteBuffer, quads.size());
+		this.vertexBuffer.upload(byteBuffer, quads.size() * 4);
 		this.vertexBuffer.unbind();
 	}
 
