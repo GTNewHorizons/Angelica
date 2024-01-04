@@ -69,8 +69,6 @@ public class BlockRenderer {
             }
 
             if (!quads.isEmpty()) rendered = true;
-
-            TessellatorManager.clearQuads();
         } finally {
             TessellatorManager.cleanup();
         }

@@ -67,12 +67,8 @@ public class TessellatorManager {
      */
     public static ByteBuffer stopCapturingToBuffer(VertexFormat format) {
         final ByteBuffer buf = CapturingTessellator.quadsToBuffer(stopCapturingToPooledQuads(), format);
-        clearQuads();
-        return buf;
-    }
-
-    public static void clearQuads() {
         capturingTessellator.get().clearQuads();
+        return buf;
     }
 
     static {
@@ -81,11 +77,10 @@ public class TessellatorManager {
 
     public static void cleanup() {
         // Ensure we've cleaned everything up
-        if(currentlyCapturing.get()) {
-            currentlyCapturing.set(false);
-            final CapturingTessellator tess = capturingTessellator.get();
-            ((ITessellatorInstance)tess).discard();
-            tess.clearQuads();
-        }
+        final CapturingTessellator tessellator = capturingTessellator.get();
+
+        currentlyCapturing.set(false);
+        ((ITessellatorInstance)tessellator).discard();
+        tessellator.clearQuads();
     }
 }
