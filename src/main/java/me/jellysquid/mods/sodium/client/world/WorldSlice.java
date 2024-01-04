@@ -82,6 +82,8 @@ public class WorldSlice implements IBlockAccess {
 
     private final int worldHeight;
 
+    private boolean worldHasNoSky;
+
     // The chunk origin of this slice
     @Getter
     private ChunkSectionPos origin;
@@ -129,6 +131,7 @@ public class WorldSlice implements IBlockAccess {
     public WorldSlice(WorldClient world) {
         this.world = world;
         this.worldHeight = world.getHeight();
+        this.worldHasNoSky = world.provider.hasNoSky;
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
         this.blockArrays = new Block[SECTION_TABLE_ARRAY_SIZE][];
@@ -344,7 +347,11 @@ public class WorldSlice implements IBlockAccess {
 
         if (lightArray == null) {
             // If the array is null, it means the dimension for the current world does not support that light type
-            return 0;
+            if(type == EnumSkyBlock.Sky) {
+                return this.worldHasNoSky ? 0 : EnumSkyBlock.Sky.defaultLightValue;
+            } else {
+                return 0;
+            }
         }
 
         return lightArray.get(relX & 15, relY & 15, relZ & 15);
