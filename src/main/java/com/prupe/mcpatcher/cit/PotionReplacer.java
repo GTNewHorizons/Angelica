@@ -11,13 +11,12 @@ import net.minecraft.potion.PotionHelper;
 import net.minecraft.util.ResourceLocation;
 
 import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
 class PotionReplacer {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "CIT");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_ITEM_TEXTURES, "CIT");
 
     private static final String ITEM_ID_POTION = "minecraft:potion";
     private static final String ITEM_ID_GLASS_BOTTLE = "minecraft:glass_bottle";

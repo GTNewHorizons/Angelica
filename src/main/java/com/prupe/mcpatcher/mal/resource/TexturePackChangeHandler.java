@@ -11,7 +11,7 @@ import com.prupe.mcpatcher.MCLogger;
 
 abstract public class TexturePackChangeHandler implements Comparable<TexturePackChangeHandler> {
 
-    private static final MCLogger logger = MCLogger.getLogger("Texture Pack");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.TEXTURE_PACK);
 
     private static final ArrayList<TexturePackChangeHandler> handlers = new ArrayList<>();
     private static int recurseDepth;

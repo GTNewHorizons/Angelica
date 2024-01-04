@@ -17,7 +17,7 @@ import com.prupe.mcpatcher.mal.util.WeightedIndex;
 
 class MobRuleList {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.RANDOM_MOBS);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.RANDOM_MOBS);
 
     public static final String ALTERNATIVES_REGEX = "_(eyes|overlay|tame|angry|collar|fur|invulnerable|shooting)\\.properties$";
 

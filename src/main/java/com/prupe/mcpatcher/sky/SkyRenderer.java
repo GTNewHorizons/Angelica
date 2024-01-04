@@ -14,7 +14,6 @@ import net.minecraft.world.World;
 
 import org.lwjgl.opengl.GL11;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
@@ -23,14 +22,15 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class SkyRenderer {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.BETTER_SKIES);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_SKIES);
 
-    private static final boolean enable = Config.getBoolean(MCPatcherUtils.BETTER_SKIES, "skybox", true);
-    private static final boolean unloadTextures = Config
-        .getBoolean(MCPatcherUtils.BETTER_SKIES, "unloadTextures", true);
-    public static final double horizonHeight = Config.getInt(MCPatcherUtils.BETTER_SKIES, "horizon", 16);
+    private static final boolean enable = MCPatcherForgeConfig.instance().skybox;
+    private static final boolean unloadTextures = MCPatcherForgeConfig.instance().unloadTextures;
+    public static final double horizonHeight = MCPatcherForgeConfig.instance().horizon;
 
     private static double worldTime;
     private static float celestialAngle;

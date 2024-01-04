@@ -10,12 +10,11 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 
 final class EnchantmentList {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "CIT");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_ITEM_TEXTURES, "CIT");
 
     private static final float PI = (float) Math.PI;
 

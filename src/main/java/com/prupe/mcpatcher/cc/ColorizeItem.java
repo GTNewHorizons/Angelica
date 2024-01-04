@@ -10,7 +10,6 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionHelper;
 
 import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.MapColorExpansion;
@@ -18,7 +17,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.PotionExpansion;
 
 public class ColorizeItem {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_COLORS);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);
 
     private static final Map<Integer, String> entityNamesByID = new HashMap<>();
     private static final Map<Integer, Integer> spawnerEggShellColors = new HashMap<>(); // egg.shell.*

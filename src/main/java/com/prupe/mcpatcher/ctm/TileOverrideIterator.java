@@ -9,13 +9,13 @@ import java.util.Set;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 abstract public class TileOverrideIterator implements Iterator<ITileOverride> {
 
-    private static final int MAX_RECURSION = Config.getInt(MCPatcherUtils.CONNECTED_TEXTURES, "maxRecursion", 4);
+    private static final int MAX_RECURSION = MCPatcherForgeConfig.instance().maxRecursion;
 
     private final Map<Block, List<BlockStateMatcher>> allBlockOverrides;
     private final Map<String, List<ITileOverride>> allTileOverrides;

@@ -25,7 +25,7 @@ import com.prupe.mcpatcher.MCPatcherUtils;
 
 public class ResourceList {
 
-    private static final MCLogger logger = MCLogger.getLogger("Texture Pack");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.TEXTURE_PACK);
 
     private static ResourceList instance;
     private static final Map<IResourcePack, Integer> resourcePackOrder = new WeakHashMap<>();

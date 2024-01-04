@@ -25,7 +25,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
 public class RenderPass {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.BETTER_GLASS);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_GLASS);
 
     private static final ResourceLocation RENDERPASS_PROPERTIES = TexturePackAPI
         .newMCPatcherResourceLocation("renderpass.properties");

@@ -22,7 +22,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.google.common.collect.Multimap;
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.cc.Colorizer;
 import com.prupe.mcpatcher.cit.CITUtils;
@@ -31,6 +30,8 @@ import com.prupe.mcpatcher.hd.FontUtils;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mob.MobRandomizer;
+
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
@@ -60,16 +61,17 @@ public abstract class MixinMinecraft {
     private void modifyStartGame1(CallbackInfo ci) {
         TileLoader.init();
         CTMUtils.reset();
-        if (Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)) {
+        MCPatcherForgeConfig config = MCPatcherForgeConfig.instance();
+        if (config.customItemTexturesEnabled) {
             CITUtils.init();
         }
-        if (Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "enabled", true)) {
+        if (config.extendedHDEnabled) {
             FontUtils.init();
         }
-        if (Config.getBoolean(MCPatcherUtils.RANDOM_MOBS, "enabled", true)) {
+        if (config.randomMobsEnabled) {
             MobRandomizer.init();
         }
-        if (Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true)) {
+        if (config.customColorsEnabled) {
             Colorizer.init();
         }
     }

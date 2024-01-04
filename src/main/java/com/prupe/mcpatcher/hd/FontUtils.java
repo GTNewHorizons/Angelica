@@ -8,21 +8,21 @@ import java.util.Set;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererExpansion;
 
 public class FontUtils {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.HD_FONT);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD);
 
-    private static final boolean enable = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "hdFont", true);
-    private static final boolean enableNonHD = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "nonHDFontWidth", false);
+    private static final boolean enable = MCPatcherForgeConfig.instance().hdFont;
+    private static final boolean enableNonHD = MCPatcherForgeConfig.instance().nonHDFontWidth;
 
     private static final int ROWS = 16;
     private static final int COLS = 16;

@@ -6,21 +6,21 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.util.InputHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class LineRenderer {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.RANDOM_MOBS);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.RANDOM_MOBS);
 
     private static final double D_WIDTH = 1.0 / 1024.0;
     private static final double D_POS = 1.0 / 256.0;
 
-    private static final boolean enable = Config.getBoolean(MCPatcherUtils.RANDOM_MOBS, "leashLine", true);
+    private static final boolean enable = MCPatcherForgeConfig.instance().leashLine;
     private static final LineRenderer[] renderers = new LineRenderer[2];
 
     private final ResourceLocation texture;

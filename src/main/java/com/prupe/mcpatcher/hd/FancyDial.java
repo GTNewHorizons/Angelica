@@ -29,7 +29,6 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.GLU;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
@@ -38,21 +37,21 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.util.InputHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class FancyDial {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_ANIMATIONS, "Animation");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");
 
     private static final double ANGLE_UNSET = Double.MAX_VALUE;
     private static final int NUM_SCRATCH_TEXTURES = 3;
 
     private static final boolean fboSupported = GLContext.getCapabilities().GL_EXT_framebuffer_object;
     private static final boolean gl13Supported = GLContext.getCapabilities().OpenGL13;
-    private static final boolean enableCompass = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "fancyCompass", true);
-    private static final boolean enableClock = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "fancyClock", true);
-    private static final boolean useGL13 = gl13Supported
-        && Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "useGL13", true);
-    private static final boolean useScratchTexture = Config
-        .getBoolean(MCPatcherUtils.EXTENDED_HD, "useScratchTexture", true);
+    private static final boolean enableCompass = MCPatcherForgeConfig.instance().fancyCompass;
+    private static final boolean enableClock = MCPatcherForgeConfig.instance().fancyClock;
+    private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.instance().useGL13;
+    private static final boolean useScratchTexture = MCPatcherForgeConfig.instance().useScratchTexture;
     private static final int glAttributes;
     private static boolean initialized;
     private static boolean active;

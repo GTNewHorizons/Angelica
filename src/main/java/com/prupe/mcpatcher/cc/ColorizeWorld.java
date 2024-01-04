@@ -14,8 +14,6 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.biome.BiomeAPI;
 import com.prupe.mcpatcher.mal.biome.ColorMap;
 import com.prupe.mcpatcher.mal.biome.ColorMapBase;
@@ -24,9 +22,11 @@ import com.prupe.mcpatcher.mal.biome.IColorMap;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class ColorizeWorld {
 
-    private static final int fogBlendRadius = Config.getInt(MCPatcherUtils.CUSTOM_COLORS, "fogBlendRadius", 7);
+    private static final int fogBlendRadius = MCPatcherForgeConfig.instance().fogBlendRadius;
 
     private static final ResourceLocation UNDERWATERCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/underwater.png");

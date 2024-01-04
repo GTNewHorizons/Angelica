@@ -5,14 +5,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 // Shared by both CTM and Custom Colors.
 public class RenderBlocksUtils {
 
-    public static final boolean enableBetterGrass = Config
-        .getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "grass", false);
+    public static final boolean enableBetterGrass = MCPatcherForgeConfig.instance().betterGrass;
 
     private static final Block grassBlock = BlockAPI.getFixedBlock("minecraft:grass");
     private static final Block snowBlock = BlockAPI.getFixedBlock("minecraft:snow_layer");

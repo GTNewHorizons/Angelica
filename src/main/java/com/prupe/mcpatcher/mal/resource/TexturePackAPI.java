@@ -38,7 +38,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.AbstractTextureExpansion;
 
 public class TexturePackAPI {
 
-    private static final MCLogger logger = MCLogger.getLogger("Texture Pack");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.TEXTURE_PACK);
 
     public static final String DEFAULT_NAMESPACE = "minecraft";
 

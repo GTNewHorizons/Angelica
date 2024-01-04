@@ -5,21 +5,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
 
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 /**
  * Adapted from Hodgepodge
  */
 public enum AsmTransformers {
 
-    RENDERBLOCKS("RenderBlocks transformer", () -> Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true),
+    RENDERBLOCKS("RenderBlocks transformer", () -> AngelicaConfig.enableMCPatcherForgeFeatures
+        && MCPatcherForgeConfig.instance().customColorsEnabled,
         Side.CLIENT, "mist475.mcpatcherforge.asm.RenderBlocksTransformer"),
-    WORLDRENDERER("WorldRenderer transformer", () -> true, Side.CLIENT,
-        "mist475.mcpatcherforge.asm.WorldRendererTransformer");
+    WORLDRENDERER("WorldRenderer transformer", () -> AngelicaConfig.enableMCPatcherForgeFeatures, Side.CLIENT,
+                  "mist475.mcpatcherforge.asm.WorldRendererTransformer");
 
     private final Supplier<Boolean> applyIf;
     private final Side side;

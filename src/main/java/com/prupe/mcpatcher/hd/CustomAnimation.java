@@ -14,7 +14,6 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.GLAPI;
@@ -23,11 +22,13 @@ import com.prupe.mcpatcher.mal.resource.ResourceList;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class CustomAnimation implements Comparable<CustomAnimation> {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_ANIMATIONS, "Animation");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");
 
-    private static final boolean enable = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "animations", true);
+    private static final boolean enable = MCPatcherForgeConfig.instance().animations;
     private static final Set<PropertiesFile> pending = new HashSet<>();
     private static final List<CustomAnimation> animations = new ArrayList<>();
 

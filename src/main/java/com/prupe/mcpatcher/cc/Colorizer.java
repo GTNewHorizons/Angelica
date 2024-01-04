@@ -3,7 +3,6 @@ package com.prupe.mcpatcher.cc;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.ResourceLocation;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.biome.ColorMap;
@@ -12,22 +11,24 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class Colorizer {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CUSTOM_COLORS);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);
 
     static final ResourceLocation COLOR_PROPERTIES = TexturePackAPI.newMCPatcherResourceLocation("color.properties");
     private static PropertiesFile properties;
 
-    static final boolean usePotionColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "potion", true);
-    static final boolean useParticleColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "particle", true);
-    static final boolean useFogColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "fog", true);
-    static final boolean useCloudType = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "clouds", true);
-    static final boolean useMapColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "map", true);
-    static final boolean useDyeColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "dye", true);
-    static final boolean useTextColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "text", true);
-    static final boolean useXPOrbColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "xporb", true);
-    static final boolean useEggColors = Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "egg", true);
+    static final boolean usePotionColors = MCPatcherForgeConfig.instance().ccPotion;
+    static final boolean useParticleColors = MCPatcherForgeConfig.instance().ccParticle;
+    static final boolean useFogColors = MCPatcherForgeConfig.instance().ccFog;
+    static final boolean useCloudType = MCPatcherForgeConfig.instance().ccClouds;
+    static final boolean useMapColors = MCPatcherForgeConfig.instance().ccMap;
+    static final boolean useDyeColors = MCPatcherForgeConfig.instance().ccDye;
+    static final boolean useTextColors = MCPatcherForgeConfig.instance().ccText;
+    static final boolean useXPOrbColors = MCPatcherForgeConfig.instance().ccXPOrb;
+    static final boolean useEggColors = MCPatcherForgeConfig.instance().ccEgg;
 
     public static final float[] setColor = new float[3];
 
