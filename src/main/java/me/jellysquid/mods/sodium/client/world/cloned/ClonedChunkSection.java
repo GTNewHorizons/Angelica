@@ -14,6 +14,7 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 
@@ -109,13 +110,11 @@ public class ClonedChunkSection {
         return data.getExtBlockMetadata(x, y, z);
     }
 
-    public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
+    public NibbleArray getLightArray(EnumSkyBlock type) {
         if(type == EnumSkyBlock.Sky) {
-            if(world.provider.hasNoSky)
-                return 0;
-            return data.hasSky ? data.getExtSkylightValue(x, y, z) : type.defaultLightValue;
+            return (!world.provider.hasNoSky && data.hasSky) ? data.getSkylightArray() : null;
         }
-        return data.getExtBlocklightValue(x, y, z);
+        return data.getBlocklightArray();
     }
 
     public BiomeGenBase getBiomeForNoiseGen(int x, int y, int z) {
