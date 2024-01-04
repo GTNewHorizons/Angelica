@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalVBOCapture;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -79,19 +78,6 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
             case SKY2 -> this.sky2VBO;
             default -> throw new RuntimeException("Unexpected display list: " + list);
         };
-        VertexFormat format = switch (list) {
-            case STARS, SKY, SKY2 -> DefaultVertexFormat.POSITION;
-            default -> throw new RuntimeException("Unexpected display list: " + list);
-        };
-        drawVBO(vbo, format);
+        vbo.render(GL11.GL_QUADS);
     }
-
-    private static void drawVBO(VertexBuffer vbo, VertexFormat format) {
-        vbo.bind();
-        format.setupBufferState(0L);
-        vbo.draw(GL11.GL_QUADS);
-        format.clearBufferState();
-        vbo.unbind();
-    }
-
 }

@@ -1,8 +1,5 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
-import net.minecraft.client.renderer.Tessellator;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -63,5 +60,14 @@ public class VertexBuffer implements AutoCloseable {
 
     public void draw(int mode) {
         GL11.glDrawArrays(mode, 0, this.vertexCount);
+    }
+
+    public void render(int mode) {
+        if(format == null) throw new IllegalStateException("No format specified for VBO render");
+        bind();
+        format.setupBufferState(0L);
+        draw(mode);
+        format.clearBufferState();
+        unbind();
     }
 }

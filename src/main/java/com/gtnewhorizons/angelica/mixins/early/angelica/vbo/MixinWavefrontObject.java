@@ -22,7 +22,7 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
 
     @Shadow public abstract void tessellateAll(Tessellator tessellator);
 
-    @Unique VertexFormat format = DefaultVertexFormat.ITEM_VBO;
+    @Unique VertexFormat format = DefaultVertexFormat.POSITION_TEXTURE_NORMAL;
 
     @Override
     public void rebuildVBO() {
@@ -45,11 +45,7 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         if(vertexBuffer == null) {
             rebuildVBO();
         }
-        vertexBuffer.bind();
-        format.setupBufferState(0L);
-        vertexBuffer.draw(GL11.GL_QUADS);
-        format.clearBufferState();
-        vertexBuffer.unbind();
+        vertexBuffer.render(GL11.GL_QUADS);
     }
 
 }

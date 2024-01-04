@@ -27,11 +27,16 @@ public enum Mixins {
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinActiveRenderInfo"
             ,"angelica.MixinEntityRenderer"
-            ,"angelica.vbo.MixinWavefrontObject"
-            ,"angelica.vbo.MixinRenderGlobal"
         )
     ),
-
+    ANGELICA_VBO(
+        new Builder("Angelica VBO").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+            .setPhase(Phase.EARLY).addMixinClasses(
+                 "angelica.vbo.MixinWavefrontObject"
+                ,"angelica.vbo.MixinRenderGlobal"
+                ,"angelica.vbo.MixinModelRenderer"
+        )
+    ),
     ANGELICA_FONT_RENDERER(new Builder("Angelica Font Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableFontRenderer).addMixinClasses(
              "angelica.fontrenderer.MixinGuiIngameForge"
