@@ -319,7 +319,7 @@ public class BatchingFontRenderer {
         final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
-            return 0.0f;
+            return anchorX + (enableShadow ? 1.0f : 0.0f);
         }
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
 
@@ -571,7 +571,7 @@ public class BatchingFontRenderer {
         } finally {
             this.endBatch();
         }
-        return curX;
+        return curX + (enableShadow ? 1.0f : 0.0f);
     }
 
 }
