@@ -6,6 +6,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(BiomeEvent.BiomeColor.class)
 public interface AccessorBiomeColorEvent {
-    @Accessor("originalColor")
+    @Accessor(value = "originalColor", remap = false)
     void setOriginalColor(int value);
 }

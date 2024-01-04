@@ -61,7 +61,7 @@ public class BlockRenderer {
             tess.setOffset(pos);
 
             renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-            final List<Quad> quads = TessellatorManager.stopCapturing();
+            final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
@@ -69,8 +69,6 @@ public class BlockRenderer {
             }
 
             if (!quads.isEmpty()) rendered = true;
-
-            TessellatorManager.clearQuads();
         } finally {
             TessellatorManager.cleanup();
         }
