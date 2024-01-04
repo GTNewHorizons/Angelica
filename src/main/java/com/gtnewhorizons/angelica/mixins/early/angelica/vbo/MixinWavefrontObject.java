@@ -47,6 +47,7 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         this.vertexBuffer.bind();
         vertexBuffer.upload(byteBuffer, quads.size() * 4);
         this.vertexBuffer.unbind();
+        TessellatorManager.clearQuads();
     }
 
     @Override

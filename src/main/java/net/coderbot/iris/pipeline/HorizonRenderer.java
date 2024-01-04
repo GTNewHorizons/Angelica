@@ -70,6 +70,7 @@ public class HorizonRenderer {
 		this.vertexBuffer.bind();
 		this.vertexBuffer.upload(byteBuffer, quads.size() * 4);
 		this.vertexBuffer.unbind();
+        TessellatorManager.clearQuads();
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {

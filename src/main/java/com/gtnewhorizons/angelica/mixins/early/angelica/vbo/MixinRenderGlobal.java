@@ -50,6 +50,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
         this.starVBO.bind();
         starVBO.upload(byteBuffer, quads.size() * 4);
         this.starVBO.unbind();
+        TessellatorManager.clearQuads();
 
     }
 
@@ -75,6 +76,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
         this.skyVBO.bind();
         skyVBO.upload(byteBuffer, quads.size() * 4);
         this.skyVBO.unbind();
+        TessellatorManager.clearQuads();
     }
 
     @Override
@@ -93,6 +95,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
         this.sky2VBO.bind();
         sky2VBO.upload(byteBuffer, quads.size() * 4);
         this.sky2VBO.unbind();
+        TessellatorManager.clearQuads();
     }
 
     @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"))
