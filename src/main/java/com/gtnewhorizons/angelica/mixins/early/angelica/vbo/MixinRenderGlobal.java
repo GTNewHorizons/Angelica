@@ -1,10 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
-import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalVBOCapture;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -14,9 +12,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
-
-import java.nio.ByteBuffer;
-import java.util.List;
 
 @Mixin(value = RenderGlobal.class, remap = false)
 public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
@@ -43,8 +38,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0))
     public void finishStarsVBO() {
-        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
-        this.starVBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
+        this.starVBO = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION);
     }
 
     @Redirect(method="<init>", at = @At(value="FIELD", target="Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
@@ -62,8 +56,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1))
     public void finishSkyVBO() {
-        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
-        this.skyVBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
+        this.skyVBO = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION);
     }
 
     @Override
@@ -75,8 +68,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2))
     public void finishSky2VBO() {
-        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
-        this.sky2VBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
+        this.sky2VBO = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION);
     }
 
     @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"))

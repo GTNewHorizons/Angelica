@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
+import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
@@ -69,6 +70,14 @@ public class TessellatorManager {
         final ByteBuffer buf = CapturingTessellator.quadsToBuffer(stopCapturingToPooledQuads(), format);
         capturingTessellator.get().clearQuads();
         return buf;
+    }
+
+    /*
+     * Stops the CapturingTessellator, stores the quads in a buffer (based on the VertexFormat provided),
+     * uploads the buffer to a new VertexBuffer, and clears the quads.
+     */
+    public static VertexBuffer stopCapturingToVBO(VertexFormat format) {
+        return new VertexBuffer(format).upload(stopCapturingToBuffer(format));
     }
 
     static {
