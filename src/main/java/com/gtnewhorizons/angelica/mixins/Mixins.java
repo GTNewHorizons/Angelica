@@ -88,6 +88,8 @@ public enum Mixins {
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
             "sodium.MixinChunkProviderClient"
             ,"sodium.MixinBlock"
+            ,"sodium.AccessorBiomeColorEvent"
+            ,"sodium.MixinBiomeGenBase"
             ,"sodium.MixinChunk"
             ,"sodium.MixinChunkProviderServer"
             ,"sodium.MixinEntity"
