@@ -11,7 +11,6 @@ import net.minecraft.world.World;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
 import com.prupe.mcpatcher.sky.FireworksHelper;
 
 @SuppressWarnings({ "rawtypes" })
@@ -28,9 +29,6 @@ public abstract class MixinEffectRenderer {
 
     @Shadow
     private List[] fxLayers;
-
-    @Unique
-    private int mcpatcher_forge$renderParticlesIndex;
 
     @Inject(
         method = "<init>(Lnet/minecraft/world/World;Lnet/minecraft/client/renderer/texture/TextureManager;)V",
@@ -66,23 +64,24 @@ public abstract class MixinEffectRenderer {
         at = @At(value = "INVOKE", target = "Ljava/util/List;isEmpty()Z"),
         locals = LocalCapture.CAPTURE_FAILHARD)
     private void modifyRenderParticles2(Entity player, float partialTickTime, CallbackInfo ci, float f1, float f2,
-        float f3, float f4, float f5, int k, int i) {
-        this.mcpatcher_forge$renderParticlesIndex = i;
+        float f3, float f4, float f5, int k, int i, @Share("renderParticlesIndex") LocalIntRef renderParticlesIndex) {
+        renderParticlesIndex.set(i);
     }
 
     @Redirect(
         method = "renderParticles(Lnet/minecraft/entity/Entity;F)V",
         at = @At(value = "INVOKE", target = "Ljava/util/List;isEmpty()Z"))
-    private boolean modifyRenderParticles3(List layer) {
-        return FireworksHelper.skipThisLayer(
-            this.fxLayers[mcpatcher_forge$renderParticlesIndex].isEmpty(),
-            this.mcpatcher_forge$renderParticlesIndex);
+    private boolean modifyRenderParticles3(List layer,
+        @Share("renderParticlesIndex") LocalIntRef renderParticlesIndex) {
+        return FireworksHelper
+            .skipThisLayer(this.fxLayers[renderParticlesIndex.get()].isEmpty(), renderParticlesIndex.get());
     }
 
     @Redirect(
         method = "renderParticles(Lnet/minecraft/entity/Entity;F)V",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glBlendFunc(II)V", remap = false))
-    private void modifyRenderParticles4(int sfactor, int dfactor) {
-        FireworksHelper.setParticleBlendMethod(this.mcpatcher_forge$renderParticlesIndex, 0, true);
+    private void modifyRenderParticles4(int sfactor, int dfactor,
+        @Share("renderParticlesIndex") LocalIntRef renderParticlesIndex) {
+        FireworksHelper.setParticleBlendMethod(renderParticlesIndex.get(), 0, true);
     }
 }

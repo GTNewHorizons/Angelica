@@ -22,6 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import com.llamalad7.mixinextras.injector.WrapWithCondition;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import com.llamalad7.mixinextras.sugar.ref.LocalFloatRef;
 import com.prupe.mcpatcher.cc.ColorizeBlock;
 import com.prupe.mcpatcher.cc.Colorizer;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
@@ -64,20 +67,6 @@ public abstract class MixinRenderBlocks {
     @Shadow
     public abstract boolean hasOverrideBlockTexture();
 
-    // Compute values once and reuse later
-
-    @Unique
-    private boolean mcpatcherforge$computeRedstoneWireColor;
-
-    @Unique
-    private float mcpatcherforge$redstoneWireColorRed;
-
-    @Unique
-    private float mcpatcherforge$redstoneWireColorGreen;
-
-    @Unique
-    private float mcpatcherforge$redstoneWireColorBlue;
-
     @Unique
     private void mcpatcherforge$setColorAndVertex(Tessellator tessellator, float red, float green, float blue, double x,
         double y, double z, double u, double v) {
@@ -112,12 +101,14 @@ public abstract class MixinRenderBlocks {
 
     @Inject(method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z", at = @At("HEAD"))
     private void calculateComputeRedstoneWireColor(Block block, int x, int y, int z,
-        CallbackInfoReturnable<Boolean> cir) {
-        this.mcpatcherforge$computeRedstoneWireColor = ColorizeBlock
-            .computeRedstoneWireColor(this.blockAccess.getBlockMetadata(x, y, z));
-        this.mcpatcherforge$redstoneWireColorRed = Math.max(Colorizer.setColor[0], 0.0f);
-        this.mcpatcherforge$redstoneWireColorGreen = Math.max(Colorizer.setColor[1], 0.0f);
-        this.mcpatcherforge$redstoneWireColorBlue = Math.max(Colorizer.setColor[2], 0.0f);
+        CallbackInfoReturnable<Boolean> cir,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        computeRedstoneWireColor
+            .set(ColorizeBlock.computeRedstoneWireColor(this.blockAccess.getBlockMetadata(x, y, z)));
+        red.set(Math.max(Colorizer.setColor[0], 0.0f));
+        green.set(Math.max(Colorizer.setColor[1], 0.0f));
+        blue.set(Math.max(Colorizer.setColor[2], 0.0f));
     }
 
     @ModifyArgs(
@@ -126,11 +117,13 @@ public abstract class MixinRenderBlocks {
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 0))
-    private void modifyColorRedstoneWire1(Args args) {
-        if (this.mcpatcherforge$computeRedstoneWireColor) {
-            args.set(0, this.mcpatcherforge$redstoneWireColorRed);
-            args.set(1, this.mcpatcherforge$redstoneWireColorGreen);
-            args.set(2, this.mcpatcherforge$redstoneWireColorBlue);
+    private void modifyColorRedstoneWire1(Args args,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        if (computeRedstoneWireColor.get()) {
+            args.set(0, red.get());
+            args.set(1, green.get());
+            args.set(2, blue.get());
         }
     }
 
@@ -140,11 +133,13 @@ public abstract class MixinRenderBlocks {
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 4))
-    private void modifyColorRedstoneWire2(Args args) {
-        if (this.mcpatcherforge$computeRedstoneWireColor) {
-            args.set(0, this.mcpatcherforge$redstoneWireColorRed);
-            args.set(1, this.mcpatcherforge$redstoneWireColorGreen);
-            args.set(2, this.mcpatcherforge$redstoneWireColorBlue);
+    private void modifyColorRedstoneWire2(Args args,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        if (computeRedstoneWireColor.get()) {
+            args.set(0, red.get());
+            args.set(1, green.get());
+            args.set(2, blue.get());
         }
     }
 
@@ -154,11 +149,13 @@ public abstract class MixinRenderBlocks {
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 6))
-    private void modifyColorRedstoneWire3(Args args) {
-        if (this.mcpatcherforge$computeRedstoneWireColor) {
-            args.set(0, this.mcpatcherforge$redstoneWireColorRed);
-            args.set(1, this.mcpatcherforge$redstoneWireColorGreen);
-            args.set(2, this.mcpatcherforge$redstoneWireColorBlue);
+    private void modifyColorRedstoneWire3(Args args,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        if (computeRedstoneWireColor.get()) {
+            args.set(0, red.get());
+            args.set(1, green.get());
+            args.set(2, blue.get());
         }
     }
 
@@ -168,11 +165,13 @@ public abstract class MixinRenderBlocks {
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 8))
-    private void modifyColorRedstoneWire4(Args args) {
-        if (this.mcpatcherforge$computeRedstoneWireColor) {
-            args.set(0, this.mcpatcherforge$redstoneWireColorRed);
-            args.set(1, this.mcpatcherforge$redstoneWireColorGreen);
-            args.set(2, this.mcpatcherforge$redstoneWireColorBlue);
+    private void modifyColorRedstoneWire4(Args args,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        if (computeRedstoneWireColor.get()) {
+            args.set(0, red.get());
+            args.set(1, green.get());
+            args.set(2, blue.get());
         }
     }
 
@@ -182,11 +181,13 @@ public abstract class MixinRenderBlocks {
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 10))
-    private void modifyColorRedstoneWire5(Args args) {
-        if (this.mcpatcherforge$computeRedstoneWireColor) {
-            args.set(0, this.mcpatcherforge$redstoneWireColorRed);
-            args.set(1, this.mcpatcherforge$redstoneWireColorGreen);
-            args.set(2, this.mcpatcherforge$redstoneWireColorBlue);
+    private void modifyColorRedstoneWire5(Args args,
+        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
+        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
+        if (computeRedstoneWireColor.get()) {
+            args.set(0, red.get());
+            args.set(1, green.get());
+            args.set(2, blue.get());
         }
     }
 
