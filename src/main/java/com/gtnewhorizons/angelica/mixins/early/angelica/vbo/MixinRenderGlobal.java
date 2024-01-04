@@ -43,15 +43,8 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0))
     public void finishStarsVBO() {
-        List<Quad> quads = TessellatorManager.stopCapturing();
-        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, DefaultVertexFormat.POSITION);
-
-        this.starVBO = new VertexBuffer();
-        this.starVBO.bind();
-        starVBO.upload(byteBuffer, quads.size() * 4);
-        this.starVBO.unbind();
-        TessellatorManager.clearQuads();
-
+        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
+        this.starVBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
     }
 
     @Redirect(method="<init>", at = @At(value="FIELD", target="Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
@@ -69,14 +62,8 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1))
     public void finishSkyVBO() {
-        List<Quad> quads = TessellatorManager.stopCapturing();
-        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, DefaultVertexFormat.POSITION);
-
-        this.skyVBO = new VertexBuffer();
-        this.skyVBO.bind();
-        skyVBO.upload(byteBuffer, quads.size() * 4);
-        this.skyVBO.unbind();
-        TessellatorManager.clearQuads();
+        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
+        this.skyVBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
     }
 
     @Override
@@ -88,14 +75,8 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2))
     public void finishSky2VBO() {
-        List<Quad> quads = TessellatorManager.stopCapturing();
-        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, DefaultVertexFormat.POSITION);
-
-        this.sky2VBO = new VertexBuffer();
-        this.sky2VBO.bind();
-        sky2VBO.upload(byteBuffer, quads.size() * 4);
-        this.sky2VBO.unbind();
-        TessellatorManager.clearQuads();
+        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
+        this.sky2VBO = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
     }
 
     @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"))

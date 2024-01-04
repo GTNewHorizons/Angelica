@@ -1,10 +1,12 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
+import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 @SuppressWarnings("unused")
@@ -36,11 +38,16 @@ public class TessellatorManager {
 
     public static void startCapturing() {
         if(currentlyCapturing.get()) throw new IllegalStateException("Tried to start capturing when already capturing!");
+        if(capturingTessellator.get().getQuads().size() > 0) throw new IllegalStateException("Tried to start capturing with existing collected Quads!");
+
         currentlyCapturing.set(true);
     }
 
-
-    public static List<Quad> stopCapturing() {
+    /*
+     * Stop the CapturingTessellator and return the pooled quads.  The quads are valid until clearQuads() is
+     *  called on the CapturingTesselator, which must be done before starting capturing again.
+     */
+    public static List<Quad> stopCapturingToPooledQuads() {
         if(!currentlyCapturing.get()) throw new IllegalStateException("Tried to stop capturing when not capturing!");
         currentlyCapturing.set(false);
         final CapturingTessellator tess = capturingTessellator.get();
@@ -52,6 +59,16 @@ public class TessellatorManager {
         ((ITessellatorInstance)tess).discard();
 
         return quads;
+    }
+
+    /*
+     * Stops the CapturingTessellator, stores the quads in a buffer (based on the VertexFormat provided),
+     * and clears the quads.
+     */
+    public static ByteBuffer stopCapturingToBuffer(VertexFormat format) {
+        final ByteBuffer buf = CapturingTessellator.quadsToBuffer(stopCapturingToPooledQuads(), format);
+        clearQuads();
+        return buf;
     }
 
     public static void clearQuads() {

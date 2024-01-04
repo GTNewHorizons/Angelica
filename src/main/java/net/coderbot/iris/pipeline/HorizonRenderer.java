@@ -63,14 +63,9 @@ public class HorizonRenderer {
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
-        List<Quad> quads = TessellatorManager.stopCapturing();
-        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, DefaultVertexFormat.POSITION);
 
-		this.vertexBuffer = new VertexBuffer();
-		this.vertexBuffer.bind();
-		this.vertexBuffer.upload(byteBuffer, quads.size() * 4);
-		this.vertexBuffer.unbind();
-        TessellatorManager.clearQuads();
+        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(DefaultVertexFormat.POSITION);
+        this.vertexBuffer = new VertexBuffer(DefaultVertexFormat.POSITION).upload(byteBuffer);
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {

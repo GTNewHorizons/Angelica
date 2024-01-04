@@ -40,14 +40,10 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
         tess.startDrawing(currentGroupObject.glDrawingMode);
         tessellateAll(tess);
-        List<Quad> quads = TessellatorManager.stopCapturing();
-        final ByteBuffer byteBuffer = CapturingTessellator.quadsToBuffer(quads, format);
+        final ByteBuffer byteBuffer = TessellatorManager.stopCapturingToBuffer(format);
 
-        this.vertexBuffer = new VertexBuffer();
-        this.vertexBuffer.bind();
-        vertexBuffer.upload(byteBuffer, quads.size() * 4);
-        this.vertexBuffer.unbind();
-        TessellatorManager.clearQuads();
+        this.vertexBuffer = new VertexBuffer(format);
+        vertexBuffer.upload(byteBuffer);
     }
 
     @Override
