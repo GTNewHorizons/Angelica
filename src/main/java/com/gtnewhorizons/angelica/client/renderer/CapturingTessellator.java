@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
+import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.BufferUtils;
@@ -24,7 +25,8 @@ import java.util.List;
 @SuppressWarnings("unused")
 public class CapturingTessellator extends Tessellator {
     private final BlockRenderer.Flags FLAGS = new BlockRenderer.Flags(true, true, true, true);
-    private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
+    private final ObjectPooler<Quad> quadBuf = new ObjectPooler<>(Quad::new);
+    private final List<Quad> collectedQuads = new ObjectArrayList<>();
 
     // Any offset we need to the Tesselator's offset!
     private final BlockPos offset = new BlockPos();
@@ -50,11 +52,13 @@ public class CapturingTessellator extends Tessellator {
 
 
         for(int quadI = 0; quadI < this.vertexCount / verticesPerPrimitive; quadI++) {
-            final Quad quad = quadBuf.next();
+            final Quad quad = quadBuf.getInstance();
             quad.setState(this.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, this.drawMode, -offset.x, -offset.y, -offset.z);
 
             if(quad.deleted) {
-                quadBuf.remove();
+                quadBuf.releaseInstance(quad);
+            } else {
+                this.collectedQuads.add(quad);
             }
         }
 
@@ -71,11 +75,15 @@ public class CapturingTessellator extends Tessellator {
     }
 
     public List<Quad> getQuads() {
-        return quadBuf.getAsList();
+        return collectedQuads;
     }
 
     public void clearQuads() {
-        this.quadBuf.reset();
+        //noinspection ForLoopReplaceableByForEach
+        for(int i = 0; i < this.collectedQuads.size(); i++) {
+            this.quadBuf.releaseInstance(this.collectedQuads.get(i));
+        }
+        this.collectedQuads.clear();
     }
 
     public static ByteBuffer quadsToBuffer(List<Quad> quads, VertexFormat format) {

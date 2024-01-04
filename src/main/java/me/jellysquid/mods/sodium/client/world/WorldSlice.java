@@ -18,6 +18,7 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -33,6 +34,8 @@ import net.minecraftforge.common.util.ForgeDirection;
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
 public class WorldSlice implements IBlockAccess {
+    private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
+
     // The number of blocks on each axis in a section.
     private static final int SECTION_BLOCK_LENGTH = 16;
 
@@ -65,6 +68,9 @@ public class WorldSlice implements IBlockAccess {
     private final Block[][] blockArrays;
     private final int[][] metadataArrays;
 
+    // Local Section->Light table
+    private final NibbleArray[][] lightArrays;
+
     // Local section copies. Read-only.
     private ClonedChunkSection[] sections;
 
@@ -75,6 +81,8 @@ public class WorldSlice implements IBlockAccess {
     private int baseX, baseY, baseZ;
 
     private final int worldHeight;
+
+    private final int[] defaultLightValues;
 
     // The chunk origin of this slice
     @Getter
@@ -123,17 +131,22 @@ public class WorldSlice implements IBlockAccess {
     public WorldSlice(WorldClient world) {
         this.world = world;
         this.worldHeight = world.getHeight();
+        this.defaultLightValues = new int[LIGHT_TYPES.length];
+        this.defaultLightValues[EnumSkyBlock.Sky.ordinal()] = world.provider.hasNoSky ? 0 : EnumSkyBlock.Sky.defaultLightValue;
+        this.defaultLightValues[EnumSkyBlock.Block.ordinal()] = EnumSkyBlock.Block.defaultLightValue;
 
         this.sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
         this.blockArrays = new Block[SECTION_TABLE_ARRAY_SIZE][];
         this.metadataArrays = new int[SECTION_TABLE_ARRAY_SIZE][];
         this.biomeData = new BiomeGenBase[SECTION_TABLE_ARRAY_SIZE][];
+        this.lightArrays = new NibbleArray[SECTION_TABLE_ARRAY_SIZE][LIGHT_TYPES.length];
 
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
                     final int i = getLocalSectionIndex(x, y, z);
                     this.blockArrays[i] = new Block[SECTION_BLOCK_COUNT];
+                    Arrays.fill(this.blockArrays[i], Blocks.air);
                     this.metadataArrays[i] = new int[SECTION_BLOCK_COUNT];
                 }
             }
@@ -154,8 +167,13 @@ public class WorldSlice implements IBlockAccess {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
                     final int idx = getLocalSectionIndex(x, y, z);
 
-                    this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], this.sections[idx], context.getVolume());
-                    this.biomeData[idx] = this.sections[idx].getBiomeData();
+                    ClonedChunkSection section = this.sections[idx];
+
+                    this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], section, context.getVolume());
+                    this.biomeData[idx] = section.getBiomeData();
+
+                    this.lightArrays[idx][EnumSkyBlock.Block.ordinal()] = section.getLightArray(EnumSkyBlock.Block);
+                    this.lightArrays[idx][EnumSkyBlock.Sky.ordinal()] = section.getLightArray(EnumSkyBlock.Sky);
                 }
             }
         }
@@ -163,6 +181,11 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
+        if (y < 0 || y >= 256 || x < -30000000 || z < -30000000 || x >= 30000000 || z > 30000000) {
+            // skyBrightness = 15, blockBrightness = 0
+            return (15 << 20);
+        }
+
         final int skyBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Sky, x, y, z);
         int blockBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Block, x, y, z);
 
@@ -172,11 +195,8 @@ public class WorldSlice implements IBlockAccess {
 
         return skyBrightness << 20 | blockBrightness << 4;
     }
-    public int getSkyBlockTypeBrightness(EnumSkyBlock skyBlock, int x, int y, int z) {
-        y = MathHelper.clamp_int(y, 0, 255);
-        if (y < 0 || y >= 256 || x < -30000000 || z < -30000000 || x >= 30000000 || z > 30000000) {
-            return skyBlock.defaultLightValue;
-        }
+
+    private int getSkyBlockTypeBrightness(EnumSkyBlock skyBlock, int x, int y, int z) {
         if (this.getBlock(x, y, z).getUseNeighborBrightness()) {
             int yp = this.getLightLevel(skyBlock, x, y + 1, z);
             final int xp = this.getLightLevel(skyBlock, x + 1, y, z);
@@ -289,8 +309,7 @@ public class WorldSlice implements IBlockAccess {
         final int relX = x - this.baseX;
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
-        final Block block = this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
-        return block == null ? Blocks.air : block;
+        return this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }
 
     public Block getBlockRelative(int x, int y, int z) {
@@ -326,7 +345,14 @@ public class WorldSlice implements IBlockAccess {
         int relY = y - this.baseY;
         int relZ = z - this.baseZ;
 
-        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getLightLevel(type, relX & 15, relY & 15, relZ & 15);
+        NibbleArray lightArray = this.lightArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][type.ordinal()];
+
+        if (lightArray == null) {
+            // If the array is null, it means the dimension for the current world does not support that light type
+            return this.defaultLightValues[type.ordinal()];
+        }
+
+        return lightArray.get(relX & 15, relY & 15, relZ & 15);
     }
 
     public static int getLocalBlockIndex(int x, int y, int z) {
