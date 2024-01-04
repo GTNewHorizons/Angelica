@@ -55,21 +55,6 @@ public final class MatrixUniforms {
 		}
 	}
 
-	private static class InvertedArrayMatrix implements Supplier<Matrix4f> {
-		private final Supplier<float[]> parent;
-
-		InvertedArrayMatrix(Supplier<float[]> parent) {
-			this.parent = parent;
-		}
-
-		@Override
-		public Matrix4f get() {
-            final Matrix4f matrix4f = new Matrix4f().set(parent.get());
-			matrix4f.invert();
-
-			return matrix4f;
-		}
-	}
 
 	private static class Previous implements Supplier<Matrix4f> {
 		private final Supplier<Matrix4f> parent;

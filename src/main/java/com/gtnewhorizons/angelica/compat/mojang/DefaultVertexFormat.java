@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Type;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.compat.nd.writers.ItemVBOQuadWriter;
 import com.gtnewhorizons.angelica.compat.nd.writers.PositionQuadWriter;
-import net.minecraft.client.renderer.OpenGlHelper;
+import com.gtnewhorizons.angelica.compat.nd.writers.PositionTextureQuadWriter;
 
 public class DefaultVertexFormat {
 
@@ -24,7 +24,7 @@ public class DefaultVertexFormat {
     public static final VertexFormat POSITION = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).build(), new PositionQuadWriter());
     public static final VertexFormat POSITION_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).build());
     public static final VertexFormat POSITION_COLOR_LIGHT = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(LIGHT_ELEMENT).build());
-    public static final VertexFormat POSITION_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).build());
+    public static final VertexFormat POSITION_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).build(), new PositionTextureQuadWriter());
     public static final VertexFormat POSITION_COLOR_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).build());
     public static final VertexFormat POSITION_TEXTURE_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(COLOR_ELEMENT).build());
     public static final VertexFormat POSITION_COLOR_TEX_LIGHTMAP = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).add(LIGHT_ELEMENT).build());

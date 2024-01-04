@@ -9,15 +9,11 @@ public class BuiltinReplacementUniforms {
 	private static final Matrix4f lightmapTextureMatrix;
 
 	static {
-		// This mimics the transformations done in LightmapTextureManager to the GL_TEXTURE matrix.
-		lightmapTextureMatrix = new Matrix4f();
-		lightmapTextureMatrix.identity();
-		lightmapTextureMatrix.scale(0.00390625f);
-
-        // TODO: Iris-Shaders - Is this logic correct?
-        final Matrix4f translateMatrix = new Matrix4f();
-        translateMatrix.translate(8.0f, 8.0f, 8.0f);
-		lightmapTextureMatrix.mul(translateMatrix);
+        // This mimics the transformations done in LightTexture to the GL_TEXTURE matrix.
+        lightmapTextureMatrix = new Matrix4f(0.00390625f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.00390625f, 0.0f, 0.0f,
+            0.0f, 0.0f, 0.00390625f, 0.0f,
+            0.03125f, 0.03125f, 0.03125f, 1.0f);
 	}
 
 	public static void addBuiltinReplacementUniforms(UniformHolder uniforms) {
