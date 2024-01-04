@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.compat.nd.RecyclingList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
@@ -39,9 +38,6 @@ public class BlockRenderer {
 
     private final LightPipelineProvider lighters;
 
-    private final Flags FLAGS = new Flags(true, true, true, false);
-    private final RecyclingList<Quad> quadBuf = new RecyclingList<>(Quad::new);
-
 
     public BlockRenderer(LightPipelineProvider lighters) {
         this.lighters = lighters;
@@ -73,6 +69,8 @@ public class BlockRenderer {
             }
 
             if (!quads.isEmpty()) rendered = true;
+
+            TessellatorManager.clearQuads();
         } finally {
             TessellatorManager.cleanup();
         }

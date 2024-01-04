@@ -51,8 +51,11 @@ public class TessellatorManager {
         final List<Quad> quads = tess.getQuads();
         ((ITessellatorInstance)tess).discard();
 
-        tess.clearQuads();
         return quads;
+    }
+
+    public static void clearQuads() {
+        capturingTessellator.get().clearQuads();
     }
 
     static {
