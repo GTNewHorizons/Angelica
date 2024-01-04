@@ -8,42 +8,25 @@ import net.minecraft.world.IBlockAccess;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalFloatRef;
 import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
-
 import com.prupe.mcpatcher.cc.ColorizeBlock;
 
-// Only loaded when both cc and ctm are enabled
 @Mixin(RenderBlocks.class)
-public abstract class MixinRenderBlocks {
+public abstract class MixinRenderBlocksNoCTM {
 
     @Shadow
     public IBlockAccess blockAccess;
+
     @Shadow
     public boolean enableAO;
 
     @Shadow
-    public abstract IIcon getBlockIcon(Block block, IBlockAccess access, int x, int y, int z, int side);
-
-    @Shadow
     public abstract IIcon getBlockIconFromSideAndMetadata(Block block, int side, int meta);
-
-    @Unique
-    private int mcpatcherforge$neededSideRenderBlockLiquid;
-
-    @Unique
-    private float mcpatcherforge$neededFloat1;
-
-    @Unique
-    private float mcpatcherforge$neededFloat2;
-
-    @Unique
-    private float mcpatcherforge$neededFloat3;
 
     // Redirect calls to this.getBlockIcon when possible
 
@@ -60,8 +43,7 @@ public abstract class MixinRenderBlocks {
         red.set((float) (l >> 16 & 255) / 255.0F);
         blue.set((float) (l >> 8 & 255) / 255.0F);
         green.set((float) (l & 255) / 255.0F);
-        return (this.blockAccess == null) ? this.getBlockIconFromSideAndMetadata(block, side, meta)
-            : this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+        return this.getBlockIconFromSideAndMetadata(block, side, meta);
     }
 
     // Capture needed value
@@ -74,8 +56,7 @@ public abstract class MixinRenderBlocks {
     private IIcon mcpatcherforge$saveSideAndRedirectToGetBlockIcon(RenderBlocks instance, Block block, int side,
         int meta, Block specializedBlock, int x, int y, int z, @Share("requiredSide") LocalIntRef requiredSide) {
         requiredSide.set(side);
-        return (this.blockAccess == null) ? this.getBlockIconFromSideAndMetadata(block, side, meta)
-            : this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+        return this.getBlockIconFromSideAndMetadata(block, side, meta);
     }
 
     @Redirect(

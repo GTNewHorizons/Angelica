@@ -11,9 +11,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.prupe.mcpatcher.renderpass.RenderPass;
 
-/*
- * For readability changes to the biggest methods get their own classes
- */
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks {
 

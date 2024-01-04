@@ -390,13 +390,41 @@ public enum Mixins {
         .addMixinClasses(addPrefix("mcpatcherforge.sky.", "MixinEffectRenderer", "MixinRenderGlobal"
         ))),
 
+    MCPATCHERFORGE_CC_NO_CTM(new Builder("Custom colors, no connected textures").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (!Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true)
+                && Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true)))
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")),
+
+    MCPATCHERFORGE_CTM_AND_CC(new Builder("Connected textures and Custom Colors enabled").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true)
+                && Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocks")),
+
+    MCPATCHERFORGE_CTM_NO_CC(new Builder("Connected textures, no custom colours").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true)
+                && !Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true)))
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCC")),
+
     MCPATCHERFORGE_CTM_OR_CC(new Builder("Connected textures or Custom Colors enabled").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
         .setApplyIf(
-            () -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)
-        || Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true)
+                || Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true)))
         .addTargetedMod(TargetedMod.VANILLA)
-        .addMixinClasses(addPrefix("mcpatcherforge.ctm_cc.", "MixinRenderBlocks", "MixinTextureMap")))
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinTextureMap")),
 
     ;
 
