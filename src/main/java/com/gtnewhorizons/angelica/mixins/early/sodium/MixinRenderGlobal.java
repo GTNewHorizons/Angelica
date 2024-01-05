@@ -6,9 +6,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
@@ -25,12 +23,10 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
-import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
-import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -299,11 +295,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     private boolean isInRange(Entity e, double x, double y, double z) {
         // TODO: this check is done slightly earlier than Sodium does it, make sure it doesn't cull too much
         return e.isInRangeToRender3d(x, y, z) && SodiumWorldRenderer.getInstance().isEntityVisible(e);
-    }
-
-    @Redirect(method = "renderClouds", at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z", opcode = Opcodes.GETFIELD, ordinal = 0))
-    private boolean redirectGetFancyClouds(GameSettings settings) {
-        return SodiumClientMod.options().quality.cloudQuality.isFancy();
     }
 
 }

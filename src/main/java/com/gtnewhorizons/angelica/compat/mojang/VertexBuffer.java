@@ -62,6 +62,16 @@ public class VertexBuffer implements AutoCloseable {
         GL11.glDrawArrays(mode, 0, this.vertexCount);
     }
 
+    public void setupState() {
+        if(format == null) throw new IllegalStateException("No format specified for VBO setup");
+        bind();
+        format.setupBufferState(0L);
+    }
+
+    public void cleanupState() {
+        format.clearBufferState();
+        unbind();
+    }
     public void render(int mode) {
         if(format == null) throw new IllegalStateException("No format specified for VBO render");
         bind();
