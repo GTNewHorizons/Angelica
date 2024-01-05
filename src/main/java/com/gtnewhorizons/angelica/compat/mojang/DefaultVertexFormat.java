@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Type;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.compat.nd.writers.ItemVBOQuadWriter;
+import com.gtnewhorizons.angelica.compat.nd.writers.PositionColorTextureQuadWriter;
 import com.gtnewhorizons.angelica.compat.nd.writers.PositionQuadWriter;
+import com.gtnewhorizons.angelica.compat.nd.writers.PositionTextureColorQuadWriter;
 import com.gtnewhorizons.angelica.compat.nd.writers.PositionTextureQuadWriter;
 
 public class DefaultVertexFormat {
@@ -25,8 +27,8 @@ public class DefaultVertexFormat {
     public static final VertexFormat POSITION_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).build());
     public static final VertexFormat POSITION_COLOR_LIGHT = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(LIGHT_ELEMENT).build());
     public static final VertexFormat POSITION_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).build(), new PositionTextureQuadWriter());
-    public static final VertexFormat POSITION_COLOR_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).build());
-    public static final VertexFormat POSITION_TEXTURE_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(COLOR_ELEMENT).build());
+    public static final VertexFormat POSITION_COLOR_TEXTURE = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).build(), new PositionColorTextureQuadWriter());
+    public static final VertexFormat POSITION_TEXTURE_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(COLOR_ELEMENT).build(), new PositionTextureColorQuadWriter());
     public static final VertexFormat POSITION_COLOR_TEX_LIGHTMAP = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(COLOR_ELEMENT).add(TEXTURE_ELEMENT).add(LIGHT_ELEMENT).build());
     public static final VertexFormat POSITION_TEXTURE_LIGHT_COLOR = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(LIGHT_ELEMENT).add(COLOR_ELEMENT).build());
     public static final VertexFormat POSITION_TEXTURE_COLOR_NORMAL = new VertexFormat(new ImmutableList.Builder<VertexFormatElement>().add(POSITION_ELEMENT).add(TEXTURE_ELEMENT).add(COLOR_ELEMENT).add(NORMAL_ELEMENT).add(PADDING_ELEMENT).build());

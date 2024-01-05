@@ -5,11 +5,16 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.VBOManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalVBOCapture;
+import com.gtnewhorizons.angelica.render.CloudRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraftforge.client.IRenderHandler;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -19,6 +24,9 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Shadow public int starGLCallList;
     @Shadow private int glSkyList;
     @Shadow private int glSkyList2;
+    @Shadow public WorldClient theWorld;
+    @Shadow public Minecraft mc;
+    @Shadow private int cloudTickCounter;
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
     private int generateGLRenderListBaseDisplayLists(int range) {
@@ -75,5 +83,21 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"))
     public void renderSky(int list) {
         VBOManager.get(list).render(GL11.GL_QUADS);
+    }
+
+    /**
+     * @author mitchej123
+     * @reason VBO Clouds
+     */
+    @Overwrite
+    public void renderClouds(float partialTicks) {
+        IRenderHandler renderer;
+        if((renderer = theWorld.provider.getCloudRenderer()) != null) {
+            renderer.render(partialTicks, theWorld, mc);
+            return;
+        }
+        if(mc.theWorld.provider.isSurfaceWorld()) {
+            CloudRenderer.getCloudRenderer().render(cloudTickCounter, partialTicks);
+        }
     }
 }

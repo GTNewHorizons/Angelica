@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-
-import java.util.ArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
 public class VBOManager {
     // Not thread safe, only expected to be called from the main thread
@@ -13,7 +13,7 @@ public class VBOManager {
         return nextDisplayList++;
     }
 
-    private static ArrayList<VertexBuffer> vertexBuffers = new ArrayList<>();
+    private static ObjectList<VertexBuffer> vertexBuffers = new ObjectArrayList<>(1);
 
     /*
      * Allocate a (range) of "display list IDs" that will refer to a VBO in the arraylist of vertex buffers.
@@ -30,11 +30,13 @@ public class VBOManager {
         return id;
     }
 
-    public static void registerVBO(int displayList, VertexBuffer vertexBuffer) {
-        if(displayList > vertexBuffers.size()) {
-            vertexBuffers.ensureCapacity(displayList * 2);
+    public static VertexBuffer registerVBO(int displayList, VertexBuffer vertexBuffer) {
+        final int requestedSize = displayList + 1;
+        if(requestedSize + 1 > vertexBuffers.size()) {
+            vertexBuffers.size(requestedSize);
         }
-        vertexBuffers.add(displayList, vertexBuffer);
+        vertexBuffers.set(displayList, vertexBuffer);
+        return vertexBuffer;
     }
 
     public static VertexBuffer get(int list) {
