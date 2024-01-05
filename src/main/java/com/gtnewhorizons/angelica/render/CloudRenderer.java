@@ -240,7 +240,6 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             && mc.theWorld != null
             && mc.theWorld.provider.isSurfaceWorld();
 
-        // TODO: Cloud Mode settings?
         if (isBuilt()
             && (!newEnabled
             || cloudQualitySetting != cloudMode
