@@ -24,6 +24,7 @@ public abstract class MixinTextureMap extends AbstractTexture {
     @Shadow
     @Final
     private Map<String, TextureAtlasSprite> mapRegisteredSprites;
+
     @Shadow
     @Final
     private String basePath;

@@ -3,9 +3,8 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -221,7 +220,7 @@ public enum Mixins {
 
     NOTFINE_FEATURES_NO_MCPF_CIT(new Builder("NotFine Features which clash with mcpf cit (compat handled in MCPF_NF mixin)").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures &&
-            !(AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+            !(AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled)
         ).addMixinClasses(
             "notfine.glint.MixinItemRenderer",
             "notfine.glint.MixinRenderItemGlint"
@@ -246,7 +245,7 @@ public enum Mixins {
     MCPATCHERFORGE_NOTFINE_COMPAT(new Builder("Notfine features and MCPF features where the 2 would clash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures &&
             AngelicaConfig.enableMCPatcherForgeFeatures &&
-            Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+            MCPatcherForgeConfig.instance().customItemTexturesEnabled)
         .addMixinClasses(addPrefix(
             "notfine_mcpf_compat.",
             "MixinRenderItem",
@@ -279,7 +278,7 @@ public enum Mixins {
 
     MCPATCHERFORGE_CUSTOM_COLOURS(new Builder("Custom colors").setSide(Mixins.Side.CLIENT)
         .setPhase(Mixins.Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customColorsEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
@@ -336,7 +335,7 @@ public enum Mixins {
 
     MCPATCHERFORGE_CUSTOM_ITEM_TEXTURES(new Mixins.Builder("Custom Item Textures").setSide(Mixins.Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
@@ -353,7 +352,7 @@ public enum Mixins {
 
     MCPATCHERFORGE_CUSTOM_ITEM_TEXTURES_NO_NF(new Mixins.Builder("Custom Item Textures without notfine features").setSide(Mixins.Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> (AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)) && !AngelicaConfig.enableNotFineFeatures)
+        .setApplyIf(() -> (AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled) && !AngelicaConfig.enableNotFineFeatures)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix(
              "mcpatcherforge.cit.client.renderer.",
@@ -363,20 +362,20 @@ public enum Mixins {
 
     MCPATCHERFORGE_CONNECTED_TEXTURES(new Builder("Connected Textures").setSide(Side.CLIENT)
         .setPhase(Mixins.Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().connectedTexturesEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses("mcpatcherforge.ctm.MixinRenderBlocks")),
 
     MCPATCHERFORGE_EXTENDED_HD(new Builder("Extended hd").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().extendedHDEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix("mcpatcherforge.hd.", "MixinFontRenderer", "MixinTextureClock", "MixinTextureCompass", "MixinTextureManager"))),
 
     MCPATCHERFORGE_RANDOM_MOBS(new Builder("Random Mobs").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.RANDOM_MOBS, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().randomMobsEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
         addPrefix(
@@ -394,18 +393,46 @@ public enum Mixins {
 
     MCPATCHERFORGE_SKY(new Builder("Sky").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.BETTER_SKIES, "enabled", true))
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().betterSkiesEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("mcpatcherforge.sky.", "MixinEffectRenderer", "MixinRenderGlobal"
         ))),
 
+    MCPATCHERFORGE_CC_NO_CTM(new Builder("Custom colors, no connected textures").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (!MCPatcherForgeConfig.instance().connectedTexturesEnabled
+                && MCPatcherForgeConfig.instance().customColorsEnabled))
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")),
+
+    MCPATCHERFORGE_CTM_AND_CC(new Builder("Connected textures and Custom Colors enabled").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && MCPatcherForgeConfig.instance().connectedTexturesEnabled
+                && MCPatcherForgeConfig.instance().customColorsEnabled)
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocks")),
+
+    MCPATCHERFORGE_CTM_NO_CC(new Builder("Connected textures, no custom colours").setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (MCPatcherForgeConfig.instance().connectedTexturesEnabled
+                && !MCPatcherForgeConfig.instance().customColorsEnabled))
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCC")),
+
     MCPATCHERFORGE_CTM_OR_CC(new Builder("Connected textures or Custom Colors enabled").setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
         .setApplyIf(
-            () -> AngelicaConfig.enableMCPatcherForgeFeatures && Config.getBoolean(MCPatcherUtils.CUSTOM_ITEM_TEXTURES, "enabled", true)
-        || Config.getBoolean(MCPatcherUtils.CUSTOM_COLORS, "enabled", true))
+            () -> AngelicaConfig.enableMCPatcherForgeFeatures
+                && (MCPatcherForgeConfig.instance().connectedTexturesEnabled
+                || MCPatcherForgeConfig.instance().customColorsEnabled))
         .addTargetedMod(TargetedMod.VANILLA)
-        .addMixinClasses(addPrefix("mcpatcherforge.ctm_cc.", "MixinRenderBlocks", "MixinTextureMap")))
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinTextureMap")),
 
     ;
 

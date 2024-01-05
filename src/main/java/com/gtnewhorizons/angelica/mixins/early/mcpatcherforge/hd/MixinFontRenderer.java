@@ -20,6 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
 import com.prupe.mcpatcher.cc.ColorizeWorld;
 import com.prupe.mcpatcher.hd.FontUtils;
 
@@ -60,13 +62,6 @@ public abstract class MixinFontRenderer implements FontRendererExpansion {
 
     @Unique
     private float mcpatcher_forge$fontAdj;
-
-    /**
-     * for custom text colors the index is required when drawing
-     * unfortunately capturing locals doesn't work with modifyVariable
-     */
-    @Unique
-    private int mcpatcher_forge$renderStringAtPosIndex;
 
     public float[] getCharWidthf() {
         return mcpatcher_forge$charWidthf;
@@ -153,8 +148,9 @@ public abstract class MixinFontRenderer implements FontRendererExpansion {
         method = "renderStringAtPos(Ljava/lang/String;Z)V",
         locals = LocalCapture.CAPTURE_FAILHARD,
         at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/FontRenderer;colorCode:[I"))
-    private void modifyRenderStringAtPos1(String string, boolean bool, CallbackInfo ci, int i, char c0, int j) {
-        this.mcpatcher_forge$renderStringAtPosIndex = j;
+    private void modifyRenderStringAtPos1(String string, boolean bool, CallbackInfo ci, int i, char c0, int j,
+        @Share("renderStringAtPosIndex") LocalIntRef renderStringAtPosIndex) {
+        renderStringAtPosIndex.set(j);
     }
 
     // IDEA plugin really struggles with this for some reason
@@ -163,8 +159,9 @@ public abstract class MixinFontRenderer implements FontRendererExpansion {
         method = "renderStringAtPos(Ljava/lang/String;Z)V",
         at = @At(value = "STORE", ordinal = 0),
         ordinal = 2)
-    private int modifyRenderStringAtPos2(int color) {
-        return ColorizeWorld.colorizeText(color, this.mcpatcher_forge$renderStringAtPosIndex);
+    private int modifyRenderStringAtPos2(int color,
+        @Share("renderStringAtPosIndex") LocalIntRef renderStringAtPosIndex) {
+        return ColorizeWorld.colorizeText(color, renderStringAtPosIndex.get());
     }
 
     @ModifyVariable(method = "renderString(Ljava/lang/String;IIIZ)I", at = @At("HEAD"), ordinal = 2, argsOnly = true)

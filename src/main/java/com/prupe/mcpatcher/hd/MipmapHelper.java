@@ -14,16 +14,16 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.GLU;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.GLAPI;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class MipmapHelper {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.MIPMAP);
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD);
 
     private static final ResourceLocation MIPMAP_PROPERTIES = TexturePackAPI
         .newMCPatcherResourceLocation("mipmap.properties");
@@ -32,8 +32,8 @@ public class MipmapHelper {
     static final int TEX_DATA_TYPE = GL12.GL_UNSIGNED_INT_8_8_8_8_REV;
 
     private static final boolean mipmapSupported;
-    static final boolean mipmapEnabled = Config.getBoolean(MCPatcherUtils.EXTENDED_HD, "mipmap", false);
-    static final int maxMipmapLevel = Config.getInt(MCPatcherUtils.EXTENDED_HD, "maxMipmapLevel", 3);
+    static final boolean mipmapEnabled = MCPatcherForgeConfig.instance().mipmap;
+    static final int maxMipmapLevel = MCPatcherForgeConfig.instance().maxMipMapLevel;
     private static final boolean useMipmap;
 
     private static final boolean anisoSupported;
@@ -53,15 +53,14 @@ public class MipmapHelper {
         if (anisoSupported) {
             anisoMax = (int) GL11.glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
             checkGLError("glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)");
-            anisoLevel = Math
-                .max(Math.min(Config.getInt(MCPatcherUtils.EXTENDED_HD, "anisotropicFiltering", 1), anisoMax), 1);
+            anisoLevel = Math.max(Math.min(MCPatcherForgeConfig.instance().anisotropicFiltering, anisoMax), 1);
         } else {
             anisoMax = anisoLevel = 1;
         }
 
         lodSupported = GLContext.getCapabilities().GL_EXT_texture_lod_bias;
         if (lodSupported) {
-            lodBias = Config.getInt(MCPatcherUtils.EXTENDED_HD, "lodBias", 0);
+            lodBias = MCPatcherForgeConfig.instance().lodBias;
         } else {
             lodBias = 0;
         }

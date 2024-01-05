@@ -17,21 +17,21 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class TileLoader {
 
-    private static final MCLogger logger = MCLogger.getLogger("Tilesheet");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.TILESHEET);
 
     private static final List<TileLoader> loaders = new ArrayList<>();
 
-    private static final boolean debugTextures = Config
-        .getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "debugTextures", false);
+    private static final boolean debugTextures = MCPatcherForgeConfig.instance().debugTextures;
     private static final Map<String, String> specialTextures = new HashMap<>();
 
     private static final TexturePackChangeHandler changeHandler;

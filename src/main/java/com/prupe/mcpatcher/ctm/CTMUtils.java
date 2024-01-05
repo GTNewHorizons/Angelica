@@ -14,7 +14,6 @@ import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 
-import com.prupe.mcpatcher.Config;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.block.BlockAPI;
@@ -27,14 +26,14 @@ import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+
 public class CTMUtils {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCPatcherUtils.CONNECTED_TEXTURES, "CTM");
+    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private static final boolean enableStandard = Config
-        .getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "standard", true);
-    private static final boolean enableNonStandard = Config
-        .getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "nonStandard", true);
+    private static final boolean enableStandard = MCPatcherForgeConfig.instance().ctmStandard;
+    private static final boolean enableNonStandard = MCPatcherForgeConfig.instance().ctmNonStandard;
 
     private static final List<ITileOverride> allOverrides = new ArrayList<>();
     private static final Map<Block, List<BlockStateMatcher>> blockOverrides = new IdentityHashMap<>();

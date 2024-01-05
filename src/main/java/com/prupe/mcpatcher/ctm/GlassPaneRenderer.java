@@ -8,13 +8,13 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
-import com.prupe.mcpatcher.Config;
-import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.block.BlockAPI;
+
+import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
 
 public class GlassPaneRenderer {
 
-    private static final boolean enable = Config.getBoolean(MCPatcherUtils.CONNECTED_TEXTURES, "glassPane", true);
+    private static final boolean enable = MCPatcherForgeConfig.instance().ctmGlassPane;
 
     public static boolean skipPaneRendering;
     public static boolean skipTopEdgeRendering;
