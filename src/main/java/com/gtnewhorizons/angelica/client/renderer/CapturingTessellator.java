@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -31,7 +32,7 @@ import static net.minecraft.util.MathHelper.clamp_int;
  *
  */
 @SuppressWarnings("unused")
-public class CapturingTessellator extends Tessellator {
+public class CapturingTessellator extends Tessellator implements ITessellatorInstance {
 
     // Access Transformers don't work on Forge Fields :rage:
     private static final MethodHandle sRawBufferSize;
@@ -111,6 +112,13 @@ public class CapturingTessellator extends Tessellator {
         super.reset();
         this.offset.zero();
     }
+
+    @Override
+    public void discard() {
+        isDrawing = false;
+        reset();
+    }
+
 
     public List<Quad> getQuads() {
         return collectedQuads;
