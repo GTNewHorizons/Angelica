@@ -451,13 +451,13 @@ public class GLStateManager {
 
         final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
-        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
+        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash || glListMode == GL11.GL_COMPILE) {
             GL11.glBindTexture(target, texture);
             if(glListMode != GL11.GL_COMPILE) {
                 textureUnit.setBinding(texture);
-            }
-            if (AngelicaConfig.enableIris) {
-                TextureTracker.INSTANCE.onBindTexture(texture);
+                if (AngelicaConfig.enableIris) {
+                    TextureTracker.INSTANCE.onBindTexture(texture);
+                }
             }
         }
     }
