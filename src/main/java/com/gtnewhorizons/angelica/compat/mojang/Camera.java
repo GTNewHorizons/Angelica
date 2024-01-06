@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.util.MathHelper;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
@@ -30,7 +32,7 @@ public class Camera {
         this.entity = entity;
 
         pos.set(camX, camY, camZ);
-        blockPos.set((int)entity.posX, (int)entity.posY, (int)entity.posZ);
+        blockPos.set(MathHelper.floor_double(camX), MathHelper.floor_double(camY), MathHelper.floor_double(camZ));
         pitch = entity.cameraPitch;
         yaw = entity.rotationYaw;
         thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView == 1;
