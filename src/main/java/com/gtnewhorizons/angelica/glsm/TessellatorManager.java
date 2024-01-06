@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import net.minecraft.client.renderer.Tessellator;
 
 import java.nio.ByteBuffer;
@@ -57,7 +56,7 @@ public class TessellatorManager {
         if(tess.isDrawing) tess.draw();
 
         final List<Quad> quads = tess.getQuads();
-        ((ITessellatorInstance)tess).discard();
+        tess.discard();
 
         return quads;
     }
@@ -89,7 +88,7 @@ public class TessellatorManager {
         final CapturingTessellator tessellator = capturingTessellator.get();
 
         currentlyCapturing.set(false);
-        ((ITessellatorInstance)tessellator).discard();
+        tessellator.discard();
         tessellator.clearQuads();
     }
 }
