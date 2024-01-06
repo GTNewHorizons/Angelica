@@ -137,6 +137,10 @@ public class CapturingTessellator extends Tessellator {
         return byteBuffer;
     }
 
+    public static int createBrightness(int sky, int block) {
+        return sky << 20 | block << 4;
+    }
+
     // API from newer MC
     public CapturingTessellator pos(double x, double y, double z) {
         ensureBuffer();
@@ -150,6 +154,7 @@ public class CapturingTessellator extends Tessellator {
     public CapturingTessellator tex(double u, double v) {
         this.rawBuffer[this.rawBufferIndex + 3] = Float.floatToRawIntBits((float)u);
         this.rawBuffer[this.rawBufferIndex + 4] = Float.floatToRawIntBits((float)v);
+        this.hasTexture = true;
 
         return this;
     }
@@ -172,6 +177,7 @@ public class CapturingTessellator extends Tessellator {
             color = red << 24 | green << 16 | blue << 8 | alpha;
         }
         this.rawBuffer[this.rawBufferIndex + 5] = color;
+        this.hasColor = true;
 
         return this;
 
@@ -183,22 +189,19 @@ public class CapturingTessellator extends Tessellator {
         final byte b2 = (byte)((int)(z * 127.0F));
 
         this.rawBuffer[this.rawBufferIndex + 6] = b0 & 255 | (b1 & 255) << 8 | (b2 & 255) << 16;
+        this.hasNormals = true;
         return this;
     }
 
-
-    public CapturingTessellator brightness(int brightness) {
-        this.rawBuffer[this.rawBufferIndex + 7] = brightness;
-
-        return this;
-    }
     public CapturingTessellator lightmap(int skyLight, int blockLight) {
         return brightness(createBrightness(skyLight, blockLight));
     }
 
+    public CapturingTessellator brightness(int brightness) {
+        this.rawBuffer[this.rawBufferIndex + 7] = brightness;
+        this.hasBrightness = true;
 
-    public static int createBrightness(int sky, int block) {
-        return sky << 20 | block << 4;
+        return this;
     }
 
     public CapturingTessellator endVertex() {
