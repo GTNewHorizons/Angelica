@@ -102,8 +102,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
         }
 
         final int i = this.rawBufferIndex * 4;
-        this.reset();
-        this.isDrawing = false;
+        this.discard();
         return i;
     }
 
