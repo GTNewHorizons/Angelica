@@ -443,21 +443,20 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if(target != GL11.GL_TEXTURE_2D) {
-            // We're only supporting 2D textures for now
+        if(target != GL11.GL_TEXTURE_2D || glListMode == GL11.GL_COMPILE) {
+            // We're only supporting 2D textures for now, and display lists don't bind the texture during compile
+            // but when they're called.
             GL11.glBindTexture(target, texture);
             return;
         }
 
         final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
-        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash || glListMode == GL11.GL_COMPILE) {
+        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
             GL11.glBindTexture(target, texture);
-            if(glListMode != GL11.GL_COMPILE) {
-                textureUnit.setBinding(texture);
-                if (AngelicaConfig.enableIris) {
-                    TextureTracker.INSTANCE.onBindTexture(texture);
-                }
+            textureUnit.setBinding(texture);
+            if (AngelicaConfig.enableIris) {
+                TextureTracker.INSTANCE.onBindTexture(texture);
             }
         }
     }
