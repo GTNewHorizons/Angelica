@@ -33,7 +33,7 @@ public class MixinTileEntityRendererDispatcher {
      */
     @Redirect(method = "getSpecialRendererByClass", at = @At(value = "INVOKE", target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"))
     private Object skipPuttingNullRenderer(Map instance, Object key, Object value) {
-        if(value != null) {
+        if(value != null && key != null) {
             return instance.put(key, value);
         } else {
             return null;
