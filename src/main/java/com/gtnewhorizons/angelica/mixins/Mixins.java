@@ -29,7 +29,7 @@ public enum Mixins {
         )
     ),
     ANGELICA_VBO(
-        new Builder("Angelica VBO").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        new Builder("Angelica VBO").addTargetedMod(TargetedMod.VANILLA).setApplyIf(() -> AngelicaConfig.enableVBO).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
                  "angelica.vbo.MixinWavefrontObject"
                 ,"angelica.vbo.MixinRenderGlobal"
@@ -97,6 +97,7 @@ public enum Mixins {
             ,"sodium.MixinBiomeGenBase"
             ,"sodium.MixinChunk"
             ,"sodium.MixinChunkProviderServer"
+            ,"sodium.MixinClientRegistry"
             ,"sodium.MixinEntity"
             ,"sodium.MixinRenderManager"
             ,"sodium.MixinExtendedBlockStorage"
@@ -113,6 +114,7 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
+            ,"sodium.MixinTileEntityRendererDispatcher"
             // TODO Doesn't work correctly
             //,"sodium.MixinTextureAtlasSprite"
             //,"sodium.MixinTextureMap"
