@@ -449,20 +449,13 @@ public class GLStateManager {
             return;
         }
 
-        if(glListMode == GL11.GL_COMPILE ) {
-            if(AngelicaMod.lwjglDebug) {
-                // Binding a texture, while building a list, is not allowed and is a silent noop
-                final Throwable throwable = new Throwable();
-                LOGGER.info("Naughty naughty, someone's making a texture binding in a display list!", throwable);
-            }
-            return;
-        }
-
         final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
         if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
             GL11.glBindTexture(target, texture);
-            textureUnit.setBinding(texture);
+            if(glListMode != GL11.GL_COMPILE) {
+                textureUnit.setBinding(texture);
+            }
             if (AngelicaConfig.enableIris) {
                 TextureTracker.INSTANCE.onBindTexture(texture);
             }
