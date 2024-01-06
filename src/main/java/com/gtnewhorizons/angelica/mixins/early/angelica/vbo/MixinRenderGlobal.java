@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(value = RenderGlobal.class, remap = false)
+@Mixin(value = RenderGlobal.class)
 public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Shadow public int starGLCallList;
     @Shadow private int glSkyList;
@@ -28,24 +28,24 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Shadow public Minecraft mc;
     @Shadow private int cloudTickCounter;
 
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0), remap = false)
     private int generateGLRenderListBaseDisplayLists(int range) {
         return AngelicaConfig.enableSodium ? -1 : GLAllocation.generateDisplayLists(range);
     }
 
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 2))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 2), remap = false)
     private int generateDisplayLists(int range) {
         return VBOManager.generateDisplayLists(range);
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 0))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 0), remap = false)
     public void startStarsVBO(int list, int mode) {
         TessellatorManager.startCapturing();
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0), remap = false)
     public void finishStarsVBO() {
         VBOManager.registerVBO(starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
     }
@@ -57,30 +57,30 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 1))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 1), remap = false)
     public void startSkyVBO(int list, int mode) {
         // Do nothing, we'll be making a VBO instead.
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1), remap = false)
     public void finishSkyVBO() {
         VBOManager.registerVBO(glSkyList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 2))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 2), remap = false)
     public void startSky2VBO(int list, int mode) {
         TessellatorManager.startCapturing();
     }
 
     @Override
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2))
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2), remap = false)
     public void finishSky2VBO() {
         VBOManager.registerVBO(glSkyList2, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
     }
 
-    @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"))
+    @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"), remap = false)
     public void renderSky(int list) {
         VBOManager.get(list).render(GL11.GL_QUADS);
     }
