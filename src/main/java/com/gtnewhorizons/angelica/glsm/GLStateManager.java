@@ -443,18 +443,10 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if(target != GL11.GL_TEXTURE_2D) {
-            // We're only supporting 2D textures for now
+        if(target != GL11.GL_TEXTURE_2D || glListMode == GL11.GL_COMPILE) {
+            // We're only supporting 2D textures for now, and display lists don't bind the texture during compile
+            // but when they're called.
             GL11.glBindTexture(target, texture);
-            return;
-        }
-
-        if(glListMode == GL11.GL_COMPILE ) {
-            if(AngelicaMod.lwjglDebug) {
-                // Binding a texture, while building a list, is not allowed and is a silent noop
-                final Throwable throwable = new Throwable();
-                LOGGER.info("Naughty naughty, someone's making a texture binding in a display list!", throwable);
-            }
             return;
         }
 
