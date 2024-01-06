@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -23,10 +24,12 @@ import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.IIcon;
 import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
@@ -87,6 +90,14 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     private boolean rendersOffThread(Block block) {
         final int type = block.getRenderType();
         return type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block);
+    }
+
+    private void handleRenderBlocksTextures(RenderBlocks rb, ChunkRenderData.Builder builder) {
+        for(IIcon texture : ((ITexturesCache)rb).getRenderedTextures()) {
+            if(texture instanceof TextureAtlasSprite) {
+                builder.addSprite((TextureAtlasSprite)texture);
+            }
+        }
     }
 
     @Override
@@ -182,10 +193,12 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             }
         }
 
+        handleRenderBlocksTextures(renderBlocks, renderData);
+
         if(hasMainThreadBlocks) {
             // Render the other blocks on the main thread
             try {
-                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds), AngelicaRenderQueue.executor()).get();
+                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData), AngelicaRenderQueue.executor()).get();
             } catch(InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return null;
@@ -218,7 +231,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
      *
      * TODO: Deduplicate this with the main method above.
      */
-    private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds) {
+    private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds, ChunkRenderData.Builder renderData) {
         final WorldSlice slice = cache.getWorldSlice();
         final BlockPos.Mutable pos = new BlockPos.Mutable();
         final int baseX = this.render.getOriginX();
@@ -264,6 +277,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 }
             }
         }
+
+        handleRenderBlocksTextures(rb, renderData);
     }
 
     @Override
