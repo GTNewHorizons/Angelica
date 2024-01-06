@@ -48,3 +48,5 @@
 * Angelica
   * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto for helping get Angelica up and running!
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
+* Forge 1.12+
+  * Some files have been taken from Minecraft Forge under the LGPL 2.1 license and are marked as such
