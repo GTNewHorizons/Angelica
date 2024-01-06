@@ -113,6 +113,7 @@ public enum Mixins {
             ,"sodium.MixinTessellator"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
+            ,"sodium.MixinTileEntityRendererDispatcher"
             // TODO Doesn't work correctly
             //,"sodium.MixinTextureAtlasSprite"
             //,"sodium.MixinTextureMap"
