@@ -29,4 +29,15 @@ public class Color4 implements ISettableState<Color4> {
 
         return this;
     }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof Color4 color4)) return false;
+        return Float.compare(color4.red, red) == 0 && Float.compare(color4.green, green) == 0 && Float.compare(color4.blue, blue) == 0 && Float.compare(color4.alpha, alpha) == 0;
+    }
+    @Override
+    public Color4 copy() {
+        return new Color4().set(this);
+    }
 }

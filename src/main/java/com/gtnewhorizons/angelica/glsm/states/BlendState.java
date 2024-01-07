@@ -21,4 +21,15 @@ public class BlendState implements ISettableState<BlendState> {
         return this;
     }
 
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof BlendState blendState)) return false;
+        return srcRgb == blendState.srcRgb && dstRgb == blendState.dstRgb && srcAlpha == blendState.srcAlpha && dstAlpha == blendState.dstAlpha;
+    }
+
+    @Override
+    public BlendState copy() {
+        return new BlendState().set(this);
+    }
 }

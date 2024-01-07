@@ -15,4 +15,16 @@ public class DepthState implements ISettableState<DepthState> {
         this.func = state.func;
         return this;
     }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof DepthState depthState)) return false;
+        return mask == depthState.mask && func == depthState.func;
+    }
+    @Override
+    public DepthState copy() {
+        return new DepthState().set(this);
+    }
+
 }

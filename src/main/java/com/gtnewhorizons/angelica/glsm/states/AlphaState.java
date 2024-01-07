@@ -16,4 +16,15 @@ public class AlphaState implements ISettableState<AlphaState> {
         return this;
     }
 
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof AlphaState alphaState)) return false;
+        return function == alphaState.function && Float.compare(alphaState.reference, reference) == 0;
+    }
+
+    @Override
+    public AlphaState copy() {
+        return new AlphaState().set(this);
+    }
 }

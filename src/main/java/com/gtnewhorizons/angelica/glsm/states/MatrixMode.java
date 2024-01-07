@@ -26,4 +26,16 @@ public class MatrixMode implements ISettableState<MatrixMode> {
         this.mode = state.mode;
         return this;
     }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if(this == state) return true;
+        if(!(state instanceof MatrixMode matrixMode)) return false;
+        return mode == matrixMode.mode;
+    }
+
+    @Override
+    public MatrixMode copy() {
+        return new MatrixMode().set(this);
+    }
 }
