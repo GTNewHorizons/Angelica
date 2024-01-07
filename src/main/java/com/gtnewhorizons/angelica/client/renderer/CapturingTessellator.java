@@ -47,6 +47,10 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     public void setOffset(BlockPos pos) {
         this.offset.set(pos);
     }
+    public void resetOffset() {
+        this.offset.zero();
+    }
+
 
     static {
         Field rbs = ReflectionHelper.findField(Tessellator.class, "rawBufferSize");
@@ -123,7 +127,6 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     }
 
     public void clearQuads() {
-        this.offset.zero();
         //noinspection ForLoopReplaceableByForEach
         for(int i = 0; i < this.collectedQuads.size(); i++) {
             this.quadBuf.releaseInstance(this.collectedQuads.get(i));
@@ -232,4 +235,5 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
             }
         }
     }
+
 }
