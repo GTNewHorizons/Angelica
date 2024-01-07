@@ -23,12 +23,4 @@ public abstract class MixinEntityRenderer {
             viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks
         );
     }
-
-    @Inject(
-        method = "updateCameraAndRender",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;drawScreen(IIF)V", shift = At.Shift.AFTER)
-    )
-    private void angelica$injectGuiLightingPostFix(CallbackInfo ci) {
-        GL11.glEnable(GL11.GL_LIGHTING);
-    }
 }
