@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientProxy extends CommonProxy {
+    final Minecraft mc = Minecraft.getMinecraft();
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -191,7 +192,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
+        if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
     }
