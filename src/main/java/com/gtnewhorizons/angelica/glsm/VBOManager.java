@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 public class VBOManager {
     // Not thread safe, only expected to be called from the main thread
 
-    private static int nextDisplayList = 0;
+    private static int nextDisplayList = Integer.MIN_VALUE;
 
     private static int getNextDisplayList() {
         return nextDisplayList++;
@@ -31,6 +31,7 @@ public class VBOManager {
     }
 
     public static VertexBuffer registerVBO(int displayList, VertexBuffer vertexBuffer) {
+        displayList -= Integer.MIN_VALUE;
         final int requestedSize = displayList + 1;
         if(requestedSize + 1 > vertexBuffers.size()) {
             vertexBuffers.size(requestedSize);
@@ -40,6 +41,7 @@ public class VBOManager {
     }
 
     public static VertexBuffer get(int list) {
+        list -= Integer.MIN_VALUE;
         return vertexBuffers.get(list);
     }
 }
