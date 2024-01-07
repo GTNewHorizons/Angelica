@@ -109,7 +109,6 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     @Override
     public void reset() {
         super.reset();
-        this.offset.zero();
     }
 
     @Override
@@ -124,6 +123,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     }
 
     public void clearQuads() {
+        this.offset.zero();
         //noinspection ForLoopReplaceableByForEach
         for(int i = 0; i < this.collectedQuads.size(); i++) {
             this.quadBuf.releaseInstance(this.collectedQuads.get(i));
