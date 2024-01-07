@@ -32,9 +32,10 @@ public enum Mixins {
     ANGELICA_VBO(
         new Builder("Angelica VBO").addTargetedMod(TargetedMod.VANILLA).setApplyIf(() -> AngelicaConfig.enableVBO).setSide(Side.CLIENT)
             .setPhase(Phase.EARLY).addMixinClasses(
-                 "angelica.vbo.MixinWavefrontObject"
-                ,"angelica.vbo.MixinRenderGlobal"
+                 "angelica.vbo.MixinGLAllocation"
                 ,"angelica.vbo.MixinModelRenderer"
+                ,"angelica.vbo.MixinRenderGlobal"
+                ,"angelica.vbo.MixinWavefrontObject"
         )
     ),
     ANGELICA_FONT_RENDERER(new Builder("Angelica Font Renderer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)

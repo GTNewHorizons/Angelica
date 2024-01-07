@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 public class VBOManager {
     // Not thread safe, only expected to be called from the main thread
 
-    private static int nextDisplayList = 0;
+    private static int nextDisplayList = Integer.MIN_VALUE;
 
     private static int getNextDisplayList() {
         return nextDisplayList++;
