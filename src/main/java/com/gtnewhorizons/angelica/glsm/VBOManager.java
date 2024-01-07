@@ -31,6 +31,7 @@ public class VBOManager {
     }
 
     public static VertexBuffer registerVBO(int displayList, VertexBuffer vertexBuffer) {
+        displayList -= Integer.MIN_VALUE;
         final int requestedSize = displayList + 1;
         if(requestedSize + 1 > vertexBuffers.size()) {
             vertexBuffers.size(requestedSize);
@@ -40,6 +41,7 @@ public class VBOManager {
     }
 
     public static VertexBuffer get(int list) {
+        list -= Integer.MIN_VALUE;
         return vertexBuffers.get(list);
     }
 }
