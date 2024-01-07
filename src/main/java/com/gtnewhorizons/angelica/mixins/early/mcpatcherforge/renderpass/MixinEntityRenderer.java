@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.renderpass;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -9,7 +11,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.injector.WrapWithCondition;
@@ -38,14 +39,13 @@ public abstract class MixinEntityRenderer {
         return RenderPass.setAmbientOcclusion(this.mc.gameSettings.ambientOcclusion != 0);
     }
 
-    @Redirect(
-        method = "renderWorld(FJ)V",
+    @WrapOperation(method = "renderWorld(FJ)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
             ordinal = 0))
-    private int modifyRenderWorld3(RenderGlobal instance, EntityLivingBase entitylivingbase, int k, double i1) {
-        int returnValue = instance.sortAndRender(entitylivingbase, k, i1);
+    private int modifyRenderWorld3(RenderGlobal instance, EntityLivingBase entitylivingbase, int k, double i1, Operation<Integer> original) {
+        int returnValue = original.call(instance, entitylivingbase, k, i1);
         instance.sortAndRender(entitylivingbase, 4, i1);
         return returnValue;
     }
