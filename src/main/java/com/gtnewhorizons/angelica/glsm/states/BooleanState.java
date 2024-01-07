@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.Dirty;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
@@ -8,14 +7,11 @@ import org.lwjgl.opengl.GL11;
 public class BooleanState implements ISettableState<BooleanState> {
     private final int glCap;
 
-    private final long dirtyFlag;
-
     @Getter
     private boolean enabled;
 
     public BooleanState(int glCap) {
         this.glCap = glCap;
-        this.dirtyFlag = Dirty.getFlagFromCap(this.glCap);
     }
 
     public void disable() {
@@ -41,5 +37,17 @@ public class BooleanState implements ISettableState<BooleanState> {
     public BooleanState set(BooleanState state) {
         this.enabled = state.enabled;
         return this;
+    }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof BooleanState booleanState)) return false;
+        return enabled == booleanState.enabled;
+    }
+
+    @Override
+    public BooleanState copy() {
+        return new BooleanState(this.glCap).set(this);
     }
 }

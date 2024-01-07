@@ -15,4 +15,15 @@ public class ColorMask implements ISettableState<ColorMask> {
 
         return this;
     }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof ColorMask colorMask)) return false;
+        return red == colorMask.red && green == colorMask.green && blue == colorMask.blue && alpha == colorMask.alpha;
+    }
+    @Override
+    public ColorMask copy() {
+        return new ColorMask().set(this);
+    }
 }

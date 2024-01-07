@@ -25,4 +25,16 @@ public class TextureUnitArray {
     public BooleanStateStack getTextureUnitStates(int index) {
         return states[index];
     }
+
+    @Override
+    public boolean equals(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof TextureUnitArray textureUnitArray)) return false;
+        for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            if (!bindings[i].sameAs(textureUnitArray.bindings[i])) return false;
+            if (!states[i].sameAs(textureUnitArray.states[i])) return false;
+        }
+        return true;
+    }
+
 }

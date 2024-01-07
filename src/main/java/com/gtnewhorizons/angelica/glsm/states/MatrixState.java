@@ -133,4 +133,12 @@ public class MatrixState {
         PROJECTION,
         TEXTURE
     }
+
+    @Override
+    public boolean equals(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof MatrixState matrixState)) return false;
+        return mode == matrixState.mode && projectionMatrix.equals(matrixState.projectionMatrix) && modelViewMatrix.equals(matrixState.modelViewMatrix);
+    }
+
 }

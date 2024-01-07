@@ -28,5 +28,15 @@ public class FogState implements ISettableState<FogState> {
         this.end = state.end;
         return this;
     }
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof FogState fogState)) return false;
+        return fogMode == fogState.fogMode && Float.compare(fogState.fogAlpha, fogAlpha) == 0 && Float.compare(fogState.density, density) == 0 && Float.compare(fogState.start, start) == 0 && Float.compare(fogState.end, end) == 0 && fogColor.equals(fogState.fogColor);
+    }
 
+    @Override
+    public FogState copy() {
+        return new FogState().set(this);
+    }
 }

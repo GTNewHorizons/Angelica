@@ -13,12 +13,17 @@ import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
+import com.gtnewhorizons.angelica.glsm.states.ISettableState;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntStack;
+import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
@@ -50,6 +55,8 @@ import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Map;
+import java.util.Set;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -111,6 +118,9 @@ public class GLStateManager {
     private static boolean runningSplash = false;
 
     private static int glListMode = 0;
+    private static int glListId = -1;
+    private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
+    private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
 
     private static boolean hudCaching$blendEnabled;
 
@@ -443,9 +453,8 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
-        if(target != GL11.GL_TEXTURE_2D || glListMode == GL11.GL_COMPILE) {
-            // We're only supporting 2D textures for now, and display lists don't bind the texture during compile
-            // but when they're called.
+        if(target != GL11.GL_TEXTURE_2D) {
+            // We're only supporting 2D textures for now
             GL11.glBindTexture(target, texture);
             return;
         }
@@ -716,33 +725,73 @@ public class GLStateManager {
         if(glListMode > 0) {
             throw new RuntimeException("glNewList called inside of a display list!");
         }
-
+        glListId = list;
         glListMode = mode;
         GL11.glNewList(list, mode);
+        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+            glListStates.put(stack, (ISettableState<?>) ((ISettableState<?>)stack).copy());
+        }
+        if(glListMode == GL11.GL_COMPILE) {
+            pushState(GL11.GL_ALL_ATTRIB_BITS);
+        }
     }
 
     public static void glEndList() {
         if(glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
+
+        final Set<Map.Entry<IStateStack<?>, ISettableState<?>>> changedStates = new ObjectArraySet<>();
+        for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListStates.entrySet()) {
+            if(!((ISettableState<?>)entry.getKey()).sameAs(entry.getValue())) {
+                changedStates.add(entry);
+            }
+        }
+        if(changedStates.size() != 0) {
+            glListChanges.put(glListId, changedStates);
+        }
+        if(glListMode == GL11.GL_COMPILE) {
+            // GL_COMPILE doesn't actually apply the state, just stores it for replay in glCallList, so we'll
+            // roll back any changes that we tracked
+            popState();
+        }
+        glListId = -1;
+        glListStates.clear();
         glListMode = 0;
         GL11.glEndList();
+
     }
 
+    public static void glCallList(int list) {
+        GL11.glCallList(list);
+        if(glListChanges.containsKey(list)) {
+            for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
+                ((ISettableState<?>)entry.getKey()).set(entry.getValue());
+            }
+        }
+    }
 
-    public static void glPushAttrib(int mask) {
+    public static void pushState(int mask) {
         attribs.push(mask);
         for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
             stack.push();
         }
+
+    }
+    public static void popState() {
+        final int mask = attribs.popInt();
+        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
+            stack.pop();
+        }
+    }
+
+    public static void glPushAttrib(int mask) {
+        pushState(mask);
         GL11.glPushAttrib(mask);
     }
 
     public static void glPopAttrib() {
-        final int mask = attribs.pop();
-        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
-            stack.pop();
-        }
+        popState();
         GL11.glPopAttrib();
     }
 

@@ -93,6 +93,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glAlphaFunc")
             .add("glBindTexture")
             .add("glBlendFunc")
+            .add("glCallList")
             .add("glClearColor")
             .add("glColor3b")
             .add("glColor3d")

@@ -31,4 +31,17 @@ public class ViewportState implements ISettableState<ViewportState> {
 
         return this;
     }
+
+    @Override
+    public boolean sameAs(Object state) {
+        if (this == state) return true;
+        if (!(state instanceof ViewportState viewportState)) return false;
+        return x == viewportState.x && y == viewportState.y && width == viewportState.width && height == viewportState.height;
+    }
+
+    @Override
+    public ViewportState copy() {
+        return new ViewportState().set(this);
+    }
+
 }
