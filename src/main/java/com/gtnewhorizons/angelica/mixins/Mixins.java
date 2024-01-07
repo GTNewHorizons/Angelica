@@ -26,6 +26,7 @@ public enum Mixins {
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinActiveRenderInfo"
             ,"angelica.MixinEntityRenderer"
+            ,"angelica.MixinMinecraft"
         )
     ),
     ANGELICA_VBO(
@@ -46,12 +47,6 @@ public enum Mixins {
     ANGELICA_ENABLE_DEBUG(new Builder("Angelica Debug").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaMod.lwjglDebug).addMixinClasses(
             "angelica.debug.MixinSplashProgress"
-        )
-    ),
-
-    ANGELICA_THAUMCRAFT_COMPAT(new Builder("Angelica Thaumcraft Compat").addTargetedMod(TargetedMod.THAUMCRAFT).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).addMixinClasses(
-            "angelica.thaumcraft.MixinClientTickEventsFML"
         )
     ),
 
