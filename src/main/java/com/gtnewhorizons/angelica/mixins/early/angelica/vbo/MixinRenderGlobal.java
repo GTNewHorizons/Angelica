@@ -28,7 +28,7 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
     @Shadow public Minecraft mc;
     @Shadow private int cloudTickCounter;
 
-    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0), remap = false)
+    @Redirect(method="<init>", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
     private int generateGLRenderListBaseDisplayLists(int range) {
         return AngelicaConfig.enableSodium ? -1 : GLAllocation.generateDisplayLists(range);
     }

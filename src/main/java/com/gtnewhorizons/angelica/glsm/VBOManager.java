@@ -31,6 +31,7 @@ public class VBOManager {
     }
 
     public static VertexBuffer registerVBO(int displayList, VertexBuffer vertexBuffer) {
+        if(displayList > 0) throw new IllegalArgumentException("Display list must be negative!");
         displayList -= Integer.MIN_VALUE;
         final int requestedSize = displayList + 1;
         if(requestedSize + 1 > vertexBuffers.size()) {
