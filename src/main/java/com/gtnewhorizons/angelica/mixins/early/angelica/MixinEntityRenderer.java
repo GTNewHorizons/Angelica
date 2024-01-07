@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.EntityLivingBase;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,5 +22,13 @@ public abstract class MixinEntityRenderer {
             viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks,
             viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks
         );
+    }
+
+    @Inject(
+        method = "updateCameraAndRender",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;drawScreen(IIF)V", shift = At.Shift.AFTER)
+    )
+    private void angelica$injectGuiLightingPostFix(CallbackInfo ci) {
+        GL11.glEnable(GL11.GL_LIGHTING);
     }
 }
