@@ -55,6 +55,7 @@ import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -747,7 +748,7 @@ public class GLStateManager {
         final Set<Map.Entry<IStateStack<?>, ISettableState<?>>> changedStates = new ObjectArraySet<>();
         for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListStates.entrySet()) {
             if(!((ISettableState<?>)entry.getKey()).sameAs(entry.getValue())) {
-                changedStates.add(entry);
+                changedStates.add(new AbstractMap.SimpleEntry<>(entry.getKey(), (ISettableState<?>) ((ISettableState<?>) entry.getKey()).copy()));
             }
         }
         if(changedStates.size() != 0) {
