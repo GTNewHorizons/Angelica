@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.utils.EventUtils;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.event.terraingen.BiomeEvent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,6 +20,7 @@ public class MixinBiomeGenBase {
     @Unique
     private void prepareEvent(BiomeEvent.BiomeColor event, int defaultColor) {
         event.newColor = defaultColor;
+        EventUtils.clearPhase(event);
         ((AccessorBiomeColorEvent)event).setOriginalColor(defaultColor);
     }
 
