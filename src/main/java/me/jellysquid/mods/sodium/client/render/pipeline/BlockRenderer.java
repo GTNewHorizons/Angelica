@@ -58,10 +58,11 @@ public class BlockRenderer {
             final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
             tess.startDrawingQuads();
             // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
-            tess.setOffset(pos);
 
+            tess.setOffset(pos);
             renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
             final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
+            tess.resetOffset();
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
