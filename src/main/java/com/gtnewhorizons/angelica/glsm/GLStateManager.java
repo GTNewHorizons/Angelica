@@ -733,6 +733,7 @@ public class GLStateManager {
         glListMode = mode;
         GL11.glNewList(list, mode);
         for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+            // Feature Stack, copy of current feature state
             glListStates.put(stack, (ISettableState<?>) ((ISettableState<?>)stack).copy());
         }
         if(glListMode == GL11.GL_COMPILE) {
@@ -747,7 +748,9 @@ public class GLStateManager {
 
         final Set<Map.Entry<IStateStack<?>, ISettableState<?>>> changedStates = new ObjectArraySet<>();
         for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListStates.entrySet()) {
+            // If the current stack state is different than the copy of the state at the start
             if(!((ISettableState<?>)entry.getKey()).sameAs(entry.getValue())) {
+                // Then we want to put into the change set the stack and the copy of the state now
                 changedStates.add(new AbstractMap.SimpleEntry<>(entry.getKey(), (ISettableState<?>) ((ISettableState<?>) entry.getKey()).copy()));
             }
         }
@@ -770,6 +773,7 @@ public class GLStateManager {
         GL11.glCallList(list);
         if(glListChanges.containsKey(list)) {
             for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
+                // Set the stack to the cached state at the end of the call list compilation
                 ((ISettableState<?>)entry.getKey()).set(entry.getValue());
             }
         }
