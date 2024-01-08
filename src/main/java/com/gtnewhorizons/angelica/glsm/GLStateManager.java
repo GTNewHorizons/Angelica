@@ -133,6 +133,9 @@ public class GLStateManager {
             StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
             StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
+        if(BYPASS_CACHE) {
+            LOGGER.info("GLStateManager cache bypassed");
+        }
     }
 
     public static void assertMainThread() {
