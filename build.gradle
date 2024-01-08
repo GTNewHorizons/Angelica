@@ -786,7 +786,7 @@ dependencies {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
     if (modId != 'hodgepodge') {
-        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.3.35')
+        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.4.4')
     }
 
     java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches") {transitive = false}
