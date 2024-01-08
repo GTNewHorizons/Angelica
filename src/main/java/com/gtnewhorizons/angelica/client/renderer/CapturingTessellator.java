@@ -111,11 +111,6 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     }
 
     @Override
-    public void reset() {
-        super.reset();
-    }
-
-    @Override
     public void discard() {
         isDrawing = false;
         reset();
