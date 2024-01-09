@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -15,6 +16,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Random;
 
@@ -125,12 +127,30 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     }
 
     /**
-     * @author eigenraven
-     * @reason Replace with more sensible batched rendering and optimize some operations
+     * Only allow using the batched renderer if we are not in an OpenGL Display List
+     * Batched font renderer is not compatible with display lists, and won't really
+     * help performance when display lists are already being used anyway.
      */
-    @Overwrite
-    public int drawString(String text, int x, int y, int argb, boolean dropShadow)
+    @Inject(method = "drawString(Ljava/lang/String;IIIZ)I", at = @At("HEAD"), cancellable = true)
+    public void angelica$BatchedFontRendererDrawString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir)
     {
+        if (GLStateManager.getListMode() == 0) {
+            cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
+        }
+    }
+
+    /**
+     * See above explanation about batched renderer in display lists.
+     */
+    @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
+    public void angelica$BatchedFontRendererRenderString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
+        if (GLStateManager.getListMode() == 0) {
+            cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
+        }
+    }
+
+    @Override
+    public int angelica$drawStringBatched(String text, int x, int y, int argb, boolean dropShadow) {
         if (text == null)
         {
             return 0;
@@ -156,15 +176,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
             this.posY = (float)y;
             return (int) angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());
         }
-    }
-
-    /**
-     * @author eigenraven
-     * @reason Replace with more sensible batched rendering and optimize some operations
-     */
-    @Overwrite
-    public int renderString(String text, int x, int y, int argb, boolean dropShadow) {
-        return drawString(text, x, y, argb, dropShadow);
     }
 
     @Override
