@@ -927,4 +927,8 @@ public class GLStateManager {
     public static int getActiveTextureUnit() {
         return activeTextureUnit.topInt();
     }
+
+    public static int getListMode() {
+        return glListMode;
+    }
 }
