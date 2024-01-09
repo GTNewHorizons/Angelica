@@ -44,4 +44,9 @@ public class AngelicaBlockSafetyRegistry {
 
         return canBeOffThread;
     }
+
+    public static boolean isSafeISBRH(Block block) {
+        // TODO Ensure the Render Handler is an instanceof ISimpleBlockRenderingHandler
+        return block.getClass().getName().startsWith("com.carpentersblocks");
+    }
 }

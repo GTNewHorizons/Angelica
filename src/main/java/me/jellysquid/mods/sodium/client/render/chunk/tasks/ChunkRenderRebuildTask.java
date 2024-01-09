@@ -89,7 +89,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private boolean rendersOffThread(Block block) {
         final int type = block.getRenderType();
-        return type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block);
+        return (type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block)) || AngelicaBlockSafetyRegistry.isSafeISBRH(block);
     }
 
     private void handleRenderBlocksTextures(RenderBlocks rb, ChunkRenderData.Builder builder) {
@@ -102,7 +102,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
-        // COMPATIBLITY NOTE: Oculus relies on the LVT of this method being unchanged, at least in 16.5
         final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
         final ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
         final ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
