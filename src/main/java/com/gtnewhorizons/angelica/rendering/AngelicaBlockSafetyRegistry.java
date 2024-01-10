@@ -46,7 +46,7 @@ public class AngelicaBlockSafetyRegistry {
     }
 
     public static boolean isSafeISBRH(Block block) {
-        // TODO Ensure the Render Handler is an instanceof ISimpleBlockRenderingHandler
+        // TODO Ensure the Render Handler is an instanceof IThreadSafeISBRH; also optionally add a version check for compat
         return block.getClass().getName().startsWith("com.carpentersblocks");
     }
 }
