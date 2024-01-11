@@ -52,7 +52,11 @@ public class ProgramUniforms {
 	}
 
 	private static long getCurrentTick() {
-		return Objects.requireNonNull(Minecraft.getMinecraft().theWorld).getWorldTime();
+		if (Minecraft.getMinecraft().theWorld != null) {
+			return Minecraft.getMinecraft().theWorld.getWorldTime();
+		} else {
+			return 0L;
+		}
 	}
 
 	public void update() {

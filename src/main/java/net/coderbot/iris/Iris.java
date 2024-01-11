@@ -545,8 +545,6 @@ public class Iris {
         if (Minecraft.getMinecraft().theWorld != null) {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
         }
-        // Reload Sodium/Invalidate Chunk Cache
-        Minecraft.getMinecraft().renderGlobal.loadRenderers();
     }
 
     /**
