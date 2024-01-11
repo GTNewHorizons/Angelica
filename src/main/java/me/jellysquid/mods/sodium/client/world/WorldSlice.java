@@ -230,7 +230,7 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        if (!blockBoxContains(this.volume, x, 0, z)) {
+        if (!blockBoxContains(this.volume, x, volume.minY, z)) {
             return BiomeGenBase.plains;
         }
 
