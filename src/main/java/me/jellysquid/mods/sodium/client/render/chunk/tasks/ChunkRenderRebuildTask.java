@@ -93,9 +93,11 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     }
 
     private void handleRenderBlocksTextures(RenderBlocks rb, ChunkRenderData.Builder builder) {
+        if(!AngelicaConfig.speedupAnimations || !(rb instanceof ITexturesCache)) return;
+
         for(IIcon texture : ((ITexturesCache)rb).getRenderedTextures()) {
-            if(texture instanceof TextureAtlasSprite) {
-                builder.addSprite((TextureAtlasSprite)texture);
+            if(texture instanceof TextureAtlasSprite textureAtlasSprite) {
+                builder.addSprite(textureAtlasSprite);
             }
         }
     }
