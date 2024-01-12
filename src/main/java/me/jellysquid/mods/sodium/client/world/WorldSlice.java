@@ -320,11 +320,7 @@ public class WorldSlice implements IBlockAccess {
         final int relX = x - this.baseX;
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
-        try {
-            return this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
-        } catch(IndexOutOfBoundsException ignored) {
-            return Blocks.air;
-        }
+        return this.blockArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }
 
     public Block getBlockRelative(int x, int y, int z) {
