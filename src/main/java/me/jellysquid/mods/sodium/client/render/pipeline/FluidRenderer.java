@@ -95,6 +95,7 @@ public class FluidRenderer {
         int posZ = pos.z;
 
         Fluid fluid = ((IFluidBlock) block).getFluid();
+        if(fluid == null) return false;
 
         // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
