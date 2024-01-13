@@ -242,11 +242,11 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final BlockPos renderOffset = this.offset;
         final RenderBlocks rb = new RenderBlocks(slice.getWorld());
         while(!mainThreadBlocks.isEmpty()) {
-            final long blockPos = mainThreadBlocks.dequeueLong();
+            final long longPos = mainThreadBlocks.dequeueLong();
             if (cancellationSource.isCancelled()) {
                 return;
             }
-            pos.of(blockPos);
+            pos.set(longPos);
             final int relX = pos.getX() - baseX;
             final int relY = pos.getY() - baseY;
             final int relZ = pos.getZ() - baseZ;

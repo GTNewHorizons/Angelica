@@ -80,7 +80,7 @@ public class BlockPos extends Vector3i {
         return l;
     }
 
-    public BlockPos of(long packedPos) {
+    public BlockPos set(long packedPos) {
         return set(unpackLongX(packedPos), unpackLongY(packedPos), unpackLongZ(packedPos));
     }
 
