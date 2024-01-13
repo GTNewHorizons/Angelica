@@ -56,7 +56,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:24.0.1')
-    shadowImplementation("it.unimi.dsi:fastutil:8.2.1") // Apache 2.0
+    api("com.github.GTNewHorizons:GTNHLib:0.2.1:dev")
     shadowImplementation("org.joml:joml:1.10.5") // MIT
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     implementation("io.github.douira:glsl-transformer:1.0.0")
