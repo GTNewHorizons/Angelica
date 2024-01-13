@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -89,7 +90,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private boolean rendersOffThread(Block block) {
         final int type = block.getRenderType();
-        return type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block);
+        return (type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, false)) || AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, true);
     }
 
     private void handleRenderBlocksTextures(RenderBlocks rb, ChunkRenderData.Builder builder) {
@@ -104,7 +105,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
-        // COMPATIBLITY NOTE: Oculus relies on the LVT of this method being unchanged, at least in 16.5
         final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
         final ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
         final ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
@@ -120,9 +120,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
 
-        final BlockPos.Mutable pos = new BlockPos.Mutable();
+        final BlockPos pos = new BlockPos();
         final BlockPos renderOffset = this.offset;
 
+        final LongArrayFIFOQueue mainThreadBlocks = new LongArrayFIFOQueue();
         boolean hasMainThreadBlocks = false;
 
         for (int relY = 0; relY < 16; relY++) {
@@ -160,6 +161,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             }
                         }
                     } else {
+                        mainThreadBlocks.enqueue(pos.asLong());
                         hasMainThreadBlocks = true;
                     }
 
@@ -200,7 +202,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         if(hasMainThreadBlocks) {
             // Render the other blocks on the main thread
             try {
-                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData), AngelicaRenderQueue.executor()).get();
+                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData, mainThreadBlocks), AngelicaRenderQueue.executor()).get();
             } catch(InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return null;
@@ -230,54 +232,51 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     /**
      * Render the blocks that should be rendered on the main thread.
-     *
-     * TODO: Deduplicate this with the main method above.
      */
-    private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds, ChunkRenderData.Builder renderData) {
+    private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds, ChunkRenderData.Builder renderData, LongArrayFIFOQueue mainThreadBlocks) {
         final WorldSlice slice = cache.getWorldSlice();
-        final BlockPos.Mutable pos = new BlockPos.Mutable();
+        final BlockPos pos = new BlockPos();
         final int baseX = this.render.getOriginX();
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
         final BlockPos renderOffset = this.offset;
         final RenderBlocks rb = new RenderBlocks(slice.getWorld());
-        for (int relY = 0; relY < 16; relY++) {
+        while(!mainThreadBlocks.isEmpty()) {
+            final long longPos = mainThreadBlocks.dequeueLong();
             if (cancellationSource.isCancelled()) {
                 return;
             }
-            for (int relZ = 0; relZ < 16; relZ++) {
-                for (int relX = 0; relX < 16; relX++) {
-                    final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+            pos.set(longPos);
+            final int relX = pos.getX() - baseX;
+            final int relY = pos.getY() - baseY;
+            final int relZ = pos.getZ() - baseZ;
+            final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
 
-                    // Only render blocks that need main thread assistance
-                    if (block.getMaterial() == Material.air || rendersOffThread(block)) {
-                        continue;
+            // Only render blocks that need main thread assistance
+            if (block.getMaterial() == Material.air || rendersOffThread(block)) {
+                continue;
+            }
+
+            // TODO: Collect data on which render types are hitting this code path most often so mods can be updated slowly
+
+            final int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
+
+            buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
+            if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
+
+            // Do regular block rendering
+            for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+                if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                    final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
+                    if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+
+                    if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
+                        bounds.addBlock(relX, relY, relZ);
                     }
-
-                    // TODO: Collect data on which render types are hitting this code path most often
-                    // so mods can be updated slowly
-
-                    final int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
-
-                    pos.set(baseX + relX, baseY + relY, baseZ + relZ);
-                    buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
-                    if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
-
-                    // Do regular block rendering
-                    for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                        if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
-                            final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
-                            if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
-
-                            if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
-                                bounds.addBlock(relX, relY, relZ);
-                            }
-                        }
-                    }
-
-                    if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
                 }
             }
+
+            if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
         }
 
         handleRenderBlocksTextures(rb, renderData);

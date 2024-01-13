@@ -88,6 +88,8 @@ public class WorldSlice implements IBlockAccess {
     @Getter
     private ChunkSectionPos origin;
 
+    StructureBoundingBox volume;
+
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
         final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
@@ -156,6 +158,7 @@ public class WorldSlice implements IBlockAccess {
     public void copyData(ChunkRenderContext context) {
         this.origin = context.getOrigin();
         this.sections = context.getSections();
+        this.volume = context.getVolume();
 
         this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;
         this.baseY = (this.origin.y - NEIGHBOR_CHUNK_RADIUS) << 4;
@@ -167,7 +170,7 @@ public class WorldSlice implements IBlockAccess {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
                     final int idx = getLocalSectionIndex(x, y, z);
 
-                    ClonedChunkSection section = this.sections[idx];
+                    final ClonedChunkSection section = this.sections[idx];
 
                     this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], section, context.getVolume());
                     this.biomeData[idx] = section.getBiomeData();
@@ -227,11 +230,15 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
+        if (!blockBoxContains(this.volume, x, volume.minY, z)) {
+            return BiomeGenBase.plains;
+        }
+
         final int relX = x - this.baseX;
         final int relY = 0;
         final int relZ = z - this.baseZ;
 
-        BiomeGenBase biome = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
+        final BiomeGenBase biome = this.biomeData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
             [(x & 15) | (z & 15) << 4];
         // can be null if biome wasn't generated yet
         return biome == null ? BiomeGenBase.plains : biome;
@@ -274,7 +281,7 @@ public class WorldSlice implements IBlockAccess {
     }
 
     private void unpackBlockDataR(Block[] blocks, int metas[], ClonedChunkSection section, StructureBoundingBox box) {
-        ChunkSectionPos pos = section.getPosition();
+        final ChunkSectionPos pos = section.getPosition();
 
         final int minBlockX = Math.max(box.minX, pos.getMinX());
         final int maxBlockX = Math.min(box.maxX, pos.getMaxX());
@@ -306,6 +313,10 @@ public class WorldSlice implements IBlockAccess {
     }
 
     public Block getBlock(int x, int y, int z) {
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return Blocks.air;
+        }
+
         final int relX = x - this.baseX;
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
@@ -322,6 +333,9 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public int getBlockMetadata(int x, int y, int z) {
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return 0;
+        }
         final int relX = x - this.baseX;
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
@@ -331,22 +345,27 @@ public class WorldSlice implements IBlockAccess {
 
     @Override
     public TileEntity getTileEntity(int x, int y, int z) {
-        int relX = x - this.baseX;
-        int relY = y - this.baseY;
-        int relZ = z - this.baseZ;
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return null;
+        }
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
 
         return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)].getBlockEntity(relX & 15, relY & 15, relZ & 15);
     }
 
     public int getLightLevel(EnumSkyBlock type, int x, int y, int z) {
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return 0;
+        }
         y = MathHelper.clamp_int(y, 0, 255);
 
-        int relX = x - this.baseX;
-        int relY = y - this.baseY;
-        int relZ = z - this.baseZ;
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
 
-        NibbleArray lightArray = this.lightArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][type.ordinal()];
-
+        final NibbleArray lightArray = this.lightArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][type.ordinal()];
         if (lightArray == null) {
             // If the array is null, it means the dimension for the current world does not support that light type
             return this.defaultLightValues[type.ordinal()];
@@ -384,5 +403,13 @@ public class WorldSlice implements IBlockAccess {
 
     public World getWorld() {
         return this.world;
+    }
+    private static boolean blockBoxContains(StructureBoundingBox box, int x, int y, int z) {
+        return x >= box.minX &&
+            x <= box.maxX &&
+            y >= box.minY &&
+            y <= box.maxY &&
+            z >= box.minZ &&
+            z <= box.maxZ;
     }
 }
