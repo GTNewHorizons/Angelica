@@ -6,11 +6,14 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelCustomExt;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraftforge.client.model.obj.GroupObject;
 import net.minecraftforge.client.model.obj.WavefrontObject;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -48,4 +51,13 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         vertexBuffer.render(GL11.GL_QUADS);
     }
 
+    /**
+     * @author mitchej123
+     * @reason Force all models to use VBOs
+     */
+    @SideOnly(Side.CLIENT)
+    @Overwrite
+    public void renderAll() {
+        renderAllVBO();
+    }
 }
