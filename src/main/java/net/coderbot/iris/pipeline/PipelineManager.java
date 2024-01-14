@@ -39,8 +39,7 @@ public class PipelineManager {
 
 			if (BlockRenderingSettings.INSTANCE.isReloadRequired()) {
 				if (Minecraft.getMinecraft().renderGlobal != null) {
-                    // TODO: Iris
-//					Minecraft.getMinecraft().renderGlobal.allChanged();
+					Minecraft.getMinecraft().renderGlobal.loadRenderers();
 				}
 
 				BlockRenderingSettings.INSTANCE.clearReloadRequired();
