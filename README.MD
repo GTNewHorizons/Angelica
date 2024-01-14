@@ -5,6 +5,10 @@
 
 **Alpha Quality - Here there be Dragons**
 
+
+# Required Dependencies
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.2.1
+
 # Known (temporary) Incompatibilities
 * Forge Relocation - Currently non Thread Safe; safe if not in use
 * ProjectRed Frames - Currently non Thread Safe; safe if not in use
