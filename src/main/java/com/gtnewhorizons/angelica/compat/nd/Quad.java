@@ -112,7 +112,7 @@ public class Quad implements ModelQuadView {
     }
 
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
-        int vertices = drawMode == GL11.GL_TRIANGLES ? 3 : 4;
+        final int vertices = drawMode == GL11.GL_TRIANGLES ? 3 : 4;
         for(int vi = 0; vi < vertices; vi++) {
             int i = offset + vi * 8;
 

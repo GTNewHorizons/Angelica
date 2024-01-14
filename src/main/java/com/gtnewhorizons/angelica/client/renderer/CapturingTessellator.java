@@ -86,11 +86,6 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
         FLAGS.hasColor = this.hasColor;
         FLAGS.hasNormals = this.hasNormals;
 
-        // TODO: Support GL_TRIANGLES
-        if(this.drawMode != GL11.GL_QUADS) {
-            throw new IllegalStateException("Currently only supports GL_QUADS");
-
-        }
         final int verticesPerPrimitive = this.drawMode == GL11.GL_QUADS ? 4 : 3;
 
 
