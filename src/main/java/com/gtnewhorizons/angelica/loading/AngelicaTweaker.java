@@ -102,31 +102,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         return Mixins.getEarlyMixins(loadedCoreMods);
     }
 
-    private List<String> getNotFineMixins(Set<String> loadedCoreMods) {
-        if(FMLLaunchHandler.side().isServer())
-            return Collections.emptyList();
-
-        final List<String> mixins = new ArrayList<>();
-        mixins.add("notfine.clouds.MixinEntityRenderer");
-        mixins.add("notfine.clouds.MixinGameSettings");
-        mixins.add("notfine.clouds.MixinRenderGlobal");
-        mixins.add("notfine.clouds.MixinWorldType");
-
-        mixins.add("notfine.leaves.MixinBlockLeaves");
-        mixins.add("notfine.leaves.MixinBlockLeavesBase");
-
-        mixins.add("notfine.particles.MixinBlockEnchantmentTable");
-        mixins.add("notfine.particles.MixinEffectRenderer");
-        mixins.add("notfine.particles.MixinWorldClient");
-        mixins.add("notfine.particles.MixinWorldProvider");
-
-        mixins.add("notfine.toggle.MixinGuiIngame");
-        mixins.add("notfine.toggle.MixinEntityRenderer");
-        mixins.add("notfine.toggle.MixinRender");
-        mixins.add("notfine.toggle.MixinRenderItem");
-        return mixins;
-    }
-
     private static final ImmutableMap<String, TargetedMod> MODS_BY_CLASS = ImmutableMap.<String, TargetedMod>builder()
         .put("optifine.OptiFineForgeTweaker", TargetedMod.OPTIFINE)
         .put("fastcraft.Tweaker", TargetedMod.FASTCRAFT)

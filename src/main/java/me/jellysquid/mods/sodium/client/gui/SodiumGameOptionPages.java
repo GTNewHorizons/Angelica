@@ -177,7 +177,8 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.quality.weatherQuality = value, opts -> opts.quality.weatherQuality)
                         .setImpact(OptionImpact.MEDIUM)
                         .build())
-                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
+                .add(AngelicaConfig.enableNotFineFeatures ? Settings.MODE_LEAVES.option :
+                    OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.leaves_quality.name"))
                         .setTooltip(I18n.format("sodium.options.leaves_quality.tooltip"))
                         .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
