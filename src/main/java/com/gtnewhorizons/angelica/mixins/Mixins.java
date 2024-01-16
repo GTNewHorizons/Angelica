@@ -117,6 +117,13 @@ public enum Mixins {
         )
     ),
 
+    SODIUM_DYN_SURROUND(new Builder("Sodium without Dynamic Surroundings").addTargetedMod(TargetedMod.VANILLA)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_MIST).addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_ORIGINAL).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
+            "sodium.MixinEntityRenderer$WeatherQuality"
+        )
+    ),
+
     // Required for Sodium's FluidRenderer, so it treats vanilla liquids as IFluidBlocks
     SODIUM_WISHLIST(new Builder("Sodiumer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.BOTH)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodiumFluidRendering).addMixinClasses(
