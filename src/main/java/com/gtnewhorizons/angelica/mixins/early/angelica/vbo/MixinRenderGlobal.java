@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.VBOManager;
-import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalVBOCapture;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -20,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(value = RenderGlobal.class)
-public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
+public class MixinRenderGlobal {
     @Shadow public int starGLCallList;
     @Shadow private int glSkyList;
     @Shadow private int glSkyList2;
@@ -38,13 +37,10 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
         return VBOManager.generateDisplayLists(range);
     }
 
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 0), remap = false)
     public void startStarsVBO(int list, int mode) {
         TessellatorManager.startCapturing();
     }
-
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0), remap = false)
     public void finishStarsVBO() {
         VBOManager.registerVBO(starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
@@ -56,25 +52,21 @@ public class MixinRenderGlobal implements IRenderGlobalVBOCapture {
         return TessellatorManager.get();
     }
 
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 1), remap = false)
     public void startSkyVBO(int list, int mode) {
-        // Do nothing, we'll be making a VBO instead.
+        // Do nothing, we'll be making a VBO instead and already started the capturing above
     }
 
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1), remap = false)
     public void finishSkyVBO() {
         VBOManager.registerVBO(glSkyList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
     }
 
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 2), remap = false)
     public void startSky2VBO(int list, int mode) {
         TessellatorManager.startCapturing();
     }
 
-    @Override
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2), remap = false)
     public void finishSky2VBO() {
         VBOManager.registerVBO(glSkyList2, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
