@@ -38,11 +38,11 @@ public class MixinRenderGlobal {
     }
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 0), remap = false)
-    public void angelica$startStarsVBO(int list, int mode) {
+    public void startStarsVBO(int list, int mode) {
         TessellatorManager.startCapturing();
     }
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0), remap = false)
-    public void angelica$finishStarsVBO() {
+    public void finishStarsVBO() {
         VBOManager.registerVBO(starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
     }
 
