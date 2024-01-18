@@ -117,6 +117,13 @@ public enum Mixins {
         )
     ),
 
+    SODIUM_DYN_SURROUND(new Builder("Sodium without Dynamic Surroundings").addTargetedMod(TargetedMod.VANILLA)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_MIST).addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_ORIGINAL).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
+            "sodium.MixinEntityRenderer$WeatherQuality"
+        )
+    ),
+
     // Required for Sodium's FluidRenderer, so it treats vanilla liquids as IFluidBlocks
     SODIUM_WISHLIST(new Builder("Sodiumer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.BOTH)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodiumFluidRendering).addMixinClasses(
@@ -205,12 +212,26 @@ public enum Mixins {
 
     NOTFINE_FEATURES(new Builder("NotFine Features").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
+             //"notfine.clouds.MixinEntityRenderer"
+            //,"notfine.clouds.MixinGameSettings"
+            //,"notfine.clouds.MixinRenderGlobal"
+            //,"notfine.clouds.MixinWorldType"
             "notfine.glint.MixinRenderBiped"
             ,"notfine.glint.MixinRenderItem"
             ,"notfine.glint.MixinRenderPlayer"
             ,"notfine.gui.MixinGuiSlot"
+            ,"notfine.leaves.MixinBlockLeaves"
+            ,"notfine.leaves.MixinBlockLeavesBase"
+            //,"notfine.particles.MixinBlockEnchantmentTable"
+            //,"notfine.particles.MixinEffectRenderer"
+            //,"notfine.particles.MixinWorldClient"
+            //,"notfine.particles.MixinWorldProvider"
             ,"notfine.renderer.MixinRenderGlobal"
             ,"notfine.settings.MixinGameSettings"
+            //,"notfine.toggle.MixinGuiIngame"
+            //,"notfine.toggle.MixinEntityRenderer"
+            ,"notfine.toggle.MixinRender"
+            //,"notfine.toggle.MixinRenderItem"
         )),
 
     NOTFINE_FEATURES_NO_MCPF_CIT(new Builder("NotFine Features which clash with mcpf cit (compat handled in MCPF_NF mixin)").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
@@ -221,7 +242,7 @@ public enum Mixins {
             "notfine.glint.MixinRenderItemGlint"
         )),
 
-    NOTFINE_LATE_TWILIGHT_FORESTLEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.TWILIGHT_FOREST).setSide(Side.CLIENT)
+    NOTFINE_LATE_TWILIGHT_FOREST_LEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.TWILIGHT_FOREST).setSide(Side.CLIENT)
         .setPhase(Phase.LATE).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures).addMixinClasses(
              "notfine.leaves.twilightforest.MixinBlockTFLeaves"
             ,"notfine.leaves.twilightforest.MixinBlockTFLeaves3"

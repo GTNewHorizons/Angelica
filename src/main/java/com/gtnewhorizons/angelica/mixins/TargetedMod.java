@@ -10,6 +10,8 @@ public enum TargetedMod {
     , BOTANIA("Botania", null, "Botania")
     , CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks")
     , COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore")
+    , DYNAMIC_SURROUNDINGS_MIST("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround")
+    , DYNAMIC_SURROUNDINGS_ORIGINAL("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround")
     , EXTRAUTILS("ExtraUtilities", null, "ExtraUtilities")
     , GTNHLIB("GTNHLib", "com.gtnewhorizon.gtnhlib.core.GTNHLibCore", "gtnhlib")
     , IC2("IC2", "ic2.core.coremod.IC2core", "IC2")
