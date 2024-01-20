@@ -1,4 +1,4 @@
-//version: 1704650211
+//version: 1705357285
 /*
  DO NOT CHANGE THIS FILE!
  Also, you may replace this file at any time if there is an update available.
@@ -122,6 +122,7 @@ propertyDefaultIfUnset("modrinthProjectId", "")
 propertyDefaultIfUnset("modrinthRelations", "")
 propertyDefaultIfUnset("curseForgeProjectId", "")
 propertyDefaultIfUnset("curseForgeRelations", "")
+propertyDefaultIfUnset("versionPattern", "")
 propertyDefaultIfUnset("minimizeShadowedDependencies", true)
 propertyDefaultIfUnset("relocateShadowedDependencies", true)
 // Deprecated properties (kept for backwards compat)
@@ -370,6 +371,7 @@ catch (Exception ignored) {
 // Pulls version first from the VERSION env and then git tag
 String identifiedVersion
 String versionOverride = System.getenv("VERSION") ?: null
+boolean checkVersion = false
 try {
     // Produce a version based on the tag, or for branches something like 0.2.2-configurable-maven-and-extras.38+43090270b6-dirty
     if (versionOverride == null) {
@@ -388,6 +390,8 @@ try {
             }
         } else if (isDirty) {
             identifiedVersion += "-${branchName}+${gitDetails.gitHash}-dirty"
+        } else {
+            checkVersion = true
         }
     } else {
         identifiedVersion = versionOverride
@@ -409,6 +413,8 @@ ext {
 
 if (identifiedVersion == versionOverride) {
     out.style(Style.Failure).text('Override version to ').style(Style.Identifier).text(modVersion).style(Style.Failure).println('!\7')
+} else if (checkVersion && versionPattern && !(identifiedVersion ==~ versionPattern)) {
+    throw new GradleException("Invalid version: '$identifiedVersion' does not match version pattern '$versionPattern'")
 }
 
 group = "com.github.GTNewHorizons"
@@ -428,18 +434,31 @@ minecraft {
         for (f in replaceGradleTokenInFile.split(',')) {
             tagReplacementFiles.add f
         }
+        out.style(Style.Info).text('replaceGradleTokenInFile is deprecated! Consider using generateGradleTokenClass.').println()
     }
     if (gradleTokenModId) {
-        injectedTags.put gradleTokenModId, modId
+        if (replaceGradleTokenInFile) {
+            injectedTags.put gradleTokenModId, modId
+        } else {
+            out.style(Style.Failure).text('gradleTokenModId is deprecated! The field will no longer be generated.').println()
+        }
     }
     if (gradleTokenModName) {
-        injectedTags.put gradleTokenModName, modName
+        if (replaceGradleTokenInFile) {
+            injectedTags.put gradleTokenModName, modName
+        } else {
+            out.style(Style.Failure).text('gradleTokenModName is deprecated! The field will no longer be generated.').println()
+        }
     }
     if (gradleTokenVersion) {
         injectedTags.put gradleTokenVersion, modVersion
     }
     if (gradleTokenGroupName) {
-        injectedTags.put gradleTokenGroupName, modGroup
+        if (replaceGradleTokenInFile) {
+            injectedTags.put gradleTokenGroupName, modGroup
+        } else {
+            out.style(Style.Failure).text('gradleTokenGroupName is deprecated! The field will no longer be generated.').println()
+        }
     }
     if (enableGenericInjection.toBoolean()) {
         injectMissingGenerics.set(true)
@@ -786,7 +805,7 @@ dependencies {
         java17Dependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}")
     }
     if (modId != 'hodgepodge') {
-        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.3.35')
+        java17Dependencies('com.github.GTNewHorizons:Hodgepodge:2.4.4')
     }
 
     java17PatchDependencies("com.github.GTNewHorizons:lwjgl3ify:${lwjgl3ifyVersion}:forgePatches") {transitive = false}
