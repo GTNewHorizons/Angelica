@@ -771,8 +771,7 @@ public class GLStateManager {
 
     public static void glCallList(int list) {
         if(list < 0) {
-            // TODO support other draw modes (note: CapturingTessellator can only emit quads currently)
-            VBOManager.get(list).render(GL11.GL_QUADS);
+            VBOManager.get(list).render();
         } else {
             GL11.glCallList(list);
             if(glListChanges.containsKey(list)) {

@@ -11,14 +11,16 @@ public class VertexBuffer implements AutoCloseable {
     private int id;
     private int vertexCount;
     private VertexFormat format;
+    private int drawMode;
 
     public VertexBuffer() {
         this.id = GL15.glGenBuffers();
     }
 
-    public VertexBuffer(VertexFormat format) {
+    public VertexBuffer(VertexFormat format, int drawMode) {
         this();
         this.format = format;
+        this.drawMode = drawMode;
     }
 
     public void bind() {
@@ -50,16 +52,16 @@ public class VertexBuffer implements AutoCloseable {
         }
     }
 
-    public void draw(FloatBuffer floatBuffer, int mode) {
+    public void draw(FloatBuffer floatBuffer) {
         GL11.glPushMatrix();
         GL11.glLoadIdentity();
         GL11.glMultMatrix(floatBuffer);
-        draw(mode);
+        draw();
         GL11.glPopMatrix();
     }
 
-    public void draw(int mode) {
-        GL11.glDrawArrays(mode, 0, this.vertexCount);
+    public void draw() {
+        GL11.glDrawArrays(drawMode, 0, this.vertexCount);
     }
 
     public void setupState() {
@@ -72,11 +74,11 @@ public class VertexBuffer implements AutoCloseable {
         format.clearBufferState();
         unbind();
     }
-    public void render(int mode) {
+    public void render() {
         if(format == null) throw new IllegalStateException("No format specified for VBO render");
         bind();
         format.setupBufferState(0L);
-        draw(mode);
+        draw();
         format.clearBufferState();
         unbind();
     }

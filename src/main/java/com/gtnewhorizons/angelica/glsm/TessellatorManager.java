@@ -9,6 +9,8 @@ import net.minecraft.client.renderer.Tessellator;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.lwjgl.opengl.GL11;
+
 @SuppressWarnings("unused")
 public class TessellatorManager {
     private static final ThreadLocal<CapturingTessellator> capturingTessellator = ThreadLocal.withInitial(CapturingTessellator::new);
@@ -76,7 +78,7 @@ public class TessellatorManager {
      * uploads the buffer to a new VertexBuffer, and clears the quads.
      */
     public static VertexBuffer stopCapturingToVBO(VertexFormat format) {
-        return new VertexBuffer(format).upload(stopCapturingToBuffer(format));
+        return new VertexBuffer(format, GL11.GL_QUADS).upload(stopCapturingToBuffer(format));
     }
 
     static {

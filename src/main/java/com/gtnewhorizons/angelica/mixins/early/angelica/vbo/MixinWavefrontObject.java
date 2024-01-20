@@ -48,7 +48,7 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
         if(vertexBuffer == null) {
             rebuildVBO();
         }
-        vertexBuffer.render(GL11.GL_QUADS);
+        vertexBuffer.render();
     }
 
     /**
