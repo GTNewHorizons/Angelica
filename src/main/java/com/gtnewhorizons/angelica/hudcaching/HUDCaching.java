@@ -1,8 +1,15 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.lwjgl.opengl.GL11;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameForgeAccessor;
+
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -18,10 +25,6 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
-import org.lwjgl.opengl.GL11;
-
-import java.util.ArrayList;
-import java.util.List;
 
 // See LICENSE+HUDCaching.md for license information.
 
@@ -29,10 +32,32 @@ public class HUDCaching {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     public static Framebuffer framebuffer;
+    static {
+    	framebuffer = new Framebuffer(0, 0, true);
+        framebuffer.framebufferColor[0] = 0.0F;
+        framebuffer.framebufferColor[1] = 0.0F;
+        framebuffer.framebufferColor[2] = 0.0F;
+        framebuffer.framebufferColor[3] = 0.0F;
+    }
     private static boolean dirty = true;
+    
     public static boolean renderingCacheOverride;
-    public static final HUDCaching INSTANCE = new HUDCaching();
+    
+    /*
+     * Some HUD features cause problems/inaccuracies when being rendered into cache.
+     * We capture those and render them later
+     */
+    // Vignette texture has no alpha
+    public static boolean renderVignetteCaptured;
+    // Helmet & portal are chances other mods render vignette
+    // For example Thaumcraft renders warp effect during this
+    public static boolean renderHelmetCaptured;
+    public static float renderPortalCapturedTicks;
+    // Crosshairs need to be blended with the scene
+    public static boolean renderCrosshairsCaptured;
 
+    public static final HUDCaching INSTANCE = new HUDCaching();
+    
 
     private HUDCaching() {}
 
@@ -79,13 +104,11 @@ public class HUDCaching {
         }
     }
 
-    // TODO draw vignette
-
     @SuppressWarnings("unused")
-    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean b, int i, int j) {
+    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
 
         if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled) {
-            ingame.renderGameOverlay(partialTicks, b, i, j);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
 
@@ -95,31 +118,10 @@ public class HUDCaching {
         int height = resolution.getScaledHeight();
         renderer.setupOverlayRendering();
         GLStateManager.enableBlend();
-
-        if (framebuffer != null) {
-            Tessellator tessellator = TessellatorManager.get();
-            if (ingame instanceof GuiIngameForge) {
-                ((GuiIngameForgeAccessor) ingame).callRenderCrosshairs(width, height);
-            } else if (GuiIngameForge.renderCrosshairs) {
-                mc.getTextureManager().bindTexture(Gui.icons);
-                GLStateManager.enableBlend();
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE_MINUS_DST_COLOR, GL11.GL_ONE_MINUS_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
-                GLStateManager.enableAlphaTest();
-                drawTexturedModalRect(tessellator, (width >> 1) - 7, (height >> 1) - 7);
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-            }
-
-            GLStateManager.enableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-            framebuffer.bindFramebufferTexture();
-            drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        }
-
-        if (framebuffer == null || dirty) {
+        
+        if (dirty) {
             dirty = false;
-            framebuffer = checkFramebufferSizes(framebuffer, mc.displayWidth, mc.displayHeight);
+            checkFramebufferSizes(mc.displayWidth, mc.displayHeight);
             framebuffer.framebufferClear();
             framebuffer.bindFramebuffer(false);
             GLStateManager.disableBlend();
@@ -128,28 +130,74 @@ public class HUDCaching {
             GLStateManager.disableLighting();
             GLStateManager.disableFog();
             renderingCacheOverride = true;
-            ingame.renderGameOverlay(partialTicks, b, i, j);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
             mc.getFramebuffer().bindFramebuffer(false);
             GLStateManager.enableBlend();
         }
+        
+        // reset the color that may be applied by some items
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        
+        // render bits that were captured when rendering into cache
+        GuiIngameAccessor gui = (GuiIngameAccessor) ingame;
+        if (renderVignetteCaptured)
+        {
+            gui.callRenderVignette(mc.thePlayer.getBrightness(partialTicks), width, height);
+        } else {
+        	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+        }
+        
+        Tessellator tessellator = TessellatorManager.get();
+        
+        if (ingame instanceof GuiIngameForge) {
+        	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
+        	if (renderHelmetCaptured) {
+        		guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
+        	}
+        	if (renderPortalCapturedTicks > 0) {
+        		guiForge.callRenderPortal(width, height, partialTicks);
+        	}
+        	if (renderCrosshairsCaptured) {
+        		guiForge.callRenderCrosshairs(width, height);
+        	}
+        } else {
+            if (renderHelmetCaptured)
+            {
+                gui.callRenderPumpkinBlur(width, height);
+            }
+            if (renderPortalCapturedTicks > 0)
+            {
+                gui.callFunc_130015_b(renderPortalCapturedTicks, width, height);
+            }
+            if (renderCrosshairsCaptured) {
+            	mc.getTextureManager().bindTexture(Gui.icons);
+                GLStateManager.enableBlend();
+                GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE_MINUS_DST_COLOR, GL11.GL_ONE_MINUS_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
+                GLStateManager.enableAlphaTest();
+                drawTexturedModalRect(tessellator, (width >> 1) - 7, (height >> 1) - 7);
+                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            }
+        }
+
+        // render cached frame
+        GLStateManager.enableBlend();
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        framebuffer.bindFramebufferTexture();
+        drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
         GLStateManager.enableDepthTest();
     }
 
-    private static Framebuffer checkFramebufferSizes(Framebuffer framebuffer, int width, int height) {
-        if (framebuffer == null || framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
-            if (framebuffer == null) {
-                framebuffer = new Framebuffer(width, height, true);
-                framebuffer.framebufferColor[0] = 0.0F;
-                framebuffer.framebufferColor[1] = 0.0F;
-                framebuffer.framebufferColor[2] = 0.0F;
-            } else {
-                framebuffer.createBindFramebuffer(width, height);
-            }
+    private static void checkFramebufferSizes(int width, int height) {
+        if (framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
+            framebuffer.createBindFramebuffer(width, height);
+            framebuffer.framebufferWidth = width;
+            framebuffer.framebufferHeight = height;
             framebuffer.setFramebufferFilter(GL11.GL_NEAREST);
         }
-        return framebuffer;
     }
 
     private static void drawTexturedRect(Tessellator tessellator, float width, float height) {

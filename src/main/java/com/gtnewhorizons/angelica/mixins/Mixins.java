@@ -167,7 +167,8 @@ public enum Mixins {
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
         .addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableHudCaching).addMixinClasses(
-            "angelica.hudcaching.GuiIngameForgeAccessor",
+        	"angelica.hudcaching.GuiIngameAccessor",
+        	"angelica.hudcaching.GuiIngameForgeAccessor",
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
