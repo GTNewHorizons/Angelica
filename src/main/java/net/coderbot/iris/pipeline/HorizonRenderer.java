@@ -157,7 +157,7 @@ public class HorizonRenderer {
 		vertexBuffer.bind();
         GL11.glVertexPointer(3, GL11.GL_FLOAT, 12, 0L);
         GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-		vertexBuffer.draw(floatBuffer, GL11.GL_QUADS);
+		vertexBuffer.draw(floatBuffer);
 		GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
 		vertexBuffer.unbind();
 	}
