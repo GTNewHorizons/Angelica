@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraftforge.client.IRenderHandler;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -70,11 +69,6 @@ public class MixinRenderGlobal {
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2), remap = false)
     public void finishSky2VBO() {
         VBOManager.registerVBO(glSkyList2, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
-    }
-
-    @Redirect(method="renderSky(F)V", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glCallList(I)V"), remap = false)
-    public void renderSky(int list) {
-        VBOManager.get(list).render(GL11.GL_QUADS);
     }
 
     /**
