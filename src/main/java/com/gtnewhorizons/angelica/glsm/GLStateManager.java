@@ -770,11 +770,16 @@ public class GLStateManager {
     }
 
     public static void glCallList(int list) {
-        GL11.glCallList(list);
-        if(glListChanges.containsKey(list)) {
-            for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
-                // Set the stack to the cached state at the end of the call list compilation
-                ((ISettableState<?>)entry.getKey()).set(entry.getValue());
+        if(list < 0) {
+            // TODO support other draw modes (note: CapturingTessellator can only emit quads currently)
+            VBOManager.get(list).render(GL11.GL_QUADS);
+        } else {
+            GL11.glCallList(list);
+            if(glListChanges.containsKey(list)) {
+                for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
+                    // Set the stack to the cached state at the end of the call list compilation
+                    ((ISettableState<?>)entry.getKey()).set(entry.getValue());
+                }
             }
         }
     }
