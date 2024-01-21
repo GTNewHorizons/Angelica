@@ -7,7 +7,7 @@ public enum TargetedMod {
       VANILLA("Minecraft", null)
     , FASTCRAFT("FastCraft", "fastcraft.Tweaker")
     , OPTIFINE("Optifine", "optifine.OptiFineForgeTweaker", "Optifine")
-    , ARCHAICFIX("ArchaicFix", "com.archaicraft.archaicfix.ArchaicFixCore", "archaicfix")
+    , ARCHAICFIX("ArchaicFix", "org.embeddedt.archaicfix.ArchaicCore", "archaicfix")
     , BOTANIA("Botania", null, "Botania")
     , CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks")
     , COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore")
