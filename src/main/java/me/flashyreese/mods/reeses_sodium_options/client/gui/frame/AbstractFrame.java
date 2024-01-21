@@ -108,14 +108,4 @@ public abstract class AbstractFrame extends AbstractWidget implements ParentElem
         return this.dim.containsCursor(mouseX, mouseY);
     }
 
-
-    /*@Override
-    public @Nullable GuiNavigationPath getNavigationPath(GuiNavigation navigation) {
-        return ParentElement.super.getNavigationPath(navigation);
-    }
-
-    @Override
-    public ScreenRect getNavigationFocus() {
-        return new ScreenRect(this.dim.x(), this.dim.y(), this.dim.width(), this.dim.height());
-    }*/
 }
