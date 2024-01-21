@@ -66,6 +66,14 @@ public class MixinRenderBlocks implements ITexturesCache {
 
         return icon;
     }
+    
+    @Inject(method = "drawCrossedSquares", at = @At("HEAD"))
+    public void angelica$markCrossedSquaresAnimationForUpdate(IIcon icon, double p_147765_2_, double p_147765_4_, double p_147765_6_, float p_147765_8_,
+            CallbackInfo ci) {
+        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
+
+        this.renderedSprites.add(icon);
+    }
 
     @Override
     public Set<IIcon> getRenderedTextures() {
