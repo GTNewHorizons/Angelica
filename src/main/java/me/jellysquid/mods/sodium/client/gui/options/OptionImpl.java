@@ -1,9 +1,13 @@
 package me.jellysquid.mods.sodium.client.gui.options;
 
+import lombok.Getter;
+import lombok.Setter;
+import me.flashyreese.mods.reeses_sodium_options.client.gui.OptionExtended;
 import me.jellysquid.mods.sodium.client.gui.options.binding.GenericBinding;
 import me.jellysquid.mods.sodium.client.gui.options.binding.OptionBinding;
 import me.jellysquid.mods.sodium.client.gui.options.control.Control;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
+import me.jellysquid.mods.sodium.client.util.Dim2i;
 import org.apache.commons.lang3.Validate;
 
 import java.util.Collection;
@@ -13,7 +17,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-public class OptionImpl<S, T> implements Option<T> {
+public class OptionImpl<S, T> implements OptionExtended<T> {
     private final OptionStorage<S> storage;
 
     private final OptionBinding<S, T> binding;
@@ -207,4 +211,11 @@ public class OptionImpl<S, T> implements Option<T> {
             return new OptionImpl<>(this.storage, this.name, this.tooltip, this.binding, this.control, this.flags, this.impact, this.enabled);
         }
     }
+
+
+    @Setter @Getter private Dim2i parentDimension;
+    @Setter @Getter private Dim2i dim2i;
+    @Setter @Getter private boolean highlight;
+    @Setter @Getter private boolean selected;
+
 }

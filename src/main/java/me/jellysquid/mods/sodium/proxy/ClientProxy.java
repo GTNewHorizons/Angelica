@@ -1,10 +1,12 @@
 package me.jellysquid.mods.sodium.proxy;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import jss.notfine.gui.GuiCustomMenu;
+import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.minecraft.client.Minecraft;
@@ -28,8 +30,10 @@ public class ClientProxy extends CommonProxy {
             if(GuiScreen.isShiftKeyDown()) {
                 Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, SodiumGameOptionPages.general(),
                     SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
-            } else {
+            } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
+            } else {
+                Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));
             }
         }
     }

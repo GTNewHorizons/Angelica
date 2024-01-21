@@ -61,7 +61,6 @@ public class ClientProxy extends CommonProxy {
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
-
         }
     }
 

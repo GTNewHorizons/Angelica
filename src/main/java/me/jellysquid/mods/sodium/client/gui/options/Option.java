@@ -29,4 +29,5 @@ public interface Option<T> {
     void applyChanges();
 
     Collection<OptionFlag> getFlags();
+
 }

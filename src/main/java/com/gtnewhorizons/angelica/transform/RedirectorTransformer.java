@@ -34,7 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static com.gtnewhorizons.angelica.transform.BlockTransformer.*;
+import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockBoundsFields;
+import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockClass;
 
 /**
  * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
@@ -88,6 +89,7 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, "Texture");
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_FOG, "Fog");
         glCapRedirects.put(org.lwjgl.opengl.GL12.GL_RESCALE_NORMAL, "RescaleNormal");
+        glCapRedirects.put(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST, "ScissorTest");
         methodRedirects.put(GL11, RedirectMap.newMap()
             .add("glGetFloat")
             .add("glAlphaFunc")

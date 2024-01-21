@@ -1,6 +1,9 @@
 package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.gui.ScrollableGuiScreen;
+import com.gtnewhorizons.angelica.compat.mojang.Drawable;
+import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -13,8 +16,6 @@ import me.jellysquid.mods.sodium.client.gui.options.control.Control;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.control.element.SodiumControlElementFactory;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
-import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
-import me.jellysquid.mods.sodium.client.gui.utils.Element;
 import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
@@ -32,28 +33,29 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
-public class SodiumOptionsGUI extends GuiScreen {
+public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
-    private static final SodiumControlElementFactory elementFactory = new SodiumControlElementFactory();
+    protected static final SodiumControlElementFactory elementFactory = new SodiumControlElementFactory();
 
-    private final List<Element> children = new CopyOnWriteArrayList<>();
+    protected final List<Element> children = new CopyOnWriteArrayList<>();
 
-    private final List<OptionPage> pages = new ArrayList<>();
+    protected final List<OptionPage> pages = new ArrayList<>();
 
-    private final List<ControlElement<?>> controls = new ArrayList<>();
-    private final List<Drawable> drawable = new ArrayList<>();
+    protected final List<ControlElement<?>> controls = new ArrayList<>();
+    protected final List<Drawable> drawable = new ArrayList<>();
 
     public final GuiScreen prevScreen;
 
-    private OptionPage currentPage;
+    protected OptionPage currentPage;
 
-    private FlatButtonWidget applyButton, closeButton, undoButton;
-    private FlatButtonWidget donateButton, hideDonateButton;
+    protected FlatButtonWidget applyButton, closeButton, undoButton;
+    protected FlatButtonWidget donateButton, hideDonateButton;
 
-    private boolean hasPendingChanges;
-    private ControlElement<?> hoveredElement;
+    protected boolean hasPendingChanges;
+    protected ControlElement<?> hoveredElement;
 
-    private OptionPage shaderPacks;
+    protected OptionPage shaderPacks;
+
 
     public SodiumOptionsGUI(GuiScreen prevScreen) {
         this.prevScreen = prevScreen;
@@ -63,7 +65,7 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
 
-        if(AngelicaConfig.enableIris) {
+        if (AngelicaConfig.enableIris) {
             shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of());
             this.pages.add(shaderPacks);
         }
@@ -85,7 +87,7 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.rebuildGUI();
     }
 
-    private void rebuildGUI() {
+    protected void rebuildGUI() {
         this.controls.clear();
         this.children.clear();
         this.drawable.clear();
@@ -105,8 +107,8 @@ public class SodiumOptionsGUI extends GuiScreen {
         this.undoButton = new FlatButtonWidget(new Dim2i(this.width - 211, this.height - 26, 65, 20), I18n.format("sodium.options.buttons.undo"), this::undoChanges);
         this.applyButton = new FlatButtonWidget(new Dim2i(this.width - 142, this.height - 26, 65, 20), I18n.format("sodium.options.buttons.apply"), this::applyChanges);
         this.closeButton = new FlatButtonWidget(new Dim2i(this.width - 73, this.height - 26, 65, 20), I18n.format("gui.done"), this::onClose);
-        String donateToJelly = I18n.format("sodium.options.buttons.donate");
-        int width = 12 + this.fontRendererObj.getStringWidth(donateToJelly);
+        final String donateToJelly = I18n.format("sodium.options.buttons.donate");
+        final int width = 12 + this.fontRendererObj.getStringWidth(donateToJelly);
         this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, () -> openDonationPage("https://caffeinemc.net/donate"));
         this.hideDonateButton = new FlatButtonWidget(new Dim2i(this.width - 26, 6, 20, 20), "x", this::hideDonationButton);
 
@@ -133,7 +135,7 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     private void hideDonationButton() {
-        SodiumGameOptions options = SodiumClientMod.options();
+        final SodiumGameOptions options = SodiumClientMod.options();
         options.notifications.hideDonationButton = true;
 
         try {
@@ -147,12 +149,12 @@ public class SodiumOptionsGUI extends GuiScreen {
 
     private void rebuildGUIPages() {
         int x = 6;
-        int y = 6;
+        final int y = 6;
 
         for (OptionPage page : this.pages) {
-            int width = 12 + this.fontRendererObj.getStringWidth(page.getName());
+            final int width = 12 + this.fontRendererObj.getStringWidth(page.getName());
 
-            FlatButtonWidget button = new FlatButtonWidget(new Dim2i(x, y, width, 18), page.getName(), () -> this.setPage(page));
+            final FlatButtonWidget button = new FlatButtonWidget(new Dim2i(x, y, width, 18), page.getName(), () -> this.setPage(page));
             button.setSelected(this.currentPage == page);
 
             x += width + 6;
@@ -162,14 +164,14 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     private void rebuildGUIOptions() {
-        int x = 6;
+        final int x = 6;
         int y = 28;
 
         for (OptionGroup group : this.currentPage.getGroups()) {
             // Add each option's control element
             for (Option<?> option : group.getOptions()) {
-                Control<?> control = option.getControl();
-                ControlElement<?> element = control.createElement(new Dim2i(x, y, 200, 18), elementFactory);
+                final Control<?> control = option.getControl();
+                final ControlElement<?> element = control.createElement(new Dim2i(x, y, 200, 18), elementFactory);
 
                 this.controls.add(element);
                 //Safe if SodiumControlElementFactory or a compatible ControlElementFactory is used to create element.
@@ -186,6 +188,7 @@ public class SodiumOptionsGUI extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
+        super.drawScreen(mouseX, mouseY, delta);
         super.drawDefaultBackground();
 
         this.updateControls();
@@ -199,14 +202,18 @@ public class SodiumOptionsGUI extends GuiScreen {
         }
     }
 
+    @Override
+    public List<? extends Element> children() {
+        return children;
+    }
+
     private void updateControls() {
         ControlElement<?> hovered = this.getActiveControls()
                 .filter(ControlElement::isHovered)
                 .findFirst()
                 .orElse(null);
 
-        boolean hasChanges = this.getAllOptions()
-                .anyMatch(Option::hasChanged);
+        boolean hasChanges = this.getAllOptions().anyMatch(Option::hasChanged);
 
         for (OptionPage page : this.pages) {
             for (Option<?> option : page.getOptions()) {
@@ -234,28 +241,28 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     private void renderOptionTooltip(ControlElement<?> element) {
-        Dim2i dim = element.getDimensions();
+        final Dim2i dim = element.getDimensions();
 
-        int textPadding = 3;
-        int boxPadding = 3;
+        final int textPadding = 3;
+        final int boxPadding = 3;
 
-        int boxWidth = 200;
+        final int boxWidth = 200;
 
         int boxY = dim.getOriginY();
-        int boxX = dim.getLimitX() + boxPadding;
+        final int boxX = dim.getLimitX() + boxPadding;
 
-        Option<?> option = element.getOption();
-        List<String> tooltip = new ArrayList<>(this.fontRendererObj.listFormattedStringToWidth(option.getTooltip(), boxWidth - (textPadding * 2)));
+        final Option<?> option = element.getOption();
+        final List<String> tooltip = new ArrayList<>(this.fontRendererObj.listFormattedStringToWidth(option.getTooltip(), boxWidth - (textPadding * 2)));
 
-        OptionImpact impact = option.getImpact();
+        final OptionImpact impact = option.getImpact();
 
         if (impact != null) {
         	tooltip.add(EnumChatFormatting.GRAY + I18n.format("sodium.options.performance_impact_string", impact.toDisplayString()));
         }
 
-        int boxHeight = (tooltip.size() * 12) + boxPadding;
-        int boxYLimit = boxY + boxHeight;
-        int boxYCutoff = this.height - 40;
+        final int boxHeight = (tooltip.size() * 12) + boxPadding;
+        final int boxYLimit = boxY + boxHeight;
+        final int boxYCutoff = this.height - 40;
 
         // If the box is going to be cutoff on the Y-axis, move it back up the difference
         if (boxYLimit > boxYCutoff) {
@@ -299,8 +306,7 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     private void undoChanges() {
-        this.getAllOptions()
-                .forEach(Option::reset);
+        this.getAllOptions().forEach(Option::reset);
     }
 
     private void openDonationPage(String url) {
@@ -340,9 +346,10 @@ public class SodiumOptionsGUI extends GuiScreen {
     }
 
     @Override
-    protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
-        super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
+    protected void mouseClickMove(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
+        super.mouseClickMove(mouseX, mouseY, mouseButton, timeSinceLastClick);
 
-        this.children.forEach(element -> element.mouseDragged(mouseX, mouseY));
+        this.children.forEach(element -> element.mouseDragged(mouseX, mouseY, mouseButton));
     }
+
 }

@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.gui;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.core.Settings;
+import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
@@ -94,7 +95,10 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> {
                             opts.guiScale = value;
                             // Resizing our window
-                            if(Minecraft.getMinecraft().currentScreen instanceof SodiumOptionsGUI oldGui) {
+                            if(Minecraft.getMinecraft().currentScreen instanceof ReeseSodiumVideoOptionsScreen oldGui) {
+                                Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(oldGui.prevScreen));
+                            }
+                            else if(Minecraft.getMinecraft().currentScreen instanceof SodiumOptionsGUI oldGui) {
                                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(oldGui.prevScreen));
                             }
                         }, opts -> opts.guiScale)
