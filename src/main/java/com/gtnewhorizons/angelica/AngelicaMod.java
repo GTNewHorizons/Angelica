@@ -17,7 +17,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.4.4,);" + " after:CodeChickenCore@[1.2.0,);"
                      + " after:archaicfix@[0.7.0,);" + " required-after:gtnhlib@[0.2.1,);",
         acceptedMinecraftVersions = "[1.7.10]",
-        acceptableRemoteVersions = "*")
+        acceptableRemoteVersions = "*",
+        guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
 public class AngelicaMod {
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
