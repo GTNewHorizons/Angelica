@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.util.ChatAllowedCharacters;
 import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
 
@@ -301,9 +302,8 @@ public class SearchTextFieldComponent extends AbstractWidget {
     }
 
     private int getCursorPosWithOffset(int offset) {
-//        return Util.moveCursor(this.text, this.selectionStart, offset);
-        // TODO: This is wrong
-        return offset;
+        //return Util.moveCursor(this.text, this.selectionStart, offset);
+        return this.selectionStart + offset;
     }
 
     public void setSelectionStart(int cursor) {
@@ -375,25 +375,23 @@ public class SearchTextFieldComponent extends AbstractWidget {
             return false;
         } else {
             this.selecting = GuiScreen.isShiftKeyDown();
-            // TODO: Verify keycode is consistent between 1.7.10 and 1.16.5
-            // (It's probably not based on isCtrlKeyDown differences
-            if (keyCode == 65 && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
+            if (keyCode == Keyboard.KEY_A && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
                 // Select all
                 this.setCursorToEnd();
                 this.setSelectionEnd(0);
                 return true;
-            } else if (keyCode == 67 && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
+            } else if (keyCode == Keyboard.KEY_C && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
                 // Copy
                 GuiScreen.setClipboardString(this.getSelectedText());
                 return true;
-            } else if (keyCode == 86 && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
+            } else if (keyCode == Keyboard.KEY_V && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
                 // Paste
                 if (this.editable) {
                     this.write(GuiScreen.getClipboardString());
                 }
 
                 return true;
-            } else if (keyCode == 88 && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
+            } else if (keyCode == Keyboard.KEY_X && GuiScreen.isCtrlKeyDown() && !GuiScreen.isShiftKeyDown() ) {
                 // Cut
                 GuiScreen.setClipboardString(this.getSelectedText());
                 if (this.editable) {
@@ -478,6 +476,14 @@ public class SearchTextFieldComponent extends AbstractWidget {
                         this.setCursorToEnd();
                         return true;
                     default:
+                        if (ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
+                            if (this.editable) {
+                                this.lastSearch.set(this.text.trim());
+                                this.write(Character.toString(typedChar));
+                                this.lastSearchIndex.set(0);
+                            }
+                            return true;
+                        }
                         return false;
                 }
             }
