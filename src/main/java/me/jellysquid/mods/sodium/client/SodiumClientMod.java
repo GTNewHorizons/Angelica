@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client;
 
 import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -56,7 +57,7 @@ public class SodiumClientMod {
     }
 
     private static SodiumGameOptions loadConfig() {
-        return SodiumGameOptions.load(Minecraft.getMinecraft().mcDataDir.toPath().resolve("config").resolve("rubidium-options.json"));
+        return SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
     }
 
     public static String getVersion() {
