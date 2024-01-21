@@ -77,6 +77,8 @@ public class SodiumGameOptionPages {
                 .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
                 .build());
         firstGroupBuilder.add(Settings.MODE_SKY.option);
+        firstGroupBuilder.add(Settings.MODE_SUN_MOON.option);
+        firstGroupBuilder.add(Settings.MODE_STARS.option);
         firstGroupBuilder.add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                 .setName(I18n.format("sodium.options.clouds.name"))
                 .setTooltip(I18n.format("sodium.options.clouds.tooltip"))

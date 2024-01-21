@@ -20,7 +20,7 @@
         "id_miner",
         "daxnitro"
       ],
-      "credits": "Based on daxnitro's GLSL Shaders Mod.  Includes backported code from Oculus and Iris",
+      "credits": "The Angelica Team.",
       "logoFile": "",
       "screenshots": [],
       "parent": "",
@@ -43,8 +43,7 @@
       "parent": "",
       "requiredMods": [],
       "dependencies": [],
-      "dependants": [],
-      "useDependencyInformation": true
+      "dependants": []
     },
     {
       "modid": "embeddium",
@@ -54,7 +53,8 @@
       "authorList": [
         "embeddedt",
         "NanoLive",
-        "CaffeineMC"
+        "CaffeineMC",
+        "mitchej123"
       ]
     },
 	{
@@ -72,8 +72,7 @@
       "parent": "",
       "requiredMods": [],
       "dependencies": [],
-      "dependants": [],
-      "useDependencyInformation": true
+      "dependants": []
 	}
   ]
 }

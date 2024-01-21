@@ -178,7 +178,7 @@ public enum Mixins {
     ),
 
     OPTIMIZE_WORLD_UPDATE_LIGHT(new Builder("Optimize world updateLightByType method").setPhase(Phase.EARLY)
-        .setSide(Side.BOTH).addTargetedMod(TargetedMod.VANILLA).setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
+        .setSide(Side.BOTH).addTargetedMod(TargetedMod.VANILLA).addExcludedMod(TargetedMod.ARCHAICFIX).setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addMixinClasses("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
 
@@ -194,6 +194,11 @@ public enum Mixins {
             "angelica.animation.MixinRenderBlockFluid",
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
+    
+    SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new Builder("Add animation speedup support to Campfire Backport").setPhase(Phase.LATE)
+            .addTargetedMod(TargetedMod.CAMPFIRE_BACKPORT).setSide(Side.CLIENT)
+            .setApplyIf(() -> AngelicaConfig.speedupAnimations)
+            .addMixinClasses("client.campfirebackport.MixinRenderBlockCampfire")),
 
     IC2_FLUID_RENDER_FIX(new Builder("IC2 Fluid Render Fix").setPhase(Phase.EARLY).setSide(Side.CLIENT)
         .addTargetedMod(TargetedMod.IC2).setApplyIf(() -> AngelicaConfig.speedupAnimations)
