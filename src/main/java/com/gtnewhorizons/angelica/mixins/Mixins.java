@@ -178,7 +178,7 @@ public enum Mixins {
     ),
 
     OPTIMIZE_WORLD_UPDATE_LIGHT(new Builder("Optimize world updateLightByType method").setPhase(Phase.EARLY)
-        .setSide(Side.BOTH).addTargetedMod(TargetedMod.VANILLA).setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
+        .setSide(Side.BOTH).addTargetedMod(TargetedMod.VANILLA).addExcludedMod(TargetedMod.ARCHAICFIX).setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addMixinClasses("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
 
