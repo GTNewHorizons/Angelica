@@ -14,7 +14,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
 
-@Mixin(targets = "connor135246.campfirebackport.client.rendering.RenderBlockCampfire")
+@Mixin(targets = "connor135246.campfirebackport.client.rendering.RenderBlockCampfire", remap = false)
 public class MixinRenderBlockCampfire {
     @Inject(method = "renderFace", at = @At("HEAD"))
     private static void angelica$beforeRenderFace(double x, double y, double z, Block block, RenderBlocks renderer, IIcon icon, int side, CallbackInfo ci) {
