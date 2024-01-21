@@ -9,6 +9,7 @@ public enum TargetedMod {
     , OPTIFINE("Optifine", "optifine.OptiFineForgeTweaker", "Optifine")
     , ARCHAICFIX("ArchaicFix", "org.embeddedt.archaicfix.ArchaicCore", "archaicfix")
     , BOTANIA("Botania", null, "Botania")
+    , CAMPFIRE_BACKPORT("CampfireBackport", null, "campfirebackport")
     , CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks")
     , COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore")
     , DYNAMIC_SURROUNDINGS_MIST("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround")
