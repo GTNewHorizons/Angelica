@@ -7,6 +7,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodium;
 
+    @Config.Comment("Enable Reese's Sodium Options")
+    @Config.DefaultBoolean(true)
+    public static boolean enableReesesSodiumOptions;
+
     @Config.Comment("Enable Sodium fluid rendering")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

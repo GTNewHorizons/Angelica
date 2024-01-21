@@ -43,6 +43,8 @@
 * Sodium
   * JellySquid & the CaffeineMC team, for making Sodium in the first place
   * Embeddedt for [Embeddium](https://github.com/embeddedt/embeddium/tree/dc59ca357c25beefd6288f0d1d40b4cd8e670ab8) under the [LGPL 3.0](https://github.com/embeddedt/embeddium/blob/16.x/forge/LICENSE)
+* Reese's Sodium Options
+  * FlashyReese for [Reese's Sodium Options](https://github.com/FlashyReese/reeses-sodium-options/tree/aa4ea67047cf53e54976e93c6bb1ab5ba16b142b) under the [MIT license](https://github.com/FlashyReese/reeses-sodium-options/blob/aa4ea67047cf53e54976e93c6bb1ab5ba16b142b/LICENSE.txt)
 * Neodymium
   * Makamys for [Neodymium](https://github.com/makamys/Neodymium) - Various Tessellator -> Quad functionality taken under the LGPL 3
 * MCPatcherForge

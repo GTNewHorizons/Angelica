@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui.options.control.element;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
@@ -56,12 +57,22 @@ public class SodiumControlElementFactory implements ControlElementFactory {
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (this.option.isAvailable() && button == 0 && this.dim.containsCursor(mouseX, mouseY)) {
-                this.currentIndex = (this.option.getValue().ordinal() + 1) % this.allowedValues.length;
-                this.option.setValue(this.allowedValues[this.currentIndex]);
-                this.playClickSound();
+            if(AngelicaConfig.enableReesesSodiumOptions) {
+                if (this.option.isAvailable() && this.dim.containsCursor(mouseX, mouseY) && (button == 0 || button == 1)) {
+                    this.currentIndex = Math.floorMod(this.option.getValue().ordinal() + (button == 0 ? 1 : -1), this.allowedValues.length);
+                    this.option.setValue(this.allowedValues[this.currentIndex]);
+                    this.playClickSound();
 
-                return true;
+                    return true;
+                }
+            } else {
+                if (this.option.isAvailable() && button == 0 && this.dim.containsCursor(mouseX, mouseY)) {
+                    this.currentIndex = (this.option.getValue().ordinal() + 1) % this.allowedValues.length;
+                    this.option.setValue(this.allowedValues[this.currentIndex]);
+                    this.playClickSound();
+
+                    return true;
+                }
             }
 
             return false;
@@ -176,7 +187,7 @@ public class SodiumControlElementFactory implements ControlElementFactory {
         }
 
         @Override
-        public boolean mouseDragged(double mouseX, double mouseY) {
+        public boolean mouseDragged(double mouseX, double mouseY, int button) {
             if (this.option.isAvailable() && this.sliderBounds.contains((int) mouseX, (int) mouseY)) {
                 this.setValueFromMouse(mouseX);
 

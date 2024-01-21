@@ -79,6 +79,7 @@ public class GLStateManager {
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
     @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
+    @Getter protected static final BooleanStateStack scissorTest = new BooleanStateStack(GL11.GL_SCISSOR_TEST);
     @Getter protected static final DepthStateStack depthState = new DepthStateStack();
     @Getter protected static final BooleanStateStack depthTest = new BooleanStateStack(GL11.GL_DEPTH_TEST);
 
@@ -156,6 +157,7 @@ public class GLStateManager {
             case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             case GL11.GL_FOG -> enableFog();
+            case GL11.GL_SCISSOR_TEST -> enableScissorTest();
             default -> GL11.glEnable(cap);
         }
     }
@@ -170,6 +172,7 @@ public class GLStateManager {
             case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             case GL11.GL_FOG -> disableFog();
+            case GL11.GL_SCISSOR_TEST -> disableScissorTest();
             default -> GL11.glDisable(cap);
         }
     }
@@ -214,6 +217,14 @@ public class GLStateManager {
         }
         hudCaching$blendEnabled = false;
         blendMode.disable();
+    }
+
+    public static void enableScissorTest() {
+        scissorTest.enable();
+    }
+
+    public static void disableScissorTest() {
+        scissorTest.disable();
     }
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {

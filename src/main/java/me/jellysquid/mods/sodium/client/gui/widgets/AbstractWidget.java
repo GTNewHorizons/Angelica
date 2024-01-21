@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gui.widgets;
 
+import com.gtnewhorizons.angelica.compat.mojang.Drawable;
+import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
-import me.jellysquid.mods.sodium.client.gui.utils.Element;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
@@ -24,10 +24,10 @@ public abstract class AbstractWidget implements Drawable, Element {
     }
 
     protected void drawRect(double x1, double y1, double x2, double y2, int color) {
-        float a = (float) (color >> 24 & 255) / 255.0F;
-        float r = (float) (color >> 16 & 255) / 255.0F;
-        float g = (float) (color >> 8 & 255) / 255.0F;
-        float b = (float) (color & 255) / 255.0F;
+        final float a = (float) (color >> 24 & 255) / 255.0F;
+        final float r = (float) (color >> 16 & 255) / 255.0F;
+        final float g = (float) (color >> 8 & 255) / 255.0F;
+        final float b = (float) (color & 255) / 255.0F;
 
         this.drawQuads(vertices -> addQuad(vertices, x1, y1, x2, y2, a, r, g, b));
     }
@@ -37,7 +37,7 @@ public abstract class AbstractWidget implements Drawable, Element {
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GLStateManager.defaultBlendFunc();
 
-        Tessellator tessellator = Tessellator.instance;
+        final Tessellator tessellator = Tessellator.instance;
         tessellator.startDrawingQuads();
         consumer.accept(tessellator);
         tessellator.draw();

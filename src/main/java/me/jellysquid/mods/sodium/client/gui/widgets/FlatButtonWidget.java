@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui.widgets;
 
-import me.jellysquid.mods.sodium.client.gui.utils.Drawable;
+import com.gtnewhorizons.angelica.compat.mojang.Drawable;
+import lombok.Setter;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 
 public class FlatButtonWidget extends AbstractWidget implements Drawable {
@@ -8,9 +9,10 @@ public class FlatButtonWidget extends AbstractWidget implements Drawable {
     private final String label;
     private final Runnable action;
 
-    private boolean selected;
-    private boolean enabled = true;
-    private boolean visible = true;
+    @Setter private boolean selected;
+    @Setter private boolean enabled = true;
+    @Setter private boolean visible = true;
+    @Setter private boolean leftAligned;
 
     public FlatButtonWidget(Dim2i dim, String label, Runnable action) {
         this.dim = dim;
@@ -24,23 +26,21 @@ public class FlatButtonWidget extends AbstractWidget implements Drawable {
             return;
         }
 
-        boolean hovered = this.dim.containsCursor(mouseX, mouseY);
+        final boolean hovered = this.dim.containsCursor(mouseX, mouseY);
 
-        int backgroundColor = this.enabled ? (hovered ? 0xE0000000 : 0x90000000) : 0x60000000;
-        int textColor = this.enabled ? 0xFFFFFFFF : 0x90FFFFFF;
+        final int backgroundColor = this.enabled ? (hovered ? 0xE0000000 : 0x90000000) : 0x60000000;
+        final int textColor = this.enabled ? 0xFFFFFFFF : 0x90FFFFFF;
 
-        int strWidth = this.font.getStringWidth(this.label);
+        final int strWidth = this.font.getStringWidth(this.label);
 
         this.drawRect(this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), backgroundColor);
-        this.drawString(this.label, this.dim.getCenterX() - (strWidth / 2), this.dim.getCenterY() - 4, textColor);
+        final int x = leftAligned ? this.dim.getOriginX() + 10 : this.dim.getCenterX() - (strWidth / 2);
+        this.drawString(this.label, x, this.dim.getCenterY() - 4, textColor);
 
         if (this.enabled && this.selected) {
-            this.drawRect(this.dim.getOriginX(), this.dim.getLimitY() - 1, this.dim.getLimitX(), this.dim.getLimitY(), 0xFF94E4D3);
+            this.drawRect(this.dim.getOriginX(), leftAligned ? this.dim.getOriginY() : (this.dim.getLimitY() - 1),
+                this.leftAligned ? (this.dim.getOriginX() + 1) : this.dim.getLimitX(), this.dim.getLimitY(), 0xFF94E4D3);
         }
-    }
-
-    public void setSelected(boolean selected) {
-        this.selected = selected;
     }
 
     @Override
@@ -59,11 +59,4 @@ public class FlatButtonWidget extends AbstractWidget implements Drawable {
         return false;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-    }
 }
