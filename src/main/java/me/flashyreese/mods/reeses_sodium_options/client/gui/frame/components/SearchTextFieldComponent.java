@@ -77,7 +77,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
             this.textRenderer.drawString(text, this.dim.getOriginX() + 6, this.dim.getOriginY() + 6, 0xFFAAAAAA);
         }
 
-        this.drawRect(this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), this.isFocused() ? 0xE0000000 : 0x90000000);
+        drawRect(this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), this.isFocused() ? 0xE0000000 : 0x90000000);
         final int j = this.selectionStart - this.firstCharacterIndex;
         int k = this.selectionEnd - this.firstCharacterIndex;
         final String string = this.textRenderer.trimStringToWidth(this.text.substring(this.firstCharacterIndex), this.getInnerWidth());
@@ -90,8 +90,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
         }
         if (!string.isEmpty()) {
             final String string2 = bl ? string.substring(0, j) : string;
-//            n = this.textRenderer.drawStringWithShadow(this.renderTextProvider.apply(string2, this.firstCharacterIndex), n, m, 0xFFFFFFFF);
-            n = this.textRenderer.drawStringWithShadow(string2, n, m, 0xFFFFFFFF);
+            n = this.textRenderer.drawStringWithShadow(string2, n, m, 0xE0E0E0);
         }
         final boolean bl3 = this.selectionStart < this.text.length() || this.text.length() >= this.getMaxLength();
         int o = n;
@@ -102,22 +101,19 @@ public class SearchTextFieldComponent extends AbstractWidget {
             --n;
         }
         if (!string.isEmpty() && bl && j < string.length()) {
-            this.textRenderer.drawStringWithShadow(string.substring(j), n, m, 0xFFFFFFFF);
+            this.textRenderer.drawStringWithShadow(string.substring(j), n, m, 0xE0E0E0);
         }
         // Cursor
         if (this.isFocused()) {
-//            DrawableHelper.fill(o, m - 1, o + 1, m + 1 + this.textRenderer.FONT_HEIGHT, -3092272);
+            drawRect(o, m - 1, o + 1, m + 1 + this.textRenderer.FONT_HEIGHT, -0x2F2F30);
         }
         // Highlighted text
         if (k != j) {
             final int p = l + this.textRenderer.getStringWidth(string.substring(0, k));
             this.drawSelectionHighlight(o, m - 1, p - 1, m + 1 + this.textRenderer.FONT_HEIGHT);
         }
-
-        /*this.drawRect(context, this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), 0x90000000);
-        //this.drawBorder(context, this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), 0xffffffff);
-        this.drawString(context, this.text, this.dim.getOriginX() + 6, this.dim.getOriginY() + 6, 0xffffffff);*/
     }
+
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -153,7 +149,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
         if (x1 > this.dim.getOriginX() + this.dim.getWidth()) {
             x1 = this.dim.getOriginX() + this.dim.getWidth();
         }
-//        DrawableHelper.fill(x1, y1, x2, y2, -16776961);
+        drawRect(x1, y1, x2, y2, -0x2F2F30);
     }
 
     private int getMaxLength() {
