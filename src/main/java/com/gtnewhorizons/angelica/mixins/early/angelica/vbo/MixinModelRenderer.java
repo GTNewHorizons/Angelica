@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.VBOManager;
 import net.minecraft.client.model.ModelRenderer;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,14 +27,5 @@ public class MixinModelRenderer {
     @Redirect(method = "compileDisplayList", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEndList()V", remap = false))
     public void stopCapturingVBO() {
         VBOManager.registerVBO(this.displayList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL));
-    }
-
-    @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", remap = false))
-    public void renderVBO(int list) {
-        VBOManager.get(list).render(GL11.GL_QUADS);
-    }
-    @Redirect(method = "renderWithRotation", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", remap = false))
-    public void renderWithRotationVBO(int list) {
-        VBOManager.get(list).render(GL11.GL_QUADS);
     }
 }

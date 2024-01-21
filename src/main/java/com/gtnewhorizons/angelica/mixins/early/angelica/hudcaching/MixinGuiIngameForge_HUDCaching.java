@@ -9,11 +9,37 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GuiIngameForge.class)
 public class MixinGuiIngameForge_HUDCaching {
-
-    @Inject(method = "renderCrosshairs", at = @At("HEAD"), cancellable = true, remap = false)
-    private void angelica$cancelCrosshair(CallbackInfo ci) {
+	@Inject(method = "renderGameOverlay", at = @At("HEAD"))
+    private void angelica$resetCaptures(CallbackInfo ci) {
         if (HUDCaching.renderingCacheOverride) {
-            ci.cancel();
+        	HUDCaching.renderVignetteCaptured = false;
+        	HUDCaching.renderHelmetCaptured = false;
+        	HUDCaching.renderPortalCapturedTicks = -1;
+        	HUDCaching.renderCrosshairsCaptured = false;
+        }
+    }
+	
+    @Inject(method = "renderCrosshairs", at = @At("HEAD"), cancellable = true, remap = false)
+    private void angelica$captureRenderCrosshair(CallbackInfo ci) {
+        if (HUDCaching.renderingCacheOverride) {
+        	HUDCaching.renderCrosshairsCaptured = true;
+        	ci.cancel();
+        }
+    }
+    
+    @Inject(method = "renderHelmet", at = @At("HEAD"), cancellable = true, remap = false)
+    private void angelica$captureRenderHelmet(CallbackInfo ci) {
+    	if (HUDCaching.renderingCacheOverride) {
+    		HUDCaching.renderHelmetCaptured = true;
+        	ci.cancel();
+        }
+    }
+    
+    @Inject(method = "renderPortal", at = @At("HEAD"), cancellable = true, remap = false)
+    private void angelica$captureRenderPortal(int width, int height, float partialTicks, CallbackInfo ci) {
+    	if (HUDCaching.renderingCacheOverride) {
+    		HUDCaching.renderPortalCapturedTicks = partialTicks;
+        	ci.cancel();
         }
     }
 }

@@ -333,7 +333,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         // Depth pass to prevent insides rendering from the outside.
         GLStateManager.glColorMask(false, false, false, false);
 
-        vbo.draw(GL11.GL_QUADS);
+        vbo.draw();
 
         // Full render.
         if (!mc.gameSettings.anaglyph) {
@@ -356,14 +356,14 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             GLStateManager.disableTexture();
             GLStateManager.glDepthMask(false);
             GLStateManager.disableFog();
-            vbo.draw(GL11.GL_QUADS);
+            vbo.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
             GLStateManager.enableTexture();
             GLStateManager.enableFog();
         }
 
-        vbo.draw(GL11.GL_QUADS);
+        vbo.draw();
         vbo.cleanupState(); // Unbind buffer and disable pointers.
 
         // Disable our coloring.

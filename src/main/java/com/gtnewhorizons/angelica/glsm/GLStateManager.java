@@ -781,11 +781,15 @@ public class GLStateManager {
     }
 
     public static void glCallList(int list) {
-        GL11.glCallList(list);
-        if(glListChanges.containsKey(list)) {
-            for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
-                // Set the stack to the cached state at the end of the call list compilation
-                ((ISettableState<?>)entry.getKey()).set(entry.getValue());
+        if(list < 0) {
+            VBOManager.get(list).render();
+        } else {
+            GL11.glCallList(list);
+            if(glListChanges.containsKey(list)) {
+                for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
+                    // Set the stack to the cached state at the end of the call list compilation
+                    ((ISettableState<?>)entry.getKey()).set(entry.getValue());
+                }
             }
         }
     }
