@@ -16,6 +16,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ChatAllowedCharacters;
 import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 import java.util.Objects;
@@ -149,7 +150,13 @@ public class SearchTextFieldComponent extends AbstractWidget {
         if (x1 > this.dim.getOriginX() + this.dim.getWidth()) {
             x1 = this.dim.getOriginX() + this.dim.getWidth();
         }
-        drawRect(x1, y1, x2, y2, -0x2F2F30);
+        GL11.glEnable(GL11.GL_COLOR_LOGIC_OP);
+        GL11.glLogicOp(GL11.GL_OR_REVERSE);
+
+        drawRect(x1, y1, x2, y2, -0xFFFF01);
+
+        GL11.glDisable(GL11.GL_COLOR_LOGIC_OP);
+
     }
 
     private int getMaxLength() {
