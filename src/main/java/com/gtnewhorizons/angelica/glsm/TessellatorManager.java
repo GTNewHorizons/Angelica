@@ -40,7 +40,9 @@ public class TessellatorManager {
 
     public static void startCapturing() {
         if(currentlyCapturing.get()) throw new IllegalStateException("Tried to start capturing when already capturing!");
-        if(capturingTessellator.get().getQuads().size() > 0) throw new IllegalStateException("Tried to start capturing with existing collected Quads!");
+        final CapturingTessellator tess = capturingTessellator.get();
+        if(tess.getQuads().size() > 0) throw new IllegalStateException("Tried to start capturing with existing collected Quads!");
+        tess.storeTranslation();
 
         currentlyCapturing.set(true);
     }
@@ -59,6 +61,7 @@ public class TessellatorManager {
 
         final List<Quad> quads = tess.getQuads();
         tess.discard();
+        tess.restoreTranslation();
 
         return quads;
     }
