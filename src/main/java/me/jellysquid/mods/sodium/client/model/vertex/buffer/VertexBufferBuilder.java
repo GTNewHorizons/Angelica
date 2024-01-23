@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.vertex.buffer;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
 import me.jellysquid.mods.sodium.client.gl.attribute.BufferVertexFormat;
 import org.lwjgl.BufferUtils;
 
@@ -24,14 +25,7 @@ public class VertexBufferBuilder implements VertexBufferView {
         // The new capacity will at least as large as the write it needs to service
         final int cap = Math.max(this.capacity * 2, this.capacity + len);
 
-        // Allocate a new buffer and copy the old buffer's contents into it
-        final ByteBuffer buffer = BufferUtils.createByteBuffer(cap);
-        this.buffer.rewind();
-        buffer.put(this.buffer);
-        buffer.position(0);
-
-        // Update the buffer and capacity now
-        this.buffer = buffer;
+        this.buffer = CompatMemoryUtil.memReallocDirect(this.buffer, cap);
         this.capacity = cap;
     }
 

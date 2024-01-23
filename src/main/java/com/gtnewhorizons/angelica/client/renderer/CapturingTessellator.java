@@ -9,6 +9,7 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
+import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -44,6 +45,9 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     // Any offset we need to the Tesselator's offset!
     private final BlockPos offset = new BlockPos();
 
+    private final Vector3d storedTranslation = new Vector3d();
+    private boolean translationStored = false;
+
     public void setOffset(BlockPos pos) {
         this.offset.set(pos);
     }
@@ -53,7 +57,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
 
 
     static {
-        Field rbs = ReflectionHelper.findField(Tessellator.class, "rawBufferSize");
+        final Field rbs = ReflectionHelper.findField(Tessellator.class, "rawBufferSize");
         rbs.setAccessible(true);
         try {
             sRawBufferSize =  MethodHandles.lookup().unreflectSetter(rbs);
@@ -135,6 +139,22 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
         }
         byteBuffer.rewind();
         return byteBuffer;
+    }
+
+    public void storeTranslation() {
+        if(translationStored) throw new IllegalStateException("Translation already stored!");
+        translationStored = true;
+        this.storedTranslation.set(xOffset, yOffset, zOffset);
+    }
+
+    public void restoreTranslation() {
+        if(!translationStored) throw new IllegalStateException("Translation not stored!");
+
+        xOffset = storedTranslation.x;
+        yOffset = storedTranslation.y;
+        zOffset = storedTranslation.z;
+        storedTranslation.zero();
+        translationStored = false;
     }
 
     public static int createBrightness(int sky, int block) {
