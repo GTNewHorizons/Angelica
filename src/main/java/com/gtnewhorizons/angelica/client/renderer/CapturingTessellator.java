@@ -9,6 +9,7 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
+import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -135,6 +136,16 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
         }
         byteBuffer.rewind();
         return byteBuffer;
+    }
+
+    public Vector3d getTranslation() {
+        return new Vector3d(xOffset, yOffset, zOffset);
+    }
+
+    public void setTranslation(Vector3d translation) {
+        this.xOffset = translation.x;
+        this.yOffset = translation.y;
+        this.zOffset = translation.z;
     }
 
     public static int createBrightness(int sky, int block) {

@@ -41,7 +41,7 @@ public class VertexBuffer implements AutoCloseable {
 
     public VertexBuffer upload(ByteBuffer buffer) {
         if(format == null) throw new IllegalStateException("No format specified for VBO upload");
-        upload(buffer, buffer.capacity() / format.getVertexSize());
+        upload(buffer, buffer.remaining() / format.getVertexSize());
         return this;
     }
 
@@ -75,11 +75,8 @@ public class VertexBuffer implements AutoCloseable {
         unbind();
     }
     public void render() {
-        if(format == null) throw new IllegalStateException("No format specified for VBO render");
-        bind();
-        format.setupBufferState(0L);
+        setupState();
         draw();
-        format.clearBufferState();
-        unbind();
+        cleanupState();
     }
 }
