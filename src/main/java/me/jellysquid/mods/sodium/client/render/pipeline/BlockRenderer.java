@@ -5,6 +5,9 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import klaxon.klaxon.novisoculis.BakedModel;
+import klaxon.klaxon.novisoculis.CubeModel;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -21,6 +24,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -53,27 +57,53 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        try {
-            TessellatorManager.startCapturing();
-            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-            tess.startDrawingQuads();
-            // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
+        /*if (block == Blocks.dirt) {
 
-            tess.setOffset(pos);
-            renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-            final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
-            tess.resetOffset();
+            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
 
-            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, quads, facing);
+                this.renderQuadList(pos, lighter, buffers, new ObjectArrayList<>(), ModelQuadFacing.fromDirection(dir));
+            }
+            rendered = true;
+        } else */
+        if (block.renderAsNormalBlock()) {
+
+            final BakedModel m = new CubeModel();
+            final List<Quad> quads = new ObjectArrayList<>(6);
+            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
+                quads.addAll(m.getQuads(block, meta, dir, random));
+            }
+
+            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
+
+                this.random.setSeed(seed);
+                this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir));
             }
 
             if (!quads.isEmpty()) rendered = true;
-        } finally {
-            TessellatorManager.cleanup();
-        }
+        } else {
 
+            try {
+                TessellatorManager.startCapturing();
+                final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+                tess.startDrawingQuads();
+                // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
+
+                tess.setOffset(pos);
+                renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+                final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
+                tess.resetOffset();
+
+                for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                    this.random.setSeed(seed);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing);
+                }
+
+                if (!quads.isEmpty()) rendered = true;
+            } finally {
+                TessellatorManager.cleanup();
+            }
+        }
 
         return rendered;
     }
