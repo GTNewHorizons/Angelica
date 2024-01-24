@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+
+import net.minecraft.client.gui.Gui;
 import net.minecraftforge.client.GuiIngameForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -41,5 +43,14 @@ public class MixinGuiIngameForge_HUDCaching {
     		HUDCaching.renderPortalCapturedTicks = partialTicks;
         	ci.cancel();
         }
+    }
+    
+    @Inject(method = "renderBossHealth", at = @At("HEAD"))
+    private void angelica$bindBossHealthTexture(CallbackInfo ci) {
+    	// boss health texture is bind in renderCrosshairs
+    	// but HUD caching skips rendering crosshairs when rendering into cache
+    	if (HUDCaching.renderingCacheOverride) {
+    		((GuiIngameForgeAccessor) this).callBind(Gui.icons);
+    	}
     }
 }
