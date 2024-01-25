@@ -54,62 +54,55 @@ public class CubeModel implements BakedModel {
         { 1, 1, 0 }
     };
 
-    private static final int[][] uv = {
-        { 0, 0 },
-        { 1, 0 },
-        { 1, 1 },
-        { 0, 1 }
-    };
-
-    // Add the UV
+    // Add the UV. This could probably be inlined a bit
     private static final int[][][] shiftsByDirection = {
 
         // DOWN 0 3 2 1
         {
-            ArrayUtils.addAll(vertices[0]),
-            ArrayUtils.addAll(vertices[3]),
-            ArrayUtils.addAll(vertices[2]),
-            ArrayUtils.addAll(vertices[1])
+            ArrayUtils.addAll(vertices[0], 0, 0),
+            ArrayUtils.addAll(vertices[3], 1, 0),
+            ArrayUtils.addAll(vertices[2], 1, 1),
+            ArrayUtils.addAll(vertices[1], 0, 1)
         },
 
         //UP 4 5 6 7
         {
-            ArrayUtils.addAll(vertices[4]),
-            ArrayUtils.addAll(vertices[5]),
-            ArrayUtils.addAll(vertices[6]),
-            ArrayUtils.addAll(vertices[7])
+            ArrayUtils.addAll(vertices[4], 1, 1),
+            ArrayUtils.addAll(vertices[5], 1, 0),
+            ArrayUtils.addAll(vertices[6], 0, 0),
+            ArrayUtils.addAll(vertices[7], 0, 1)
         },
 
         //NORTH 0 4 7 3
         {
-            ArrayUtils.addAll(vertices[0]),
-            ArrayUtils.addAll(vertices[4]),
-            ArrayUtils.addAll(vertices[7]),
-            ArrayUtils.addAll(vertices[3])
+            ArrayUtils.addAll(vertices[0], 1, 1),  // 0, 0
+            ArrayUtils.addAll(vertices[4], 1, 0),  // 0, 1
+            ArrayUtils.addAll(vertices[7], 0, 0),  // 1, 1
+            ArrayUtils.addAll(vertices[3], 0, 1)   // 1, 0
         },
 
         //SOUTH 1 2 6 5
         {
-            ArrayUtils.addAll(vertices[1]),
-            ArrayUtils.addAll(vertices[2]),
-            ArrayUtils.addAll(vertices[6]),
-            ArrayUtils.addAll(vertices[5])
+            ArrayUtils.addAll(vertices[1], 0, 1),
+            ArrayUtils.addAll(vertices[2], 1, 1),
+            ArrayUtils.addAll(vertices[6], 1, 0),
+            ArrayUtils.addAll(vertices[5], 0, 0)
         },
 
         //WEST 0 1 5 4
         {
-            ArrayUtils.addAll(vertices[0]),
-            ArrayUtils.addAll(vertices[1]),
-            ArrayUtils.addAll(vertices[5]),
-            ArrayUtils.addAll(vertices[4])
+            ArrayUtils.addAll(vertices[0], 0, 1),
+            ArrayUtils.addAll(vertices[1], 1, 1),
+            ArrayUtils.addAll(vertices[5], 1, 0),
+            ArrayUtils.addAll(vertices[4], 0, 0)
         },
 
         //EAST 2 3 7 6
         {
-            ArrayUtils.addAll(vertices[2]),
-            ArrayUtils.addAll(vertices[3]),
-            ArrayUtils.addAll(vertices[7]),
-            ArrayUtils.addAll(vertices[6])
+            ArrayUtils.addAll(vertices[2], 0, 1),
+            ArrayUtils.addAll(vertices[3], 1, 1),
+            ArrayUtils.addAll(vertices[7], 1, 0),
+            ArrayUtils.addAll(vertices[6], 0, 0)
         }
     };
 
@@ -144,8 +137,8 @@ public class CubeModel implements BakedModel {
             buf[i + 2] = Float.floatToIntBits(shifts[vi][2]);
 
             // UV
-            buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(uv[vi][0] * 16));
-            buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(uv[vi][1] * 16));
+            buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(shifts[vi][3] * 16));
+            buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(shifts[vi][4] * 16));
 
             // Color, normal, brightness
             buf[i + 5] = 0xFFFFFFFF;

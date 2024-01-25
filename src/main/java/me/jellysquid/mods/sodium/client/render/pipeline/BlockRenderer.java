@@ -17,6 +17,7 @@ import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientati
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
+import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -41,12 +42,14 @@ public class BlockRenderer {
     private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
+    private final BlockOcclusionCache occlusionCache;
 
 
     public BlockRenderer(LightPipelineProvider lighters) {
         this.lighters = lighters;
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
+        this.occlusionCache = new BlockOcclusionCache();
     }
 
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
@@ -57,30 +60,22 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        /*if (block == Blocks.dirt) {
-
-            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
-
-                this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, new ObjectArrayList<>(), ModelQuadFacing.fromDirection(dir));
-            }
-            rendered = true;
-        } else */
         if (block.renderAsNormalBlock()) {
 
             final BakedModel m = new CubeModel();
-            final List<Quad> quads = new ObjectArrayList<>(6);
-            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
-                quads.addAll(m.getQuads(block, meta, dir, random));
-            }
-
             for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
 
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir));
-            }
+                List<Quad> quads = m.getQuads(block, meta, dir, random);
 
-            if (!quads.isEmpty()) rendered = true;
+                if (quads.isEmpty()) continue;
+
+                if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
+
+                    this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir));
+                    rendered = true;
+                }
+            }
         } else {
 
             try {
