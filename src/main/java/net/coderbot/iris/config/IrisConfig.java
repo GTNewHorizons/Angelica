@@ -28,11 +28,6 @@ public class IrisConfig {
 	private boolean enableShaders;
 
 	/**
-	 * If debug features should be enabled. Gives much more detailed OpenGL error outputs at the cost of performance.
-	 */
-	private boolean enableDebugOptions;
-
-	/**
 	 * If the update notification should be disabled or not.
 	 */
 	private boolean disableUpdateMessage;
@@ -42,7 +37,6 @@ public class IrisConfig {
 	public IrisConfig(Path propertiesPath) {
 		shaderPackName = null;
 		enableShaders = true;
-		enableDebugOptions = false;
 		disableUpdateMessage = false;
 		this.propertiesPath = propertiesPath;
 	}
@@ -97,16 +91,8 @@ public class IrisConfig {
 		return enableShaders;
 	}
 
-	public boolean areDebugOptionsEnabled() {
-		return enableDebugOptions;
-	}
-
 	public boolean shouldDisableUpdateMessage() {
 		return disableUpdateMessage;
-	}
-
-	public void setDebugEnabled(boolean enabled) {
-		enableDebugOptions = enabled;
 	}
 
 	/**
@@ -134,7 +120,6 @@ public class IrisConfig {
 		}
 		shaderPackName = properties.getProperty("shaderPack");
 		enableShaders = !"false".equals(properties.getProperty("enableShaders"));
-		enableDebugOptions = "true".equals(properties.getProperty("enableDebugOptions"));
 		disableUpdateMessage = "true".equals(properties.getProperty("disableUpdateMessage"));
         // TODO: GUI
 //		try {
@@ -161,7 +146,6 @@ public class IrisConfig {
 		final Properties properties = new Properties();
 		properties.setProperty("shaderPack", getShaderPackName().orElse(""));
 		properties.setProperty("enableShaders", enableShaders ? "true" : "false");
-		properties.setProperty("enableDebugOptions", enableDebugOptions ? "true" : "false");
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
 //		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
 		properties.setProperty("maxShadowRenderDistance", String.valueOf(32));

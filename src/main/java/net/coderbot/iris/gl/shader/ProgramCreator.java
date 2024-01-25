@@ -2,7 +2,7 @@
 
 package net.coderbot.iris.gl.shader;
 
-import net.coderbot.iris.gl.GLDebug;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

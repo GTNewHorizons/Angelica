@@ -2,7 +2,6 @@ package net.coderbot.iris.postprocess;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.Program;
@@ -40,7 +39,7 @@ public class CenterDepthSampler {
 		this.framebuffer = new GlFramebuffer();
 
 		// Fall back to a less precise format if the system doesn't support OpenGL 3
-		InternalTextureFormat format = Iris.capabilities.OpenGL32 ? InternalTextureFormat.R32F : InternalTextureFormat.RGB16;
+		InternalTextureFormat format = GLStateManager.capabilities.OpenGL32 ? InternalTextureFormat.R32F : InternalTextureFormat.RGB16;
 		setupColorTexture(texture, format);
 		setupColorTexture(altTexture, format);
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -51,7 +50,7 @@ public class CenterDepthSampler {
 		try {
 			String fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.fsh"))), StandardCharsets.UTF_8);
 
-			if (Iris.capabilities.OpenGL32) {
+			if (GLStateManager.capabilities.OpenGL32) {
 				fsh = fsh.replace("VERSIONPLACEHOLDER", "150 compatibility");
 			} else {
 				fsh = fsh.replace("#define IS_GL3", "");

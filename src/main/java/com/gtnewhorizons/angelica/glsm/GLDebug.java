@@ -3,11 +3,8 @@
  * License terms: https://www.lwjgl.org/license
  */
 
-package net.coderbot.iris.gl;
+package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
 import org.lwjgl.opengl.ARBDebugOutput;
@@ -21,6 +18,7 @@ import org.lwjgl.opengl.KHRDebugCallback;
 import java.io.PrintStream;
 import java.util.function.Consumer;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
 
 public final class GLDebug {
@@ -30,7 +28,7 @@ public final class GLDebug {
      */
     public static int setupDebugMessageCallback() {
         if (Thread.currentThread() != GLStateManager.getMainThread()) {
-            AngelicaTweaker.LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
+            LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
             return 0;
         }
         return setupDebugMessageCallback(System.err);
@@ -64,7 +62,7 @@ public final class GLDebug {
 		return throwable;
 	}
 
-	private static void printTrace(PrintStream stream) {
+	public static void printTrace(PrintStream stream) {
 		trace(new Consumer<String>() {
 			boolean first = true;
 
@@ -84,8 +82,8 @@ public final class GLDebug {
      * @return 0 for failure, 1 for success, 2 for restart required.
      */
     public static int setupDebugMessageCallback(PrintStream stream) {
-        if (Iris.capabilities.OpenGL43 || Iris.capabilities.GL_KHR_debug) {
-            Iris.logger.info("[GL] Using OpenGL 4.3 for error logging.");
+        if (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_KHR_debug) {
+            LOGGER.info("[GL] Using OpenGL 4.3 for error logging.");
             KHRDebugCallback proc = new KHRDebugCallback((source, type, id, severity, message) -> {
                 stream.println("[LWJGL] OpenGL debug message");
                 printDetail(stream, "ID", String.format("0x%X", id));
@@ -102,13 +100,13 @@ public final class GLDebug {
             GL43.glDebugMessageCallback(proc);
 
             if ((GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & GL43.GL_CONTEXT_FLAG_DEBUG_BIT) == 0) {
-                Iris.logger.warn("[GL] Warning: A non-debug context may not produce any debug output.");
+                LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
                 GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
                 return 2;
             }
             return 1;
-        } else if (Iris.capabilities.GL_ARB_debug_output) {
-            Iris.logger.info("[GL] Using ARB_debug_output for error logging.");
+        } else if (GLStateManager.capabilities.GL_ARB_debug_output) {
+            LOGGER.info("[GL] Using ARB_debug_output for error logging.");
             ARBDebugOutputCallback proc = new ARBDebugOutputCallback((source, type, id, severity, message) -> {
                 stream.println("[LWJGL] ARB_debug_output message");
                 printDetail(stream, "ID", String.format("0x%X", id));
@@ -124,8 +122,8 @@ public final class GLDebug {
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
             ARBDebugOutput.glDebugMessageCallbackARB(proc);
             return 1;
-        } else if (Iris.capabilities.GL_AMD_debug_output) {
-            Iris.logger.info("[GL] Using AMD_debug_output for error logging.");
+        } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
+            LOGGER.info("[GL] Using AMD_debug_output for error logging.");
             AMDDebugOutputCallback proc = new AMDDebugOutputCallback((id, category, severity, message) -> {
                 stream.println("[LWJGL] AMD_debug_output message");
                 printDetail(stream, "ID", String.format("0x%X", id));
@@ -141,29 +139,29 @@ public final class GLDebug {
             AMDDebugOutput.glDebugMessageCallbackAMD(proc);
             return 1;
         } else {
-            Iris.logger.info("[GL] No debug output implementation is available, cannot return debug info.");
+            LOGGER.info("[GL] No debug output implementation is available, cannot return debug info.");
             return 0;
         }
     }
 
 	public static int disableDebugMessages() {
-		if (Iris.capabilities.OpenGL43) {
+		if (GLStateManager.capabilities.OpenGL43) {
 			GL43.glDebugMessageCallback(null);
 			return 1;
-		} else if (Iris.capabilities.GL_KHR_debug) {
+		} else if (GLStateManager.capabilities.GL_KHR_debug) {
 			KHRDebug.glDebugMessageCallback(null);
-			if (Iris.capabilities.OpenGL30 && (GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & 2) == 0) {
+			if (GLStateManager.capabilities.OpenGL30 && (GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & 2) == 0) {
                 GL11.glDisable(GL43.GL_DEBUG_OUTPUT);
 			}
 			return 1;
-		} else if (Iris.capabilities.GL_ARB_debug_output) {
+		} else if (GLStateManager.capabilities.GL_ARB_debug_output) {
 			glDebugMessageCallbackARB(null);
 			return 1;
-		} else if (Iris.capabilities.GL_AMD_debug_output) {
+		} else if (GLStateManager.capabilities.GL_AMD_debug_output) {
 			AMDDebugOutput.glDebugMessageCallbackAMD(null);
 			return 1;
 		} else {
-			Iris.logger.info("[GL] No debug output implementation is available, cannot disable debug info.");
+			LOGGER.info("[GL] No debug output implementation is available, cannot disable debug info.");
 			return 0;
 		}
 	}
@@ -273,14 +271,17 @@ public final class GLDebug {
 
 	private static DebugState debugState;
 
-	private static interface DebugState {
+	private interface DebugState {
 		void nameObject(int id, int object, String name);
-		void pushGroup(int id, String name);
+		void pushGroup(String name);
 		void popGroup();
+        void debugMessage(String name);
 	}
 
 	private static class KHRDebugState implements DebugState {
-		private boolean hasGroup;
+        private static final int ID = 0;
+		private int depth = 0;
+        private static final int maxDepth = GL11.glGetInteger(KHRDebug.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
 
 		@Override
 		public void nameObject(int id, int object, String name) {
@@ -288,19 +289,28 @@ public final class GLDebug {
 		}
 
 		@Override
-		public void pushGroup(int id, String name) {
-			KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, id, name);
-			hasGroup = true;
+		public void pushGroup(String name) {
+            depth++;
+            if (depth > maxDepth) {
+                throw new RuntimeException("Stack overflow");
+            }
+			KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, ID, name);
 		}
 
 		@Override
 		public void popGroup() {
-			if (hasGroup) {
-				KHRDebug.glPopDebugGroup();
-				hasGroup = false;
-			}
+            depth--;
+            if (depth < 0) {
+                throw new RuntimeException("Stack underflow");
+            }
+            KHRDebug.glPopDebugGroup();
 		}
-	}
+
+        @Override
+        public void debugMessage(String message) {
+            KHRDebug.glDebugMessageInsert(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, KHRDebug.GL_DEBUG_TYPE_MARKER, ID, KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION, message);
+        }
+    }
 
 	private static class UnsupportedDebugState implements DebugState {
 		@Override
@@ -308,16 +318,21 @@ public final class GLDebug {
 		}
 
 		@Override
-		public void pushGroup(int id, String name) {
+		public void pushGroup(String name) {
 		}
 
 		@Override
 		public void popGroup() {
 		}
-	}
 
-	public static void initRenderer() {
-		if (Iris.capabilities.GL_KHR_debug || Iris.capabilities.OpenGL43) {
+        @Override
+        public void debugMessage(String name) {
+
+        }
+    }
+
+	public static void initDebugState() {
+		if (GLStateManager.capabilities.GL_KHR_debug || GLStateManager.capabilities.OpenGL43) {
 			debugState = new KHRDebugState();
 		} else {
 			debugState = new UnsupportedDebugState();
@@ -325,6 +340,23 @@ public final class GLDebug {
 	}
 
     public static void nameObject(int id, int object, String name) {
-		debugState.nameObject(id, object, name);
+        if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            debugState.nameObject(id, object, name);
+        }
+    }
+    public static void pushGroup(String group) {
+        if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            debugState.pushGroup(group);
+        }
+    }
+    public static void popGroup() {
+        if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            debugState.popGroup();
+        }
+    }
+    public static void debugMessage(String message) {
+        if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            debugState.debugMessage(message);
+        }
     }
 }

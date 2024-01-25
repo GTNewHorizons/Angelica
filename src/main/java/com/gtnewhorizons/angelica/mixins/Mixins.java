@@ -47,7 +47,9 @@ public enum Mixins {
 
     ANGELICA_ENABLE_DEBUG(new Builder("Angelica Debug").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaMod.lwjglDebug).addMixinClasses(
-            "angelica.debug.MixinSplashProgress"
+             "angelica.debug.MixinProfiler"
+            ,"angelica.debug.MixinSplashProgress"
+            ,"angelica.debug.MixinTextureManager"
         )
     ),
 
@@ -76,12 +78,6 @@ public enum Mixins {
             ,"shaders.startup.MixinInitRenderer"
             ,"shaders.startup.MixinAbstractTexture"
             ,"shaders.startup.MixinTextureAtlasSprite"
-        )
-    ),
-
-    SODIUM_STARTUP(new Builder("Start Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium && !AngelicaConfig.enableIris).addMixinClasses(
-            "sodium.startup.MixinInitDebug"
         )
     ),
 
@@ -194,7 +190,7 @@ public enum Mixins {
             "angelica.animation.MixinRenderBlockFluid",
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
-    
+
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new Builder("Add animation speedup support to Campfire Backport").setPhase(Phase.LATE)
             .addTargetedMod(TargetedMod.CAMPFIRE_BACKPORT).setSide(Side.CLIENT)
             .setApplyIf(() -> AngelicaConfig.speedupAnimations)
