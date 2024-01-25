@@ -45,11 +45,13 @@ import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GLContext;
 
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
@@ -63,6 +65,8 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
+    public static ContextCapabilities capabilities;
+
     public static final boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
     public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
     public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
@@ -125,6 +129,8 @@ public class GLStateManager {
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
 
     public static void init() {
+        capabilities = GLContext.getCapabilities();
+
         if (AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
             StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
@@ -136,7 +142,17 @@ public class GLStateManager {
         if(BYPASS_CACHE) {
             LOGGER.info("GLStateManager cache bypassed");
         }
+        if(AngelicaMod.lwjglDebug) {
+            LOGGER.info("Enabling additional LWJGL debug output");
+
+            GLDebug.setupDebugMessageCallback();
+            GLDebug.initDebugState();
+
+            GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+        }
+
     }
+
 
     public static void assertMainThread() {
         if (Thread.currentThread() != CurrentThread && !runningSplash) {

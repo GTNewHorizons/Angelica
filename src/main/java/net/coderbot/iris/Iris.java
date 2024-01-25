@@ -3,16 +3,12 @@ package net.coderbot.iris;
 import com.google.common.base.Throwables;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.mitchej123.hodgepodge.Common;
-import com.mitchej123.hodgepodge.client.HodgepodgeClient;
 import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import lombok.Getter;
 import net.coderbot.iris.config.IrisConfig;
-import net.coderbot.iris.gl.GLDebug;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
@@ -38,8 +34,6 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.ChatComponentText;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.ContextCapabilities;
-import org.lwjgl.opengl.GLContext;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,7 +55,6 @@ import java.util.zip.ZipException;
 
 public class Iris {
     public final boolean isDevelopmentEnvironment;
-    public static ContextCapabilities capabilities;
 
     /**
      * The user-facing name of the mod. Moved into a constant to facilitate easy branding changes (for forks). You'll still need to change this separately in
@@ -179,9 +172,6 @@ public class Iris {
         initialized = true;
     }
 
-    public static void identifyCapabilities() {
-        capabilities = GLContext.getCapabilities();
-    }
     /**
      * Called once RenderSystem#initRenderer has completed. This means that we can safely access OpenGL.
      */
@@ -191,8 +181,6 @@ public class Iris {
                 + " Trying to avoid a crash but this is an odd state.");
             return;
         }
-
-        setDebug(irisConfig.areDebugOptionsEnabled());
 
         PBRTextureManager.INSTANCE.init();
 
@@ -385,34 +373,6 @@ public class Iris {
         currentPackName = "(off)";
 
         logger.info("Shaders are disabled");
-    }
-
-    // Temp escalation
-    public static void setDebug(boolean enable) {
-        GLStateManager.assertMainThread();
-        final int success;
-        if (enable) {
-            success = GLDebug.setupDebugMessageCallback();
-        } else {
-            success = GLDebug.disableDebugMessages();
-        }
-        logger.info("Debug functionality is " + (enable ? "enabled, logging will be more verbose!" : "disabled."));
-        if (Minecraft.getMinecraft().thePlayer != null) {
-            Minecraft.getMinecraft().thePlayer.sendChatMessage(I18n.format(success != 0 ? (enable
-                ? "iris.shaders.debug.enabled"
-                : "iris.shaders.debug.disabled") : "iris.shaders.debug.failure"));
-            if (success == 2) {
-                Minecraft.getMinecraft().thePlayer.sendChatMessage(I18n.format("iris.shaders.debug.restart"));
-            }
-        }
-        if(Iris.isInitialized()) {
-            try {
-                irisConfig.setDebugEnabled(enable);
-                irisConfig.save();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private static Optional<Properties> tryReadConfigProperties(Path path) {

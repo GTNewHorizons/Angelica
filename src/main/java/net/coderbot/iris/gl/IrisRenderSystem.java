@@ -33,15 +33,15 @@ public class IrisRenderSystem {
 
 	public static void initRenderer() {
         try {
-            if (Iris.capabilities.OpenGL45) {
+            if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = new DSACore();
                 Iris.logger.info("OpenGL 4.5 detected, enabling DSA.");
             }
-            hasMultibind = Iris.capabilities.OpenGL45;
+            hasMultibind = GLStateManager.capabilities.OpenGL45;
 
         } catch (NoSuchFieldError ignored) {}
         try {
-            if (dsaState == null && Iris.capabilities.GL_ARB_direct_state_access) {
+            if (dsaState == null && GLStateManager.capabilities.GL_ARB_direct_state_access) {
                 dsaState = new DSAARB();
                 Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
             }
@@ -51,7 +51,7 @@ public class IrisRenderSystem {
         }
 
         try {
-            hasMultibind |= Iris.capabilities.GL_ARB_multi_bind;
+            hasMultibind |= GLStateManager.capabilities.GL_ARB_multi_bind;
         } catch (NoSuchFieldError ignored) {}
 
 		supportsCompute = supportsCompute();
@@ -187,7 +187,7 @@ public class IrisRenderSystem {
 	}
 
 	public static void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-		if (Iris.capabilities.OpenGL42) {
+		if (GLStateManager.capabilities.OpenGL42) {
 			GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
 		} else {
 			EXTShaderImageLoadStore.glBindImageTextureEXT(unit, texture, level, layered, layer, access, format);
@@ -195,9 +195,9 @@ public class IrisRenderSystem {
 	}
 
 	public static int getMaxImageUnits() {
-		if (Iris.capabilities.OpenGL42) {
+		if (GLStateManager.capabilities.OpenGL42) {
 			return GL11.glGetInteger(GL42.GL_MAX_IMAGE_UNITS);
-		} else if (Iris.capabilities.GL_EXT_shader_image_load_store) {
+		} else if (GLStateManager.capabilities.GL_EXT_shader_image_load_store) {
 			return GL11.glGetInteger(EXTShaderImageLoadStore.GL_MAX_IMAGE_UNITS_EXT);
 		} else {
 			return 0;
@@ -223,7 +223,7 @@ public class IrisRenderSystem {
 	}
 
 	public static boolean supportsBufferBlending() {
-		return Iris.capabilities.GL_ARB_draw_buffers_blend || Iris.capabilities.OpenGL40;
+		return GLStateManager.capabilities.GL_ARB_draw_buffers_blend || GLStateManager.capabilities.OpenGL40;
 	}
 
 	public static void disableBufferBlend(int buffer) {
@@ -353,7 +353,7 @@ public class IrisRenderSystem {
 
 		@Override
 		public int bufferStorage(int target, FloatBuffer data, int usage) {
-            int buffer = GL45.glCreateBuffers();
+            final int buffer = GL45.glCreateBuffers();
             GL45.glNamedBufferData(buffer, data, usage);
 			return buffer;
 		}
@@ -424,7 +424,7 @@ public class IrisRenderSystem {
 
 		@Override
 		public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
-			int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+            final int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
 			GL11.glCopyTexSubImage2D(target, i, i1, i2, i3, i4, width, height);
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
@@ -438,7 +438,7 @@ public class IrisRenderSystem {
 
 		@Override
 		public int bufferStorage(int target, FloatBuffer data, int usage) {
-			int buffer = GL15.glGenBuffers();
+            final int buffer = GL15.glGenBuffers();
 			GL15.glBindBuffer(target, buffer);
 			bufferData(target, data, usage);
 			GL15.glBindBuffer(target, 0);
@@ -461,14 +461,14 @@ public class IrisRenderSystem {
 
 		@Override
 		public int createFramebuffer() {
-			int framebuffer = OpenGlHelper.func_153165_e/*glGenFramebuffers*/();
+            final int framebuffer = OpenGlHelper.func_153165_e/*glGenFramebuffers*/();
 			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
 			return framebuffer;
 		}
 
 		@Override
 		public int createTexture(int target) {
-			int texture = GL11.glGenTextures();
+			final int texture = GL11.glGenTextures();
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			return texture;
 		}
@@ -496,7 +496,7 @@ public class IrisRenderSystem {
 	// TODO: Proper notification of compute support
 	public static boolean supportsCompute() {
         try {
-            return Iris.capabilities.GL_ARB_compute_shader;
+            return GLStateManager.capabilities.GL_ARB_compute_shader;
         } catch(Exception ignored) {
             return false;
         }

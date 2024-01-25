@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.texture;
 
-import net.coderbot.iris.Iris;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.lwjgl.opengl.GL11;
@@ -78,7 +78,7 @@ public interface DepthCopyStrategy {
 	}
 
 	static DepthCopyStrategy fastest(boolean combinedStencilRequired) {
-		if (Iris.capabilities.GL_ARB_copy_image) {
+		if (GLStateManager.capabilities.GL_ARB_copy_image) {
 			return new Gl43CopyImage();
 		}
 
