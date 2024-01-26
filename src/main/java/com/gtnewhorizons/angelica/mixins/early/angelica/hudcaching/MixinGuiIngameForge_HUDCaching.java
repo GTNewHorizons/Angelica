@@ -1,13 +1,14 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
-import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-
-import net.minecraft.client.gui.Gui;
-import net.minecraftforge.client.GuiIngameForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+
+import net.minecraft.client.gui.Gui;
+import net.minecraftforge.client.GuiIngameForge;
 
 @Mixin(GuiIngameForge.class)
 public class MixinGuiIngameForge_HUDCaching {
@@ -25,6 +26,7 @@ public class MixinGuiIngameForge_HUDCaching {
     private void angelica$captureRenderCrosshair(CallbackInfo ci) {
         if (HUDCaching.renderingCacheOverride) {
         	HUDCaching.renderCrosshairsCaptured = true;
+        	HUDCaching.fixGLStateBeforeRenderingCache();
         	ci.cancel();
         }
     }

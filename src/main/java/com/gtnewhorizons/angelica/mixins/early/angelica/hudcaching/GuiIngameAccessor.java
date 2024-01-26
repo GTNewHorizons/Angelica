@@ -13,7 +13,6 @@ public interface GuiIngameAccessor {
 	@Invoker
 	void callRenderPumpkinBlur(int width, int height);
 	
-	// render portal
-	@Invoker
-	void callFunc_130015_b(float partialTicks, int width, int height);
+	@Invoker("func_130015_b")
+	void callRenderPortal(float partialTicks, int width, int height);
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
@@ -34,10 +35,7 @@ public class HUDCaching {
     public static Framebuffer framebuffer;
     static {
     	framebuffer = new Framebuffer(0, 0, true);
-        framebuffer.framebufferColor[0] = 0.0F;
-        framebuffer.framebufferColor[1] = 0.0F;
-        framebuffer.framebufferColor[2] = 0.0F;
-        framebuffer.framebufferColor[3] = 0.0F;
+    	framebuffer.setFramebufferColor(0, 0, 0, 0);
     }
     private static boolean dirty = true;
     
@@ -112,29 +110,22 @@ public class HUDCaching {
             return;
         }
 
-        GLStateManager.enableDepthTest();
-        ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-        int width = resolution.getScaledWidth();
-        int height = resolution.getScaledHeight();
-        renderer.setupOverlayRendering();
-        GLStateManager.enableBlend();
-        
         if (dirty) {
             dirty = false;
-            checkFramebufferSizes(mc.displayWidth, mc.displayHeight);
-            framebuffer.framebufferClear();
+            resetFramebuffer(mc.displayWidth, mc.displayHeight);
             framebuffer.bindFramebuffer(false);
-            GLStateManager.disableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-            GLStateManager.disableLighting();
-            GLStateManager.disableFog();
             renderingCacheOverride = true;
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
             mc.getFramebuffer().bindFramebuffer(false);
-            GLStateManager.enableBlend();
+        } else {
+        	renderer.setupOverlayRendering();
         }
+        
+        ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        int width = resolution.getScaledWidth();
+        int height = resolution.getScaledHeight();
+        GLStateManager.enableBlend();
         
         // reset the color that may be applied by some items
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
@@ -147,8 +138,6 @@ public class HUDCaching {
         } else {
         	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
-        
-        Tessellator tessellator = TessellatorManager.get();
         
         if (ingame instanceof GuiIngameForge) {
         	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
@@ -168,36 +157,46 @@ public class HUDCaching {
             }
             if (renderPortalCapturedTicks > 0)
             {
-                gui.callFunc_130015_b(renderPortalCapturedTicks, width, height);
-            }
-            if (renderCrosshairsCaptured) {
-            	mc.getTextureManager().bindTexture(Gui.icons);
-                GLStateManager.enableBlend();
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE_MINUS_DST_COLOR, GL11.GL_ONE_MINUS_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
-                GLStateManager.enableAlphaTest();
-                drawTexturedModalRect(tessellator, (width >> 1) - 7, (height >> 1) - 7);
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+                gui.callRenderPortal(renderPortalCapturedTicks, width, height);
             }
         }
 
         // render cached frame
+        Tessellator tessellator = TessellatorManager.get();
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         framebuffer.bindFramebufferTexture();
         drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-
-        GLStateManager.enableDepthTest();
+        
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        mc.getTextureManager().bindTexture(Gui.icons);
+    }
+    
+    /**
+     * We are skipping certain render calls when rendering into cache,
+     * however, we cannot skip the GL state changes. This will fix
+     * the state before we start rendering
+     */
+    public static void fixGLStateBeforeRenderingCache() {
+    	GLStateManager.glDepthMask(true);
+    	GLStateManager.enableDepthTest();
+    	GLStateManager.enableAlphaTest();
+    	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+    	GLStateManager.disableBlend();
     }
 
-    private static void checkFramebufferSizes(int width, int height) {
+    private static void resetFramebuffer(int width, int height) {
         if (framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
-            framebuffer.createBindFramebuffer(width, height);
-            framebuffer.framebufferWidth = width;
-            framebuffer.framebufferHeight = height;
+        	framebuffer.createBindFramebuffer(width, height);
             framebuffer.setFramebufferFilter(GL11.GL_NEAREST);
+        } else {
+        	framebuffer.framebufferClear();
         }
+        // copy depth buffer from MC
+        OpenGlHelper.func_153171_g(GL30.GL_READ_FRAMEBUFFER, mc.getFramebuffer().framebufferObject);
+        OpenGlHelper.func_153171_g(GL30.GL_DRAW_FRAMEBUFFER, framebuffer.framebufferObject);
+        GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
     }
 
     private static void drawTexturedRect(Tessellator tessellator, float width, float height) {
@@ -212,15 +211,6 @@ public class HUDCaching {
         tessellator.draw();
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-    }
-
-    private static void drawTexturedModalRect(Tessellator tessellator, int x, int y) {
-        tessellator.startDrawingQuads();
-        tessellator.addVertexWithUV(x, y + 16, 100.0, 0.0, 0.0625);
-        tessellator.addVertexWithUV(x + 16, y + 16, 100.0, 0.0625, 0.0625);
-        tessellator.addVertexWithUV(x + 16, y, 100.0, 0.0625, 0.0);
-        tessellator.addVertexWithUV(x, y, 100.0, 0.0, 0.0);
-        tessellator.draw();
     }
 
 }
