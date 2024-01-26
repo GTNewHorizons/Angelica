@@ -10,6 +10,8 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
+
 import org.joml.Matrix4f;
 
 public class HandRenderer {
@@ -58,7 +60,11 @@ public class HandRenderer {
 	public boolean isHandTranslucent(InteractionHand hand) {
         // TODO: Offhand
 //        Item item = Minecraft.getMinecraft().thePlayer.getItemBySlot(hand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND).getItem();
-        Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
+        ItemStack heldItem = Minecraft.getMinecraft().thePlayer.getHeldItem();
+        if (heldItem == null) {
+        	return false;
+        }
+		Item item = heldItem.getItem();
 
 		if (item instanceof ItemBlock itemBlock) {
             // TODO: RenderType
