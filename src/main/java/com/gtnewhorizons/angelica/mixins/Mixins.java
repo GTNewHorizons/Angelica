@@ -460,7 +460,8 @@ public enum Mixins {
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
             "novisoculis.MixinBlockStone",
-            "novisoculis.MixinBlockAir")),
+            "novisoculis.MixinBlockAir",
+            "novisoculis.MixinBlockWorkbench")),
 
     ;
 

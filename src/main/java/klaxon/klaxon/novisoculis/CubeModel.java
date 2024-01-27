@@ -58,52 +58,52 @@ public class CubeModel implements QuadProvider {
     // Add the UV.
     private static final int[][][] shiftsByDirection = {
 
-        // DOWN 0 3 2 1
+        // DOWN 1 0 3 2
         {
-            ArrayUtils.addAll(vertices[0], 0, 0),
-            ArrayUtils.addAll(vertices[3], 1, 0),
-            ArrayUtils.addAll(vertices[2], 1, 1),
-            ArrayUtils.addAll(vertices[1], 0, 1)
+            ArrayUtils.addAll(vertices[1], 0, 0), // 0, 0
+            ArrayUtils.addAll(vertices[0], 0, 1), // 0, 1
+            ArrayUtils.addAll(vertices[3], 1, 1), // 1, 1
+            ArrayUtils.addAll(vertices[2], 1, 0)  // 1, 0
         },
 
         //UP 4 5 6 7
         {
-            ArrayUtils.addAll(vertices[4], 1, 1),
-            ArrayUtils.addAll(vertices[5], 1, 0),
-            ArrayUtils.addAll(vertices[6], 0, 0),
-            ArrayUtils.addAll(vertices[7], 0, 1)
+            ArrayUtils.addAll(vertices[4], 0, 0),
+            ArrayUtils.addAll(vertices[5], 0, 1),
+            ArrayUtils.addAll(vertices[6], 1, 1),
+            ArrayUtils.addAll(vertices[7], 1, 0)
         },
 
-        //NORTH 0 4 7 3
+        //NORTH 7 3 0 4
         {
-            ArrayUtils.addAll(vertices[0], 1, 1),
-            ArrayUtils.addAll(vertices[4], 1, 0),
             ArrayUtils.addAll(vertices[7], 0, 0),
-            ArrayUtils.addAll(vertices[3], 0, 1)
+            ArrayUtils.addAll(vertices[3], 0, 1),
+            ArrayUtils.addAll(vertices[0], 1, 1),
+            ArrayUtils.addAll(vertices[4], 1, 0)
         },
 
-        //SOUTH 1 2 6 5
+        //SOUTH 5 1 2 6
         {
+            ArrayUtils.addAll(vertices[5], 0, 0),
             ArrayUtils.addAll(vertices[1], 0, 1),
             ArrayUtils.addAll(vertices[2], 1, 1),
-            ArrayUtils.addAll(vertices[6], 1, 0),
-            ArrayUtils.addAll(vertices[5], 0, 0)
+            ArrayUtils.addAll(vertices[6], 1, 0)
         },
 
-        //WEST 0 1 5 4
+        //WEST 4 0 1 5
         {
+            ArrayUtils.addAll(vertices[4], 0, 0),
             ArrayUtils.addAll(vertices[0], 0, 1),
             ArrayUtils.addAll(vertices[1], 1, 1),
-            ArrayUtils.addAll(vertices[5], 1, 0),
-            ArrayUtils.addAll(vertices[4], 0, 0)
+            ArrayUtils.addAll(vertices[5], 1, 0)
         },
 
-        //EAST 2 3 7 6
+        //EAST 6 2 3 7
         {
+            ArrayUtils.addAll(vertices[6], 0, 0),
             ArrayUtils.addAll(vertices[2], 0, 1),
             ArrayUtils.addAll(vertices[3], 1, 1),
-            ArrayUtils.addAll(vertices[7], 1, 0),
-            ArrayUtils.addAll(vertices[6], 0, 0)
+            ArrayUtils.addAll(vertices[7], 1, 0)
         }
     };
 
