@@ -55,55 +55,62 @@ public class CubeModel implements QuadProvider {
         { 1, 1, 0 }
     };
 
+    private static final int[][] uv = {
+        { 0, 0 },
+        { 0, 1 },
+        { 1, 1 },
+        { 1, 0 }
+    };
+
     // Add the UV.
     private static final int[][][] shiftsByDirection = {
 
         // DOWN 1 0 3 2
         {
-            ArrayUtils.addAll(vertices[1], 0, 0), // 0, 0
-            ArrayUtils.addAll(vertices[0], 0, 1), // 0, 1
-            ArrayUtils.addAll(vertices[3], 1, 1), // 1, 1
-            ArrayUtils.addAll(vertices[2], 1, 0)  // 1, 0
+            vertices[1],
+            vertices[0],
+            vertices[3],
+            vertices[2]
         },
 
         //UP 4 5 6 7
         {
-            ArrayUtils.addAll(vertices[4], 0, 0),
-            ArrayUtils.addAll(vertices[5], 0, 1),
-            ArrayUtils.addAll(vertices[6], 1, 1),
-            ArrayUtils.addAll(vertices[7], 1, 0)
+            vertices[4],
+            vertices[5],
+            vertices[6],
+            vertices[7]
         },
 
         //NORTH 7 3 0 4
         {
-            ArrayUtils.addAll(vertices[7], 0, 0),
-            ArrayUtils.addAll(vertices[3], 0, 1),
-            ArrayUtils.addAll(vertices[0], 1, 1),
-            ArrayUtils.addAll(vertices[4], 1, 0)
+            vertices[7],
+            vertices[3],
+            vertices[0],
+            vertices[4]
         },
 
         //SOUTH 5 1 2 6
         {
-            ArrayUtils.addAll(vertices[5], 0, 0),
-            ArrayUtils.addAll(vertices[1], 0, 1),
-            ArrayUtils.addAll(vertices[2], 1, 1),
-            ArrayUtils.addAll(vertices[6], 1, 0)
+            vertices[5],
+            vertices[1],
+            vertices[2],
+            vertices[6]
         },
 
         //WEST 4 0 1 5
         {
-            ArrayUtils.addAll(vertices[4], 0, 0),
-            ArrayUtils.addAll(vertices[0], 0, 1),
-            ArrayUtils.addAll(vertices[1], 1, 1),
-            ArrayUtils.addAll(vertices[5], 1, 0)
+            vertices[4],
+            vertices[0],
+            vertices[1],
+            vertices[5]
         },
 
         //EAST 6 2 3 7
         {
-            ArrayUtils.addAll(vertices[6], 0, 0),
-            ArrayUtils.addAll(vertices[2], 0, 1),
-            ArrayUtils.addAll(vertices[3], 1, 1),
-            ArrayUtils.addAll(vertices[7], 1, 0)
+            vertices[6],
+            vertices[2],
+            vertices[3],
+            vertices[7]
         }
     };
 
@@ -163,8 +170,8 @@ public class CubeModel implements QuadProvider {
             final int i = vi * 8;
 
             // UV
-            buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(shifts[vi][3] * 16));
-            buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(shifts[vi][4] * 16));
+            buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(uv[vi][0] * 16));
+            buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(uv[vi][1] * 16));
 
             // Color, normal, brightness
             //buf[i + 5] = 0xFFFFFFFF;
