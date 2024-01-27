@@ -18,6 +18,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
+import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -141,7 +142,7 @@ public class BlockRenderer {
             final float y = quad.getY(srcIndex);
             final float z = quad.getZ(srcIndex);
 
-            int color = quad.getColor(srcIndex);
+            int color = ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]);
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
