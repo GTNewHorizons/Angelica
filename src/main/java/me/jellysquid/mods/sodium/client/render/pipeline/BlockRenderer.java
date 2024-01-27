@@ -5,8 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import klaxon.klaxon.novisoculis.BakedModel;
+import klaxon.klaxon.novisoculis.QuadProvider;
 import klaxon.klaxon.novisoculis.CubeModel;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
@@ -25,7 +24,6 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -60,13 +58,12 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        if (block.renderAsNormalBlock()) {
+        if (block instanceof QuadProvider qBlock) {
 
-            final BakedModel m = new CubeModel();
             for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
 
                 this.random.setSeed(seed);
-                List<Quad> quads = m.getQuads(block, meta, dir, random);
+                List<Quad> quads = qBlock.getQuads(block, meta, dir, random);
 
                 if (quads.isEmpty()) continue;
 
@@ -122,9 +119,9 @@ public class BlockRenderer {
             final QuadLightData light = this.cachedQuadLightData;
 
             // TODO: use Sodium pipeline always
-            if(this.useSeparateAo) {
+            //if(this.useSeparateAo) {
                 lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
-            }
+            //}
 
 
             this.renderQuad(sink, quad, light, renderData);
@@ -135,7 +132,7 @@ public class BlockRenderer {
 
     private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
 
-        final ModelQuadOrientation order = useSeparateAo ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
+        final ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
@@ -145,17 +142,11 @@ public class BlockRenderer {
             final float z = quad.getZ(srcIndex);
 
             int color = quad.getColor(srcIndex);
-            final float ao = light.br[srcIndex];
-            if (useSeparateAo) {
-                color &= 0x00FFFFFF;
-                color |= ((int) (ao * 255.0f)) << 24;
-            }
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int quadLight = quad.getLight(srcIndex);
-            final int lm = useSeparateAo ? ModelQuadUtil.mergeBakedLight(quadLight, light.lm[srcIndex]) : quadLight;
+            final int lm = light.lm[srcIndex];
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }

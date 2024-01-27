@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.nd;
 
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -35,6 +36,9 @@ public class Quad implements ModelQuadView {
     private boolean hasShade;
     private boolean hasNormals;
 
+    private int cachedFlags;
+    private ForgeDirection face;
+
     public boolean hasColor() {
         return this.hasColor;
     }
@@ -52,8 +56,7 @@ public class Quad implements ModelQuadView {
     }
 
     public ForgeDirection getFace() {
-        // TODO: Sodium/Quad Facing
-        return ForgeDirection.UP;
+        return this.face != null ? this.face : ForgeDirection.DOWN;
     }
 
     @Override
@@ -88,7 +91,7 @@ public class Quad implements ModelQuadView {
 
     @Override
     public int getFlags() {
-        return 0;
+        return this.cachedFlags;
     }
 
     @Override
@@ -166,6 +169,16 @@ public class Quad implements ModelQuadView {
         vectorA.cross(vectorB, vectorC);
 
         normal = ModelQuadFacing.fromVector(vectorC);
+        try {
+            this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
+        } catch (NullPointerException e) {
+            this.cachedFlags = 0;
+        }
+    }
+
+    public void setState(int[] rawBuffer, int offset, BlockRenderer.Flags flags, int drawMode, float offsetX, float offsetY, float offsetZ, ForgeDirection face) {
+        this.face = face;
+        this.setState(rawBuffer, offset, flags, drawMode, offsetX, offsetY, offsetZ);
     }
 
     public static boolean isValid(Quad q) {

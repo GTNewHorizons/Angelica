@@ -47,7 +47,7 @@ public abstract class LightDataAccess {
     public abstract long get(int x, int y, int z);
 
     protected long compute(int x, int y, int z) {
-        final BlockPos pos = this.pos.set(x, y, z);
+
         final WorldSlice world = this.world;
 
         final Block block = world.getBlock(x, y, z);
@@ -71,7 +71,7 @@ public abstract class LightDataAccess {
 
         // OPTIMIZE: Do not calculate lightmap data if the block is full and opaque.
         // FIX: Calculate lightmap data for light-emitting or emissive blocks, even though they are full and opaque.
-        final int lm = (fo && !em) ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
+        final int lm = (false) ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
 
         return packAO(ao) | packLM(lm) | packOP(op) | packFO(fo) | packFC(fc) | (1L << 60);
     }
