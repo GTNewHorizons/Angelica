@@ -66,8 +66,8 @@ public class VertexFormat {
                 return;
             }
         }
-        for (VertexFormatElement vertexformatelement : this.getElements()) {
-            vertexformatelement.clearBufferState();
+        for(int i = 0 ; i < this.getElements().size(); ++i) {
+            this.getElements().get(i).clearBufferState();
         }
     }
 
