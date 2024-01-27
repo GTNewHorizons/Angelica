@@ -1,7 +1,7 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableSet;
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.shader.GlShader;
@@ -27,7 +27,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	}
 
 	public void bindAttributeLocation(int index, String name) {
-		IrisRenderSystem.bindAttributeLocation(program, index, name);
+		RenderSystem.bindAttributeLocation(program, index, name);
 	}
 
 	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
@@ -66,7 +66,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	}
 
 	public static ProgramBuilder beginCompute(String name, @Nullable String source, ImmutableSet<Integer> reservedTextureUnits) {
-		if (!IrisRenderSystem.supportsCompute()) {
+		if (!RenderSystem.supportsCompute()) {
 			throw new IllegalStateException("This PC does not support compute shaders, but it's attempting to be used???");
 		}
 

@@ -1,10 +1,12 @@
 package net.coderbot.iris.gl.blending;
 
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
+
 public class BufferBlendOverride {
 	private final int drawBuffer;
-	private final BlendMode blendMode;
+	private final BlendState blendMode;
 
-	public BufferBlendOverride(int drawBuffer, BlendMode blendMode) {
+	public BufferBlendOverride(int drawBuffer, BlendState blendMode) {
 		this.drawBuffer = drawBuffer;
 		this.blendMode = blendMode;
 	}

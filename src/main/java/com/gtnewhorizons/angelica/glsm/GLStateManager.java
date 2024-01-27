@@ -16,6 +16,9 @@ import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.ISettableState;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -33,8 +36,6 @@ import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
-import net.coderbot.iris.texture.TextureInfoCache;
-import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Matrix4d;
@@ -47,6 +48,7 @@ import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Drawable;
+import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -61,6 +63,7 @@ import java.nio.IntBuffer;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -68,7 +71,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 public class GLStateManager {
     public static ContextCapabilities capabilities;
 
-    public static final boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
+    public static boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
     public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
     public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
     public static final int MAX_PROJECTION_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
@@ -131,6 +134,7 @@ public class GLStateManager {
 
     public static void init() {
         capabilities = GLContext.getCapabilities();
+        RenderSystem.initRenderer();
 
         if (AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
@@ -166,13 +170,13 @@ public class GLStateManager {
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
-            case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_CULL_FACE -> enableCull();
-            case GL11.GL_LIGHTING -> enableLighting();
-            case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
-            case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_FOG -> enableFog();
+            case GL11.GL_LIGHTING -> enableLighting();
             case GL11.GL_SCISSOR_TEST -> enableScissorTest();
+            case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
             default -> GL11.glEnable(cap);
         }
     }
@@ -181,30 +185,47 @@ public class GLStateManager {
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> disableAlphaTest();
             case GL11.GL_BLEND -> disableBlend();
-            case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_CULL_FACE -> disableCull();
-            case GL11.GL_LIGHTING -> disableLighting();
-            case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
-            case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_FOG -> disableFog();
+            case GL11.GL_LIGHTING -> disableLighting();
             case GL11.GL_SCISSOR_TEST -> disableScissorTest();
+            case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
             default -> GL11.glDisable(cap);
         }
     }
+
+    public static boolean glIsEnabled(int cap) {
+        return switch (cap) {
+            case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
+            case GL11.GL_BLEND -> blendMode.isEnabled();
+            case GL11.GL_CULL_FACE -> cullState.isEnabled();
+            case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
+            case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_LIGHTING -> lightingState.isEnabled();
+            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
+            case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
+            default -> GL11.glIsEnabled(cap);
+        };
+    }
+
     public static boolean glGetBoolean(int pname) {
         if(GLStateManager.BYPASS_CACHE) {
             return GL11.glGetBoolean(pname);
         }
         return switch (pname) {
+            case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
             case GL11.GL_BLEND -> blendMode.isEnabled();
-            case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
             case GL11.GL_CULL_FACE -> cullState.isEnabled();
-            case GL11.GL_LIGHTING -> lightingState.isEnabled();
-            case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
-            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
-            case GL11.GL_FOG -> fogMode.isEnabled();
-            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
             case GL11.GL_DEPTH_WRITEMASK -> depthState.isMask();
+            case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_LIGHTING -> lightingState.isEnabled();
+            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
+            case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
             default -> GL11.glGetBoolean(pname);
         };
     }
@@ -531,7 +552,11 @@ public class GLStateManager {
     }
 
     public static int getBoundTexture() {
-        return textures.getTextureUnitBindings(activeTextureUnit.topInt()).getBinding();
+        return getBoundTexture(activeTextureUnit.topInt());
+    }
+
+    public static int getBoundTexture(int unit) {
+        return textures.getTextureUnitBindings(unit).getBinding();
     }
 
     public static void glBindTexture(int target, int texture) {
@@ -546,48 +571,37 @@ public class GLStateManager {
         if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
             GL11.glBindTexture(target, texture);
             textureUnit.setBinding(texture);
-            if (AngelicaConfig.enableIris) {
-                TextureTracker.INSTANCE.onBindTexture(texture);
-            }
+            TextureTracker.INSTANCE.onBindTexture(texture);
         }
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-        if (AngelicaConfig.enableIris) {
-            // Iris
-            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        }
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        if (AngelicaConfig.enableIris) {
-            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
-        }
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-        if (AngelicaConfig.enableIris) {
-            TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
-        }
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
     }
 
     public static void glDeleteTextures(int id) {
-        if (AngelicaConfig.enableIris) {
-            iris$onDeleteTexture(id);
-        }
+        onDeleteTexture(id);
+
         textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
     public static void glDeleteTextures(IntBuffer ids) {
-        if (AngelicaConfig.enableIris) {
-            for(int i = 0; i < ids.capacity(); i++) {
-                iris$onDeleteTexture(ids.get(i));
-            }
+        for(int i = 0; i < ids.capacity(); i++) {
+            onDeleteTexture(ids.get(i));
         }
+
         textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
@@ -647,8 +661,8 @@ public class GLStateManager {
             i = mipmap ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_NEAREST;
             j = GL11.GL_NEAREST;
         }
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
@@ -783,10 +797,10 @@ public class GLStateManager {
     }
 
     // Iris Functions
-    private static void iris$onDeleteTexture(int id) {
+    private static void onDeleteTexture(int id) {
+        TextureTracker.INSTANCE.onDeleteTexture(id);
+        TextureInfoCache.INSTANCE.onDeleteTexture(id);
         if (AngelicaConfig.enableIris) {
-            TextureTracker.INSTANCE.onDeleteTexture(id);
-            TextureInfoCache.INSTANCE.onDeleteTexture(id);
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
         }
     }
@@ -1012,5 +1026,153 @@ public class GLStateManager {
 
     public static int getListMode() {
         return glListMode;
+    }
+
+
+    public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return true;
+        }
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        switch (pname) {
+            case GL11.GL_TEXTURE_MIN_FILTER -> {
+                if(info.getMinFilter() == param) return false;
+                info.setMinFilter(param);
+            }
+            case GL11.GL_TEXTURE_MAG_FILTER -> {
+                if(info.getMagFilter() == param) return false;
+                info.setMagFilter(param);
+            }
+            case GL11.GL_TEXTURE_WRAP_S -> {
+                if(info.getWrapS() == param) return false;
+                info.setWrapS(param);
+            }
+            case GL11.GL_TEXTURE_WRAP_T -> {
+                if(info.getWrapT() == param) return false;
+                info.setWrapT(param);
+            }
+            case GL12.GL_TEXTURE_MAX_LEVEL -> {
+                if(info.getMaxLevel() == param) return false;
+                info.setMaxLevel(param);
+            }
+            case GL12.GL_TEXTURE_MIN_LOD -> {
+                if(info.getMinLod() == param) return false;
+                info.setMinLod(param);
+            }
+            case GL12.GL_TEXTURE_MAX_LOD -> {
+                if(info.getMaxLod() == param) return false;
+                info.setMaxLod(param);
+            }
+        }
+        return true;
+    }
+
+
+    public static void glTexParameter(int target, int pname, IntBuffer params) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+            GL11.glTexParameter(target, pname, params);
+            return;
+        }
+        if(!updateTexParameteriCache(target, getBoundTexture(), pname, params.get(0))) return;
+
+        GL11.glTexParameter(target, pname, params);
+    }
+
+    public static void glTexParameter(int target, int pname, FloatBuffer params) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+            GL11.glTexParameter(target, pname, params);
+            return;
+        }
+        if(!updateTexParameterfCache(target, getBoundTexture(), pname, params.get(0))) return;
+
+        GL11.glTexParameter(target, pname, params);
+    }
+
+
+    public static void glTexParameteri(int target, int pname, int param) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            GL11.glTexParameteri(target, pname, param);
+            return;
+        }
+        if(!updateTexParameteriCache(target, getBoundTexture(), pname, param)) return;
+
+        GL11.glTexParameteri(target, pname, param);
+    }
+
+
+    public static boolean updateTexParameterfCache(int target, int texture, int pname, float param) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return true;
+        }
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        switch (pname) {
+            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
+                if(info.getMaxAnisotropy() == param) return false;
+                info.setMaxAnisotropy(param);
+            }
+            case GL14.GL_TEXTURE_LOD_BIAS -> {
+                if(info.getLodBias() == param) return false;
+                info.setLodBias(param);
+            }
+        }
+        return true;
+    }
+
+    public static void glTexParameterf(int target, int pname, float param) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            GL11.glTexParameterf(target, pname, param);
+            return;
+        }
+        if(!updateTexParameterfCache(getActiveTextureUnit(), target, pname, param)) return;
+
+        GL11.glTexParameterf(target, pname, param);
+    }
+
+    public static int getTexParameterOrDefault(int texture, int pname, IntSupplier defaultSupplier) {
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+
+        return switch (pname) {
+            case GL11.GL_TEXTURE_MIN_FILTER -> info.getMinFilter();
+            case GL11.GL_TEXTURE_MAG_FILTER -> info.getMagFilter();
+            case GL11.GL_TEXTURE_WRAP_S -> info.getWrapS();
+            case GL11.GL_TEXTURE_WRAP_T -> info.getWrapT();
+            case GL12.GL_TEXTURE_MAX_LEVEL -> info.getMaxLevel();
+            case GL12.GL_TEXTURE_MIN_LOD -> info.getMinLod();
+            case GL12.GL_TEXTURE_MAX_LOD -> info.getMaxLod();
+            default -> defaultSupplier.getAsInt();
+        };
+    }
+    public static int glGetTexParameteri(int target, int pname) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetTexParameteri(target, pname);
+        }
+        return getTexParameterOrDefault(getBoundTexture(), pname, () -> GL11.glGetTexParameteri(target, pname));
+    }
+
+    public static float glGetTexParameterf(int target, int pname) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetTexParameterf(target, pname);
+        }
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+
+        return switch (pname) {
+            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> info.getMaxAnisotropy();
+            case GL14.GL_TEXTURE_LOD_BIAS -> info.getLodBias();
+            default -> GL11.glGetTexParameterf(target, pname);
+        };
+    }
+
+    public static int glGetTexLevelParameteri(int target, int level, int pname) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetTexLevelParameteri(target, level, pname);
+        }
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+
+        return switch (pname) {
+            case GL11.GL_TEXTURE_WIDTH -> info.getWidth();
+            case GL11.GL_TEXTURE_HEIGHT -> info.getHeight();
+            case GL11.GL_TEXTURE_INTERNAL_FORMAT -> info.getInternalFormat();
+            default -> GL11.glGetTexLevelParameteri(target, level, pname);
+        };
     }
 }

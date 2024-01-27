@@ -1,11 +1,11 @@
 package net.coderbot.iris.gl.framebuffer;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
-import net.coderbot.iris.texture.TextureInfoCache;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -21,7 +21,7 @@ public class GlFramebuffer extends GlResource {
 	private boolean hasDepthAttachment;
 
 	public GlFramebuffer() {
-		super(IrisRenderSystem.createFramebuffer());
+		super(RenderSystem.createFramebuffer());
 
 		this.attachments = new Int2IntArrayMap();
 		this.maxDrawBuffers = GL11.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
@@ -30,35 +30,35 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void addDepthAttachment(int texture) {
-		int internalFormat = TextureInfoCache.INSTANCE.getInfo(texture).getInternalFormat();
-		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
+		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(texture).getInternalFormat();
+        final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		int fb = getGlId();
+        final int fb = getGlId();
 
 		if (depthBufferFormat.isCombinedStencil()) {
-			IrisRenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
+			RenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
 		} else {
-			IrisRenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
+			RenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
 		}
 
 		this.hasDepthAttachment = true;
 	}
 
 	public void addColorAttachment(int index, int texture) {
-		int fb = getGlId();
+        final int fb = getGlId();
 
-		IrisRenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0 + index, GL11.GL_TEXTURE_2D, texture, 0);
+		RenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0 + index, GL11.GL_TEXTURE_2D, texture, 0);
 		attachments.put(index, texture);
 	}
 
 	public void noDrawBuffers() {
-        IntBuffer buffer = BufferUtils.createIntBuffer(1);
+        final IntBuffer buffer = BufferUtils.createIntBuffer(1);
         buffer.put(GL11.GL_NONE);
-		IrisRenderSystem.drawBuffers(getGlId(), buffer);
+		RenderSystem.drawBuffers(getGlId(), buffer);
 	}
 
 	public void drawBuffers(int[] buffers) {
-        IntBuffer glBuffers = BufferUtils.createIntBuffer(buffers.length);
+        final IntBuffer glBuffers = BufferUtils.createIntBuffer(buffers.length);
         int index = 0;
 
 		if (buffers.length > maxDrawBuffers) {
@@ -70,11 +70,11 @@ public class GlFramebuffer extends GlResource {
 			}
             glBuffers.put(index++, GL30.GL_COLOR_ATTACHMENT0 + buffer);
 		}
-		IrisRenderSystem.drawBuffers(getGlId(), glBuffers);
+		RenderSystem.drawBuffers(getGlId(), glBuffers);
 	}
 
 	public void readBuffer(int buffer) {
-		IrisRenderSystem.readBuffer(getGlId(), GL30.GL_COLOR_ATTACHMENT0 + buffer);
+		RenderSystem.readBuffer(getGlId(), GL30.GL_COLOR_ATTACHMENT0 + buffer);
 	}
 
 	public int getColorAttachment(int index) {

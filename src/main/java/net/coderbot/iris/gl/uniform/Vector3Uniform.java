@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -48,7 +48,7 @@ public class Vector3Uniform extends Uniform {
 
 		if (!newValue.equals(cachedValue)) {
 			cachedValue.set(newValue.x(), newValue.y(), newValue.z());
-			IrisRenderSystem.uniform3f(location, cachedValue.x(), cachedValue.y(), cachedValue.z());
+			RenderSystem.uniform3f(location, cachedValue.x(), cachedValue.y(), cachedValue.z());
 		}
 	}
 }

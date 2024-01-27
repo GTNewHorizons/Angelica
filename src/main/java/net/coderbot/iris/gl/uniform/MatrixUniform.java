@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 
@@ -31,7 +31,7 @@ public class MatrixUniform extends Uniform {
             cachedValue.get(buffer);
             buffer.rewind();
 
-            IrisRenderSystem.uniformMatrix4fv(location, false, buffer);
+            RenderSystem.uniformMatrix4fv(location, false, buffer);
         }
 	}
 }

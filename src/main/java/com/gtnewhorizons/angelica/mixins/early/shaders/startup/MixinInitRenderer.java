@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.shaders.startup;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,7 +18,6 @@ public class MixinInitRenderer {
             return;
         }
 
-        IrisRenderSystem.initRenderer();
         Iris.onRenderSystemInit();
     }
 }

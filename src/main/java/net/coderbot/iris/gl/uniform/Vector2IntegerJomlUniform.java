@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import org.joml.Vector2i;
 
@@ -35,7 +35,7 @@ public class Vector2IntegerJomlUniform extends Uniform {
 
 		if (cachedValue == null || !newValue.equals(cachedValue)) {
 			cachedValue = newValue;
-			IrisRenderSystem.uniform2i(this.location, newValue.x, newValue.y);
+			RenderSystem.uniform2i(this.location, newValue.x, newValue.y);
 		}
 	}
 }

@@ -12,6 +12,15 @@ public class BlendState implements ISettableState<BlendState> {
     protected int srcAlpha = GL11.GL_ONE;
     protected int dstAlpha = GL11.GL_ZERO;
 
+    public BlendState() {}
+
+    public BlendState(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        this.srcRgb = srcRgb;
+        this.dstRgb = dstRgb;
+        this.srcAlpha = srcAlpha;
+        this.dstAlpha = dstAlpha;
+    }
+
     @Override
     public BlendState set(BlendState state) {
         this.srcRgb = state.srcRgb;

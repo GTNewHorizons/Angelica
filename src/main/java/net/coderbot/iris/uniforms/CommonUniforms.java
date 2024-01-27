@@ -2,6 +2,9 @@ package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -9,8 +12,6 @@ import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.PackDirectives;
-import net.coderbot.iris.texture.TextureInfoCache;
-import net.coderbot.iris.texture.TextureTracker;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.coderbot.iris.uniforms.transforms.SmoothedVec2f;
 import net.minecraft.block.material.Material;
@@ -65,7 +66,7 @@ public final class CommonUniforms {
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
-				final TextureInfoCache.TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+				final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 				return new Vector2i(info.getWidth(), info.getHeight());
 			}
 
@@ -75,7 +76,7 @@ public final class CommonUniforms {
 		uniforms.uniform2i("gtextureSize", () -> {
 			final int glId = GLStateManager.getBoundTexture();
 
-			final TextureInfoCache.TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());
 
 		}, StateUpdateNotifiers.bindTextureNotifier);

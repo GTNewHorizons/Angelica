@@ -1,6 +1,6 @@
 package net.coderbot.iris.features;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.minecraft.client.resources.I18n;
 import org.apache.commons.lang3.text.WordUtils;
 
@@ -9,8 +9,8 @@ import java.util.function.BooleanSupplier;
 
 public enum FeatureFlags {
 	SEPARATE_HARDWARE_SAMPLERS(() -> true, () -> true),
-	PER_BUFFER_BLENDING(() -> true, IrisRenderSystem::supportsBufferBlending),
-	COMPUTE_SHADERS(() -> true, IrisRenderSystem::supportsCompute),
+	PER_BUFFER_BLENDING(() -> true, RenderSystem::supportsBufferBlending),
+	COMPUTE_SHADERS(() -> true, RenderSystem::supportsCompute),
 	ENTITY_TRANSLUCENT(() -> true, () -> true),
 	UNKNOWN(() -> false, () -> false);
 

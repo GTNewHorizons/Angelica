@@ -1,7 +1,7 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.image.ImageBinding;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.image.ImageLimits;
@@ -24,7 +24,7 @@ public class ProgramImages {
 	public void update() {
 		if (initializer != null) {
 			for (GlUniform1iCall call : initializer) {
-				IrisRenderSystem.uniform1i(call.getLocation(), call.getValue());
+				RenderSystem.uniform1i(call.getLocation(), call.getValue());
 			}
 
 			initializer = null;

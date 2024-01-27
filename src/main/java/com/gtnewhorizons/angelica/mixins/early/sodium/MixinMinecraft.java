@@ -5,6 +5,7 @@ import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.settings.GameSettings;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -34,9 +35,8 @@ public class MixinMinecraft {
         return SodiumClientMod.options().quality.grassQuality.isFancy();
     }
 
-    @Inject(method = "checkGLError", at = @At(value = "HEAD"), cancellable = true)
-    private void sodium$checkGLError(CallbackInfo ci) {
-        if(SodiumClientMod.options().performance.useNoErrorGLContext)
-            ci.cancel();
+    @Redirect(method = "checkGLError", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetError()I"))
+    private int sodium$checkGLError() {
+        return SodiumClientMod.options().performance.useNoErrorGLContext ? 0 : GL11.glGetError();
     }
 }

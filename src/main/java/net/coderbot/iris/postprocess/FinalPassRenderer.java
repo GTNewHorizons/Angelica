@@ -3,9 +3,9 @@ package net.coderbot.iris.postprocess;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.gl.program.Program;
@@ -189,7 +189,7 @@ public class FinalPassRenderer {
 				}
 			}
 
-			IrisRenderSystem.memoryBarrier(40);
+			RenderSystem.memoryBarrier(40);
 
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -216,7 +216,7 @@ public class FinalPassRenderer {
 			// https://stackoverflow.com/a/23994979/18166885
 			this.baseline.bindAsReadBuffer();
 
-			IrisRenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
+			RenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -283,14 +283,14 @@ public class FinalPassRenderer {
 		//
 		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
 		// unlikely that this issue occurs in practice with most shader packs.
-		IrisRenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;
 		if (target.getInternalFormat().getPixelFormat().isInteger()) {
 			filter = GL11.GL_NEAREST_MIPMAP_NEAREST;
 		}
 
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 	}
 
 	private static void resetRenderTarget(RenderTarget target) {
@@ -301,8 +301,8 @@ public class FinalPassRenderer {
 			filter = GL11.GL_NEAREST;
 		}
 
-		IrisRenderSystem.texParameteri(target.getMainTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
-		IrisRenderSystem.texParameteri(target.getAltTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
+		RenderSystem.texParameteri(target.getMainTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
+		RenderSystem.texParameteri(target.getAltTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}

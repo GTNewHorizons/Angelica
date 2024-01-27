@@ -1,8 +1,8 @@
 package net.coderbot.iris.postprocess;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -82,6 +82,6 @@ public class FullScreenQuadRenderer {
                 // Vertex 3: Bottom left corner
                 0.0F, 0.0F, 0.0F, 0.0F, 0.0F }).rewind();
 
-		return IrisRenderSystem.bufferStorage(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
+		return RenderSystem.bufferStorage(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
 	}
 }

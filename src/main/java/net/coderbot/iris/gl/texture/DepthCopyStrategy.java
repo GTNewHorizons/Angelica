@@ -1,7 +1,7 @@
 package net.coderbot.iris.gl.texture;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL43;
@@ -22,7 +22,7 @@ public interface DepthCopyStrategy {
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
 			sourceFb.bindAsReadBuffer();
 
-			IrisRenderSystem.copyTexSubImage2D(
+			RenderSystem.copyTexSubImage2D(
 				destTexture,
 				// target
 				GL11.GL_TEXTURE_2D,
@@ -52,7 +52,7 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			IrisRenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
+			RenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
 				0, 0, width, height,
 				GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT,
 				GL11.GL_NEAREST);

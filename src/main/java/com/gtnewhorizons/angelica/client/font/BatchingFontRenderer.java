@@ -246,9 +246,9 @@ public class BatchingFontRenderer {
     private void flushBatch() {
         // Sort&Draw
         batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
-        
-        boolean isTextureEnabledBefore = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
-        int boundTextureBefore = GLStateManager.getBoundTexture();
+
+        final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
+        final int boundTextureBefore = GLStateManager.getBoundTexture();
         boolean textureChanged = false;
 
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
@@ -290,7 +290,7 @@ public class BatchingFontRenderer {
         }
 
         glPopClientAttrib();
-        
+
         if (isTextureEnabledBefore) {
         	GLStateManager.enableTexture();
         }

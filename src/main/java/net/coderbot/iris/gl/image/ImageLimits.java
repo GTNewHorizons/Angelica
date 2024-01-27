@@ -1,13 +1,13 @@
 package net.coderbot.iris.gl.image;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 
 public class ImageLimits {
 	private final int maxImageUnits;
 	private static ImageLimits instance;
 
 	private ImageLimits() {
-		this.maxImageUnits = IrisRenderSystem.getMaxImageUnits();
+		this.maxImageUnits = RenderSystem.getMaxImageUnits();
 	}
 
 	public int getMaxImageUnits() {

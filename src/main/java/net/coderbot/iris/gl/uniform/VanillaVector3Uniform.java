@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.minecraft.util.Vec3;
 
 import java.util.function.Supplier;
@@ -24,7 +24,7 @@ public class VanillaVector3Uniform extends Uniform {
             cachedValue.xCoord = newValue.xCoord;
             cachedValue.yCoord = newValue.yCoord;
             cachedValue.zCoord = newValue.zCoord;
-			IrisRenderSystem.uniform3f(location, (float)cachedValue.xCoord, (float)cachedValue.yCoord, (float)cachedValue.zCoord);
+			RenderSystem.uniform3f(location, (float)cachedValue.xCoord, (float)cachedValue.yCoord, (float)cachedValue.zCoord);
 		}
 	}
 }

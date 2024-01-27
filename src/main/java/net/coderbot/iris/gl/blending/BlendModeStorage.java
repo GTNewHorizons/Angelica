@@ -1,23 +1,22 @@
 package net.coderbot.iris.gl.blending;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 
 public class BlendModeStorage {
 	private static boolean originalBlendEnable;
-	private static BlendMode originalBlend;
-	private static boolean blendLocked;
+	private static final BlendState originalBlend = new BlendState();
+	@Getter private static boolean blendLocked;
 
-	public static boolean isBlendLocked() {
-		return blendLocked;
-	}
-
-	public static void overrideBlend(BlendMode override) {
+    public static void overrideBlend(BlendState override) {
 		if (!blendLocked) {
 			// Only save the previous state if the blend mode wasn't already locked
 			originalBlendEnable = GL11.glGetBoolean(GL11.GL_BLEND);
-            originalBlend = new BlendMode(GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA), GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA));
+            originalBlend.set(GLStateManager.getBlendState());
 		}
 
 		blendLocked = false;
@@ -33,18 +32,18 @@ public class BlendModeStorage {
 		blendLocked = true;
 	}
 
-	public static void overrideBufferBlend(int index, BlendMode override) {
+	public static void overrideBufferBlend(int index, BlendState override) {
 		if (!blendLocked) {
 			// Only save the previous state if the blend mode wasn't already locked
             originalBlendEnable = GL11.glGetBoolean(GL11.GL_BLEND);
-            originalBlend = new BlendMode(GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA), GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA));
+            originalBlend.set(GLStateManager.getBlendState());
 		}
 
 		if (override == null) {
-			IrisRenderSystem.disableBufferBlend(index);
+			RenderSystem.disableBufferBlend(index);
 		} else {
-			IrisRenderSystem.enableBufferBlend(index);
-			IrisRenderSystem.blendFuncSeparatei(index, override.getSrcRgb(), override.getDstRgb(), override.getSrcAlpha(), override.getDstAlpha());
+			RenderSystem.enableBufferBlend(index);
+			RenderSystem.blendFuncSeparatei(index, override.getSrcRgb(), override.getDstRgb(), override.getSrcAlpha(), override.getDstAlpha());
 		}
 
 		blendLocked = true;
@@ -55,7 +54,10 @@ public class BlendModeStorage {
 	}
 
 	public static void deferBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-		originalBlend = new BlendMode(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        originalBlend.setSrcRgb(srcRgb);
+        originalBlend.setDstRgb(dstRgb);
+        originalBlend.setSrcAlpha(srcAlpha);
+        originalBlend.setDstAlpha(dstAlpha);
 	}
 
 	public static void restoreBlend() {
@@ -66,11 +68,11 @@ public class BlendModeStorage {
 		blendLocked = false;
 
 		if (originalBlendEnable) {
-            GL11.glEnable(GL11.GL_BLEND);
+            GLStateManager.enableBlend();
 		} else {
-            GL11.glDisable(GL11.GL_BLEND);
+            GLStateManager.disableBlend();
 		}
 
-        GL14.glBlendFuncSeparate(originalBlend.getSrcRgb(), originalBlend.getDstRgb(), originalBlend.getSrcAlpha(), originalBlend.getDstAlpha());
+        GLStateManager.tryBlendFuncSeparate(originalBlend.getSrcRgb(), originalBlend.getDstRgb(), originalBlend.getSrcAlpha(), originalBlend.getDstAlpha());
 	}
 }

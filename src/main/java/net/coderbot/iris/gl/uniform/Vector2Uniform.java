@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Vector2f;
 
 import java.util.function.Supplier;
@@ -23,7 +23,7 @@ public class Vector2Uniform extends Uniform {
 
 		if (cachedValue == null || !newValue.equals(cachedValue)) {
 			cachedValue = newValue;
-			IrisRenderSystem.uniform2f(this.location, newValue.x, newValue.y);
+			RenderSystem.uniform2f(this.location, newValue.x, newValue.y);
 		}
 	}
 }

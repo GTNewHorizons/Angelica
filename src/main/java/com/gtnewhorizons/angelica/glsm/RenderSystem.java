@@ -1,41 +1,43 @@
-package net.coderbot.iris.gl;
+package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.coderbot.iris.Iris;
-import net.minecraft.client.renderer.OpenGlHelper;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
+import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
-import org.lwjgl.opengl.GL45;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
 /**
  * This class is responsible for abstracting calls to OpenGL and asserting that calls are run on the render thread.
  */
-public class IrisRenderSystem {
+public class RenderSystem {
 	private static DSAAccess dsaState;
 	private static boolean hasMultibind;
 	private static boolean supportsCompute;
+
+    private RenderSystem() {}
 
 	public static void initRenderer() {
         try {
             if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = new DSACore();
-                Iris.logger.info("OpenGL 4.5 detected, enabling DSA.");
+                LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
             hasMultibind = GLStateManager.capabilities.OpenGL45;
 
@@ -43,7 +45,7 @@ public class IrisRenderSystem {
         try {
             if (dsaState == null && GLStateManager.capabilities.GL_ARB_direct_state_access) {
                 dsaState = new DSAARB();
-                Iris.logger.info("ARB_direct_state_access detected, enabling DSA.");
+                LOGGER.info("ARB_direct_state_access detected, enabling DSA.");
             }
         } catch (NoSuchFieldError ignored) {}
         if (dsaState == null) {
@@ -260,230 +262,6 @@ public class IrisRenderSystem {
 	public static int createTexture(int target) {
 		return dsaState.createTexture(target);
 	}
-
-	public interface DSAAccess {
-		void generateMipmaps(int texture, int target);
-
-		void texParameteri(int texture, int target, int pname, int param);
-		void texParameterf(int texture, int target, int pname, float param);
-		void texParameteriv(int texture, int target, int pname, IntBuffer params);
-
-		void readBuffer(int framebuffer, int buffer);
-
-		void drawBuffers(int framebuffer, IntBuffer buffers);
-
-		int getTexParameteri(int texture, int target, int pname);
-
-		void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height);
-
-		void bindTextureToUnit(int unit, int texture);
-
-		int bufferStorage(int target, FloatBuffer data, int usage);
-
-		void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter);
-
-		void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels);
-
-		int createFramebuffer();
-		int createTexture(int target);
-	}
-
-	public static class DSACore extends DSAARB {
-
-	}
-
-	public static class DSAARB extends DSAUnsupported {
-
-		@Override
-		public void generateMipmaps(int texture, int target) {
-			ARBDirectStateAccess.glGenerateTextureMipmap(texture);
-		}
-
-		@Override
-		public void texParameteri(int texture, int target, int pname, int param) {
-			ARBDirectStateAccess.glTextureParameteri(texture, pname, param);
-		}
-
-		@Override
-		public void texParameterf(int texture, int target, int pname, float param) {
-			ARBDirectStateAccess.glTextureParameterf(texture, pname, param);
-		}
-
-		@Override
-		public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-			ARBDirectStateAccess.glTextureParameter(texture, pname, params);
-		}
-
-		@Override
-		public void readBuffer(int framebuffer, int buffer) {
-			ARBDirectStateAccess.glNamedFramebufferReadBuffer(framebuffer, buffer);
-		}
-
-		@Override
-		public void drawBuffers(int framebuffer, IntBuffer buffers) {
-			ARBDirectStateAccess.glNamedFramebufferDrawBuffers(framebuffer, buffers);
-		}
-
-		@Override
-		public int getTexParameteri(int texture, int target, int pname) {
-			return ARBDirectStateAccess.glGetTextureParameteri(texture, pname);
-		}
-
-		@Override
-		public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
-			ARBDirectStateAccess.glCopyTextureSubImage2D(destTexture, i, i1, i2, i3, i4, width, height);
-		}
-
-		@Override
-		public void bindTextureToUnit(int unit, int texture) {
-			if (texture == 0) {
-				super.bindTextureToUnit(unit, texture);
-			} else {
-				ARBDirectStateAccess.glBindTextureUnit(unit, texture);
-			}
-		}
-
-		@Override
-		public int bufferStorage(int target, FloatBuffer data, int usage) {
-            final int buffer = GL45.glCreateBuffers();
-            GL45.glNamedBufferData(buffer, data, usage);
-			return buffer;
-		}
-
-		@Override
-		public void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter) {
-			ARBDirectStateAccess.glBlitNamedFramebuffer(source, dest, offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
-		}
-
-		@Override
-		public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-			ARBDirectStateAccess.glNamedFramebufferTexture(fb, attachment, texture, levels);
-		}
-
-		@Override
-		public int createFramebuffer() {
-			return ARBDirectStateAccess.glCreateFramebuffers();
-		}
-
-		@Override
-		public int createTexture(int target) {
-			return ARBDirectStateAccess.glCreateTextures(target);
-		}
-	}
-
-	public static class DSAUnsupported implements DSAAccess {
-		@Override
-		public void generateMipmaps(int texture, int target) {
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			GL30.glGenerateMipmap(target);
-		}
-
-		@Override
-		public void texParameteri(int texture, int target, int pname, int param) {
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			GL11.glTexParameteri(target, pname, param);
-		}
-
-		@Override
-		public void texParameterf(int texture, int target, int pname, float param) {
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			GL11.glTexParameterf(target, pname, param);
-		}
-
-		@Override
-		public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			GL11.glTexParameter(target, pname, params);
-		}
-
-		@Override
-		public void readBuffer(int framebuffer, int buffer) {
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
-			GL11.glReadBuffer(buffer);
-		}
-
-		@Override
-		public void drawBuffers(int framebuffer, IntBuffer buffers) {
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
-			GL20.glDrawBuffers(buffers);
-		}
-
-		@Override
-		public int getTexParameteri(int texture, int target, int pname) {
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			return GL11.glGetTexParameteri(target, pname);
-		}
-
-		@Override
-		public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
-            final int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
-			GL11.glCopyTexSubImage2D(target, i, i1, i2, i3, i4, width, height);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
-		}
-
-		@Override
-		public void bindTextureToUnit(int unit, int texture) {
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-		}
-
-		@Override
-		public int bufferStorage(int target, FloatBuffer data, int usage) {
-            final int buffer = GL15.glGenBuffers();
-			GL15.glBindBuffer(target, buffer);
-			bufferData(target, data, usage);
-			GL15.glBindBuffer(target, 0);
-
-			return buffer;
-		}
-
-		@Override
-		public void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter) {
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, source);
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, dest);
-			GL30.glBlitFramebuffer(offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
-		}
-
-		@Override
-		public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(fbtarget, fb);
-			GL30.glFramebufferTexture2D(fbtarget, attachment, target, texture, levels);
-		}
-
-		@Override
-		public int createFramebuffer() {
-            final int framebuffer = OpenGlHelper.func_153165_e/*glGenFramebuffers*/();
-			OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
-			return framebuffer;
-		}
-
-		@Override
-		public int createTexture(int target) {
-			final int texture = GL11.glGenTextures();
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-			return texture;
-		}
-	}
-
-	/*
-	public static void bindTextures(int startingTexture, int[] bindings) {
-		if (hasMultibind) {
-			ARBMultiBind.glBindTextures(startingTexture, bindings);
-		} else if (dsaState != DSAState.NONE) {
-			for (int binding : bindings) {
-				ARBDirectStateAccess.glBindTextureUnit(startingTexture, binding);
-				startingTexture++;
-			}
-		} else {
-			for (int binding : bindings) {
-				GLStateManager.glActiveTexture(startingTexture);
-				GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, binding);
-				startingTexture++;
-			}
-		}
-	}
-	 */
 
 	// TODO: Proper notification of compute support
 	public static boolean supportsCompute() {

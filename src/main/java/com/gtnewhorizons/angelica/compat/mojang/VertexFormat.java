@@ -50,8 +50,9 @@ public class VertexFormat {
 
         final int i = this.getVertexSize();
         final List<VertexFormatElement> list = this.getElements();
+        final int listSize = list.size();
 
-        for(int j = 0; j < list.size(); ++j) {
+        for(int j = 0; j < listSize; ++j) {
             list.get(j).setupBufferState(l + this.offsets.getInt(j), i);
         }
     }
@@ -66,8 +67,11 @@ public class VertexFormat {
                 return;
             }
         }
-        for (VertexFormatElement vertexformatelement : this.getElements()) {
-            vertexformatelement.clearBufferState();
+        final List<VertexFormatElement> list = this.getElements();
+        final int listSize = list.size();
+
+        for(int i = 0 ; i < listSize; ++i) {
+            list.get(i).clearBufferState();
         }
     }
 
