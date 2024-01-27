@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.glsm.states;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.nio.FloatBuffer;
+
 @Getter @Setter
 public class Color4 implements ISettableState<Color4> {
     protected float red = 1.0F;
@@ -28,6 +30,13 @@ public class Color4 implements ISettableState<Color4> {
         this.alpha = state.alpha;
 
         return this;
+    }
+
+    public void get(FloatBuffer params) {
+        params.put(0, red);
+        params.put(1, green);
+        params.put(2, blue);
+        params.put(3, alpha);
     }
 
     @Override

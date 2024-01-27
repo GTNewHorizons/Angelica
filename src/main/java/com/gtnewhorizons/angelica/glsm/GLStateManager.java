@@ -267,6 +267,7 @@ public class GLStateManager {
             case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(params);
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
             case GL11.GL_TEXTURE_MATRIX -> textureMatrix.get(params);
+            case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
             default -> GL11.glGetFloat(pname, params);
         }
     }
