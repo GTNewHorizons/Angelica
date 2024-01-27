@@ -1,6 +1,5 @@
 package klaxon.klaxon.novisoculis;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import java.util.Arrays;
 import java.util.List;
@@ -13,7 +12,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import static org.lwjgl.opengl.GL11.GL_QUADS;
 
-public class CubeModel implements BakedModel {
+public class CubeModel implements QuadProvider {
 
     /*
     * GL only cares if the coords are clockwise or counterclockwise - not the specific order.
@@ -42,6 +41,8 @@ public class CubeModel implements BakedModel {
     * (x, y, z) is the world pos of the block. 0 and 6 have been labeled, you can figure out the rest.
     */
 
+    // I'm sure the following constants could be condensed to a single magic array, but for clarity's sake they remain.
+
     // The (x, y, z) positions of the vertices
     private static final int[][] vertices = {
         { 0, 0, 0 },
@@ -54,7 +55,7 @@ public class CubeModel implements BakedModel {
         { 1, 1, 0 }
     };
 
-    // Add the UV. This could probably be inlined a bit
+    // Add the UV.
     private static final int[][][] shiftsByDirection = {
 
         // DOWN 0 3 2 1
@@ -75,10 +76,10 @@ public class CubeModel implements BakedModel {
 
         //NORTH 0 4 7 3
         {
-            ArrayUtils.addAll(vertices[0], 1, 1),  // 0, 0
-            ArrayUtils.addAll(vertices[4], 1, 0),  // 0, 1
-            ArrayUtils.addAll(vertices[7], 0, 0),  // 1, 1
-            ArrayUtils.addAll(vertices[3], 0, 1)   // 1, 0
+            ArrayUtils.addAll(vertices[0], 1, 1),
+            ArrayUtils.addAll(vertices[4], 1, 0),
+            ArrayUtils.addAll(vertices[7], 0, 0),
+            ArrayUtils.addAll(vertices[3], 0, 1)
         },
 
         //SOUTH 1 2 6 5
@@ -106,13 +107,43 @@ public class CubeModel implements BakedModel {
         }
     };
 
-    private static final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, false, false, false);
+    private static final int[][] initBufs = new int[6][32];
+
+    static {
+        for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
+
+            final int dirI = dir.ordinal();
+            int[][] shifts = shiftsByDirection[dirI];
+
+            for (int vi = 0; vi < 4; ++vi) {
+                final int i = vi * 8;
+
+                // XYZ
+                initBufs[dirI][i + 0] = Float.floatToIntBits(shifts[vi][0]);
+                initBufs[dirI][i + 1] = Float.floatToIntBits(shifts[vi][1]);
+                initBufs[dirI][i + 2] = Float.floatToIntBits(shifts[vi][2]);
+
+                // UV
+                initBufs[dirI][i + 3] = Float.floatToIntBits(0);
+                initBufs[dirI][i + 4] = Float.floatToIntBits(0);
+
+                // Color, normal, brightness
+                initBufs[dirI][i + 5] = 0xFFFFFFFF;
+                initBufs[dirI][i + 6] = 0;
+                initBufs[dirI][i + 7] = 15_728_880; // 15 sky 15 block
+            }
+        }
+    }
+
+    private static final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
+
+    public static final CubeModel INSTANCE = new CubeModel();
 
     @Override
     public List<Quad> getQuads(Block block, int meta, ForgeDirection dir, Random random) {
 
-        Quad face = new Quad();
-        int[] buf = new int[32]; // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
+        final Quad face = new Quad();
+        final int[] buf = Arrays.copyOf(initBufs[dir.ordinal()], 32); // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
         // Format:
         // x
         // y
@@ -131,22 +162,17 @@ public class CubeModel implements BakedModel {
         for (int vi = 0; vi < 4; ++vi) {
             final int i = vi * 8;
 
-            // XYZ
-            buf[i + 0] = Float.floatToIntBits(shifts[vi][0]);
-            buf[i + 1] = Float.floatToIntBits(shifts[vi][1]);
-            buf[i + 2] = Float.floatToIntBits(shifts[vi][2]);
-
             // UV
             buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(shifts[vi][3] * 16));
             buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(shifts[vi][4] * 16));
 
             // Color, normal, brightness
-            buf[i + 5] = 0xFFFFFFFF;
-            buf[i + 6] = 0;
-            buf[i + 7] = 15_728_880; // 15 sky 15 block
+            //buf[i + 5] = 0xFFFFFFFF;
+            //buf[i + 6] = 0;
+            //buf[i + 7] = 15_728_880; // 15 sky 15 block
         }
 
-        face.setState(buf, 0, flags, GL_QUADS, 0, 0, 0);
+        face.setState(buf, 0, flags, GL_QUADS, 0, 0, 0, dir);
 
         return Arrays.asList(face);
     }
