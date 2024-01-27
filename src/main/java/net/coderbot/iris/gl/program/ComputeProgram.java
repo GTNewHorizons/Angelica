@@ -1,8 +1,8 @@
 package net.coderbot.iris.gl.program;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
@@ -28,8 +28,7 @@ public final class ComputeProgram extends GlResource {
 		super(program);
 
         localSizeBuffer = BufferUtils.createIntBuffer(3);
-//		localSize = new int[3];
-		IrisRenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
+		RenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
@@ -65,10 +64,10 @@ public final class ComputeProgram extends GlResource {
 		images.update();
 
 		if (!Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::allowConcurrentCompute).orElse(false)) {
-			IrisRenderSystem.memoryBarrier(40);
+			RenderSystem.memoryBarrier(40);
 		}
 
-		IrisRenderSystem.dispatchCompute(getWorkGroups(width, height));
+		RenderSystem.dispatchCompute(getWorkGroups(width, height));
 	}
 
 	public static void unbind() {

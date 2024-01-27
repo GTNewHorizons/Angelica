@@ -1,10 +1,10 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkProgram;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogComponent;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
@@ -91,6 +91,6 @@ public class IrisChunkProgram extends ChunkProgram {
 
         matrix.get(buffer);
 
-        IrisRenderSystem.uniformMatrix4fv(location, false, buffer);
+        RenderSystem.uniformMatrix4fv(location, false, buffer);
 	}
 }

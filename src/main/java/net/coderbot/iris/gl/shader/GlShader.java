@@ -3,8 +3,8 @@
 package net.coderbot.iris.gl.shader;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -37,7 +37,7 @@ public class GlShader extends GlResource {
 
 		GLDebug.nameObject(KHRDebug.GL_SHADER, handle, name + "(" + type.name().toLowerCase(Locale.ROOT) + ")");
 
-		String log = IrisRenderSystem.getShaderInfoLog(handle);
+		String log = RenderSystem.getShaderInfoLog(handle);
 
 		if (!log.isEmpty()) {
 			LOGGER.warn("Shader compilation log for " + name + ": " + log);

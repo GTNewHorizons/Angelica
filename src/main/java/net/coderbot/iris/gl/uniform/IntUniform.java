@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
 import java.util.function.IntSupplier;
@@ -34,7 +34,7 @@ public class IntUniform extends Uniform {
 
 		if (cachedValue != newValue) {
 			cachedValue = newValue;
-			IrisRenderSystem.uniform1i(location, newValue);
+			RenderSystem.uniform1i(location, newValue);
 		}
 	}
 }

@@ -1,8 +1,8 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
 import net.coderbot.iris.gl.uniform.Uniform;
@@ -165,7 +165,7 @@ public class ProgramUniforms {
 
 		@Override
 		public OptionalInt location(String name, UniformType type) {
-			int id = IrisRenderSystem.getUniformLocation(program, name);
+			int id = RenderSystem.getUniformLocation(program, name);
 
 			if (id == -1) {
 				return OptionalInt.empty();
@@ -190,7 +190,7 @@ public class ProgramUniforms {
 			IntBuffer sizeType = BufferUtils.createIntBuffer(2);
 
 			for (int index = 0; index < activeUniforms; index++) {
-				final String name = IrisRenderSystem.getActiveUniform(program, index, 128, sizeType);
+				final String name = RenderSystem.getActiveUniform(program, index, 128, sizeType);
 
 				if (name.isEmpty()) {
 					// No further information available.

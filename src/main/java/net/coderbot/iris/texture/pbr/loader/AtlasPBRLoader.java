@@ -1,13 +1,14 @@
 package net.coderbot.iris.texture.pbr.loader;
 
 import com.google.common.collect.Lists;
-import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.AnimationMetadataSectionAccessor;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureMapAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.texture.TextureInfoCache;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.texture.mipmap.ChannelMipmapGenerator;
@@ -42,7 +43,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
 
     @Override
     public void load(TextureMap texMap, IResourceManager resourceManager, PBRTextureConsumer pbrTextureConsumer) {
-        final TextureInfoCache.TextureInfo textureInfo = TextureInfoCache.INSTANCE.getInfo(texMap.getGlTextureId());
+        final TextureInfo textureInfo = TextureInfoCache.INSTANCE.getInfo(texMap.getGlTextureId());
         final int atlasWidth = textureInfo.getWidth();
         final int atlasHeight = textureInfo.getHeight();
         final int mipLevel = fetchAtlasMipLevel(texMap);

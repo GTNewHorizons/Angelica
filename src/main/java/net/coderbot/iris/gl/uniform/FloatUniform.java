@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
 public class FloatUniform extends Uniform {
@@ -32,7 +32,7 @@ public class FloatUniform extends Uniform {
 
 		if (cachedValue != newValue) {
 			cachedValue = newValue;
-			IrisRenderSystem.uniform1f(location, newValue);
+			RenderSystem.uniform1f(location, newValue);
 		}
 	}
 }

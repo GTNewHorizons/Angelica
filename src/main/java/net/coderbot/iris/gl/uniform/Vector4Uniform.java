@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.uniform;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import org.joml.Vector4f;
 
@@ -35,7 +35,7 @@ public class Vector4Uniform extends Uniform {
 
 		if (!newValue.equals(cachedValue)) {
 			cachedValue.set(newValue.x(), newValue.y(), newValue.z(), newValue.w());
-			IrisRenderSystem.uniform4f(location, cachedValue.x(), cachedValue.y(), cachedValue.z(), cachedValue.w());
+			RenderSystem.uniform4f(location, cachedValue.x(), cachedValue.y(), cachedValue.z(), cachedValue.w());
 		}
 	}
 }

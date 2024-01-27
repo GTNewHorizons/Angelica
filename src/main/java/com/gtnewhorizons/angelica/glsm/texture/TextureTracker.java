@@ -1,16 +1,21 @@
-package net.coderbot.iris.texture;
+package com.gtnewhorizons.angelica.glsm.texture;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import org.jetbrains.annotations.Nullable;
 
 public class TextureTracker {
+    /**
+     * Adapted from Iris for use in GLSM
+     */
+
 	public static final TextureTracker INSTANCE = new TextureTracker();
 
 	private static Runnable bindTextureListener;
@@ -44,12 +49,14 @@ public class TextureTracker {
 			if (bindTextureListener != null) {
 				bindTextureListener.run();
 			}
-			WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-			if (pipeline != null) {
-				pipeline.onBindTexture(id);
-			}
+            if(AngelicaConfig.enableIris) {
+                final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+                if (pipeline != null) {
+                    pipeline.onBindTexture(id);
+                }
+            }
 			// Reset texture state
-			IrisRenderSystem.bindTextureToUnit(0, id);
+			RenderSystem.bindTextureToUnit(0, id);
 			lockBindCallback = false;
 		}
 	}

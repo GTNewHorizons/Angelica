@@ -1,5 +1,7 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
@@ -7,12 +9,11 @@ import it.unimi.dsi.fastutil.objects.Object2FloatMap;
 import it.unimi.dsi.fastutil.objects.Object2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.blending.AlphaTest;
 import net.coderbot.iris.gl.blending.AlphaTestFunction;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
-import net.coderbot.iris.gl.blending.BlendMode;
 import net.coderbot.iris.gl.blending.BlendModeFunction;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendInformation;
@@ -41,51 +42,51 @@ import java.util.function.Consumer;
  * values in here & the values parsed from shader source code.
  */
 public class ShaderProperties {
-	private CloudSetting cloudSetting = CloudSetting.DEFAULT;
-	private OptionalBoolean oldHandLight = OptionalBoolean.DEFAULT;
-	private OptionalBoolean dynamicHandLight = OptionalBoolean.DEFAULT;
-	private OptionalBoolean oldLighting = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowTerrain = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowTranslucent = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowEntities = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowPlayer = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowBlockEntities = OptionalBoolean.DEFAULT;
-	private OptionalBoolean underwaterOverlay = OptionalBoolean.DEFAULT;
-	private OptionalBoolean sun = OptionalBoolean.DEFAULT;
-	private OptionalBoolean moon = OptionalBoolean.DEFAULT;
-	private OptionalBoolean vignette = OptionalBoolean.DEFAULT;
-	private OptionalBoolean backFaceSolid = OptionalBoolean.DEFAULT;
-	private OptionalBoolean backFaceCutout = OptionalBoolean.DEFAULT;
-	private OptionalBoolean backFaceCutoutMipped = OptionalBoolean.DEFAULT;
-	private OptionalBoolean backFaceTranslucent = OptionalBoolean.DEFAULT;
-	private OptionalBoolean rainDepth = OptionalBoolean.DEFAULT;
-	private OptionalBoolean concurrentCompute = OptionalBoolean.DEFAULT;
-	private OptionalBoolean beaconBeamDepth = OptionalBoolean.DEFAULT;
-	private OptionalBoolean separateAo = OptionalBoolean.DEFAULT;
-	private OptionalBoolean frustumCulling = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowCulling = OptionalBoolean.DEFAULT;
-	private OptionalBoolean shadowEnabled = OptionalBoolean.DEFAULT;
-	private OptionalBoolean particlesBeforeDeferred = OptionalBoolean.DEFAULT;
-	private OptionalBoolean prepareBeforeShadow = OptionalBoolean.DEFAULT;
-	private List<String> sliderOptions = new ArrayList<>();
-	private final Map<String, List<String>> profiles = new LinkedHashMap<>();
+	@Getter private CloudSetting cloudSetting = CloudSetting.DEFAULT;
+	@Getter private OptionalBoolean oldHandLight = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean dynamicHandLight = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean oldLighting = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowTerrain = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowTranslucent = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowEntities = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowPlayer = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowBlockEntities = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean underwaterOverlay = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean sun = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean moon = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean vignette = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean backFaceSolid = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean backFaceCutout = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean backFaceCutoutMipped = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean backFaceTranslucent = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean rainDepth = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean concurrentCompute = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean beaconBeamDepth = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean separateAo = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean frustumCulling = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowCulling = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean shadowEnabled = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean particlesBeforeDeferred = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean prepareBeforeShadow = OptionalBoolean.DEFAULT;
+	@Getter private List<String> sliderOptions = new ArrayList<>();
+	@Getter private final Map<String, List<String>> profiles = new LinkedHashMap<>();
 	private List<String> mainScreenOptions = null;
-	private final Map<String, List<String>> subScreenOptions = new HashMap<>();
+	@Getter private final Map<String, List<String>> subScreenOptions = new HashMap<>();
 	private Integer mainScreenColumnCount = null;
-	private final Map<String, Integer> subScreenColumnCount = new HashMap<>();
+	@Getter private final Map<String, Integer> subScreenColumnCount = new HashMap<>();
 	// TODO: private Map<String, String> optifineVersionRequirements;
 	// TODO: Parse custom uniforms / variables
-	private final Object2ObjectMap<String, AlphaTestOverride> alphaTestOverrides = new Object2ObjectOpenHashMap<>();
-	private final Object2FloatMap<String> viewportScaleOverrides = new Object2FloatOpenHashMap<>();
-	private final Object2ObjectMap<String, TextureScaleOverride> textureScaleOverrides = new Object2ObjectOpenHashMap<>();
-	private final Object2ObjectMap<String, BlendModeOverride> blendModeOverrides = new Object2ObjectOpenHashMap<>();
-	private final Object2ObjectMap<String, ArrayList<BufferBlendInformation>> bufferBlendOverrides = new Object2ObjectOpenHashMap<>();
-	private final EnumMap<TextureStage, Object2ObjectMap<String, String>> customTextures = new EnumMap<>(TextureStage.class);
-	private final Object2ObjectMap<String, Object2BooleanMap<String>> explicitFlips = new Object2ObjectOpenHashMap<>();
+	@Getter private final Object2ObjectMap<String, AlphaTestOverride> alphaTestOverrides = new Object2ObjectOpenHashMap<>();
+	@Getter private final Object2FloatMap<String> viewportScaleOverrides = new Object2FloatOpenHashMap<>();
+	@Getter private final Object2ObjectMap<String, TextureScaleOverride> textureScaleOverrides = new Object2ObjectOpenHashMap<>();
+	@Getter private final Object2ObjectMap<String, BlendModeOverride> blendModeOverrides = new Object2ObjectOpenHashMap<>();
+	@Getter private final Object2ObjectMap<String, ArrayList<BufferBlendInformation>> bufferBlendOverrides = new Object2ObjectOpenHashMap<>();
+	@Getter private final EnumMap<TextureStage, Object2ObjectMap<String, String>> customTextures = new EnumMap<>(TextureStage.class);
+	@Getter private final Object2ObjectMap<String, Object2BooleanMap<String>> explicitFlips = new Object2ObjectOpenHashMap<>();
 	private String noiseTexturePath = null;
-	private Object2ObjectMap<String, String> conditionallyEnabledPrograms = new Object2ObjectOpenHashMap<>();
-	private List<String> requiredFeatureFlags = new ArrayList<>();
-	private List<String> optionalFeatureFlags = new ArrayList<>();
+	@Getter private Object2ObjectMap<String, String> conditionallyEnabledPrograms = new Object2ObjectOpenHashMap<>();
+	@Getter private List<String> requiredFeatureFlags = new ArrayList<>();
+	@Getter private List<String> optionalFeatureFlags = new ArrayList<>();
 
 	private ShaderProperties() {
 		// empty
@@ -93,10 +94,10 @@ public class ShaderProperties {
 
 	// TODO: Is there a better solution than having ShaderPack pass a root path to ShaderProperties to be able to read textures?
 	public ShaderProperties(String contents, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		String preprocessedContents = PropertiesPreprocessor.preprocessSource(contents, shaderPackOptions, environmentDefines);
+        final String preprocessedContents = PropertiesPreprocessor.preprocessSource(contents, shaderPackOptions, environmentDefines);
 
-		Properties preprocessed = new OrderBackedProperties();
-		Properties original = new OrderBackedProperties();
+        final Properties preprocessed = new OrderBackedProperties();
+        final Properties original = new OrderBackedProperties();
 		try {
 			preprocessed.load(new StringReader(preprocessedContents));
 			original.load(new StringReader(contents));
@@ -105,8 +106,8 @@ public class ShaderProperties {
 		}
 
 		preprocessed.forEach((keyObject, valueObject) -> {
-			String key = (String) keyObject;
-			String value = (String) valueObject;
+            final String key = (String) keyObject;
+            final String value = (String) valueObject;
 
 			if ("texture.noise".equals(key)) {
 				noiseTexturePath = value;
@@ -154,7 +155,7 @@ public class ShaderProperties {
 			// TODO: Custom uniforms
 
 			handlePassDirective("scale.", key, value, pass -> {
-				float scale;
+                final float scale;
 
 				try {
 					scale = Float.parseFloat(value);
@@ -167,7 +168,7 @@ public class ShaderProperties {
 			});
 
 			handlePassDirective("size.buffer.", key, value, pass -> {
-				String[] parts = value.split(" ");
+                final String[] parts = value.split(" ");
 
 				if (parts.length != 2) {
 					Iris.logger.error("Unable to parse size.buffer directive for " + pass + ": " + value);
@@ -183,7 +184,7 @@ public class ShaderProperties {
 					return;
 				}
 
-				String[] parts = value.split(" ");
+                final String[] parts = value.split(" ");
 
 				if (parts.length > 2) {
 					Iris.logger.warn("Weird alpha test directive for " + pass + " contains more parts than we expected: " + value);
@@ -192,14 +193,14 @@ public class ShaderProperties {
 					return;
 				}
 
-				Optional<AlphaTestFunction> function = AlphaTestFunction.fromString(parts[0]);
+                final Optional<AlphaTestFunction> function = AlphaTestFunction.fromString(parts[0]);
 
 				if (!function.isPresent()) {
 					Iris.logger.error("Unable to parse alpha test directive for " + pass + ", unknown alpha test function " + parts[0] + ": " + value);
 					return;
 				}
 
-				float reference;
+                final float reference;
 
 				try {
 					reference = Float.parseFloat(parts[1]);
@@ -214,15 +215,15 @@ public class ShaderProperties {
 			handlePassDirective("blend.", key, value, pass -> {
 				if (pass.contains(".")) {
 
-					if (!IrisRenderSystem.supportsBufferBlending()) {
+					if (!RenderSystem.supportsBufferBlending()) {
 						throw new RuntimeException("Buffer blending is not supported on this platform, however it was attempted to be used!");
 					}
 
-					String[] parts = pass.split("\\.");
+					final String[] parts = pass.split("\\.");
 					int index = PackRenderTargetDirectives.LEGACY_RENDER_TARGETS.indexOf(parts[1]);
 
 					if (index == -1 && parts[1].startsWith("colortex")) {
-						String id = parts[1].substring("colortex".length());
+                        final String id = parts[1].substring("colortex".length());
 
 						try {
 							index = Integer.parseInt(id);
@@ -240,8 +241,8 @@ public class ShaderProperties {
 						return;
 					}
 
-					String[] modeArray = value.split(" ");
-					int[] modes = new int[modeArray.length];
+                    final String[] modeArray = value.split(" ");
+                    final int[] modes = new int[modeArray.length];
 
 					int i = 0;
 					for (String modeName : modeArray) {
@@ -249,7 +250,7 @@ public class ShaderProperties {
 						i++;
 					}
 
-					bufferBlendOverrides.computeIfAbsent(parts[0], list -> new ArrayList<>()).add(new BufferBlendInformation(index, new BlendMode(modes[0], modes[1], modes[2], modes[3])));
+					bufferBlendOverrides.computeIfAbsent(parts[0], list -> new ArrayList<>()).add(new BufferBlendInformation(index, new BlendState(modes[0], modes[1], modes[2], modes[3])));
 
 					return;
 				}
@@ -259,8 +260,8 @@ public class ShaderProperties {
 					return;
 				}
 
-				String[] modeArray = value.split(" ");
-				int[] modes = new int[modeArray.length];
+                final String[] modeArray = value.split(" ");
+                final int[] modes = new int[modeArray.length];
 
 				int i = 0;
 				for (String modeName : modeArray) {
@@ -268,7 +269,7 @@ public class ShaderProperties {
 					i++;
 				}
 
-				blendModeOverrides.put(pass, new BlendModeOverride(new BlendMode(modes[0], modes[1], modes[2], modes[3])));
+				blendModeOverrides.put(pass, new BlendModeOverride(new BlendState(modes[0], modes[1], modes[2], modes[3])));
 			});
 
 			handleProgramEnabledDirective("program.", key, value, program -> {
@@ -276,7 +277,7 @@ public class ShaderProperties {
 			});
 
 			handleTwoArgDirective("texture.", key, value, (stageName, samplerName) -> {
-				String[] parts = value.split(" ");
+                final String[] parts = value.split(" ");
 
 				// TODO: Support raw textures
 				if (parts.length > 1) {
@@ -284,14 +285,14 @@ public class ShaderProperties {
 					return;
 				}
 
-				Optional<TextureStage> optionalTextureStage = TextureStage.parse(stageName);
+                final Optional<TextureStage> optionalTextureStage = TextureStage.parse(stageName);
 
 				if (!optionalTextureStage.isPresent()) {
 					Iris.logger.warn("Unknown texture stage " + "\"" + stageName + "\"," + " ignoring custom texture directive for " + key);
 					return;
 				}
 
-				TextureStage stage = optionalTextureStage.get();
+                final TextureStage stage = optionalTextureStage.get();
 
 				customTextures.computeIfAbsent(stage, _stage -> new Object2ObjectOpenHashMap<>())
 						.put(samplerName, value);
@@ -314,8 +315,8 @@ public class ShaderProperties {
 
 		// We need to use a non-preprocessed property file here since we don't want any weird preprocessor changes to be applied to the screen/value layout.
 		original.forEach((keyObject, valueObject) -> {
-			String key = (String) keyObject;
-			String value = (String) valueObject;
+            final String key = (String) keyObject;
+            final String value = (String) valueObject;
 
 			// Defining "sliders" multiple times in the properties file will only result in
 			// the last definition being used, should be tested if behavior matches OptiFine
@@ -365,7 +366,7 @@ public class ShaderProperties {
 		}
 
 		try {
-			int result = Integer.parseInt(value);
+            final int result = Integer.parseInt(value);
 
 			handler.accept(result);
 		} catch (NumberFormatException nex) {
@@ -377,17 +378,17 @@ public class ShaderProperties {
 
 	private static boolean handleAffixedIntDirective(String prefix, String suffix, String key, String value, BiConsumer<String, Integer> handler) {
 		if (key.startsWith(prefix) && key.endsWith(suffix)) {
-			int substrBegin = prefix.length();
-			int substrEnd = key.length() - suffix.length();
+            final int substrBegin = prefix.length();
+            final int substrEnd = key.length() - suffix.length();
 
 			if (substrEnd <= substrBegin) {
 				return false;
 			}
 
-			String affixStrippedKey = key.substring(substrBegin, substrEnd);
+            final String affixStrippedKey = key.substring(substrBegin, substrEnd);
 
 			try {
-				int result = Integer.parseInt(value);
+                final int result = Integer.parseInt(value);
 
 				handler.accept(affixStrippedKey, result);
 			} catch (NumberFormatException nex) {
@@ -402,7 +403,7 @@ public class ShaderProperties {
 
 	private static void handlePassDirective(String prefix, String key, String value, Consumer<String> handler) {
 		if (key.startsWith(prefix)) {
-			String pass = key.substring(prefix.length());
+            final String pass = key.substring(prefix.length());
 
 			handler.accept(pass);
 		}
@@ -410,7 +411,7 @@ public class ShaderProperties {
 
 	private static void handleProgramEnabledDirective(String prefix, String key, String value, Consumer<String> handler) {
 		if (key.startsWith(prefix)) {
-			String program = key.substring(prefix.length(), key.indexOf(".", prefix.length()));
+            final String program = key.substring(prefix.length(), key.indexOf(".", prefix.length()));
 
 			handler.accept(program);
 		}
@@ -421,15 +422,15 @@ public class ShaderProperties {
 			return;
 		}
 
-		String[] elements = value.split(" +");
+        final String[] elements = value.split(" +");
 
 		handler.accept(Arrays.asList(elements));
 	}
 
 	private static void handlePrefixedWhitespacedListDirective(String prefix, String key, String value, BiConsumer<String, List<String>> handler) {
 		if (key.startsWith(prefix)) {
-			String prefixStrippedKey = key.substring(prefix.length());
-			String[] elements = value.split(" +");
+            final String prefixStrippedKey = key.substring(prefix.length());
+            final String[] elements = value.split(" +");
 
 			handler.accept(prefixStrippedKey, Arrays.asList(elements));
 		}
@@ -437,9 +438,9 @@ public class ShaderProperties {
 
 	private static void handleTwoArgDirective(String prefix, String key, String value, BiConsumer<String, String> handler) {
 		if (key.startsWith(prefix)) {
-			int endOfPassIndex = key.indexOf(".", prefix.length());
-			String stage = key.substring(prefix.length(), endOfPassIndex);
-			String sampler = key.substring(endOfPassIndex + 1);
+            final int endOfPassIndex = key.indexOf(".", prefix.length());
+            final String stage = key.substring(prefix.length(), endOfPassIndex);
+            final String sampler = key.substring(endOfPassIndex + 1);
 
 			handler.accept(stage, sampler);
 		}
@@ -449,175 +450,16 @@ public class ShaderProperties {
 		return new ShaderProperties();
 	}
 
-	public CloudSetting getCloudSetting() {
-		return cloudSetting;
-	}
-
-	public OptionalBoolean getOldHandLight() {
-		return oldHandLight;
-	}
-
-	public OptionalBoolean getDynamicHandLight() {
-		return dynamicHandLight;
-	}
-
-	public OptionalBoolean getOldLighting() {
-		return oldLighting;
-	}
-
-	public OptionalBoolean getShadowTerrain() {
-		return shadowTerrain;
-	}
-
-	public OptionalBoolean getShadowTranslucent() {
-		return shadowTranslucent;
-	}
-
-	public OptionalBoolean getShadowEntities() {
-		return shadowEntities;
-	}
-
-	public OptionalBoolean getShadowPlayer() {
-		return shadowPlayer;
-	}
-
-	public OptionalBoolean getShadowBlockEntities() {
-		return shadowBlockEntities;
-	}
-
-	public OptionalBoolean getUnderwaterOverlay() {
-		return underwaterOverlay;
-	}
-
-	public OptionalBoolean getSun() {
-		return sun;
-	}
-
-	public OptionalBoolean getMoon() {
-		return moon;
-	}
-
-	public OptionalBoolean getVignette() {
-		return vignette;
-	}
-
-	public OptionalBoolean getBackFaceSolid() {
-		return backFaceSolid;
-	}
-
-	public OptionalBoolean getBackFaceCutout() {
-		return backFaceCutout;
-	}
-
-	public OptionalBoolean getBackFaceCutoutMipped() {
-		return backFaceCutoutMipped;
-	}
-
-	public OptionalBoolean getBackFaceTranslucent() {
-		return backFaceTranslucent;
-	}
-
-	public OptionalBoolean getRainDepth() {
-		return rainDepth;
-	}
-
-	public OptionalBoolean getBeaconBeamDepth() {
-		return beaconBeamDepth;
-	}
-
-	public OptionalBoolean getSeparateAo() {
-		return separateAo;
-	}
-
-	public OptionalBoolean getFrustumCulling() {
-		return frustumCulling;
-	}
-
-	public OptionalBoolean getShadowCulling() {
-		return shadowCulling;
-	}
-
-	public OptionalBoolean getShadowEnabled() {
-		return shadowEnabled;
-	}
-
-	public OptionalBoolean getParticlesBeforeDeferred() {
-		return particlesBeforeDeferred;
-	}
-
-	public OptionalBoolean getConcurrentCompute() {
-		return concurrentCompute;
-	}
-
-	public OptionalBoolean getPrepareBeforeShadow() {
-		return prepareBeforeShadow;
-	}
-
-	public Object2ObjectMap<String, AlphaTestOverride> getAlphaTestOverrides() {
-		return alphaTestOverrides;
-	}
-
-	public Object2FloatMap<String> getViewportScaleOverrides() {
-		return viewportScaleOverrides;
-	}
-
-	public Object2ObjectMap<String, TextureScaleOverride> getTextureScaleOverrides() {
-		return textureScaleOverrides;
-	}
-
-	public Object2ObjectMap<String, BlendModeOverride> getBlendModeOverrides() {
-		return blendModeOverrides;
-	}
-
-	public Object2ObjectMap<String, ArrayList<BufferBlendInformation>> getBufferBlendOverrides() {
-		return bufferBlendOverrides;
-	}
-
-	public EnumMap<TextureStage, Object2ObjectMap<String, String>> getCustomTextures() {
-		return customTextures;
-	}
-
-	public Optional<String> getNoiseTexturePath() {
+    public Optional<String> getNoiseTexturePath() {
 		return Optional.ofNullable(noiseTexturePath);
 	}
 
-	public Object2ObjectMap<String, String> getConditionallyEnabledPrograms() {
-		return conditionallyEnabledPrograms;
-	}
-
-	public List<String> getSliderOptions() {
-		return sliderOptions;
-	}
-
-	public Map<String, List<String>> getProfiles() {
-		return profiles;
-	}
-
-	public Optional<List<String>> getMainScreenOptions() {
+    public Optional<List<String>> getMainScreenOptions() {
 		return Optional.ofNullable(mainScreenOptions);
 	}
 
-	public Map<String, List<String>> getSubScreenOptions() {
-		return subScreenOptions;
-	}
-
-	public Optional<Integer> getMainScreenColumnCount() {
+    public Optional<Integer> getMainScreenColumnCount() {
 		return Optional.ofNullable(mainScreenColumnCount);
 	}
 
-	public Map<String, Integer> getSubScreenColumnCount() {
-		return subScreenColumnCount;
-	}
-
-	public Object2ObjectMap<String, Object2BooleanMap<String>> getExplicitFlips() {
-		return explicitFlips;
-	}
-
-	public List<String> getRequiredFeatureFlags() {
-		return requiredFeatureFlags;
-	}
-
-	public List<String> getOptionalFeatureFlags() {
-		return optionalFeatureFlags;
-	}
 }

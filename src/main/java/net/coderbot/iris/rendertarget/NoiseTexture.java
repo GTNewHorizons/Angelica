@@ -1,8 +1,8 @@
 package net.coderbot.iris.rendertarget;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.texture.TextureUploadHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -20,18 +20,18 @@ public class NoiseTexture extends GlResource {
 	int height;
 
 	public NoiseTexture(int width, int height) {
-		super(IrisRenderSystem.createTexture(GL11.GL_TEXTURE_2D));
+		super(RenderSystem.createTexture(GL11.GL_TEXTURE_2D));
 
 		int texture = getGlId();
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
 
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MIN_LOD, 0);
-		IrisRenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LOD,0);
-		IrisRenderSystem.texParameterf(texture, GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0F);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MIN_LOD, 0);
+		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LOD,0);
+		RenderSystem.texParameterf(texture, GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0F);
 		resize(texture, width, height);
 
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -47,7 +47,7 @@ public class NoiseTexture extends GlResource {
 
 		// Since we're using tightly-packed RGB data, we must use an alignment of 1 byte instead of the usual 4 bytes.
 		GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-		IrisRenderSystem.texImage2D(texture, GL11.GL_TEXTURE_2D, 0, GL11.GL_RGB, width, height, 0, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, pixels);
+		RenderSystem.texImage2D(texture, GL11.GL_TEXTURE_2D, 0, GL11.GL_RGB, width, height, 0, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, pixels);
 
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}

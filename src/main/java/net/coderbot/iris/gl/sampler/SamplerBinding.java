@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.sampler;
 
-import net.coderbot.iris.gl.IrisRenderSystem;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
 import java.util.function.IntSupplier;
@@ -25,6 +25,6 @@ public class SamplerBinding {
 	}
 
 	private void updateSampler() {
-		IrisRenderSystem.bindTextureToUnit(textureUnit, texture.getAsInt());
+		RenderSystem.bindTextureToUnit(textureUnit, texture.getAsInt());
 	}
 }

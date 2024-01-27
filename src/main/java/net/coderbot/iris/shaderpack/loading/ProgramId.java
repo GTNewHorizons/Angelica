@@ -1,6 +1,6 @@
 package net.coderbot.iris.shaderpack.loading;
 
-import net.coderbot.iris.gl.blending.BlendMode;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import net.coderbot.iris.gl.blending.BlendModeFunction;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 
@@ -36,7 +36,7 @@ public enum ProgramId {
 	EntitiesGlowing(ProgramGroup.Gbuffers, "entities_glowing", Entities),
 	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured),
 	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured,
-			new BlendModeOverride(new BlendMode(BlendModeFunction.SRC_ALPHA.getGlId(), BlendModeFunction.ONE.getGlId(), BlendModeFunction.ZERO.getGlId(), BlendModeFunction.ONE.getGlId()))),
+			new BlendModeOverride(new BlendState(BlendModeFunction.SRC_ALPHA.getGlId(), BlendModeFunction.ONE.getGlId(), BlendModeFunction.ZERO.getGlId(), BlendModeFunction.ONE.getGlId()))),
 
 	Hand(ProgramGroup.Gbuffers, "hand", TexturedLit),
 	Weather(ProgramGroup.Gbuffers, "weather", TexturedLit),

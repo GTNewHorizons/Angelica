@@ -1,11 +1,13 @@
 package net.coderbot.iris.gl.blending;
 
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
+
 public class BlendModeOverride {
 	public static final BlendModeOverride OFF = new BlendModeOverride(null);
 
-	private final BlendMode blendMode;
+	private final BlendState blendMode;
 
-	public BlendModeOverride(BlendMode blendMode) {
+	public BlendModeOverride(BlendState blendMode) {
 		this.blendMode = blendMode;
 	}
 
