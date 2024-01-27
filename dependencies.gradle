@@ -84,7 +84,6 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5.3:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
-    compileOnly("com.github.GTNewHorizons:Jabba:1.3.1:dev")
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))

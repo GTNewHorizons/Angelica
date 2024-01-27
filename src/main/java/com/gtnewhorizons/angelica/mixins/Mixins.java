@@ -148,12 +148,6 @@ public enum Mixins {
         )
     ),
 
-    OPTIMIZE_JABBA_GET_INTEGER(new Builder("Optimize Jabba getInteger").setPhase(Phase.LATE)
-        .addTargetedMod(TargetedMod.JABBA).setSide(Side.CLIENT)
-        .setApplyIf(() -> AngelicaConfig.optimizeJabbaGetInteger)
-        .addMixinClasses("client.jabba.MixinTileEntityBaseRenderer")),
-
-
     ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium).addMixinClasses(
              "angelica.textures.MixinTextureAtlasSprite"

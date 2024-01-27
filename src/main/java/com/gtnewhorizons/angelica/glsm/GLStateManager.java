@@ -50,6 +50,7 @@ import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLContext;
 
@@ -190,6 +191,71 @@ public class GLStateManager {
             default -> GL11.glDisable(cap);
         }
     }
+    public static boolean glGetBoolean(int pname) {
+        if(GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetBoolean(pname);
+        }
+        return switch (pname) {
+            case GL11.GL_BLEND -> blendMode.isEnabled();
+            case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
+            case GL11.GL_CULL_FACE -> cullState.isEnabled();
+            case GL11.GL_LIGHTING -> lightingState.isEnabled();
+            case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
+            case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_DEPTH_WRITEMASK -> depthState.isMask();
+            default -> GL11.glGetBoolean(pname);
+        };
+    }
+
+    private static void glGetBoolean(int pname, ByteBuffer params) {
+        if(GLStateManager.BYPASS_CACHE) {
+            GL11.glGetBoolean(pname, params);
+            return;
+        }
+
+        switch (pname) {
+            case GL11.GL_COLOR_WRITEMASK -> {
+                params.put((byte) (colorMask.red ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put((byte) (colorMask.green ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put((byte) (colorMask.blue ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put((byte) (colorMask.alpha ? GL11.GL_TRUE : GL11.GL_FALSE));
+            }
+            default -> GL11.glGetBoolean(pname, params);
+        }
+    }
+
+    public static int glGetInteger(int pname) {
+        if(GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetInteger(pname);
+        }
+
+        return switch (pname) {
+            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
+            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
+            case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
+            case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
+            case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
+            case GL11.GL_LIST_MODE -> glListMode;
+            case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
+
+            default -> GL11.glGetInteger(pname);
+        };
+    }
+
+    public static void glGetInteger(int pname, IntBuffer params) {
+        if(GLStateManager.BYPASS_CACHE) {
+            GL11.glGetInteger(pname, params);
+            return;
+        }
+
+        switch (pname) {
+            case GL11.GL_VIEWPORT -> viewportState.get(params);
+            default -> GL11.glGetInteger(pname, params);
+        }
+    }
 
     public static void glGetFloat(int pname, FloatBuffer params) {
         if(GLStateManager.BYPASS_CACHE) {
@@ -201,6 +267,7 @@ public class GLStateManager {
             case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(params);
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
             case GL11.GL_TEXTURE_MATRIX -> textureMatrix.get(params);
+            case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
             default -> GL11.glGetFloat(pname, params);
         }
     }

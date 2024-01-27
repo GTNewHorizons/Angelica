@@ -57,14 +57,6 @@ public class IrisRenderSystem {
 		supportsCompute = supportsCompute();
 	}
 
-	public static void getIntegerv(int pname, IntBuffer params) {
-		GL11.glGetInteger(pname, params);
-	}
-
-	public static void getFloatv(int pname, FloatBuffer params) {
-		GL11.glGetFloat(pname, params);
-	}
-
 	public static void generateMipmaps(int texture, int mipmapTarget) {
 		dsaState.generateMipmaps(texture, mipmapTarget);
 	}
