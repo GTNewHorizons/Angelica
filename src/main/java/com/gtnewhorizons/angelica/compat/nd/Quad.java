@@ -38,6 +38,7 @@ public class Quad implements ModelQuadView {
 
     private int cachedFlags;
     private ForgeDirection face;
+    private int colorIndex = -1;
 
     public boolean hasColor() {
         return this.hasColor;
@@ -106,7 +107,7 @@ public class Quad implements ModelQuadView {
 
     @Override
     public int getColorIndex() {
-        return 0;
+        return colorIndex;
     }
 
     @Override

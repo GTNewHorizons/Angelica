@@ -456,12 +456,13 @@ public enum Mixins {
     NOVIS_OCULIS(new Builder("Non-Tessellator Quad provider")
         .setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> true)
+        .setApplyIf(() -> AngelicaConfig.enableQPRendering)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
             "novisoculis.MixinBlockStone",
             "novisoculis.MixinBlockAir",
-            "novisoculis.MixinBlockWorkbench")),
+            "novisoculis.MixinBlockWorkbench",
+            "novisoculis.MixinBlockGrass")),
 
     ;
 

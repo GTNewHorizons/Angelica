@@ -1,5 +1,6 @@
 package klaxon.klaxon.novisoculis;
 
+import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import java.util.Arrays;
 import java.util.List;
@@ -7,15 +8,15 @@ import java.util.Random;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
+import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
-import org.apache.commons.lang3.ArrayUtils;
 
 import static org.lwjgl.opengl.GL11.GL_QUADS;
 
 public class CubeModel implements QuadProvider {
 
     /*
-    * GL only cares if the coords are clockwise or counterclockwise - not the specific order.
+    * GL only cares if the coords are clockwise or counterclockwise - not the specific order [1].
     * Which mean I get to decide it! Behold, Omni's Standard Cube Vertex Order (TM)!
     *
     *                             SOUTH (+z)
@@ -39,6 +40,9 @@ public class CubeModel implements QuadProvider {
     * The horizontal directions are labeled, up and down should be obvious (and would be annoying to add).
     * Vertices are written in counterclockwise order, as viewed from outside the cube, to orient the quad properly.
     * (x, y, z) is the world pos of the block. 0 and 6 have been labeled, you can figure out the rest.
+    *
+    * [1] So apparently I was a bit wrong. GL doesn't care, but Sodium does because that's how it applies AO.
+    * Change it if you dare!
     */
 
     // I'm sure the following constants could be condensed to a single magic array, but for clarity's sake they remain.
@@ -142,12 +146,23 @@ public class CubeModel implements QuadProvider {
         }
     }
 
-    private static final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
 
-    public static final CubeModel INSTANCE = new CubeModel();
+    public static final CubeModel INSTANCE = new CubeModel(false);
+    private final boolean[] colorized = new boolean[6];
+    private final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
+
+    public CubeModel(boolean colorized) {
+
+        Arrays.fill(this.colorized, colorized);
+    }
+
+    public CubeModel(boolean[] colorized) {
+
+        System.arraycopy(colorized, 0, this.colorized, 0, 6);
+    }
 
     @Override
-    public List<Quad> getQuads(Block block, int meta, ForgeDirection dir, Random random) {
+    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random) {
 
         final Quad face = new Quad();
         final int[] buf = Arrays.copyOf(initBufs[dir.ordinal()], 32); // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
@@ -164,6 +179,8 @@ public class CubeModel implements QuadProvider {
         // all are float bits as ints
 
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
+        final int color = this.colorized[dir.ordinal()] ? block.colorMultiplier(world, pos.x, pos.y, pos.z) : 0xFFFFFFFF;
+        this.flags.hasColor = this.colorized[dir.ordinal()];
 
         for (int vi = 0; vi < 4; ++vi) {
             final int i = vi * 8;
@@ -172,13 +189,11 @@ public class CubeModel implements QuadProvider {
             buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(uv[vi][0] * 16));
             buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(uv[vi][1] * 16));
 
-            // Color, normal, brightness
-            //buf[i + 5] = 0xFFFFFFFF;
-            //buf[i + 6] = 0;
-            //buf[i + 7] = 15_728_880; // 15 sky 15 block
+            // Color
+            buf[i + 5] = color;
         }
 
-        face.setState(buf, 0, flags, GL_QUADS, 0, 0, 0, dir);
+        face.setState(buf, 0, this.flags, GL_QUADS, 0, 0, 0, dir);
 
         return Arrays.asList(face);
     }
