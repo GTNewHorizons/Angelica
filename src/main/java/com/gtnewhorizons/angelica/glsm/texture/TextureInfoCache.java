@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.texture;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
@@ -25,8 +26,7 @@ public class TextureInfoCache {
 
 	public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels) {
 		if (level == 0) {
-			final int id = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-            final TextureInfo info = getInfo(id);
+            final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
 			info.internalFormat = internalformat;
 			info.width = width;
 			info.height = height;
@@ -34,8 +34,7 @@ public class TextureInfoCache {
 	}
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
 		if (level == 0) {
-            final int id = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-            final TextureInfo info = getInfo(id);
+            final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
 			info.internalFormat = internalformat;
 			info.width = width;
 			info.height = height;

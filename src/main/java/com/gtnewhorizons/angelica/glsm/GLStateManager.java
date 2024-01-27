@@ -63,6 +63,7 @@ import java.nio.IntBuffer;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -590,22 +591,17 @@ public class GLStateManager {
     }
 
     public static void glDeleteTextures(int id) {
-        TextureTracker.INSTANCE.onDeleteTexture(id);
-        TextureInfoCache.INSTANCE.onDeleteTexture(id);
-        if (AngelicaConfig.enableIris) {
-            iris$onDeleteTexture(id);
-        }
+        onDeleteTexture(id);
 
         textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
     public static void glDeleteTextures(IntBuffer ids) {
-        if (AngelicaConfig.enableIris) {
-            for(int i = 0; i < ids.capacity(); i++) {
-                iris$onDeleteTexture(ids.get(i));
-            }
+        for(int i = 0; i < ids.capacity(); i++) {
+            onDeleteTexture(ids.get(i));
         }
+
         textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
@@ -801,7 +797,9 @@ public class GLStateManager {
     }
 
     // Iris Functions
-    private static void iris$onDeleteTexture(int id) {
+    private static void onDeleteTexture(int id) {
+        TextureTracker.INSTANCE.onDeleteTexture(id);
+        TextureInfoCache.INSTANCE.onDeleteTexture(id);
         if (AngelicaConfig.enableIris) {
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
         }
@@ -1030,101 +1028,125 @@ public class GLStateManager {
         return glListMode;
     }
 
-    public static void glTexParameter(int target, int pname, FloatBuffer params) {
+
+    public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
         if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
-            GL11.glTexParameter(target, pname, params);
-            return;
+            return true;
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
-        switch (pname) {
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
-                if(info.getMaxAnisotropy() == params.get(0)) return;
-                info.setMaxAnisotropy(params.get(0));
-            }
-            default -> GL11.glTexParameter(target, pname, params);
-        }
-    }
-    public static void glTexParameter(int target, int pname, IntBuffer params) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
-            GL11.glTexParameter(target, pname, params);
-            return;
-        }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
         switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> {
-                if(info.getMinFilter() == params.get(0)) return;
-                info.setMinFilter(params.get(0));
+                if(info.getMinFilter() == param) return false;
+                info.setMinFilter(param);
             }
             case GL11.GL_TEXTURE_MAG_FILTER -> {
-                if(info.getMagFilter() == params.get(0)) return;
-                info.setMagFilter(params.get(0));
+                if(info.getMagFilter() == param) return false;
+                info.setMagFilter(param);
             }
             case GL11.GL_TEXTURE_WRAP_S -> {
-                if(info.getWrapS() == params.get(0)) return;
-                info.setWrapS(params.get(0));
+                if(info.getWrapS() == param) return false;
+                info.setWrapS(param);
             }
             case GL11.GL_TEXTURE_WRAP_T -> {
-                if(info.getWrapT() == params.get(0)) return;
-                info.setWrapT(params.get(0));
+                if(info.getWrapT() == param) return false;
+                info.setWrapT(param);
             }
-            default -> GL11.glTexParameter(target, pname, params);
+            case GL12.GL_TEXTURE_MAX_LEVEL -> {
+                if(info.getMaxLevel() == param) return false;
+                info.setMaxLevel(param);
+            }
+            case GL12.GL_TEXTURE_MIN_LOD -> {
+                if(info.getMinLod() == param) return false;
+                info.setMinLod(param);
+            }
+            case GL12.GL_TEXTURE_MAX_LOD -> {
+                if(info.getMaxLod() == param) return false;
+                info.setMaxLod(param);
+            }
         }
+        return true;
     }
+
+
+    public static void glTexParameter(int target, int pname, IntBuffer params) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+            GL11.glTexParameter(target, pname, params);
+            return;
+        }
+        if(!updateTexParameteriCache(target, getBoundTexture(), pname, params.get(0))) return;
+
+        GL11.glTexParameter(target, pname, params);
+    }
+
+    public static void glTexParameter(int target, int pname, FloatBuffer params) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+            GL11.glTexParameter(target, pname, params);
+            return;
+        }
+        if(!updateTexParameterfCache(target, getBoundTexture(), pname, params.get(0))) return;
+
+        GL11.glTexParameter(target, pname, params);
+    }
+
 
     public static void glTexParameteri(int target, int pname, int param) {
         if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
             GL11.glTexParameteri(target, pname, param);
             return;
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
-        switch (pname) {
-            case GL11.GL_TEXTURE_MIN_FILTER -> {
-                if(info.getMinFilter() == param) return;
-                info.setMinFilter(param);
-            }
-            case GL11.GL_TEXTURE_MAG_FILTER -> {
-                if(info.getMagFilter() == param) return;
-                info.setMagFilter(param);
-            }
-            case GL11.GL_TEXTURE_WRAP_S -> {
-                if(info.getWrapS() == param) return;
-                info.setWrapS(param);
-            }
-            case GL11.GL_TEXTURE_WRAP_T -> {
-                if(info.getWrapT() == param) return;
-                info.setWrapT(param);
-            }
-        }
+        if(!updateTexParameteriCache(target, getBoundTexture(), pname, param)) return;
 
         GL11.glTexParameteri(target, pname, param);
     }
+
+
+    public static boolean updateTexParameterfCache(int target, int texture, int pname, float param) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return true;
+        }
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        switch (pname) {
+            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
+                if(info.getMaxAnisotropy() == param) return false;
+                info.setMaxAnisotropy(param);
+            }
+            case GL14.GL_TEXTURE_LOD_BIAS -> {
+                if(info.getLodBias() == param) return false;
+                info.setLodBias(param);
+            }
+        }
+        return true;
+    }
+
     public static void glTexParameterf(int target, int pname, float param) {
         if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
             GL11.glTexParameterf(target, pname, param);
             return;
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
-        switch (pname) {
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
-                if(info.getMaxAnisotropy() == param) return;
-                info.setMaxAnisotropy(param);
-            }
-            default -> GL11.glTexParameterf(target, pname, param);
-        }
+        if(!updateTexParameterfCache(getActiveTextureUnit(), target, pname, param)) return;
+
+        GL11.glTexParameterf(target, pname, param);
     }
-    public static int glGetTexParameteri(int target, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
-            return GL11.glGetTexParameteri(target, pname);
-        }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+
+    public static int getTexParameterOrDefault(int texture, int pname, IntSupplier defaultSupplier) {
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
 
         return switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> info.getMinFilter();
             case GL11.GL_TEXTURE_MAG_FILTER -> info.getMagFilter();
             case GL11.GL_TEXTURE_WRAP_S -> info.getWrapS();
             case GL11.GL_TEXTURE_WRAP_T -> info.getWrapT();
-            default -> GL11.glGetTexParameteri(target, pname);
+            case GL12.GL_TEXTURE_MAX_LEVEL -> info.getMaxLevel();
+            case GL12.GL_TEXTURE_MIN_LOD -> info.getMinLod();
+            case GL12.GL_TEXTURE_MAX_LOD -> info.getMaxLod();
+            default -> defaultSupplier.getAsInt();
         };
+    }
+    public static int glGetTexParameteri(int target, int pname) {
+        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+            return GL11.glGetTexParameteri(target, pname);
+        }
+        return getTexParameterOrDefault(getBoundTexture(), pname, () -> GL11.glGetTexParameteri(target, pname));
     }
 
     public static float glGetTexParameterf(int target, int pname) {
@@ -1135,6 +1157,7 @@ public class GLStateManager {
 
         return switch (pname) {
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> info.getMaxAnisotropy();
+            case GL14.GL_TEXTURE_LOD_BIAS -> info.getLodBias();
             default -> GL11.glGetTexParameterf(target, pname);
         };
     }

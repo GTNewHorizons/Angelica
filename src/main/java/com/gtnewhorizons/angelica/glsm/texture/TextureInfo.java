@@ -16,6 +16,11 @@ public class TextureInfo {
     @Getter @Setter protected int magFilter = GL11.GL_LINEAR;
     @Getter @Setter protected int wrapS = GL11.GL_REPEAT;
     @Getter @Setter protected int wrapT = GL11.GL_REPEAT;
+    @Getter @Setter protected int maxLevel = 1000;
+    @Getter @Setter protected int minLod = -1000;
+    @Getter @Setter protected int maxLod = 1000;
+    @Getter @Setter protected float lodBias = 0.0f;
+
     @Getter @Setter protected float maxAnisotropy = 1.0f;
 
     protected TextureInfo(int id) {
