@@ -163,7 +163,6 @@ public class CubeModel implements QuadProvider {
         // repeat
         // all are float bits as ints
 
-        final int[][] shifts = shiftsByDirection[dir.ordinal()];
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
 
         for (int vi = 0; vi < 4; ++vi) {
