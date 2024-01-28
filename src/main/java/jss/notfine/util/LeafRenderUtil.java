@@ -32,7 +32,7 @@ public class LeafRenderUtil {
         }
         if(otherBlock instanceof ILeafBlock) {
             switch ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()) {
-                case FANCY, SMART -> {
+                case FAST, SMART -> {
                     return false;
                 }
                 case SHELLED_FANCY, SHELLED_FAST -> {

@@ -17,17 +17,17 @@ public abstract class MixinBlockTFLeaves extends BlockLeaves {
 
     @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
-        int renderMode = ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()).ordinal() - 1;
         int maskedMeta = world.getBlockMetadata(x, y, z) & 3;
-        renderMode = switch (renderMode) {
-            case -1 -> SettingsManager.leavesOpaque ? 1 : 0;
-            case 4 -> world.getBlock(
+        int renderMode;
+        if(Settings.MODE_LEAVES.option.getStore() == LeavesQuality.SHELLED_FAST) {
+            renderMode = world.getBlock(
                 x + Facing.offsetsXForSide[side],
                 y + Facing.offsetsYForSide[side],
                 z + Facing.offsetsZForSide[side]
             ) instanceof ILeafBlock ? 1 : 0;
-            default -> renderMode > 1 ? 0 : renderMode;
-        };
+        } else {
+            renderMode = SettingsManager.leavesOpaque ? 1 : 0;
+        }
         maskedMeta = maskedMeta > 1 ? 0 : maskedMeta;
         return Blocks.leaves.field_150129_M[renderMode][maskedMeta];
     }

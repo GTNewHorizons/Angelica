@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
+import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -162,7 +163,8 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.graphics_quality.tooltip"))
                         .setControl(option -> new CyclingControl<>(option, GraphicsMode.class))
                         .setBinding(
-                                (opts, value) -> opts.fancyGraphics = value.isFancy(),
+                                (opts, value) -> { opts.fancyGraphics = value.isFancy();
+                                    SettingsManager.graphicsUpdated(); },
                                 opts -> GraphicsMode.fromBoolean(opts.fancyGraphics))
                         .setImpact(OptionImpact.HIGH)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)

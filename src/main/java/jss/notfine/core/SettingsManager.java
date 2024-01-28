@@ -85,7 +85,7 @@ public class SettingsManager {
         //Do not re-enable, see MixinBlockLeaves workaround for Angelica/Sodium style menus.
         //mc.renderGlobal.loadRenderers();
         LeavesQuality value = (LeavesQuality)Settings.MODE_LEAVES.option.getStore();
-        leavesOpaque = value == LeavesQuality.FANCY || (value == LeavesQuality.DEFAULT && !mc.gameSettings.fancyGraphics);
+        leavesOpaque = value == LeavesQuality.FAST || (value == LeavesQuality.DEFAULT && !mc.gameSettings.fancyGraphics);
         Blocks.leaves.setGraphicsLevel(!leavesOpaque);
         Blocks.leaves2.setGraphicsLevel(!leavesOpaque);
     }
