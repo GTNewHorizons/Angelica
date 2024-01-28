@@ -230,7 +230,7 @@ public class GLStateManager {
         };
     }
 
-    private static void glGetBoolean(int pname, ByteBuffer params) {
+    public static void glGetBoolean(int pname, ByteBuffer params) {
         if(GLStateManager.BYPASS_CACHE) {
             GL11.glGetBoolean(pname, params);
             return;
