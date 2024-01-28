@@ -31,17 +31,17 @@ public abstract class MixinBlockLeaves extends BlockLeavesBase {
             //A mod dev had no idea what they were doing.
             return getIcon(side, world.getBlockMetadata(x, y, z));
         }
-        int renderMode = ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()).ordinal() - 1;
         int maskedMeta = world.getBlockMetadata(x, y, z) & 3;
-        renderMode = switch (renderMode) {
-            case -1 -> SettingsManager.leavesOpaque ? 1 : 0;
-            case 4 -> world.getBlock(
+        int renderMode;
+        if(Settings.MODE_LEAVES.option.getStore() == LeavesQuality.SHELLED_FAST) {
+            renderMode = world.getBlock(
                 x + Facing.offsetsXForSide[side],
                 y + Facing.offsetsYForSide[side],
                 z + Facing.offsetsZForSide[side]
             ) instanceof ILeafBlock ? 1 : 0;
-            default -> renderMode > 1 ? 0 : renderMode;
-        };
+        } else {
+            renderMode = SettingsManager.leavesOpaque ? 1 : 0;
+        }
         maskedMeta = maskedMeta >= field_150129_M[renderMode].length ? 0 : maskedMeta;
         return field_150129_M[renderMode][maskedMeta];
     }
