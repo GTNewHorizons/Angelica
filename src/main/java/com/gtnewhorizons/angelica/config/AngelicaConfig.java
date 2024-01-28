@@ -83,11 +83,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeTextureLoading;
 
-    @Config.Comment("Optimize slow glGetInteger in Jabba w/ Nvidia Drivers")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean optimizeJabbaGetInteger;
-
     @Config.Comment("Fix thread-safety in lotrs rendering")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
