@@ -343,6 +343,7 @@ public class BatchingFontRenderer {
             stringOffset = MathHelper.clamp_int(stringOffset, 0, totalStringLength);
             stringLength = MathHelper.clamp_int(stringLength, 0, totalStringLength - stringOffset);
             if (stringLength <= 0) {
+                this.endBatch();
                 return 0;
             }
             final int stringEnd = stringOffset + stringLength;
