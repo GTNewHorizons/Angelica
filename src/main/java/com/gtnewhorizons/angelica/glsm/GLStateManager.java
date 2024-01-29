@@ -598,7 +598,7 @@ public class GLStateManager {
     }
 
     public static void glDeleteTextures(IntBuffer ids) {
-        for(int i = 0; i < ids.capacity(); i++) {
+        for(int i = 0; i < ids.remaining(); i++) {
             onDeleteTexture(ids.get(i));
         }
 
