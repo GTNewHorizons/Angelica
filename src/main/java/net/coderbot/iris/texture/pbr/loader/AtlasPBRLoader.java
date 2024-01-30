@@ -74,7 +74,10 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         }
 
         if (normalAtlas != null) {
-            if (normalAtlas.tryUpload(atlasWidth, atlasHeight, mipLevel, ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
+            if (normalAtlas.tryUpload(atlasWidth,
+                atlasHeight,
+                mipLevel,
+                ((TextureMapAccessor) texMap).getAnisotropicFiltering())) {
                 pbrTextureConsumer.acceptNormalTexture(normalAtlas);
             }
         }
