@@ -79,6 +79,7 @@ public enum Mixins {
             ,"shaders.startup.MixinInitRenderer"
             ,"shaders.startup.MixinAbstractTexture"
             ,"shaders.startup.MixinTextureAtlasSprite"
+            ,"shaders.startup.MixinTextureMap"
         )
     ),
 
