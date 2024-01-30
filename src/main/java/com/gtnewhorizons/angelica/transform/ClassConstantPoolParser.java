@@ -61,6 +61,16 @@ public class ClassConstantPoolParser {
      * for
      */
     public boolean find(byte[] basicClass) {
+        return find(basicClass, false);
+    }
+    /**
+     * Returns true if the constant pool of the class represented by this byte array contains one of the Strings we are looking
+     * for.
+     *
+     * @param prefixes If true, it is enough for a constant pool entry to <i>start</i> with one of our Strings to count as a match -
+     * otherwise, the entire String has to match.
+     */
+    public boolean find(byte[] basicClass, boolean prefixes) {
         if (basicClass == null || basicClass.length == 0) {
             return false;
         }
@@ -92,9 +102,9 @@ public class ClassConstantPoolParser {
                     final int strLen = readUnsignedShort(index + 1, basicClass);
                     size = 3 + strLen;
                     for (byte[] bytes : BYTES_TO_SEARCH) {
-                        if (strLen == bytes.length) {
+                        if (prefixes ? strLen >= bytes.length : strLen == bytes.length) {
                             boolean found = true;
-                            for (int j = index + 3; j < index + 3 + strLen; j++) {
+                            for (int j = index + 3; j < index + 3 + bytes.length; j++) {
                                 if (basicClass[j] != bytes[j - (index + 3)]) {
                                     found = false;
                                     break;

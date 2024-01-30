@@ -11,6 +11,7 @@ import java.util.List;
 
 public class BlockTransformer implements IClassTransformer {
     public static final String BlockClass = "net/minecraft/block/Block";
+    public static final String BlockPackage = BlockClass.substring(0, BlockClass.lastIndexOf('/') + 1);
     private static final String BlockClassFriendly = BlockClass.replace('/', '.');
     public static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
         Pair.of("minX", "field_149759_B"),

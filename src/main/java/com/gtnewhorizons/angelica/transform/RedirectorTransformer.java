@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 
 import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockBoundsFields;
 import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockClass;
+import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockPackage;
 
 /**
  * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
@@ -63,8 +64,16 @@ public class RedirectorTransformer implements IClassTransformer {
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
     );
+    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */ 
+    private static final List<String> VanillaBlockExclusions = Arrays.asList(
+        "net/minecraft/block/IGrowable",
+        "net/minecraft/block/ITileEntityProvider",
+        "net/minecraft/block/BlockEventData",
+        "net/minecraft/block/BlockSourceImpl",
+        "net/minecraft/block/material/"
+    );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockClass,
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockPackage,
         Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
@@ -76,7 +85,7 @@ public class RedirectorTransformer implements IClassTransformer {
     );
     private static int remaps = 0;
 
-    private static final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -152,7 +161,22 @@ public class RedirectorTransformer implements IClassTransformer {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
-        blockSubclasses.add(BlockClass);
+    }
+    
+    private boolean isVanillaBlockSubclass(String className) {
+        if(className.startsWith(BlockTransformer.BlockPackage)) {
+            for(String exclusion : VanillaBlockExclusions) {
+                if(className.startsWith(exclusion)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    private boolean isBlockSubclass(String className) {
+        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
     @Override
@@ -167,7 +191,7 @@ public class RedirectorTransformer implements IClassTransformer {
             }
         }
 
-        if (!cstPoolParser.find(basicClass)) {
+        if (!cstPoolParser.find(basicClass, true)) {
             return basicClass;
         }
 
@@ -176,19 +200,17 @@ public class RedirectorTransformer implements IClassTransformer {
         cr.accept(cn, 0);
 
         // Track subclasses of Block
-        if (blockSubclasses.contains(cn.superName)) {
-            blockSubclasses.add(cn.name);
+        if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
+            moddedBlockSubclasses.add(cn.name);
             cstPoolParser.addString(cn.name);
         }
 
         // Check if this class shadows any fields of the parent class
-        if(blockSubclasses.contains(cn.name)) {
+        if(moddedBlockSubclasses.contains(cn.name)) {
             // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
             // superclass
             boolean doWeShadow;
-            if(cn.name.equals(BlockClass)) {
-                doWeShadow = false; // by definition
-            } else if(blockOwnerExclusions.contains(cn.superName)) {
+            if(blockOwnerExclusions.contains(cn.superName)) {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
@@ -274,7 +296,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(!blockOwnerExclusions.contains(fNode.owner) && blockSubclasses.contains(fNode.owner) && AngelicaConfig.enableSodium) {
+                    if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && AngelicaConfig.enableSodium) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
