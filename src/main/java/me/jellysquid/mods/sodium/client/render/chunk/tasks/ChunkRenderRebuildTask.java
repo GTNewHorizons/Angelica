@@ -201,13 +201,15 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         if(hasMainThreadBlocks) {
             // Render the other blocks on the main thread
-            try {
-                CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData, mainThreadBlocks), AngelicaRenderQueue.executor()).get();
-            } catch(InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return null;
-            } catch(ExecutionException e) {
-                throw new RuntimeException(e);
+            var future = CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData, mainThreadBlocks), AngelicaRenderQueue.executor());
+            while(!future.isDone() && !cancellationSource.isCancelled()) {
+                try {
+                    future.get();
+                } catch(InterruptedException e) {
+                    // go around and check cancellation
+                } catch(ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
             }
             // Check if cancellation happened during that, so we don't render an incomplete chunk
             if(cancellationSource.isCancelled()) return null;
