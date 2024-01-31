@@ -38,7 +38,7 @@ public class MixinRenderingRegistry implements IRenderingRegistryExt {
                         // Won't work with non-default constructors, use ThreadSafeISBRHFactory instead
                         return mainThreadHandler.getClass().getDeclaredConstructor().newInstance();
                     } catch (InstantiationException | IllegalAccessException | NoSuchMethodException e) {
-                        throw new RuntimeException();
+                        throw new RuntimeException(e);
                     } catch(InvocationTargetException e) {
                         throw new RuntimeException(e.getCause());
                     }
