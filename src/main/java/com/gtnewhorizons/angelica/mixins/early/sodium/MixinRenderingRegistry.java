@@ -20,7 +20,6 @@ import java.util.Map;
 public class MixinRenderingRegistry implements IRenderingRegistryExt {
     @Shadow private Map<Integer, ISimpleBlockRenderingHandler> blockRenderers;
 
-//    private Map<Class<?>, ThreadLocal<?>> THREAD_LOCAL_MAP = new Object2ObjectOpenHashMap<>();
     private ThreadLocal<Map<Class<?>, Object>> THREAD_LOCAL_MAP = ThreadLocal.withInitial(Reference2ObjectOpenHashMap::new);
     @Override
     public ISimpleBlockRenderingHandler getISBRH(int modelId) {
