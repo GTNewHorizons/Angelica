@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.rendering;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 
 /**
- * Marks an ISBRH as thread-safe using a thread local instance. Use this when your ISBRH uses a non-default constructor.
+ * Marks an ISBRH as thread-safe using a thread local instance, allowing Angelica to run it off-thread.
+ * Use this when your ISBRH uses a non-default constructor.
  * <p>To avoid a hard dependency on Angelica, you will likely want to mark this as an optional interface using:</p>
  * <pre>
  * @Optional.Interface(modid = "angelica", iface = "com.gtnewhorizons.angelica.rendering.IThreadSafeISBRH")
