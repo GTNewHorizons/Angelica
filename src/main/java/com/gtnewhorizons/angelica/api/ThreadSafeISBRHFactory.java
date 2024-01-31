@@ -7,7 +7,7 @@ import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
  * Use this when your ISBRH uses a non-default constructor.
  * <p>To avoid a hard dependency on Angelica, you will likely want to mark this as an optional interface using:</p>
  * <pre>
- * @Optional.Interface(modid = "angelica", iface = "com.gtnewhorizons.angelica.rendering.ThreadSafeISBRHFactory")
+ * @Optional.Interface(modid = "angelica", iface = "com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory")
  * </pre>
  * 
  * <p><b>Notes</b></p>
