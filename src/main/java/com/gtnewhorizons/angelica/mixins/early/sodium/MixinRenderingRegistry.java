@@ -3,7 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
 import com.gtnewhorizons.angelica.rendering.IThreadSafeISBRH;
-import com.gtnewhorizons.angelica.rendering.ThreadLocalISBRH;
+import com.gtnewhorizons.angelica.rendering.ThreadSafeISBRH;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
@@ -32,17 +32,21 @@ public class MixinRenderingRegistry implements IRenderingRegistryExt {
         // Get the main thread handler
         final ISimpleBlockRenderingHandler mainThreadHandler = original.call(instance, modelId);
         if(Thread.currentThread() != GLStateManager.getMainThread()) {
-            if (mainThreadHandler.getClass().isAnnotationPresent(ThreadLocalISBRH.class)) {
-                return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> {
-                    try {
-                        // Won't work with non-default constructors, use IThreadSafeISBRH instead
-                        return mainThreadHandler.getClass().getDeclaredConstructor().newInstance();
-                    } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            } else if (mainThreadHandler.getClass().isInstance(IThreadSafeISBRH.class)) {
-                return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> ((IThreadSafeISBRH) mainThreadHandler).newInstance());
+            ThreadSafeISBRH[] annotations = mainThreadHandler.getClass().getAnnotationsByType(ThreadSafeISBRH.class);
+            if (annotations.length == 1) {
+                ThreadSafeISBRH annotation = annotations[0];
+                if(annotation.instanced()) {
+                    return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> {
+                        try {
+                            // Won't work with non-default constructors, use IThreadSafeISBRH instead
+                            return mainThreadHandler.getClass().getDeclaredConstructor().newInstance();
+                        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } else {
+                    return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> ((IThreadSafeISBRH) mainThreadHandler).newInstance());
+                }
             }
         }
         return mainThreadHandler;
