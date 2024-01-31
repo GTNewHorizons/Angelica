@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.interfaces.IThreadSafeISBRH;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
+import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.ComparableVersion;
@@ -39,8 +40,14 @@ public class AngelicaBlockSafetyRegistry {
     }
 
     private static boolean populateCanRenderOffThread(Block block, Reference2BooleanMap<Block> map) {
-        @SuppressWarnings("deprecation")
-        final boolean canBeOffThread = map == ISBRH_SAFETY_MAP ? ((IRenderingRegistryExt)RenderingRegistry.instance()).getISBRH(block.getRenderType()) instanceof IThreadSafeISBRH : !(block.getClass().getName().startsWith("gregtech."));
+        final boolean canBeOffThread;
+        if(map == ISBRH_SAFETY_MAP) {
+            @SuppressWarnings("deprecation")
+            final ISimpleBlockRenderingHandler isbrh = ((IRenderingRegistryExt)RenderingRegistry.instance()).getISBRH(block.getRenderType());
+            canBeOffThread = isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class) || isbrh.getClass().isAnnotationPresent(ThreadLocalISBRH.class);
+         } else {
+            canBeOffThread = !(block.getClass().getName().startsWith("gregtech."));
+        }
 
         final long stamp = LOCK.writeLock();
 
