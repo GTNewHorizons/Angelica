@@ -1,11 +1,8 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.interfaces.IThreadSafeISBRH;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.versioning.ComparableVersion;
 import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Reference2BooleanOpenHashMap;
 import net.minecraft.block.Block;
@@ -44,7 +41,9 @@ public class AngelicaBlockSafetyRegistry {
         if(map == ISBRH_SAFETY_MAP) {
             @SuppressWarnings("deprecation")
             final ISimpleBlockRenderingHandler isbrh = ((IRenderingRegistryExt)RenderingRegistry.instance()).getISBRH(block.getRenderType());
-            canBeOffThread = isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class) || isbrh.getClass().isAnnotationPresent(ThreadLocalISBRH.class);
+            canBeOffThread = isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class)
+                || isbrh.getClass().isAnnotationPresent(ThreadLocalISBRH.class)
+                || isbrh instanceof IThreadSafeISBRH;
          } else {
             canBeOffThread = !(block.getClass().getName().startsWith("gregtech."));
         }
