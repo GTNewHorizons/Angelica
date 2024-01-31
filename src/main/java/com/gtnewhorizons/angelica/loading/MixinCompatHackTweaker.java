@@ -20,9 +20,17 @@ public class MixinCompatHackTweaker implements ITweaker {
     public static final boolean DISABLE_OPTIFINE_AND_FASTCRAFT = true;
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
+        verifyDependencies();
+        
         if(DISABLE_OPTIFINE_AND_FASTCRAFT) {
             LOGGER.info("Disabling Optifine and Fastcraft (if present)");
             disableOptifineAndFastcraft();
+        }
+    }
+    
+    private void verifyDependencies() {
+        if(MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
+            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
         }
     }
 

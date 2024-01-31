@@ -7,6 +7,7 @@
 
 
 # Required Dependencies
+* [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.14
 * [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.2.1
 
 # Known (temporary) Incompatibilities
