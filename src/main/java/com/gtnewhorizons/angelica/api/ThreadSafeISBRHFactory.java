@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.rendering;
+package com.gtnewhorizons.angelica.api;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 

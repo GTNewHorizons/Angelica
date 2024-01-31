@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.rendering;
+package com.gtnewhorizons.angelica.api;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;

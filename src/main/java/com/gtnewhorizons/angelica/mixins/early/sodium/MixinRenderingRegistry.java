@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.api.ThreadSafeISBRH;
+import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
-import com.gtnewhorizons.angelica.rendering.ThreadSafeISBRHFactory;
-import com.gtnewhorizons.angelica.rendering.ThreadSafeISBRH;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
