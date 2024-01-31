@@ -22,7 +22,7 @@ public @interface ThreadSafeISBRH {
      *   <li>If this is set to <tt>true</tt>, a new instance will be created using the default constructor on each thread.</li>
      *   <ul>
      *     <li>Note: If your renderer requires arguments to the constructor, do <i>not</i> use this annotation;
-     *     instead use the {@link IThreadSafeISBRH} interface and implement the {@link IThreadSafeISBRH#newInstance} method. </li>
+     *     instead use the {@link ThreadSafeISBRHFactory} interface and implement the {@link ThreadSafeISBRHFactory#newInstance} method. </li>
      *   </ul>
      *   <li>If this is set to <tt>false</tt>, the main thread instance will be used on all threads.
      *   Use this option if your renderer class has no state, and can be safely used from multiple threads as is.</li>
@@ -31,5 +31,5 @@ public @interface ThreadSafeISBRH {
      *   </ul>
      * </ul>
      */
-    boolean instanced();
+    boolean perThread();
 }
