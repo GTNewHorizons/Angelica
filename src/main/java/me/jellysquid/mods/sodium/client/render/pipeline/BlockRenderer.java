@@ -19,6 +19,7 @@ import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -53,8 +54,6 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        final int rtype = block.getRenderType();
-
         if (block instanceof QuadProvider qBlock) {
 
             for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
@@ -66,22 +65,7 @@ public class BlockRenderer {
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
 
-                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
-                    rendered = true;
-                }
-            }
-        } else if (rtype == 0) {
-
-            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
-
-                this.random.setSeed(seed);
-                List<Quad> quads = CubeModel.INSTANCE.getQuads(world, pos, block, meta, dir, random);
-
-                if (quads.isEmpty()) continue;
-
-                if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-
-                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
+                    this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
             }
@@ -100,7 +84,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(world, pos, lighter, buffers, quads, facing, false);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, false);
                 }
 
                 if (!quads.isEmpty()) rendered = true;
@@ -112,7 +96,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(IBlockAccess world, BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
 
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
@@ -133,14 +117,13 @@ public class BlockRenderer {
             if (useSodiumLight)
                 lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
 
-            this.renderQuad(world, pos, sink, quad, light, renderData, useSodiumLight);
+            this.renderQuad(sink, quad, light, renderData, useSodiumLight);
         }
 
         sink.flush();
     }
 
-    // TODO: Colorization based on world and pos
-    private void renderQuad(IBlockAccess world, BlockPos pos, ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
+    private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
         final ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
@@ -151,7 +134,7 @@ public class BlockRenderer {
             final float y = quad.getY(srcIndex);
             final float z = quad.getZ(srcIndex);
 
-            int color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
+            final int color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);

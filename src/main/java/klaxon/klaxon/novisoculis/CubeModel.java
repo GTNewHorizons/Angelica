@@ -179,7 +179,14 @@ public class CubeModel implements QuadProvider {
         // all are float bits as ints
 
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
-        final int color = this.colorized[dir.ordinal()] ? block.colorMultiplier(world, pos.x, pos.y, pos.z) : 0xFFFFFFFF;
+        final int color;
+        if (this.colorized[dir.ordinal()]) {
+            final int c = block.colorMultiplier(world, pos.x, pos.y, pos.z);
+            final int r = (c >> 16) & 0xFF;
+            final int g = (c >> 8) & 0xFF;
+            final int b = c & 0xFF;
+            color = 0xFF << 24 | b << 16 | g << 8 | r;
+        } else { color = 0xFFFFFFFF; }
         this.flags.hasColor = this.colorized[dir.ordinal()];
 
         for (int vi = 0; vi < 4; ++vi) {
