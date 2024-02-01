@@ -43,8 +43,9 @@ public class AngelicaBlockSafetyRegistry {
         if(map == ISBRH_SAFETY_MAP) {
             @SuppressWarnings("deprecation")
             final ISimpleBlockRenderingHandler isbrh = ((IRenderingRegistryExt)RenderingRegistry.instance()).getISBRH(block.getRenderType());
-            canBeOffThread = isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class)
-                || isbrh instanceof ThreadSafeISBRHFactory;
+            canBeOffThread = isbrh != null
+                && (isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class)
+                || isbrh instanceof ThreadSafeISBRHFactory);
          } else {
             canBeOffThread = !(block.getClass().getName().startsWith("gregtech."));
         }
