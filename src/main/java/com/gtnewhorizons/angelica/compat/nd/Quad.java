@@ -32,7 +32,7 @@ public class Quad implements ModelQuadView {
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
-    private boolean hasColor;
+    public boolean hasColor;
     private boolean hasShade;
     private boolean hasNormals;
 
@@ -170,16 +170,12 @@ public class Quad implements ModelQuadView {
         vectorA.cross(vectorB, vectorC);
 
         normal = ModelQuadFacing.fromVector(vectorC);
+        this.face = ModelQuadFacing.toDirection(normal);
         try {
             this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
         } catch (NullPointerException e) {
             this.cachedFlags = 0;
         }
-    }
-
-    public void setState(int[] rawBuffer, int offset, BlockRenderer.Flags flags, int drawMode, float offsetX, float offsetY, float offsetZ, ForgeDirection face) {
-        this.face = face;
-        this.setState(rawBuffer, offset, flags, drawMode, offsetX, offsetY, offsetZ);
     }
 
     public static boolean isValid(Quad q) {
