@@ -28,6 +28,8 @@ public class MixinRenderingRegistry implements IRenderingRegistryExt {
 
     @WrapOperation(method = { "renderWorldBlock", "renderInventoryBlock", "renderItemAsFull3DBlock" }, at = @At(value="INVOKE", target="Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
     private Object getWrapped(Map<Integer, ISimpleBlockRenderingHandler> instance, Object modelId, Operation<ISimpleBlockRenderingHandler> original) {
+        // TODO: Move this to BlockRenderer
+
         // Get the main thread handler
         final ISimpleBlockRenderingHandler mainThreadHandler = original.call(instance, modelId);
         if(Thread.currentThread() != GLStateManager.getMainThread()) {
