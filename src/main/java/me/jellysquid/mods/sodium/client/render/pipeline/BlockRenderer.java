@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import klaxon.klaxon.novisoculis.QuadProvider;
 import klaxon.klaxon.novisoculis.CubeModel;
@@ -16,8 +17,10 @@ import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelB
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
+import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
@@ -36,6 +39,7 @@ public class BlockRenderer {
     private final QuadLightData cachedQuadLightData = new QuadLightData();
 
     private final boolean useAmbientOcclusion;
+    private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
@@ -51,6 +55,8 @@ public class BlockRenderer {
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = this.getLightingMode(block);
         final LightPipeline lighter = this.lighters.getLighter(mode);
+
+        this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         boolean rendered = false;
 
@@ -114,7 +120,7 @@ public class BlockRenderer {
 
             final QuadLightData light = this.cachedQuadLightData;
 
-            if (useSodiumLight)
+            if (useSodiumLight || this.useSeparateAo)
                 lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
 
             this.renderQuad(sink, quad, light, renderData, useSodiumLight);
@@ -125,7 +131,7 @@ public class BlockRenderer {
 
     private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
-        final ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
+        final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
@@ -134,12 +140,21 @@ public class BlockRenderer {
             final float y = quad.getY(srcIndex);
             final float z = quad.getZ(srcIndex);
 
-            final int color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
+            int color = quad.getColor(srcIndex);
+            final float ao = light.br[srcIndex];
+            if (useSeparateAo) {
+                color &= 0x00FFFFFF;
+                color |= ((int) (ao * 255.0f)) << 24;
+            } else {
+
+                color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
+            }
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int lm = (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
+            final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]) :
+                (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }
