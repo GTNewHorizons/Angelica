@@ -66,7 +66,7 @@ public class BlockRenderer {
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
 
-                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir));
+                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
             }
@@ -81,7 +81,7 @@ public class BlockRenderer {
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
 
-                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir));
+                    this.renderQuadList(world, pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
             }
@@ -100,7 +100,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(world, pos, lighter, buffers, quads, facing);
+                    this.renderQuadList(world, pos, lighter, buffers, quads, facing, false);
                 }
 
                 if (!quads.isEmpty()) rendered = true;
@@ -112,7 +112,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(IBlockAccess world, BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
+    private void renderQuadList(IBlockAccess world, BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
 
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
@@ -129,15 +129,18 @@ public class BlockRenderer {
                 continue;
 
             final QuadLightData light = this.cachedQuadLightData;
-            lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
 
-            this.renderQuad(world, pos, sink, quad, light, renderData);
+            if (useSodiumLight)
+                lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
+
+            this.renderQuad(world, pos, sink, quad, light, renderData, useSodiumLight);
         }
 
         sink.flush();
     }
 
-    private void renderQuad(IBlockAccess world, BlockPos pos, ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
+    // TODO: Colorization based on world and pos
+    private void renderQuad(IBlockAccess world, BlockPos pos, ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
         final ModelQuadOrientation order = ModelQuadOrientation.orient(light.br);
 
@@ -148,12 +151,12 @@ public class BlockRenderer {
             final float y = quad.getY(srcIndex);
             final float z = quad.getZ(srcIndex);
 
-            int color = ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]);
+            int color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int lm = light.lm[srcIndex];
+            final int lm = (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }

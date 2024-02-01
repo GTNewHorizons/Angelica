@@ -193,7 +193,7 @@ public class CubeModel implements QuadProvider {
             buf[i + 5] = color;
         }
 
-        face.setState(buf, 0, this.flags, GL_QUADS, 0, 0, 0, dir);
+        face.setState(buf, 0, this.flags, GL_QUADS, 0, 0, 0);
 
         return Arrays.asList(face);
     }
