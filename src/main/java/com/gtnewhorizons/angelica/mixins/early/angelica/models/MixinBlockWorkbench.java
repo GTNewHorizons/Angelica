@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(BlockWorkbench.class)
 public class MixinBlockWorkbench implements QuadProvider {
 
+    // TODO: Use modern model API
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
         return CubeModel.INSTANCE.get().getQuads(world, pos, block, meta, dir, random, quadPool);
     }

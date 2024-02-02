@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -153,8 +155,8 @@ public class CubeModel implements QuadProvider {
     public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(() -> new CubeModel(false));
     private final boolean[] colorized = new boolean[6];
     private final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
-    private static final List<Quad> EMPTY = Arrays.asList();
-    private final List<Quad> ONE = new ArrayList<>(1);
+    private static final List<Quad> EMPTY = ObjectImmutableList.of();
+    private final List<Quad> ONE = new ObjectArrayList<>(1);
 
     public CubeModel(boolean colorized) {
 
