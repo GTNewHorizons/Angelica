@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.proxy;
 import com.google.common.base.Objects;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
@@ -32,10 +33,13 @@ import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.WorldEvent;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
     final Minecraft mc = Minecraft.getMinecraft();
@@ -45,6 +49,16 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
     }
+
+
+    @SubscribeEvent
+    public void worldLoad(WorldEvent.Load event) {
+        if(GLStateManager.isRunningSplash()) {
+            GLStateManager.setRunningSplash(false);
+            LOGGER.info("World loaded - Enabling GLSM Cache");
+        }
+    }
+
 
     @Override
     public void init(FMLInitializationEvent event) {
@@ -74,7 +88,7 @@ public class ClientProxy extends CommonProxy {
                 ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"cachedNaturalBlocks");
             }
             catch (ClassNotFoundException e) {
-                AngelicaTweaker.LOGGER.error("Could net replace LOTR handle render code with thread safe version");
+                LOGGER.error("Could net replace LOTR handle render code with thread safe version");
             }
         }
     }
@@ -174,7 +188,7 @@ public class ClientProxy extends CommonProxy {
     public void onGuiOpen(GuiOpenEvent event) {
         if(!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
             gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
-            AngelicaTweaker.LOGGER.info("The game loaded in " + gameStartTime + " seconds.");
+            LOGGER.info("The game loaded in " + gameStartTime + " seconds.");
         }
     }
 
