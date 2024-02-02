@@ -28,6 +28,7 @@ import it.unimi.dsi.fastutil.ints.IntStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
@@ -122,10 +123,9 @@ public class GLStateManager {
     private static Runnable fogDensityListener = null;
 
     // Thread Checking
-    @Getter
-    private static final Thread MainThread = Thread.currentThread();
+    @Getter private static final Thread MainThread = Thread.currentThread();
     private static Thread CurrentThread = MainThread;
-    private static boolean runningSplash = false;
+    @Setter @Getter private static boolean runningSplash = false;
 
     private static int glListMode = 0;
     private static int glListId = -1;
@@ -163,6 +163,10 @@ public class GLStateManager {
         if (Thread.currentThread() != CurrentThread && !runningSplash) {
             LOGGER.info("Call from not the Current Thread! - " + Thread.currentThread().getName() + " Current thread: " + CurrentThread.getName());
         }
+    }
+
+    public static boolean shouldBypassCache() {
+        return BYPASS_CACHE || runningSplash;
     }
 
     // LWJGL Overrides
@@ -212,7 +216,7 @@ public class GLStateManager {
     }
 
     public static boolean glGetBoolean(int pname) {
-        if(GLStateManager.BYPASS_CACHE) {
+        if(shouldBypassCache()) {
             return GL11.glGetBoolean(pname);
         }
         return switch (pname) {
@@ -231,7 +235,7 @@ public class GLStateManager {
     }
 
     public static void glGetBoolean(int pname, ByteBuffer params) {
-        if(GLStateManager.BYPASS_CACHE) {
+        if(shouldBypassCache()) {
             GL11.glGetBoolean(pname, params);
             return;
         }
@@ -248,7 +252,7 @@ public class GLStateManager {
     }
 
     public static int glGetInteger(int pname) {
-        if(GLStateManager.BYPASS_CACHE) {
+        if(shouldBypassCache()) {
             return GL11.glGetInteger(pname);
         }
 
@@ -267,7 +271,7 @@ public class GLStateManager {
     }
 
     public static void glGetInteger(int pname, IntBuffer params) {
-        if(GLStateManager.BYPASS_CACHE) {
+        if(shouldBypassCache()) {
             GL11.glGetInteger(pname, params);
             return;
         }
@@ -279,7 +283,7 @@ public class GLStateManager {
     }
 
     public static void glGetFloat(int pname, FloatBuffer params) {
-        if(GLStateManager.BYPASS_CACHE) {
+        if(shouldBypassCache()) {
             GL11.glGetFloat(pname, params);
             return;
         }
@@ -342,7 +346,7 @@ public class GLStateManager {
             OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             return;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor) {
+        if (shouldBypassCache() || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor) {
             blendState.setSrcRgb(srcFactor);
             blendState.setDstRgb(dstFactor);
             GL11.glBlendFunc(srcFactor, dstFactor);
@@ -363,7 +367,7 @@ public class GLStateManager {
             srcAlpha = GL11.GL_ONE;
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
-        if (GLStateManager.BYPASS_CACHE || blendState.getSrcRgb() != srcRgb || blendState.getDstRgb() != dstRgb || blendState.getSrcAlpha()
+        if (shouldBypassCache() || blendState.getSrcRgb() != srcRgb || blendState.getDstRgb() != dstRgb || blendState.getSrcAlpha()
             != srcAlpha || blendState.getDstAlpha() != dstAlpha) {
             blendState.setSrcRgb(srcRgb);
             blendState.setDstRgb(dstRgb);
@@ -377,8 +381,7 @@ public class GLStateManager {
     }
 
     public static void glDepthFunc(int func) {
-        // Hacky workaround for now, need to figure out why this isn't being applied...
-        if (GLStateManager.BYPASS_CACHE || func != depthState.getFunc() || GLStateManager.runningSplash) {
+        if (shouldBypassCache() || func != depthState.getFunc() ) {
             depthState.setFunc(func);
             GL11.glDepthFunc(func);
         }
@@ -456,7 +459,7 @@ public class GLStateManager {
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
-        if (GLStateManager.BYPASS_CACHE || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha()) {
+        if (shouldBypassCache() || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha()) {
             color.setRed(red);
             color.setGreen(green);
             color.setBlue(blue);
@@ -479,7 +482,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (GLStateManager.BYPASS_CACHE || red != colorMask.red || green != colorMask.green || blue != colorMask.blue || alpha != colorMask.alpha) {
+        if (shouldBypassCache() || red != colorMask.red || green != colorMask.green || blue != colorMask.blue || alpha != colorMask.alpha) {
             colorMask.red = red;
             colorMask.green = green;
             colorMask.blue = blue;
@@ -490,7 +493,7 @@ public class GLStateManager {
 
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != clearColor.getRed() || green != clearColor.getGreen() || blue != clearColor.getBlue() || alpha != clearColor.getAlpha()) {
+        if (shouldBypassCache() || red != clearColor.getRed() || green != clearColor.getGreen() || blue != clearColor.getBlue() || alpha != clearColor.getAlpha()) {
             clearColor.setRed(red);
             clearColor.setGreen(green);
             clearColor.setBlue(blue);
@@ -535,7 +538,7 @@ public class GLStateManager {
     // Textures
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture) {
+        if (shouldBypassCache() || getActiveTextureUnit() != newTexture) {
             activeTextureUnit.popInt();
             activeTextureUnit.push(newTexture);
             GL13.glActiveTexture(texture);
@@ -544,7 +547,7 @@ public class GLStateManager {
 
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (GLStateManager.BYPASS_CACHE || getActiveTextureUnit() != newTexture) {
+        if (shouldBypassCache() || getActiveTextureUnit() != newTexture) {
             activeTextureUnit.popInt();
             activeTextureUnit.push(newTexture);
             ARBMultitexture.glActiveTextureARB(texture);
@@ -568,7 +571,7 @@ public class GLStateManager {
 
         final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
 
-        if (GLStateManager.BYPASS_CACHE || textureUnit.getBinding() != texture || runningSplash) {
+        if (shouldBypassCache() || textureUnit.getBinding() != texture) {
             GL11.glBindTexture(target, texture);
             textureUnit.setBinding(texture);
             TextureTracker.INSTANCE.onBindTexture(texture);
@@ -741,7 +744,7 @@ public class GLStateManager {
     }
 
     public static void fogColor(float red, float green, float blue, float alpha) {
-        if (GLStateManager.BYPASS_CACHE || red != fogState.getFogColor().x || green != fogState.getFogColor().y || blue != fogState.getFogColor().z || alpha != fogState.getFogAlpha()) {
+        if (shouldBypassCache() || red != fogState.getFogColor().x || green != fogState.getFogColor().y || blue != fogState.getFogColor().z || alpha != fogState.getFogAlpha()) {
             fogState.getFogColor().set(red, green, blue);
             fogState.setFogAlpha(alpha);
             fogState.getFogColorBuffer().clear();
@@ -790,7 +793,7 @@ public class GLStateManager {
     }
 
     public static void glShadeModel(int mode) {
-        if (GLStateManager.BYPASS_CACHE || modelShadeMode != mode) {
+        if (shouldBypassCache() || modelShadeMode != mode) {
             modelShadeMode = mode;
             GL11.glShadeModel(mode);
         }
@@ -803,10 +806,6 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
         }
-    }
-
-    public static void setRunningSplash(boolean runningSplash) {
-        GLStateManager.runningSplash = runningSplash;
     }
 
     public static void makeCurrent(Drawable drawable) throws LWJGLException {
@@ -1030,37 +1029,37 @@ public class GLStateManager {
 
 
     public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D) {
             return true;
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
         switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> {
-                if(info.getMinFilter() == param) return false;
+                if(info.getMinFilter() == param && !shouldBypassCache()) return false;
                 info.setMinFilter(param);
             }
             case GL11.GL_TEXTURE_MAG_FILTER -> {
-                if(info.getMagFilter() == param) return false;
+                if(info.getMagFilter() == param && !shouldBypassCache()) return false;
                 info.setMagFilter(param);
             }
             case GL11.GL_TEXTURE_WRAP_S -> {
-                if(info.getWrapS() == param) return false;
+                if(info.getWrapS() == param && !shouldBypassCache()) return false;
                 info.setWrapS(param);
             }
             case GL11.GL_TEXTURE_WRAP_T -> {
-                if(info.getWrapT() == param) return false;
+                if(info.getWrapT() == param && !shouldBypassCache()) return false;
                 info.setWrapT(param);
             }
             case GL12.GL_TEXTURE_MAX_LEVEL -> {
-                if(info.getMaxLevel() == param) return false;
+                if(info.getMaxLevel() == param && !shouldBypassCache()) return false;
                 info.setMaxLevel(param);
             }
             case GL12.GL_TEXTURE_MIN_LOD -> {
-                if(info.getMinLod() == param) return false;
+                if(info.getMinLod() == param && !shouldBypassCache()) return false;
                 info.setMinLod(param);
             }
             case GL12.GL_TEXTURE_MAX_LOD -> {
-                if(info.getMaxLod() == param) return false;
+                if(info.getMaxLod() == param && !shouldBypassCache()) return false;
                 info.setMaxLod(param);
             }
         }
@@ -1069,7 +1068,7 @@ public class GLStateManager {
 
 
     public static void glTexParameter(int target, int pname, IntBuffer params) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+        if (target != GL11.GL_TEXTURE_2D || params.remaining() != 1 ) {
             GL11.glTexParameter(target, pname, params);
             return;
         }
@@ -1079,7 +1078,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameter(int target, int pname, FloatBuffer params) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE || params.remaining() != 1 ) {
+        if (target != GL11.GL_TEXTURE_2D || params.remaining() != 1 ) {
             GL11.glTexParameter(target, pname, params);
             return;
         }
@@ -1090,7 +1089,7 @@ public class GLStateManager {
 
 
     public static void glTexParameteri(int target, int pname, int param) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D) {
             GL11.glTexParameteri(target, pname, param);
             return;
         }
@@ -1101,17 +1100,17 @@ public class GLStateManager {
 
 
     public static boolean updateTexParameterfCache(int target, int texture, int pname, float param) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D) {
             return true;
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
         switch (pname) {
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
-                if(info.getMaxAnisotropy() == param) return false;
+                if(info.getMaxAnisotropy() == param && !shouldBypassCache()) return false;
                 info.setMaxAnisotropy(param);
             }
             case GL14.GL_TEXTURE_LOD_BIAS -> {
-                if(info.getLodBias() == param) return false;
+                if(info.getLodBias() == param && !shouldBypassCache()) return false;
                 info.setLodBias(param);
             }
         }
@@ -1119,7 +1118,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameterf(int target, int pname, float param) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D) {
             GL11.glTexParameterf(target, pname, param);
             return;
         }
@@ -1143,14 +1142,14 @@ public class GLStateManager {
         };
     }
     public static int glGetTexParameteri(int target, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexParameteri(target, pname);
         }
         return getTexParameterOrDefault(getBoundTexture(), pname, () -> GL11.glGetTexParameteri(target, pname));
     }
 
     public static float glGetTexParameterf(int target, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexParameterf(target, pname);
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
@@ -1163,7 +1162,7 @@ public class GLStateManager {
     }
 
     public static int glGetTexLevelParameteri(int target, int level, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || GLStateManager.BYPASS_CACHE) {
+        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexLevelParameteri(target, level, pname);
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());

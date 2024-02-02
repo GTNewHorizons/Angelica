@@ -13,9 +13,4 @@ public abstract class MixinSplashProgress {
         GLStateManager.setRunningSplash(true);
     }
 
-    @Inject(method = "clearGL", at = @At(value = "INVOKE", target = "Ljava/util/concurrent/locks/Lock;unlock()V", shift = At.Shift.BEFORE))
-    private void angelica$endSplash(CallbackInfo ci) {
-        GLStateManager.setRunningSplash(false);
-    }
-
 }
