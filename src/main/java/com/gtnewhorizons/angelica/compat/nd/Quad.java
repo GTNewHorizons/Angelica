@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
@@ -32,7 +33,7 @@ public class Quad implements ModelQuadView {
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
-    public boolean hasColor;
+    private boolean hasColor;
     private boolean hasShade;
     private boolean hasNormals;
 
@@ -171,11 +172,7 @@ public class Quad implements ModelQuadView {
 
         normal = ModelQuadFacing.fromVector(vectorC);
         this.face = ModelQuadFacing.toDirection(normal);
-        try {
-            this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
-        } catch (NullPointerException e) {
-            this.cachedFlags = 0;
-        }
+        this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
     }
 
     public static boolean isValid(Quad q) {

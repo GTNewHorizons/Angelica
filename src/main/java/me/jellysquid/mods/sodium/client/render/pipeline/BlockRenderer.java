@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -42,6 +43,8 @@ public class BlockRenderer {
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
 
+    private final ObjectPooler<Quad> quadPool = new ObjectPooler<>(Quad::new);
+
 
     public BlockRenderer(LightPipelineProvider lighters) {
         this.lighters = lighters;
@@ -63,7 +66,7 @@ public class BlockRenderer {
             for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
 
                 this.random.setSeed(seed);
-                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random);
+                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, quadPool);
 
                 if (quads.isEmpty()) continue;
 

@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.models;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -148,24 +150,28 @@ public class CubeModel implements QuadProvider {
     }
 
 
-    public static final CubeModel INSTANCE = new CubeModel(false);
+    public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(() -> new CubeModel(false));
     private final boolean[] colorized = new boolean[6];
     private final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
+    private static final List<Quad> EMPTY = Arrays.asList();
+    private final List<Quad> ONE = new ArrayList<>(1);
 
     public CubeModel(boolean colorized) {
 
         Arrays.fill(this.colorized, colorized);
+        this.ONE.add(null);
     }
 
     public CubeModel(boolean[] colorized) {
 
         System.arraycopy(colorized, 0, this.colorized, 0, 6);
+        this.ONE.add(null);
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random) {
+    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
 
-        final Quad face = new Quad();
+        final Quad face = quadPool.getInstance();
         final int[] buf = Arrays.copyOf(initBufs[dir.ordinal()], 32); // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
         // Format:
         // x
@@ -203,6 +209,15 @@ public class CubeModel implements QuadProvider {
 
         face.setState(buf, 0, this.flags, GL_QUADS, 0, 0, 0);
 
-        return Arrays.asList(face);
+        // CubeModel is solid all over, and thus doesn't need to do this
+        // However, you need to drop deleted quads in proper model code
+        /*if (face.deleted) {
+
+            quadPool.releaseInstance(face);
+            return EMPTY;
+        }*/
+
+        ONE.set(0, face);
+        return ONE;
     }
 }
