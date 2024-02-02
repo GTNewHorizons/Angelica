@@ -9,10 +9,9 @@ public enum Axis {
 
     public static Axis fromDirection(ModelQuadFacing dir) {
         return switch (dir) {
-            case DOWN, UP -> Y;
+            case UP, DOWN, UNASSIGNED -> Y;
             case NORTH, SOUTH -> Z;
             case WEST, EAST -> X;
-            default -> null;
         };
 
     }
