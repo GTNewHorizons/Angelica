@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.models.CubeModel;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
@@ -44,6 +45,7 @@ public class BlockRenderer {
     private final BlockOcclusionCache occlusionCache;
 
     private final ObjectPooler<Quad> quadPool = new ObjectPooler<>(Quad::new);
+    // TODO: Use modern model API, and store them here
 
 
     public BlockRenderer(LightPipelineProvider lighters) {
