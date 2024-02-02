@@ -459,10 +459,10 @@ public enum Mixins {
         .setApplyIf(() -> AngelicaConfig.injectQPRendering)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
-            "novisoculis.MixinBlockStone",
-            "novisoculis.MixinBlockAir",
-            "novisoculis.MixinBlockWorkbench",
-            "novisoculis.MixinBlockLeaves")),
+            "angelica.models.MixinBlockStone",
+            "angelica.models.MixinBlockAir",
+            "angelica.models.MixinBlockWorkbench",
+            "angelica.models.MixinBlockLeaves")),
 
     ;
 

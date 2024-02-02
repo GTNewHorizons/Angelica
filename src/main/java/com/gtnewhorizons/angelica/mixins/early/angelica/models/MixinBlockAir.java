@@ -1,11 +1,11 @@
-package com.gtnewhorizons.angelica.mixins.early.novisoculis;
+package com.gtnewhorizons.angelica.mixins.early.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.util.List;
 import java.util.Random;
-import klaxon.klaxon.novisoculis.QuadProvider;
+import com.gtnewhorizons.angelica.api.QuadProvider;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
 import net.minecraft.world.IBlockAccess;
