@@ -1,4 +1,4 @@
-package klaxon.klaxon.novisoculis;
+package com.gtnewhorizons.angelica.api;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;

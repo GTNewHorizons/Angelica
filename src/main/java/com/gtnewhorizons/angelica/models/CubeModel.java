@@ -1,5 +1,6 @@
-package klaxon.klaxon.novisoculis;
+package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import java.util.Arrays;
