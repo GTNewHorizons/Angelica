@@ -55,7 +55,7 @@ public class Feature {
             , GLStateManager.clearColor // Color mode and index mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
-            // Current RGBA color
+              GLStateManager.color  // Current RGBA color
             // Current color index
             // Current normal vector
             // Current texture coordinates
