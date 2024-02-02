@@ -3,13 +3,13 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.glsm.stacks.Vector3dStack;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
-import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -45,8 +45,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     // Any offset we need to the Tesselator's offset!
     private final BlockPos offset = new BlockPos();
 
-    private final Vector3d storedTranslation = new Vector3d();
-    private boolean translationStored = false;
+    private final Vector3dStack storedTranslation = new Vector3dStack();
 
     public void setOffset(BlockPos pos) {
         this.offset.set(pos);
@@ -142,19 +141,17 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     }
 
     public void storeTranslation() {
-        if(translationStored) throw new IllegalStateException("Translation already stored!");
-        translationStored = true;
+        storedTranslation.push();
+
         this.storedTranslation.set(xOffset, yOffset, zOffset);
     }
 
     public void restoreTranslation() {
-        if(!translationStored) throw new IllegalStateException("Translation not stored!");
 
         xOffset = storedTranslation.x;
         yOffset = storedTranslation.y;
         zOffset = storedTranslation.z;
-        storedTranslation.zero();
-        translationStored = false;
+        storedTranslation.pop();
     }
 
     public static int createBrightness(int sky, int block) {
