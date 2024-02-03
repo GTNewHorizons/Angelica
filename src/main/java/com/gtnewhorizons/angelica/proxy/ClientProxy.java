@@ -90,10 +90,14 @@ public class ClientProxy extends CommonProxy {
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
     }
 
+    private long lastGLSMCheck = 0;
     @SubscribeEvent
     public void onKeypress(TickEvent.ClientTickEvent event) {
         if(event.phase == TickEvent.Phase.END && glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode())) {
-            OpenGLDebugging.checkGLSM();
+            if(mc.systemTime - lastGLSMCheck > 500) {
+                lastGLSMCheck = mc.systemTime;
+                OpenGLDebugging.checkGLSM();
+            }
         }
     }
 
