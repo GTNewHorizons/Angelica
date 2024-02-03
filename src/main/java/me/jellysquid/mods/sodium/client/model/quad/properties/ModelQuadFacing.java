@@ -61,7 +61,7 @@ public enum ModelQuadFacing {
                 return WEST;
             }
         }
-        return UNASSIGNED;
+        return UP; // Default in 1.16.5
     }
 
     public ModelQuadFacing getOpposite() {
