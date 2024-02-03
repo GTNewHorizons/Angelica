@@ -4,15 +4,17 @@ import com.google.common.base.Objects;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
+import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
@@ -25,6 +27,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
@@ -34,6 +37,7 @@ import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
+import org.lwjgl.input.Keyboard;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
@@ -60,6 +64,7 @@ public class ClientProxy extends CommonProxy {
     }
 
 
+    private static KeyBinding glsmKeyBinding;
     @Override
     public void init(FMLInitializationEvent event) {
         if(AngelicaConfig.enableHudCaching) {
@@ -76,6 +81,24 @@ public class ClientProxy extends CommonProxy {
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
         }
+
+
+        FMLCommonHandler.instance().bus().register(this);
+        MinecraftForge.EVENT_BUS.register(this);
+
+        glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
+        ClientRegistry.registerKeyBinding(glsmKeyBinding);
+    }
+
+    private long lastGLSMCheck = 0;
+    @SubscribeEvent
+    public void onKeypress(TickEvent.ClientTickEvent event) {
+        if(event.phase == TickEvent.Phase.END && glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode())) {
+            if(mc.systemTime - lastGLSMCheck > 500) {
+                lastGLSMCheck = mc.systemTime;
+                OpenGLDebugging.checkGLSM();
+            }
+        }
     }
 
     @Override
@@ -88,7 +111,7 @@ public class ClientProxy extends CommonProxy {
                 ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"cachedNaturalBlocks");
             }
             catch (ClassNotFoundException e) {
-                LOGGER.error("Could net replace LOTR handle render code with thread safe version");
+                LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
     }

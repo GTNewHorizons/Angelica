@@ -64,7 +64,7 @@ public class RedirectorTransformer implements IClassTransformer {
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
     );
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */ 
+    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final List<String> VanillaBlockExclusions = Arrays.asList(
         "net/minecraft/block/IGrowable",
         "net/minecraft/block/ITileEntityProvider",
@@ -131,6 +131,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glGetTexParameteri")
             .add("glIsEnabled")
             .add("glLoadIdentity")
+            .add("glLoadMatrix")
             .add("glMatrixMode")
             .add("glMultMatrix")
             .add("glNewList")
@@ -162,7 +163,7 @@ public class RedirectorTransformer implements IClassTransformer {
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
     }
-    
+
     private boolean isVanillaBlockSubclass(String className) {
         if(className.startsWith(BlockTransformer.BlockPackage)) {
             for(String exclusion : VanillaBlockExclusions) {
@@ -174,7 +175,7 @@ public class RedirectorTransformer implements IClassTransformer {
         }
         return false;
     }
-    
+
     private boolean isBlockSubclass(String className) {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }

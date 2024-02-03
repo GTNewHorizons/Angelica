@@ -3,18 +3,25 @@ package com.gtnewhorizons.angelica.glsm.states;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
+import lombok.Getter;
+import org.joml.Matrix4fStack;
 import org.lwjgl.opengl.GL11;
 
 public class TextureUnitArray {
-    private TextureBindingStack[] bindings;
-    private BooleanStateStack[] states;
+    private final TextureBindingStack[] bindings;
+    private final BooleanStateStack[] states;
+    @Getter
+    public final Matrix4fStack[] textureMatricies;
 
     public TextureUnitArray() {
         bindings = new TextureBindingStack[GLStateManager.MAX_TEXTURE_UNITS];
         states = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        textureMatricies = new Matrix4fStack[GLStateManager.MAX_TEXTURE_UNITS];
+
         for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             bindings[i] = new TextureBindingStack();
             states[i] = new BooleanStateStack(GL11.GL_TEXTURE_2D);
+            textureMatricies[i] = new Matrix4fStack(GLStateManager.MAX_TEXTURE_STACK_DEPTH);
         }
     }
 
@@ -24,6 +31,10 @@ public class TextureUnitArray {
 
     public BooleanStateStack getTextureUnitStates(int index) {
         return states[index];
+    }
+
+    public Matrix4fStack getTextureUnitMatrix(int index) {
+        return textureMatricies[index];
     }
 
     @Override
