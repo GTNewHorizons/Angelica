@@ -961,6 +961,10 @@ public class GLStateManager {
         matrixMode.setMode(mode);
     }
 
+    public static void glLoadMatrix(FloatBuffer m) {
+        getMatrixStack().set(m);
+    }
+
     public static Matrix4fStack getMatrixStack() {
         switch (matrixMode.getMode()) {
             case GL11.GL_MODELVIEW -> {

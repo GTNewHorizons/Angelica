@@ -59,7 +59,7 @@ public class OpenGLDebugging {
                             GL11.glGetBoolean(gLconstant, params);
                         }
                         final StringBuilder out = new StringBuilder();
-                        for (int i = 0; i < params.remaining(); ++i) {
+                        for (int i = 0; i < params.capacity(); ++i) {
                             out.append(i == 0 ? "" : ", ").append(params.get(i));
                         }
                         return out.toString();
@@ -118,7 +118,7 @@ public class OpenGLDebugging {
         new GLproperty(GL11.GL_ALPHA_BITS, "GL_ALPHA_BITS", "Number of bits per alpha component in color buffers", "capability", GL_GET_INTEGERV),
         new GLproperty(GL11.GL_ALPHA_TEST, "GL_ALPHA_TEST", "Alpha test enabled", "color-buffer/enable", GL_IS_ENABLED),
         new GLproperty(GL11.GL_ALPHA_TEST_FUNC, "GL_ALPHA_TEST_FUNC", "Alpha test function", "color-buffer", GL_GET_INTEGERV),
-        new GLproperty(GL11.GL_ALPHA_TEST_REF, "GL_ALPHA_TEST_REF", "Alpha test reference value", "color-buffer", GL_GET_INTEGERV),
+        new GLproperty(GL11.GL_ALPHA_TEST_REF, "GL_ALPHA_TEST_REF", "Alpha test reference value", "color-buffer", GL_GET_FLOATV),
         new GLproperty(GL11.GL_AMBIENT, "GL_AMBIENT", "Ambient intensity of light i", "lighting", "glGetLightfv()"),
         new GLproperty(GL11.GL_AMBIENT, "GL_AMBIENT", "Ambient material color", "lighting", "glGetMaterialfv()"),
         new GLproperty(GL11.GL_ATTRIB_STACK_DEPTH, "GL_ATTRIB_STACK_DEPTH", "Attribute stack pointer", "current", GL_GET_INTEGERV),
