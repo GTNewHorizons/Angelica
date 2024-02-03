@@ -32,14 +32,14 @@ public class OpenGLDebugging {
     public class GLproperty {
 
         public GLproperty(int init_gLconstant, String init_name, String init_description, String init_category, String init_fetchCommand) {
-            gLconstant = init_gLconstant;
+            gLConstant = init_gLconstant;
             name = init_name;
             description = init_description;
             category = init_category;
             fetchCommand = init_fetchCommand;
         }
 
-        public int gLconstant;
+        public int gLConstant;
         public String name;
         public String description;
         public String category;
@@ -48,15 +48,15 @@ public class OpenGLDebugging {
         public String getAsString(boolean glsm) {
             switch(fetchCommand) {
                 case GL_IS_ENABLED:  {
-                    return "" + (glsm ? GLStateManager.glIsEnabled(gLconstant) : GL11.glIsEnabled(gLconstant));
+                    return "" + (glsm ? GLStateManager.glIsEnabled(gLConstant) : GL11.glIsEnabled(gLConstant));
                 }
                 case GL_GET_BOOLEANV:  {
-                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLconstant)) {
+                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
                         final ByteBuffer params = BufferUtils.createByteBuffer(16);
                         if(glsm) {
-                            GLStateManager.glGetBoolean(gLconstant, params);
+                            GLStateManager.glGetBoolean(gLConstant, params);
                         } else {
-                            GL11.glGetBoolean(gLconstant, params);
+                            GL11.glGetBoolean(gLConstant, params);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < params.capacity(); ++i) {
@@ -64,16 +64,16 @@ public class OpenGLDebugging {
                         }
                         return out.toString();
                     } else {
-                        return "" + (glsm ? GLStateManager.glGetBoolean(gLconstant) : GL11.glGetBoolean(gLconstant));
+                        return "" + (glsm ? GLStateManager.glGetBoolean(gLConstant) : GL11.glGetBoolean(gLConstant));
                     }
                 }
                 case GL_GET_INTEGERV:  {
-                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLconstant)) {
+                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
                         final IntBuffer params = BufferUtils.createIntBuffer(16);
                         if(glsm) {
-                            GLStateManager.glGetInteger(gLconstant, params);
+                            GLStateManager.glGetInteger(gLConstant, params);
                         } else {
-                            GL11.glGetInteger(gLconstant, params);
+                            GL11.glGetInteger(gLConstant, params);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < params.remaining(); ++i) {
@@ -81,16 +81,16 @@ public class OpenGLDebugging {
                         }
                         return out.toString();
                     } else {
-                        return "" + (glsm ? GLStateManager.glGetInteger(gLconstant) : GL11.glGetInteger(gLconstant));
+                        return "" + (glsm ? GLStateManager.glGetInteger(gLConstant) : GL11.glGetInteger(gLConstant));
                     }
                 }
                 case GL_GET_FLOATV: {
-                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLconstant)) {
+                    if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
                         final FloatBuffer params = BufferUtils.createFloatBuffer(16);
                         if(glsm) {
-                            GLStateManager.glGetFloat(gLconstant, params);
+                            GLStateManager.glGetFloat(gLConstant, params);
                         } else {
-                            GL11.glGetFloat(gLconstant, params);
+                            GL11.glGetFloat(gLConstant, params);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < params.remaining(); ++i) {
@@ -98,7 +98,7 @@ public class OpenGLDebugging {
                         }
                         return out.toString();
                     } else {
-                        return "" + (glsm ? GLStateManager.glGetFloat(gLconstant) : GL11.glGetFloat(gLconstant));
+                        return "" + (glsm ? GLStateManager.glGetFloat(gLConstant) : GL11.glGetFloat(gLConstant));
                     }
                 }
                 default: return "";
@@ -368,10 +368,10 @@ public class OpenGLDebugging {
     }
 
     public static void dumpStateToFile() {
-        dumpToFile((p) -> dumpState(p, false), "gl-dump-state.txt");
+        dumpToFile(p -> dumpState(p, false), "gl-dump-state.txt");
     }
     public static void dumpGLSMStateToFile() {
-        dumpToFile((p) -> dumpState(p, true), "glsm-dump-state.txt");
+        dumpToFile(p -> dumpState(p, true), "glsm-dump-state.txt");
     }
 
     public static void dumpState(boolean glsm) {
@@ -386,25 +386,34 @@ public class OpenGLDebugging {
     }
 
     public static void dumpIsEnabledToFile() {
-        dumpToFile(OpenGLDebugging::dumpIsEnabled, "gl-dump-enabled.txt");
+        dumpToFile(p -> dumpIsEnabled(p, false), "gl-dump-enabled.txt");
+    }
+
+    public static void dumpIsEnabledGLSMToFile() {
+        dumpToFile(p -> dumpIsEnabled(p, true), "gl-dump-enabled.txt");
     }
 
     public static void dumpIsEnabled() {
-        dumpIsEnabled(LINE_LOGGER);
+        dumpIsEnabled(LINE_LOGGER, false);
     }
 
-    public static void dumpIsEnabled(Consumer<String> printer) {
+    public static void dumpIsEnabledGLSM() {
+        dumpIsEnabled(LINE_LOGGER, true);
+    }
+
+    public static void dumpIsEnabled(Consumer<String> printer, boolean glsm) {
         for (int i = 0; i < instance.propertyList.length; ++i) {
-            if (instance.propertyList[i].fetchCommand.equals(GL_IS_ENABLED)) {
-                printer.accept(instance.propertyList[i].name + ":");
-                printer.accept("" + GL11.glIsEnabled(instance.propertyList[i].gLconstant));
-                printer.accept(" (" + instance.propertyList[i].description + ")");
+            final GLproperty gLProperty = instance.propertyList[i];
+            if (gLProperty.fetchCommand.equals(GL_IS_ENABLED)) {
+                printer.accept(gLProperty.name + ":");
+                printer.accept("" + gLProperty.getAsString(glsm));
+                printer.accept(" (" + gLProperty.description + ")");
             }
         }
     }
 
     public static void dumpTypeToFile(String type, boolean glsm) {
-        dumpToFile((p) -> dumpType(type, p, glsm), (glsm ? "glsm" : "gl") + "-dump-type-" + type + ".txt");
+        dumpToFile(p -> dumpType(type, p, glsm), (glsm ? "glsm" : "gl") + "-dump-type-" + type + ".txt");
     }
 
     public static void dumpType(String type, boolean glsm) {
@@ -413,11 +422,11 @@ public class OpenGLDebugging {
 
     public static void dumpType(String type, Consumer<String> printer, boolean glsm) {
         for (int i = 0; i < instance.propertyList.length; ++i) {
-            final GLproperty gLproperty = instance.propertyList[i];
-            if (gLproperty.category.equals(type)) {
-                printer.accept(gLproperty.name + ":");
-                printer.accept(gLproperty.getAsString(glsm));
-                printer.accept(" (" + gLproperty.description + ")");
+            final GLproperty gLProperty = instance.propertyList[i];
+            if (gLProperty.category.equals(type)) {
+                printer.accept(gLProperty.name + ":");
+                printer.accept(gLProperty.getAsString(glsm));
+                printer.accept(" (" + gLProperty.description + ")");
             }
         }
     }
