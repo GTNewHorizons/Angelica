@@ -404,7 +404,7 @@ public class OpenGLDebugging {
     }
 
     public static void dumpTypeToFile(String type, boolean glsm) {
-        dumpToFile((p) -> dumpType(type, p, glsm), "gl-dump-type-" + type + ".txt");
+        dumpToFile((p) -> dumpType(type, p, glsm), (glsm ? "glsm" : "gl") + "-dump-type-" + type + ".txt");
     }
 
     public static void dumpType(String type, boolean glsm) {
