@@ -86,18 +86,18 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_GRAVE, "Angelica Keybinds");
+        glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
     }
 
     @SubscribeEvent
-    public void onKeypress(InputEvent.KeyInputEvent event) {
-        if (glsmKeyBinding.isPressed()) {
+    public void onKeypress(TickEvent.ClientTickEvent event) {
+        if(event.phase == TickEvent.Phase.END && glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode())) {
             OpenGLDebugging.checkGLSM();
         }
     }
 
-            @Override
+    @Override
     public void postInit(FMLPostInitializationEvent event) {
         if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
             try {

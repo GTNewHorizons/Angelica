@@ -13,6 +13,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -45,6 +46,11 @@ public class OpenGLDebugging {
         public String category;
         public String fetchCommand;
 
+        final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(16);
+
+        final IntBuffer intBuffer = BufferUtils.createIntBuffer(16);
+        final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
+
         public String getAsString(boolean glsm) {
             switch(fetchCommand) {
                 case GL_IS_ENABLED:  {
@@ -52,15 +58,15 @@ public class OpenGLDebugging {
                 }
                 case GL_GET_BOOLEANV:  {
                     if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
-                        final ByteBuffer params = BufferUtils.createByteBuffer(16);
+                        byteBuffer.clear();
                         if(glsm) {
-                            GLStateManager.glGetBoolean(gLConstant, params);
+                            GLStateManager.glGetBoolean(gLConstant, byteBuffer);
                         } else {
-                            GL11.glGetBoolean(gLConstant, params);
+                            GL11.glGetBoolean(gLConstant, byteBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
-                        for (int i = 0; i < params.capacity(); ++i) {
-                            out.append(i == 0 ? "" : ", ").append(params.get(i));
+                        for (int i = 0; i < byteBuffer.capacity(); ++i) {
+                            out.append(i == 0 ? "" : ", ").append(byteBuffer.get(i));
                         }
                         return out.toString();
                     } else {
@@ -69,15 +75,15 @@ public class OpenGLDebugging {
                 }
                 case GL_GET_INTEGERV:  {
                     if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
-                        final IntBuffer params = BufferUtils.createIntBuffer(16);
+                        intBuffer.clear();
                         if(glsm) {
-                            GLStateManager.glGetInteger(gLConstant, params);
+                            GLStateManager.glGetInteger(gLConstant, intBuffer);
                         } else {
-                            GL11.glGetInteger(gLConstant, params);
+                            GL11.glGetInteger(gLConstant, intBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
-                        for (int i = 0; i < params.remaining(); ++i) {
-                            out.append(i == 0 ? "" : ", ").append(params.get(i));
+                        for (int i = 0; i < intBuffer.remaining(); ++i) {
+                            out.append(i == 0 ? "" : ", ").append(intBuffer.get(i));
                         }
                         return out.toString();
                     } else {
@@ -86,15 +92,15 @@ public class OpenGLDebugging {
                 }
                 case GL_GET_FLOATV: {
                     if(GLStateManager.HAS_MULTIPLE_SET.contains(gLConstant)) {
-                        final FloatBuffer params = BufferUtils.createFloatBuffer(16);
+                        floatBuffer.clear();
                         if(glsm) {
-                            GLStateManager.glGetFloat(gLConstant, params);
+                            GLStateManager.glGetFloat(gLConstant, floatBuffer);
                         } else {
-                            GL11.glGetFloat(gLConstant, params);
+                            GL11.glGetFloat(gLConstant, floatBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
-                        for (int i = 0; i < params.remaining(); ++i) {
-                            out.append(i == 0 ? "" : ", ").append(params.get(i));
+                        for (int i = 0; i < floatBuffer.remaining(); ++i) {
+                            out.append(i == 0 ? "" : ", ").append(String.format("%f", floatBuffer.get(i)));
                         }
                         return out.toString();
                     } else {
@@ -105,7 +111,24 @@ public class OpenGLDebugging {
             }
 
         }
+        final Matrix4f cachedMatrix = new Matrix4f();
+        final Matrix4f uncachedMatrix = new Matrix4f();
+        public Matrix4f getAsMatrix4f(boolean glsm) {
+            if(!fetchCommand.equals(GL_GET_FLOATV)) {
+                throw new IllegalArgumentException("This property does not return a matrix");
+            }
+            floatBuffer.clear();
+            if(glsm) {
+                GLStateManager.glGetFloat(gLConstant, floatBuffer);
+                return cachedMatrix.set(0, floatBuffer);
+            } else {
+                GL11.glGetFloat(gLConstant, floatBuffer);
+                return uncachedMatrix.set(0, floatBuffer);
+            }
+        }
+
     }
+
 
     public static OpenGLDebugging instance = new OpenGLDebugging();
 
@@ -434,12 +457,22 @@ public class OpenGLDebugging {
     public static void checkGLSM() {
         boolean mismatch = false;
         for (int i = 0; i < instance.propertyList.length; ++i) {
-            final GLproperty gLproperty = instance.propertyList[i];
-            final String cached = gLproperty.getAsString(true);
-            final String uncached = gLproperty.getAsString(false);
-            if (!cached.equals(uncached)) {
-                LOGGER.error("GLSM mismatch: " + gLproperty.name + " cached: " + cached + " uncached: " + uncached);
-                mismatch = true;
+            final GLproperty gLProperty = instance.propertyList[i];
+            if(gLProperty.fetchCommand.equals(GL_GET_FLOATV) && gLProperty.name.endsWith("_MATRIX")) {
+                final Matrix4f cached = gLProperty.getAsMatrix4f(true);
+                final Matrix4f uncached = gLProperty.getAsMatrix4f(false);
+                // Some precision issues due to RAD vs degrees, and translated (vs f)
+                if (!cached.equals(uncached, 0.001f)) {
+                    LOGGER.error("GLSM mismatch: " + gLProperty.name + "\ncached:\n" + cached + "uncached:\n" + uncached);
+                    mismatch = true;
+                }
+            } else {
+                final String cached = gLProperty.getAsString(true);
+                final String uncached = gLProperty.getAsString(false);
+                if (!cached.equals(uncached)) {
+                    LOGGER.error("GLSM mismatch: " + gLProperty.name + " cached: " + cached + " uncached: " + uncached);
+                    mismatch = true;
+                }
             }
         }
         if (!mismatch) {

@@ -15,10 +15,19 @@ public class MatrixMode implements ISettableState<MatrixMode> {
             return;
         }
 
-        if(this.mode != mode || GLStateManager.BYPASS_CACHE) {
+        if(this.mode != mode || GLStateManager.shouldBypassCache()) {
             this.mode = mode;
             GL11.glMatrixMode(mode);
         }
+    }
+
+    public int getMatrix() {
+        return switch(mode) {
+            case GL11.GL_MODELVIEW -> GL11.GL_MODELVIEW_MATRIX;
+            case GL11.GL_PROJECTION -> GL11.GL_PROJECTION_MATRIX;
+            case GL11.GL_TEXTURE -> GL11.GL_TEXTURE_MATRIX;
+            default -> throw new IllegalStateException("Unexpected value: " + mode);
+        };
     }
 
     @Override

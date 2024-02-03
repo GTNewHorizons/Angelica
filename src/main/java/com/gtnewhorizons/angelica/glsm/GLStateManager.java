@@ -111,7 +111,7 @@ public class GLStateManager {
     @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
     @Getter protected static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
-    @Getter protected static final Matrix4fStack textureMatrix = new Matrix4fStack(MAX_TEXTURE_STACK_DEPTH);
+
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
@@ -302,7 +302,6 @@ public class GLStateManager {
 
         return switch (pname) {
             case GL11.GL_ALPHA_TEST_FUNC -> alphaState.getFunction();
-            case GL11.GL_ALPHA_TEST_REF -> (int) (alphaState.getReference() * 255.0F);
             case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
             case GL11.GL_LIST_MODE -> glListMode;
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
@@ -341,9 +340,9 @@ public class GLStateManager {
         }
 
         switch (pname) {
-            case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(params);
-            case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
-            case GL11.GL_TEXTURE_MATRIX -> textureMatrix.get(params);
+            case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(0, params);
+            case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(0, params);
+            case GL11.GL_TEXTURE_MATRIX -> textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
             case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
             default -> {
                 if(!HAS_MULTIPLE_SET.contains(pname)) {
@@ -974,7 +973,7 @@ public class GLStateManager {
                 return projectionMatrix;
             }
             case GL11.GL_TEXTURE -> {
-                return textureMatrix;
+                return textures.getTextureUnitMatrix(getActiveTextureUnit());
             }
             default -> throw new IllegalStateException("Unknown matrix mode: " + matrixMode.getMode());
         }
