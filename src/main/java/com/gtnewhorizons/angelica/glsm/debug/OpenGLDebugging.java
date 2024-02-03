@@ -368,7 +368,7 @@ public class OpenGLDebugging {
     }
 
     public static void dumpStateToFile() {
-        dumpToFile((p) -> dumpState(p, true), "gl-dump-state.txt");
+        dumpToFile((p) -> dumpState(p, false), "gl-dump-state.txt");
     }
     public static void dumpGLSMStateToFile() {
         dumpToFile((p) -> dumpState(p, true), "glsm-dump-state.txt");
