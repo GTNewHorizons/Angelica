@@ -185,7 +185,7 @@ public class WorldSlice implements IBlockAccess {
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
         if (y < 0 || y >= 256 || x < -30_000_000 || z < -30_000_000 || x >= 30_000_000 || z >= 30_000_000) {
-            // skyBrightness = 15, blockBrightness = 0
+            // skyBrightness = 15, blockBrightness = min
             return (15 << 20) | (min << 4);
         }
 
