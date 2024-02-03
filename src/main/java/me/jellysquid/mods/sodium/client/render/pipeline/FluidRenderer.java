@@ -162,7 +162,7 @@ public class FluidRenderer {
             } else {
                 sprite = sprites[1];
                 facing = ModelQuadFacing.UNASSIGNED;
-                float dir = (float) Math.atan2(velocity.z, velocity.x) - (1.5707964f);
+                float dir = (float) Math.atan2(velocity.z, velocity.x) - (((float)Math.PI / 2F));
                 float sin = MathHelper.sin(dir) * 0.25F;
                 float cos = MathHelper.cos(dir) * 0.25F;
                 u1 = sprite.getInterpolatedU(8.0F + (-cos - sin) * 16.0F);
