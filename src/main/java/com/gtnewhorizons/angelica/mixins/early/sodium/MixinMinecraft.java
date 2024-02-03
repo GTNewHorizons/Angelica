@@ -35,7 +35,7 @@ public class MixinMinecraft {
         return SodiumClientMod.options().quality.grassQuality.isFancy();
     }
 
-    @Redirect(method = "checkGLError", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetError()I"))
+    @Redirect(method = "checkGLError", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glGetError()I", remap = false))
     private int sodium$checkGLError() {
         return SodiumClientMod.options().performance.useNoErrorGLContext ? 0 : GL11.glGetError();
     }

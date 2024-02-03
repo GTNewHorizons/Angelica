@@ -12,7 +12,7 @@ public class MixinMinecraft {
 
     @Inject(
         method = "runGameLoop",
-        at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER)
+        at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
         GL11.glEnable(GL11.GL_LIGHTING);
