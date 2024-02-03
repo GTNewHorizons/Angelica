@@ -24,6 +24,7 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -79,6 +80,8 @@ public class GLStateManager {
     public static final int MAX_TEXTURE_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_STACK_DEPTH);
     public static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
 
+    public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
+
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
     private static final IntStack activeTextureUnit = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
@@ -132,8 +135,43 @@ public class GLStateManager {
     private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
 
+    public static class GLFeatureSet extends IntOpenHashSet {
+        public GLFeatureSet addFeature(int feature) {
+            super.add(feature);
+            return this;
+        }
+
+    }
+
     public static void init() {
         capabilities = GLContext.getCapabilities();
+        HAS_MULTIPLE_SET
+            .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
+            .addFeature(GL11.GL_COLOR_CLEAR_VALUE)
+            .addFeature(GL11.GL_COLOR_WRITEMASK)
+            .addFeature(GL11.GL_CURRENT_COLOR)
+            .addFeature(GL11.GL_CURRENT_NORMAL)
+            .addFeature(GL11.GL_CURRENT_RASTER_COLOR)
+            .addFeature(GL11.GL_CURRENT_RASTER_POSITION)
+            .addFeature(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS)
+            .addFeature(GL11.GL_CURRENT_TEXTURE_COORDS)
+            .addFeature(GL11.GL_DEPTH_RANGE)
+            .addFeature(GL11.GL_FOG_COLOR)
+            .addFeature(GL11.GL_LIGHT_MODEL_AMBIENT)
+            .addFeature(GL11.GL_LINE_WIDTH_RANGE)
+            .addFeature(GL11.GL_MAP1_GRID_DOMAIN)
+            .addFeature(GL11.GL_MAP2_GRID_DOMAIN)
+            .addFeature(GL11.GL_MAP2_GRID_SEGMENTS)
+            .addFeature(GL11.GL_MAX_VIEWPORT_DIMS)
+            .addFeature(GL11.GL_MODELVIEW_MATRIX)
+            .addFeature(GL11.GL_POINT_SIZE_RANGE)
+            .addFeature(GL11.GL_POLYGON_MODE)
+            .addFeature(GL11.GL_PROJECTION_MATRIX)
+            .addFeature(GL11.GL_SCISSOR_BOX)
+            .addFeature(GL11.GL_TEXTURE_ENV_COLOR)
+            .addFeature(GL11.GL_TEXTURE_MATRIX)
+            .addFeature(GL11.GL_VIEWPORT);
+
         RenderSystem.initRenderer();
 
         if (AngelicaConfig.enableIris) {
@@ -247,7 +285,13 @@ public class GLStateManager {
                 params.put((byte) (colorMask.blue ? GL11.GL_TRUE : GL11.GL_FALSE));
                 params.put((byte) (colorMask.alpha ? GL11.GL_TRUE : GL11.GL_FALSE));
             }
-            default -> GL11.glGetBoolean(pname, params);
+            default -> {
+                if(!HAS_MULTIPLE_SET.contains(pname)) {
+                    params.put(0, (byte) (glGetBoolean(pname) ? GL11.GL_TRUE : GL11.GL_FALSE));
+                } else {
+                    GL11.glGetBoolean(pname, params);
+                }
+            }
         }
     }
 
@@ -257,14 +301,16 @@ public class GLStateManager {
         }
 
         return switch (pname) {
-            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
-            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
-            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
-            case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
-            case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
+            case GL11.GL_ALPHA_TEST_FUNC -> alphaState.getFunction();
+            case GL11.GL_ALPHA_TEST_REF -> (int) (alphaState.getReference() * 255.0F);
             case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
             case GL11.GL_LIST_MODE -> glListMode;
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
+            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
+            case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
+            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
+            case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
+            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
 
             default -> GL11.glGetInteger(pname);
         };
@@ -278,7 +324,13 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_VIEWPORT -> viewportState.get(params);
-            default -> GL11.glGetInteger(pname, params);
+            default -> {
+                if(!HAS_MULTIPLE_SET.contains(pname)) {
+                    params.put(0, glGetInteger(pname));
+                } else {
+                    GL11.glGetInteger(pname, params);
+                }
+            }
         }
     }
 
@@ -293,7 +345,13 @@ public class GLStateManager {
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(params);
             case GL11.GL_TEXTURE_MATRIX -> textureMatrix.get(params);
             case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
-            default -> GL11.glGetFloat(pname, params);
+            default -> {
+                if(!HAS_MULTIPLE_SET.contains(pname)) {
+                    params.put(0, glGetFloat(pname));
+                } else {
+                    GL11.glGetFloat(pname, params);
+                }
+            }
         }
     }
 
