@@ -55,7 +55,7 @@ public class Feature {
             , GLStateManager.clearColor // Color mode and index mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
-            // Current RGBA color
+              GLStateManager.color  // Current RGBA color
             // Current color index
             // Current normal vector
             // Current texture coordinates
@@ -84,7 +84,7 @@ public class Feature {
             // GL_DITHER flag
             , GLStateManager.fogMode // GL_FOG flag
             // GL_LIGHTi where 0 <= i < GL_MAX_LIGHTS
-            // GL_LIGHTING flag
+            , GLStateManager.lightingState // GL_LIGHTING flag
             // GL_LINE_SMOOTH flag
             // GL_LINE_STIPPLE flag
             // GL_INDEX_LOGIC_OP flag
@@ -102,7 +102,7 @@ public class Feature {
             // GL_SAMPLE_ALPHA_TO_COVERAGE flag
             // GL_SAMPLE_ALPHA_TO_ONE flag
             // GL_SAMPLE_COVERAGE flag
-            // GL_SCISSOR_TEST flag
+            , GLStateManager.scissorTest  // GL_SCISSOR_TEST flag
             // GL_STENCIL_TEST flag
             // GL_TEXTURE_1D flag
             // GL_TEXTURE_2D flag - Below
@@ -148,7 +148,7 @@ public class Feature {
             // Ambient scene color
             // GL_LIGHT_MODEL_LOCAL_VIEWER value
             // GL_LIGHT_MODEL_TWO_SIDE setting
-            // GL_LIGHTING enable bit
+              GLStateManager.lightingState  // GL_LIGHTING enable bit
             // Enable bit for each light
             // Ambient, diffuse, and specular intensity for each light
             // Direction, position, exponent, and cutoff angle for each light
@@ -207,7 +207,7 @@ public class Feature {
             // Polygon stipple pattern
         ));
         attribToFeatures.put(GL11.GL_SCISSOR_BIT, ImmutableSet.of(
-            // GL_SCISSOR_TEST enable bit
+              GLStateManager.scissorTest // GL_SCISSOR_TEST enable bit
             // Scissor box
         ));
         attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, ImmutableSet.of(
@@ -240,9 +240,9 @@ public class Feature {
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes
-             GLStateManager.matrixMode
+              GLStateManager.matrixMode
             // GL_NORMALIZE flag
-            // GL_RESCALE_NORMAL flag
+            , GLStateManager.rescaleNormalState // GL_RESCALE_NORMAL flag
         ));
         attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
             // Depth range (near and far)
