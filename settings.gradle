@@ -6,6 +6,7 @@ pluginManagement {
             name "GTNH Maven"
             url "https://nexus.gtnewhorizons.com/repository/public/"
             mavenContent {
+                includeGroup("com.gtnewhorizons")
                 includeGroupByRegex("com\\.gtnewhorizons\\..+")
             }
         }
@@ -16,12 +17,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'com.diffplug.blowdryerSetup' version '1.7.1'
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0' // Provides java toolchains
+    id 'com.gtnewhorizons.gtnhsettingsconvention' version '1.0.8'
 }
 
-blowdryerSetup {
-    repoSubfolder 'gtnhShared'
-    github('GTNewHorizons/ExampleMod1.7.10', 'tag', '0.2.2')
-    //devLocal '.' // Use this when testing config updates locally
-}
+
