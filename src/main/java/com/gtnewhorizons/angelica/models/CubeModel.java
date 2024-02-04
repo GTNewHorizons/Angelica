@@ -173,6 +173,9 @@ public class CubeModel implements QuadProvider {
     @Override
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
 
+        if (dir == ForgeDirection.UNKNOWN)
+            return EMPTY;
+
         final Quad face = quadPool.getInstance();
         final int[] buf = Arrays.copyOf(initBufs[dir.ordinal()], 32); // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
         // Format:

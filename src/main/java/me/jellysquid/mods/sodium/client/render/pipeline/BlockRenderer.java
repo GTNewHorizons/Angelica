@@ -65,7 +65,7 @@ public class BlockRenderer {
 
         if (block instanceof QuadProvider qBlock) {
 
-            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
+            for (ForgeDirection dir : ForgeDirection.values()) {
 
                 this.random.setSeed(seed);
                 List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, quadPool);
