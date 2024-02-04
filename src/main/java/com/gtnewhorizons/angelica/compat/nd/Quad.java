@@ -57,8 +57,9 @@ public class Quad implements ModelQuadView {
         return this.hasNormals;
     }
 
-    public ForgeDirection getFace() {
-        return this.face != null ? this.face : ForgeDirection.DOWN;
+    /** Returns the face, forced to take one of 6 directions to mirror the behavior of baked quads in 1.16.5. */
+    public ForgeDirection getCoercedFace() {
+        return this.face != ForgeDirection.UNKNOWN ? this.face : ForgeDirection.UP;
     }
 
     @Override
