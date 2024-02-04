@@ -42,8 +42,6 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
 
     private BlockContextHolder iris$contextHolder;
 
-    private static final int EXPECTED_BUFFER_SIZE = 2097152;
-
     public ChunkBuildBuffers(ChunkVertexType vertexType) {
         this.vertexType = vertexType;
 
@@ -58,7 +56,7 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
             final VertexBufferBuilder[] buffers = this.buffersByLayer[passId];
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-                buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), EXPECTED_BUFFER_SIZE / ModelQuadFacing.COUNT);
+                buffers[facing.ordinal()] = new VertexBufferBuilder(vertexType.getBufferVertexFormat(), pass.bufferSize() / ModelQuadFacing.COUNT);
             }
         }
 
