@@ -27,6 +27,9 @@ public class BlockOcclusionCache {
      * @return True if the block side facing {@param dir} is not occluded, otherwise false
      */
     public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPos pos, ForgeDirection facing) {
+        if (facing == ForgeDirection.UNKNOWN)
+            return true;
+
         BlockPos adjPos = this.cpos;
         adjPos.set(pos.getX() + facing.offsetX, pos.getY() + facing.offsetY, pos.getZ() + facing.offsetZ);
 
