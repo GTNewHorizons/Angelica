@@ -32,12 +32,12 @@ public class OpenGLDebugging {
 
     public class GLproperty {
 
-        public GLproperty(int init_gLconstant, String init_name, String init_description, String init_category, String init_fetchCommand) {
-            gLConstant = init_gLconstant;
-            name = init_name;
-            description = init_description;
-            category = init_category;
-            fetchCommand = init_fetchCommand;
+        public GLproperty(int glConstant, String name, String description, String category, String fetchCommand) {
+            this.gLConstant = glConstant;
+            this.name = name;
+            this.description = description;
+            this.category = category;
+            this.fetchCommand = fetchCommand;
         }
 
         public int gLConstant;
@@ -46,10 +46,9 @@ public class OpenGLDebugging {
         public String category;
         public String fetchCommand;
 
-        final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(16);
-
-        final IntBuffer intBuffer = BufferUtils.createIntBuffer(16);
-        final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
+        static final ByteBuffer byteBuffer = BufferUtils.createByteBuffer(16);
+        static final IntBuffer intBuffer = BufferUtils.createIntBuffer(16);
+        static final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
 
         public String getAsString(boolean glsm) {
             switch(fetchCommand) {
@@ -111,8 +110,8 @@ public class OpenGLDebugging {
             }
 
         }
-        final Matrix4f cachedMatrix = new Matrix4f();
-        final Matrix4f uncachedMatrix = new Matrix4f();
+        static final Matrix4f cachedMatrix = new Matrix4f();
+        static final Matrix4f uncachedMatrix = new Matrix4f();
         public Matrix4f getAsMatrix4f(boolean glsm) {
             if(!fetchCommand.equals(GL_GET_FLOATV)) {
                 throw new IllegalArgumentException("This property does not return a matrix");
@@ -403,25 +402,17 @@ public class OpenGLDebugging {
 
     public static void dumpState(Consumer<String> printer, boolean glsm) {
         for (int i = 0; i < instance.propertyList.length; ++i) {
-            final GLproperty gLproperty = instance.propertyList[i];
-            printer.accept(gLproperty.name + ":" + gLproperty.getAsString(glsm) + " (" + gLproperty.description + ")");
+            final GLproperty gLProperty = instance.propertyList[i];
+            printer.accept(gLProperty.name + ":" + gLProperty.getAsString(glsm) + " (" + gLProperty.description + ")");
         }
     }
 
-    public static void dumpIsEnabledToFile() {
-        dumpToFile(p -> dumpIsEnabled(p, false), "gl-dump-enabled.txt");
+    public static void dumpIsEnabledToFile(boolean glsm) {
+        dumpToFile(p -> dumpIsEnabled(p, glsm), (glsm ? "glsm" : "gl")  + "-dump-enabled.txt");
     }
 
-    public static void dumpIsEnabledGLSMToFile() {
-        dumpToFile(p -> dumpIsEnabled(p, true), "gl-dump-enabled.txt");
-    }
-
-    public static void dumpIsEnabled() {
-        dumpIsEnabled(LINE_LOGGER, false);
-    }
-
-    public static void dumpIsEnabledGLSM() {
-        dumpIsEnabled(LINE_LOGGER, true);
+    public static void dumpIsEnabled(boolean glsm) {
+        dumpIsEnabled(LINE_LOGGER, glsm);
     }
 
     public static void dumpIsEnabled(Consumer<String> printer, boolean glsm) {
