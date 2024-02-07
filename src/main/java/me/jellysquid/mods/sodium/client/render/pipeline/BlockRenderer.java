@@ -1,13 +1,14 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
-import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.models.CubeModel;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import java.util.List;
+import java.util.Random;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -28,9 +29,6 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
-
-import java.util.List;
-import java.util.Random;
 
 public class BlockRenderer {
 
@@ -68,7 +66,7 @@ public class BlockRenderer {
             for (ForgeDirection dir : ForgeDirection.values()) {
 
                 this.random.setSeed(seed);
-                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, quadPool);
+                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, this.quadPool);
 
                 if (quads.isEmpty()) continue;
 
@@ -77,6 +75,8 @@ public class BlockRenderer {
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
+
+                for (Quad q : quads) this.quadPool.releaseInstance(q);
             }
         } else {
 
