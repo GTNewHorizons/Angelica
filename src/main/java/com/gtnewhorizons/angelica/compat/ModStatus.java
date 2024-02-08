@@ -26,7 +26,7 @@ public class ModStatus {
 
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {
-            int majorVersion = Character.getNumericValue(Loader.instance().getIndexedModList().get("neid").getVersion().charAt(0));
+            int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
