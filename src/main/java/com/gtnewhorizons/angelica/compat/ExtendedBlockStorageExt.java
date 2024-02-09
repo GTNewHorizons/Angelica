@@ -36,6 +36,10 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                     copyNibbleArray((ExtendedNibbleArray) storage.getBlockMSBArray(), (ExtendedNibbleArray) this.getBlockMSBArray());
                 }
                 arrayLen = block16BArray.length;
+                if (ModStatus.isNEIDMetadataExtended) {
+                    final short[] block16BMetaArray = ((IExtendedBlockStorageMixin)(Object)this).getBlock16BMetaArray();
+                    System.arraycopy(((IExtendedBlockStorageMixin)(Object)storage).getBlock16BMetaArray(), 0, block16BMetaArray, 0, block16BMetaArray.length);
+                }
             }
             else if (ModStatus.isOldNEIDLoaded){
                 final short[] blockLSBArray = Hooks.get(this);
@@ -54,7 +58,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
             }
 
 
-            copyNibbleArray((ExtendedNibbleArray) storage.getMetadataArray(), (ExtendedNibbleArray)this.getMetadataArray());
+            if (!ModStatus.isNEIDMetadataExtended) copyNibbleArray((ExtendedNibbleArray) storage.getMetadataArray(), (ExtendedNibbleArray)this.getMetadataArray());
             copyNibbleArray((ExtendedNibbleArray) storage.getBlocklightArray(), (ExtendedNibbleArray)this.getBlocklightArray());
             if(storage.getSkylightArray() != null) {
                 hasSky = true;

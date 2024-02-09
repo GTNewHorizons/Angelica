@@ -81,7 +81,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
-    compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5.3:dev") // Mixin Version
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.0.0:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
