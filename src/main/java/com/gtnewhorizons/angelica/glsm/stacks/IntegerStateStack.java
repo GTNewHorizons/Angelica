@@ -1,27 +1,22 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.Color4;
+import com.gtnewhorizons.angelica.glsm.states.IntegerState;
 
-public class Color4Stack extends Color4 implements IStateStack<Color4Stack> {
+public class IntegerStateStack extends IntegerState implements IStateStack<IntegerStateStack> {
 
-    protected final Color4[] stack;
+    protected final IntegerState[] stack;
 
     protected int pointer;
 
-    public Color4Stack() {
-        stack = new Color4[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
+    public IntegerStateStack() {
+        stack = new IntegerState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
-            stack[i] = new Color4();
+            stack[i] = new IntegerState();
         }
     }
 
-    public Color4Stack(Color4 color4) {
-        this();
-        set(color4);
-    }
-
-    public Color4Stack push() {
+    public IntegerStateStack push() {
         if(pointer == stack.length) {
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
@@ -30,7 +25,12 @@ public class Color4Stack extends Color4 implements IStateStack<Color4Stack> {
         return this;
     }
 
-    public Color4Stack pop() {
+    public IntegerStateStack push(int value) {
+        push().setValue(value);
+        return this;
+    }
+
+    public IntegerStateStack pop() {
         if(pointer == 0) {
             throw new IllegalStateException("Stack underflow");
         }

@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinInitGLStateManager {
     @Inject(method = "initializeTextures", at = @At("RETURN"))
     private static void angelica$initializeGLStateManager(CallbackInfo ci) {
+        GLStateManager.preInit();
         GLStateManager.init();
     }
 }

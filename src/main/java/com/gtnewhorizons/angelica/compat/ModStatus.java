@@ -11,6 +11,8 @@ public class ModStatus {
      * ASM Version
      */
     public static boolean isOldNEIDLoaded;
+
+    public static boolean isNEIDMetadataExtended;
     public static boolean isLotrLoaded;
     public static boolean isChunkAPILoaded;
     public static boolean isEIDBiomeLoaded;
@@ -21,5 +23,13 @@ public class ModStatus {
         isLotrLoaded = Loader.isModLoaded("lotr");
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
+
+        isNEIDMetadataExtended = false;
+        if (isNEIDLoaded) {
+            int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
+            if (majorVersion >= 2) {
+                isNEIDMetadataExtended = true;
+            }
+        }
     }
 }
