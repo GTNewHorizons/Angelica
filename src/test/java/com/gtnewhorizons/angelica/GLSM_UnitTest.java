@@ -213,14 +213,20 @@ class GLSM_UnitTest {
         // Color index associated with current raster position
         // Texture coordinates associated with current raster position
         // GL_EDGE_FLAG flag
+        GL11.glEdgeFlag(false);
 
 
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f}, "Post Push Attrib");
         verifyState(GL11.GL_CURRENT_NORMAL, new float[]{0.5f, 0.5f, 0.5f}); // Current normal
 
+        verifyState(GL11.GL_EDGE_FLAG, false);
+
+
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{1f, 1f, 1f, 1f}, "Post Pop Attrib");
         verifyState(GL11.GL_CURRENT_NORMAL, new float[]{0f, 0f, 1f});
+
+        verifyState(GL11.GL_EDGE_FLAG, true);
     }
 
     @Test
