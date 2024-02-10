@@ -204,7 +204,15 @@ class GLSM_UnitTest {
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{1f, 1f, 1f, 1f}, "Initial State"); // Verify no state leakage from other tests
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+        // Current color index
         GL11.glNormal3f(0.5f, 0.5f, 0.5f);
+        // Current texture coordinates
+        // Current raster position
+        // GL_CURRENT_RASTER_POSITION_VALID flag
+        // RGBA color associated with current raster position
+        // Color index associated with current raster position
+        // Texture coordinates associated with current raster position
+        // GL_EDGE_FLAG flag
 
 
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f}, "Post Push Attrib");
