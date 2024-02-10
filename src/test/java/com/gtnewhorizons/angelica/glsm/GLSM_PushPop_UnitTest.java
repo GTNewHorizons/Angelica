@@ -198,10 +198,10 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_FOG, "Fog", false));
         // This fails on the RESET test in xvfb
         if(!AngelicaExtension.MESA) {
-             for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
-                 bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
-             }
-         }
+            for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
+                bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
+            }
+        }
         bits.add(new GLBit(GL11.GL_LIGHTING, "Lighting", false));
         bits.add(new GLBit(GL11.GL_LINE_SMOOTH, "Line Smooth", false));
         bits.add(new GLBit(GL11.GL_LINE_STIPPLE, "Line Stipple", false));
@@ -228,7 +228,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_3, "Map2 Texture Coord 3", false));
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_4, "Map2 Texture Coord 4", false));
         // Seems to be broken at least on Nvidia
-        if(!AngelicaExtension.NVIDIA) // bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
+        if(!AngelicaExtension.NVIDIA) bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
         bits.add(new GLBit(GL11.GL_NORMALIZE, "Normalize", false));
         bits.add(new GLBit(GL11.GL_POINT_SMOOTH, "Point Smooth", false));
         bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_LINE, "Polygon Offset Line", false));
