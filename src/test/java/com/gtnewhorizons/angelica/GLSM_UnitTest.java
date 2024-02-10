@@ -9,6 +9,8 @@ import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.PixelFormat;
 
 import java.nio.ByteBuffer;
@@ -23,8 +25,9 @@ class GLSM_UnitTest {
     static void setup() throws LWJGLException {
         mode = findDisplayMode(800, 600, Display.getDisplayMode().getBitsPerPixel());
         Display.setDisplayModeAndFullscreen(mode);
-        PixelFormat format = new PixelFormat().withDepthBits(24);
+        final PixelFormat format = new PixelFormat().withDepthBits(24);
         Display.create(format);
+        GLStateManager.preInit();
     }
 
     @AfterAll
@@ -82,10 +85,34 @@ class GLSM_UnitTest {
     void testPushPopColorBufferBit() {
 
         GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        /*
+         * GL_COLOR_BUFFER_BIT
+         *     GL_ALPHA_TEST enable bit
+         *     Alpha test function and reference value
+         *     GL_BLEND enable bit
+         *     Blending source and destination functions
+         *     Constant blend color
+         *     Blending equation
+         *     GL_DITHER enable bit
+         *     GL_DRAW_BUFFER setting
+         *     GL_COLOR_LOGIC_OP enable bit
+         *     GL_INDEX_LOGIC_OP enable bit
+         *     Logic op function
+         *     Color mode and index mode clear values
+         *     Color mode and index mode writemasks
+         */
+
         GLStateManager.enableAlphaTest();
         GLStateManager.glAlphaFunc(GL11.GL_NEVER, 1f);
         GLStateManager.enableBlend();
+        GLStateManager.glDisable(GL11.GL_DITHER);
+        GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
+        GLStateManager.glEnable(GL11.GL_INDEX_LOGIC_OP);
         GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL14.glBlendColor(1f, 1f, 1f, 1f); // Not currently Implemented in GLSM
+        GL20.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT); // Not currently Implemented in GLSM
+        GL11.glDrawBuffer(GL11.GL_FRONT_AND_BACK); // Not currently Implemented in GLSM
+        GL11.glLogicOp(GL11.GL_OR);// Not currently Implemented in GLSM
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
@@ -97,9 +124,18 @@ class GLSM_UnitTest {
         verifyState(GL11.GL_BLEND, true);
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA);
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        verifyState(GL14.GL_BLEND_COLOR, new float[]{1f, 1f, 1f, 1f});
+        verifyState(GL14.GL_BLEND_EQUATION, GL14.GL_FUNC_REVERSE_SUBTRACT);
+        verifyState(GL20.GL_BLEND_EQUATION_ALPHA, GL14.GL_FUNC_REVERSE_SUBTRACT);
+        verifyState(GL11.GL_DITHER, false);
+        verifyState(GL11.GL_DRAW_BUFFER, GL11.GL_FRONT_AND_BACK);
+        verifyState(GL11.GL_COLOR_LOGIC_OP, true);
+        verifyState(GL11.GL_INDEX_LOGIC_OP, true);
+        verifyState(GL11.GL_LOGIC_OP_MODE, GL11.GL_OR);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f});
         verifyState(GL11.GL_COLOR_WRITEMASK, new boolean[]{false, false, false, false});
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, new float[]{0.5f, 0.5f, 0.5f, 0.5f});
+
 
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_ALPHA_TEST, false);
@@ -108,6 +144,14 @@ class GLSM_UnitTest {
         verifyState(GL11.GL_BLEND, false);
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE);
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ZERO);
+        verifyState(GL14.GL_BLEND_COLOR, new float[]{0f, 0f, 0f, 0f});
+        verifyState(GL14.GL_BLEND_EQUATION, GL14.GL_FUNC_ADD);
+        verifyState(GL20.GL_BLEND_EQUATION_ALPHA, GL14.GL_FUNC_ADD);
+        verifyState(GL11.GL_DITHER, true);
+        verifyState(GL11.GL_DRAW_BUFFER, GL11.GL_BACK);
+        verifyState(GL11.GL_COLOR_LOGIC_OP, false);
+        verifyState(GL11.GL_INDEX_LOGIC_OP, false);
+        verifyState(GL11.GL_LOGIC_OP_MODE, GL11.GL_COPY);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f}); // This does not get reset
         verifyState(GL11.GL_COLOR_WRITEMASK, new boolean[]{true, true, true, true});
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, new float[]{0f, 0f, 0f, 0f});

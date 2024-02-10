@@ -137,6 +137,8 @@ public class GLStateManager {
     private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
 
+
+
     public static class GLFeatureSet extends IntOpenHashSet {
         public GLFeatureSet addFeature(int feature) {
             super.add(feature);
@@ -145,10 +147,11 @@ public class GLStateManager {
 
     }
 
-    public static void init() {
+    public static void preInit() {
         capabilities = GLContext.getCapabilities();
         HAS_MULTIPLE_SET
             .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
+            .addFeature(GL14.GL_BLEND_COLOR)
             .addFeature(GL11.GL_COLOR_CLEAR_VALUE)
             .addFeature(GL11.GL_COLOR_WRITEMASK)
             .addFeature(GL11.GL_CURRENT_COLOR)
@@ -173,6 +176,10 @@ public class GLStateManager {
             .addFeature(GL11.GL_TEXTURE_ENV_COLOR)
             .addFeature(GL11.GL_TEXTURE_MATRIX)
             .addFeature(GL11.GL_VIEWPORT);
+    }
+
+    public static void init() {
+
 
         RenderSystem.initRenderer();
 
