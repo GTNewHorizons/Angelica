@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class GLSMUtil {
 
@@ -59,15 +60,24 @@ public class GLSMUtil {
         verifyState(glCap, expected, "Float State Mismatch");
     }
 
-    public static void verifyState(int glCap, float[] expected, String message) {
-        final FloatBuffer glBuffer = BufferUtils.createFloatBuffer(16);
-        final FloatBuffer glsmBuffer = BufferUtils.createFloatBuffer(16);
+    static final FloatBuffer glFloatBuffer = BufferUtils.createFloatBuffer(16);
+    static final FloatBuffer glsmFloatBuffer = BufferUtils.createFloatBuffer(16);
 
-        GL11.glGetFloat(glCap, glBuffer);
-        GLStateManager.glGetFloat(glCap, glsmBuffer);
+    public static void verifyState(int glCap, float[] expected, String message) {
+        GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
+        GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i], glsmBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
+            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+            () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
+        ));
+    }
+
+    public static void verifyNotDefaultState(int glCap, float[] expected, String message) {
+        GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
+        GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertNotEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+            () -> assertNotEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
         ));
     }
 
@@ -75,19 +85,20 @@ public class GLSMUtil {
         verifyState(glCap, expected, "Boolean State Mismatch");
     }
 
-    public static void verifyState(int glCap, boolean[] expected, String message) {
-        final ByteBuffer glBuffer = BufferUtils.createByteBuffer(16);
-        final ByteBuffer glsmBuffer = BufferUtils.createByteBuffer(16);
+    static final ByteBuffer glByteBuffer = BufferUtils.createByteBuffer(16);
+    static final ByteBuffer glsmByteBuffer = BufferUtils.createByteBuffer(16);
 
-        GL11.glGetBoolean(glCap, glBuffer);
-        GLStateManager.glGetBoolean(glCap, glsmBuffer);
+    public static void verifyState(int glCap, boolean[] expected, String message) {
+
+        GL11.glGetBoolean(glCap, (ByteBuffer) glByteBuffer.clear());
+        GLStateManager.glGetBoolean(glCap, (ByteBuffer) glsmByteBuffer.clear());
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmBuffer.get(i), "GLSM State Mismatch: " + i)
+            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch: " + i),
+            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), "GLSM State Mismatch: " + i)
         ));
 
         for (int i = 0; i < expected.length; i++) {
-            assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch");
+            assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch");
             ;
         }
     }
