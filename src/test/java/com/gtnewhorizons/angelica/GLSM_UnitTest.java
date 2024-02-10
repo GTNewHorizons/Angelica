@@ -15,7 +15,7 @@ import org.lwjgl.opengl.PixelFormat;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,34 +69,53 @@ class GLSM_UnitTest {
         );
     }
     void verifyState(int glCap, int expected) {
-        Stream.of(GLStateManager.glGetInteger(glCap), GL11.glGetInteger(glCap)).forEach(i -> assertEquals(expected, i));
+        assertAll("Int State Mismatch",
+            () -> assertEquals(expected, GL11.glGetInteger(glCap), "GL State Mismatch"),
+            () -> assertEquals(expected, GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
+        );
     }
 
     void verifyState(int glCap, float expected) {
-        Stream.of(GLStateManager.glGetFloat(glCap), GL11.glGetFloat(glCap)).forEach(f -> assertEquals(expected, f, 0.0001f));
+        assertAll("Float State Mismatch",
+            () -> assertEquals(expected, GL11.glGetFloat(glCap), 0.0001f, "GL State Mismatch"),
+            () -> assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, "GLSM State Mismatch")
+        );
     }
 
     void verifyState(int glCap, float[] expected) {
+        verifyState(glCap, expected, "Float State Mismatch");
+    }
+
+    void verifyState(int glCap, float[] expected, String message) {
         final FloatBuffer glBuffer = BufferUtils.createFloatBuffer(16);
         final FloatBuffer glsmBuffer = BufferUtils.createFloatBuffer(16);
 
         GL11.glGetFloat(glCap, glBuffer);
         GLStateManager.glGetFloat(glCap, glsmBuffer);
-        for (int i = 0; i < expected.length; i++) {
-            assertEquals(expected[i], glBuffer.get(i), 0.0001f, "GL State Mismatch");
-            assertEquals(expected[i], glsmBuffer.get(i),  0.0001f, "GLSM State Mismatch");
-        }
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertEquals(expected[i], glBuffer.get(i), 0.0001f, "GL State Mismatch"),
+            () -> assertEquals(expected[i], glsmBuffer.get(i),  0.0001f, "GLSM State Mismatch")
+        ));
     }
 
     private void verifyState(int glCap, boolean[] expected) {
+        verifyState(glCap, expected, "Boolean State Mismatch");
+    }
+
+    private void verifyState(int glCap, boolean[] expected, String message) {
         final ByteBuffer glBuffer = BufferUtils.createByteBuffer(16);
         final ByteBuffer glsmBuffer = BufferUtils.createByteBuffer(16);
 
         GL11.glGetBoolean(glCap, glBuffer);
         GLStateManager.glGetBoolean(glCap, glsmBuffer);
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch"),
+            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmBuffer.get(i), "GLSM State Mismatch")
+        ));
+
         for (int i = 0; i < expected.length; i++) {
             assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch");
-            assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmBuffer.get(i), "GLSM State Mismatch");
+            ;
         }
     }
 
@@ -175,6 +194,25 @@ class GLSM_UnitTest {
         verifyState(GL11.GL_COLOR_WRITEMASK, new boolean[]{true, true, true, true});
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, new float[]{0f, 0f, 0f, 0f});
 
+        // Reset State
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    }
+
+    @Test
+    void testPushPopCurrentBit() {
+        verifyState(GL11.GL_CURRENT_COLOR, new float[]{1f, 1f, 1f, 1f}, "Initial State"); // Verify no state leakage from other tests
+        GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
+        GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+        GL11.glNormal3f(0.5f, 0.5f, 0.5f);
+
+
+        verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f}, "Post Push Attrib");
+        verifyState(GL11.GL_CURRENT_NORMAL, new float[]{0.5f, 0.5f, 0.5f}); // Current normal
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_CURRENT_COLOR, new float[]{1f, 1f, 1f, 1f}, "Post Pop Attrib");
+        verifyState(GL11.GL_CURRENT_NORMAL, new float[]{0f, 0f, 1f});
     }
 
     @Test
