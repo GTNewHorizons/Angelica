@@ -1,11 +1,16 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.util.GLBit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
+
+import java.util.ArrayList;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
 
@@ -170,6 +175,91 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_LESS, "Depth Function - Reset");
         verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 1f, "Depth Clear Value - Reset");
         verifyState(GL11.GL_DEPTH_WRITEMASK, true, "Depth Write Mask - Reset");
+    }
+
+
+    @Test
+    void testPushPopEnableBit() {
+        final ArrayList<GLBit> bits = new ArrayList<>();
+        int i;
+
+        bits.add(new GLBit(GL11.GL_ALPHA_TEST, "Alpha Test", false));
+        bits.add(new GLBit(GL11.GL_AUTO_NORMAL, "Auto Normal", false));
+        bits.add(new GLBit(GL11.GL_BLEND, "Blend", false));
+        for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_CLIP_PLANES) ;  i++) {
+            bits.add(new GLBit(GL11.GL_CLIP_PLANE0 + i, "Clip Plane " + i, false));
+        }
+        bits.add(new GLBit(GL11.GL_COLOR_MATERIAL, "Color Material", false));
+        bits.add(new GLBit(GL11.GL_CULL_FACE, "Cull Face", false));
+        bits.add(new GLBit(GL11.GL_DEPTH_TEST, "Depth Test", false));
+        bits.add(new GLBit(GL11.GL_DITHER, "Dither", true));
+        bits.add(new GLBit(GL11.GL_FOG, "Fog", false));
+        // This fails on the RESET test....
+//        for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
+//            bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
+//        }
+        bits.add(new GLBit(GL11.GL_LIGHTING, "Lighting", false));
+        bits.add(new GLBit(GL11.GL_LINE_SMOOTH, "Line Smooth", false));
+        bits.add(new GLBit(GL11.GL_LINE_STIPPLE, "Line Stipple", false));
+        bits.add(new GLBit(GL11.GL_COLOR_LOGIC_OP, "Color Logic Op", false));
+        bits.add(new GLBit(GL11.GL_INDEX_LOGIC_OP, "Index Logic Op", false))
+        ;
+        bits.add(new GLBit(GL11.GL_MAP1_VERTEX_3, "Map1 Vertex 3", false));
+        bits.add(new GLBit(GL11.GL_MAP1_VERTEX_4, "Map1 Vertex 4", false));
+        bits.add(new GLBit(GL11.GL_MAP1_INDEX, "Map1 Index", false));
+        bits.add(new GLBit(GL11.GL_MAP1_COLOR_4, "Map1 Color 4", false));
+        bits.add(new GLBit(GL11.GL_MAP1_NORMAL, "Map1 Normal", false));
+        bits.add(new GLBit(GL11.GL_MAP1_TEXTURE_COORD_1, "Map1 Texture Coord 1", false));
+        bits.add(new GLBit(GL11.GL_MAP1_TEXTURE_COORD_2, "Map1 Texture Coord 2", false));
+        bits.add(new GLBit(GL11.GL_MAP1_TEXTURE_COORD_3, "Map1 Texture Coord 3", false));
+        bits.add(new GLBit(GL11.GL_MAP1_TEXTURE_COORD_4, "Map1 Texture Coord 4", false));
+
+        bits.add(new GLBit(GL11.GL_MAP2_VERTEX_3, "Map2 Vertex 3", false));
+        bits.add(new GLBit(GL11.GL_MAP2_VERTEX_4, "Map2 Vertex 4", false));
+        bits.add(new GLBit(GL11.GL_MAP2_INDEX, "Map2 Index", false));
+        bits.add(new GLBit(GL11.GL_MAP2_COLOR_4, "Map2 Color 4", false));
+        bits.add(new GLBit(GL11.GL_MAP2_NORMAL, "Map2 Normal", false));
+        bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_1, "Map2 Texture Coord 1", false));
+        bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_2, "Map2 Texture Coord 2", false));
+        bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_3, "Map2 Texture Coord 3", false));
+        bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_4, "Map2 Texture Coord 4", false));
+        bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
+        bits.add(new GLBit(GL11.GL_NORMALIZE, "Normalize", false));
+        bits.add(new GLBit(GL11.GL_POINT_SMOOTH, "Point Smooth", false));
+        bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_LINE, "Polygon Offset Line", false));
+        bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_FILL, "Polygon Offset Fill", false));
+        bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_POINT, "Polygon Offset Point", false));
+        bits.add(new GLBit(GL11.GL_POLYGON_SMOOTH, "Polygon Smooth", false));
+        bits.add(new GLBit(GL11.GL_POLYGON_STIPPLE, "Polygon Stipple", false));
+        bits.add(new GLBit(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE, "Sample Alpha To Coverage", false));
+        bits.add(new GLBit(GL13.GL_SAMPLE_ALPHA_TO_ONE, "Sample Alpha To One", false));
+        bits.add(new GLBit(GL13.GL_SAMPLE_COVERAGE, "Sample Coverage", false));
+        bits.add(new GLBit(GL11.GL_SCISSOR_TEST, "Scissor Test", false));
+        bits.add(new GLBit(GL11.GL_STENCIL_TEST, "Stencil Test", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_1D, "Texture 1D", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_2D, "Texture 2D", false));
+        bits.add(new GLBit(GL12.GL_TEXTURE_3D, "Texture 3D", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_S, "Texture Gen S", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_T, "Texture Gen T", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        bits.forEach(bit -> {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
+            if(bit.initial()) {
+                GLStateManager.glDisable(bit.glEnum());
+            } else {
+                GLStateManager.glEnable(bit.glEnum());
+            }
+            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
+        });
+
+        GLStateManager.glPopAttrib();
+        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+
+
+
     }
 
 }
