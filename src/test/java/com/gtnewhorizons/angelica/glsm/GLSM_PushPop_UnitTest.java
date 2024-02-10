@@ -134,7 +134,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CURRENT_INDEX, 1f, "Current Index");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_POINT_5, "Current Normal");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_POINT_5, "Texture coordinates");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION, new float[]{1280f, 1024f, 1f, 0.5f}, "Raster Position");
+        verifyState(GL11.GL_CURRENT_RASTER_POSITION, new float[]{1366f, 768f, 1f, 0.5f}, "Raster Position");
         verifyState(GL11.GL_CURRENT_RASTER_POSITION_VALID, true, "Raster Position Valid");
         verifyState(GL11.GL_CURRENT_RASTER_COLOR, FLOAT_ARRAY_4_POINT_5, "Raster Color");
         verifyState(GL11.GL_CURRENT_RASTER_INDEX, 1, "Raster Index");
