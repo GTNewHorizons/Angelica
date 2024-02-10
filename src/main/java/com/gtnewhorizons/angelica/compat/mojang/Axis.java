@@ -12,7 +12,7 @@ public enum Axis {
             case DOWN, UP -> Y;
             case NORTH, SOUTH -> Z;
             case WEST, EAST -> X;
-            default -> null;
+            case UNASSIGNED -> null;
         };
 
     }

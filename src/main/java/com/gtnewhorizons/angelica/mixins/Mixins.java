@@ -453,6 +453,17 @@ public enum Mixins {
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses("mcpatcherforge.ctm_cc.MixinTextureMap")),
 
+    NOVIS_OCULIS(new Builder("Non-Tessellator Quad provider")
+        .setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.injectQPRendering)
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses(
+            "angelica.models.MixinBlockStone",
+            "angelica.models.MixinBlockAir",
+            "angelica.models.MixinBlockWorkbench",
+            "angelica.models.MixinBlockLeaves")),
+
     ;
 
     private final List<String> mixinClasses;
