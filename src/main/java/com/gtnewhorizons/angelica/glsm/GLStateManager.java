@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -10,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.ColorMaskStack;
 import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
@@ -84,9 +86,9 @@ public class GLStateManager {
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
-    private static final IntStack activeTextureUnit = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
+    protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack();
     static {
-        activeTextureUnit.push(0); // GL_TEXTURE0
+        activeTextureUnit.setValue(0); // GL_TEXTURE0
     }
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
@@ -99,7 +101,7 @@ public class GLStateManager {
     @Getter protected static final FogStateStack fogState = new FogStateStack();
     @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
     @Getter protected static final Color4Stack color = new Color4Stack();
-    @Getter protected static final Color4Stack clearColor = new Color4Stack();
+    @Getter protected static final Color4Stack clearColor = new Color4Stack(new Color4(0.0F, 0.0F, 0.0F, 0.0F));
     @Getter protected static final ColorMaskStack colorMask = new ColorMaskStack();
     @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
@@ -135,6 +137,8 @@ public class GLStateManager {
     private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
 
+
+
     public static class GLFeatureSet extends IntOpenHashSet {
         public GLFeatureSet addFeature(int feature) {
             super.add(feature);
@@ -143,10 +147,11 @@ public class GLStateManager {
 
     }
 
-    public static void init() {
+    public static void preInit() {
         capabilities = GLContext.getCapabilities();
         HAS_MULTIPLE_SET
             .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
+            .addFeature(GL14.GL_BLEND_COLOR)
             .addFeature(GL11.GL_COLOR_CLEAR_VALUE)
             .addFeature(GL11.GL_COLOR_WRITEMASK)
             .addFeature(GL11.GL_CURRENT_COLOR)
@@ -171,6 +176,10 @@ public class GLStateManager {
             .addFeature(GL11.GL_TEXTURE_ENV_COLOR)
             .addFeature(GL11.GL_TEXTURE_MATRIX)
             .addFeature(GL11.GL_VIEWPORT);
+    }
+
+    public static void init() {
+
 
         RenderSystem.initRenderer();
 
@@ -247,7 +256,7 @@ public class GLStateManager {
             case GL11.GL_FOG -> fogMode.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
-            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
             default -> GL11.glIsEnabled(cap);
         };
@@ -266,7 +275,7 @@ public class GLStateManager {
             case GL11.GL_FOG -> fogMode.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
-            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.topInt()).isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
             default -> GL11.glGetBoolean(pname);
         };
@@ -342,8 +351,9 @@ public class GLStateManager {
         switch (pname) {
             case GL11.GL_MODELVIEW_MATRIX -> modelViewMatrix.get(0, params);
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(0, params);
-            case GL11.GL_TEXTURE_MATRIX -> textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
+//            case GL11.GL_TEXTURE_MATRIX -> textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
             case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
+            case GL11.GL_CURRENT_COLOR -> color.get(params);
             default -> {
                 if(!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(0, glGetFloat(pname));
@@ -596,8 +606,7 @@ public class GLStateManager {
     public static void glActiveTexture(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
         if (shouldBypassCache() || getActiveTextureUnit() != newTexture) {
-            activeTextureUnit.popInt();
-            activeTextureUnit.push(newTexture);
+            activeTextureUnit.setValue(newTexture);
             GL13.glActiveTexture(texture);
         }
     }
@@ -605,14 +614,13 @@ public class GLStateManager {
     public static void glActiveTextureARB(int texture) {
         final int newTexture = texture - GL13.GL_TEXTURE0;
         if (shouldBypassCache() || getActiveTextureUnit() != newTexture) {
-            activeTextureUnit.popInt();
-            activeTextureUnit.push(newTexture);
+            activeTextureUnit.setValue(newTexture);
             ARBMultitexture.glActiveTextureARB(texture);
         }
     }
 
     public static int getBoundTexture() {
-        return getBoundTexture(activeTextureUnit.topInt());
+        return getBoundTexture(activeTextureUnit.getValue());
     }
 
     public static int getBoundTexture(int unit) {
@@ -626,7 +634,7 @@ public class GLStateManager {
             return;
         }
 
-        final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt());
+        final TextureBinding textureUnit = textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue());
 
         if (shouldBypassCache() || textureUnit.getBinding() != texture) {
             GL11.glBindTexture(target, texture);
@@ -653,7 +661,7 @@ public class GLStateManager {
     public static void glDeleteTextures(int id) {
         onDeleteTexture(id);
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
+        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
@@ -662,7 +670,7 @@ public class GLStateManager {
             onDeleteTexture(ids.get(i));
         }
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.topInt()).setBinding(-1);
+        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
 
@@ -1081,7 +1089,7 @@ public class GLStateManager {
     }
 
     public static int getActiveTextureUnit() {
-        return activeTextureUnit.topInt();
+        return activeTextureUnit.getValue();
     }
 
     public static int getListMode() {

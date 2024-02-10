@@ -38,9 +38,9 @@ public class HUDCaching {
     	framebuffer.setFramebufferColor(0, 0, 0, 0);
     }
     private static boolean dirty = true;
-    
+
     public static boolean renderingCacheOverride;
-    
+
     /*
      * Some HUD features cause problems/inaccuracies when being rendered into cache.
      * We capture those and render them later
@@ -55,7 +55,7 @@ public class HUDCaching {
     public static boolean renderCrosshairsCaptured;
 
     public static final HUDCaching INSTANCE = new HUDCaching();
-    
+
 
     private HUDCaching() {}
 
@@ -65,11 +65,11 @@ public class HUDCaching {
     private static boolean isEnabled = true;
     private static final KeyBinding toggle = new KeyBinding("Toggle HUDCaching", 0, "Debug");
 
-    static {
+    public static void registerKeyBindings() {
         ClientRegistry.registerKeyBinding(toggle);
     }
 
-//    @SubscribeEvent
+    //    @SubscribeEvent
 //    public void onFrame(RenderGameOverlayEvent.Post event) {
 //        if (event.type == RenderGameOverlayEvent.ElementType.TEXT) {
 //            final long currentTimeMillis = System.currentTimeMillis();
@@ -121,15 +121,15 @@ public class HUDCaching {
         } else {
         	renderer.setupOverlayRendering();
         }
-        
+
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int width = resolution.getScaledWidth();
         int height = resolution.getScaledHeight();
         GLStateManager.enableBlend();
-        
+
         // reset the color that may be applied by some items
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        
+
         // render bits that were captured when rendering into cache
         GuiIngameAccessor gui = (GuiIngameAccessor) ingame;
         if (renderVignetteCaptured)
@@ -138,7 +138,7 @@ public class HUDCaching {
         } else {
         	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
-        
+
         if (ingame instanceof GuiIngameForge) {
         	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
         	if (renderHelmetCaptured) {
@@ -168,11 +168,11 @@ public class HUDCaching {
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         framebuffer.bindFramebufferTexture();
         drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
-        
+
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         mc.getTextureManager().bindTexture(Gui.icons);
     }
-    
+
     /**
      * We are skipping certain render calls when rendering into cache,
      * however, we cannot skip the GL state changes. This will fix

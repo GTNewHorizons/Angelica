@@ -92,4 +92,16 @@ dependencies {
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
+
+
+    // Tests
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testImplementation("org.mockito:mockito-core:3.+")
+    testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
+}
+
+task copyDependencies(type: Copy) {
+    from configurations.default
+    into 'testDependencies'
 }
