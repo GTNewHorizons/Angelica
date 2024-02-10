@@ -369,6 +369,10 @@ public class GLStateManager {
 
     // GLStateManager Functions
 
+    public static void glBlendColor(float red, float green, float blue, float alpha) {
+        GL14.glBlendColor(red, green, blue, alpha);
+    }
+
     public static void enableBlend() {
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
@@ -422,6 +426,14 @@ public class GLStateManager {
         if (blendFuncListener != null) blendFuncListener.run();
     }
 
+    public static void glBlendEquation(int mode) {
+        GL14.glBlendEquation(mode);
+    }
+
+    public static void glBlendEquationSeparate(int modeRGB, int modeAlpha) {
+        GL20.glBlendEquationSeparate(modeRGB, modeAlpha);
+    }
+
     public static void tryBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         if (AngelicaConfig.enableIris) {
             if (BlendModeStorage.isBlendLocked()) {
@@ -446,6 +458,19 @@ public class GLStateManager {
         if (blendFuncListener != null) blendFuncListener.run();
     }
 
+    public static void glNormal3b(byte nx, byte ny, byte nz) {
+        GL11.glNormal3b(nx, ny, nz);
+    }
+    public static void glNormal3d(double nx, double ny, double nz) {
+        GL11.glNormal3d(nx, ny, nz);
+    }
+    public static void glNormal3f(float nx, float ny, float nz) {
+        GL11.glNormal3f(nx, ny, nz);
+    }
+    public static void glNormal3i(int nx, int ny, int nz) {
+        GL11.glNormal3i(nx, ny, nz);
+    }
+
     public static void glDepthFunc(int func) {
         if (shouldBypassCache() || func != depthState.getFunc() ) {
             depthState.setFunc(func);
@@ -465,6 +490,10 @@ public class GLStateManager {
             depthState.setEnabled(mask);
             GL11.glDepthMask(mask);
         }
+    }
+
+    public static void glEdgeFlag(boolean flag) {
+        GL11.glEdgeFlag(flag);
     }
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
@@ -568,6 +597,10 @@ public class GLStateManager {
         }
     }
 
+    public static void glClearDepth(double depth) {
+        GL11.glClearDepth(depth);
+    }
+
     // ALPHA
     public static void enableAlphaTest() {
         if (AngelicaConfig.enableIris) {
@@ -657,6 +690,31 @@ public class GLStateManager {
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
     }
 
+    public static void glTexCoord1f(float s) {
+        GL11.glTexCoord1f(s);
+    }
+    public static void glTexCoord1d(double s) {
+        GL11.glTexCoord1d(s);
+    }
+    public static void glTexCoord2f(float s, float t) {
+        GL11.glTexCoord2f(s, t);
+    }
+    public static void glTexCoord2d(double s, double t) {
+        GL11.glTexCoord2d(s, t);
+    }
+    public static void glTexCoord3f(float s, float t, float r) {
+        GL11.glTexCoord3f(s, t, r);
+    }
+    public static void glTexCoord3d(double s, double t, double r) {
+        GL11.glTexCoord3d(s, t, r);
+    }
+    public static void glTexCoord4f(float s, float t, float r, float q) {
+        GL11.glTexCoord4f(s, t, r, q);
+    }
+    public static void glTexCoord4d(double s, double t, double r, double q) {
+        GL11.glTexCoord4d(s, t, r, q);
+    }
+
     public static void glDeleteTextures(int id) {
         onDeleteTexture(id);
 
@@ -719,6 +777,35 @@ public class GLStateManager {
         textures.getTextureUnitStates(textureUnit).disable();
     }
 
+    public static void glRasterPos2f(float x, float y) {
+        GL11.glRasterPos2f(x, y);
+    }
+    public static void glRasterPos2d(double x, double y) {
+        GL11.glRasterPos2d(x, y);
+    }
+    public static void glRasterPos2i(int x, int y) {
+        GL11.glRasterPos2i(x, y);
+    }
+    public static void glRasterPos3f(float x, float y, float z) {
+        GL11.glRasterPos3f(x, y, z);
+    }
+    public static void glRasterPos3d(double x, double y, double z) {
+        GL11.glRasterPos3d(x, y, z);
+    }
+    public static void glRasterPos3i(int x, int y, int z) {
+        GL11.glRasterPos3i(x, y, z);
+    }
+    public static void glRasterPos4f(float x, float y, float z, float w) {
+        GL11.glRasterPos4f(x, y, z, w);
+    }
+    public static void glRasterPos4d(double x, double y, double z, double w) {
+        GL11.glRasterPos4d(x, y, z, w);
+    }
+    public static void glRasterPos4i(int x, int y, int z, int w) {
+        GL11.glRasterPos4i(x, y, z, w);
+    }
+
+
     public static void setFilter(boolean bilinear, boolean mipmap) {
         int i, j;
         if (bilinear) {
@@ -736,6 +823,14 @@ public class GLStateManager {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
         Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         GL11.glDrawArrays(mode, first, count);
+    }
+
+    public static void glDrawBuffer(int mode) {
+        GL11.glDrawBuffer(mode);
+    }
+
+    public static void glLogicOp(int opcode) {
+        GL11.glLogicOp(opcode);
     }
 
     public static void defaultBlendFunc() {
@@ -952,6 +1047,10 @@ public class GLStateManager {
         }
     }
 
+    public static void glClear(int mask) {
+        // TODO: Implement
+        GL11.glClear(mask);
+    }
     public static void glPushAttrib(int mask) {
         pushState(mask);
         GL11.glPushAttrib(mask);

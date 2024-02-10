@@ -49,10 +49,10 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
         GLStateManager.glEnable(GL11.GL_INDEX_LOGIC_OP);
         GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL14.glBlendColor(1f, 1f, 1f, 1f); // Not currently Implemented in GLSM
-        GL20.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT); // Not currently Implemented in GLSM
-        GL11.glDrawBuffer(GL11.GL_FRONT_AND_BACK); // Not currently Implemented in GLSM
-        GL11.glLogicOp(GL11.GL_OR);// Not currently Implemented in GLSM
+        GLStateManager.glBlendColor(1f, 1f, 1f, 1f);
+        GLStateManager.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT);
+        GLStateManager.glDrawBuffer(GL11.GL_FRONT_AND_BACK);
+        GLStateManager.glLogicOp(GL11.GL_OR);
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
@@ -114,14 +114,14 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
         // Current color index
-        GL11.glNormal3f(0.5f, 0.5f, 0.5f);
-        GL11.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
-        GL11.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
+        GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
+        GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
+        GLStateManager.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
                 // GL_CURRENT_RASTER_POSITION_VALID flag
                 // RGBA color associated with current raster position
                 // Color index associated with current raster position
                 // Texture coordinates associated with current raster position
-        GL11.glEdgeFlag(false); // GL_EDGE_FLAG flag
+        GLStateManager.glEdgeFlag(false); // GL_EDGE_FLAG flag
 
 
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_POINT_5, "Current Color");
@@ -154,7 +154,7 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
         GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
         GLStateManager.glDepthFunc(GL11.GL_NEVER);
-        GL11.glClearDepth(0.5f); // Not currently Implemented in GLSM
+        GLStateManager.glClearDepth(0.5f); // Not currently Implemented in GLSM
         GLStateManager.glDepthMask(false);
 
         verifyState(GL11.GL_DEPTH_TEST, true, "Depth Test");
