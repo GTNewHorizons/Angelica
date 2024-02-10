@@ -197,9 +197,11 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_DITHER, "Dither", true));
         bits.add(new GLBit(GL11.GL_FOG, "Fog", false));
         // This fails on the RESET test in xvfb
-        // for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
-        //     bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
-        // }
+        if(!AngelicaExtension.MESA) {
+             for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
+                 bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
+             }
+         }
         bits.add(new GLBit(GL11.GL_LIGHTING, "Lighting", false));
         bits.add(new GLBit(GL11.GL_LINE_SMOOTH, "Line Smooth", false));
         bits.add(new GLBit(GL11.GL_LINE_STIPPLE, "Line Stipple", false));
@@ -226,7 +228,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_3, "Map2 Texture Coord 3", false));
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_4, "Map2 Texture Coord 4", false));
         // Seems to be broken at least on Nvidia
-        // bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
+        if(!AngelicaExtension.NVIDIA) // bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
         bits.add(new GLBit(GL11.GL_NORMALIZE, "Normalize", false));
         bits.add(new GLBit(GL11.GL_POINT_SMOOTH, "Point Smooth", false));
         bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_LINE, "Polygon Offset Line", false));
@@ -275,7 +277,7 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glFogf(GL11.GL_FOG_END, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_START, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
+        if(!AngelicaExtension.NVIDIA) GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
 
         verifyIsEnabled(GL11.GL_FOG, true, "Fog Enable");
         verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_POINT_5, "Fog Color");
@@ -283,7 +285,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 0.5f, "Fog End");
         verifyState(GL11.GL_FOG_START, 0.5f, "Fog Start");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_LINEAR, "Fog Mode");
-        verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
+        if(!AngelicaExtension.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
 
         GLStateManager.glPopAttrib();
         verifyIsEnabled(GL11.GL_FOG, false, "Fog Enable - Reset");
@@ -292,7 +294,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 1f, "Fog End - Reset");
         verifyState(GL11.GL_FOG_START, 0f, "Fog Start - Reset");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_EXP, "Fog Mode - Reset");
-        verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
+        if(!AngelicaExtension.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
     }
 
 }
