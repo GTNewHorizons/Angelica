@@ -885,16 +885,20 @@ public class GLStateManager {
 
     public static void glFog(int pname, FloatBuffer param) {
         // TODO: Iris Notifier
-        GL11.glFog(pname, param);
-        if (pname == GL11.GL_FOG_COLOR) {
-            final float red = param.get(0);
-            final float green = param.get(1);
-            final float blue = param.get(2);
+        if (HAS_MULTIPLE_SET.contains(pname)) {
+            GL11.glFog(pname, param);
+            if (pname == GL11.GL_FOG_COLOR) {
+                final float red = param.get(0);
+                final float green = param.get(1);
+                final float blue = param.get(2);
 
-            fogState.getFogColor().set(red, green, blue);
-            fogState.setFogAlpha(param.get(3));
-            fogState.getFogColorBuffer().clear();
-            fogState.getFogColorBuffer().put((FloatBuffer) param.position(0)).flip();
+                fogState.getFogColor().set(red, green, blue);
+                fogState.setFogAlpha(param.get(3));
+                fogState.getFogColorBuffer().clear();
+                fogState.getFogColorBuffer().put((FloatBuffer) param.position(0)).flip();
+            }
+        } else {
+            GLStateManager.glFogf(pname, param.get(0));
         }
     }
 

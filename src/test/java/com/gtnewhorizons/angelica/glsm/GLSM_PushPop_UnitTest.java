@@ -4,12 +4,14 @@ import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.util.GLBit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
@@ -259,8 +261,38 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glPopAttrib();
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
 
+    }
 
+    @Test
+    void testPushPopFogBit() {
+        final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
+        GLStateManager.glPushAttrib(GL11.GL_FOG_BIT);
+        GLStateManager.glEnable(GL11.GL_FOG);
+        floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
+        GLStateManager.glFog(GL11.GL_FOG_COLOR, floatBuffer);
 
+        GLStateManager.glFogf(GL11.GL_FOG_DENSITY, 0.5f);
+        GLStateManager.glFogf(GL11.GL_FOG_END, 0.5f);
+        GLStateManager.glFogf(GL11.GL_FOG_START, 0.5f);
+        GLStateManager.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
+
+        verifyIsEnabled(GL11.GL_FOG, true, "Fog Enable");
+        verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_POINT_5, "Fog Color");
+        verifyState(GL11.GL_FOG_DENSITY, 0.5f, "Fog Density");
+        verifyState(GL11.GL_FOG_END, 0.5f, "Fog End");
+        verifyState(GL11.GL_FOG_START, 0.5f, "Fog Start");
+        verifyState(GL11.GL_FOG_MODE, GL11.GL_LINEAR, "Fog Mode");
+        verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_FOG, false, "Fog Enable - Reset");
+        verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_0, "Fog Color - Reset");
+        verifyState(GL11.GL_FOG_DENSITY, 1f, "Fog Density - Reset");
+        verifyState(GL11.GL_FOG_END, 1f, "Fog End - Reset");
+        verifyState(GL11.GL_FOG_START, 0f, "Fog Start - Reset");
+        verifyState(GL11.GL_FOG_MODE, GL11.GL_EXP, "Fog Mode - Reset");
+        verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
     }
 
 }
