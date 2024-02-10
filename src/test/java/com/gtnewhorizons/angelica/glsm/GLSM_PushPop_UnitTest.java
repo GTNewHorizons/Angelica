@@ -104,6 +104,7 @@ class GLSM_PushPop_UnitTest {
     @Test
     void testPushPopCurrentBit() {
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Initial Color State"); // Verify no state leakage from other tests
+        verifyState(GL11.GL_CURRENT_INDEX, 1, "Initial Index State");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Initial Texture Coordinates");
         verifyState(GL11.GL_CURRENT_RASTER_POSITION, FLOAT_ARRAY_4_0001, "Initial Raster Position");
         verifyState(GL11.GL_CURRENT_RASTER_POSITION_VALID, true, "Initial Raster Position Valid");
@@ -113,7 +114,7 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-        // Current color index
+        // Apparently glIndex is not implemented in lwjgl2?
         GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
         GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
         GLStateManager.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
@@ -125,6 +126,7 @@ class GLSM_PushPop_UnitTest {
 
 
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_POINT_5, "Current Color");
+        verifyState(GL11.GL_CURRENT_INDEX, 1f, "Current Index");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_POINT_5, "Current Normal");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_POINT_5, "Texture coordinates");
         verifyState(GL11.GL_CURRENT_RASTER_POSITION, new float[]{1280f, 1024f, 1f, 0.5f}, "Raster Position");
@@ -137,6 +139,7 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Current Color - reset");
+        verifyState(GL11.GL_CURRENT_INDEX, 1, "Current Index - reset");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_001, "Current normal - reset");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Texture coordinates - reset");
         verifyState(GL11.GL_CURRENT_RASTER_POSITION, FLOAT_ARRAY_4_0001, "Raster Position - reset");
