@@ -1,123 +1,16 @@
-package com.gtnewhorizons.angelica;
+package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.Test;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.DisplayMode;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.PixelFormat;
 
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.util.stream.IntStream;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-class GLSM_UnitTest {
-    private static DisplayMode mode;
-    @BeforeAll
-    static void setup() throws LWJGLException {
-        mode = findDisplayMode(800, 600, Display.getDisplayMode().getBitsPerPixel());
-        Display.setDisplayModeAndFullscreen(mode);
-        Display.setFullscreen(false);
-        final PixelFormat format = new PixelFormat().withDepthBits(24);
-        Display.create(format);
-        GLStateManager.preInit();
-    }
-
-    @AfterAll
-    static void cleanup() {
-        Display.destroy();
-    }
-
-    private static DisplayMode findDisplayMode(int width, int height, int bpp) throws LWJGLException {
-        final DisplayMode[] modes = Display.getAvailableDisplayModes();
-        for ( DisplayMode mode : modes ) {
-            if ( mode.getWidth() == width && mode.getHeight() == height && mode.getBitsPerPixel() >= bpp && mode.getFrequency() <= 60 ) {
-                return mode;
-            }
-        }
-        return Display.getDesktopDisplayMode();
-    }
-
-    void verifyIsEnabled(int glCap, boolean expected) {
-        verifyIsEnabled(glCap, expected, "Boolean State Mismatch");
-    }
-
-    void verifyIsEnabled(int glCap, boolean expected, String message) {
-        assertAll( message,
-            () -> assertEquals(expected, GL11.glIsEnabled(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
-        );
-    }
-
-    void verifyState(int glCap, boolean expected) {
-        verifyState(glCap, expected, "Boolean State Mismatch");
-    }
-
-    void verifyState(int glCap, boolean expected, String message) {
-        assertAll( message,
-            () -> assertEquals(expected, GL11.glGetBoolean(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
-        );
-    }
-    void verifyState(int glCap, int expected) {
-        assertAll("Int State Mismatch",
-            () -> assertEquals(expected, GL11.glGetInteger(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
-        );
-    }
-
-    void verifyState(int glCap, float expected) {
-        assertAll("Float State Mismatch",
-            () -> assertEquals(expected, GL11.glGetFloat(glCap), 0.0001f, "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, "GLSM State Mismatch")
-        );
-    }
-
-    void verifyState(int glCap, float[] expected) {
-        verifyState(glCap, expected, "Float State Mismatch");
-    }
-
-    void verifyState(int glCap, float[] expected, String message) {
-        final FloatBuffer glBuffer = BufferUtils.createFloatBuffer(16);
-        final FloatBuffer glsmBuffer = BufferUtils.createFloatBuffer(16);
-
-        GL11.glGetFloat(glCap, glBuffer);
-        GLStateManager.glGetFloat(glCap, glsmBuffer);
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glBuffer.get(i), 0.0001f, "GL State Mismatch"),
-            () -> assertEquals(expected[i], glsmBuffer.get(i),  0.0001f, "GLSM State Mismatch")
-        ));
-    }
-
-    private void verifyState(int glCap, boolean[] expected) {
-        verifyState(glCap, expected, "Boolean State Mismatch");
-    }
-
-    private void verifyState(int glCap, boolean[] expected, String message) {
-        final ByteBuffer glBuffer = BufferUtils.createByteBuffer(16);
-        final ByteBuffer glsmBuffer = BufferUtils.createByteBuffer(16);
-
-        GL11.glGetBoolean(glCap, glBuffer);
-        GLStateManager.glGetBoolean(glCap, glsmBuffer);
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch"),
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmBuffer.get(i), "GLSM State Mismatch")
-        ));
-
-        for (int i = 0; i < expected.length; i++) {
-            assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glBuffer.get(i), "GL State Mismatch");
-            ;
-        }
-    }
+@ExtendWith(AngelicaExtension.class)
+class GLSM_PushPop_UnitTest {
 
     @Test
     void testPushPopColorBufferBit() {
@@ -250,4 +143,5 @@ class GLSM_UnitTest {
         verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 1f);
         verifyState(GL11.GL_DEPTH_WRITEMASK, true);
     }
+
 }
