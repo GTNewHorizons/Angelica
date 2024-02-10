@@ -17,6 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GLSM_UnitTest {
@@ -25,6 +26,7 @@ class GLSM_UnitTest {
     static void setup() throws LWJGLException {
         mode = findDisplayMode(800, 600, Display.getDisplayMode().getBitsPerPixel());
         Display.setDisplayModeAndFullscreen(mode);
+        Display.setFullscreen(false);
         final PixelFormat format = new PixelFormat().withDepthBits(24);
         Display.create(format);
         GLStateManager.preInit();
@@ -45,10 +47,27 @@ class GLSM_UnitTest {
         return Display.getDesktopDisplayMode();
     }
 
-    void verifyState(int glCap, boolean expected) {
-        Stream.of(GLStateManager.glIsEnabled(glCap), GL11.glIsEnabled(glCap)).forEach(b -> assertEquals(expected, b));
+    void verifyIsEnabled(int glCap, boolean expected) {
+        verifyIsEnabled(glCap, expected, "Boolean State Mismatch");
     }
 
+    void verifyIsEnabled(int glCap, boolean expected, String message) {
+        assertAll( message,
+            () -> assertEquals(expected, GL11.glIsEnabled(glCap), "GL State Mismatch"),
+            () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
+        );
+    }
+
+    void verifyState(int glCap, boolean expected) {
+        verifyState(glCap, expected, "Boolean State Mismatch");
+    }
+
+    void verifyState(int glCap, boolean expected, String message) {
+        assertAll( message,
+            () -> assertEquals(expected, GL11.glGetBoolean(glCap), "GL State Mismatch"),
+            () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
+        );
+    }
     void verifyState(int glCap, int expected) {
         Stream.of(GLStateManager.glGetInteger(glCap), GL11.glGetInteger(glCap)).forEach(i -> assertEquals(expected, i));
     }
@@ -118,19 +137,19 @@ class GLSM_UnitTest {
         GLStateManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
 
 
-        verifyState(GL11.GL_ALPHA_TEST, true);
+        verifyIsEnabled(GL11.GL_ALPHA_TEST, true);
         verifyState(GL11.GL_ALPHA_TEST_FUNC, GL11.GL_NEVER);
         verifyState(GL11.GL_ALPHA_TEST_REF, 1f);
-        verifyState(GL11.GL_BLEND, true);
+        verifyIsEnabled(GL11.GL_BLEND, true);
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA);
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA);
         verifyState(GL14.GL_BLEND_COLOR, new float[]{1f, 1f, 1f, 1f});
         verifyState(GL14.GL_BLEND_EQUATION, GL14.GL_FUNC_REVERSE_SUBTRACT);
         verifyState(GL20.GL_BLEND_EQUATION_ALPHA, GL14.GL_FUNC_REVERSE_SUBTRACT);
-        verifyState(GL11.GL_DITHER, false);
+        verifyIsEnabled(GL11.GL_DITHER, false);
         verifyState(GL11.GL_DRAW_BUFFER, GL11.GL_FRONT_AND_BACK);
-        verifyState(GL11.GL_COLOR_LOGIC_OP, true);
-        verifyState(GL11.GL_INDEX_LOGIC_OP, true);
+        verifyIsEnabled(GL11.GL_COLOR_LOGIC_OP, true);
+        verifyIsEnabled(GL11.GL_INDEX_LOGIC_OP, true);
         verifyState(GL11.GL_LOGIC_OP_MODE, GL11.GL_OR);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f});
         verifyState(GL11.GL_COLOR_WRITEMASK, new boolean[]{false, false, false, false});
@@ -138,19 +157,19 @@ class GLSM_UnitTest {
 
 
         GLStateManager.glPopAttrib();
-        verifyState(GL11.GL_ALPHA_TEST, false);
+        verifyIsEnabled(GL11.GL_ALPHA_TEST, false);
         verifyState(GL11.GL_ALPHA_TEST_FUNC, GL11.GL_ALWAYS);
         verifyState(GL11.GL_ALPHA_TEST_REF, 0f);
-        verifyState(GL11.GL_BLEND, false);
+        verifyIsEnabled(GL11.GL_BLEND, false);
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE);
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ZERO);
         verifyState(GL14.GL_BLEND_COLOR, new float[]{0f, 0f, 0f, 0f});
         verifyState(GL14.GL_BLEND_EQUATION, GL14.GL_FUNC_ADD);
         verifyState(GL20.GL_BLEND_EQUATION_ALPHA, GL14.GL_FUNC_ADD);
-        verifyState(GL11.GL_DITHER, true);
+        verifyIsEnabled(GL11.GL_DITHER, true);
         verifyState(GL11.GL_DRAW_BUFFER, GL11.GL_BACK);
-        verifyState(GL11.GL_COLOR_LOGIC_OP, false);
-        verifyState(GL11.GL_INDEX_LOGIC_OP, false);
+        verifyIsEnabled(GL11.GL_COLOR_LOGIC_OP, false);
+        verifyIsEnabled(GL11.GL_INDEX_LOGIC_OP, false);
         verifyState(GL11.GL_LOGIC_OP_MODE, GL11.GL_COPY);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.5f, 0.5f, 0.5f, 0.5f}); // This does not get reset
         verifyState(GL11.GL_COLOR_WRITEMASK, new boolean[]{true, true, true, true});
@@ -158,4 +177,25 @@ class GLSM_UnitTest {
 
     }
 
+    @Test
+    void testPushPopDepthBufferBit() {
+        verifyState(GL11.GL_DEPTH_WRITEMASK, true, "GL_DEPTH_WRITEMASK Initial State");
+
+        GLStateManager.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
+        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
+        GLStateManager.glDepthFunc(GL11.GL_NEVER);
+        GL11.glClearDepth(0.5f); // Not currently Implemented in GLSM
+        GLStateManager.glDepthMask(false);
+
+        verifyState(GL11.GL_DEPTH_TEST, true);
+        verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_NEVER);
+        verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 0.5f);
+        verifyState(GL11.GL_DEPTH_WRITEMASK, false);
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_DEPTH_TEST, false);
+        verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_LESS);
+        verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 1f);
+        verifyState(GL11.GL_DEPTH_WRITEMASK, true);
+    }
 }

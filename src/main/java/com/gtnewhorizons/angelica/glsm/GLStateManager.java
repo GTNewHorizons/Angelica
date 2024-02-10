@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -271,7 +270,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> blendMode.isEnabled();
             case GL11.GL_CULL_FACE -> cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
-            case GL11.GL_DEPTH_WRITEMASK -> depthState.isMask();
+            case GL11.GL_DEPTH_WRITEMASK -> depthState.isEnabled();
             case GL11.GL_FOG -> fogMode.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
@@ -462,8 +461,8 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.isMask()) {
-            depthState.setMask(mask);
+        if (mask != depthState.isEnabled()) {
+            depthState.setEnabled(mask);
             GL11.glDepthMask(mask);
         }
     }
