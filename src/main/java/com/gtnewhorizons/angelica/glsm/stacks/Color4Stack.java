@@ -16,6 +16,11 @@ public class Color4Stack extends Color4 implements IStateStack<Color4Stack> {
         }
     }
 
+    public Color4Stack(Color4 color4) {
+        this();
+        set(color4);
+    }
+
     public Color4Stack push() {
         if(pointer == stack.length) {
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");

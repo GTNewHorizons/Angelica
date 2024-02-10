@@ -50,9 +50,8 @@ public class Feature {
             // GL_COLOR_LOGIC_OP enable bit
             // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
-//            , GLStateManager.color      // Color mode and index mode writemasks
-            , GLStateManager.colorMask  // ^^^^
-            , GLStateManager.clearColor // Color mode and index mode clear values
+            , GLStateManager.colorMask   // Color-mode and index-mode writemasks
+            , GLStateManager.clearColor  // Color-mode and index-mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
               GLStateManager.color  // Current RGBA color

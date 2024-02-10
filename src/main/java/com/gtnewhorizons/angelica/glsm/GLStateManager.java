@@ -101,7 +101,7 @@ public class GLStateManager {
     @Getter protected static final FogStateStack fogState = new FogStateStack();
     @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
     @Getter protected static final Color4Stack color = new Color4Stack();
-    @Getter protected static final Color4Stack clearColor = new Color4Stack();
+    @Getter protected static final Color4Stack clearColor = new Color4Stack(new Color4(0.0F, 0.0F, 0.0F, 0.0F));
     @Getter protected static final ColorMaskStack colorMask = new ColorMaskStack();
     @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
@@ -346,6 +346,7 @@ public class GLStateManager {
             case GL11.GL_PROJECTION_MATRIX -> projectionMatrix.get(0, params);
 //            case GL11.GL_TEXTURE_MATRIX -> textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
             case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
+            case GL11.GL_CURRENT_COLOR -> color.get(params);
             default -> {
                 if(!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(0, glGetFloat(pname));
