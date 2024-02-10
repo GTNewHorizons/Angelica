@@ -341,6 +341,10 @@ public class GLStateManager {
         }
     }
 
+    public static void glGetLight(int light, int pname, FloatBuffer params) {
+        GL11.glGetLight(light, pname, params);
+    }
+
     public static void glGetFloat(int pname, FloatBuffer params) {
         if(shouldBypassCache()) {
             GL11.glGetFloat(pname, params);

@@ -14,7 +14,10 @@ import org.lwjgl.opengl.GL20;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
-import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyNotDefaultState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @ExtendWith(AngelicaExtension.class)
 class GLSM_PushPop_UnitTest {
@@ -26,7 +29,12 @@ class GLSM_PushPop_UnitTest {
     public static final float[] FLOAT_ARRAY_4_0 = { 0f, 0f, 0f, 0f };
     public static final float[] FLOAT_ARRAY_4_POINT_5 = { 0.5f, 0.5f, 0.5f, 0.5f };
     public static final float[] FLOAT_ARRAY_4_1 = { 1f, 1f, 1f, 1f };
+    public static final float[] FLOAT_ARRAY_4_1000 = { 1f, 0f, 0f, 0f };
     public static final float[] FLOAT_ARRAY_4_0001 = { 0f, 0f, 0f, 1f };
+    public static final float[] FLOAT_ARRAY_MODEL_AMBIENT_DEFAULT = { 0.2f, 0.2f, 0.2f, 1.0f };
+    public static final float[] FLOAT_ARRAY_4_0010 = { 0f, 0f, 1f, 0f };
+    public static final float[] FLOAT_ARRAY_3_1 = { 1f, 1f, 1f };
+    public static final float[] FLOAT_ARRAY_GL_SPOT_DIRECTION_DEFAULT = { 0f, 0f, -1f };
 
     @Test
     void testPushPopColorBufferBit() {
@@ -295,6 +303,78 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_START, 0f, "Fog Start - Reset");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_EXP, "Fog Mode - Reset");
         if(!AngelicaExtension.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
+    }
+
+    @Test
+    void testPushPopLightingBit() {
+        final ArrayList<GLBit> bits = new ArrayList<>();
+        final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
+
+        bits.add(new GLBit(GL11.GL_COLOR_MATERIAL, "Color Material", false));
+        bits.add(new GLBit(GL11.GL_LIGHTING, "Lighting", false));
+        for(int i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
+            bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
+        }
+
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GL11.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
+        // Ambient scene color ??
+        GL11.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
+        GL11.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
+        floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
+        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
+        GL11.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
+
+        floatBuffer.put(FLOAT_ARRAY_4_0010).flip();
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
+        floatBuffer.put(FLOAT_ARRAY_4_0).flip();
+        GL11.glShadeModel(GL11.GL_FLAT);
+
+
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT, "Color Material Face");
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT, "Color Material Parameter");
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f, "Light Model Local Viewer");
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f, "Light Model Two Side");
+        verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Model Ambient");
+        verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR, "Light Model Color Control");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Ambient");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, FLOAT_ARRAY_4_POINT_5, "Light Diffuse");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, FLOAT_ARRAY_4_POINT_5, "Light Specular");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, FLOAT_ARRAY_4_POINT_5, "Light Position");
+        verifyState(GL11.GL_SHADE_MODEL, GL11.GL_FLAT, "Shade Model");
+
+
+        bits.forEach(bit -> {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
+            if(bit.initial()) {
+                GLStateManager.glDisable(bit.glEnum());
+            } else {
+                GLStateManager.glEnable(bit.glEnum());
+            }
+            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
+        });
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK, "Color Material Face - Reset");
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE, "Color Material Parameter - Reset");
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 0f, "Light Model Local Viewer - Reset");
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 0f, "Light Model Two Side - Reset");
+        verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_MODEL_AMBIENT_DEFAULT, "Light Model Ambient - Reset");
+        verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR, "Light Model Color Control - Reset");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_0001, "Light Ambient - Reset");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, FLOAT_ARRAY_4_1, "Light Diffuse - Reset");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, FLOAT_ARRAY_4_1, "Light Specular - Reset");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, FLOAT_ARRAY_4_0010, "Light Position - Reset");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, FLOAT_ARRAY_GL_SPOT_DIRECTION_DEFAULT, "Light Spot Direction - Reset");
+        verifyState(GL11.GL_SHADE_MODEL, GL11.GL_SMOOTH, "Shade Model - Reset");
+
+        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+
+
     }
 
 }

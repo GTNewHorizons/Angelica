@@ -96,10 +96,15 @@ public class GLSMUtil {
             () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch: " + i),
             () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), "GLSM State Mismatch: " + i)
         ));
+    }
 
-        for (int i = 0; i < expected.length; i++) {
-            assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch");
-            ;
-        }
+
+    public static void verifyLightState(int glLight, int pname, float[] expected, String message) {
+        GL11.glGetLight(glLight, pname, (FloatBuffer) glFloatBuffer.clear());
+        GLStateManager.glGetLight(glLight, pname, (FloatBuffer) glsmFloatBuffer.clear());
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+            () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
+        ));
     }
 }

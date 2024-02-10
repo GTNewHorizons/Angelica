@@ -131,6 +131,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glGetBoolean")
             .add("glGetFloat")
             .add("glGetInteger")
+            .add("glGetLight")
             .add("glGetTexLevelParameteri")
             .add("glGetTexParameterf")
             .add("glGetTexParameteri")
