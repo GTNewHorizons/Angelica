@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.lwjgl.LWJGLException;
@@ -13,7 +14,7 @@ import org.lwjgl.opengl.PixelFormat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
-public class AngelicaExtension implements BeforeAllCallback, AfterAllCallback, ExtensionContext.Store.CloseableResource {
+public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
 
     private static boolean started = false;
     private static DisplayMode displayMode;
@@ -71,7 +72,7 @@ public class AngelicaExtension implements BeforeAllCallback, AfterAllCallback, E
     }
 
     @Override
-    public void afterAll(ExtensionContext context) throws Exception {
+    public void afterEach(ExtensionContext context) throws Exception {
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "GL Error");
     }
 }
