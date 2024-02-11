@@ -1,8 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import io.netty.buffer.ByteBuf;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
@@ -21,6 +19,7 @@ import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,34 +45,34 @@ public class ChunkRenderTranslucencySortTask<T extends ChunkGraphicsState> exten
 
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
-        ChunkRenderData data = this.render.getData();
-        Map<BlockRenderPass, ChunkMeshData> replacementMeshes;
+        final ChunkRenderData data = this.render.getData();
+        final Map<BlockRenderPass, ChunkMeshData> replacementMeshes;
 
         if(!data.isEmpty()) {
             replacementMeshes = new HashMap<>();
             for(BlockRenderPass pass : TRANSLUCENT_PASSES) {
-                ChunkGraphicsState state = this.render.getGraphicsState(pass);
+                final ChunkGraphicsState state = this.render.getGraphicsState(pass);
                 if(state == null)
                     continue;
-                ByteBuffer translucencyData = state.getTranslucencyData();
+                final ByteBuffer translucencyData = state.getTranslucencyData();
                 if(translucencyData == null)
                     continue;
-                ChunkMeshData translucentMesh = data.getMesh(pass);
+                final ChunkMeshData translucentMesh = data.getMesh(pass);
                 if(translucentMesh == null)
                     continue;
 
-            // Make a snapshot of the translucency data to sort
-            ByteBuffer sortedData = BufferUtils.createByteBuffer(translucencyData.capacity());
-            synchronized (translucencyData) {
-                sortedData.put(translucencyData);
-                translucencyData.position(0);
-                translucencyData.limit(translucencyData.capacity());
-            }
+                // Make a snapshot of the translucency data to sort
+                final ByteBuffer sortedData = BufferUtils.createByteBuffer(translucencyData.capacity());
+                synchronized (translucencyData) {
+                    sortedData.put(translucencyData);
+                    translucencyData.position(0);
+                    translucencyData.limit(translucencyData.capacity());
+                }
 
                 sortedData.flip();
                 // Sort it and create the new mesh
                 ChunkBufferSorter.sortStandardFormat(buffers.getVertexType(), sortedData, sortedData.capacity(), (float) camera.x - offset.getX(), (float)camera.y - offset.getY(), (float)camera.z - offset.getZ());
-                ChunkMeshData newMesh = new ChunkMeshData();
+                final ChunkMeshData newMesh = new ChunkMeshData();
                 newMesh.setVertexData(new VertexData(sortedData, buffers.getVertexType().getCustomVertexFormat()));
                 for(Map.Entry<ModelQuadFacing, BufferSlice> entry : translucentMesh.getSlices()) {
                     newMesh.setModelSlice(entry.getKey(), entry.getValue());
@@ -84,7 +83,7 @@ public class ChunkRenderTranslucencySortTask<T extends ChunkGraphicsState> exten
             replacementMeshes = Collections.emptyMap();
         }
 
-        ChunkBuildResult<T> result = new ChunkBuildResult<>(this.render, data.copyAndReplaceMesh(replacementMeshes));
+        final ChunkBuildResult<T> result = new ChunkBuildResult<>(this.render, data.copyAndReplaceMesh(replacementMeshes));
         result.passesToUpload = replacementMeshes.keySet().toArray(NO_PASSES);
         return result;
     }
