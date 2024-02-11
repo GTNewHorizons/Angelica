@@ -86,8 +86,11 @@ public class GLStateManager {
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
     protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack();
+    protected static final IntegerStateStack shadeModelState = new IntegerStateStack();
+
     static {
         activeTextureUnit.setValue(0); // GL_TEXTURE0
+        shadeModelState.setValue(GL11.GL_SMOOTH);
     }
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
@@ -116,7 +119,6 @@ public class GLStateManager {
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
-    private static int modelShadeMode;
 
     // Iris Listeners
     private static Runnable blendFuncListener = null;
@@ -313,6 +315,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
             case GL11.GL_LIST_MODE -> glListMode;
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
+            case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
@@ -960,8 +963,8 @@ public class GLStateManager {
     }
 
     public static void glShadeModel(int mode) {
-        if (shouldBypassCache() || modelShadeMode != mode) {
-            modelShadeMode = mode;
+        if (shouldBypassCache() || shadeModelState.getValue() != mode) {
+            shadeModelState.setValue(mode);
             GL11.glShadeModel(mode);
         }
     }
@@ -1349,4 +1352,30 @@ public class GLStateManager {
             default -> GL11.glGetTexLevelParameteri(target, level, pname);
         };
     }
+
+    public static void glLight(int light, int pname, FloatBuffer params) {
+        GL11.glLight(light, pname, params);
+    }
+    public static void glLight(int light, int pname, IntBuffer params) {
+        GL11.glLight(light, pname, params);
+    }
+
+    public static void glLightModel(int pname, FloatBuffer params) {
+        GL11.glLightModel(pname, params);
+    }
+    public static void glLightModel(int pname, IntBuffer params) {
+        GL11.glLightModel(pname, params);
+    }
+    public static void glLightModelf(int pname, float param) {
+        GL11.glLightModelf(pname, param);
+    }
+    public static void glLightModeli(int pname, int param) {
+        GL11.glLightModeli(pname, param);
+    }
+
+    public static void glColorMaterial(int face, int mode) {
+        GL11.glColorMaterial(face, mode);
+    }
+
+
 }
