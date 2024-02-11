@@ -317,22 +317,22 @@ class GLSM_PushPop_UnitTest {
         }
 
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
-        GL11.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
         // Ambient scene color ??
-        GL11.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
-        GL11.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
+        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
+        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
         floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
-        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
-        GL11.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
+        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
+        GLStateManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
+        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
+        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
+        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
 
         floatBuffer.put(FLOAT_ARRAY_4_0010).flip();
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
+        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
         floatBuffer.put(FLOAT_ARRAY_4_0).flip();
-        GL11.glShadeModel(GL11.GL_FLAT);
+        GLStateManager.glShadeModel(GL11.GL_FLAT);
 
 
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT, "Color Material Face");
