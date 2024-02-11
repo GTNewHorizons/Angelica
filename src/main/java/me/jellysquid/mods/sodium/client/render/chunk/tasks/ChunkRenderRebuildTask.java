@@ -288,4 +288,16 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     public void releaseResources() {
         this.context.releaseResources();
     }
+
+    @Override
+    public String toString() {
+        return "ChunkRenderRebuildTask{"
+            + "offset="
+            + offset
+            + ", camera="
+            + camera
+            + ", translucencySorting="
+            + translucencySorting
+            + '}';
+    }
 }

@@ -423,7 +423,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
                     LockSupport.unpark(GLStateManager.getMainThread());
                 } else if (!job.isCancelled()) {
                     // If the job wasn't cancelled and no result was produced, we've hit a bug
-                    job.future.completeExceptionally(new RuntimeException("No result was produced by the task"));
+                    job.future.completeExceptionally(new RuntimeException("No result was produced by the task " + job.task.getClass() + ": " + job.task));
                 }
             }
         }

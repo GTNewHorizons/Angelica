@@ -89,4 +89,9 @@ public class ChunkRenderTranslucencySortTask<T extends ChunkGraphicsState> exten
     public void releaseResources() {
 
     }
+
+    @Override
+    public String toString() {
+        return "ChunkRenderTranslucencySortTask{" + "offset=" + offset + ", camera=" + camera + '}';
+    }
 }
