@@ -100,8 +100,3 @@ dependencies {
     testImplementation("org.mockito:mockito-core:3.+")
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
 }
-
-task copyDependencies(type: Copy) {
-    from configurations.default
-    into 'testDependencies'
-}
