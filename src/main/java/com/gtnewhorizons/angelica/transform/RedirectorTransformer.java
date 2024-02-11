@@ -51,6 +51,7 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL11 = "org/lwjgl/opengl/GL11";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
+    private static final String GL20 = "org/lwjgl/opengl/GL20";
     private static final String Project = "org/lwjgl/util/glu/Project";
 
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
@@ -104,7 +105,9 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glBindTexture")
             .add("glBlendFunc")
             .add("glCallList")
+            .add("glClear")
             .add("glClearColor")
+            .add("glClearDepth")
             .add("glColor3b")
             .add("glColor3d")
             .add("glColor3f")
@@ -118,6 +121,8 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glDepthFunc")
             .add("glDepthMask")
             .add("glDrawArrays")
+            .add("glDrawBuffer")
+            .add("glEdgeFlag")
             .add("glEndList")
             .add("glFog")
             .add("glFogf")
@@ -126,24 +131,47 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glGetBoolean")
             .add("glGetFloat")
             .add("glGetInteger")
+            .add("glGetLight")
             .add("glGetTexLevelParameteri")
             .add("glGetTexParameterf")
             .add("glGetTexParameteri")
             .add("glIsEnabled")
             .add("glLoadIdentity")
             .add("glLoadMatrix")
+            .add("glLogicOp")
             .add("glMatrixMode")
             .add("glMultMatrix")
             .add("glNewList")
+            .add("glNormal3b")
+            .add("glNormal3d")
+            .add("glNormal3f")
+            .add("glNormal3i")
             .add("glOrtho")
             .add("glPopAttrib")
             .add("glPopMatrix")
             .add("glPushAttrib")
             .add("glPushMatrix")
+            .add("glRasterPos2f")
+            .add("glRasterPos2d")
+            .add("glRasterPos2i")
+            .add("glRasterPos3f")
+            .add("glRasterPos3d")
+            .add("glRasterPos3i")
+            .add("glRasterPos4f")
+            .add("glRasterPos4d")
+            .add("glRasterPos4i")
             .add("glRotated")
             .add("glRotatef")
             .add("glScaled")
             .add("glScalef")
+            .add("glTexCoord1f")
+            .add("glTexCoord1d")
+            .add("glTexCoord2f")
+            .add("glTexCoord2d")
+            .add("glTexCoord3f")
+            .add("glTexCoord3d")
+            .add("glTexCoord4f")
+            .add("glTexCoord4d")
             .add("glTexParameter")
             .add("glTexParameterf")
             .add("glTexParameteri")
@@ -155,7 +183,14 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glViewport")
         );
         methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
-        methodRedirects.put(GL14, RedirectMap.newMap().add("glBlendFuncSeparate", "tryBlendFuncSeparate"));
+        methodRedirects.put(GL14, RedirectMap.newMap()
+            .add("glBlendFuncSeparate", "tryBlendFuncSeparate")
+            .add("glBlendColor")
+            .add("glBlendEquation")
+        );
+        methodRedirects.put(GL20, RedirectMap.newMap()
+            .add("glBlendEquationSeparate")
+        );
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
             .add("glBlendFunc", "tryBlendFuncSeparate")
             .add("func_148821_a", "tryBlendFuncSeparate"));
