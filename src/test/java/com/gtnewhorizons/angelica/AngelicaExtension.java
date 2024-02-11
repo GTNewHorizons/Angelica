@@ -32,8 +32,9 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
         if (!started) {
             started = true;
 
-            displayMode = findDisplayMode(800, 600, Display.getDisplayMode().getBitsPerPixel());
+            displayMode = new DisplayMode(800, 600);
             Display.setDisplayModeAndFullscreen(displayMode);
+            Display.setResizable(false);
             Display.setFullscreen(false);
             final PixelFormat format = new PixelFormat().withDepthBits(24);
             Display.create(format);
@@ -59,16 +60,6 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
     @Override
     public void close() {
         Display.destroy();
-    }
-
-    private static DisplayMode findDisplayMode(int width, int height, int bpp) throws LWJGLException {
-        final DisplayMode[] modes = Display.getAvailableDisplayModes();
-        for ( DisplayMode mode : modes ) {
-            if ( mode.getWidth() == width && mode.getHeight() == height && mode.getBitsPerPixel() >= bpp && mode.getFrequency() <= 60 ) {
-                return mode;
-            }
-        }
-        return Display.getDesktopDisplayMode();
     }
 
     @Override
