@@ -71,7 +71,7 @@ dependencies {
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
-    runtimeOnly("com.github.GTNewHorizons:Baubles:1.0.1.16:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.1.16:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.5.1:dev") {transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
 
@@ -81,15 +81,22 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
-    compileOnly("com.github.GTNewHorizons:NotEnoughIds:1.5.3:dev") // Mixin Version
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.0.0:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
 
-    runtimeOnly(deobf("https://github.com/makamys/CoreTweaks/releases/download/0.3.3.2/CoreTweaks-1.7.10-0.3.3.2+nomixin.jar"))
+    runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
+
+
+    // Tests
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testImplementation("org.mockito:mockito-core:3.+")
+    testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
 }

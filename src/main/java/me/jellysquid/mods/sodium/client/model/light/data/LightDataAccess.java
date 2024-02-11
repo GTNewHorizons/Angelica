@@ -47,7 +47,7 @@ public abstract class LightDataAccess {
     public abstract long get(int x, int y, int z);
 
     protected long compute(int x, int y, int z) {
-        final BlockPos pos = this.pos.set(x, y, z);
+
         final WorldSlice world = this.world;
 
         final Block block = world.getBlock(x, y, z);

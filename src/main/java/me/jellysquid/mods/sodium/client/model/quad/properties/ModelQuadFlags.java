@@ -33,8 +33,8 @@ public class ModelQuadFlags {
      * certain optimizations.
      */
     public static int getQuadFlags(Quad quad) {
-        final ForgeDirection face = quad.getFace();
-        final Axis axis = Axis.fromDirection(quad.normal);
+        final ForgeDirection face = quad.getCoercedFace();
+        final Axis axis = Axis.fromDirection(ModelQuadFacing.fromDirection(face));
 
         float minX = 32.0F;
         float minY = 32.0F;

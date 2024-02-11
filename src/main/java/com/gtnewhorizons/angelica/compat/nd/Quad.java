@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -35,6 +37,10 @@ public class Quad implements ModelQuadView {
     private boolean hasShade;
     private boolean hasNormals;
 
+    private int cachedFlags;
+    private ForgeDirection face;
+    private int colorIndex = -1;
+
     public boolean hasColor() {
         return this.hasColor;
     }
@@ -51,9 +57,9 @@ public class Quad implements ModelQuadView {
         return this.hasNormals;
     }
 
-    public ForgeDirection getFace() {
-        // TODO: Sodium/Quad Facing
-        return ForgeDirection.UP;
+    /** Returns the face, forced to take one of 6 directions to mirror the behavior of baked quads in 1.16.5. */
+    public ForgeDirection getCoercedFace() {
+        return this.face != ForgeDirection.UNKNOWN ? this.face : ForgeDirection.UP;
     }
 
     @Override
@@ -88,7 +94,7 @@ public class Quad implements ModelQuadView {
 
     @Override
     public int getFlags() {
-        return 0;
+        return this.cachedFlags;
     }
 
     @Override
@@ -103,7 +109,7 @@ public class Quad implements ModelQuadView {
 
     @Override
     public int getColorIndex() {
-        return 0;
+        return colorIndex;
     }
 
     @Override
@@ -166,6 +172,8 @@ public class Quad implements ModelQuadView {
         vectorA.cross(vectorB, vectorC);
 
         normal = ModelQuadFacing.fromVector(vectorC);
+        this.face = ModelQuadFacing.toDirection(normal);
+        this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
     }
 
     public static boolean isValid(Quad q) {

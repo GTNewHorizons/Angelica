@@ -62,6 +62,6 @@ body:
           required: true
         - label: "I am running an officially released version.  (Or, if I've compiled it myself I plan to fix the issue)"
           required: true
-        - label: "This issue is not shader related  (they aren't ready yet for testing)"
+        - label: "This issue is not related to a feature that is disabed by default - Shaders, MCPF, etc.  [They'll be enabled when they're ready for testing]"
           required: true
                     

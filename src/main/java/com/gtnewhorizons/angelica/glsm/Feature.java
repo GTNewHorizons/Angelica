@@ -50,9 +50,8 @@ public class Feature {
             // GL_COLOR_LOGIC_OP enable bit
             // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
-            , GLStateManager.colorMask  // Color mode and index mode writemasks
-            , GLStateManager.color      // Color mode and index mode writemasks
-            , GLStateManager.clearColor // Color mode and index mode clear values
+            , GLStateManager.colorMask   // Color-mode and index-mode writemasks
+            , GLStateManager.clearColor  // Color-mode and index-mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
               GLStateManager.color  // Current RGBA color
@@ -219,11 +218,14 @@ public class Feature {
             // Stencil buffer writemask
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
+            GLStateManager.activeTextureUnit // Active texture unit
                 // Enable bits for the four texture coordinates
+
                 // Border color for each texture image
                 // Minification function for each texture image
                 // Magnification function for each texture image
                 // Texture coordinates and wrap mode for each texture image
+
                 // Color and mode for each texture environment
                 // Enable bits GL_TEXTURE_GEN_x, x is S, T, R, and Q
                 // GL_TEXTURE_GEN_MODE setting for S, T, R, and Q
@@ -234,9 +236,11 @@ public class Feature {
         // Current Texture Bindings - GL_TEXTURE_BINDING_2D
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             textureAttribs.add(GLStateManager.textures.getTextureUnitBindings(i));
+//            textureAttribs.add(GLStateManager.textures.getInfo(i))
         }
 
         attribToFeatures.put(GL11.GL_TEXTURE_BIT, textureAttribs);
+
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes

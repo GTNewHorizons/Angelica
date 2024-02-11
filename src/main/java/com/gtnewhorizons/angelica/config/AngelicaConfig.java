@@ -16,6 +16,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodiumFluidRendering;
 
+    @Config.Comment("Inject QuadProvider rendering into some vanilla blocks")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean injectQPRendering;
+
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

@@ -1,10 +1,14 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import java.util.List;
+import java.util.Random;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -14,7 +18,9 @@ import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientati
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
+import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
+import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -23,9 +29,6 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
-
-import java.util.List;
-import java.util.Random;
 
 public class BlockRenderer {
 
@@ -37,12 +40,17 @@ public class BlockRenderer {
     private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
+    private final BlockOcclusionCache occlusionCache;
+
+    private final ObjectPooler<Quad> quadPool = new ObjectPooler<>(Quad::new);
+    // TODO: Use modern model API, and store them here
 
 
     public BlockRenderer(LightPipelineProvider lighters) {
         this.lighters = lighters;
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
+        this.occlusionCache = new BlockOcclusionCache();
     }
 
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
@@ -53,32 +61,51 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        try {
-            TessellatorManager.startCapturing();
-            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-            tess.startDrawingQuads();
-            // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
+        if (block instanceof QuadProvider qBlock) {
 
-            tess.setOffset(pos);
-            renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-            final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
-            tess.resetOffset();
+            for (ForgeDirection dir : ForgeDirection.values()) {
 
-            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, quads, facing);
+                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, this.quadPool);
+
+                if (quads.isEmpty()) continue;
+
+                if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
+
+                    this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
+                    rendered = true;
+                }
+
+                for (Quad q : quads) this.quadPool.releaseInstance(q);
             }
+        } else {
 
-            if (!quads.isEmpty()) rendered = true;
-        } finally {
-            TessellatorManager.cleanup();
+            try {
+                TessellatorManager.startCapturing();
+                final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+                tess.startDrawingQuads();
+                // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
+
+                tess.setOffset(pos);
+                renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+                final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
+                tess.resetOffset();
+
+                for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                    this.random.setSeed(seed);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, false);
+                }
+
+                if (!quads.isEmpty()) rendered = true;
+            } finally {
+                TessellatorManager.cleanup();
+            }
         }
-
 
         return rendered;
     }
 
-    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing) {
+    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
 
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
@@ -96,21 +123,18 @@ public class BlockRenderer {
 
             final QuadLightData light = this.cachedQuadLightData;
 
-            // TODO: use Sodium pipeline always
-            if(this.useSeparateAo) {
-                lighter.calculate(quad, pos, light, cullFace, quad.getFace(), quad.hasShade());
-            }
+            if (useSodiumLight || this.useSeparateAo)
+                lighter.calculate(quad, pos, light, cullFace, quad.getCoercedFace(), quad.hasShade());
 
-
-            this.renderQuad(sink, quad, light, renderData);
+            this.renderQuad(sink, quad, light, renderData, useSodiumLight);
         }
 
         sink.flush();
     }
 
-    private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData) {
+    private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
-        final ModelQuadOrientation order = useSeparateAo ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
+        final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
@@ -124,13 +148,16 @@ public class BlockRenderer {
             if (useSeparateAo) {
                 color &= 0x00FFFFFF;
                 color |= ((int) (ao * 255.0f)) << 24;
+            } else {
+
+                color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
             }
 
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int quadLight = quad.getLight(srcIndex);
-            final int lm = useSeparateAo ? ModelQuadUtil.mergeBakedLight(quadLight, light.lm[srcIndex]) : quadLight;
+            final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]) :
+                (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
             sink.writeQuad(x, y, z, color, u, v, lm);
         }

@@ -17,7 +17,7 @@ public class DepthColorStorage {
 			ColorMask colorMask = GLStateManager.getColorMask();
 			final DepthState depthState = GLStateManager.getDepthState();
 
-			originalDepthEnable = depthState.isMask();
+			originalDepthEnable = depthState.isEnabled();
 			originalColor = new net.coderbot.iris.gl.blending.ColorMask(colorMask.red, colorMask.green, colorMask.blue, colorMask.alpha);
 		}
 

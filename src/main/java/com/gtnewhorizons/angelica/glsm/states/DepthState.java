@@ -6,12 +6,12 @@ import org.lwjgl.opengl.GL11;
 
 @Getter @Setter
 public class DepthState implements ISettableState<DepthState> {
-    protected boolean mask = true;
+    protected boolean enabled = true;
     protected int func = GL11.GL_LESS;
 
     @Override
     public DepthState set(DepthState state) {
-        this.mask = state.mask;
+        this.enabled = state.enabled;
         this.func = state.func;
         return this;
     }
@@ -20,7 +20,7 @@ public class DepthState implements ISettableState<DepthState> {
     public boolean sameAs(Object state) {
         if (this == state) return true;
         if (!(state instanceof DepthState depthState)) return false;
-        return mask == depthState.mask && func == depthState.func;
+        return enabled == depthState.enabled && func == depthState.func;
     }
     @Override
     public DepthState copy() {
