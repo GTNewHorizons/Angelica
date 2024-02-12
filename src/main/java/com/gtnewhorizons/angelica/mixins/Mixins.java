@@ -106,6 +106,7 @@ public enum Mixins {
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinTessellator"
+            ,"sodium.MixinTileEntity"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
             ,"sodium.MixinTileEntityRendererDispatcher"
