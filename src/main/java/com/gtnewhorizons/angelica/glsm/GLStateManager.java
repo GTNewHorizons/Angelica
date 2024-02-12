@@ -74,6 +74,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 public class GLStateManager {
     public static ContextCapabilities capabilities;
 
+    @Getter protected static boolean poppingAttributes;
     public static boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
     public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
     public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
@@ -1068,8 +1069,10 @@ public class GLStateManager {
     }
 
     public static void glPopAttrib() {
+        poppingAttributes = true;
         popState();
         GL11.glPopAttrib();
+        poppingAttributes = false;
     }
 
     // Matrix Operations

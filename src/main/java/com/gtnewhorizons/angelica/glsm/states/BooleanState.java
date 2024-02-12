@@ -5,10 +5,9 @@ import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 
 public class BooleanState implements ISettableState<BooleanState> {
-    private final int glCap;
+    protected final int glCap;
 
-    @Getter
-    private boolean enabled;
+    @Getter protected boolean enabled;
 
     public BooleanState(int glCap) {
         this.glCap = glCap;
@@ -23,7 +22,7 @@ public class BooleanState implements ISettableState<BooleanState> {
     }
 
     public void setEnabled(boolean enabled) {
-        if (GLStateManager.shouldBypassCache() || enabled != this.enabled) {
+        if (GLStateManager.shouldBypassCache() || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.isPoppingAttributes())) {
             this.enabled = enabled;
             if (enabled) {
                 GL11.glEnable(this.glCap);
