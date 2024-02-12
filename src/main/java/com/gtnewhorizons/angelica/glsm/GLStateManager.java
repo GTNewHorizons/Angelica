@@ -155,12 +155,6 @@ public class GLStateManager {
     }
 
     public static void preInit() {
-        String glVendor = GL11.glGetString(GL11.GL_VENDOR);
-        NVIDIA = glVendor.toLowerCase().contains("nvidia");
-        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
-        INTEL = glVendor.toLowerCase().contains("intel");
-        MESA = glVendor.toLowerCase().contains("mesa");
-
         capabilities = GLContext.getCapabilities();
         HAS_MULTIPLE_SET
             .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
@@ -189,6 +183,12 @@ public class GLStateManager {
             .addFeature(GL11.GL_TEXTURE_ENV_COLOR)
             .addFeature(GL11.GL_TEXTURE_MATRIX)
             .addFeature(GL11.GL_VIEWPORT);
+
+        String glVendor = GL11.glGetString(GL11.GL_VENDOR);
+        NVIDIA = glVendor.toLowerCase().contains("nvidia");
+        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
+        INTEL = glVendor.toLowerCase().contains("intel");
+        MESA = glVendor.toLowerCase().contains("mesa");
     }
 
     public static void init() {
