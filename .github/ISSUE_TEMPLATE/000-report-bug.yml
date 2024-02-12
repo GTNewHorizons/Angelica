@@ -34,6 +34,20 @@ body:
         - Other (Please Specify)
     validations:
       required: true
+  - type: dropdown
+    id: graphics
+    attributes:
+      label: Graphics Card Vendor
+      description: What graphics card vendor are you using?
+      options:
+        - Other (Please Specify)
+        - NVidia
+        - AMD/ATI
+        - Intel iGPU
+        - AMD iGPU
+        - Mesa/Software
+    validations:
+      required: true
   - type: textarea
     id: report
     attributes:
