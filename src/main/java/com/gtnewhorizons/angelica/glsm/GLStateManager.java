@@ -84,6 +84,11 @@ public class GLStateManager {
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
+    @Getter protected static boolean NVIDIA;
+    @Getter protected static boolean AMD;
+    @Getter protected static boolean INTEL;
+    @Getter protected static boolean MESA;
+
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
     protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack();
@@ -150,6 +155,12 @@ public class GLStateManager {
     }
 
     public static void preInit() {
+        String glVendor = GL11.glGetString(GL11.GL_VENDOR);
+        NVIDIA = glVendor.toLowerCase().contains("nvidia");
+        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
+        INTEL = glVendor.toLowerCase().contains("intel");
+        MESA = glVendor.toLowerCase().contains("mesa");
+
         capabilities = GLContext.getCapabilities();
         HAS_MULTIPLE_SET
             .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
