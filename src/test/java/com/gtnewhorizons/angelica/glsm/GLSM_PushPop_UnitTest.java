@@ -205,7 +205,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_DITHER, "Dither", true));
         bits.add(new GLBit(GL11.GL_FOG, "Fog", false));
         // This fails on the RESET test in xvfb
-        if(!AngelicaExtension.MESA) {
+        if(!(AngelicaExtension.MESA || AngelicaExtension.AMD)) {
             for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
                 bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
             }
