@@ -22,11 +22,6 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
     public static String glRenderer;
     public static String glVersion;
 
-    public static boolean NVIDIA;
-    public static boolean AMD;
-    public static boolean INTEL;
-    public static boolean MESA;
-
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
         if (!started) {
@@ -49,11 +44,6 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
             System.out.println("OpenGL Vendor: " + glVendor);
             System.out.println("OpenGL Renderer: " + glRenderer);
             System.out.println("OpenGL Version: " + glVersion);
-
-            NVIDIA = glVendor.toLowerCase().contains("nvidia");
-            AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
-            INTEL = glVendor.toLowerCase().contains("intel");
-            MESA = glVendor.toLowerCase().contains("mesa");
         }
     }
 
