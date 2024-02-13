@@ -136,6 +136,7 @@ public enum Mixins {
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"
             ,"shaders.MixinRenderGlobal"
+            ,"shaders.MixinRenderManager"
         )
     ),
 
