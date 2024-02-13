@@ -36,6 +36,8 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
 
             // Warm-up State Manager features
             GLStateManager.preInit();
+            GLStateManager.setRunningSplash(false); // So we don't bypass the cache
+            GLStateManager.BYPASS_CACHE = false; // Just to be sure
             RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
