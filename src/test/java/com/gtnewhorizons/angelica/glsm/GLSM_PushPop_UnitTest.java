@@ -205,7 +205,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_DITHER, "Dither", true));
         bits.add(new GLBit(GL11.GL_FOG, "Fog", false));
         // This fails on the RESET test in xvfb
-        if(!(AngelicaExtension.MESA || AngelicaExtension.AMD)) {
+        if(!(GLStateManager.MESA || GLStateManager.AMD)) {
             for(i = 0 ; i < GL11.glGetInteger(GL11.GL_MAX_LIGHTS) ;  i++) {
                 bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
             }
@@ -236,7 +236,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_3, "Map2 Texture Coord 3", false));
         bits.add(new GLBit(GL11.GL_MAP2_TEXTURE_COORD_4, "Map2 Texture Coord 4", false));
         // Seems to be broken at least on Nvidia
-        if(!AngelicaExtension.NVIDIA) bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
+        if(!GLStateManager.NVIDIA) bits.add(new GLBit(GL13.GL_MULTISAMPLE, "Multisample", true));
         bits.add(new GLBit(GL11.GL_NORMALIZE, "Normalize", false));
         bits.add(new GLBit(GL11.GL_POINT_SMOOTH, "Point Smooth", false));
         bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_LINE, "Polygon Offset Line", false));
@@ -285,7 +285,7 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glFogf(GL11.GL_FOG_END, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_START, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        if(!AngelicaExtension.NVIDIA) GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
+        if(!GLStateManager.NVIDIA) GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
 
         verifyIsEnabled(GL11.GL_FOG, true, "Fog Enable");
         verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_POINT_5, "Fog Color");
@@ -293,7 +293,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 0.5f, "Fog End");
         verifyState(GL11.GL_FOG_START, 0.5f, "Fog Start");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_LINEAR, "Fog Mode");
-        if(!AngelicaExtension.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
+        if(!GLStateManager.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
 
         GLStateManager.glPopAttrib();
         verifyIsEnabled(GL11.GL_FOG, false, "Fog Enable - Reset");
@@ -302,7 +302,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 1f, "Fog End - Reset");
         verifyState(GL11.GL_FOG_START, 0f, "Fog Start - Reset");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_EXP, "Fog Mode - Reset");
-        if(!AngelicaExtension.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
+        if(!GLStateManager.NVIDIA) verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
     }
 
     @Test
@@ -373,8 +373,135 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_SMOOTH, "Shade Model - Reset");
 
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
-
-
     }
 
+    @Test
+    void testPushPopTextureBit() {
+        final ArrayList<GLBit> bits = new ArrayList<>();
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_S, "Texture Gen S", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_T, "Texture Gen T", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial Texture Binding");
+
+        final int tex1 = GL11.glGenTextures();
+        final int tex2 = GL11.glGenTextures();
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Unit 1 - Switch");
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1 - Set");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1");
+
+        bits.forEach(bit -> {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
+            if(bit.initial()) {
+                GLStateManager.glDisable(bit.glEnum());
+            } else {
+                GLStateManager.glEnable(bit.glEnum());
+            }
+            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
+        });
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture Unit 0 - Reset");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 0 - Reset");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 1 - Reset");
+
+        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glDeleteTextures(tex1);
+        GLStateManager.glDeleteTextures(tex2);
+    }
+
+    @Test
+    void testPushPopTextureBitMultiple() {
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial Texture Binding");
+
+        final int tex1 = GL11.glGenTextures();
+        final int tex2 = GL11.glGenTextures();
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
+        GLStateManager.glDeleteTextures(tex2);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
+        GLStateManager.glDeleteTextures(tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glDeleteTextures(tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset 2");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Reset 2");
+    }
+
+    @Test
+    void testPushPopTransformBit() {
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Initial Matrix Mode");
+        verifyState(GL11.GL_NORMALIZE, false, "Initial Normalize");
+        verifyState(GL12.GL_RESCALE_NORMAL, false, "Initial Rescale Normal");
+
+        GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glEnable(GL11.GL_NORMALIZE);
+        GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
+
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_PROJECTION, "Matrix Mode");
+        verifyState(GL11.GL_NORMALIZE, true, "Normalize");
+        verifyState(GL12.GL_RESCALE_NORMAL, true, "Rescale Normal");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Matrix Mode - Reset");
+        verifyState(GL11.GL_NORMALIZE, false, "Normalize - Reset");
+        verifyState(GL12.GL_RESCALE_NORMAL, false, "Rescale Normal - Reset");
+    }
+
+    @Test
+    void testPushPopViewportBit() {
+        GLStateManager.glViewport(0, 0, 800, 600);
+        verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Initial");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_VIEWPORT_BIT);
+        GLStateManager.glViewport(1, 1, 100, 100);
+        GLStateManager.glDepthRange(0.5, 1.0);
+
+        verifyState(GL11.GL_VIEWPORT, new int[] { 1, 1, 100, 100 }, "Viewport");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.5f, 1.0f }, "Depth Range");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Reset");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Reset");
+    }
 }

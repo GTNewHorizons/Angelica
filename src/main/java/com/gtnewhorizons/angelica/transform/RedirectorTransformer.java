@@ -121,6 +121,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glDeleteTextures")
             .add("glDepthFunc")
             .add("glDepthMask")
+            .add("glDepthRange")
             .add("glDrawArrays")
             .add("glDrawBuffer")
             .add("glEdgeFlag")

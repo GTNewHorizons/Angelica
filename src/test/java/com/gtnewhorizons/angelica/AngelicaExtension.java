@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.extension.AfterAllCallback;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -22,11 +22,6 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
     public static String glRenderer;
     public static String glVersion;
 
-    public static boolean NVIDIA;
-    public static boolean AMD;
-    public static boolean INTEL;
-    public static boolean MESA;
-
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
         if (!started) {
@@ -41,6 +36,9 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
 
             // Warm-up State Manager features
             GLStateManager.preInit();
+            GLStateManager.setRunningSplash(false); // So we don't bypass the cache
+            GLStateManager.BYPASS_CACHE = false; // Just to be sure
+            RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);
@@ -49,11 +47,6 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
             System.out.println("OpenGL Vendor: " + glVendor);
             System.out.println("OpenGL Renderer: " + glRenderer);
             System.out.println("OpenGL Version: " + glVersion);
-
-            NVIDIA = glVendor.toLowerCase().contains("nvidia");
-            AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
-            INTEL = glVendor.toLowerCase().contains("intel");
-            MESA = glVendor.toLowerCase().contains("mesa");
         }
     }
 
