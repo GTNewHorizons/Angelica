@@ -267,6 +267,9 @@ public class GLStateManager {
     }
 
     public static boolean glIsEnabled(int cap) {
+        if(shouldBypassCache()) {
+            return GL11.glIsEnabled(cap);
+        }
         return switch (cap) {
             case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
             case GL11.GL_BLEND -> blendMode.isEnabled();
@@ -511,7 +514,7 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.isEnabled()) {
+        if (shouldBypassCache() || mask != depthState.isEnabled()) {
             depthState.setEnabled(mask);
             GL11.glDepthMask(mask);
         }
