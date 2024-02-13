@@ -373,8 +373,27 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_SMOOTH, "Shade Model - Reset");
 
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+    }
 
+    @Test
+    void testPushPopTransformBit() {
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Initial Matrix Mode");
+        verifyState(GL11.GL_NORMALIZE, false, "Initial Normalize");
+        verifyState(GL12.GL_RESCALE_NORMAL, false, "Initial Rescale Normal");
 
+        GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glEnable(GL11.GL_NORMALIZE);
+        GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
+
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_PROJECTION, "Matrix Mode");
+        verifyState(GL11.GL_NORMALIZE, true, "Normalize");
+        verifyState(GL12.GL_RESCALE_NORMAL, true, "Rescale Normal");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Matrix Mode - Reset");
+        verifyState(GL11.GL_NORMALIZE, false, "Normalize - Reset");
+        verifyState(GL12.GL_RESCALE_NORMAL, false, "Rescale Normal - Reset");
     }
 
     @Test
