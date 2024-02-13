@@ -189,6 +189,12 @@ public class GLStateManager {
         AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
         INTEL = glVendor.toLowerCase().contains("intel");
         MESA = glVendor.toLowerCase().contains("mesa");
+
+        if(AMD) {
+            // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        }
+
     }
 
     public static void init() {
