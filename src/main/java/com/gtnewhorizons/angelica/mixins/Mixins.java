@@ -18,7 +18,6 @@ public enum Mixins {
     ANGELICA_STARTUP(new Builder("Angelica Startup").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.startup.MixinInitGLStateManager"
-            ,"angelica.startup.MixinSplashProgress"
         )
     ),
 
@@ -106,6 +105,7 @@ public enum Mixins {
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinTessellator"
+            ,"sodium.MixinTileEntity"
             ,"sodium.MixinGuiIngameForge"
             ,"sodium.MixinEffectRenderer"
             ,"sodium.MixinTileEntityRendererDispatcher"

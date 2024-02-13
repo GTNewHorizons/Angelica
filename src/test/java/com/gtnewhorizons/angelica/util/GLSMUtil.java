@@ -6,6 +6,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -55,6 +56,22 @@ public class GLSMUtil {
             () -> assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, "GLSM State Mismatch")
         );
     }
+    public static void verifyState(int glCap, int[] expected) {
+        verifyState(glCap, expected, "Int State Mismatch");
+    }
+
+    static final IntBuffer glIntBuffer = BufferUtils.createIntBuffer(16);
+    static final IntBuffer glsmIntBuffer = BufferUtils.createIntBuffer(16);
+
+    public static void verifyState(int glCap, int[] expected, String message) {
+        GL11.glGetInteger(glCap, (IntBuffer) glIntBuffer.clear());
+        GLStateManager.glGetInteger(glCap, (IntBuffer) glsmIntBuffer.clear());
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertEquals(expected[i], glIntBuffer.get(i), "GL State Mismatch: " + i),
+            () -> assertEquals(expected[i], glsmIntBuffer.get(i), "GLSM State Mismatch: " + i)
+        ));
+    }
+
 
     public static void verifyState(int glCap, float[] expected) {
         verifyState(glCap, expected, "Float State Mismatch");

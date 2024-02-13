@@ -248,7 +248,7 @@ public class BatchingFontRenderer {
         batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
 
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
-        final int boundTextureBefore = GLStateManager.getBoundTexture();
+        final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         boolean textureChanged = false;
 
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
@@ -265,7 +265,7 @@ public class BatchingFontRenderer {
         glEnableClientState(GL_COLOR_ARRAY);
         glVertexPointer(2, 0, batchVtxPositions);
         glEnableClientState(GL_VERTEX_ARRAY);
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
@@ -274,9 +274,9 @@ public class BatchingFontRenderer {
             final FontDrawCmd cmd = cmdsData[i];
             if (!Objects.equals(lastTexture, cmd.texture)) {
                 if (lastTexture == null) {
-                    GLStateManager.enableTexture();
+                    GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
                 } else if (cmd.texture == null) {
-                    GLStateManager.disableTexture();
+                    GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
                 }
                 if (cmd.texture != null) {
                     ((FontRendererAccessor) underlying).angelica$bindTexture(cmd.texture);
@@ -292,7 +292,7 @@ public class BatchingFontRenderer {
         glPopClientAttrib();
 
         if (isTextureEnabledBefore) {
-        	GLStateManager.enableTexture();
+        	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         }
         if (textureChanged) {
         	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);

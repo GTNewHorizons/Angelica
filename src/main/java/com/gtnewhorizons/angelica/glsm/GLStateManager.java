@@ -74,6 +74,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 public class GLStateManager {
     public static ContextCapabilities capabilities;
 
+    @Getter protected static boolean poppingAttributes;
     public static boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
     public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
     public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
@@ -82,6 +83,11 @@ public class GLStateManager {
     public static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
+
+    @Getter protected static boolean NVIDIA;
+    @Getter protected static boolean AMD;
+    @Getter protected static boolean INTEL;
+    @Getter protected static boolean MESA;
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
@@ -131,7 +137,7 @@ public class GLStateManager {
     // Thread Checking
     @Getter private static final Thread MainThread = Thread.currentThread();
     private static Thread CurrentThread = MainThread;
-    @Setter @Getter private static boolean runningSplash = false;
+    @Setter @Getter private static boolean runningSplash = true;
 
     private static int glListMode = 0;
     private static int glListId = -1;
@@ -177,6 +183,18 @@ public class GLStateManager {
             .addFeature(GL11.GL_TEXTURE_ENV_COLOR)
             .addFeature(GL11.GL_TEXTURE_MATRIX)
             .addFeature(GL11.GL_VIEWPORT);
+
+        String glVendor = GL11.glGetString(GL11.GL_VENDOR);
+        NVIDIA = glVendor.toLowerCase().contains("nvidia");
+        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
+        INTEL = glVendor.toLowerCase().contains("intel");
+        MESA = glVendor.toLowerCase().contains("mesa");
+
+        if(AMD) {
+            // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        }
+
     }
 
     public static void init() {
@@ -249,6 +267,9 @@ public class GLStateManager {
     }
 
     public static boolean glIsEnabled(int cap) {
+        if(shouldBypassCache()) {
+            return GL11.glIsEnabled(cap);
+        }
         return switch (cap) {
             case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
             case GL11.GL_BLEND -> blendMode.isEnabled();
@@ -493,7 +514,7 @@ public class GLStateManager {
             }
         }
 
-        if (mask != depthState.isEnabled()) {
+        if (shouldBypassCache() || mask != depthState.isEnabled()) {
             depthState.setEnabled(mask);
             GL11.glDepthMask(mask);
         }
@@ -725,7 +746,6 @@ public class GLStateManager {
     public static void glDeleteTextures(int id) {
         onDeleteTexture(id);
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
@@ -734,7 +754,6 @@ public class GLStateManager {
             onDeleteTexture(ids.get(i));
         }
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
 
@@ -976,6 +995,12 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
         }
+
+        for(int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            if(textures.getTextureUnitBindings(i).getBinding() == id) {
+                textures.getTextureUnitBindings(i).setBinding(0);
+            }
+        }
     }
 
     public static void makeCurrent(Drawable drawable) throws LWJGLException {
@@ -1068,8 +1093,10 @@ public class GLStateManager {
     }
 
     public static void glPopAttrib() {
+        poppingAttributes = true;
         popState();
         GL11.glPopAttrib();
+        poppingAttributes = false;
     }
 
     // Matrix Operations
@@ -1377,5 +1404,7 @@ public class GLStateManager {
         GL11.glColorMaterial(face, mode);
     }
 
-
+    public static void glDepthRange(double near, double far) {
+        GL11.glDepthRange(near, far);
+    }
 }
