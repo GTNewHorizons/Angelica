@@ -1391,5 +1391,7 @@ public class GLStateManager {
         GL11.glColorMaterial(face, mode);
     }
 
-
+    public static void glDepthRange(double near, double far) {
+        GL11.glDepthRange(near, far);
+    }
 }

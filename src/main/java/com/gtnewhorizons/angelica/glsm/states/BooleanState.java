@@ -22,7 +22,7 @@ public class BooleanState implements ISettableState<BooleanState> {
     }
 
     public void setEnabled(boolean enabled) {
-        if (GLStateManager.shouldBypassCache() || enabled != this.enabled || (GLStateManager.isAMD() && this.glCap == GL11.GL_BLEND && GLStateManager.isPoppingAttributes())) {
+        if (GLStateManager.shouldBypassCache() || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.isAMD() && GLStateManager.isPoppingAttributes())) {
             this.enabled = enabled;
             if (enabled) {
                 GL11.glEnable(this.glCap);

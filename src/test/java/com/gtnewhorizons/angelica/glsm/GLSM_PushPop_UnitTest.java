@@ -377,4 +377,21 @@ class GLSM_PushPop_UnitTest {
 
     }
 
+    @Test
+    void testPushPopViewportBit() {
+        GLStateManager.glViewport(0, 0, 800, 600);
+        verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Initial");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_VIEWPORT_BIT);
+        GLStateManager.glViewport(1, 1, 100, 100);
+        GLStateManager.glDepthRange(0.5, 1.0);
+
+        verifyState(GL11.GL_VIEWPORT, new int[] { 1, 1, 100, 100 }, "Viewport");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.5f, 1.0f }, "Depth Range");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Reset");
+        verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Reset");
+    }
 }
