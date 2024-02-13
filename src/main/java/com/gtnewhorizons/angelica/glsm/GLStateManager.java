@@ -137,7 +137,7 @@ public class GLStateManager {
     // Thread Checking
     @Getter private static final Thread MainThread = Thread.currentThread();
     private static Thread CurrentThread = MainThread;
-    @Setter @Getter private static boolean runningSplash = false;
+    @Setter @Getter private static boolean runningSplash = true;
 
     private static int glListMode = 0;
     private static int glListId = -1;

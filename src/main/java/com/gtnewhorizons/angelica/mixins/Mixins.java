@@ -18,7 +18,6 @@ public enum Mixins {
     ANGELICA_STARTUP(new Builder("Angelica Startup").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.startup.MixinInitGLStateManager"
-            ,"angelica.startup.MixinSplashProgress"
         )
     ),
 

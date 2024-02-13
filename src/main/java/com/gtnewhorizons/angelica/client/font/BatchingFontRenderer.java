@@ -265,7 +265,7 @@ public class BatchingFontRenderer {
         glEnableClientState(GL_COLOR_ARRAY);
         glVertexPointer(2, 0, batchVtxPositions);
         glEnableClientState(GL_VERTEX_ARRAY);
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
