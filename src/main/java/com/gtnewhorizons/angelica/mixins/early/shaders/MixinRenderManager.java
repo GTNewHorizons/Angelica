@@ -1,12 +1,14 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import net.coderbot.iris.layer.*;
-import net.coderbot.iris.uniforms.*;
-import net.minecraft.client.renderer.entity.*;
-import net.minecraft.entity.*;
-import org.spongepowered.asm.mixin.*;
-import org.spongepowered.asm.mixin.injection.*;
-import org.spongepowered.asm.mixin.injection.callback.*;
+import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.Entity;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderManager.class)
 public class MixinRenderManager {
