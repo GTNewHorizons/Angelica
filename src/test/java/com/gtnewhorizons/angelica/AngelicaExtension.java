@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.extension.AfterAllCallback;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -36,6 +36,7 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
 
             // Warm-up State Manager features
             GLStateManager.preInit();
+            RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);

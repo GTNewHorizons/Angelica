@@ -376,6 +376,97 @@ class GLSM_PushPop_UnitTest {
     }
 
     @Test
+    void testPushPopTextureBit() {
+        final ArrayList<GLBit> bits = new ArrayList<>();
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_S, "Texture Gen S", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_T, "Texture Gen T", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
+        bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial Texture Binding");
+
+        final int tex1 = GL11.glGenTextures();
+        final int tex2 = GL11.glGenTextures();
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Unit 1 - Switch");
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1 - Set");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1");
+
+        bits.forEach(bit -> {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
+            if(bit.initial()) {
+                GLStateManager.glDisable(bit.glEnum());
+            } else {
+                GLStateManager.glEnable(bit.glEnum());
+            }
+            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
+        });
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture Unit 0 - Reset");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 0 - Reset");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 1 - Reset");
+
+        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glDeleteTextures(tex1);
+        GLStateManager.glDeleteTextures(tex2);
+    }
+
+    @Test
+    void testPushPopTextureBitMultiple() {
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial Texture Binding");
+
+        final int tex1 = GL11.glGenTextures();
+        final int tex2 = GL11.glGenTextures();
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
+        GLStateManager.glDeleteTextures(tex2);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
+        GLStateManager.glDeleteTextures(tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glDeleteTextures(tex1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset 2");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Reset 2");
+    }
+
+    @Test
     void testPushPopTransformBit() {
         verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Initial Matrix Mode");
         verifyState(GL11.GL_NORMALIZE, false, "Initial Normalize");

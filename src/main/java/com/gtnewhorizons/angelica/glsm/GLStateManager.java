@@ -737,7 +737,6 @@ public class GLStateManager {
     public static void glDeleteTextures(int id) {
         onDeleteTexture(id);
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(id);
     }
 
@@ -746,7 +745,6 @@ public class GLStateManager {
             onDeleteTexture(ids.get(i));
         }
 
-        textures.getTextureUnitBindings(GLStateManager.activeTextureUnit.getValue()).setBinding(-1);
         GL11.glDeleteTextures(ids);
     }
 
@@ -987,6 +985,12 @@ public class GLStateManager {
         TextureInfoCache.INSTANCE.onDeleteTexture(id);
         if (AngelicaConfig.enableIris) {
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
+        }
+
+        for(int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            if(textures.getTextureUnitBindings(i).getBinding() == id) {
+                textures.getTextureUnitBindings(i).setBinding(0);
+            }
         }
     }
 
