@@ -16,4 +16,14 @@ public enum Axis {
         };
 
     }
+
+    public static Axis fromName(String dir) {
+        return switch (dir) {
+            case "y" -> Y;
+            case "z" -> Z;
+            case "x" -> X;
+            default -> null;
+        };
+
+    }
 }
