@@ -2,15 +2,17 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(AngelicaExtension.class)
 public class GLMS_MatrixStack_UnitTest {
@@ -24,48 +26,80 @@ public class GLMS_MatrixStack_UnitTest {
         }
         return new Matrix4f(buffer);
     }
+    boolean matrixEquals(Matrix4f expected, Matrix4f actual) {
+        if(expected.equals(actual, 0.0001f)) {
+            return true;
+        } else {
+            System.out.println("Expected: " + expected);
+            System.out.println("Actual: " + actual);
+            return false;
+        }
+    }
+    void assertMatrixEquals(Matrix4f expected, Matrix4f actual, String message) {
+        assertTrue(matrixEquals(expected, actual), message);
+    }
     void validateMatrix(Matrix4f expected, int matrix, String message) {
         // Be careful of precision here
         assertAll(message,
-            () -> assertEquals(expected, getMatrix(matrix, true), "GL State Mismatch"),
-            () -> assertEquals(expected, getMatrix(matrix, false), "GLSM State Mismatch")
+            () -> assertMatrixEquals(expected, getMatrix(matrix, true), "GL State Mismatch"),
+            () -> assertMatrixEquals(expected, getMatrix(matrix, false), "GLSM State Mismatch")
         );
 
     }
 
-    void validateMatrixOperations(int matrixMode, int matrixGetEnum, String matrixName) {
-        GLStateManager.glMatrixMode(matrixMode);
+    enum MatrixMode {
+        MODELVIEW(GL11.GL_MODELVIEW, GL11.GL_MODELVIEW_MATRIX, "Model"),
+        PROJECTION(GL11.GL_PROJECTION, GL11.GL_PROJECTION_MATRIX, "Projection"),
+        TEXTURE(GL11.GL_TEXTURE, GL11.GL_TEXTURE_MATRIX, "Texture");
+
+        protected final int mode;
+        protected final int getEnum;
+        protected final String name;
+
+        MatrixMode(int mode, int getEnum, String name) {
+            this.mode = mode;
+            this.getEnum = getEnum;
+            this.name = name;
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(MatrixMode.class)
+    void validateMatrixOperations(MatrixMode matrix) {
+        GLStateManager.glMatrixMode(matrix.mode);
         GLStateManager.glLoadIdentity();
 
         GL11.glPushMatrix();
         Matrix4f testMatrix = new Matrix4f().identity();
 
-        validateMatrix(testMatrix, matrixGetEnum, "Identity " + matrixName + " Matrix");
+        validateMatrix(testMatrix, matrix.getEnum, "Identity " + matrix.name + " Matrix");
 
         GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
         testMatrix.scale(2.0f);
-        validateMatrix(testMatrix, matrixGetEnum, "Scaled " + matrixName + " Matrix");
+        validateMatrix(testMatrix, matrix.getEnum, "Scaled " + matrix.name + " Matrix");
 
         GLStateManager.glTranslatef(2.0f, 2.0f, 2.0f);
         testMatrix.translate(2.0f, 2.0f, 2.0f);
-        validateMatrix(testMatrix, matrixGetEnum, "Translated " + matrixName + " Matrix");
+        validateMatrix(testMatrix, matrix.getEnum, "Translated " + matrix.name + " Matrix");
 
         GLStateManager.glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
         testMatrix.rotate((float) Math.toRadians(180.0f), 0.0f, 0.0f, 1.0f);
-        validateMatrix(testMatrix, matrixGetEnum, "Rotated " + matrixName + " Matrix");
+        validateMatrix(testMatrix, matrix.getEnum, "Rotated " + matrix.name + " Matrix");
 
         GLStateManager.glPopMatrix();
         testMatrix.identity();
-        validateMatrix(testMatrix, matrixGetEnum, "Popped " + matrixName + " Matrix");
+        validateMatrix(testMatrix, matrix.getEnum, "Popped " + matrix.name + " Matrix");
     }
 
-    @Test
-    void testGLSMMatrixStacks() {
-        validateMatrixOperations(GL11.GL_MODELVIEW, GL11.GL_MODELVIEW_MATRIX, "Model");
-        validateMatrixOperations(GL11.GL_PROJECTION, GL11.GL_PROJECTION_MATRIX, "Projection");
-        validateMatrixOperations(GL11.GL_TEXTURE, GL11.GL_TEXTURE_MATRIX, "Texture");
+    @AfterAll
+    static void cleanup() {
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
+        GLStateManager.glLoadIdentity();
 
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
-
 }
