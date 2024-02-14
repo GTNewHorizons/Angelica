@@ -19,6 +19,7 @@ public class GLMS_MatrixStack_UnitTest {
 
     final static FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
     Matrix4f getMatrix(int matrix, boolean cached) {
+        buffer.clear();
         if(cached) {
             GLStateManager.glGetFloat(matrix, buffer);
         } else {
@@ -41,8 +42,8 @@ public class GLMS_MatrixStack_UnitTest {
     void validateMatrix(Matrix4f expected, int matrix, String message) {
         // Be careful of precision here
         assertAll(message,
-            () -> assertMatrixEquals(expected, getMatrix(matrix, true), "GL State Mismatch"),
-            () -> assertMatrixEquals(expected, getMatrix(matrix, false), "GLSM State Mismatch")
+            () -> assertMatrixEquals(expected, getMatrix(matrix, false), "GL State Mismatch"),
+            () -> assertMatrixEquals(expected, getMatrix(matrix, true), "GLSM State Mismatch")
         );
 
     }
@@ -69,7 +70,8 @@ public class GLMS_MatrixStack_UnitTest {
         GLStateManager.glMatrixMode(matrix.mode);
         GLStateManager.glLoadIdentity();
 
-        GL11.glPushMatrix();
+        GLStateManager.glPushMatrix();
+
         Matrix4f testMatrix = new Matrix4f().identity();
 
         validateMatrix(testMatrix, matrix.getEnum, "Identity " + matrix.name + " Matrix");
@@ -85,6 +87,10 @@ public class GLMS_MatrixStack_UnitTest {
         GLStateManager.glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
         testMatrix.rotate((float) Math.toRadians(180.0f), 0.0f, 0.0f, 1.0f);
         validateMatrix(testMatrix, matrix.getEnum, "Rotated " + matrix.name + " Matrix");
+
+        GLStateManager.glOrtho(0, 800, 0, 600, -1, 1);
+        testMatrix.ortho(0, 800, 0, 600, -1, 1);
+        validateMatrix(testMatrix, matrix.getEnum, "Ortho " + matrix.name + " Matrix");
 
         GLStateManager.glPopMatrix();
         testMatrix.identity();
