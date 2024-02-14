@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.minecraft.fix;
+package com.gtnewhorizons.angelica.mixins.early.notfine.fix;
 
 import jss.notfine.core.Settings;
 import net.minecraft.client.Minecraft;
