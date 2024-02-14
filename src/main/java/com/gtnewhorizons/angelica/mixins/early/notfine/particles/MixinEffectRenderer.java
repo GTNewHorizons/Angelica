@@ -10,7 +10,7 @@ public abstract class MixinEffectRenderer {
 
     /**
      * @author jss2a98aj
-     * @reason Makes most particles drawScreen with the expected depth.
+     * @reason Makes most particles render with the expected depth.
      */
     @Redirect(
         method = "renderParticles",

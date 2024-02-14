@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(RenderItem.class)
+@Mixin(value = RenderItem.class, priority = 1100)
 abstract public class MixinRenderItem {
 
     @Redirect(

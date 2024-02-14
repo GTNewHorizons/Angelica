@@ -3,6 +3,7 @@ package jss.notfine.gui;
 import com.google.common.collect.ImmutableList;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
+import jss.notfine.core.SettingsManager;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -36,9 +37,10 @@ public class NotFineGameOptionPages {
                 .setName(I18n.format("options.graphics"))
                 .setTooltip(I18n.format("sodium.options.graphics_quality.tooltip"))
                 .setControl(option -> new CyclingControl<>(option, GraphicsMode.class))
-                .setBinding(
-                    (opts, value) -> opts.fancyGraphics = value.isFancy(),
-                    opts -> GraphicsMode.fromBoolean(opts.fancyGraphics))
+                .setBinding((opts, value) -> {
+                    opts.fancyGraphics = value.isFancy();
+                    SettingsManager.graphicsUpdated();
+                }, opts -> GraphicsMode.fromBoolean(opts.fancyGraphics))
                 .setImpact(OptionImpact.HIGH)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
@@ -113,6 +115,7 @@ public class NotFineGameOptionPages {
                 .setName(I18n.format("options.mipmapLevels"))
                 .setTooltip(I18n.format("sodium.options.mipmap_levels.tooltip"))
                 .setControl(option -> new SliderControl(option, 0, 4, 1, ControlValueFormatter.multiplier()))
+                //mc.getTextureMapBlocks().setMipmapLevels(this.mipmapLevels); ?
                 .setBinding((opts, value) -> opts.mipmapLevels = value, opts -> opts.mipmapLevels)
                 .setImpact(OptionImpact.MEDIUM)
                 .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
@@ -122,6 +125,7 @@ public class NotFineGameOptionPages {
                 .setTooltip(I18n.format("sodium.options.anisotropic_filtering.tooltip"))
                 .setControl(option -> new SliderControl(option, 0, 4, 1, NotFineControlValueFormatter.powerOfTwo()))
                 .setBinding(
+                    //mc.getTextureMapBlocks().setAnisotropicFiltering(this.anisotropicFiltering); ?
                     (opts, value) -> opts.anisotropicFiltering = value == 0 ? 1 : (int)Math.pow(2, value),
                     (opts) -> opts.anisotropicFiltering == 1 ? 0 : (int)(Math.log(opts.anisotropicFiltering) / Math.log(2)))
                 .setImpact(OptionImpact.MEDIUM)
@@ -130,7 +134,6 @@ public class NotFineGameOptionPages {
             .build());
         return new OptionPage(I18n.format("options.video"), ImmutableList.copyOf(groups));
     }
-
 
     public static OptionPage detail() {
         List<OptionGroup> groups = new ArrayList<>();
@@ -151,6 +154,7 @@ public class NotFineGameOptionPages {
         List<OptionGroup> groups = new ArrayList<>();
         groups.add(OptionGroup.createBuilder()
             .add(Settings.MODE_SKY.option)
+            .add(Settings.MODE_SUN_MOON.option)
             .add(Settings.MODE_CLOUDS.option)
             .add(Settings.RENDER_DISTANCE_CLOUDS.option)
             .add(Settings.CLOUD_HEIGHT.option)

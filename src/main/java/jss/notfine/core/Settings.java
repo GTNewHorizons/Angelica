@@ -85,7 +85,6 @@ public enum Settings {
         }
     },
     MODE_SKY(new NotFineOptionTickBox(true, OptionImpact.LOW)),
-    MODE_STARS(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_SUN_MOON(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_WATER(new NotFineOptionCycling<>(GraphicsQuality.DEFAULT, OptionImpact.LOW)) {
         @Override
@@ -196,7 +195,6 @@ public enum Settings {
         }
 
     }
-
 
     public static abstract class NotFineOption<T> implements Option<T> {
         private static final NotFineMinecraftOptionsStorage optionStorage = new NotFineMinecraftOptionsStorage();

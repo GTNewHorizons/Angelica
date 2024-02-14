@@ -20,7 +20,7 @@ public class NotFineConfig {
     }
 
     public void loadSettings() {
-        allowAdvancedOpenGL = notFineConfig.getBoolean("allowAdvancedOpenGL", CATEGORY_CLIENT, true, "Allow or always remove the Advanced OpenGL button");
+        allowAdvancedOpenGL = notFineConfig.getBoolean("allowAdvancedOpenGL", CATEGORY_CLIENT, true, "Allow or always disable the Advanced OpenGL button");
 
         if(notFineConfig.hasChanged()) {
             notFineConfig.save();

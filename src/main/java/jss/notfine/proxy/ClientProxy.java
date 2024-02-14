@@ -14,9 +14,6 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
-        if(event.getSide() == Side.CLIENT) {
-            GameSettings.Options.FRAMERATE_LIMIT.valueStep = 1f;
-        }
         NotFineConfig config = new NotFineConfig();
         config.loadSettings();
 
@@ -30,15 +27,11 @@ public class ClientProxy extends CommonProxy {
     }
 
     @Override
-    public void init(FMLInitializationEvent event) {
-        // Nothing to do here (yet)
-    }
+    public void init(FMLInitializationEvent event) { }
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
-        if(event.getSide() == Side.CLIENT) {
-            SettingsManager.settingsFile.loadSettings();
-        }
+        SettingsManager.settingsFile.loadSettings();
     }
 
 }

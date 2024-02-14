@@ -215,8 +215,8 @@ public enum Mixins {
             //,"notfine.clouds.MixinGameSettings"
             //,"notfine.clouds.MixinRenderGlobal"
             //,"notfine.clouds.MixinWorldType"
-            "notfine.glint.MixinRenderBiped"
-            ,"notfine.glint.MixinRenderItem"
+            "notfine.fix.MixinRenderItem"
+            ,"notfine.glint.MixinRenderBiped"
             ,"notfine.glint.MixinRenderPlayer"
             ,"notfine.gui.MixinGuiSlot"
             ,"notfine.leaves.MixinBlockLeaves"
@@ -226,7 +226,6 @@ public enum Mixins {
             //,"notfine.particles.MixinWorldClient"
             //,"notfine.particles.MixinWorldProvider"
             ,"notfine.renderer.MixinRenderGlobal"
-            ,"notfine.settings.MixinGameSettings"
             //,"notfine.toggle.MixinGuiIngame"
             //,"notfine.toggle.MixinEntityRenderer"
             //,"notfine.toggle.MixinRender" --> No Sodium below
@@ -242,8 +241,8 @@ public enum Mixins {
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableNotFineFeatures &&
             !(AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled)
         ).addMixinClasses(
-            "notfine.glint.MixinItemRenderer",
-            "notfine.glint.MixinRenderItemGlint"
+            "notfine.glint.MixinItemRenderer"
+            ,"notfine.glint.MixinRenderItem"
         )),
 
     NOTFINE_LATE_TWILIGHT_FOREST_LEAVES(new Builder("NotFine Mod Leaves").addTargetedMod(TargetedMod.TWILIGHT_FOREST).setSide(Side.CLIENT)
