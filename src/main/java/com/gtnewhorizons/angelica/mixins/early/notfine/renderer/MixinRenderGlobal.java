@@ -27,7 +27,7 @@ public abstract class MixinRenderGlobal {
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", remap = false))
     private boolean conditionalCallList(int i) {
         if(i == starGLCallList) {
-            return (int)Settings.TOTAL_STARS.option.getStore() > 0;
+            return (boolean)Settings.MODE_STARS.option.getStore();
         } else {
             return (boolean)Settings.MODE_SKY.option.getStore();
         }

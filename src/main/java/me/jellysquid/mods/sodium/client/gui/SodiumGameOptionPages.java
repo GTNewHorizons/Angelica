@@ -80,6 +80,7 @@ public class SodiumGameOptionPages {
                 .build());
         firstGroupBuilder.add(Settings.MODE_SKY.option);
         firstGroupBuilder.add(Settings.MODE_SUN_MOON.option);
+        firstGroupBuilder.add(Settings.MODE_STARS.option);
         firstGroupBuilder.add(Settings.TOTAL_STARS.option);
         firstGroupBuilder.add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                 .setName(I18n.format("sodium.options.clouds.name"))

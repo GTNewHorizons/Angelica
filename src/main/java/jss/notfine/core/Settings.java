@@ -85,6 +85,7 @@ public enum Settings {
         }
     },
     MODE_SKY(new NotFineOptionTickBox(true, OptionImpact.LOW)),
+    MODE_STARS(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_SUN_MOON(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_WATER(new NotFineOptionCycling<>(GraphicsQuality.DEFAULT, OptionImpact.LOW)) {
         @Override
@@ -106,7 +107,7 @@ public enum Settings {
             SettingsManager.cloudsUpdated();
         }
     },
-    TOTAL_STARS(new NotFineOptionSlider(1500, 0, 32000, 500, OptionImpact.LOW)) {
+    TOTAL_STARS(new NotFineOptionSlider(1500, 500, 32000, 500, OptionImpact.LOW)) {
         @Override
         public void applyChanges() {
             RenderStars.reloadStarRenderList(Minecraft.getMinecraft().renderGlobal);
