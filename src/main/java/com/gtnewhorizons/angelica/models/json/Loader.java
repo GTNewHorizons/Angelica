@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.models.json;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +23,7 @@ import static com.gtnewhorizons.angelica.models.json.JsonModel.GSON;
 public class Loader {
 
     private static final List<ResourceLocation> unloadedModels = new ObjectArrayList<>();
-    private static final Map<ResourceLocation, JsonModel> loadedModels = new Object2ObjectArrayMap<>();
+    private static final Map<ResourceLocation, JsonModel> loadedModels = new Object2ObjectOpenHashMap<>();
     private static final List<ResourceLocation> modelsToBake = new ObjectArrayList<>();
 
     public static void registerModel(ResourceLocation loc) {

@@ -34,6 +34,7 @@ public class ModelElement {
         private final ForgeDirection name;
         @Getter
         private final Vector4f uv;
+        @Getter
         private final String texture;
         @Getter
         private final ForgeDirection cullFace;

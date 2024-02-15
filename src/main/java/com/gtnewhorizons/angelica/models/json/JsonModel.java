@@ -16,7 +16,7 @@ import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import com.gtnewhorizons.angelica.utils.DirUtil;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.Function;
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import java.lang.reflect.Type;
@@ -46,6 +46,7 @@ public class JsonModel implements QuadProvider {
     private final boolean useAO;
     private final Map<ModelDisplay.Position, ModelDisplay> display;
     private final Map<String, String> textures;
+    private final Map<String, String> flatTextures = new Object2ObjectOpenHashMap<>();
     private List<ModelElement> elements;
     static final Gson GSON = new GsonBuilder().registerTypeAdapter(JsonModel.class, new Deserializer()).create();
     private List<Quad> bakedQuadStore = new ObjectArrayList<>();
@@ -104,7 +105,7 @@ public class JsonModel implements QuadProvider {
                 }
 
                 // Set the sprite
-                builder.spriteBake("", flags);
+                builder.spriteBake(this.textures.get(f.getTexture()), flags);
 
                 // Set the tint index
                 final int tint = f.getTintIndex();
@@ -134,9 +135,6 @@ public class JsonModel implements QuadProvider {
 
     public void resolveParents(Function<ResourceLocation, JsonModel> modelLoader) {
 
-        JsonModel m = this;
-
-        // If there should be a parent and there isn't, resolve it
         if (this.parentId != null && this.parent == null) {
 
             final JsonModel p = modelLoader.apply(this.parentId);
@@ -144,7 +142,37 @@ public class JsonModel implements QuadProvider {
 
             // Inherit properties
             this.parent = p;
-            if (this.elements.isEmpty()) this.elements = p.elements;
+            if (this.elements.isEmpty()) this.elements = this.parent.elements;
+
+            // Resolve texture variables
+            // Add parent texture mappings, but prioritize ours.
+            for (Map.Entry<String, String> e : this.parent.textures.entrySet()) {
+
+                this.textures.putIfAbsent(e.getKey(), e.getValue());
+            }
+
+            // Flatten them, merging s -> s1, s1 -> s2 to s -> s2, s1 -> s2.
+            boolean flat = false;
+            final Map<String, String> tmp = new Object2ObjectOpenHashMap<>();
+            while (!flat) {
+                flat = true;
+
+                for (Map.Entry<String, String> e : this.textures.entrySet()) {
+
+                    // If there is a value in the key set, replace with the value it points to
+                    // Also avoid adding a loop
+                    if (this.textures.containsKey(e.getValue())) {
+
+                        if (!e.getKey().equals(e.getValue()))
+                            tmp.put(e.getKey(), this.textures.get(e.getValue()));
+                        else tmp.put(e.getKey(), "");
+                        flat = false;
+                    } else {
+                        tmp.put(e.getKey(), e.getValue());
+                    }
+                }
+                this.textures.putAll(tmp);
+            }
         }
     }
 
@@ -186,7 +214,7 @@ public class JsonModel implements QuadProvider {
         private Map<ModelDisplay.Position, ModelDisplay> loadDisplay(JsonObject in) {
 
             // wow such long
-            final Map<ModelDisplay.Position, ModelDisplay> ret = new Object2ObjectArrayMap<>(ModelDisplay.Position.values().length);
+            final Map<ModelDisplay.Position, ModelDisplay> ret = new Object2ObjectOpenHashMap<>(ModelDisplay.Position.values().length);
 
             if (in.has("display")) {
 
@@ -209,11 +237,15 @@ public class JsonModel implements QuadProvider {
 
         private Map<String, String> loadTextures(JsonObject in) {
 
-            final Map<String, String> textures = new Object2ObjectArrayMap<>();
+            final Map<String, String> textures = new Object2ObjectOpenHashMap<>();
 
             if (in.has("textures")) {
                 for (Map.Entry<String, JsonElement> e : in.getAsJsonObject("textures").entrySet()) {
-                    textures.put(e.getKey(), e.getValue().getAsString());
+
+                    // Trim leading octothorpes. They indicate a texture variable, but I don't actually care.
+                    String s = e.getValue().getAsString();
+                    if (s.startsWith("#")) s = s.substring(1);
+                    textures.put(e.getKey(), s);
                 }
             }
 
@@ -248,7 +280,8 @@ public class JsonModel implements QuadProvider {
                 final JsonObject face = e.getValue().getAsJsonObject();
 
                 final Vector4f uv = (face.has("uv")) ? loadVec4(face, "uv") : null;
-                final String texture = loadStr(face, "texture");
+                String texture = loadStr(face, "texture");
+                if (texture.startsWith("#")) texture = texture.substring(1);
                 final ForgeDirection cullFace = DirUtil.fromName(loadStr(face, "cullface", "unknown"));
                 final int rotation = loadInt(face, "rotation", 0);
                 final int tintIndex = loadInt(face, "tintindex", -1);
