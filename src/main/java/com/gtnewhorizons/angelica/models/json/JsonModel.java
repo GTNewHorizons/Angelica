@@ -66,6 +66,8 @@ public class JsonModel implements QuadProvider {
         // Append faces from each element
         for (ModelElement e : this.elements) {
 
+            final ModelElement.Rotation rot = (e.getRotation() == null) ? ModelElement.Rotation.NOOP : e.getRotation();
+
             final Vector3f from = e.getFrom();
             final Vector3f to = e.getTo();
 
@@ -74,7 +76,7 @@ public class JsonModel implements QuadProvider {
                 // Assign vertexes
                 for (int i = 0; i < 4; ++i) {
 
-                    final Vector3f vert = NdQuadBuilder.mapSideToVertex(from, to, i, f.getName());
+                    final Vector3f vert = rot.applyTo(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
                     builder.pos(i, vert.x, vert.y, vert.z);
                 }
 
@@ -96,8 +98,8 @@ public class JsonModel implements QuadProvider {
 
                     builder.uv(0, uv.x, uv.y);
                     builder.uv(1, uv.x, uv.w);
-                    builder.uv(2, uv.z, uv.y);
-                    builder.uv(3, uv.z, uv.w);
+                    builder.uv(2, uv.z, uv.w);
+                    builder.uv(3, uv.z, uv.y);
                 } else {
 
                     // Not sure if this is correct, but it seems to fix things
@@ -257,7 +259,7 @@ public class JsonModel implements QuadProvider {
             if (in.has("rotation")) {
                 final JsonObject json = in.getAsJsonObject("rotation");
 
-                final Vector3f origin = loadVec3(json, "origin");
+                final Vector3f origin = loadVec3(json, "origin").div(16);
                 final Axis axis = Axis.fromName(loadStr(json, "axis"));
                 final float angle = loadFloat(json, "angle");
                 final boolean rescale = loadBool(json, "rescale", false);

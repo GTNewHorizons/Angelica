@@ -18,7 +18,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 public class BlockTest extends Block implements QuadProvider {
 
-    public static final ResourceLocation modelId = new ResourceLocation("angelica", "blocks/test_block");
+    public static final ResourceLocation modelId = new ResourceLocation("blocks/lectern");
     public static final List<Quad> EMPTY = ObjectImmutableList.of();
 
     public BlockTest() {
@@ -30,6 +30,11 @@ public class BlockTest extends Block implements QuadProvider {
     public void registerBlockIcons(IIconRegister reg) {
 
         reg.registerIcon("angelica:test_block");
+        reg.registerIcon("lectern_base");
+        reg.registerIcon("lectern_front");
+        reg.registerIcon("lectern_sides");
+        reg.registerIcon("lectern_top");
+        reg.registerIcon("oak_planks");
     }
 
     @Override
