@@ -25,7 +25,6 @@ public class NotFine {
     @SidedProxy(clientSide = "jss.notfine.proxy.ClientProxy", serverSide = "jss.notfine.proxy.CommonProxy")
     public static CommonProxy proxy;
 
-
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         proxy.preInit(event);
