@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.common;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.api.BlockState;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
@@ -14,9 +15,11 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.jetbrains.annotations.NotNull;
 
-public class BlockTest extends Block implements QuadProvider {
+public class BlockTest extends Block implements QuadProvider, BlockState {
 
     public static final ResourceLocation modelId = new ResourceLocation("blocks/lectern");
     public static final List<Quad> EMPTY = ObjectImmutableList.of();
@@ -42,5 +45,31 @@ public class BlockTest extends Block implements QuadProvider {
 
         final JsonModel m = Loader.getModel(modelId);
         return (m != null) ? m.getQuads(world, pos, block, meta, dir, random, quadPool) : EMPTY;
+    }
+
+    /**
+     * Called when a block is placed using its ItemBlock. Args: World, X, Y, Z, side, hitX, hitY, hitZ, block metadata
+     */
+    @Override
+    public int onBlockPlaced(@NotNull World worldIn, int x, int y, int z, int side, float subX, float subY, float subZ, int meta) {
+
+        // Face NORTH if placed up or down
+        final ForgeDirection s = ForgeDirection.values()[side];
+        if (s == ForgeDirection.UP || s == ForgeDirection.DOWN)
+            return 2;
+
+        // Face the placed side
+        return side;
+    }
+
+    @Override
+    public boolean hasFacing() {
+        return true;
+    }
+
+    @Override
+    public ForgeDirection getFacing(int meta) {
+
+        return ForgeDirection.values()[meta];
     }
 }
