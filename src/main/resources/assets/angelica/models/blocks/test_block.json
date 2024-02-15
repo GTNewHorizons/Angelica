@@ -1,0 +1,6 @@
+{
+  "parent": "blocks/cube_all",
+  "textures": {
+    "all": "angelica:test_block"
+  }
+}

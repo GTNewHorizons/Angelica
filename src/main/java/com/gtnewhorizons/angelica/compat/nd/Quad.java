@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
-import lombok.Getter;
+import java.util.Locale;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
@@ -9,8 +9,6 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
-
-import java.util.Locale;
 
 public class Quad implements ModelQuadView {
     // Adapted from Neodymium
@@ -115,6 +113,32 @@ public class Quad implements ModelQuadView {
     @Override
     public TextureAtlasSprite rubidium$getSprite() {
         return null;
+    }
+
+    public void copyFrom(Quad quad) {
+
+        System.arraycopy(quad.xs, 0, this.xs, 0, 4);
+        System.arraycopy(quad.ys, 0, this.ys, 0, 4);
+        System.arraycopy(quad.zs, 0, this.zs, 0, 4);
+
+        System.arraycopy(quad.us, 0, this.us, 0, 4);
+        System.arraycopy(quad.vs, 0, this.vs, 0, 4);
+
+        System.arraycopy(quad.cs, 0, this.cs, 0, 4);
+        System.arraycopy(quad.ns, 0, this.ns, 0, 4);
+        System.arraycopy(quad.bs, 0, this.bs, 0, 4);
+
+        this.deleted = quad.deleted;
+
+        this.normal = quad.normal;
+
+        this.hasColor = quad.hasColor;
+        this.hasShade = quad.hasShade;
+        this.hasNormals = quad.hasNormals;
+
+        this.cachedFlags = quad.cachedFlags;
+        this.face = quad.face;
+        this.colorIndex = quad.colorIndex;
     }
 
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
