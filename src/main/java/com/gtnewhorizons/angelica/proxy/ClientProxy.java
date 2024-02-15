@@ -1,11 +1,13 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
+import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -14,10 +16,12 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -41,25 +45,26 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
 
-import java.lang.management.ManagementFactory;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
-
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
     final Minecraft mc = Minecraft.getMinecraft();
+    private static boolean baked = false;
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
+        super.preInit(event);
+
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
+
+        Loader.registerModel(BlockTest.modelId);
     }
 
 
     @SubscribeEvent
     public void worldLoad(WorldEvent.Load event) {
-        if(GLStateManager.isRunningSplash()) {
+        if (GLStateManager.isRunningSplash()) {
             GLStateManager.setRunningSplash(false);
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
@@ -69,6 +74,8 @@ public class ClientProxy extends CommonProxy {
     private static KeyBinding glsmKeyBinding;
     @Override
     public void init(FMLInitializationEvent event) {
+        super.init(event);
+
         if(AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
             MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
@@ -91,6 +98,8 @@ public class ClientProxy extends CommonProxy {
 
         glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
+
+        Loader.loadModels();
     }
 
     private boolean wasGLSMKeyPressed;
@@ -105,6 +114,8 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
+        super.postInit(event);
+
         if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
@@ -233,6 +244,11 @@ public class ClientProxy extends CommonProxy {
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
+
+        if (!baked) {
+            Loader.bakeModels();
+            baked = true;
+        }
     }
 
     @SubscribeEvent
@@ -241,6 +257,4 @@ public class ClientProxy extends CommonProxy {
             event.newfov = 1.0F;
         }
     }
-
-
 }
