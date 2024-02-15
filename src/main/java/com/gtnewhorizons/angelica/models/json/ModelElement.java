@@ -5,8 +5,12 @@ import java.util.List;
 import lombok.Getter;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
 
 public class ModelElement {
 
@@ -14,6 +18,8 @@ public class ModelElement {
     private final Vector3f from;
     @Getter
     private final Vector3f to;
+    @Nullable
+    @Getter
     private final Rotation rotation;
     private final boolean shade;
     @Getter
@@ -55,6 +61,13 @@ public class ModelElement {
 
     static class Rotation {
 
+        static final Rotation NOOP = new Rotation(
+            new Vector3f(0, 0, 0),
+            Axis.X,
+            0,
+            false
+        );
+
         private final Vector3f origin;
         private final Axis axis;
         private final float angle;
@@ -63,8 +76,33 @@ public class ModelElement {
         Rotation(Vector3f origin, Axis axis, float angle, boolean rescale) {
             this.origin = origin;
             this.axis = axis;
-            this.angle = angle;
+            this.angle = (float) Math.toRadians(angle);
             this.rescale = rescale;
+        }
+
+        Vector3f applyTo(final Vector3f in) {
+
+            final Vector3f ret = in.sub(origin, new Vector3f());
+
+            final Matrix3d rotMat = switch (this.axis) {
+                case X -> new Matrix3d(
+                    1, 0, 0,
+                    0, cos(angle), -sin(angle),
+                    0, sin(angle), cos(angle)
+                );
+                case Y -> new Matrix3d(
+                    cos(angle), 0, sin(angle),
+                    0, 1, 0,
+                    -sin(angle), 0, cos(angle)
+                );
+                case Z -> new Matrix3d(
+                    cos(angle), -sin(angle), 0,
+                    sin(angle), cos(angle), 0,
+                    0, 0, 1
+                );
+            };
+
+            return ret.mul(rotMat, new Vector3f()).add(origin);
         }
     }
 }
