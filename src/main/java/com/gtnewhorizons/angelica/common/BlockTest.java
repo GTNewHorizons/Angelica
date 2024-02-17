@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.common;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.api.BlockState;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
@@ -19,7 +18,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
-public class BlockTest extends Block implements QuadProvider, BlockState {
+public class BlockTest extends Block implements QuadProvider {
 
     public static final ResourceLocation modelId = new ResourceLocation("blocks/lectern");
     public static final List<Quad> EMPTY = ObjectImmutableList.of();
@@ -27,6 +26,11 @@ public class BlockTest extends Block implements QuadProvider, BlockState {
     public BlockTest() {
 
         super(Material.rock);
+    }
+
+    @Override
+    public boolean isOpaqueCube() {
+        return false;
     }
 
     @Override
@@ -60,16 +64,5 @@ public class BlockTest extends Block implements QuadProvider, BlockState {
 
         // Face the placed side
         return side;
-    }
-
-    @Override
-    public boolean hasFacing() {
-        return true;
-    }
-
-    @Override
-    public ForgeDirection getFacing(int meta) {
-
-        return ForgeDirection.values()[meta];
     }
 }
