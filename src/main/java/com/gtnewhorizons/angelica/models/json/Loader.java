@@ -9,6 +9,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.block.Block;
@@ -40,6 +42,28 @@ public class Loader {
     public static void registerModel(Variant loc, Callback loader) {
         unloadedModels.add(loc.getModel());
         modelsToBake.put(loc, null);
+        postBakeCallbacks.add(loader);
+    }
+
+    /**
+     * Convenience method to register multiple variants. See {@link #registerModel}.
+     */
+    public static void registerModels(Callback loader, Variant... variants) {
+
+        registerModels(Arrays.asList(variants), loader);
+    }
+
+    /**
+     * Convenience method to register multiple variants. See {@link #registerModel}.
+     */
+    public static void registerModels(Collection<Variant> variants, Callback loader) {
+
+        for (Variant v : variants) {
+
+            unloadedModels.add(v.getModel());
+            modelsToBake.put(v, null);
+        }
+
         postBakeCallbacks.add(loader);
     }
 
