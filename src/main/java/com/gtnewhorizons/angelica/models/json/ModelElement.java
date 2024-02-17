@@ -5,12 +5,9 @@ import java.util.List;
 import lombok.Getter;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3d;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
-import static java.lang.Math.cos;
-import static java.lang.Math.sin;
 
 public class ModelElement {
 
@@ -80,29 +77,20 @@ public class ModelElement {
             this.rescale = rescale;
         }
 
-        Vector3f applyTo(final Vector3f in) {
+        Matrix4f getAffineMatrix() {
 
-            final Vector3f ret = in.sub(origin, new Vector3f());
+            // Subtract origin
+            final Matrix4f ret = new Matrix4f().translation(-this.origin.x, -this.origin.y, -this.origin.z);
 
-            final Matrix3d rotMat = switch (this.axis) {
-                case X -> new Matrix3d(
-                    1, 0, 0,
-                    0, cos(angle), -sin(angle),
-                    0, sin(angle), cos(angle)
-                );
-                case Y -> new Matrix3d(
-                    cos(angle), 0, sin(angle),
-                    0, 1, 0,
-                    -sin(angle), 0, cos(angle)
-                );
-                case Z -> new Matrix3d(
-                    cos(angle), -sin(angle), 0,
-                    sin(angle), cos(angle), 0,
-                    0, 0, 1
-                );
-            };
+            // Rotate
+            switch (this.axis) {
+                case X -> ret.rotateLocalX(angle);
+                case Y -> ret.rotateLocalY(angle);
+                case Z -> ret.rotateLocalZ(angle);
+            }
 
-            return ret.mul(rotMat, new Vector3f()).add(origin);
+            // Add the origin back in
+            return ret.translateLocal(this.origin.x, this.origin.y, this.origin.z);
         }
     }
 }

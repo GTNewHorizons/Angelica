@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.models.json;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.utils.Callback;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.io.IOException;
@@ -29,11 +30,17 @@ public class Loader {
         .registerTypeAdapter(JsonModel.class, new JsonModel.Deserializer()).create();
     private static final List<ResourceLocation> unloadedModels = new ObjectArrayList<>();
     private static final Map<ResourceLocation, JsonModel> loadedModels = new Object2ObjectOpenHashMap<>();
-    private static final List<ResourceLocation> modelsToBake = new ObjectArrayList<>();
+    private static final Map<Variant, JsonModel> modelsToBake = new Object2ObjectOpenHashMap<>();
+    private static final List<Callback> postBakeCallbacks = new ObjectArrayList<>();
 
-    public static void registerModel(ResourceLocation loc) {
-        unloadedModels.add(loc);
-        modelsToBake.add(loc);
+    /**
+     * Pass the variant you want to load, and if needed a callback which puts the models in a useful place, e.g. saving
+     * them to a static field after baking.
+     */
+    public static void registerModel(Variant loc, Callback loader) {
+        unloadedModels.add(loc.getModel());
+        modelsToBake.put(loc, null);
+        postBakeCallbacks.add(loader);
     }
 
     public static void loadModels() {
@@ -64,19 +71,24 @@ public class Loader {
 
     public static void bakeModels() {
 
-        for (ResourceLocation l : modelsToBake) {
+        for (Map.Entry<Variant, JsonModel> l : modelsToBake.entrySet()) {
 
-            final JsonModel dough = loadedModels.get(l);
+            final JsonModel dough = new JsonModel(loadedModels.get(l.getKey().getModel()));
 
             // Resolve the parent chain
             dough.resolveParents(loadedModels::get);
 
             // Bake
-            dough.bake();
+            dough.bake(l.getKey());
+
+            l.setValue(dough);
         }
+
+        for (Callback c : postBakeCallbacks)
+            c.run();
     }
 
-    public static JsonModel getModel(ResourceLocation loc) {
-        return loadedModels.get(loc);
+    public static JsonModel getModel(Variant loc) {
+        return modelsToBake.get(loc);
     }
 }
