@@ -62,6 +62,7 @@ public class JsonModel implements QuadProvider {
     JsonModel(JsonModel og) {
 
         this.parentId = og.parentId;
+        this.parent = og.parent;
         this.useAO = og.useAO;
         this.display = og.display;
         this.textures = og.textures;
