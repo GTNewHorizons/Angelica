@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.models.json;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -48,7 +46,6 @@ public class JsonModel implements QuadProvider {
     private final Map<String, String> textures;
     private final Map<String, String> flatTextures = new Object2ObjectOpenHashMap<>();
     private List<ModelElement> elements;
-    static final Gson GSON = new GsonBuilder().registerTypeAdapter(JsonModel.class, new Deserializer()).create();
     private List<Quad> bakedQuadStore = new ObjectArrayList<>();
 
     JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
@@ -128,11 +125,16 @@ public class JsonModel implements QuadProvider {
     @Override
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
 
-        return this.bakedQuadStore.stream().map(q -> {
-            final Quad q1 = quadPool.getInstance();
-            q1.copyFrom(q);
-            return q1;
-        }).collect(ObjectImmutableList.toListWithExpectedSize(bakedQuadStore.size()));
+        final List<Quad> ret = new ObjectArrayList<>(this.bakedQuadStore.size());
+
+        //noinspection ForLoopReplaceableByForEach
+        for (int i = 0; i < bakedQuadStore.size(); ++i) {
+            final Quad q = quadPool.getInstance();
+            q.copyFrom(this.bakedQuadStore.get(i));
+            ret.add(q);
+        }
+
+        return ret;
     }
 
     public void resolveParents(Function<ResourceLocation, JsonModel> modelLoader) {
@@ -178,7 +180,7 @@ public class JsonModel implements QuadProvider {
         }
     }
 
-    private static class Deserializer implements JsonDeserializer<JsonModel> {
+    static class Deserializer implements JsonDeserializer<JsonModel> {
 
         private Vector3f loadVec3(JsonObject in, String name) {
 
