@@ -27,6 +27,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -44,7 +45,6 @@ public class JsonModel implements QuadProvider {
     private final boolean useAO;
     private final Map<ModelDisplay.Position, ModelDisplay> display;
     private final Map<String, String> textures;
-    private final Map<String, String> flatTextures = new Object2ObjectOpenHashMap<>();
     private List<ModelElement> elements;
     private List<Quad> bakedQuadStore = new ObjectArrayList<>();
 
@@ -56,14 +56,29 @@ public class JsonModel implements QuadProvider {
         this.elements = elements;
     }
 
-    public void bake() {
+    /**
+     * Makes a shallow copy of og. This allows you to bake the same model multiple times with various transformations.
+     */
+    JsonModel(JsonModel og) {
+
+        this.parentId = og.parentId;
+        this.useAO = og.useAO;
+        this.display = og.display;
+        this.textures = og.textures;
+        this.elements = og.elements;
+    }
+
+    public void bake(Variant v) {
+
+        final Matrix4f vRot = v.getAffineMatrix();
 
         final NdQuadBuilder builder = new NdQuadBuilder();
 
         // Append faces from each element
         for (ModelElement e : this.elements) {
 
-            final ModelElement.Rotation rot = (e.getRotation() == null) ? ModelElement.Rotation.NOOP : e.getRotation();
+            final Matrix4f rot = (e.getRotation() == null) ? ModelElement.Rotation.NOOP.getAffineMatrix() : e.getRotation().getAffineMatrix();
+            //rot.mulLocal(vRot);
 
             final Vector3f from = e.getFrom();
             final Vector3f to = e.getTo();
@@ -73,7 +88,8 @@ public class JsonModel implements QuadProvider {
                 // Assign vertexes
                 for (int i = 0; i < 4; ++i) {
 
-                    final Vector3f vert = rot.applyTo(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
+                    final Vector3f vert = rot.transformPosition(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
+                    vRot.transformPosition(vert);
                     builder.pos(i, vert.x, vert.y, vert.z);
                 }
 
@@ -263,7 +279,7 @@ public class JsonModel implements QuadProvider {
 
                 final Vector3f origin = loadVec3(json, "origin").div(16);
                 final Axis axis = Axis.fromName(loadStr(json, "axis"));
-                final float angle = -loadFloat(json, "angle");
+                final float angle = loadFloat(json, "angle");
                 final boolean rescale = loadBool(json, "rescale", false);
 
                 return new ModelElement.Rotation(origin, axis, angle, rescale);

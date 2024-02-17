@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
+import com.gtnewhorizons.angelica.models.json.Variant;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import java.util.List;
@@ -20,12 +21,43 @@ import org.jetbrains.annotations.NotNull;
 
 public class BlockTest extends Block implements QuadProvider {
 
-    public static final ResourceLocation modelId = new ResourceLocation("blocks/lectern");
+    public static final Variant[] modelId = {
+        new Variant(
+            new ResourceLocation("blocks/lectern"),
+            0,
+            0,
+            false
+        ),
+        new Variant(
+            new ResourceLocation("blocks/lectern"),
+            180,
+            0,
+            false
+        ),
+        new Variant(
+            new ResourceLocation("blocks/lectern"),
+            90,
+            0,
+            false
+        ),
+        new Variant(
+            new ResourceLocation("blocks/lectern"),
+            270,
+            0,
+            false
+        ),
+    };
     public static final List<Quad> EMPTY = ObjectImmutableList.of();
+    private static final JsonModel[] model = new JsonModel[4];
 
     public BlockTest() {
 
         super(Material.rock);
+    }
+
+    public static void loadModel() {
+        for (int i = 0; i < 4; ++i)
+            model[i] = Loader.getModel(modelId[i]);
     }
 
     @Override
@@ -47,8 +79,9 @@ public class BlockTest extends Block implements QuadProvider {
     @Override
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
 
-        final JsonModel m = Loader.getModel(modelId);
-        return (m != null) ? m.getQuads(world, pos, block, meta, dir, random, quadPool) : EMPTY;
+        if (meta < 2 || meta > 5) meta = 2;
+
+        return (model[meta - 2] != null) ? model[meta - 2].getQuads(world, pos, block, meta, dir, random, quadPool) : EMPTY;
     }
 
     /**
