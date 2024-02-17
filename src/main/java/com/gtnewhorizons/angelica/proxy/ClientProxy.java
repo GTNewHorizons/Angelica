@@ -58,7 +58,10 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        Loader.registerModel(BlockTest.modelId);
+        Loader.registerModel(BlockTest.modelId[0], BlockTest::loadModel);
+        Loader.registerModel(BlockTest.modelId[1], () -> {});
+        Loader.registerModel(BlockTest.modelId[2], () -> {});
+        Loader.registerModel(BlockTest.modelId[3], () -> {});
     }
 
 
