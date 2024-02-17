@@ -263,7 +263,7 @@ public class JsonModel implements QuadProvider {
 
                 final Vector3f origin = loadVec3(json, "origin").div(16);
                 final Axis axis = Axis.fromName(loadStr(json, "axis"));
-                final float angle = loadFloat(json, "angle");
+                final float angle = -loadFloat(json, "angle");
                 final boolean rescale = loadBool(json, "rescale", false);
 
                 return new ModelElement.Rotation(origin, axis, angle, rescale);
