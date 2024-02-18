@@ -59,3 +59,5 @@
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
 * Forge 1.12+
   * Some files have been taken from Minecraft Forge under the LGPL 2.1 license and are marked as such
+* FRAPI and Indigo
+  * Model building API heavily inspired by/copied from Fabric's and are relicensed under the LGPLv3
