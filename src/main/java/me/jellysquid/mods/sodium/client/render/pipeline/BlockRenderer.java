@@ -75,8 +75,9 @@ public class BlockRenderer {
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
-
-                for (Quad q : quads) this.quadPool.releaseInstance(q);
+                for(int i = 0 ; i < quads.size() ; i++) {
+                    this.quadPool.releaseInstance(quads.get(i));
+                }
             }
         } else {
 

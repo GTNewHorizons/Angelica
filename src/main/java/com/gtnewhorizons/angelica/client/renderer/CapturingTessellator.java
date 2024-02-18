@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.renderer;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.glsm.stacks.DebugVector3dStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vector3dStack;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
@@ -10,6 +11,7 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.renderer.Tessellator;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -20,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static net.minecraft.util.MathHelper.clamp_int;
 
@@ -34,6 +37,7 @@ import static net.minecraft.util.MathHelper.clamp_int;
  */
 @SuppressWarnings("unused")
 public class CapturingTessellator extends Tessellator implements ITessellatorInstance {
+    private static final Logger LOGGER = Logger.getLogger("CapturingTessellator");
 
     // Access Transformers don't work on Forge Fields :rage:
     private static final MethodHandle sRawBufferSize;
@@ -45,7 +49,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     // Any offset we need to the Tesselator's offset!
     private final BlockPos offset = new BlockPos();
 
-    private final Vector3dStack storedTranslation = new Vector3dStack();
+    private final DebugVector3dStack storedTranslation = new DebugVector3dStack();
 
     public void setOffset(BlockPos pos) {
         this.offset.set(pos);
@@ -142,11 +146,19 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
 
     public void storeTranslation() {
         storedTranslation.push();
+        if(storedTranslation.getStackDepth() >= 8) {
+            final Exception exception = new Exception();
+            LOGGER.info("StoreTranslation (" + storedTranslation.getStackDepth() + ")\n" + ExceptionUtils.getStackTrace(exception));
+        }
 
         this.storedTranslation.set(xOffset, yOffset, zOffset);
     }
 
     public void restoreTranslation() {
+        if(storedTranslation.getStackDepth() >= 8) {
+            final Exception exception = new Exception();
+            LOGGER.info("PopTranslation (" + storedTranslation.getStackDepth() + ")\n" + ExceptionUtils.getStackTrace(exception));
+        }
 
         xOffset = storedTranslation.x;
         yOffset = storedTranslation.y;

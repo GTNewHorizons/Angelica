@@ -19,7 +19,7 @@ public class TessellatorManager {
     private static final Thread mainThread = Thread.currentThread();
 
     public static Tessellator get() {
-        if(currentlyCapturing.get()) {
+        if(Boolean.TRUE.equals(currentlyCapturing.get())) {
             return capturingTessellator.get();
         } else if(isOnMainThread()) {
             return Tessellator.instance;
@@ -39,9 +39,9 @@ public class TessellatorManager {
     }
 
     public static void startCapturing() {
-        if(currentlyCapturing.get()) throw new IllegalStateException("Tried to start capturing when already capturing!");
+        if(Boolean.TRUE.equals(currentlyCapturing.get())) throw new IllegalStateException("Tried to start capturing when already capturing!");
         final CapturingTessellator tess = capturingTessellator.get();
-        if(tess.getQuads().size() > 0) throw new IllegalStateException("Tried to start capturing with existing collected Quads!");
+        if(!tess.getQuads().isEmpty()) throw new IllegalStateException("Tried to start capturing with existing collected Quads!");
         tess.storeTranslation();
 
         currentlyCapturing.set(true);
@@ -52,7 +52,7 @@ public class TessellatorManager {
      *  called on the CapturingTesselator, which must be done before starting capturing again.
      */
     public static List<Quad> stopCapturingToPooledQuads() {
-        if(!currentlyCapturing.get()) throw new IllegalStateException("Tried to stop capturing when not capturing!");
+        if(Boolean.FALSE.equals(currentlyCapturing.get())) throw new IllegalStateException("Tried to stop capturing when not capturing!");
         currentlyCapturing.set(false);
         final CapturingTessellator tess = capturingTessellator.get();
 
