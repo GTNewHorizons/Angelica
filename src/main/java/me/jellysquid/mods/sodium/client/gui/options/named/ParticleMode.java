@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui.options.named;
 
+import net.minecraft.util.MathHelper;
+
 public enum ParticleMode implements NamedState {
     ALL("options.particles.all"),
     DECREASED("options.particles.decreased"),
@@ -19,6 +21,6 @@ public enum ParticleMode implements NamedState {
     }
 
     public static ParticleMode fromOrdinal(int ordinal) {
-        return VALUES[ordinal];
+        return VALUES[MathHelper.clamp_int(ordinal, 0, VALUES.length - 1)];
     }
 }

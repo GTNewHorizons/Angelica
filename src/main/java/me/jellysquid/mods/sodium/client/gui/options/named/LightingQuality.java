@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui.options.named;
 
+import net.minecraft.util.MathHelper;
+
 public enum LightingQuality implements NamedState {
     OFF("options.ao.off"),
     LOW("options.ao.min"),
@@ -26,6 +28,6 @@ public enum LightingQuality implements NamedState {
     }
 
     public static LightingQuality fromOrdinal(int ordinal) {
-        return VALUES[ordinal];
+        return VALUES[MathHelper.clamp_int(ordinal, 0, VALUES.length - 1)];
     }
 }
