@@ -1106,6 +1106,13 @@ public class GLStateManager {
 
     public static void glLoadMatrix(FloatBuffer m) {
         getMatrixStack().set(m);
+        GL11.glLoadMatrix(m);
+    }
+
+    public static void glLoadMatrix(DoubleBuffer m) {
+        conersionMatrix4d.set(m);
+        getMatrixStack().set(conersionMatrix4d);
+        GL11.glLoadMatrix(m);
     }
 
     public static Matrix4fStack getMatrixStack() {

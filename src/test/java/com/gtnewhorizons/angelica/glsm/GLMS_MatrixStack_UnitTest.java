@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -72,7 +73,7 @@ public class GLMS_MatrixStack_UnitTest {
 
         GLStateManager.glPushMatrix();
 
-        Matrix4f testMatrix = new Matrix4f().identity();
+        Matrix4fStack testMatrix = new Matrix4fStack(2);
 
         validateMatrix(testMatrix, matrix.getEnum, "Identity " + matrix.name + " Matrix");
 
@@ -91,6 +92,14 @@ public class GLMS_MatrixStack_UnitTest {
         GLStateManager.glOrtho(0, 800, 0, 600, -1, 1);
         testMatrix.ortho(0, 800, 0, 600, -1, 1);
         validateMatrix(testMatrix, matrix.getEnum, "Ortho " + matrix.name + " Matrix");
+
+        Matrix4f testLoad = new Matrix4f();
+        testLoad.m02(5f);
+        testLoad.m12(12f);
+        testLoad.get(buffer);
+
+        GLStateManager.glLoadMatrix(buffer);
+        validateMatrix(testLoad, matrix.getEnum, "Loaded " + matrix.name + " Matrix");
 
         GLStateManager.glPopMatrix();
         testMatrix.identity();
