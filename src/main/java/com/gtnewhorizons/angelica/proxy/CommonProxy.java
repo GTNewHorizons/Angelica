@@ -1,11 +1,8 @@
 package com.gtnewhorizons.angelica.proxy;
 
-import com.gtnewhorizons.angelica.models.unready.common.BlockTest;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 public class CommonProxy {
 
