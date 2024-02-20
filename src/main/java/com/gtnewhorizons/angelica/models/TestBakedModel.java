@@ -1,10 +1,9 @@
-package com.gtnewhorizons.angelica.models.unready.json;
+package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.models.NdQuadBuilder;
-import com.gtnewhorizons.angelica.models.unready.json.JsonModel;
+import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import java.util.ArrayList;
