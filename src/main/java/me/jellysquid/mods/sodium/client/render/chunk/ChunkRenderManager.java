@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -45,6 +46,7 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener {
     /**
@@ -639,9 +641,14 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void scheduleRebuildOffThread(int x, int y, int z, boolean important) {
-        // TODO: Sodium Threads
-        throw new RuntimeException("scheduleRebuildOffThread");
-//        Minecraft.getMinecraft().submit(() -> this.scheduleRebuild(x, y, z, important));
+        final var future = CompletableFuture.runAsync(() -> this.scheduleRebuild(x, y, z, important), AngelicaRenderQueue.executor());
+        while(!future.isDone()) {
+            try {
+                future.get();
+            } catch(InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public void scheduleRebuild(int x, int y, int z, boolean important) {
