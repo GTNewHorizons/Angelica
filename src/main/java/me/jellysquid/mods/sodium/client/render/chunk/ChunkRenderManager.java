@@ -552,25 +552,39 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
                 continue;
             }
 
-            // Do not allow distant chunks to block rendering
-            if (this.alwaysDeferChunkUpdates || !this.isChunkPrioritized(render)) {
-                this.builder.deferRebuild(render);
-            } else {
-                futures.add(this.builder.scheduleRebuildTaskAsync(render));
-            }
+            CompletableFuture<ChunkBuildResult<T>> futureTask = this.builder.scheduleRebuildTaskAsync(render);
 
-            this.dirty = true;
-            submitted++;
-            // Limit quantity of updates submitted if we are deferring all important builds
-            if (this.alwaysDeferChunkUpdates && submitted >= budget)
-                break;
+            if (futureTask != null) {
+                this.dirty = true;
+
+                // Do not allow distant chunks to block rendering
+                if (this.alwaysDeferChunkUpdates || !this.isChunkPrioritized(render)) {
+                    this.builder.handleCompletion(futureTask);
+                } else {
+                    futures.add(futureTask);
+                }
+
+                submitted++;
+                // Limit quantity of updates submitted if we are deferring all important builds
+                if (this.alwaysDeferChunkUpdates && submitted >= budget)
+                    break;
+            } else {
+                // Immediately submit empty data to the queue and do not count this against the budget
+                this.builder.enqueueUpload(new ChunkBuildResult<>(render, ChunkRenderData.EMPTY));
+            }
         }
 
         while (submitted < budget && !this.rebuildQueue.isEmpty()) {
             ChunkRenderContainer<T> render = this.rebuildQueue.dequeue();
 
-            this.builder.deferRebuild(render);
-            submitted++;
+            CompletableFuture<ChunkBuildResult<T>> futureTask = this.builder.scheduleRebuildTaskAsync(render);
+            if(futureTask != null) {
+                this.builder.handleCompletion(futureTask);
+                submitted++;
+            } else {
+                // Immediately submit empty data to the queue and do not count this against the budget
+                this.builder.enqueueUpload(new ChunkBuildResult<>(render, ChunkRenderData.EMPTY));
+            }
         }
 
         // always do at least one sort
