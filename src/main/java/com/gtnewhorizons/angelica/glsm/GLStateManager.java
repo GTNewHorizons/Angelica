@@ -847,7 +847,9 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        if(AngelicaConfig.enableIris) {
+            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        }
         GL11.glDrawArrays(mode, first, count);
     }
 
