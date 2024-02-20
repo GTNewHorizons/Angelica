@@ -641,14 +641,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void scheduleRebuildOffThread(int x, int y, int z, boolean important) {
-        final var future = CompletableFuture.runAsync(() -> this.scheduleRebuild(x, y, z, important), AngelicaRenderQueue.executor());
-        while(!future.isDone()) {
-            try {
-                future.get();
-            } catch(InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        CompletableFuture.runAsync(() -> this.scheduleRebuild(x, y, z, important), AngelicaRenderQueue.executor());
     }
 
     public void scheduleRebuild(int x, int y, int z, boolean important) {
