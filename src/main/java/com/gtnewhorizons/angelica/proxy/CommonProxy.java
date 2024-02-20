@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
-import com.gtnewhorizons.angelica.common.BlockTest;
+import com.gtnewhorizons.angelica.models.unready.common.BlockTest;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -11,9 +11,10 @@ public class CommonProxy {
 
     public void preInit(FMLPreInitializationEvent event) {
 
-        if (AngelicaConfig.enableTestBlocks){
+        // TODO: JSON models
+        /*if (AngelicaConfig.enableTestBlocks){
             GameRegistry.registerBlock(new BlockTest(), "test_block");
-        }
+        }*/
     }
 
     public void init(FMLInitializationEvent event) {}

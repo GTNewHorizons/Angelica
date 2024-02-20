@@ -23,10 +23,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean injectQPRendering;
 
-    @Config.Comment("Enable Angelica's test blocks")
+    // TODO: JSON models
+    /*@Config.Comment("Enable Angelica's test blocks")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
-    public static boolean enableTestBlocks;
+    public static boolean enableTestBlocks;*/
 
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
     @Config.DefaultBoolean(false)

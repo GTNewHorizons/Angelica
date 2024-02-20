@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.models.json;
+package com.gtnewhorizons.angelica.models.unready.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
