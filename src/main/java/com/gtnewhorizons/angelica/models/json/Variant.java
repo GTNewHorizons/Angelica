@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.models.unready.json;
+package com.gtnewhorizons.angelica.models.json;
 
 import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
