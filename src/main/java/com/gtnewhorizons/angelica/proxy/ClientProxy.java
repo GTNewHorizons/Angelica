@@ -1,13 +1,11 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -49,7 +47,8 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
     final Minecraft mc = Minecraft.getMinecraft();
-    private static boolean baked = false;
+    // TODO: JSON models
+    //private static boolean baked = false;
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -58,7 +57,8 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
+        // TODO: JSON models
+        //Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
     }
 
 
@@ -99,7 +99,8 @@ public class ClientProxy extends CommonProxy {
         glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
-        Loader.loadModels();
+        // TODO: JSON models
+        //Loader.loadModels();
     }
 
     private boolean wasGLSMKeyPressed;
@@ -245,10 +246,11 @@ public class ClientProxy extends CommonProxy {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
 
-        if (!baked) {
+        // TODO: JSON models
+        /*if (!baked) {
             Loader.bakeModels();
             baked = true;
-        }
+        }*/
     }
 
     @SubscribeEvent
