@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.models.json;
+package com.gtnewhorizons.angelica.models.unready.json;
 
 import org.joml.Vector3f;
 
