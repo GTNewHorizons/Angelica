@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.models.unready.json;
+package com.gtnewhorizons.angelica.models.json;
 
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import java.util.List;
