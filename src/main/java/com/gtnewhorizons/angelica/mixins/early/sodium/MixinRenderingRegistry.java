@@ -45,7 +45,7 @@ public class MixinRenderingRegistry implements IRenderingRegistryExt {
                         throw new RuntimeException(e.getCause());
                     }
                 });
-            } else if (mainThreadHandler.getClass().isInstance(ThreadSafeISBRHFactory.class)) {
+            } else if (ThreadSafeISBRHFactory.class.isAssignableFrom(mainThreadHandler.getClass())) {
                 return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> ((ThreadSafeISBRHFactory) mainThreadHandler).newInstance());
             }
         }
