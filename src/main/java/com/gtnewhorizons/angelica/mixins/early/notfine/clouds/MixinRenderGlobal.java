@@ -24,7 +24,7 @@ public abstract class MixinRenderGlobal {
 
     /**
      * @author jss2a98aj
-     * @reason Adjust how cloud drawScreen mode is selected.
+     * @reason Adjust how cloud render mode is selected.
      */
     @Overwrite
     public void renderClouds(float partialTicks) {
@@ -45,7 +45,7 @@ public abstract class MixinRenderGlobal {
 
     /**
      * @author jss2a98aj
-     * @reason Adjust fancy cloud drawScreen.
+     * @reason Adjust fancy cloud render.
      */
     @Overwrite
     public void renderCloudsFancy(float partialTicks) {

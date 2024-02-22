@@ -19,7 +19,6 @@ public class GuiCustomMenu extends GuiScreen {
     private final OptionPage[] subPages;
     protected String screenTitle;
 
-
     private GuiListExtended optionsRowList;
 
     public GuiCustomMenu(GuiScreen parentGuiScreen, OptionPage optionPage, OptionPage... subPages) {
@@ -27,7 +26,6 @@ public class GuiCustomMenu extends GuiScreen {
         this.screenTitle = optionPage.getName();
         this.optionPage = optionPage;
         this.subPages = subPages;
-
     }
 
     @Override

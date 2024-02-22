@@ -847,7 +847,9 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-        Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        if(AngelicaConfig.enableIris) {
+            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        }
         GL11.glDrawArrays(mode, first, count);
     }
 
@@ -1106,6 +1108,13 @@ public class GLStateManager {
 
     public static void glLoadMatrix(FloatBuffer m) {
         getMatrixStack().set(m);
+        GL11.glLoadMatrix(m);
+    }
+
+    public static void glLoadMatrix(DoubleBuffer m) {
+        conersionMatrix4d.set(m);
+        getMatrixStack().set(conersionMatrix4d);
+        GL11.glLoadMatrix(m);
     }
 
     public static Matrix4fStack getMatrixStack() {
