@@ -87,7 +87,7 @@ public class ClonedChunkSection {
 
                         if (tileentity != null)
                         {
-                            this.tileEntities.put(ChunkSectionPos.packLocal(new BlockPos(tileentity.xCoord & 15, tileentity.yCoord & 15, tileentity.zCoord & 15)), tileentity);
+                            this.tileEntities.put(ChunkSectionPos.packLocal(tileentity.xCoord & 15, tileentity.yCoord & 15, tileentity.zCoord & 15), tileentity);
                         }
                     }
                 }
