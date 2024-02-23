@@ -32,7 +32,6 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         }
 
         set(stack[--pointer]);
-        this.setEnabled(this.enabled);
         return this;
     }
 
