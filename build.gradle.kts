@@ -14,6 +14,13 @@ tasks.test {
     jvmArgs("-Djava.library.path=${tasks.extractNatives2.get().destinationFolder.asFile.get().path}")
 }
 
+tasks.processResources {
+    inputs.property("version", project.version.toString())
+    filesMatching("META-INF/rfb-plugin/*") {
+        expand("version" to project.version.toString())
+    }
+}
+
 tasks.register<Copy>("copyDependencies") {
     group = "Angelica"
     description = "Collect dependencies into the testDependencies folder"
