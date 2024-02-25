@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
+import org.lwjgl.opengl.GL11;
 
 public class BooleanStateStack extends BooleanState implements IStateStack<BooleanStateStack> {
 
@@ -32,7 +33,9 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         }
 
         set(stack[--pointer]);
-        this.setEnabled(this.enabled);
+        if (GLStateManager.isAMD() && glCap == GL11.GL_BLEND) {
+            setEnabled(enabled);
+        }
         return this;
     }
 
