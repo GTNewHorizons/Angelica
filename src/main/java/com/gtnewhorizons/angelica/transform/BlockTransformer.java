@@ -3,9 +3,9 @@ package com.gtnewhorizons.angelica.transform;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.commons.lang3.tuple.Pair;
-import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassWriter;
-import org.spongepowered.asm.lib.tree.ClassNode;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.tree.ClassNode;
 
 import java.util.List;
 

@@ -21,13 +21,13 @@ public class MixinCompatHackTweaker implements ITweaker {
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
         verifyDependencies();
-        
+
         if(DISABLE_OPTIFINE_AND_FASTCRAFT) {
             LOGGER.info("Disabling Optifine and Fastcraft (if present)");
             disableOptifineAndFastcraft();
         }
     }
-    
+
     private void verifyDependencies() {
         if(MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
             throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
@@ -82,8 +82,12 @@ public class MixinCompatHackTweaker implements ITweaker {
     @Override
     public String[] getLaunchArguments() {
         if (FMLLaunchHandler.side().isClient()) {
-            // Run after Mixins, but before LWJGl3ify
-            Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
+            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+
+            if (!rfbLoaded) {
+                // Run after Mixins, but before LWJGl3ify
+                Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
+            }
             if(AngelicaConfig.enableSodium) {
                 Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
             }

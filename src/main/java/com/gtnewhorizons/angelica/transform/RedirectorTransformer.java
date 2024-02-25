@@ -6,24 +6,27 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
+import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassWriter;
-import org.spongepowered.asm.lib.Opcodes;
-import org.spongepowered.asm.lib.tree.AbstractInsnNode;
-import org.spongepowered.asm.lib.tree.ClassNode;
-import org.spongepowered.asm.lib.tree.FieldInsnNode;
-import org.spongepowered.asm.lib.tree.InsnList;
-import org.spongepowered.asm.lib.tree.InsnNode;
-import org.spongepowered.asm.lib.tree.IntInsnNode;
-import org.spongepowered.asm.lib.tree.LdcInsnNode;
-import org.spongepowered.asm.lib.tree.MethodInsnNode;
-import org.spongepowered.asm.lib.tree.MethodNode;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,6 +92,9 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
+    private static final MethodHandle angelicaConfigSodiumEnabledGetter;
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -203,6 +209,22 @@ public class RedirectorTransformer implements IClassTransformer {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+
+        try {
+            final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
+            final MethodHandle sodiumGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableSodium", boolean.class);
+            angelicaConfigSodiumEnabledGetter = sodiumGetter;
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean isSodiumEnabled() {
+        try {
+            return (boolean) angelicaConfigSodiumEnabledGetter.invokeExact();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private boolean isVanillaBlockSubclass(String className) {
@@ -221,6 +243,14 @@ public class RedirectorTransformer implements IClassTransformer {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
+    public static List<String> getTransformerExclusions() {
+        return Collections.unmodifiableList(TransformerExclusions);
+    }
+
+    public boolean shouldRfbTransform(byte[] basicClass) {
+        return cstPoolParser.find(basicClass, true);
+    }
+
     @Override
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
         if (basicClass == null) return null;
@@ -237,9 +267,27 @@ public class RedirectorTransformer implements IClassTransformer {
             return basicClass;
         }
 
+        // Keep in sync with com.gtnewhorizons.angelica.loading.rfb.RedirectorTransformerWrapper
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
         cr.accept(cn, 0);
+        final boolean changed = transformClassNode(transformedName, cn);
+        if (changed) {
+            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            cn.accept(cw);
+            final byte[] bytes = cw.toByteArray();
+            saveTransformedClass(bytes, transformedName);
+            return bytes;
+        }
+        return basicClass;
+    }
+
+    /** @return Was the class changed? */
+    public boolean transformClassNode(String transformedName, ClassNode cn)
+    {
+        if (cn == null) {
+            return false;
+        }
 
         // Track subclasses of Block
         if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
@@ -338,7 +386,7 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && AngelicaConfig.enableSodium) {
+                    if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
                         Pair<String, String> fieldToRedirect = null;
                         for(Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
@@ -384,14 +432,7 @@ public class RedirectorTransformer implements IClassTransformer {
             }
         }
 
-        if (changed) {
-            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-            cn.accept(cw);
-            final byte[] bytes = cw.toByteArray();
-            saveTransformedClass(bytes, transformedName);
-            return bytes;
-        }
-        return basicClass;
+        return changed;
     }
 
     private File outputDir = null;
