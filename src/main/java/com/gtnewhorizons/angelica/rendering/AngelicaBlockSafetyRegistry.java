@@ -16,26 +16,16 @@ public class AngelicaBlockSafetyRegistry {
     private static final Reference2BooleanMap<Block> ISBRH_SAFETY_MAP = new Reference2BooleanOpenHashMap<>();
     private static final StampedLock LOCK = new StampedLock();
 
-    public static boolean canBlockRenderOffThread(Block block, boolean checkISBRH) {
-        final long stamp = LOCK.readLock();
+    /**
+     * This method is threadsafe to read, and threadsafe to write, but NOT if both could happen at the same time.
+     */
+    public static boolean canBlockRenderOffThread(Block block, boolean checkISBRH, boolean shouldPopulate) {
+
         final Reference2BooleanMap<Block> map = checkISBRH ? ISBRH_SAFETY_MAP : BLOCK_SAFETY_MAP;
-        boolean isOffThread, shouldPopulate;
-        try {
-            isOffThread = map.getBoolean(block);
-            if (isOffThread) {
-                return true; // no need to check if 'false' was due to not being populated
-            }
 
-            shouldPopulate = !map.containsKey(block);
-        } finally {
-            LOCK.unlock(stamp);
-        }
-
-        if(shouldPopulate) {
-            isOffThread = populateCanRenderOffThread(block, map);
-        }
-
-        return isOffThread;
+        if (shouldPopulate)
+            return populateCanRenderOffThread(block, map);
+        return map.getBoolean(block);
     }
 
     private static boolean populateCanRenderOffThread(Block block, Reference2BooleanMap<Block> map) {

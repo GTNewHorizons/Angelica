@@ -2,16 +2,26 @@ package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import java.util.Arrays;
+
+import com.gtnewhorizons.angelica.models.material.RenderMaterial;
+import com.gtnewhorizons.angelica.models.material.RenderMaterialImpl;
+import com.gtnewhorizons.angelica.models.renderer.IndigoRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.IIcon;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
+import static com.gtnewhorizons.angelica.models.EncodingFormat.*;
+
 public class NdQuadBuilder {
 
+    // x, y, z, u, v, color, normal, lightmap
     public static final int INTS_PER_VERTEX = 8;
+    public static final int QUAD_STRIDE = INTS_PER_VERTEX * 4;
     public static final int X_INDEX = 0;
     public static final int Y_INDEX = 1;
     public static final int Z_INDEX = 2;
@@ -86,20 +96,20 @@ public class NdQuadBuilder {
      */
     public static float CULL_FACE_EPSILON = 0.00001f;
 
-    private ForgeDirection cullFace = ForgeDirection.UNKNOWN;
     private ForgeDirection nominalFace = ForgeDirection.UNKNOWN;
-    private int[] data = new int[INTS_PER_VERTEX * 4];
-    private boolean isGeometryInvalid = false;
-    private int bitFlags = 0;
+    // It's called a header, but because I'm lazy it's at the end
+    private final int[] data = new int[QUAD_STRIDE + HEADER_STRIDE];
+    private boolean isGeometryInvalid = true;
     private int tag = 0;
     private int colorIndex = -1;
+    final Vector3f faceNormal = new Vector3f();
 
     /**
      * Dumps to {@param out} and returns it.
      */
     public Quad build(Quad out) {
 
-        out.setState(
+        /*out.setState(
             data,
             0,
             new BlockRenderer.Flags(true, false, this.colorIndex != -1, false),
@@ -107,7 +117,10 @@ public class NdQuadBuilder {
             0,
             0,
             0
-        );
+        );*/
+        // FRAPI does this late, but we need to do it before baking to Nd quads
+        this.computeGeometry();
+        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.data[QUAD_STRIDE + HEADER_BITS]);
         this.clear();
         return out;
     }
@@ -117,11 +130,11 @@ public class NdQuadBuilder {
         Arrays.fill(this.data, 0);
         this.isGeometryInvalid = true;
         this.nominalFace = ForgeDirection.UNKNOWN;
-        normalFlags(0);
-        tag(0);
-        colorIndex(-1);
-        cullFace(null);
-        //material(IndigoRenderer.MATERIAL_STANDARD);
+        this.normalFlags(0);
+        this.tag(0);
+        this.colorIndex(-1);
+        this.cullFace(null);
+        this.material(IndigoRenderer.MATERIAL_STANDARD);
     }
 
     /**
@@ -149,39 +162,87 @@ public class NdQuadBuilder {
         this.colorIndex = colorIndex;
     }
 
+    private void computeGeometry() {
+        if (isGeometryInvalid) {
+            isGeometryInvalid = false;
+
+            NormalHelper.computeFaceNormal(faceNormal, this);
+            this.data[QUAD_STRIDE + HEADER_FACE_NORMAL] = NormalHelper.packNormal(this.faceNormal);
+
+            // depends on face normal
+            this.data[QUAD_STRIDE +HEADER_BITS] = EncodingFormat.lightFace(this.data[QUAD_STRIDE +HEADER_BITS], GeometryHelper.lightFace(this));
+
+            // depends on light face
+            this.data[QUAD_STRIDE +HEADER_BITS] = EncodingFormat.geometryFlags(this.data[QUAD_STRIDE +HEADER_BITS], GeometryHelper.computeShapeFlags(this));
+        }
+    }
+
     /**
-     * If not {@link ForgeDirection.UNKNOWN}, quad is coplanar with a block face which, if known, simplifies
+     * If non-null, quad should not be rendered in-world if the
+     * opposite face of a neighbor block occludes it.
+     *
+     * @see NdQuadBuilder#cullFace(ForgeDirection)
+     */
+    @Nullable
+    public final ForgeDirection cullFace() {
+        return EncodingFormat.cullFace(this.data[QUAD_STRIDE + HEADER_BITS]);
+    }
+
+    /**
+     * If not {@link ForgeDirection#UNKNOWN}, quad is coplanar with a block face which, if known, simplifies
      * or shortcuts geometric analysis that might otherwise be needed.
-     * Set to {@link ForgeDirection.UNKNOWN} if quad is not coplanar or if this is not known.
+     * Set to {@link ForgeDirection#UNKNOWN} if quad is not coplanar or if this is not known.
      * Also controls face culling during block rendering.
      *
-     * <p>{@link ForgeDirection.UNKNOWN} by default.
+     * <p>{@link ForgeDirection#UNKNOWN} by default.
      *
-     * <p>When called with a non-{@link ForgeDirection.UNKNOWN} value, also sets {@link #nominalFace(ForgeDirection)}
+     * <p>When called with a non-{@link ForgeDirection#UNKNOWN} value, also sets {@link #nominalFace(ForgeDirection)}
      * to the same value.
      *
-     * <p>This is different from the value reported by {@link Quad#getFace()}. That value
-     * is computed based on face geometry and must be non-{@link ForgeDirection.UNKNOWN} in vanilla quads.
+     * <p>This is different from the value reported by {@link Quad#getLightFace()}. That value
+     * is computed based on face geometry and must be non-{@link ForgeDirection#UNKNOWN} in vanilla quads.
      * That computed value is returned by {@link #lightFace()}.
      */
-    public void cullFace(ForgeDirection dir) {
+    public void cullFace(@Nullable ForgeDirection dir) {
 
-        this.cullFace = dir;
-        if (dir != ForgeDirection.UNKNOWN)
-            this.nominalFace(dir);
+        this.data[QUAD_STRIDE + HEADER_BITS] = EncodingFormat.cullFace(this.data[QUAD_STRIDE + HEADER_BITS], dir);
+        this.nominalFace(dir);
+    }
+
+    private boolean hasShade() {
+        return !this.material().disableDiffuse();
+    }
+
+    /**
+     * Equivalent to {@link Quad#getLightFace()}. This is the face used for vanilla lighting
+     * calculations and will be the block face to which the quad is most closely aligned. Always
+     * the same as cull face for quads that are on a block face, but never
+     * {@link ForgeDirection#UNKNOWN} or null.
+     */
+    @NotNull
+    ForgeDirection lightFace() {
+        this.computeGeometry();
+        return EncodingFormat.lightFace(this.data[QUAD_STRIDE + HEADER_BITS]);
+    }
+
+    /**
+     * Retrieves the material serialized with the quad.
+     */
+    public final RenderMaterialImpl material() {
+        return EncodingFormat.material(this.data[QUAD_STRIDE + HEADER_BITS]);
     }
 
     /**
      * Assigns a different material to this quad. Useful for transformation of
      * existing meshes because lighting and texture blending are controlled by material.
-     * /
-    public void material(RenderMaterial material) {
+     */
+    public final void material(RenderMaterial material) {
         if (material == null) {
             material = IndigoRenderer.MATERIAL_STANDARD;
         }
 
-        this.bitFlags = EncodingFormat.material(this.bitFlags, (RenderMaterialImpl) material);
-    }*/
+        this.data[QUAD_STRIDE + HEADER_BITS] = EncodingFormat.material(this.data[QUAD_STRIDE + HEADER_BITS], (RenderMaterialImpl) material);
+    }
 
     /**
      * Provides a hint to renderer about the facing of this quad. Not required,
@@ -196,7 +257,7 @@ public class NdQuadBuilder {
      * <p>Note: This value is not persisted independently when the quad is encoded.
      * When reading encoded quads, this value will always be the same as {@link #lightFace()}.
      */
-    public void nominalFace(ForgeDirection face) {
+    public void nominalFace(@Nullable ForgeDirection face) {
         nominalFace = face;
     }
 
@@ -211,7 +272,7 @@ public class NdQuadBuilder {
      * Sets the normal flags.
      */
     private void normalFlags(int flags) {
-        this.bitFlags =  EncodingFormat.normalFlags(bitFlags, flags);
+        this.data[QUAD_STRIDE + HEADER_BITS] =  EncodingFormat.normalFlags(this.data[QUAD_STRIDE + HEADER_BITS], flags);
     }
 
     /**
@@ -236,6 +297,13 @@ public class NdQuadBuilder {
             Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Y_INDEX]),
             Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Z_INDEX])
         );
+    }
+
+    /**
+     * Convenience: access x, y, z by index 0-2.
+     */
+    float posByIndex(int vertexIndex, int coordinateIndex) {
+        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + X_INDEX + coordinateIndex]);
     }
 
     /**
@@ -370,7 +438,7 @@ public class NdQuadBuilder {
     }
 
     /**
-     * Modern Minecraft uses magic arrays to do this without breaking AO. Let's copy that.
+     * Modern Minecraft uses magic arrays to do this without breaking AO. This is the same thing, but without arrays.
      */
     public static Vector3f mapSideToVertex(Vector3f from, Vector3f to, int index, ForgeDirection side) {
 
