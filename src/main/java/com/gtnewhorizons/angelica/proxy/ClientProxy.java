@@ -236,7 +236,7 @@ public class ClientProxy extends CommonProxy {
     }
 
     @SubscribeEvent
-    public void onFOVUpdate(FOVUpdateEvent event) {
+    public void onFOVModifierUpdate(FOVUpdateEvent event) {
         if (!(boolean)Settings.DYNAMIC_FOV.option.getStore()){
             event.newfov = 1.0F;
         }
