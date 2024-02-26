@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.config.ConfigException;
 import com.gtnewhorizons.angelica.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
-import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import mist475.mcpatcherforge.asm.AsmTransformers;
 import mist475.mcpatcherforge.asm.mappings.Namer;
@@ -20,8 +19,6 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +44,12 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 loggerConfig.setLevel(Level.DEBUG);
             }
             ctx.updateLoggers();
+
+            // Too many bug reports because people refuse to read or just want to try it - so make these only able
+            // to be enabled by system properties for now.
+            AngelicaConfig.enableIris = Boolean.parseBoolean(System.getProperty("angelica.enableShaders", "false"));
+            AngelicaConfig.enableMCPatcherForgeFeatures = Boolean.parseBoolean(System.getProperty("angelica.enableMCPatcherForgeFeatures", "false"));
+
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
