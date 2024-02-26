@@ -66,17 +66,18 @@ public class BlockRenderer {
             for (ForgeDirection dir : ForgeDirection.values()) {
 
                 this.random.setSeed(seed);
-                List<Quad> quads = qBlock.getQuads(world, pos, block, meta, dir, random, this.quadPool);
-
-                if (quads.isEmpty()) continue;
+                List<Quad> quads = null;
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
+                    quads = qBlock.getQuads(world, pos, block, meta, dir, random, this.quadPool);
+                    if (quads.isEmpty()) continue;
 
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
                 }
 
-                for (Quad q : quads) this.quadPool.releaseInstance(q);
+                if (quads != null)
+                    for (Quad q : quads) this.quadPool.releaseInstance(q);
             }
         } else {
 
@@ -106,10 +107,10 @@ public class BlockRenderer {
     }
 
     private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+        final ForgeDirection cullFace = ModelQuadFacing.toDirection(facing);
 
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
-        final ForgeDirection cullFace = ModelQuadFacing.toDirection(facing);
 
         final ChunkRenderData.Builder renderData = buffers.getRenderData();
 
@@ -118,13 +119,10 @@ public class BlockRenderer {
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
             final Quad quad = quads.get(i);
 
-            if(quad.normal != facing)
-                continue;
-
             final QuadLightData light = this.cachedQuadLightData;
 
             if (useSodiumLight || this.useSeparateAo)
-                lighter.calculate(quad, pos, light, cullFace, quad.getCoercedFace(), quad.hasShade());
+                lighter.calculate(quad, pos, light, cullFace, quad.getLightFace(), quad.isShade());
 
             this.renderQuad(sink, quad, light, renderData, useSodiumLight);
         }

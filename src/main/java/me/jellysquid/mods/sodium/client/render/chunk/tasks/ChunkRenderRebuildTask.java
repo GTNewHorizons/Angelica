@@ -91,7 +91,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private boolean rendersOffThread(Block block) {
         final int type = block.getRenderType();
-        return (type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, false)) || AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, true);
+        return (type < 42 && type != 22 && AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, false, false)) || AngelicaBlockSafetyRegistry.canBlockRenderOffThread(block, true, false);
     }
 
     private void handleRenderBlocksTextures(RenderBlocks rb, ChunkRenderData.Builder builder) {

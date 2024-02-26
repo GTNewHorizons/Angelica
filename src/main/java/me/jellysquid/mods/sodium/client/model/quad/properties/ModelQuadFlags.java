@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.model.quad.properties;
 
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.models.GeometryHelper;
 import net.minecraftforge.common.util.ForgeDirection;
 
 public class ModelQuadFlags {
@@ -33,7 +34,7 @@ public class ModelQuadFlags {
      * certain optimizations.
      */
     public static int getQuadFlags(Quad quad) {
-        final ForgeDirection face = quad.getCoercedFace();
+        final ForgeDirection face = quad.getLightFace();
         final Axis axis = Axis.fromDirection(ModelQuadFacing.fromDirection(face));
 
         float minX = 32.0F;
@@ -95,6 +96,18 @@ public class ModelQuadFlags {
             flags |= IS_ALIGNED;
         }
 
+        return flags;
+    }
+
+    /**
+     * See {@link #getQuadFlags(Quad)}. This one converts FRAPI bits to Sodium ones.
+     */
+    public static int getQuadFlags(int bits) {
+
+        int flags = 0;
+        flags |= ((bits & GeometryHelper.AXIS_ALIGNED_FLAG) == GeometryHelper.AXIS_ALIGNED_FLAG) ? IS_PARALLEL : 0;
+        flags |= ((bits & GeometryHelper.LIGHT_FACE_FLAG) == GeometryHelper.LIGHT_FACE_FLAG) ? IS_ALIGNED : 0;
+        flags |= ((bits & GeometryHelper.CUBIC_FLAG) == GeometryHelper.CUBIC_FLAG) ? 0 : IS_PARTIAL;
         return flags;
     }
 }
