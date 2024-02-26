@@ -150,6 +150,7 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
+                .add(Settings.DYNAMIC_FOV.option)
                 .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));

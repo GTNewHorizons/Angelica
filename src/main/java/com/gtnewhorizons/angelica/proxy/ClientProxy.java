@@ -17,6 +17,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -33,6 +34,7 @@ import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
+import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -230,6 +232,13 @@ public class ClientProxy extends CommonProxy {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
+        }
+    }
+
+    @SubscribeEvent
+    public void onFOVModifierUpdate(FOVUpdateEvent event) {
+        if (!(boolean)Settings.DYNAMIC_FOV.option.getStore()){
+            event.newfov = 1.0F;
         }
     }
 

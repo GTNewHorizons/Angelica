@@ -97,6 +97,7 @@ public class NotFineGameOptionPages {
                 .setControl(TickBoxControl::new)
                 .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                 .build())
+            .add(Settings.DYNAMIC_FOV.option)
             .add(OptionImpl.createBuilder(LightingQuality.class, vanillaOpts)
                 .setName(I18n.format("options.ao"))
                 .setTooltip(I18n.format("sodium.options.smooth_lighting.tooltip"))

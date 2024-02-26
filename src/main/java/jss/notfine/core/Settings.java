@@ -45,6 +45,7 @@ public enum Settings {
             SettingsManager.downfallDistanceUpdated();
         }
     },
+    DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
         @Override
         public void applyChanges() {
