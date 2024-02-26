@@ -59,7 +59,8 @@ public class ConfigurationManager {
                                .orElseThrow(() -> new ConfigException(
                                        "Config class " + configClass.getName() + " has an empty category!"));
         val rawConfig = configs.computeIfAbsent(cfg.modid(), (ignored) -> {
-            val c = new Configuration(configDir.resolve(cfg.modid() + ".cfg").toFile());
+            // Angelica only -- Make a cfg.filenameOverride() or something for generic use
+            val c = new Configuration(configDir.resolve(cfg.modid() + "-modules.cfg").toFile());
             c.load();
             return c;
         });
