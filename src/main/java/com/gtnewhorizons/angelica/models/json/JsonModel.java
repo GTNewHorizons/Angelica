@@ -11,6 +11,9 @@ import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
+import com.gtnewhorizons.angelica.models.fapi.TriState;
+import com.gtnewhorizons.angelica.models.material.RenderMaterial;
+import com.gtnewhorizons.angelica.models.renderer.IndigoRenderer;
 import com.gtnewhorizons.angelica.utils.DirUtil;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.Function;
@@ -22,6 +25,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
@@ -42,10 +47,12 @@ public class JsonModel implements QuadProvider {
     private final ResourceLocation parentId;
     @Nullable
     private JsonModel parent;
+    @Getter
     private final boolean useAO;
     private final Map<ModelDisplay.Position, ModelDisplay> display;
     private final Map<String, String> textures;
     private List<ModelElement> elements;
+    // TODO: Make a sided list
     private List<Quad> bakedQuadStore = new ObjectArrayList<>();
 
     JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
@@ -74,6 +81,8 @@ public class JsonModel implements QuadProvider {
         final Matrix4f vRot = v.getAffineMatrix();
 
         final NdQuadBuilder builder = new NdQuadBuilder();
+        final RenderMaterial mat =
+            IndigoRenderer.INSTANCE.materialFinder().ambientOcclusion(TriState.of(this.useAO)).find();
 
         // Append faces from each element
         for (ModelElement e : this.elements) {
@@ -126,6 +135,9 @@ public class JsonModel implements QuadProvider {
                 // Set the tint index
                 final int tint = f.getTintIndex();
                 builder.color(tint, tint, tint, tint);
+
+                // Set AO
+                builder.material(mat);
 
                 // Bake and add it
                 this.bakedQuadStore.add(builder.build(new Quad()));

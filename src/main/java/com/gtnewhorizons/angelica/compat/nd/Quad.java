@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
 import java.util.Locale;
+
+import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
@@ -9,6 +11,8 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
+
+import javax.annotation.Nullable;
 
 public class Quad implements ModelQuadView {
     // Adapted from Neodymium
@@ -27,36 +31,20 @@ public class Quad implements ModelQuadView {
 
     public boolean deleted;
 
-    public ModelQuadFacing normal;
-
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
-    private boolean hasColor;
-    private boolean hasShade;
-    private boolean hasNormals;
-
+    @Getter
+    private boolean shade;
     private int cachedFlags;
     private ForgeDirection face;
     private int colorIndex = -1;
-
-    public boolean hasColor() {
-        return this.hasColor;
-    }
 
     public int[] getColors() {
         return this.cs;
     }
 
-    public boolean hasShade() {
-        return this.hasShade;
-    }
-
-    public boolean hasNormals() {
-        return this.hasNormals;
-    }
-
     /** Returns the face, forced to take one of 6 directions to mirror the behavior of baked quads in 1.16.5. */
-    public ForgeDirection getCoercedFace() {
+    public ForgeDirection getLightFace() {
         return this.face != ForgeDirection.UNKNOWN ? this.face : ForgeDirection.UP;
     }
 
@@ -130,21 +118,41 @@ public class Quad implements ModelQuadView {
 
         this.deleted = quad.deleted;
 
-        this.normal = quad.normal;
-
-        this.hasColor = quad.hasColor;
-        this.hasShade = quad.hasShade;
-        this.hasNormals = quad.hasNormals;
-
         this.cachedFlags = quad.cachedFlags;
         this.face = quad.face;
         this.colorIndex = quad.colorIndex;
     }
 
+    public void setRaw(int[] data, boolean shade, @Nullable ForgeDirection face, int colorIndex, int flags) {
+
+        int i = 0;
+        for(int vi = 0; vi < 4; vi++) {
+
+            xs[vi] = Float.intBitsToFloat(data[i + 0]);
+            ys[vi] = Float.intBitsToFloat(data[i + 1]);
+            zs[vi] = Float.intBitsToFloat(data[i + 2]);
+
+            us[vi] = Float.intBitsToFloat(data[i + 3]);
+            vs[vi] = Float.intBitsToFloat(data[i + 4]);
+
+            cs[vi] = data[i + 5];
+            ns[vi] = data[i + 6];
+            bs[vi] = data[i + 7];
+
+            i += 8;
+        }
+
+        this.shade = shade;
+        this.deleted = false;
+        this.face = face;
+        this.colorIndex = colorIndex;
+        this.cachedFlags = ModelQuadFlags.getQuadFlags(flags);
+    }
+
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
         final int vertices = drawMode == GL11.GL_TRIANGLES ? 3 : 4;
+        int i = offset;
         for(int vi = 0; vi < vertices; vi++) {
-            int i = offset + vi * 8;
 
             xs[vi] = Float.intBitsToFloat(rawBuffer[i + 0]) + offsetX;
             ys[vi] = Float.intBitsToFloat(rawBuffer[i + 1]) + offsetY;
@@ -157,15 +165,14 @@ public class Quad implements ModelQuadView {
             ns[vi] = flags.hasNormals ? rawBuffer[i + 6] : 0;
             bs[vi] = flags.hasBrightness ? rawBuffer[i + 7] : DEFAULT_BRIGHTNESS;
 
-            this.hasColor = flags.hasColor;
-            this.hasShade = flags.hasBrightness;
-            this.hasNormals = flags.hasNormals;
-
-
             i += 8;
         }
 
+        // sus
+        this.shade = flags.hasBrightness;
+
         if(vertices == 3) {
+
             // Quadrangulate!
             xs[3] = xs[2];
             ys[3] = ys[2];
@@ -195,8 +202,7 @@ public class Quad implements ModelQuadView {
         vectorB.set(xs[2] - xs[1], ys[2] - ys[1], zs[2] - zs[1]);
         vectorA.cross(vectorB, vectorC);
 
-        normal = ModelQuadFacing.fromVector(vectorC);
-        this.face = ModelQuadFacing.toDirection(normal);
+        this.face = ModelQuadFacing.toDirection(ModelQuadFacing.fromVector(vectorC));
         this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
     }
 

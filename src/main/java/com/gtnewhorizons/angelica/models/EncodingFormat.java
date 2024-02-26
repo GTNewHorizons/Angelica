@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+import com.gtnewhorizons.angelica.models.material.RenderMaterialImpl;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -74,9 +75,9 @@ public abstract class EncodingFormat {
 	private static final int GEOMETRY_MASK = (1 << GeometryHelper.FLAG_BIT_COUNT) - 1;
 	private static final int GEOMETRY_INVERSE_MASK = ~(GEOMETRY_MASK << GEOMETRY_SHIFT);
 	private static final int MATERIAL_SHIFT = GEOMETRY_SHIFT + GeometryHelper.FLAG_BIT_COUNT;
-	//private static final int MATERIAL_MASK = MathHelper.roundUpToPowerOfTwo(RenderMaterialImpl.VALUE_COUNT) - 1;
+	private static final int MATERIAL_MASK = MathHelper.roundUpToPowerOfTwo(RenderMaterialImpl.VALUE_COUNT) - 1;
 	//private static final int MATERIAL_BIT_COUNT = Integer.bitCount(MATERIAL_MASK);
-	//private static final int MATERIAL_INVERSE_MASK = ~(MATERIAL_MASK << MATERIAL_SHIFT);
+	private static final int MATERIAL_INVERSE_MASK = ~(MATERIAL_MASK << MATERIAL_SHIFT);
 
 	/*static {
 		Preconditions.checkArgument(MATERIAL_SHIFT + MATERIAL_BIT_COUNT <= 32, "Indigo header encoding bit count (%s) exceeds integer bit length)", TOTAL_STRIDE);
@@ -123,11 +124,11 @@ public abstract class EncodingFormat {
 		return (bits & GEOMETRY_INVERSE_MASK) | ((geometryFlags & GEOMETRY_MASK) << GEOMETRY_SHIFT);
 	}
 
-	/*static RenderMaterialImpl material(int bits) {
+	static RenderMaterialImpl material(int bits) {
 		return RenderMaterialImpl.byIndex((bits >>> MATERIAL_SHIFT) & MATERIAL_MASK);
 	}
 
 	public static int material(int bits, RenderMaterialImpl material) {
 		return (bits & MATERIAL_INVERSE_MASK) | (material.index() << MATERIAL_SHIFT);
-	}*/
+	}
 }

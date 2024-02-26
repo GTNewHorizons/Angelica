@@ -6,7 +6,7 @@ import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
-import java.util.ArrayList;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -153,6 +153,7 @@ public class CubeModel implements QuadProvider {
 
 
     public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(() -> new CubeModel(false));
+    private final NdQuadBuilder builder = new NdQuadBuilder();
     private final boolean[] colorized = new boolean[6];
     private final BlockRenderer.Flags flags = new BlockRenderer.Flags(true, true, false, false);
     private static final List<Quad> EMPTY = ObjectImmutableList.of();
@@ -176,53 +177,14 @@ public class CubeModel implements QuadProvider {
         if (dir == ForgeDirection.UNKNOWN)
             return EMPTY;
 
-        final Quad face = quadPool.getInstance();
-        final int[] buf = Arrays.copyOf(initBufs[dir.ordinal()], 32); // 8 ints per vertex, four vertices per quad. A cube only has one quad per side
-        // Format:
-        // x
-        // y
-        // z
-        // u
-        // v
-        // color
-        // normals
-        // brightness
-        // repeat
-        // all are float bits as ints
-
+        this.builder.square(dir, 0, 0, 1, 1, 0);
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
-        final int color;
-        if (this.colorized[dir.ordinal()]) {
-            final int c = block.colorMultiplier(world, pos.x, pos.y, pos.z);
-            final int r = (c >> 16) & 0xFF;
-            final int g = (c >> 8) & 0xFF;
-            final int b = c & 0xFF;
-            color = 0xFF << 24 | b << 16 | g << 8 | r;
-        } else { color = 0xFFFFFFFF; }
-        this.flags.hasColor = this.colorized[dir.ordinal()];
+        this.builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
 
-        for (int vi = 0; vi < 4; ++vi) {
-            final int i = vi * 8;
+        int color = 0xFF << 24 | block.colorMultiplier(world, pos.x, pos.y, pos.z);
+        this.builder.color(color, color, color, color);
 
-            // UV
-            buf[i + 3] = Float.floatToIntBits(tex.getInterpolatedU(uv[vi][0] * 16));
-            buf[i + 4] = Float.floatToIntBits(tex.getInterpolatedV(uv[vi][1] * 16));
-
-            // Color
-            buf[i + 5] = color;
-        }
-
-        face.setState(buf, 0, this.flags, GL_QUADS, 0, 0, 0);
-
-        // CubeModel is solid all over, and thus doesn't need to do this
-        // However, you need to drop deleted quads in proper model code
-        /*if (face.deleted) {
-
-            quadPool.releaseInstance(face);
-            return EMPTY;
-        }*/
-
-        ONE.set(0, face);
+        ONE.set(0, this.builder.build(quadPool.getInstance()));
         return ONE;
     }
 }

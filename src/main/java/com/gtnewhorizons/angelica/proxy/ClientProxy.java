@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
+import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -17,9 +18,12 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.common.registry.GameData;
+import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
 import java.lang.management.ManagementFactory;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
@@ -68,6 +72,14 @@ public class ClientProxy extends CommonProxy {
             GLStateManager.setRunningSplash(false);
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
+
+        // Register all blocks. Because blockids are unique to a world, this must be done each load
+        GameData.getBlockRegistry().forEach(o -> {
+
+            final Block b = (Block) o;
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
+        });
     }
 
 
