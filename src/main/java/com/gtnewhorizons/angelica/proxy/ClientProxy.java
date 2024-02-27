@@ -20,13 +20,8 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
-import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
-import java.lang.management.ManagementFactory;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -49,6 +44,10 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
+
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
