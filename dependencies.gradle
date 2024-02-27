@@ -58,7 +58,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:24.0.1')
-    api("com.github.GTNewHorizons:GTNHLib:0.2.8:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.2.9:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     implementation("io.github.douira:glsl-transformer:1.0.0")
     shadowImplementation("io.github.douira:glsl-transformer:1.0.0") { // glsl-transformer Noncommercial License 1.0.0
