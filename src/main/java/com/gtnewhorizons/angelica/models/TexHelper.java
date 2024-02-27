@@ -9,19 +9,19 @@ public class TexHelper {
     private static final VertexModifier[] UVLOCKERS = new VertexModifier[6];
 
     static {
-        UVLOCKERS[ForgeDirection.EAST.ordinal()] = (q, i) -> q.uv(i, 1 - q.z(i), 1 - q.y(i));
-        UVLOCKERS[ForgeDirection.WEST.ordinal()] = (q, i) -> q.uv(i, q.z(i), 1 - q.y(i));
-        UVLOCKERS[ForgeDirection.NORTH.ordinal()] = (q, i) -> q.uv(i, 1 - q.x(i), 1 - q.y(i));
-        UVLOCKERS[ForgeDirection.SOUTH.ordinal()] = (q, i) -> q.uv(i, q.x(i), 1 - q.y(i));
-        UVLOCKERS[ForgeDirection.DOWN.ordinal()] = (q, i) -> q.uv(i, q.x(i), 1 - q.z(i));
-        UVLOCKERS[ForgeDirection.UP.ordinal()] = (q, i) -> q.uv(i, q.x(i), q.z(i));
+        UVLOCKERS[ForgeDirection.EAST.ordinal()] = (q, i) -> q.uv(i, 1 - q.getZ(i), 1 - q.getY(i));
+        UVLOCKERS[ForgeDirection.WEST.ordinal()] = (q, i) -> q.uv(i, q.getZ(i), 1 - q.getY(i));
+        UVLOCKERS[ForgeDirection.NORTH.ordinal()] = (q, i) -> q.uv(i, 1 - q.getX(i), 1 - q.getY(i));
+        UVLOCKERS[ForgeDirection.SOUTH.ordinal()] = (q, i) -> q.uv(i, q.getX(i), 1 - q.getY(i));
+        UVLOCKERS[ForgeDirection.DOWN.ordinal()] = (q, i) -> q.uv(i, q.getX(i), 1 - q.getZ(i));
+        UVLOCKERS[ForgeDirection.UP.ordinal()] = (q, i) -> q.uv(i, q.getX(i), q.getZ(i));
     }
 
     private static final VertexModifier[] ROTATIONS = new VertexModifier[] {
         null,
-        (q, i) -> q.uv(i, q.v(i), 1 - q.u(i)), //90
-        (q, i) -> q.uv(i, 1 - q.u(i), 1 - q.v(i)), //180
-        (q, i) -> q.uv(i, 1 - q.v(i), q.u(i)) // 270
+        (q, i) -> q.uv(i, q.getTexV(i), 1 - q.getTexU(i)), //90
+        (q, i) -> q.uv(i, 1 - q.getTexU(i), 1 - q.getTexV(i)), //180
+        (q, i) -> q.uv(i, 1 - q.getTexV(i), q.getTexU(i)) // 270
     };
 
     private static void applyModifier(NdQuadBuilder quad, VertexModifier modifier) {
@@ -40,7 +40,7 @@ public class TexHelper {
             applyModifier(quad, UVLOCKERS[quad.nominalFace().ordinal()]);
         } else if ((NdQuadBuilder.BAKE_NORMALIZED & bakeFlags) == 0) { // flag is NOT set, UVs are assumed to not be normalized yet as is the default, normalize through dividing by 16
             // Scales from 0-16 to 0-1
-            applyModifier(quad, (q, i) -> q.uv(i, q.u(i) * NORMALIZER, q.v(i) * NORMALIZER));
+            applyModifier(quad, (q, i) -> q.uv(i, q.getTexU(i) * NORMALIZER, q.getTexV(i) * NORMALIZER));
         }
 
         final int rotation = bakeFlags & 3;
@@ -53,12 +53,12 @@ public class TexHelper {
 
         if ((NdQuadBuilder.BAKE_FLIP_U & bakeFlags) != 0) {
             // Inverts U coordinates.  Assumes normalized (0-1) values.
-            applyModifier(quad, (q, i) -> q.uv(i, 1 - q.u(i), q.v(i)));
+            applyModifier(quad, (q, i) -> q.uv(i, 1 - q.getTexU(i), q.getTexV(i)));
         }
 
         if ((NdQuadBuilder.BAKE_FLIP_V & bakeFlags) != 0) {
             // Inverts V coordinates.  Assumes normalized (0-1) values.
-            applyModifier(quad, (q, i) -> q.uv(i, q.u(i), 1 - q.v(i)));
+            applyModifier(quad, (q, i) -> q.uv(i, q.getTexU(i), 1 - q.getTexV(i)));
         }
 
         interpolate(quad, sprite);
@@ -75,7 +75,7 @@ public class TexHelper {
         final float vSpan = sprite.getMaxV() - vMin;
 
         for (int i = 0; i < 4; i++) {
-            q.uv(i, uMin + q.u(i) * uSpan, vMin + q.v(i) * vSpan);
+            q.uv(i, uMin + q.getTexU(i) * uSpan, vMin + q.getTexV(i) * vSpan);
         }
     }
 
