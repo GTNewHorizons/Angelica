@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.model.quad;
 
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import java.nio.ByteBuffer;
 
@@ -25,7 +26,7 @@ public interface ModelQuadView {
     float getZ(int idx);
 
     /**
-     * @return The integer-encoded color of the vertex at index {@param idx}
+     * @return The integer-encoded color (ABGR?) of the vertex at index {@param idx}
      */
     int getColor(int idx);
 
@@ -58,6 +59,13 @@ public interface ModelQuadView {
      * @return The color index of this quad.
      */
     int getColorIndex();
+
+    /**
+     * This is the face used for vanilla lighting calculations and will be the block face
+     * to which the quad is most closely aligned. Always the same as cull face for quads
+     * that are on a block face, but never {@link ForgeDirection#UNKNOWN} or null.
+     */
+    ForgeDirection getLightFace();
 
     /**
      * Copies this quad's data into the specified buffer starting at the given position.
