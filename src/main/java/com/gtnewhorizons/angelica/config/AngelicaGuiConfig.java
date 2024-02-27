@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.config;
 
+import com.gtnewhorizon.gtnhlib.config.ConfigException;
+import com.gtnewhorizon.gtnhlib.config.SimpleGuiConfig;
 import net.minecraft.client.gui.GuiScreen;
 
 public class AngelicaGuiConfig extends SimpleGuiConfig {

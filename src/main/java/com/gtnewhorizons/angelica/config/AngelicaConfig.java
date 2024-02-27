@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.config;
 
-@Config(modid = "angelica")
+import com.gtnewhorizon.gtnhlib.config.Config;
+
+@Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
     @Config.Comment("Enable Sodium rendering")
     @Config.DefaultBoolean(true)
