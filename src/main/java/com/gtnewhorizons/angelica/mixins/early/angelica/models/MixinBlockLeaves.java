@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.Mixin;
 public abstract class MixinBlockLeaves extends Block implements QuadProvider {
 
     // TODO: Use modern model API
-    private static final ThreadLocal<QuadProvider> model = ThreadLocal.withInitial(() -> new CubeModel(true));
+    private static final ThreadLocal<QuadProvider> model = ThreadLocal.withInitial(() -> new CubeModel());
 
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
         return model.get().getQuads(world, pos, block, meta, dir, random, quadPool);
