@@ -1,21 +1,24 @@
 package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.nd.Quad;
-import java.util.Arrays;
-
+import lombok.Getter;
+import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.IIcon;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-public class NdQuadBuilder {
+import java.util.Arrays;
+
+public class NdQuadBuilder implements ModelQuadView {
 
     // x, y, z, u, v, color, normal, lightmap
     public static final int INTS_PER_VERTEX = 8;
     public static final int QUAD_STRIDE = INTS_PER_VERTEX * 4;
-    private static final int HEADER_STRIDE = 2;
     public static final int X_INDEX = 0;
     public static final int Y_INDEX = 1;
     public static final int Z_INDEX = 2;
@@ -97,9 +100,10 @@ public class NdQuadBuilder {
     // It's called a header, but because I'm lazy it's at the end
     // The header is an int with flags -------- -------- -------- -GGGNNNN, then an int for the normal
     private final int[] data = new int[QUAD_STRIDE];
-    private int geometry = 0;
+    private int geometryFlags = 0;
     private boolean isGeometryInvalid = true;
     private int tag = 0;
+    @Getter
     private int colorIndex = -1;
     final Vector3f faceNormal = new Vector3f();
     public final Material mat = new Material();
@@ -111,7 +115,7 @@ public class NdQuadBuilder {
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
-        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.geometry);
+        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.geometryFlags);
         this.clear();
         return out;
     }
@@ -122,7 +126,7 @@ public class NdQuadBuilder {
         this.cullFace = ForgeDirection.UNKNOWN;
         this.nominalFace = ForgeDirection.UNKNOWN;
         this.lightFace = ForgeDirection.UP;
-        this.geometry = 0;
+        this.geometryFlags = 0;
         this.isGeometryInvalid = true;
         this.tag(0);
         this.colorIndex(-1);
@@ -164,7 +168,7 @@ public class NdQuadBuilder {
             this.lightFace = GeometryHelper.lightFace(this);
 
             // depends on light face
-            this.geometry = GeometryHelper.computeShapeFlags(this);
+            this.geometryFlags = ModelQuadFlags.getQuadFlags(this);
         }
     }
 
@@ -191,7 +195,7 @@ public class NdQuadBuilder {
      *
      * <p>This is different from the value reported by {@link Quad#getLightFace()}. That value
      * is computed based on face geometry and must be non-{@link ForgeDirection#UNKNOWN} in vanilla quads.
-     * That computed value is returned by {@link #lightFace()}.
+     * That computed value is returned by {@link #getLightFace()}.
      */
     public void cullFace(ForgeDirection dir) {
 
@@ -203,14 +207,9 @@ public class NdQuadBuilder {
         return this.mat.getDiffuse();
     }
 
-    /**
-     * Equivalent to {@link Quad#getLightFace()}. This is the face used for vanilla lighting
-     * calculations and will be the block face to which the quad is most closely aligned. Always
-     * the same as cull face for quads that are on a block face, but never
-     * {@link ForgeDirection#UNKNOWN} or null.
-     */
+    @Override
     @NotNull
-    public ForgeDirection lightFace() {
+    public ForgeDirection getLightFace() {
         this.computeGeometry();
         return this.lightFace;
     }
@@ -218,7 +217,7 @@ public class NdQuadBuilder {
     /**
      * Provides a hint to renderer about the facing of this quad. Not required,
      * but if provided can shortcut some geometric analysis if the quad is parallel to a block face.
-     * Should be the expected value of {@link #lightFace()}. Value will be confirmed
+     * Should be the expected value of {@link #getLightFace()}. Value will be confirmed
      * and if invalid the correct light face will be calculated.
      *
      * <p>Null by default, and set automatically by {@link #cullFace(ForgeDirection)}.
@@ -226,7 +225,7 @@ public class NdQuadBuilder {
      * <p>Models may also find this useful as the face for texture UV locking and rotation semantics.
      *
      * <p>Note: This value is not persisted independently when the quad is encoded.
-     * When reading encoded quads, this value will always be the same as {@link #lightFace()}.
+     * When reading encoded quads, this value will always be the same as {@link #getLightFace()}.
      */
     public void nominalFace(@Nullable ForgeDirection face) {
         nominalFace = face;
@@ -362,13 +361,6 @@ public class NdQuadBuilder {
     }
 
     /**
-     * Retrieve horizontal texture coordinates.
-     */
-    public float u(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + U_INDEX]);
-    }
-
-    /**
      * Set texture coordinates.
      */
     public void uv(int vertexIndex, float u, float v) {
@@ -377,32 +369,54 @@ public class NdQuadBuilder {
         data[vertexIndex * INTS_PER_VERTEX + V_INDEX] = Float.floatToRawIntBits(v);
     }
 
-    /**
-     * Retrieve vertical texture coordinates.
-     */
-    public float v(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + V_INDEX]);
-    }
-
-    /**
-     * Retrieve geometric position, x coordinate.
-     */
-    public float x(int vertexIndex) {
+    @Override
+    public float getX(int vertexIndex) {
         return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + X_INDEX]);
     }
 
-    /**
-     * Retrieve geometric position, x coordinate.
-     */
-    public float y(int vertexIndex) {
+    @Override
+    public float getY(int vertexIndex) {
         return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Y_INDEX]);
     }
 
-    /**
-     * Retrieve geometric position, x coordinate.
-     */
-    public float z(int vertexIndex) {
+    @Override
+    public float getZ(int vertexIndex) {
         return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Z_INDEX]);
+    }
+
+    @Override
+    public float getTexU(int vertexIndex) {
+        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + U_INDEX]);
+    }
+
+    @Override
+    public float getTexV(int vertexIndex) {
+        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + V_INDEX]);
+    }
+
+    @Override
+    public int getColor(int vertexIndex) {
+        return this.data[vertexIndex * INTS_PER_VERTEX + COLOR_INDEX];
+    }
+
+    @Override
+    public int getNormal(int vertexIndex) {
+        return this.data[vertexIndex * INTS_PER_VERTEX + NORMAL_INDEX];
+    }
+
+    @Override
+    public int getLight(int vertexIndex) {
+        return this.data[vertexIndex * INTS_PER_VERTEX + LIGHTMAP_INDEX];
+    }
+
+    @Override
+    public int getFlags() {
+        return this.geometryFlags;
+    }
+
+    @Override
+    public TextureAtlasSprite rubidium$getSprite() {
+        return null;
     }
 
     /**

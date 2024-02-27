@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.quad;
 
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import static me.jellysquid.mods.sodium.client.util.ModelQuadUtil.COLOR_INDEX;
 import static me.jellysquid.mods.sodium.client.util.ModelQuadUtil.LIGHT_INDEX;
@@ -89,6 +90,14 @@ public class ModelQuad implements ModelQuadViewMutable {
     @Override
     public int getColorIndex() {
         return this.colorIdx;
+    }
+
+    /**
+     * Doesn't do anything useful, but I'm not sure if it has to anyways.
+     */
+    @Override
+    public ForgeDirection getLightFace() {
+        return ForgeDirection.UP;
     }
 
     @Override

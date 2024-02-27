@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.compat.nd;
 
-import java.util.Locale;
-
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
@@ -13,6 +11,7 @@ import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import java.util.Locale;
 
 public class Quad implements ModelQuadView {
     // Adapted from Neodymium
@@ -44,6 +43,7 @@ public class Quad implements ModelQuadView {
     }
 
     /** Returns the face, forced to take one of 6 directions to mirror the behavior of baked quads in 1.16.5. */
+    @Override
     public ForgeDirection getLightFace() {
         return this.face != ForgeDirection.UNKNOWN ? this.face : ForgeDirection.UP;
     }
@@ -146,7 +146,7 @@ public class Quad implements ModelQuadView {
         this.deleted = false;
         this.face = face;
         this.colorIndex = colorIndex;
-        this.cachedFlags = ModelQuadFlags.getQuadFlags(flags);
+        this.cachedFlags = flags;
     }
 
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
