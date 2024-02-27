@@ -1,10 +1,10 @@
 # A specification for models
-This is borrowed from [the unofficial Minecraft wiki](minecraft.wiki) under the CC BY-NC-SA 3.0.
+This is borrowed from [the unofficial Minecraft wiki](https://minecraft.wiki/w/Tutorials/Models) under the CC BY-NC-SA 3.0.
 
 The folder `assets/<namespace>/models/block` holds the model files for all the specified variants. The names of the files can be changed, but must always correspond with the names used in the variant files.
 
 * {object} The root tag
-  * {string|"parent"}: Loads a different model from the given path, in form of a [[#File path|resource location]]. If both `"parent"` and `"elements"` are set, the `"elements"` tag overrides the `"elements"` tag from the previous model.
+  * {string|"parent"}: Loads a different model from the given path, in form of a [resource location](https://minecraft.wiki/w/Tutorials/Models#File_path). If both `"parent"` and `"elements"` are set, the `"elements"` tag overrides the `"elements"` tag from the previous model.
     * Can be set to `"builtin/generated"` to use a model that is created out of the specified icon. Note that only the first layer is supported, and rotation can be achieved only by using block states files.
   * {byte|"ambientocclusion"}: Whether to use [ambient occlusion](http://en.wikipedia.org/wiki/Ambient_occlusion) (`true` - default), or not (`false`). Note:only works on Parent file
   * {object|"display"}: Holds the different places where item models are displayed.
@@ -12,8 +12,8 @@ The folder `assets/<namespace>/models/block` holds the model files for all the s
       * {list|"rotation"}: Specifies the rotation of the model according to the scheme `[x, y, z]`.
       * {list|"translation"}: Specifies the position of the model according to the scheme `[x, y, z]`. The values are clamped between -80 and 80.
       * {list|"scale"}: Specifies the scale of the model according to the scheme `[x, y, z]`. If the value is greater than 4, it is displayed as 4.
-  * {compound|"textures"}: Holds the textures of the model, in form of a [[#File path|resource location]] or can be another texture variable.
-    * {string|"particle"}: What texture to load particles from. This texture is also used as an overlay if you are in a [[nether portal]], and used for [[water]] and [[lava]]'s still textures.<ref>{{bug|MC-240042}}</ref> This texture is also considered a texture variable that can be referenced as `"#particle"`. Note: All breaking particles from non-model blocks are hard-coded, such as for [[Barrier|barriers]].
+  * {compound|"textures"}: Holds the textures of the model, in form of a [resource location](https://minecraft.wiki/w/Tutorials/Models#File_path) or can be another texture variable.
+    * {string|"particle"}: What texture to load particles from. This texture is also used as an overlay if you are in a [nether portal](https://minecraft.wiki/w/Nether_portal), and used for [water](https://minecraft.wiki/w/water) and [lava](https://minecraft.wiki/w/Lava)'s still textures.<sup>[[1]](https://bugs.mojang.com/browse/MC-240042)</sup> This texture is also considered a texture variable that can be referenced as `"#particle"`. Note: All breaking particles from non-model blocks are hard-coded, such as for [barriers](https://minecraft.wiki/w/Barrier).
     * {string|<name>}: Defines a texture variable with `name` and assigns it to a texture or another variable.
   * {list|"elements"}: Contains all the elements of the model. They can have only cubic forms. If both `"parent"` and `"elements"` are set, the `"elements"` tag overrides the `"elements"` tag from the previous model.
     * {compound} An element.
