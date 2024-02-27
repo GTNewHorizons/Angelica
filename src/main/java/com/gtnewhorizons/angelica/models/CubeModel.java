@@ -6,14 +6,13 @@ import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
-
-import java.util.List;
-import java.util.Random;
-import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
+
+import java.util.List;
+import java.util.Random;
 
 public class CubeModel implements QuadProvider {
 
@@ -33,7 +32,7 @@ public class CubeModel implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
+    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
 
         if (dir == ForgeDirection.UNKNOWN)
             return EMPTY;
@@ -42,7 +41,6 @@ public class CubeModel implements QuadProvider {
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
         this.builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
 
-        int color = 0xFF << 24 | block.colorMultiplier(world, pos.x, pos.y, pos.z);
         this.builder.color(color, color, color, color);
 
         ONE.set(0, this.builder.build(quadPool.getInstance()));
