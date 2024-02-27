@@ -37,6 +37,8 @@ import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.world.EnumSkyBlock;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
@@ -195,12 +197,20 @@ public class ClientProxy extends CommonProxy {
                         default -> throw new RuntimeException();
                     };
                     event.left.set(i, String.format("XYZ: %.3f / %.5f / %.3f", mc.thePlayer.posX, mc.thePlayer.boundingBox.minY, mc.thePlayer.posZ));
-                    int blockX = MathHelper.floor_double(mc.thePlayer.posX);
-                    int blockY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
-                    int blockZ = MathHelper.floor_double(mc.thePlayer.posZ);
-                    event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", blockX, blockY, blockZ, blockX & 15, blockY & 15, blockZ & 15));
-                    event.left.set(i + 2, String.format("Chunk: %d %d %d", blockX >> 4, blockY >> 4, blockZ >> 4));
+                    int bX = MathHelper.floor_double(mc.thePlayer.posX);
+                    int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
+                    int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
+                    event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
+                    event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
                     event.left.set(i + 3, String.format("Facing: %s (%s) (%.1f / %.1f)", Direction.directions[heading].toLowerCase(Locale.ROOT), heading_str, MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw), MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
+
+                    Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
+                    event.left.set(i + 4, String.format("lc: %d b: %s bl: %d sl: %d rl: %d",
+                        chunk.getTopFilledSegment() + 15,
+                        chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
+                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, bY, bZ & 15),
+                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, bY, bZ & 15),
+                        chunk.getBlockLightValue(bX & 15, bY, bZ & 15, 0)));
                 }
             }
             event.setCanceled(true);
