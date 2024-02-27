@@ -11,9 +11,6 @@ import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
-import com.gtnewhorizons.angelica.models.fapi.TriState;
-import com.gtnewhorizons.angelica.models.material.RenderMaterial;
-import com.gtnewhorizons.angelica.models.renderer.IndigoRenderer;
 import com.gtnewhorizons.angelica.utils.DirUtil;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.Function;
@@ -52,8 +49,9 @@ public class JsonModel implements QuadProvider {
     private final Map<ModelDisplay.Position, ModelDisplay> display;
     private final Map<String, String> textures;
     private List<ModelElement> elements;
-    // TODO: Make a sided list
-    private List<Quad> bakedQuadStore = new ObjectArrayList<>();
+    private List<Quad> allQuadStore = new ObjectArrayList<>();
+    private final Map<ForgeDirection, List<Quad>> sidedQuadStore = new Object2ObjectOpenHashMap<>();
+    private static final List<Quad> EMPTY = ObjectImmutableList.of();
 
     JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
         this.parentId = parentId;
@@ -81,14 +79,13 @@ public class JsonModel implements QuadProvider {
         final Matrix4f vRot = v.getAffineMatrix();
 
         final NdQuadBuilder builder = new NdQuadBuilder();
-        final RenderMaterial mat =
-            IndigoRenderer.INSTANCE.materialFinder().ambientOcclusion(TriState.of(this.useAO)).find();
 
         // Append faces from each element
         for (ModelElement e : this.elements) {
 
-            final Matrix4f rot = (e.getRotation() == null) ? ModelElement.Rotation.NOOP.getAffineMatrix() : e.getRotation().getAffineMatrix();
-            //rot.mulLocal(vRot);
+            final Matrix4f rot = (e.getRotation() == null)
+                ? ModelElement.Rotation.NOOP.getAffineMatrix()
+                : e.getRotation().getAffineMatrix();
 
             final Vector3f from = e.getFrom();
             final Vector3f to = e.getTo();
@@ -98,7 +95,8 @@ public class JsonModel implements QuadProvider {
                 // Assign vertexes
                 for (int i = 0; i < 4; ++i) {
 
-                    final Vector3f vert = rot.transformPosition(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
+                    final Vector3f vert =
+                        rot.transformPosition(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
                     vRot.transformPosition(vert);
                     builder.pos(i, vert.x, vert.y, vert.z);
                 }
@@ -137,14 +135,17 @@ public class JsonModel implements QuadProvider {
                 builder.color(tint, tint, tint, tint);
 
                 // Set AO
-                builder.material(mat);
+                builder.mat.setAO(this.useAO);
 
                 // Bake and add it
-                this.bakedQuadStore.add(builder.build(new Quad()));
+                final Quad q = builder.build(new Quad());
+                this.allQuadStore.add(q);
+                this.sidedQuadStore.computeIfAbsent(f.getCullFace(),
+                    o -> new ObjectArrayList<>()).add(q);
             }
         }
 
-        this.bakedQuadStore = new ObjectImmutableList<>(this.bakedQuadStore);
+        this.allQuadStore = new ObjectImmutableList<>(this.allQuadStore);
     }
 
     public List<ResourceLocation> getParents() {
@@ -154,12 +155,13 @@ public class JsonModel implements QuadProvider {
     @Override
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
 
-        final List<Quad> ret = new ObjectArrayList<>(this.bakedQuadStore.size());
+        final List<Quad> src = this.sidedQuadStore.getOrDefault(dir, EMPTY);
+        final List<Quad> ret = new ObjectArrayList<>(src.size());
 
         //noinspection ForLoopReplaceableByForEach
-        for (int i = 0; i < bakedQuadStore.size(); ++i) {
+        for (int i = 0; i < src.size(); ++i) {
             final Quad q = quadPool.getInstance();
-            q.copyFrom(this.bakedQuadStore.get(i));
+            q.copyFrom(src.get(i));
             ret.add(q);
         }
 
