@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.models.MixinModels;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
@@ -63,6 +64,7 @@ public class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(this);
 
         Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
+        Loader.registerModels(MixinModels::loadModels, MixinModels.stoneVariant);
     }
 
 

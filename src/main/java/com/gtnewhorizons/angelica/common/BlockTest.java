@@ -47,7 +47,7 @@ public class BlockTest extends Block implements QuadProvider {
             false
         ),
     };
-    public static final List<Quad> EMPTY = ObjectImmutableList.of();
+    private static final List<Quad> EMPTY = ObjectImmutableList.of();
     private static final JsonModel[] model = new JsonModel[4];
 
     public BlockTest() {
