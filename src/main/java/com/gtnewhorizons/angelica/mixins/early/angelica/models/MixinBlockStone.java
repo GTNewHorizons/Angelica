@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
 import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.models.MixinModels;
+import com.gtnewhorizons.angelica.models.json.Variant;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import java.util.List;
 import java.util.Random;
@@ -18,6 +20,6 @@ public abstract class MixinBlockStone implements QuadProvider {
 
     // TODO: Use modern model API
     public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
-        return CubeModel.INSTANCE.get().getQuads(world, pos, block, meta, dir, random, quadPool);
+        return MixinModels.stoneModel.getQuads(world, pos, block, meta, dir, random, quadPool);
     }
 }
