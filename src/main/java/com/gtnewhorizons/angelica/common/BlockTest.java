@@ -8,8 +8,6 @@ import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.models.json.Variant;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
-import java.util.List;
-import java.util.Random;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
@@ -18,6 +16,9 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+import java.util.Random;
 
 public class BlockTest extends Block implements QuadProvider {
 
@@ -77,11 +78,11 @@ public class BlockTest extends Block implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
+    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
 
         if (meta < 2 || meta > 5) meta = 2;
 
-        return (model[meta - 2] != null) ? model[meta - 2].getQuads(world, pos, block, meta, dir, random, quadPool) : EMPTY;
+        return (model[meta - 2] != null) ? model[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool) : EMPTY;
     }
 
     /**

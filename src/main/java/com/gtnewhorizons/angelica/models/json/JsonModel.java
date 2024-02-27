@@ -1,11 +1,6 @@
 package com.gtnewhorizons.angelica.models.json;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.google.gson.*;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
@@ -17,12 +12,6 @@ import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
 import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
@@ -33,10 +22,13 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadBool;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadFloat;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadInt;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadStr;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import static com.gtnewhorizons.angelica.utils.JsonUtil.*;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
 
 public class JsonModel implements QuadProvider {
@@ -161,7 +153,7 @@ public class JsonModel implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, ObjectPooler<Quad> quadPool) {
+    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
 
         final List<Quad> src = this.sidedQuadStore.getOrDefault(dir, EMPTY);
         final List<Quad> ret = new ObjectArrayList<>(src.size());
