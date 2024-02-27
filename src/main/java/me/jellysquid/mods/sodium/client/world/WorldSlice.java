@@ -387,7 +387,7 @@ public class WorldSlice implements IBlockAccess {
     }
 
     // Modern checks if the sky is darkened, which only happens in the nether. However, I think 1.7.10's hasNoSky is
-    // close enough and possibly a behavior change between versions. I also don't know why it's rotationally asymmetric
+    // close enough.
     public float getBrightness(ForgeDirection direction, boolean shaded) {
 
         if (!shaded) {
