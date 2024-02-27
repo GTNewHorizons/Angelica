@@ -36,27 +36,18 @@ public class Loader {
     private static final List<Callback> postBakeCallbacks = new ObjectArrayList<>();
 
     /**
-     * Pass the variant you want to load, and if needed a callback which puts the models in a useful place, e.g. saving
-     * them to a static field after baking.
-     */
-    public static void registerModel(Variant loc, Callback loader) {
-        unloadedModels.add(loc.getModel());
-        modelsToBake.put(loc, null);
-        postBakeCallbacks.add(loader);
-    }
-
-    /**
-     * Convenience method to register multiple variants. See {@link #registerModel}.
+     * Convenience method to register multiple variants. See {@link #registerModels(Callback, Collection)}.
      */
     public static void registerModels(Callback loader, Variant... variants) {
 
-        registerModels(Arrays.asList(variants), loader);
+        registerModels(loader, Arrays.asList(variants));
     }
 
     /**
-     * Convenience method to register multiple variants. See {@link #registerModel}.
+     * Pass the variant(s) you want to load, and if needed a callback which puts the models in a useful place, e.g.
+     * saving them to a static field after baking.
      */
-    public static void registerModels(Collection<Variant> variants, Callback loader) {
+    public static void registerModels(Callback loader, Collection<Variant> variants) {
 
         for (Variant v : variants) {
 
