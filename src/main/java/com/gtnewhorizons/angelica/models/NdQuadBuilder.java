@@ -96,14 +96,12 @@ public class NdQuadBuilder {
     private ForgeDirection lightFace = ForgeDirection.UP;
     // It's called a header, but because I'm lazy it's at the end
     // The header is an int with flags -------- -------- -------- -GGGNNNN, then an int for the normal
-    private final int[] data = new int[QUAD_STRIDE + HEADER_STRIDE];
+    private final int[] data = new int[QUAD_STRIDE];
     private int geometry = 0;
-    private int normalFlags = 0;
     private boolean isGeometryInvalid = true;
     private int tag = 0;
     private int colorIndex = -1;
     final Vector3f faceNormal = new Vector3f();
-    private int packedNormal = 0;
     public final Material mat = new Material();
 
     /**
@@ -113,7 +111,7 @@ public class NdQuadBuilder {
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
-        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.data[QUAD_STRIDE]);
+        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.geometry);
         this.clear();
         return out;
     }
@@ -125,7 +123,6 @@ public class NdQuadBuilder {
         this.nominalFace = ForgeDirection.UNKNOWN;
         this.lightFace = ForgeDirection.UP;
         this.geometry = 0;
-        this.normalFlags = 0;
         this.isGeometryInvalid = true;
         this.tag(0);
         this.colorIndex(-1);
@@ -162,7 +159,6 @@ public class NdQuadBuilder {
             this.isGeometryInvalid = false;
 
             NormalHelper.computeFaceNormal(this.faceNormal, this);
-            this.packedNormal = NormalHelper.packNormal(this.faceNormal);
 
             // depends on face normal
             this.lightFace = GeometryHelper.lightFace(this);
@@ -241,14 +237,6 @@ public class NdQuadBuilder {
      */
     public ForgeDirection nominalFace() {
         return nominalFace;
-    }
-
-    /**
-     * Sets the normal flags.
-     */
-    private void normalFlags(int normalFlags) {
-
-        this.normalFlags = normalFlags;
     }
 
     /**
