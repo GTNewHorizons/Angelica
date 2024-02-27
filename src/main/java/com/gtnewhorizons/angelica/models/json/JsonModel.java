@@ -37,6 +37,7 @@ import static com.gtnewhorizons.angelica.utils.JsonUtil.loadBool;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadFloat;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadInt;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadStr;
+import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
 
 public class JsonModel implements QuadProvider {
 
@@ -145,7 +146,14 @@ public class JsonModel implements QuadProvider {
             }
         }
 
+        // Lock the lists.
         this.allQuadStore = new ObjectImmutableList<>(this.allQuadStore);
+        for (ForgeDirection f : ALL_DIRECTIONS) {
+
+            List<Quad> l = this.sidedQuadStore.computeIfAbsent(f, o -> EMPTY);
+            if (!l.isEmpty())
+                this.sidedQuadStore.put(f, new ObjectImmutableList<>(l));
+        }
     }
 
     public List<ResourceLocation> getParents() {
