@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizon.gtnhlib.config.ConfigException;
+import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.config.ConfigException;
-import com.gtnewhorizons.angelica.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
