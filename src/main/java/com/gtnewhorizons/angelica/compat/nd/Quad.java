@@ -35,6 +35,7 @@ public class Quad implements ModelQuadView {
     @Getter
     private boolean shade;
     private int cachedFlags;
+    @Getter
     private ForgeDirection face;
     private int colorIndex = -1;
 
