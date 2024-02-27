@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
 import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import me.jellysquid.mods.sodium.client.util.StateUtil;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.block.Block;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -63,11 +64,11 @@ public abstract class LightDataAccess {
             em = true;
         }
 
-        // First is shouldBlockVision, but I can't find if any transparent objects set it
-        final boolean op = /*state.shouldBlockVision(world, pos) ||*/ block.getLightOpacity() == 0;
+        // First is shouldBlockVision on modern
+        final boolean op = !block.isOpaqueCube() || block.getLightOpacity() == 0;
         final boolean fo = block.isOpaqueCube();
         // Should be isFullCube, but this is probably close enough
-        final boolean fc = block.renderAsNormalBlock();
+        final boolean fc = StateUtil.areBoundsFullCube(block);
 
         // OPTIMIZE: Do not calculate lightmap data if the block is full and opaque.
         // FIX: Calculate lightmap data for light-emitting or emissive blocks, even though they are full and opaque.
