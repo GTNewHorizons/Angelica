@@ -117,7 +117,7 @@ public class Quad implements ModelQuadView {
         System.arraycopy(quad.bs, 0, this.bs, 0, 4);
 
         this.deleted = quad.deleted;
-
+        this.shade = quad.shade;
         this.cachedFlags = quad.cachedFlags;
         this.face = quad.face;
         this.colorIndex = quad.colorIndex;
