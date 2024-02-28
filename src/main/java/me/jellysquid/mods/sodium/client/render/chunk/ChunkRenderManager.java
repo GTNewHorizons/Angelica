@@ -46,7 +46,6 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener {
     /**
@@ -126,7 +125,13 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
 
-
+    private static final ThreadLocal<BlockRenderPass> threadLocalRenderPass = ThreadLocal.withInitial(() -> BlockRenderPass.CUTOUT_MIPPED);
+    public static int getWorldRenderPass() {
+        return threadLocalRenderPass.get().ordinal();
+    }
+    public static void setWorldRenderPass(BlockRenderPass pass) {
+        threadLocalRenderPass.set(pass);
+    }
 
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;

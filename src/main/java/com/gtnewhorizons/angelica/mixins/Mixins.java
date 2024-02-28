@@ -96,6 +96,7 @@ public enum Mixins {
             ,"sodium.MixinExtendedBlockStorage"
             ,"sodium.MixinEntityRenderer"
             ,"sodium.MixinFMLClientHandler"
+            ,"sodium.MixinForgeHooksClient"
             ,"sodium.MixinGameSettings"
             ,"sodium.MixinFrustrum"
             ,"sodium.MixinMaterial"
