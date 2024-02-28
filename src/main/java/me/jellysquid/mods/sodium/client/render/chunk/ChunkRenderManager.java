@@ -129,8 +129,8 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     public static int getWorldRenderPass() {
         return threadLocalRenderPass.get().ordinal();
     }
-    public static void setWorldRenderPass(int pass) {
-        threadLocalRenderPass.set(BlockRenderPass.VALUES[pass]);
+    public static void setWorldRenderPass(BlockRenderPass pass) {
+        threadLocalRenderPass.set(pass);
     }
 
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
