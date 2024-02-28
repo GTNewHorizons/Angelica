@@ -25,7 +25,7 @@ public class AngelicaConfig {
 
     @Config.Comment("Enable Angelica's test blocks")
     @Config.DefaultBoolean(false)
-    @Config.RequiresMcRestart
+    @Config.Ignore()
     public static boolean enableTestBlocks;
 
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
