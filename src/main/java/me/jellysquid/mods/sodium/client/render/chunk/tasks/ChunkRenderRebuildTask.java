@@ -152,8 +152,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if (rendersOffThread(block)) {
                         // Do regular block rendering
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                            ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                             if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                                ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                                 final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                                 if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
@@ -170,8 +170,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     // Do fluid rendering without RenderBlocks
                     if (AngelicaConfig.enableSodiumFluidRendering && block instanceof IFluidBlock) {
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                            ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                             if (block.canRenderInPass(pass.ordinal())) {
+                                ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                                 if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                 if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), block, pos, buffers.get(pass))) {
@@ -271,8 +271,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             // Do regular block rendering
             for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                 if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                    ChunkRenderManager.setWorldRenderPass(pass.ordinal());
                     final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                     if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
