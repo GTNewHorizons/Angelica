@@ -125,12 +125,12 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
 
-    private static final ThreadLocal<Integer> threadLocalRenderPass = ThreadLocal.withInitial(() -> 0);
+    private static final ThreadLocal<BlockRenderPass> threadLocalRenderPass = ThreadLocal.withInitial(() -> BlockRenderPass.CUTOUT_MIPPED);
     public static int getWorldRenderPass() {
-        return threadLocalRenderPass.get();
+        return threadLocalRenderPass.get().ordinal();
     }
     public static void setWorldRenderPass(int pass) {
-        threadLocalRenderPass.set(pass);
+        threadLocalRenderPass.set(BlockRenderPass.VALUES[pass]);
     }
 
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
