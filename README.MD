@@ -60,4 +60,5 @@
 * Forge 1.12+
   * Some files have been taken from Minecraft Forge under the LGPL 2.1 license and are marked as such
 * FRAPI and Indigo
-  * Model building API heavily inspired by/copied from Fabric's and are relicensed under the LGPLv3; upstream may use it under the Apache 2.0, see LICENSE in that package
+  * Model building API heavily inspired by/copied from Fabric's; upstream may use it under the original Apache 2.0
+    license, see LICENSE in `com.gtnewhorizons.angelica.models`

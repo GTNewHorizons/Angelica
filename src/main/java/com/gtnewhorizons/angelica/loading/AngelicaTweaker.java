@@ -50,6 +50,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             AngelicaConfig.enableIris = Boolean.parseBoolean(System.getProperty("angelica.enableShaders", "false"));
             AngelicaConfig.enableMCPatcherForgeFeatures = Boolean.parseBoolean(System.getProperty("angelica.enableMCPatcherForgeFeatures", "false"));
 
+            // Debug features
+            AngelicaConfig.enableTestBlocks = Boolean.parseBoolean(System.getProperty("angelica.enableTestBlocks", "false"));
+
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
