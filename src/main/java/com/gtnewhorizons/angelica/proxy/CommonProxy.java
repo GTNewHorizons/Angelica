@@ -15,10 +15,6 @@ public class CommonProxy {
         if (AngelicaConfig.enableTestBlocks){
             GameRegistry.registerBlock(new BlockTest(), "test_block");
         }
-
-        if (AngelicaConfig.injectQPRendering) {
-            AssetLoader.load();
-        }
     }
 
     public void init(FMLInitializationEvent event) {}

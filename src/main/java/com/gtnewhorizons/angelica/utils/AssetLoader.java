@@ -6,30 +6,39 @@ import glowredman.txloader.TXLoaderCore;
 
 public class AssetLoader {
 
+    public static final String[] texs = {
+        "block/lectern_base",
+        "block/lectern_front",
+        "block/lectern_base",
+        "block/lectern_sides",
+        "block/lectern_top",
+        "block/oak_planks",
+        "block/stone",
+        "block/oak_planks",
+        "block/crafting_table_side",
+        "block/crafting_table_front",
+        "block/crafting_table_side",
+        "block/crafting_table_top"
+    };
+
     public static void load() {
 
         if (AngelicaConfig.injectQPRendering) {
-            addAssets(
-                "models/block/block.json",
-                "models/block/cube.json",
-                "models/block/cube_all.json",
-                "models/block/lectern.json",
-                "models/block/stone.json"
+            addModelAssets(
+                "block/block",
+                "block/cube",
+                "block/cube_all",
+                "block/lectern",
+                "block/stone",
+                "block/crafting_table"
             );
-            addTexAssets(
-                "block/lectern_base.png",
-                "block/lectern_front.png",
-                "block/lectern_base.png",
-                "block/lectern_sides.png",
-                "block/lectern_top.png",
-                "block/oak_planks.png",
-                "block/stone.png");
+            addTexAssets(texs);
         }
     }
 
-    private static void addAssets(String... resourcePaths) {
+    private static void addModelAssets(String... resourcePaths) {
         for (String path : resourcePaths) {
-            TXLoaderCore.getAssetBuilder("minecraft/" + path)
+            TXLoaderCore.getAssetBuilder("minecraft/models/" + path + ".json")
                 .setVersion("1.20.4")
                 .setSource(Asset.Source.CLIENT)
                 .add();
@@ -38,8 +47,8 @@ public class AssetLoader {
 
     private static void addTexAssets(String... resourcePaths) {
         for (String path : resourcePaths) {
-            TXLoaderCore.getAssetBuilder("minecraft/textures/" + path)
-                .setOverride("minecraft/textures/blocks/" + path)
+            TXLoaderCore.getAssetBuilder("minecraft/textures/" + path + ".png")
+                .setOverride("minecraft/textures/blocks/" + path + ".png")
                 .setVersion("1.20.4")
                 .setSource(Asset.Source.CLIENT)
                 .add();

@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * Model loading should proceed as follows: <ul>
  * <li>Models to load are registered in PREINIT.</li>
- * <li>All registered models are recursively loaded in INIT.</li>
+ * <li>All registered models are recursively loaded in POSTINIT.</li>
  * <li>Models registered for baking are baked on the first tick of the game.</li>
  *</ul>
  * <p>Alternatively, you can register blocks with blockstate variants in preinit, and the rest is handled by

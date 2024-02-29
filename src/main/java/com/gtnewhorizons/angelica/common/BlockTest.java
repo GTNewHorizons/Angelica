@@ -10,7 +10,6 @@ import com.gtnewhorizons.angelica.models.json.Variant;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -64,18 +63,6 @@ public class BlockTest extends Block implements QuadProvider {
     @Override
     public boolean isOpaqueCube() {
         return false;
-    }
-
-    @Override
-    public void registerBlockIcons(IIconRegister reg) {
-
-        reg.registerIcon("angelica:test_block");
-        reg.registerIcon("block/lectern_base");
-        reg.registerIcon("block/lectern_front");
-        reg.registerIcon("block/lectern_sides");
-        reg.registerIcon("block/lectern_top");
-        reg.registerIcon("block/oak_planks");
-        reg.registerIcon("block/stone");
     }
 
     @Override

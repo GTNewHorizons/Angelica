@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.models;
 import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.models.DynamicCubeModel;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockWorkbench;
 import net.minecraft.world.IBlockAccess;
@@ -14,11 +13,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
+import static com.gtnewhorizons.angelica.models.VanillaModels.WORKBENCH;
+
 @Mixin(BlockWorkbench.class)
 public class MixinBlockWorkbench implements QuadProvider {
 
     @Override
     public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
-        return DynamicCubeModel.INSTANCE.get().getQuads(world, pos, block, meta, dir, random, color, quadPool);
+        return WORKBENCH.getQuads(world, pos, block, meta, dir, random, color, quadPool);
     }
 }

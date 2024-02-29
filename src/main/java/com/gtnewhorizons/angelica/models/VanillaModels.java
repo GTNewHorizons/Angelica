@@ -1,5 +1,9 @@
 package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.models.json.JsonModel;
+import com.gtnewhorizons.angelica.models.json.Loader;
+import com.gtnewhorizons.angelica.models.json.ModelLocation;
+import com.gtnewhorizons.angelica.models.json.Variant;
 import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
 import com.gtnewhorizons.angelica.models.template.BlockStaticCube;
 import net.minecraft.init.Blocks;
@@ -16,6 +20,14 @@ public class VanillaModels {
     public static BlockColoredCube OAK_LEAVES;
     public static BlockColoredCube SPRUCE_LEAVES;
 
+    public static final Variant workbench = new Variant(
+        new ModelLocation("block/crafting_table"),
+        0,
+        0,
+        true
+    );
+    public static JsonModel WORKBENCH;
+
     public static void init() {
 
         if (init) {
@@ -30,6 +42,13 @@ public class VanillaModels {
         OAK_LEAVES = new BlockColoredCube("leaves_oak");
         SPRUCE_LEAVES = new BlockColoredCube("leaves_spruce");
 
+        Loader.registerModels(VanillaModels::loadModels,
+            workbench);
+
         init = true;
+    }
+
+    public static void loadModels() {
+        WORKBENCH = Loader.getModel(workbench);
     }
 }
