@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -18,7 +18,7 @@ class AoFaceData {
 
     private int flags;
 
-    public void initLightData(LightDataAccess cache, BlockPos pos, ForgeDirection direction, boolean offset) {
+    public void initLightData(LightDataAccess cache, BlockPosImpl pos, ForgeDirection direction, boolean offset) {
         final int x = pos.x;
         final int y = pos.y;
         final int z = pos.z;

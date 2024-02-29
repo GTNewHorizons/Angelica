@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.block.Block;
@@ -22,7 +22,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  * You can use the various static pack/unpack methods to extract these values in a usable format.
  */
 public abstract class LightDataAccess {
-    private final BlockPos.Mutable pos = new BlockPos.Mutable();
+    private final BlockPosImpl pos = new BlockPosImpl();
     protected WorldSlice world;
 
     public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
@@ -33,11 +33,11 @@ public abstract class LightDataAccess {
         return this.get(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
     }
 
-    public long get(BlockPos pos, ForgeDirection dir) {
+    public long get(BlockPosImpl pos, ForgeDirection dir) {
         return this.get(pos.x, pos.y, pos.z, dir);
     }
 
-    public long get(BlockPos pos) {
+    public long get(BlockPosImpl pos) {
         return this.get(pos.x, pos.y, pos.getZ());
     }
 

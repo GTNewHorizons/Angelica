@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
-import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import com.gtnewhorizons.angelica.api.QuadView;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import net.minecraft.block.Block;
@@ -13,6 +12,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
 public class CubeModel implements QuadProvider {
 
@@ -23,8 +23,8 @@ public class CubeModel implements QuadProvider {
 
     public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(CubeModel::new);
     private final NdQuadBuilder builder = new NdQuadBuilder();
-    private static final List<Quad> EMPTY = ObjectImmutableList.of();
-    private final List<Quad> ONE = new ObjectArrayList<>(1);
+    private static final List<QuadView> EMPTY = ObjectImmutableList.of();
+    private final List<QuadView> ONE = new ObjectArrayList<>(1);
 
     public CubeModel() {
 
@@ -32,7 +32,12 @@ public class CubeModel implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
+    public boolean isDynamic() {
+        return true;
+    }
+
+    @Override
+    public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
         if (dir == ForgeDirection.UNKNOWN)
             return EMPTY;
@@ -43,7 +48,7 @@ public class CubeModel implements QuadProvider {
 
         this.builder.color(color, color, color, color);
 
-        ONE.set(0, this.builder.build(quadPool.getInstance()));
+        ONE.set(0, this.builder.build(quadPool.get()));
         return ONE;
     }
 }

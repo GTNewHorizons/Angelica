@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.occlusion;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
@@ -11,7 +11,7 @@ public class BlockOcclusionCache {
 
     private final Object2ByteLinkedOpenHashMap<CachedOcclusionShapeTest> map;
     private final CachedOcclusionShapeTest cachedTest = new CachedOcclusionShapeTest();
-    private final BlockPos cpos = new BlockPos();
+    private final BlockPosImpl cpos = new BlockPosImpl();
 
     public BlockOcclusionCache() {
         this.map = new Object2ByteLinkedOpenHashMap<>(2048, 0.5F);
@@ -26,11 +26,11 @@ public class BlockOcclusionCache {
      * @param facing The facing direction of the side to check
      * @return True if the block side facing {@param dir} is not occluded, otherwise false
      */
-    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPos pos, ForgeDirection facing) {
+    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPosImpl pos, ForgeDirection facing) {
         if (facing == ForgeDirection.UNKNOWN)
             return true;
 
-        BlockPos adjPos = this.cpos;
+        BlockPosImpl adjPos = this.cpos;
         adjPos.set(pos.getX() + facing.offsetX, pos.getY() + facing.offsetY, pos.getZ() + facing.offsetZ);
 
         Block adjState = view.getBlock(adjPos.x, adjPos.y, adjPos.z);

@@ -2,6 +2,10 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
+minecraft {
+    extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
+}
+
 tasks.test {
     useJUnitPlatform()
     testLogging {

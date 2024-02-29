@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.api.QuadView;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
@@ -15,18 +16,6 @@ import org.joml.Vector3f;
 import java.util.Arrays;
 
 public class NdQuadBuilder implements ModelQuadView {
-
-    // x, y, z, u, v, color, normal, lightmap
-    public static final int INTS_PER_VERTEX = 8;
-    public static final int QUAD_STRIDE = INTS_PER_VERTEX * 4;
-    public static final int X_INDEX = 0;
-    public static final int Y_INDEX = 1;
-    public static final int Z_INDEX = 2;
-    public static final int U_INDEX = 3;
-    public static final int V_INDEX = 4;
-    public static final int COLOR_INDEX = 5;
-    public static final int NORMAL_INDEX = 6;
-    public static final int LIGHTMAP_INDEX = 7;
 
     /**
      * Causes texture to appear with no rotation.
@@ -99,7 +88,7 @@ public class NdQuadBuilder implements ModelQuadView {
     private ForgeDirection lightFace = ForgeDirection.UP;
     // It's called a header, but because I'm lazy it's at the end
     // The header is an int with flags -------- -------- -------- -GGGNNNN, then an int for the normal
-    private final int[] data = new int[QUAD_STRIDE];
+    private final int[] data = new int[Quad.QUAD_STRIDE];
     private int geometryFlags = 0;
     private boolean isGeometryInvalid = true;
     private int tag = 0;
@@ -111,7 +100,7 @@ public class NdQuadBuilder implements ModelQuadView {
     /**
      * Dumps to {@param out} and returns it.
      */
-    public Quad build(Quad out) {
+    public QuadView build(QuadView out) {
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
@@ -137,7 +126,7 @@ public class NdQuadBuilder implements ModelQuadView {
      * Set vertex color in ARGB format (0xAARRGGBB).
      */
     public void color(int vertexIndex, int color) {
-        data[vertexIndex * INTS_PER_VERTEX + COLOR_INDEX] = color;
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.COLOR_INDEX] = color;
     }
 
     /**
@@ -247,18 +236,18 @@ public class NdQuadBuilder implements ModelQuadView {
      */
     public void pos(int vertexIndex, float x, float y, float z) {
 
-        data[vertexIndex * INTS_PER_VERTEX + X_INDEX] = Float.floatToRawIntBits(x);
-        data[vertexIndex * INTS_PER_VERTEX + Y_INDEX] = Float.floatToRawIntBits(y);
-        data[vertexIndex * INTS_PER_VERTEX + Z_INDEX] = Float.floatToRawIntBits(z);
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX] = Float.floatToRawIntBits(x);
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX] = Float.floatToRawIntBits(y);
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX] = Float.floatToRawIntBits(z);
         isGeometryInvalid = true;
     }
 
     public Vector3f pos(int vertexIndex) {
 
         return new Vector3f(
-            Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + X_INDEX]),
-            Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Y_INDEX]),
-            Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Z_INDEX])
+            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX]),
+            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX]),
+            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX])
         );
     }
 
@@ -266,7 +255,7 @@ public class NdQuadBuilder implements ModelQuadView {
      * Convenience: access x, y, z by index 0-2.
      */
     float posByIndex(int vertexIndex, int coordinateIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + X_INDEX + coordinateIndex]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX + coordinateIndex]);
     }
 
     /**
@@ -365,48 +354,48 @@ public class NdQuadBuilder implements ModelQuadView {
      */
     public void uv(int vertexIndex, float u, float v) {
 
-        data[vertexIndex * INTS_PER_VERTEX + U_INDEX] = Float.floatToRawIntBits(u);
-        data[vertexIndex * INTS_PER_VERTEX + V_INDEX] = Float.floatToRawIntBits(v);
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.U_INDEX] = Float.floatToRawIntBits(u);
+        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.V_INDEX] = Float.floatToRawIntBits(v);
     }
 
     @Override
     public float getX(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + X_INDEX]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX]);
     }
 
     @Override
     public float getY(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Y_INDEX]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX]);
     }
 
     @Override
     public float getZ(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + Z_INDEX]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX]);
     }
 
     @Override
     public float getTexU(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + U_INDEX]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.U_INDEX]);
     }
 
     @Override
     public float getTexV(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * INTS_PER_VERTEX + V_INDEX]);
+        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.V_INDEX]);
     }
 
     @Override
     public int getColor(int vertexIndex) {
-        return this.data[vertexIndex * INTS_PER_VERTEX + COLOR_INDEX];
+        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.COLOR_INDEX];
     }
 
     @Override
     public int getNormal(int vertexIndex) {
-        return this.data[vertexIndex * INTS_PER_VERTEX + NORMAL_INDEX];
+        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.NORMAL_INDEX];
     }
 
     @Override
     public int getLight(int vertexIndex) {
-        return this.data[vertexIndex * INTS_PER_VERTEX + LIGHTMAP_INDEX];
+        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.LIGHTMAP_INDEX];
     }
 
     @Override

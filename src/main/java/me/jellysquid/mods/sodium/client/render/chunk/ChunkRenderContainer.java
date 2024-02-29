@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import lombok.Getter;
@@ -265,8 +265,8 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
         return this.getOriginZ() + 8.0D;
     }
 
-    public BlockPos getRenderOrigin() {
-        return new BlockPos(this.getRenderX(), this.getRenderY(), this.getRenderZ());
+    public BlockPosImpl getRenderOrigin() {
+        return new BlockPosImpl(this.getRenderX(), this.getRenderY(), this.getRenderZ());
     }
 
     public void setGraphicsState(BlockRenderPass pass, T state) {

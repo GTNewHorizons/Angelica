@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.compat.nd.IWriteQuads;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import lombok.Getter;
@@ -79,7 +79,7 @@ public class VertexFormat {
         return quadWriter != null;
     }
 
-    public void writeQuad(Quad quad, ByteBuffer byteBuffer) {
+    public void writeQuad(QuadView quad, ByteBuffer byteBuffer) {
         if(quadWriter == null) {
             throw new IllegalStateException("No quad writer set");
         }

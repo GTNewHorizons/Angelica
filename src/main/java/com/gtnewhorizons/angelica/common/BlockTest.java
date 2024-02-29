@@ -1,12 +1,11 @@
 package com.gtnewhorizons.angelica.common;
 
+import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.models.json.Variant;
-import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -19,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
 public class BlockTest extends Block implements QuadProvider {
 
@@ -48,7 +48,7 @@ public class BlockTest extends Block implements QuadProvider {
             false
         ),
     };
-    private static final List<Quad> EMPTY = ObjectImmutableList.of();
+    private static final List<QuadView> EMPTY = ObjectImmutableList.of();
     private static final JsonModel[] model = new JsonModel[4];
 
     public BlockTest() {
@@ -78,7 +78,7 @@ public class BlockTest extends Block implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
+    public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
         if (meta < 2 || meta > 5) meta = 2;
 

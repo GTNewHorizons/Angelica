@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 

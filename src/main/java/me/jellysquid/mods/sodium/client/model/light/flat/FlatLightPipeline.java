@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.flat;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
@@ -27,7 +27,7 @@ public class FlatLightPipeline implements LightPipeline {
     }
 
     @Override
-    public void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade) {
+    public void calculate(ModelQuadView quad, BlockPosImpl pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade) {
         int lightmap;
 
         // To match vanilla behavior, use the cull face if it exists/is available
@@ -57,7 +57,7 @@ public class FlatLightPipeline implements LightPipeline {
      * behind tinted glass. {@link LightDataAccess} cannot efficiently store lightmaps computed with
      * inconsistent values so this method exists to mirror vanilla behavior as closely as possible.
      */
-    private int getOffsetLightmap(BlockPos pos, ForgeDirection face) {
+    private int getOffsetLightmap(BlockPosImpl pos, ForgeDirection face) {
         int lightmap = LightDataAccess.unpackLM(this.lightCache.get(pos, face));
         // If the block light is not 15 (max)...
         if ((lightmap & 0xF0) != 0xF0) {
