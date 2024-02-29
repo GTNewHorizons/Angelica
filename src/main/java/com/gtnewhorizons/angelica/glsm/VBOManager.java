@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 public class VBOManager {
     // Not thread safe, only expected to be called from the main thread
@@ -13,7 +13,7 @@ public class VBOManager {
         return nextDisplayList++;
     }
 
-    private static ObjectList<VertexBuffer> vertexBuffers = new ObjectArrayList<>(1);
+    private static Int2ObjectMap<VertexBuffer> vertexBuffers = new Int2ObjectOpenHashMap<>();
 
     /*
      * Allocate a (range) of "display list IDs" that will refer to a VBO in the arraylist of vertex buffers.
@@ -33,16 +33,13 @@ public class VBOManager {
     public static VertexBuffer registerVBO(int displayList, VertexBuffer vertexBuffer) {
         if(displayList > 0) throw new IllegalArgumentException("Display list must be negative!");
         displayList -= Integer.MIN_VALUE;
-        final int requestedSize = displayList + 1;
-        if(requestedSize + 1 > vertexBuffers.size()) {
-            vertexBuffers.size(requestedSize);
-        }
-        vertexBuffers.set(displayList, vertexBuffer);
+
+        vertexBuffers.put(displayList, vertexBuffer);
         return vertexBuffer;
     }
 
     public static VertexBuffer get(int list) {
         list -= Integer.MIN_VALUE;
-        return vertexBuffers.get(list);
+        return vertexBuffers.getOrDefault(list, null);
     }
 }
