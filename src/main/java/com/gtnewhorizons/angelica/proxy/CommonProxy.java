@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.proxy;
 
 import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.utils.AssetLoader;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -13,6 +14,10 @@ public class CommonProxy {
 
         if (AngelicaConfig.enableTestBlocks){
             GameRegistry.registerBlock(new BlockTest(), "test_block");
+        }
+
+        if (AngelicaConfig.injectQPRendering) {
+            AssetLoader.load();
         }
     }
 

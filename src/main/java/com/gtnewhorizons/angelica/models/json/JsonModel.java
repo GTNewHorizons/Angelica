@@ -275,7 +275,15 @@ public class JsonModel implements QuadProvider {
 
                     // Trim leading octothorpes. They indicate a texture variable, but I don't actually care.
                     String s = e.getValue().getAsString();
-                    if (s.startsWith("#")) s = s.substring(1);
+                    if (s.startsWith("#")) {
+                        s = s.substring(1);
+                    } else if (s.startsWith("minecraft:")) {
+
+                        // Because of how we fetch textures from the atlas, minecraft textures need to have their domain
+                        // stripped
+                        s = s.substring(10);
+                    }
+
                     textures.put(e.getKey(), s);
                 }
             }
@@ -352,7 +360,14 @@ public class JsonModel implements QuadProvider {
             final JsonObject in = json.getAsJsonObject();
 
             final String parent = loadStr(in, "parent", "");
-            final ResourceLocation parentId = (parent.isEmpty()) ? null : new ResourceLocation(parent);
+            ResourceLocation parentId = null;
+            if (!parent.isEmpty()) {
+                if (parent.contains(":")) {
+                    parentId = new ModelLocation(parent.split(":")[0], parent.split(":")[1]);
+                } else {
+                    parentId = new ModelLocation(parent);
+                }
+            }
 
             final boolean useAO = loadBool(in, "ambientocclusion", true);
             final Map<ModelDisplay.Position, ModelDisplay> display = loadDisplay(in);

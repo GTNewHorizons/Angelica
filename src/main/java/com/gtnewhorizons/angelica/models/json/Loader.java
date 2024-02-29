@@ -6,6 +6,10 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.utils.Callback;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.ResourceLocation;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -13,8 +17,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.block.Block;
-import net.minecraft.util.ResourceLocation;
 
 /**
  * Model loading should proceed as follows: <ul>
@@ -65,21 +67,20 @@ public class Loader {
             if (l == null) continue;
             if (loadedModels.containsKey(l)) continue;
 
-            final JsonModel model = loadJson(
-                "/assets/" + l.getResourceDomain() + "/models/" + l.getResourcePath() + ".json", JsonModel.class);
+            final JsonModel model = loadJson(l, JsonModel.class);
             unloadedModels.addAll(model.getParents());
             loadedModels.put(l, model);
         }
     }
 
-    private static <T> T loadJson(String path, Class<T> clazz) {
-        try (final InputStream is = Loader.class.getResourceAsStream(path)) {
+    private static <T> T loadJson(ResourceLocation path, Class<T> clazz) {
+        try {
 
+            final InputStream is = Minecraft.getMinecraft().getResourceManager().getResource(path).getInputStream();
             return GSON.fromJson(new InputStreamReader(is), clazz);
+        } catch (IOException e) {
 
-        } catch (IOException | NullPointerException e) {
-
-            AngelicaTweaker.LOGGER.fatal("Could not find " + path);
+            AngelicaTweaker.LOGGER.fatal("Could not find " + path.getResourceDomain() + " " + path.getResourcePath());
             throw new RuntimeException(e);
         }
     }

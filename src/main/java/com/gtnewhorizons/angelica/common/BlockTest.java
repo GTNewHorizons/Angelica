@@ -5,12 +5,12 @@ import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
+import com.gtnewhorizons.angelica.models.json.ModelLocation;
 import com.gtnewhorizons.angelica.models.json.Variant;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -24,25 +24,25 @@ public class BlockTest extends Block implements QuadProvider {
 
     public static final Variant[] modelId = {
         new Variant(
-            new ResourceLocation("blocks/lectern"),
+            new ModelLocation("block/lectern"),
             0,
             0,
             false
         ),
         new Variant(
-            new ResourceLocation("blocks/lectern"),
+            new ModelLocation("block/lectern"),
             180,
             0,
             false
         ),
         new Variant(
-            new ResourceLocation("blocks/lectern"),
+            new ModelLocation("block/lectern"),
             90,
             0,
             false
         ),
         new Variant(
-            new ResourceLocation("blocks/lectern"),
+            new ModelLocation("block/lectern"),
             270,
             0,
             false
@@ -70,11 +70,12 @@ public class BlockTest extends Block implements QuadProvider {
     public void registerBlockIcons(IIconRegister reg) {
 
         reg.registerIcon("angelica:test_block");
-        reg.registerIcon("lectern_base");
-        reg.registerIcon("lectern_front");
-        reg.registerIcon("lectern_sides");
-        reg.registerIcon("lectern_top");
-        reg.registerIcon("oak_planks");
+        reg.registerIcon("block/lectern_base");
+        reg.registerIcon("block/lectern_front");
+        reg.registerIcon("block/lectern_sides");
+        reg.registerIcon("block/lectern_top");
+        reg.registerIcon("block/oak_planks");
+        reg.registerIcon("block/stone");
     }
 
     @Override
