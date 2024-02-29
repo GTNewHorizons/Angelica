@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.cache;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.api.BlockPos;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;

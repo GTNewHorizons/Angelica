@@ -1,9 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
 import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
@@ -43,7 +44,7 @@ public class BlockRenderer {
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
 
-    private final ObjectPooler<Quad> quadPool = new ObjectPooler<>(Quad::new);
+    private final ObjectPooler<QuadView> quadPool = new ObjectPooler<>(Quad::new);
     // TODO: Use modern model API, and store them here
 
 
@@ -54,7 +55,7 @@ public class BlockRenderer {
         this.occlusionCache = new BlockOcclusionCache();
     }
 
-    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPosImpl pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = this.getLightingMode(block);
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
@@ -69,18 +70,18 @@ public class BlockRenderer {
             for (ForgeDirection dir : ForgeDirection.values()) {
 
                 this.random.setSeed(seed);
-                List<Quad> quads = null;
+                List<QuadView> quads;
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-                    quads = qBlock.getQuads(world, pos, block, meta, dir, random, color, this.quadPool);
+                    quads = qBlock.getQuads(world, pos, block, meta, dir, random, color, this.quadPool::getInstance);
                     if (quads.isEmpty()) continue;
 
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
-                }
 
-                if (quads != null)
-                    for (Quad q : quads) this.quadPool.releaseInstance(q);
+                    if (qBlock.isDynamic())
+                        for (QuadView q : quads) this.quadPool.releaseInstance(q);
+                }
             }
         } else {
 
@@ -92,7 +93,7 @@ public class BlockRenderer {
 
                 tess.setOffset(pos);
                 renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-                final List<Quad> quads = TessellatorManager.stopCapturingToPooledQuads();
+                final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
                 tess.resetOffset();
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
@@ -109,7 +110,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<Quad> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+    private void renderQuadList(BlockPosImpl pos, LightPipeline lighter, ChunkModelBuffers buffers, List<QuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
         final ForgeDirection cullFace = ModelQuadFacing.toDirection(facing);
 
         final ModelVertexSink sink = buffers.getSink(facing);
@@ -120,7 +121,7 @@ public class BlockRenderer {
         // This is a very hot allocation, iterate over it manually
         // noinspection ForLoopReplaceableByForEach
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
-            final Quad quad = quads.get(i);
+            final QuadView quad = quads.get(i);
 
             // If we aren't using sodium light (i.e. it's the CapturingTesselator)
             // manually filter quads by side
@@ -138,7 +139,7 @@ public class BlockRenderer {
         sink.flush();
     }
 
-    private void renderQuad(ModelVertexSink sink, Quad quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
+    private void renderQuad(ModelVertexSink sink, QuadView quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
         final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 

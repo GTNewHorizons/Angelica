@@ -36,12 +36,12 @@ public class ChunkOcclusionDataBuilder {
     }
     private int openCount = 4096;
 
-    public void markClosed(BlockPos pos) {
+    public void markClosed(BlockPosImpl pos) {
         this.closed.set(pack(pos), true);
         --this.openCount;
     }
 
-    private static int pack(BlockPos pos) {
+    private static int pack(BlockPosImpl pos) {
         return pack(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15);
     }
 

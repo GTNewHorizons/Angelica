@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -77,7 +77,7 @@ public class ChunkGraphCuller implements ChunkCuller {
 
         this.visible.clear();
 
-        BlockPos origin = camera.getBlockPos();
+        BlockPosImpl origin = camera.getBlockPos();
 
         int chunkX = origin.getX() >> 4;
         int chunkY = origin.getY() >> 4;

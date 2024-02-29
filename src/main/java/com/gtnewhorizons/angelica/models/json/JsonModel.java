@@ -6,13 +6,13 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import com.gtnewhorizons.angelica.utils.DirUtil;
-import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Supplier;
 
 import static com.gtnewhorizons.angelica.utils.JsonUtil.*;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
@@ -47,9 +48,9 @@ public class JsonModel implements QuadProvider {
     private final Map<ModelDisplay.Position, ModelDisplay> display;
     private final Map<String, String> textures;
     private List<ModelElement> elements;
-    private List<Quad> allQuadStore = new ObjectArrayList<>();
-    private final Map<ForgeDirection, List<Quad>> sidedQuadStore = new Object2ObjectOpenHashMap<>();
-    private static final List<Quad> EMPTY = ObjectImmutableList.of();
+    private List<QuadView> allQuadStore = new ObjectArrayList<>();
+    private final Map<ForgeDirection, List<QuadView>> sidedQuadStore = new Object2ObjectOpenHashMap<>();
+    private static final List<QuadView> EMPTY = ObjectImmutableList.of();
 
     JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
         this.parentId = parentId;
@@ -136,7 +137,7 @@ public class JsonModel implements QuadProvider {
                 builder.mat.setAO(this.useAO);
 
                 // Bake and add it
-                final Quad q = builder.build(new Quad());
+                final QuadView q = builder.build(new Quad());
                 this.allQuadStore.add(q);
                 this.sidedQuadStore.computeIfAbsent(f.getCullFace(),
                     o -> new ObjectArrayList<>()).add(q);
@@ -147,7 +148,7 @@ public class JsonModel implements QuadProvider {
         this.allQuadStore = new ObjectImmutableList<>(this.allQuadStore);
         for (ForgeDirection f : ALL_DIRECTIONS) {
 
-            List<Quad> l = this.sidedQuadStore.computeIfAbsent(f, o -> EMPTY);
+            List<QuadView> l = this.sidedQuadStore.computeIfAbsent(f, o -> EMPTY);
             if (!l.isEmpty())
                 this.sidedQuadStore.put(f, new ObjectImmutableList<>(l));
         }
@@ -158,19 +159,9 @@ public class JsonModel implements QuadProvider {
     }
 
     @Override
-    public List<Quad> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, ObjectPooler<Quad> quadPool) {
+    public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
-        final List<Quad> src = this.sidedQuadStore.getOrDefault(dir, EMPTY);
-        final List<Quad> ret = new ObjectArrayList<>(src.size());
-
-        //noinspection ForLoopReplaceableByForEach
-        for (int i = 0; i < src.size(); ++i) {
-            final Quad q = quadPool.getInstance();
-            q.copyFrom(src.get(i));
-            ret.add(q);
-        }
-
-        return ret;
+        return this.sidedQuadStore.getOrDefault(dir, EMPTY);
     }
 
     public void resolveParents(Function<ResourceLocation, JsonModel> modelLoader) {

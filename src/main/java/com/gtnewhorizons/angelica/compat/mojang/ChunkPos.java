@@ -12,7 +12,7 @@ public class ChunkPos {
         this.z = z;
     }
 
-    public ChunkPos(BlockPos pos) {
+    public ChunkPos(BlockPosImpl pos) {
         this.x = pos.getX() >> 4;
         this.z = pos.getZ() >> 4;
     }

@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -18,5 +18,5 @@ public interface LightPipeline {
      * @param face The pre-computed facing vector of the quad
      * @param shade True if the block is shaded by ambient occlusion
      */
-	void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
+	void calculate(ModelQuadView quad, BlockPosImpl pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
 }

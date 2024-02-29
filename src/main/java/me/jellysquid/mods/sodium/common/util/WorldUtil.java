@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.common.util;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
@@ -70,7 +70,7 @@ public class WorldUtil {
      * Returns true if any block in a 3x3x3 cube is not the same fluid and not an opaque full cube.
      * Equivalent to FluidState::method_15756 in modern.
      */
-    public static boolean method_15756(IBlockAccess world, BlockPos pos, Fluid fluid) {
+    public static boolean method_15756(IBlockAccess world, BlockPosImpl pos, Fluid fluid) {
         for (int i = 0; i < 2; ++i) {
             for (int j = 0; j < 2; ++j) {
                 Block block = world.getBlock(pos.x, pos.y, pos.z);
@@ -126,7 +126,7 @@ public class WorldUtil {
     /**
      * Equivalent to method_15749 in 1.16.5
      */
-    public static boolean method_15749(IBlockAccess world, Fluid thiz, BlockPos pos, ForgeDirection dir) {
+    public static boolean method_15749(IBlockAccess world, Fluid thiz, BlockPosImpl pos, ForgeDirection dir) {
         Block b = world.getBlock(pos.x, pos.y, pos.z);
         Fluid f = getFluid(b);
         if (f == thiz) {

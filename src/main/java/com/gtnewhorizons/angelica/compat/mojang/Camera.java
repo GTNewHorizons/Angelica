@@ -13,7 +13,7 @@ import org.joml.Vector4f;
 @Getter
 public class Camera {
     final Vector3d pos = new Vector3d();
-    final BlockPos.Mutable blockPos = new BlockPos.Mutable();
+    final BlockPosImpl blockPos = new BlockPosImpl();
     float pitch;
     float yaw;
     EntityLivingBase entity;

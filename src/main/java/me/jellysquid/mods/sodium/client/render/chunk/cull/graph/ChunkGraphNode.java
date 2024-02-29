@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
@@ -146,7 +146,7 @@ public class ChunkGraphNode {
      * @return The squared distance from the center of this chunk in the world to the center of the block position
      * given by {@param pos}
      */
-    public double getSquaredDistance(BlockPos pos) {
+    public double getSquaredDistance(BlockPosImpl pos) {
         return this.getSquaredDistance(pos.x + 0.5D, pos.y + 0.5D, pos.z + 0.5D);
     }
 

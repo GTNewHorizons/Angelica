@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.client.renderer;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.glsm.stacks.Vector3dStack;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITessellatorInstance;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
@@ -39,15 +40,15 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     private static final MethodHandle sRawBufferSize;
     private static final MethodHandle gRawBufferSize;
     private final BlockRenderer.Flags FLAGS = new BlockRenderer.Flags(true, true, true, true);
-    private final ObjectPooler<Quad> quadBuf = new ObjectPooler<>(Quad::new);
-    private final List<Quad> collectedQuads = new ObjectArrayList<>();
+    private final ObjectPooler<QuadView> quadBuf = new ObjectPooler<>(Quad::new);
+    private final List<QuadView> collectedQuads = new ObjectArrayList<>();
 
     // Any offset we need to the Tesselator's offset!
-    private final BlockPos offset = new BlockPos();
+    private final BlockPosImpl offset = new BlockPosImpl();
 
     private final Vector3dStack storedTranslation = new Vector3dStack();
 
-    public void setOffset(BlockPos pos) {
+    public void setOffset(BlockPosImpl pos) {
         this.offset.set(pos);
     }
     public void resetOffset() {
@@ -93,10 +94,10 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
 
 
         for(int quadI = 0; quadI < this.vertexCount / verticesPerPrimitive; quadI++) {
-            final Quad quad = quadBuf.getInstance();
+            final QuadView quad = quadBuf.getInstance();
             quad.setState(this.rawBuffer, quadI * (verticesPerPrimitive * 8), FLAGS, this.drawMode, -offset.x, -offset.y, -offset.z);
 
-            if(quad.deleted) {
+            if(quad.isDeleted()) {
                 quadBuf.releaseInstance(quad);
             } else {
                 this.collectedQuads.add(quad);
@@ -115,7 +116,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
     }
 
 
-    public List<Quad> getQuads() {
+    public List<QuadView> getQuads() {
         return collectedQuads;
     }
 
@@ -127,7 +128,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
         this.collectedQuads.clear();
     }
 
-    public static ByteBuffer quadsToBuffer(List<Quad> quads, VertexFormat format) {
+    public static ByteBuffer quadsToBuffer(List<QuadView> quads, VertexFormat format) {
         if(!format.canWriteQuads()) {
             throw new IllegalStateException("Vertex format has no quad writer: " + format);
         }

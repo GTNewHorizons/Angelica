@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import net.minecraft.util.MathHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.world.EnumSkyBlock;
@@ -46,7 +46,7 @@ public class EntityLighter {
         double sl = 0;
         double bl = 0;
 
-        BlockPos.Mutable pos = new BlockPos.Mutable();
+        BlockPosImpl pos = new BlockPosImpl();
 
         // Iterate over every block in the sampling volume
         for (int bX = bMinX; bX < bMaxX; bX++) {

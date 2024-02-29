@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.compat.nd.writers;
 
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.compat.nd.IWriteQuads;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
 
 import java.nio.ByteBuffer;
 
@@ -17,7 +17,7 @@ public class PositionColorTextureQuadWriter implements IWriteQuads {
         this.direct = direct;
     }
     @Override
-    public void writeQuad(Quad quad, ByteBuffer buf) {
+    public void writeQuad(QuadView quad, ByteBuffer buf) {
         if(direct) {
             writeQuadDirect(quad, buf);
         } else {
@@ -25,11 +25,11 @@ public class PositionColorTextureQuadWriter implements IWriteQuads {
         }
     }
 
-    protected  void writeQuadDirect(Quad quad, ByteBuffer buf) {
+    protected  void writeQuadDirect(QuadView quad, ByteBuffer buf) {
         throw new UnsupportedOperationException("Direct mode not supported yet");
     }
 
-    protected void writeQuadIndirect(Quad quad, ByteBuffer buf) {
+    protected void writeQuadIndirect(QuadView quad, ByteBuffer buf) {
         for(int idx = 0; idx < 4; ++idx) {
             // Position
             buf.putFloat(quad.getX(idx));

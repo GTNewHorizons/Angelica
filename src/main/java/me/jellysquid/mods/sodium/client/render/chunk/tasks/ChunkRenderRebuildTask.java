@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
@@ -48,7 +48,7 @@ import java.util.concurrent.ExecutionException;
 public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkRenderBuildTask<T> {
     private final ChunkRenderContainer<T> render;
 
-    private final BlockPos offset;
+    private final BlockPosImpl offset;
 
     private final ChunkRenderContext context;
 
@@ -56,7 +56,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private final boolean translucencySorting;
 
-    public ChunkRenderRebuildTask(ChunkRenderContainer<T> render, ChunkRenderContext context, BlockPos offset) {
+    public ChunkRenderRebuildTask(ChunkRenderContainer<T> render, ChunkRenderContext context, BlockPosImpl offset) {
         this.render = render;
         this.offset = offset;
         this.context = context;
@@ -121,8 +121,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
 
-        final BlockPos pos = new BlockPos();
-        final BlockPos renderOffset = this.offset;
+        final BlockPosImpl pos = new BlockPosImpl();
+        final BlockPosImpl renderOffset = this.offset;
 
         final LongArrayFIFOQueue mainThreadBlocks = new LongArrayFIFOQueue();
         boolean hasMainThreadBlocks = false;
@@ -240,11 +240,11 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
      */
     private void performMainBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource, ChunkRenderBounds.Builder bounds, ChunkRenderData.Builder renderData, LongArrayFIFOQueue mainThreadBlocks) {
         final WorldSlice slice = cache.getWorldSlice();
-        final BlockPos pos = new BlockPos();
+        final BlockPosImpl pos = new BlockPosImpl();
         final int baseX = this.render.getOriginX();
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
-        final BlockPos renderOffset = this.offset;
+        final BlockPosImpl renderOffset = this.offset;
         final RenderBlocks rb = new RenderBlocks(slice.getWorld());
         while(!mainThreadBlocks.isEmpty()) {
             final long longPos = mainThreadBlocks.dequeueLong();

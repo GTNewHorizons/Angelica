@@ -1,15 +1,14 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.compat.nd.Quad;
 import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-
-import org.lwjgl.opengl.GL11;
 
 @SuppressWarnings("unused")
 public class TessellatorManager {
@@ -51,7 +50,7 @@ public class TessellatorManager {
      * Stop the CapturingTessellator and return the pooled quads.  The quads are valid until clearQuads() is
      *  called on the CapturingTesselator, which must be done before starting capturing again.
      */
-    public static List<Quad> stopCapturingToPooledQuads() {
+    public static List<QuadView> stopCapturingToPooledQuads() {
         if(!currentlyCapturing.get()) throw new IllegalStateException("Tried to stop capturing when not capturing!");
         currentlyCapturing.set(false);
         final CapturingTessellator tess = capturingTessellator.get();
@@ -59,7 +58,7 @@ public class TessellatorManager {
         // Be sure we got all the quads
         if(tess.isDrawing) tess.draw();
 
-        final List<Quad> quads = tess.getQuads();
+        final List<QuadView> quads = tess.getQuads();
         tess.discard();
         tess.restoreTranslation();
 

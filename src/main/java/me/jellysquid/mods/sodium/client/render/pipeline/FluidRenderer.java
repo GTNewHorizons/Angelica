@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPos;
+import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
@@ -38,7 +38,7 @@ public class FluidRenderer {
 	private static final float EPSILON = 0.001f;
     private final LightPipelineProvider lpp;
 
-    private final BlockPos.Mutable scratchPos = new BlockPos.Mutable();
+    private final BlockPosImpl scratchPos = new BlockPosImpl();
 
     private final ModelQuadViewMutable quad = new ModelQuad();
 
@@ -69,7 +69,7 @@ public class FluidRenderer {
     }
 
     private boolean isSideExposed(IBlockAccess world, int x, int y, int z, ForgeDirection dir, float height) {
-        BlockPos pos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
+        BlockPosImpl pos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
         Block block = world.getBlock(pos.x, pos.y, pos.z);
 
         if (block.getMaterial().isOpaque()) {
@@ -87,7 +87,7 @@ public class FluidRenderer {
         return true;
     }
 
-    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
+    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPosImpl pos, ChunkModelBuffers buffers) {
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         int posX = pos.x;
@@ -349,7 +349,7 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPosImpl pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
         QuadLightData light = this.quadLightData;
         lighter.calculate(quad, pos, light, null, dir, false);
 
@@ -437,7 +437,7 @@ public class FluidRenderer {
                 return 1.0F;
             }
 
-            BlockPos pos = this.scratchPos.set(x2, y, z2);
+            BlockPosImpl pos = this.scratchPos.set(x2, y, z2);
 
             block = world.getBlock(pos.x, pos.y, pos.z);
             int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);

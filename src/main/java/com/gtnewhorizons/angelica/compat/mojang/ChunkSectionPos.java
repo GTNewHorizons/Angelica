@@ -19,7 +19,7 @@ public class ChunkSectionPos extends Vector3i {
         return new ChunkSectionPos(x, y, z);
     }
 
-    public static ChunkSectionPos from(BlockPos pos) {
+    public static ChunkSectionPos from(BlockPosImpl pos) {
         return new ChunkSectionPos(getSectionCoord(pos.getX()), getSectionCoord(pos.getY()), getSectionCoord(pos.getZ()));
     }
 
