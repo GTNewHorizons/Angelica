@@ -122,16 +122,10 @@ public class NdQuadBuilder implements ModelQuadView {
         this.mat.reset();
     }
 
-    /**
-     * Set vertex color in ARGB format (0xAARRGGBB).
-     */
     public void color(int vertexIndex, int color) {
         data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.COLOR_INDEX] = color;
     }
 
-    /**
-     * Convenience: set vertex color for all vertices at once.
-     */
     public void color(int c0, int c1, int c2, int c3) {
         this.color(0, c0);
         this.color(1, c1);

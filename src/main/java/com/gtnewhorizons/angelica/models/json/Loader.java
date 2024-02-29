@@ -38,6 +38,15 @@ public class Loader {
     private static final List<Callback> postBakeCallbacks = new ObjectArrayList<>();
 
     /**
+     * Convenience method to register a baker callback, which will be run after JSON models are baked. Useful if
+     * you implemented your own non-JSON model that still needs baking.
+     */
+    public static void registerBaker(Callback baker) {
+
+        postBakeCallbacks.add(baker);
+    }
+
+    /**
      * Convenience method to register multiple variants. See {@link #registerModels(Callback, Collection)}.
      */
     public static void registerModels(Callback loader, Variant... variants) {

@@ -14,19 +14,19 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class CubeModel implements QuadProvider {
+public class DynamicCubeModel implements QuadProvider {
 
     /*
     * By the power of ~~theft~~ inspiration, this class is wayyy simpler.
     * It's also a basic example of dynamic model building.
     */
 
-    public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(CubeModel::new);
+    public static final ThreadLocal<DynamicCubeModel> INSTANCE = ThreadLocal.withInitial(DynamicCubeModel::new);
     private final NdQuadBuilder builder = new NdQuadBuilder();
     private static final List<QuadView> EMPTY = ObjectImmutableList.of();
     private final List<QuadView> ONE = new ObjectArrayList<>(1);
 
-    public CubeModel() {
+    public DynamicCubeModel() {
 
         this.ONE.add(null);
     }

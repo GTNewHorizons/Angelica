@@ -11,9 +11,9 @@ public interface QuadView extends ModelQuadViewMutable {
     boolean isShade();
     boolean isDeleted();
     ForgeDirection getFace();
-    void copyFrom(QuadView src);
+    QuadView copyFrom(QuadView src);
     void setRaw(int[] data, boolean shade, @Nullable ForgeDirection face, int colorIndex, int flags);
-    int[] getRawVertexes();
+    int[] getRawData();
 
     /**
      * Present for compatibility with the Tesselator, not recommended for general use.

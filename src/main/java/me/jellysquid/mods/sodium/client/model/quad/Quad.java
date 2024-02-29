@@ -165,7 +165,7 @@ public class Quad implements QuadView {
     }
 
     @Override
-    public int[] getRawVertexes() {
+    public int[] getRawData() {
         return this.data;
     }
 
@@ -191,13 +191,6 @@ public class Quad implements QuadView {
         this.setPosByIndex(1, idx, this.posByIndex(1, idx) + offset);
         this.setPosByIndex(2, idx, this.posByIndex(2, idx) + offset);
         this.setPosByIndex(3, idx, this.posByIndex(3, idx) + offset);
-    }
-
-    private void clearColors() {
-        this.setColor(0, DEFAULT_COLOR);
-        this.setColor(1, DEFAULT_COLOR);
-        this.setColor(2, DEFAULT_COLOR);
-        this.setColor(3, DEFAULT_COLOR);
     }
 
     private void clearNormals() {
@@ -238,9 +231,9 @@ public class Quad implements QuadView {
     }
 
     @Override
-    public void copyFrom(QuadView quad) {
+    public QuadView copyFrom(QuadView quad) {
 
-        System.arraycopy(quad.getRawVertexes(), 0, this.data, 0, QUAD_STRIDE);
+        System.arraycopy(quad.getRawData(), 0, this.data, 0, QUAD_STRIDE);
 
         this.deleted = quad.isDeleted();
         this.shade = quad.isShade();
@@ -248,6 +241,8 @@ public class Quad implements QuadView {
         this.colorIndex = quad.getColorIndex();
         this.cachedFlags = quad.getFlags();
         this.sprite = quad.rubidium$getSprite();
+
+        return this;
     }
 
     /**
@@ -272,7 +267,7 @@ public class Quad implements QuadView {
         if (offsetY != 0) this.offsetPos(1, offsetY);
         if (offsetZ != 0) this.offsetPos(2, offsetZ);
 
-        if (!flags.hasColor) this.clearColors();
+        if (!flags.hasColor) this.setColors(DEFAULT_COLOR);
         if (!flags.hasNormals) this.clearNormals();
         if (!flags.hasBrightness) this.clearLight();
 

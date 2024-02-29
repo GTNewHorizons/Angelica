@@ -68,8 +68,9 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableTestBlocks)
             Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
+
         if (AngelicaConfig.injectQPRendering)
-            Loader.registerModels(VanillaModels::loadModels, VanillaModels.stoneVariant);
+            VanillaModels.init();
     }
 
 

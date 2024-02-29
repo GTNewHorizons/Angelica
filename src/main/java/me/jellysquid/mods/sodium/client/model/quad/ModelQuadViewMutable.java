@@ -28,6 +28,16 @@ public interface ModelQuadViewMutable extends ModelQuadView {
     void setColor(int idx, int color);
 
     /**
+     * Convenience: set vertex color for all vertices at once.
+     */
+    default void setColors(int abgr) {
+        this.setColor(0, abgr);
+        this.setColor(1, abgr);
+        this.setColor(2, abgr);
+        this.setColor(3, abgr);
+    }
+
+    /**
      * Sets the texture x-coordinate of the vertex at index {@param idx} to the value {@param u}
      */
     void setTexU(int idx, float u);
