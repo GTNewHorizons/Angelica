@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.models.json.ModelLocation;
 import com.gtnewhorizons.angelica.models.json.Variant;
 import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
 import com.gtnewhorizons.angelica.models.template.BlockStaticCube;
+import com.gtnewhorizons.angelica.models.template.JsonModel4Rot;
 import net.minecraft.init.Blocks;
 
 public class VanillaModels {
@@ -28,6 +29,8 @@ public class VanillaModels {
     );
     public static JsonModel WORKBENCH;
 
+    public static JsonModel4Rot LECTERN;
+
     public static void init() {
 
         if (init) {
@@ -44,6 +47,8 @@ public class VanillaModels {
 
         Loader.registerModels(VanillaModels::loadModels,
             workbench);
+
+        LECTERN = new JsonModel4Rot(new ModelLocation("block/lectern"));
 
         init = true;
     }

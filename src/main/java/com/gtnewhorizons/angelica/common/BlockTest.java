@@ -3,11 +3,6 @@ package com.gtnewhorizons.angelica.common;
 import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.models.json.JsonModel;
-import com.gtnewhorizons.angelica.models.json.Loader;
-import com.gtnewhorizons.angelica.models.json.ModelLocation;
-import com.gtnewhorizons.angelica.models.json.Variant;
-import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.world.IBlockAccess;
@@ -19,45 +14,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class BlockTest extends Block implements QuadProvider {
+import static com.gtnewhorizons.angelica.models.VanillaModels.LECTERN;
 
-    public static final Variant[] modelId = {
-        new Variant(
-            new ModelLocation("block/lectern"),
-            0,
-            0,
-            false
-        ),
-        new Variant(
-            new ModelLocation("block/lectern"),
-            180,
-            0,
-            false
-        ),
-        new Variant(
-            new ModelLocation("block/lectern"),
-            90,
-            0,
-            false
-        ),
-        new Variant(
-            new ModelLocation("block/lectern"),
-            270,
-            0,
-            false
-        ),
-    };
-    private static final List<QuadView> EMPTY = ObjectImmutableList.of();
-    private static final JsonModel[] model = new JsonModel[4];
+public class BlockTest extends Block implements QuadProvider {
 
     public BlockTest() {
 
         super(Material.rock);
-    }
-
-    public static void loadModel() {
-        for (int i = 0; i < 4; ++i)
-            model[i] = Loader.getModel(modelId[i]);
     }
 
     @Override
@@ -70,7 +33,7 @@ public class BlockTest extends Block implements QuadProvider {
 
         if (meta < 2 || meta > 5) meta = 2;
 
-        return (model[meta - 2] != null) ? model[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool) : EMPTY;
+        return LECTERN.getModels()[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
     }
 
     /**
