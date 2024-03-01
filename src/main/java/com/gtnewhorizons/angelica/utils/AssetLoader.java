@@ -6,33 +6,44 @@ import glowredman.txloader.TXLoaderCore;
 
 public class AssetLoader {
 
-    public static final String[] texs = {
+    public static final String[] injectTexs = {
+        "block/stone",
+        "block/crafting_table_side",
+        "block/crafting_table_front",
+        "block/crafting_table_side",
+        "block/crafting_table_top",
+        "block/oak_planks"
+    };
+
+    public static final String[] testTexs = {
         "block/lectern_base",
         "block/lectern_front",
         "block/lectern_base",
         "block/lectern_sides",
         "block/lectern_top",
-        "block/oak_planks",
-        "block/stone",
-        "block/oak_planks",
-        "block/crafting_table_side",
-        "block/crafting_table_front",
-        "block/crafting_table_side",
-        "block/crafting_table_top"
+        "block/oak_planks"
     };
 
     public static void load() {
 
-        if (AngelicaConfig.injectQPRendering) {
+        if (AngelicaConfig.injectQPRendering || AngelicaConfig.enableTestBlocks) {
             addModelAssets(
                 "block/block",
                 "block/cube",
-                "block/cube_all",
-                "block/lectern",
-                "block/stone",
-                "block/crafting_table"
+                "block/cube_all"
             );
-            addTexAssets(texs);
+        }
+
+        if (AngelicaConfig.injectQPRendering) {
+            addModelAssets(
+                "block/stone",
+                "block/crafting_table");
+            addTexAssets(injectTexs);
+        }
+
+        if (AngelicaConfig.enableTestBlocks) {
+            addModelAssets("block/lectern");
+            addTexAssets(testTexs);
         }
     }
 

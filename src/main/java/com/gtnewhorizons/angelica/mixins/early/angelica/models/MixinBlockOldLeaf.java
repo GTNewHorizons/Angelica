@@ -25,7 +25,7 @@ public abstract class MixinBlockOldLeaf implements QuadProvider {
 
     @Inject(method = "registerBlockIcons", at = @At(value = "TAIL"))
     public void angelica$injectTextures(IIconRegister reg, CallbackInfo ci) {
-        for (String s : AssetLoader.texs) {
+        for (String s : AssetLoader.injectTexs) {
             reg.registerIcon(s);
         }
     }

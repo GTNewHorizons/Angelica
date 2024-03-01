@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.models.json.Variant;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
-import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.List;
@@ -15,8 +14,7 @@ import java.util.List;
  */
 public class JsonModel4Rot {
 
-    @Getter
-    private final JsonModel[] models = new JsonModel[4];
+    public final JsonModel[] models = new JsonModel[4];
     private final Variant[] modelIds;
     private static final List<QuadView> EMPTY = ObjectImmutableList.of();
 

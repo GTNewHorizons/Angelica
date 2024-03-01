@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.models.json.JsonModel;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.models.json.ModelLocation;
@@ -37,18 +38,21 @@ public class VanillaModels {
             throw new RuntimeException("Vanilla models were baked twice!");
         }
 
-        STONE = new BlockStaticCube(Blocks.stone.getTextureName());
-        ACACIA_LEAVES = new BlockColoredCube("leaves_acacia");
-        BIRCH_LEAVES = new BlockColoredCube("leaves_birch");
-        DARK_OAK_LEAVES = new BlockColoredCube("leaves_big_oak");
-        JUNGLE_LEAVES = new BlockColoredCube("leaves_jungle");
-        OAK_LEAVES = new BlockColoredCube("leaves_oak");
-        SPRUCE_LEAVES = new BlockColoredCube("leaves_spruce");
+        if (AngelicaConfig.injectQPRendering) {
+            STONE = new BlockStaticCube(Blocks.stone.getTextureName());
+            ACACIA_LEAVES = new BlockColoredCube("leaves_acacia");
+            BIRCH_LEAVES = new BlockColoredCube("leaves_birch");
+            DARK_OAK_LEAVES = new BlockColoredCube("leaves_big_oak");
+            JUNGLE_LEAVES = new BlockColoredCube("leaves_jungle");
+            OAK_LEAVES = new BlockColoredCube("leaves_oak");
+            SPRUCE_LEAVES = new BlockColoredCube("leaves_spruce");
 
-        Loader.registerModels(VanillaModels::loadModels,
-            workbench);
+            Loader.registerModels(VanillaModels::loadModels,
+                workbench);
+        }
 
-        LECTERN = new JsonModel4Rot(new ModelLocation("block/lectern"));
+        if (AngelicaConfig.enableTestBlocks)
+            LECTERN = new JsonModel4Rot(new ModelLocation("block/lectern"));
 
         init = true;
     }
