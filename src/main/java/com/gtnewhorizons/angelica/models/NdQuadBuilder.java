@@ -114,10 +114,7 @@ public class NdQuadBuilder extends Quad {
         this.computeGeometry();
 
         // Reset the cull face if needed
-        if ((this.geometryFlags & ModelQuadFlags.IS_ALIGNED) != 0)
-            this.setCullFace(this.lightFace);
-        else
-            this.nominalFace(this.lightFace);
+        this.setCullFace();
 
         out.setRaw(this.data, this.isShade(), this.getCullFace(), this.getColorIndex(), this.geometryFlags);
         this.clear();
@@ -159,6 +156,17 @@ public class NdQuadBuilder extends Quad {
     public void setCullFace(ForgeDirection dir) {
         super.setCullFace(dir);
         this.nominalFace(dir);
+    }
+
+    /**
+     * Tries to automatically set the culling and nominal face from the computed geometry.
+     */
+    public void setCullFace() {
+        this.computeGeometry();
+        if ((this.geometryFlags & ModelQuadFlags.IS_ALIGNED) != 0)
+            this.setCullFace(this.lightFace);
+        else
+            this.nominalFace(this.lightFace);
     }
 
     @Override

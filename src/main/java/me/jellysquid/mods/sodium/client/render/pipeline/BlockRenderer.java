@@ -21,6 +21,7 @@ import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
+import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -67,7 +68,7 @@ public class BlockRenderer {
 
             final int color = qBlock.getColor(world, pos, block, meta, random);
 
-            for (ForgeDirection dir : ForgeDirection.values()) {
+            for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
 
                 this.random.setSeed(seed);
                 List<QuadView> quads;

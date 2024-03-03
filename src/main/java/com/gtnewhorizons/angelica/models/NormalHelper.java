@@ -24,7 +24,7 @@ public class NormalHelper {
     public static void computeFaceNormal(@NotNull Vector3f saveTo, NdQuadBuilder q) {
         final ForgeDirection nominalFace = q.nominalFace();
 
-        if (nominalFace != null && GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
+        if (nominalFace != ForgeDirection.UNKNOWN && GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
             Vector3i vec = STEP[nominalFace.ordinal()];
             saveTo.set(vec.x, vec.y, vec.z);
             return;

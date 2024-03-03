@@ -101,8 +101,7 @@ public class JsonModel implements QuadProvider {
                 }
 
                 // Set culling and nominal faces
-                builder.setCullFace(f.getCullFace());
-                builder.nominalFace(f.getName());
+                builder.setCullFace();
 
                 // Set bake flags
                 int flags = switch(f.getRotation()) {
@@ -138,7 +137,7 @@ public class JsonModel implements QuadProvider {
                 // Bake and add it
                 final QuadView q = builder.build(new Quad());
                 this.allQuadStore.add(q);
-                this.sidedQuadStore.computeIfAbsent(f.getCullFace(),
+                this.sidedQuadStore.computeIfAbsent(q.getCullFace(),
                     o -> new ObjectArrayList<>()).add(q);
             }
         }

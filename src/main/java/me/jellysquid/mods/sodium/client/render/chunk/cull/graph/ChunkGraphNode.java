@@ -4,14 +4,13 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkGraphNode {
     private static final long DEFAULT_VISIBILITY_DATA = calculateVisibilityData(ChunkRenderData.EMPTY.getOcclusionData());
     private static final float FRUSTUM_EPSILON = 1.0f /* block model margin */ + 0.125f /* epsilon */;
 
-    private final ChunkGraphNode[] nodes = new ChunkGraphNode[DirectionUtil.ALL_DIRECTIONS.length];
+    private final ChunkGraphNode[] nodes = new ChunkGraphNode[ForgeDirection.VALID_DIRECTIONS.length];
 
     private final int id;
     private final int chunkX, chunkY, chunkZ;
@@ -65,8 +64,8 @@ public class ChunkGraphNode {
     private static long calculateVisibilityData(ChunkOcclusionData occlusionData) {
         long visibilityData = 0;
 
-        for (ForgeDirection from : DirectionUtil.ALL_DIRECTIONS) {
-            for (ForgeDirection to : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection from : ForgeDirection.VALID_DIRECTIONS) {
+            for (ForgeDirection to : ForgeDirection.VALID_DIRECTIONS) {
                 if (occlusionData == null || occlusionData.isVisibleThrough(from, to)) {
                     visibilityData |= (1L << ((from.ordinal() << 3) + to.ordinal()));
                 }
