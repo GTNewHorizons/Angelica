@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFire;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -27,7 +27,8 @@ public class MixinRenderBlocks implements ITexturesCache {
     @Shadow
     public IIcon overrideBlockTexture;
 
-    private Set<IIcon> renderedSprites = new ObjectOpenHashSet<>();
+    private Set<IIcon> renderedSprites = new ReferenceOpenHashSet<>();
+    private boolean enableSpriteTracking;
 
     /**
      * @author laetansky Here where things get very tricky. We can't just mark blocks textures for update because this
@@ -46,14 +47,17 @@ public class MixinRenderBlocks implements ITexturesCache {
 
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        this.renderedSprites.add(icon);
+        if(this.enableSpriteTracking)
+            this.renderedSprites.add(icon);
     }
 
     @Inject(method = "renderBlockFire", at = @At("HEAD"))
     public void angelica$markFireBlockAnimationForUpdate(BlockFire instance, int x, int y, int z,
             CallbackInfoReturnable<Boolean> cir) {
-        this.renderedSprites.add(instance.getFireIcon(0));
-        this.renderedSprites.add(instance.getFireIcon(1));
+        if(this.enableSpriteTracking) {
+            this.renderedSprites.add(instance.getFireIcon(0));
+            this.renderedSprites.add(instance.getFireIcon(1));
+        }
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(0), blockAccess);
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
@@ -62,7 +66,8 @@ public class MixinRenderBlocks implements ITexturesCache {
     public IIcon angelica$markFluidAnimationForUpdate(IIcon icon) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        this.renderedSprites.add(icon);
+        if(this.enableSpriteTracking)
+            this.renderedSprites.add(icon);
 
         return icon;
     }
@@ -72,11 +77,17 @@ public class MixinRenderBlocks implements ITexturesCache {
             CallbackInfo ci) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        this.renderedSprites.add(icon);
+        if(this.enableSpriteTracking)
+            this.renderedSprites.add(icon);
     }
 
     @Override
     public Set<IIcon> getRenderedTextures() {
         return renderedSprites;
+    }
+
+    @Override
+    public void enableTextureTracking() {
+        enableSpriteTracking = true;
     }
 }
