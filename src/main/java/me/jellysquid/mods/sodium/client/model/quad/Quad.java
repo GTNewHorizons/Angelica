@@ -10,7 +10,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
-import javax.annotation.Nullable;
 import java.util.Locale;
 
 /**
@@ -254,21 +253,6 @@ public class Quad implements QuadView {
         this.sprite = quad.rubidium$getSprite();
 
         return this;
-    }
-
-    /**
-     * Unlike setState, setRaw assumes your quad is valid and does not compute normals, clear color/normal/lightmap
-     * values, or quadrangulate. Basically the same as copyFrom but without an input quad.
-     */
-    public void setRaw(int[] data, boolean shade, @Nullable ForgeDirection face, int colorIndex, int flags) {
-
-        System.arraycopy(data, 0, this.data, 0, QUAD_STRIDE);
-
-        this.deleted = false;
-        this.shade = shade;
-        this.face = face;
-        this.colorIndex = colorIndex;
-        this.cachedFlags = flags;
     }
 
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
