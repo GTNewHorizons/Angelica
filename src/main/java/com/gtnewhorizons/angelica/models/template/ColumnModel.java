@@ -10,36 +10,55 @@ import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Matrix4f;
 
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class BlockStaticCube implements QuadProvider {
+public class ColumnModel implements QuadProvider {
 
-    private final String textureName;
+    private final String topTex;
+    private final String sideTex;
     protected final List<QuadView>[] store = new List[7];
+    private boolean rotate = false;
+    private Matrix4f rotMat;
 
-    public BlockStaticCube(String textureName) {
-        this.textureName = textureName;
+    public ColumnModel(String topTex, String sideTex, Matrix4f rotMat) {
+        this(topTex, sideTex);
+        this.rotate = true;
+        this.rotMat = rotMat;
+    }
+
+    public ColumnModel(String topTex, String sideTex) {
+        this.topTex = topTex;
+        this.sideTex = sideTex;
         Loader.registerBaker(this::bake);
     }
 
     protected void bake() {
 
         final NdQuadBuilder builder = new NdQuadBuilder();
+
         for (ForgeDirection f : ForgeDirection.VALID_DIRECTIONS) {
 
             builder.square(f, 0, 0, 1, 1, 0);
-            builder.spriteBake(this.textureName, NdQuadBuilder.BAKE_LOCK_UV);
+
+            final String tex = (f == ForgeDirection.UP || f == ForgeDirection.DOWN) ? this.topTex : this.sideTex;
+            builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
+
             builder.setColors(-1);
-            this.store[f.ordinal()] = ObjectImmutableList.of(builder.build(new Quad()));
+
+            final List<QuadView> tmp = ObjectImmutableList.of(
+                (this.rotate) ? builder.build(new Quad(), this.rotMat) : builder.build(new Quad()));
+
+            this.store[tmp.get(0).getCullFace().ordinal()] = tmp;
         }
         this.store[6] = ObjectImmutableList.of();
     }
 
     @Override
     public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
-        return store[dir.ordinal()];
+        return this.store[dir.ordinal()];
     }
 }

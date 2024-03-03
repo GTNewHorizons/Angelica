@@ -33,7 +33,7 @@ public class Quad implements QuadView {
     private final static int DEFAULT_LIGHTMAP = 15 << 20 | 15 << 4;
     private final static int DEFAULT_COLOR = 0xFFFFFFFF;
 
-    private final int[] data = new int[QUAD_STRIDE];
+    protected final int[] data = new int[QUAD_STRIDE];
 
     @Getter
     private boolean deleted;
@@ -52,6 +52,11 @@ public class Quad implements QuadView {
     @Override
     public ForgeDirection getLightFace() {
         return this.face != ForgeDirection.UNKNOWN ? this.face : ForgeDirection.UP;
+    }
+
+    @Override
+    public ForgeDirection getCullFace() {
+        return this.face;
     }
 
     @Override
@@ -107,6 +112,12 @@ public class Quad implements QuadView {
     @Override
     public TextureAtlasSprite rubidium$getSprite() {
         return this.sprite;
+    }
+
+
+    @Override
+    public void setCullFace(ForgeDirection face) {
+        this.face = face;
     }
 
     @Override

@@ -543,7 +543,9 @@ public enum Mixins {
             "angelica.models.MixinBlockAir",
             "angelica.models.MixinBlockWorkbench",
             "angelica.models.MixinBlockOldLeaf",
-            "angelica.models.MixinBlockNewLeaf")),
+            "angelica.models.MixinBlockNewLeaf",
+            "angelica.models.MixinBlockOldLog",
+            "angelica.models.MixinBlockNewLog")),
 
     ;
 

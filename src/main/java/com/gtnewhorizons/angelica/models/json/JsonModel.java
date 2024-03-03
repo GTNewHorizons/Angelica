@@ -101,7 +101,7 @@ public class JsonModel implements QuadProvider {
                 }
 
                 // Set culling and nominal faces
-                builder.cullFace(f.getCullFace());
+                builder.setCullFace(f.getCullFace());
                 builder.nominalFace(f.getName());
 
                 // Set bake flags
@@ -130,8 +130,7 @@ public class JsonModel implements QuadProvider {
                 builder.spriteBake(this.textures.get(f.getTexture()), flags);
 
                 // Set the tint index
-                final int tint = f.getTintIndex();
-                builder.color(tint, tint, tint, tint);
+                builder.setColors(f.getTintIndex());
 
                 // Set AO
                 builder.mat.setAO(this.useAO);

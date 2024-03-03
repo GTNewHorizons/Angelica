@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.QuadView;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
-import lombok.Getter;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -11,11 +9,12 @@ import net.minecraft.util.IIcon;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import java.util.Arrays;
 
-public class NdQuadBuilder implements ModelQuadView {
+public class NdQuadBuilder extends Quad {
 
     /**
      * Causes texture to appear with no rotation.
@@ -82,18 +81,12 @@ public class NdQuadBuilder implements ModelQuadView {
      */
     public static float CULL_FACE_EPSILON = 0.00001f;
 
-    private ForgeDirection cullFace = ForgeDirection.UNKNOWN;
     private ForgeDirection nominalFace = ForgeDirection.UNKNOWN;
     // Defaults to UP, but only because it can't be UNKNOWN or null
     private ForgeDirection lightFace = ForgeDirection.UP;
-    // It's called a header, but because I'm lazy it's at the end
-    // The header is an int with flags -------- -------- -------- -GGGNNNN, then an int for the normal
-    private final int[] data = new int[Quad.QUAD_STRIDE];
     private int geometryFlags = 0;
     private boolean isGeometryInvalid = true;
     private int tag = 0;
-    @Getter
-    private int colorIndex = -1;
     final Vector3f faceNormal = new Vector3f();
     public final Material mat = new Material();
 
@@ -104,7 +97,29 @@ public class NdQuadBuilder implements ModelQuadView {
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
-        out.setRaw(this.data, this.hasShade(), this.cullFace(), this.colorIndex, this.geometryFlags);
+        out.setRaw(this.data, this.isShade(), this.getCullFace(), this.getColorIndex(), this.geometryFlags);
+        this.clear();
+        return out;
+    }
+
+    /**
+     * See {@link #build(QuadView)}. This rotates the output by the given matrix.
+     */
+    public QuadView build(QuadView out, Matrix4f rotMat) {
+
+        this.pos(0, this.pos(0).mulPosition(rotMat));
+        this.pos(1, this.pos(1).mulPosition(rotMat));
+        this.pos(2, this.pos(2).mulPosition(rotMat));
+        this.pos(3, this.pos(3).mulPosition(rotMat));
+        this.computeGeometry();
+
+        // Reset the cull face if needed
+        if ((this.geometryFlags & ModelQuadFlags.IS_ALIGNED) != 0)
+            this.setCullFace(this.lightFace);
+        else
+            this.nominalFace(this.lightFace);
+
+        out.setRaw(this.data, this.isShade(), this.getCullFace(), this.getColorIndex(), this.geometryFlags);
         this.clear();
         return out;
     }
@@ -112,33 +127,13 @@ public class NdQuadBuilder implements ModelQuadView {
     public void clear() {
 
         Arrays.fill(this.data, 0);
-        this.cullFace = ForgeDirection.UNKNOWN;
-        this.nominalFace = ForgeDirection.UNKNOWN;
+        this.setCullFace(ForgeDirection.UNKNOWN);
         this.lightFace = ForgeDirection.UP;
         this.geometryFlags = 0;
         this.isGeometryInvalid = true;
         this.tag(0);
-        this.colorIndex(-1);
+        this.setColorIndex(-1);
         this.mat.reset();
-    }
-
-    public void color(int vertexIndex, int color) {
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.COLOR_INDEX] = color;
-    }
-
-    public void color(int c0, int c1, int c2, int c3) {
-        this.color(0, c0);
-        this.color(1, c1);
-        this.color(2, c2);
-        this.color(3, c3);
-    }
-
-    /**
-     * Value functions identically to {@link Quad#getColorIndex()} and is
-     * used by renderer / model builder in same way. Default value is -1.
-     */
-    public void colorIndex(int colorIndex) {
-        this.colorIndex = colorIndex;
     }
 
     private void computeGeometry() {
@@ -155,39 +150,15 @@ public class NdQuadBuilder implements ModelQuadView {
         }
     }
 
-    /**
-     * If not {@link ForgeDirection#UNKNOWN}, quad should not be rendered in-world if the
-     * opposite face of a neighbor block occludes it.
-     *
-     * @see NdQuadBuilder#cullFace(ForgeDirection)
-     */
-    public final ForgeDirection cullFace() {
-        return this.cullFace;
-    }
-
-    /**
-     * If not {@link ForgeDirection#UNKNOWN}, quad is coplanar with a block face which, if known, simplifies
-     * or shortcuts geometric analysis that might otherwise be needed.
-     * Set to {@link ForgeDirection#UNKNOWN} if quad is not coplanar or if this is not known.
-     * Also controls face culling during block rendering.
-     *
-     * <p>{@link ForgeDirection#UNKNOWN} by default.
-     *
-     * <p>When called with a non-{@link ForgeDirection#UNKNOWN} value, also sets {@link #nominalFace(ForgeDirection)}
-     * to the same value.
-     *
-     * <p>This is different from the value reported by {@link Quad#getLightFace()}. That value
-     * is computed based on face geometry and must be non-{@link ForgeDirection#UNKNOWN} in vanilla quads.
-     * That computed value is returned by {@link #getLightFace()}.
-     */
-    public void cullFace(ForgeDirection dir) {
-
-        this.cullFace = dir;
-        this.nominalFace(dir);
-    }
-
-    private boolean hasShade() {
+    @Override
+    public boolean isShade() {
         return this.mat.getDiffuse();
+    }
+
+    @Override
+    public void setCullFace(ForgeDirection dir) {
+        super.setCullFace(dir);
+        this.nominalFace(dir);
     }
 
     @Override
@@ -203,7 +174,7 @@ public class NdQuadBuilder implements ModelQuadView {
      * Should be the expected value of {@link #getLightFace()}. Value will be confirmed
      * and if invalid the correct light face will be calculated.
      *
-     * <p>Null by default, and set automatically by {@link #cullFace(ForgeDirection)}.
+     * <p>Null by default, and set automatically by {@link #setCullFace(ForgeDirection)}.
      *
      * <p>Models may also find this useful as the face for texture UV locking and rotation semantics.
      *
@@ -211,14 +182,14 @@ public class NdQuadBuilder implements ModelQuadView {
      * When reading encoded quads, this value will always be the same as {@link #getLightFace()}.
      */
     public void nominalFace(@Nullable ForgeDirection face) {
-        nominalFace = face;
+        this.nominalFace = face;
     }
 
     /**
      * See {@link #nominalFace(ForgeDirection)}
      */
     public ForgeDirection nominalFace() {
-        return nominalFace;
+        return this.nominalFace;
     }
 
     /**
@@ -230,18 +201,29 @@ public class NdQuadBuilder implements ModelQuadView {
      */
     public void pos(int vertexIndex, float x, float y, float z) {
 
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX] = Float.floatToRawIntBits(x);
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX] = Float.floatToRawIntBits(y);
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX] = Float.floatToRawIntBits(z);
+        this.setX(vertexIndex, x);
+        this.setY(vertexIndex, y);
+        this.setZ(vertexIndex, z);
+        isGeometryInvalid = true;
+    }
+
+    /**
+     * Convenience: set pos with a vector. See {@link #pos(int, float, float, float)}.
+     */
+    public void pos(int vertexIndex, Vector3f vec) {
+
+        this.setX(vertexIndex, vec.x);
+        this.setY(vertexIndex, vec.y);
+        this.setZ(vertexIndex, vec.z);
         isGeometryInvalid = true;
     }
 
     public Vector3f pos(int vertexIndex) {
 
         return new Vector3f(
-            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX]),
-            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX]),
-            Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX])
+            this.getX(vertexIndex),
+            this.getY(vertexIndex),
+            this.getZ(vertexIndex)
         );
     }
 
@@ -249,7 +231,7 @@ public class NdQuadBuilder implements ModelQuadView {
      * Convenience: access x, y, z by index 0-2.
      */
     float posByIndex(int vertexIndex, int coordinateIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX + coordinateIndex]);
+        return Float.intBitsToFloat(this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX + coordinateIndex]);
     }
 
     /**
@@ -284,10 +266,10 @@ public class NdQuadBuilder implements ModelQuadView {
      */
     public void square(ForgeDirection nominalFace, float left, float bottom, float right, float top, float depth) {
         if (Math.abs(depth) < CULL_FACE_EPSILON) {
-            cullFace(nominalFace);
+            setCullFace(nominalFace);
             depth = 0; // avoid any inconsistency for face quads
         } else {
-            cullFace(ForgeDirection.UNKNOWN);
+            setCullFace(ForgeDirection.UNKNOWN);
         }
 
         nominalFace(nominalFace);
@@ -350,46 +332,6 @@ public class NdQuadBuilder implements ModelQuadView {
 
         data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.U_INDEX] = Float.floatToRawIntBits(u);
         data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.V_INDEX] = Float.floatToRawIntBits(v);
-    }
-
-    @Override
-    public float getX(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX]);
-    }
-
-    @Override
-    public float getY(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Y_INDEX]);
-    }
-
-    @Override
-    public float getZ(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.Z_INDEX]);
-    }
-
-    @Override
-    public float getTexU(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.U_INDEX]);
-    }
-
-    @Override
-    public float getTexV(int vertexIndex) {
-        return Float.intBitsToFloat(data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.V_INDEX]);
-    }
-
-    @Override
-    public int getColor(int vertexIndex) {
-        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.COLOR_INDEX];
-    }
-
-    @Override
-    public int getNormal(int vertexIndex) {
-        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.NORMAL_INDEX];
-    }
-
-    @Override
-    public int getLight(int vertexIndex) {
-        return this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.LIGHTMAP_INDEX];
     }
 
     @Override

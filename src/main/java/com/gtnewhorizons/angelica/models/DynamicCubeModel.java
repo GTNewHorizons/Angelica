@@ -46,7 +46,7 @@ public class DynamicCubeModel implements QuadProvider {
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
         this.builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
 
-        this.builder.color(color, color, color, color);
+        this.builder.setColors(color);
 
         ONE.set(0, this.builder.build(quadPool.get()));
         return ONE;

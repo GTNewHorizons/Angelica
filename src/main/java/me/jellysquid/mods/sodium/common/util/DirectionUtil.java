@@ -1,6 +1,8 @@
 package me.jellysquid.mods.sodium.common.util;
 
+import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
@@ -33,4 +35,11 @@ public class DirectionUtil {
         // UNKNOWN
         new Vector3i(0, 0, 0)
     };
+
+    public static ForgeDirection rotateDir(ForgeDirection in, Matrix4f rotMat) {
+
+        final Vector3f v = new Vector3f(in.offsetX, in.offsetY, in.offsetZ);
+        v.mulPosition(rotMat);
+        return ModelQuadFacing.toDirection(ModelQuadFacing.fromVector(v));
+    }
 }
