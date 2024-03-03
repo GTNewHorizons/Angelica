@@ -340,8 +340,8 @@ public class NdQuadBuilder extends Quad {
      */
     public void uv(int vertexIndex, float u, float v) {
 
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.U_INDEX] = Float.floatToRawIntBits(u);
-        data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.V_INDEX] = Float.floatToRawIntBits(v);
+        this.setTexU(vertexIndex, u);
+        this.setTexV(vertexIndex, v);
     }
 
     @Override
