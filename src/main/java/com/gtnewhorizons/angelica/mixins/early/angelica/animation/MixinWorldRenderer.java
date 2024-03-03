@@ -26,6 +26,7 @@ public class MixinWorldRenderer implements ITexturesCache {
 
     @ModifyArg(method = "updateRenderer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;<init>(Lnet/minecraft/world/IBlockAccess;)V"))
     private IBlockAccess angelica$onUpdateRenderer(IBlockAccess chunkCache) {
+        ((ITexturesCache) chunkCache).enableTextureTracking();
         renderedIcons = ((ITexturesCache) chunkCache).getRenderedTextures();
         return chunkCache;
     }
@@ -42,5 +43,10 @@ public class MixinWorldRenderer implements ITexturesCache {
     @Override
     public Set<IIcon> getRenderedTextures() {
         return renderedIcons;
+    }
+
+    @Override
+    public void enableTextureTracking() {
+
     }
 }

@@ -18,4 +18,9 @@ public class MixinChunkCache implements ITexturesCache {
     public HashSet<IIcon> getRenderedTextures() {
         return renderedIcons;
     }
+
+    @Override
+    public void enableTextureTracking() {
+
+    }
 }
