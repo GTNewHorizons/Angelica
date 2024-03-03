@@ -95,8 +95,7 @@ public class JsonModel implements QuadProvider {
                 for (int i = 0; i < 4; ++i) {
 
                     final Vector3f vert =
-                        rot.transformPosition(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
-                    vRot.transformPosition(vert);
+                        NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()).mulPosition(rot).mulPosition(vRot);
                     builder.pos(i, vert.x, vert.y, vert.z);
                 }
 

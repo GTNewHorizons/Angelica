@@ -97,7 +97,7 @@ public class NdQuadBuilder extends Quad {
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
-        out.setRaw(this.data, this.isShade(), this.getCullFace(), this.getColorIndex(), this.geometryFlags);
+        out.copyFrom(this);
         this.clear();
         return out;
     }
@@ -113,10 +113,10 @@ public class NdQuadBuilder extends Quad {
         this.pos(3, this.pos(3).mulPosition(rotMat));
         this.computeGeometry();
 
-        // Reset the cull face if needed
+        // Reset the cull face
         this.setCullFace();
 
-        out.setRaw(this.data, this.isShade(), this.getCullFace(), this.getColorIndex(), this.geometryFlags);
+        out.copyFrom(this);
         this.clear();
         return out;
     }
@@ -165,8 +165,10 @@ public class NdQuadBuilder extends Quad {
         this.computeGeometry();
         if ((this.geometryFlags & ModelQuadFlags.IS_ALIGNED) != 0)
             this.setCullFace(this.lightFace);
-        else
+        else {
+            this.setCullFace(ForgeDirection.UNKNOWN);
             this.nominalFace(this.lightFace);
+        }
     }
 
     @Override

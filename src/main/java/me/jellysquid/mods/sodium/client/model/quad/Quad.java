@@ -36,7 +36,7 @@ public class Quad implements QuadView {
     protected final int[] data = new int[QUAD_STRIDE];
 
     @Getter
-    private boolean deleted;
+    private boolean deleted = false;
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 

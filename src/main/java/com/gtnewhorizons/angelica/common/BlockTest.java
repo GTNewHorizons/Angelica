@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
+import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
@@ -53,7 +54,7 @@ public class BlockTest extends Block implements QuadProvider {
     public int onBlockPlaced(@NotNull World worldIn, int x, int y, int z, int side, float subX, float subY, float subZ, int meta) {
 
         // Face NORTH if placed up or down
-        final ForgeDirection s = ForgeDirection.values()[side];
+        final ForgeDirection s = DirectionUtil.ALL_DIRECTIONS[side];
         if (s == ForgeDirection.UP || s == ForgeDirection.DOWN)
             return 2;
 
