@@ -240,6 +240,19 @@ public class Quad implements QuadView {
         this.vectorA.cross(this.vectorB, this.vectorC);
     }
 
+    protected void quadrangulate() {
+        this.setX(3, this.getX(2));
+        this.setY(3, this.getY(2));
+        this.setZ(3, this.getZ(2));
+
+        this.setTexU(3, this.getTexU(2));
+        this.setTexV(3, this.getTexV(2));
+
+        this.setLight(3, this.getLight(2));
+        this.setColor(3, this.getColor(2));
+        this.setNormal(3, this.getNormal(2));
+    }
+
     @Override
     public QuadView copyFrom(QuadView quad) {
 
@@ -269,20 +282,7 @@ public class Quad implements QuadView {
         // sus
         this.shade = flags.hasBrightness;
 
-        if (drawMode == GL11.GL_TRIANGLES) {
-
-            // Quadrangulate!
-            this.setX(3, this.getX(2));
-            this.setY(3, this.getY(2));
-            this.setZ(3, this.getZ(2));
-
-            this.setTexU(3, this.getTexU(2));
-            this.setTexV(3, this.getTexV(2));
-
-            this.setLight(3, this.getLight(2));
-            this.setColor(3, this.getColor(2));
-            this.setNormal(3, this.getNormal(2));
-        }
+        if (drawMode == GL11.GL_TRIANGLES) this.quadrangulate();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.QuadView;
+import lombok.Setter;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.Arrays;
 
@@ -89,11 +91,16 @@ public class NdQuadBuilder extends Quad {
     private int tag = 0;
     final Vector3f faceNormal = new Vector3f();
     public final Material mat = new Material();
+    @Setter
+    private int drawMode = GL11.GL_QUADS;
 
     /**
      * Dumps to {@param out} and returns it.
      */
     public QuadView build(QuadView out) {
+
+        if (this.drawMode != GL11.GL_QUADS)
+            this.quadrangulate();
 
         // FRAPI does this late, but we need to do it before baking to Nd quads
         this.computeGeometry();
@@ -110,7 +117,12 @@ public class NdQuadBuilder extends Quad {
         this.pos(0, this.pos(0).mulPosition(rotMat));
         this.pos(1, this.pos(1).mulPosition(rotMat));
         this.pos(2, this.pos(2).mulPosition(rotMat));
-        this.pos(3, this.pos(3).mulPosition(rotMat));
+
+        if (this.drawMode == GL11.GL_QUADS)
+            this.pos(3, this.pos(3).mulPosition(rotMat));
+        else
+            this.quadrangulate();
+
         this.computeGeometry();
 
         // Reset the cull face
@@ -131,6 +143,7 @@ public class NdQuadBuilder extends Quad {
         this.tag(0);
         this.setColorIndex(-1);
         this.mat.reset();
+        this.drawMode = GL11.GL_QUADS;
     }
 
     private void computeGeometry() {
@@ -153,6 +166,13 @@ public class NdQuadBuilder extends Quad {
     }
 
     @Override
+    @NotNull
+    public ForgeDirection getLightFace() {
+        this.computeGeometry();
+        return this.lightFace;
+    }
+
+    @Override
     public void setCullFace(ForgeDirection dir) {
         super.setCullFace(dir);
         this.nominalFace(dir);
@@ -169,13 +189,6 @@ public class NdQuadBuilder extends Quad {
             this.setCullFace(ForgeDirection.UNKNOWN);
             this.nominalFace(this.lightFace);
         }
-    }
-
-    @Override
-    @NotNull
-    public ForgeDirection getLightFace() {
-        this.computeGeometry();
-        return this.lightFace;
     }
 
     /**
@@ -228,6 +241,9 @@ public class NdQuadBuilder extends Quad {
         isGeometryInvalid = true;
     }
 
+    /**
+     * Gets the vertex position as a vector. This allocates a new vector, do not use in dynamic rendering!
+     */
     public Vector3f pos(int vertexIndex) {
 
         return new Vector3f(
