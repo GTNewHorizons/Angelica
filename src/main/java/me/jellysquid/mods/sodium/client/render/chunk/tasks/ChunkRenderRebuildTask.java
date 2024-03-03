@@ -116,6 +116,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         final WorldSlice slice = cache.getWorldSlice();
         final RenderBlocks renderBlocks = new RenderBlocks(slice);
+        if(renderBlocks instanceof ITexturesCache) ((ITexturesCache)renderBlocks).enableTextureTracking();
 
         final int baseX = this.render.getOriginX();
         final int baseY = this.render.getOriginY();
@@ -246,6 +247,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final int baseZ = this.render.getOriginZ();
         final BlockPosImpl renderOffset = this.offset;
         final RenderBlocks rb = new RenderBlocks(slice.getWorld());
+        if(rb instanceof ITexturesCache) ((ITexturesCache)rb).enableTextureTracking();
         while(!mainThreadBlocks.isEmpty()) {
             final long longPos = mainThreadBlocks.dequeueLong();
             if (cancellationSource.isCancelled()) {
