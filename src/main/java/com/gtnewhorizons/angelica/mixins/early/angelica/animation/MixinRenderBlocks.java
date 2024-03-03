@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFire;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -27,7 +27,7 @@ public class MixinRenderBlocks implements ITexturesCache {
     @Shadow
     public IIcon overrideBlockTexture;
 
-    private Set<IIcon> renderedSprites = new ReferenceOpenHashSet<>();
+    private Set<IIcon> renderedSprites = new ObjectOpenHashSet<>();
 
     /**
      * @author laetansky Here where things get very tricky. We can't just mark blocks textures for update because this
@@ -66,7 +66,7 @@ public class MixinRenderBlocks implements ITexturesCache {
 
         return icon;
     }
-    
+
     @Inject(method = "drawCrossedSquares", at = @At("HEAD"))
     public void angelica$markCrossedSquaresAnimationForUpdate(IIcon icon, double p_147765_2_, double p_147765_4_, double p_147765_6_, float p_147765_8_,
             CallbackInfo ci) {
