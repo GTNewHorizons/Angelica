@@ -62,3 +62,6 @@
 * FRAPI and Indigo
   * Model building API heavily inspired by/copied from Fabric's; upstream may use it under the original Apache 2.0
     license, see LICENSE in `com.gtnewhorizons.angelica.models`
+* Dynamic Lights
+  * LambdAurora for [LambDynamicLights](https://github.com/LambdAurora/LambDynamicLights) under the MIT license, and the Forge port anthxnymc for []DynamicLightsReforged](https://github.com/anthxnymc/DynamicLightsReforged), also under the MIT license
+
