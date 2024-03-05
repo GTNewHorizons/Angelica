@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -115,6 +116,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         // If we have a world is already loaded, unload the renderer
         if (this.world != null) {
+            DynamicLights.get().clearLightSources();
             this.unloadWorld();
         }
 
@@ -122,6 +124,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         if (world != null) {
             this.loadWorld(world);
         }
+
     }
 
     public int getChunksSubmitted() {

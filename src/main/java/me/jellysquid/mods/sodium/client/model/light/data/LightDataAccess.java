@@ -1,6 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
+import com.gtnewhorizons.angelica.api.MutableBlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.block.Block;
@@ -117,6 +119,19 @@ public abstract class LightDataAccess {
     public static float unpackAO(long word) {
         int aoi = (int) (word >>> 32 & 0xFFFFL);
         return aoi * (1.0f / 4096.0f);
+    }
+
+    public static int getLightMap(long originWord, BlockPosImpl pos) {
+        if (!DynamicLights.isEnabled()) {
+            return unpackLM(originWord);
+        }
+        if (unpackFO(originWord)){
+            return unpackLM(originWord);
+        }
+
+        double dynamic = DynamicLights.get().getDynamicLightLevel(pos);
+        return DynamicLights.get().getLightmapWithDynamicLight(dynamic, unpackLM(originWord));
+
     }
 
     public WorldSlice getWorld() {
