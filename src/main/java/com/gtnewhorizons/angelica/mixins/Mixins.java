@@ -27,6 +27,7 @@ public enum Mixins {
             ,"angelica.MixinEntityRenderer"
             ,"angelica.MixinMinecraft"
             ,"angelica.optimizations.MixinRendererLivingEntity"
+            ,"angelica.misc.MixinEntityPlayerSP_DynamicFOV"
         )
     ),
     ANGELICA_VBO(
