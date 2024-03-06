@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -44,7 +45,7 @@ public class DynamicCubeModel implements QuadProvider {
 
         this.builder.square(dir, 0, 0, 1, 1, 0);
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
-        this.builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
+        this.builder.spriteBake(tex, QuadBuilder.BAKE_LOCK_UV);
 
         this.builder.setColors(color);
 

@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
@@ -95,7 +96,7 @@ public class JsonModel implements QuadProvider {
                 for (int i = 0; i < 4; ++i) {
 
                     final Vector3f vert =
-                        NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()).mulPosition(rot).mulPosition(vRot);
+                        QuadBuilder.mapSideToVertex(from, to, i, f.getName()).mulPosition(rot).mulPosition(vRot);
                     builder.pos(i, vert.x, vert.y, vert.z);
                 }
 
@@ -104,10 +105,10 @@ public class JsonModel implements QuadProvider {
 
                 // Set bake flags
                 int flags = switch(f.getRotation()) {
-                    case 90 -> NdQuadBuilder.BAKE_ROTATE_90;
-                    case 180 -> NdQuadBuilder.BAKE_ROTATE_180;
-                    case 270 -> NdQuadBuilder.BAKE_ROTATE_270;
-                    default -> NdQuadBuilder.BAKE_ROTATE_NONE;
+                    case 90 -> QuadBuilder.BAKE_ROTATE_90;
+                    case 180 -> QuadBuilder.BAKE_ROTATE_180;
+                    case 270 -> QuadBuilder.BAKE_ROTATE_270;
+                    default -> QuadBuilder.BAKE_ROTATE_NONE;
                 };
 
                 // Set UV
@@ -121,7 +122,7 @@ public class JsonModel implements QuadProvider {
                 } else {
 
                     // Not sure if this is correct, but it seems to fix things
-                    flags |= NdQuadBuilder.BAKE_LOCK_UV;
+                    flags |= QuadBuilder.BAKE_LOCK_UV;
                 }
 
                 // Set the sprite

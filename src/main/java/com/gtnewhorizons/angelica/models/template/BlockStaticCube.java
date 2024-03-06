@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models.template;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
@@ -31,7 +32,7 @@ public class BlockStaticCube implements QuadProvider {
         for (ForgeDirection f : ForgeDirection.VALID_DIRECTIONS) {
 
             builder.square(f, 0, 0, 1, 1, 0);
-            builder.spriteBake(this.textureName, NdQuadBuilder.BAKE_LOCK_UV);
+            builder.spriteBake(this.textureName, QuadBuilder.BAKE_LOCK_UV);
             builder.setColors(-1);
             this.store[f.ordinal()] = ObjectImmutableList.of(builder.build(new Quad()));
         }

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models.template;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
@@ -45,7 +46,7 @@ public class ColumnModel implements QuadProvider {
             builder.square(f, 0, 0, 1, 1, 0);
 
             final String tex = (f == ForgeDirection.UP || f == ForgeDirection.DOWN) ? this.topTex : this.sideTex;
-            builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
+            builder.spriteBake(tex, QuadBuilder.BAKE_LOCK_UV);
 
             builder.setColors(-1);
 
