@@ -16,6 +16,7 @@ public class VanillaModels {
     private static boolean init = false;
 
     public static BlockStaticCube STONE;
+    public static BlockStaticCube GLASS;
 
     public static BlockColoredCube ACACIA_LEAVES;
     public static BlockColoredCube BIRCH_LEAVES;
@@ -57,6 +58,7 @@ public class VanillaModels {
 
         if (AngelicaConfig.injectQPRendering) {
             STONE = new BlockStaticCube(Blocks.stone.getTextureName());
+            GLASS = new BlockStaticCube(Blocks.glass.getTextureName());
 
             ACACIA_LEAVES = new BlockColoredCube("leaves_acacia");
             BIRCH_LEAVES = new BlockColoredCube("leaves_birch");
