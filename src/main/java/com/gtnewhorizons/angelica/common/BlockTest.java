@@ -1,30 +1,34 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
+import lombok.Getter;
+import lombok.Setter;
 import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Random;
-import java.util.function.Supplier;
-
 import static com.gtnewhorizons.angelica.models.VanillaModels.LECTERN;
 
-public class BlockTest extends Block implements QuadProvider {
+public class BlockTest extends Block implements ModeledBlock {
+
+    @Getter
+    @Setter
+    private QuadProvider model;
 
     public BlockTest() {
 
         super(Material.rock);
         this.setBlockTextureName("missingno");
+        this.setModel((world, pos, block, meta, dir, random, color, quadPool) -> {
+            if (meta < 2 || meta > 5) meta = 2;
+            return LECTERN.models[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
+        });
     }
 
     @Override
@@ -37,14 +41,6 @@ public class BlockTest extends Block implements QuadProvider {
         for (String s : AssetLoader.testTexs) {
             reg.registerIcon(s);
         }
-    }
-
-    @Override
-    public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
-
-        if (meta < 2 || meta > 5) meta = 2;
-
-        return LECTERN.models[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
     }
 
     /**

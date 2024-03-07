@@ -4,14 +4,15 @@ import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
-import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
@@ -63,10 +64,11 @@ public class BlockRenderer {
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         boolean rendered = false;
+        final QuadProvider model = ((ModeledBlock) block).getModel();
 
-        if (block instanceof QuadProvider qBlock) {
+        if (model != null) {
 
-            final int color = qBlock.getColor(world, pos, block, meta, random);
+            final int color = model.getColor(world, pos, block, meta, random);
 
             for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
 
@@ -74,13 +76,13 @@ public class BlockRenderer {
                 List<QuadView> quads;
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-                    quads = qBlock.getQuads(world, pos, block, meta, dir, random, color, this.quadPool::getInstance);
+                    quads = model.getQuads(world, pos, block, meta, dir, random, color, this.quadPool::getInstance);
                     if (quads.isEmpty()) continue;
 
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
                     rendered = true;
 
-                    if (qBlock.isDynamic())
+                    if (model.isDynamic())
                         for (QuadView q : quads) this.quadPool.releaseInstance(q);
                 }
             }
