@@ -32,10 +32,13 @@ import net.minecraftforge.client.GuiIngameForge;
 public class HUDCaching {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public static Framebuffer framebuffer;
-    static {
-    	framebuffer = new Framebuffer(0, 0, true);
-    	framebuffer.setFramebufferColor(0, 0, 0, 0);
+    private static Framebuffer framebuffer;
+    public static Framebuffer getFramebuffer() {
+        if (framebuffer == null){
+            framebuffer = new Framebuffer(0, 0, true);
+            framebuffer.setFramebufferColor(0, 0, 0, 0);
+        }
+    	return framebuffer;
     }
     private static boolean dirty = true;
 
@@ -113,7 +116,7 @@ public class HUDCaching {
         if (dirty) {
             dirty = false;
             resetFramebuffer(mc.displayWidth, mc.displayHeight);
-            framebuffer.bindFramebuffer(false);
+            getFramebuffer().bindFramebuffer(false);
             renderingCacheOverride = true;
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
@@ -166,7 +169,7 @@ public class HUDCaching {
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        framebuffer.bindFramebufferTexture();
+        getFramebuffer().bindFramebufferTexture();
         drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
 
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
@@ -187,15 +190,15 @@ public class HUDCaching {
     }
 
     private static void resetFramebuffer(int width, int height) {
-        if (framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
-        	framebuffer.createBindFramebuffer(width, height);
-            framebuffer.setFramebufferFilter(GL11.GL_NEAREST);
+        if (getFramebuffer().framebufferWidth != width || getFramebuffer().framebufferHeight != height) {
+            getFramebuffer().createBindFramebuffer(width, height);
+            getFramebuffer().setFramebufferFilter(GL11.GL_NEAREST);
         } else {
-        	framebuffer.framebufferClear();
+            getFramebuffer().framebufferClear();
         }
         // copy depth buffer from MC
         OpenGlHelper.func_153171_g(GL30.GL_READ_FRAMEBUFFER, mc.getFramebuffer().framebufferObject);
-        OpenGlHelper.func_153171_g(GL30.GL_DRAW_FRAMEBUFFER, framebuffer.framebufferObject);
+        OpenGlHelper.func_153171_g(GL30.GL_DRAW_FRAMEBUFFER, getFramebuffer().framebufferObject);
         GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
     }
 
