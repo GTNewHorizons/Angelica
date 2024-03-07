@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.models.json;
+package com.gtnewhorizons.angelica.api;
 
 import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
@@ -21,7 +21,7 @@ public class Variant {
         this.uvLock = uvLock;
     }
 
-    Matrix4f getAffineMatrix() {
+    public Matrix4f getAffineMatrix() {
 
         return new Matrix4f()
             .translation(-.5f, -.5f, -.5f).rotateLocalY(x).rotateLocalX(y).translateLocal(.5f, .5f, .5f);

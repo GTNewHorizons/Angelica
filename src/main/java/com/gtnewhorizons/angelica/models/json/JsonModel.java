@@ -6,12 +6,8 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.gtnewhorizons.angelica.api.BlockPos;
-import com.gtnewhorizons.angelica.api.QuadBuilder;
-import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.api.*;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
-import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import com.gtnewhorizons.angelica.utils.DirUtil;
 import it.unimi.dsi.fastutil.Function;
@@ -19,6 +15,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import lombok.Getter;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
@@ -35,7 +32,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Supplier;
 
-import static com.gtnewhorizons.angelica.utils.JsonUtil.*;
+import static com.gtnewhorizons.angelica.utils.JsonUtil.loadBool;
+import static com.gtnewhorizons.angelica.utils.JsonUtil.loadFloat;
+import static com.gtnewhorizons.angelica.utils.JsonUtil.loadInt;
+import static com.gtnewhorizons.angelica.utils.JsonUtil.loadStr;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
 
 public class JsonModel implements QuadProvider {
@@ -53,7 +53,7 @@ public class JsonModel implements QuadProvider {
     private final Map<ForgeDirection, List<QuadView>> sidedQuadStore = new Object2ObjectOpenHashMap<>();
     private static final List<QuadView> EMPTY = ObjectImmutableList.of();
 
-    JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
+    public JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
         this.parentId = parentId;
         this.useAO = useAO;
         this.display = display;
@@ -64,7 +64,7 @@ public class JsonModel implements QuadProvider {
     /**
      * Makes a shallow copy of og. This allows you to bake the same model multiple times with various transformations.
      */
-    JsonModel(JsonModel og) {
+    public JsonModel(JsonModel og) {
 
         this.parentId = og.parentId;
         this.parent = og.parent;
@@ -205,7 +205,7 @@ public class JsonModel implements QuadProvider {
         }
     }
 
-    static class Deserializer implements JsonDeserializer<JsonModel> {
+    public static class Deserializer implements JsonDeserializer<JsonModel> {
 
         private Vector3f loadVec3(JsonObject in, String name) {
 

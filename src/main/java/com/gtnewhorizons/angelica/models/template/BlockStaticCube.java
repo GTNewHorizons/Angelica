@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
-import com.gtnewhorizons.angelica.models.json.Loader;
+import com.gtnewhorizons.angelica.api.Loader;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraft.block.Block;

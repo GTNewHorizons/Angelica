@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.models.json.JsonModel;
-import com.gtnewhorizons.angelica.models.json.Loader;
+import com.gtnewhorizons.angelica.api.Loader;
 import com.gtnewhorizons.angelica.models.json.ModelLocation;
-import com.gtnewhorizons.angelica.models.json.Variant;
+import com.gtnewhorizons.angelica.api.Variant;
 import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
 import com.gtnewhorizons.angelica.models.template.BlockStaticCube;
 import com.gtnewhorizons.angelica.models.template.Column3Rot;
@@ -45,7 +45,7 @@ public class VanillaModels {
         0,
         true
     );
-    public static JsonModel WORKBENCH;
+    public static QuadProvider WORKBENCH;
 
     public static Model4Rot LECTERN;
 
