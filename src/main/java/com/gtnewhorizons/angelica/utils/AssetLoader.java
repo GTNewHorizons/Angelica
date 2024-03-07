@@ -8,11 +8,19 @@ public class AssetLoader {
 
     public static final String[] injectTexs = {
         "block/stone",
-        "block/crafting_table_side",
         "block/crafting_table_front",
         "block/crafting_table_side",
         "block/crafting_table_top",
         "block/oak_planks"
+    };
+
+    // This can't be automatic because some of them are inconsistent
+    public static final String[] oldInjectTexs = {
+        "blocks/stone",
+        "blocks/crafting_table_front",
+        "blocks/crafting_table_side",
+        "blocks/crafting_table_top",
+        "blocks/planks_oak"
     };
 
     public static final String[] testTexs = {
@@ -34,16 +42,18 @@ public class AssetLoader {
             );
         }
 
+        // This ordering is intentional. injectQPRendering prioritizes 7.10 textures, so it should run first to prevent
+        // modern textures from loading.
         if (AngelicaConfig.injectQPRendering) {
             addModelAssets(
                 "block/stone",
                 "block/crafting_table");
-            addTexAssets(injectTexs);
+            addTexAssets(oldInjectTexs, injectTexs, "1.7.10");
         }
 
         if (AngelicaConfig.enableTestBlocks) {
             addModelAssets("block/lectern");
-            addTexAssets(testTexs);
+            addTexAssets(testTexs, testTexs, "1.20.4");
         }
     }
 
@@ -56,11 +66,11 @@ public class AssetLoader {
         }
     }
 
-    private static void addTexAssets(String... resourcePaths) {
-        for (String path : resourcePaths) {
-            TXLoaderCore.getAssetBuilder("minecraft/textures/" + path + ".png")
-                .setOverride("minecraft/textures/blocks/" + path + ".png")
-                .setVersion("1.20.4")
+    private static void addTexAssets(String[] resourcePaths, String[] destPaths, String version) {
+        for (int i = 0; i < resourcePaths.length; ++i) {
+            TXLoaderCore.getAssetBuilder("minecraft/textures/" + resourcePaths[i] + ".png")
+                .setOverride("minecraft/textures/blocks/" + destPaths[i] + ".png")
+                .setVersion(version)
                 .setSource(Asset.Source.CLIENT)
                 .add();
         }

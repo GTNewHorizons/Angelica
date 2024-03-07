@@ -93,9 +93,9 @@ public class VanillaModels {
             };
 
             return (switch (meta / 4) {
-                case 0 -> ret.up();
-                case 1 -> ret.x();
-                case 2 -> ret.z();
+                case 0 -> ret.updown();
+                case 1 -> ret.eastwest();
+                case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
             }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
         }
@@ -124,9 +124,9 @@ public class VanillaModels {
             };
 
             return (switch (meta / 4) {
-                case 0 -> ret.up();
-                case 1 -> ret.x();
-                case 2 -> ret.z();
+                case 0 -> ret.updown();
+                case 1 -> ret.eastwest();
+                case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
             }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
         }

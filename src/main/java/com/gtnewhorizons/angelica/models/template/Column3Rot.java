@@ -14,8 +14,6 @@ public class Column3Rot {
         .translation(-.5f, -.5f, -.5f).rotateLocalX(toRadians(90)).translateLocal(.5f, .5f, .5f);
     private static final Matrix4f ROT_Y = new Matrix4f()
         .translation(-.5f, -.5f, -.5f).rotateLocalX(toRadians(90)).rotateLocalY(toRadians(90)).translateLocal(.5f, .5f, .5f);
-    private static final Matrix4f dROT_X = new Matrix4f().rotateLocalX(toRadians(90));
-    private static final Matrix4f dROT_Y = new Matrix4f().rotateLocalX(toRadians(90)).rotateLocalY(toRadians(90));
 
     public Column3Rot(String topTex, String sideTex) {
 
@@ -24,7 +22,7 @@ public class Column3Rot {
         this.models[2] = new ColumnModel(topTex, sideTex, ROT_X);
     }
 
-    public ColumnModel up() { return this.models[0]; }
-    public ColumnModel x() { return this.models[1]; }
-    public ColumnModel z() { return this.models[2]; }
+    public ColumnModel updown() { return this.models[0]; }
+    public ColumnModel eastwest() { return this.models[1]; }
+    public ColumnModel northsouth() { return this.models[2]; }
 }
