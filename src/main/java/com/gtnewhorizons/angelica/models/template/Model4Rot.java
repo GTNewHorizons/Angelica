@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.models.template;
 
 import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.Loader;
+import com.gtnewhorizons.angelica.api.ModelLoader;
 import com.gtnewhorizons.angelica.api.Variant;
 import net.minecraft.util.ResourceLocation;
 
@@ -22,11 +22,11 @@ public class Model4Rot {
             new Variant(modelLoc, 270, 0, false)
         };
 
-        Loader.registerModels(() -> loadModels(this), this.modelIds);
+        ModelLoader.registerModels(() -> loadModels(this), this.modelIds);
     }
 
     public static void loadModels(Model4Rot model) {
         for (int i = 0; i < 4; ++i)
-            model.models[i] = Loader.getModel(model.modelIds[i]);
+            model.models[i] = ModelLoader.getModel(model.modelIds[i]);
     }
 }

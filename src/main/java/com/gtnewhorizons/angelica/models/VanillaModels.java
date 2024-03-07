@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.api.Loader;
+import com.gtnewhorizons.angelica.api.ModelLoader;
 import com.gtnewhorizons.angelica.models.json.ModelLocation;
 import com.gtnewhorizons.angelica.api.Variant;
 import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
@@ -81,7 +81,7 @@ public class VanillaModels {
             OAK_WOOD = new BlockStaticCube("log_oak");
             SPRUCE_WOOD = new BlockStaticCube("log_spruce");
 
-            Loader.registerModels(VanillaModels::loadModels,
+            ModelLoader.registerModels(VanillaModels::loadModels,
                 workbench);
         }
 
@@ -92,6 +92,6 @@ public class VanillaModels {
     }
 
     public static void loadModels() {
-        WORKBENCH = Loader.getModel(workbench);
+        WORKBENCH = ModelLoader.getModel(workbench);
     }
 }

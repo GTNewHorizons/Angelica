@@ -1,11 +1,8 @@
 package com.gtnewhorizons.angelica.models.template;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
-import com.gtnewhorizons.angelica.api.QuadBuilder;
-import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.api.*;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
-import com.gtnewhorizons.angelica.api.Loader;
+import com.gtnewhorizons.angelica.api.ModelLoader;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraft.block.Block;
@@ -34,7 +31,7 @@ public class ColumnModel implements QuadProvider {
     public ColumnModel(String topTex, String sideTex) {
         this.topTex = topTex;
         this.sideTex = sideTex;
-        Loader.registerBaker(this::bake);
+        ModelLoader.registerBaker(this::bake);
     }
 
     protected void bake() {
