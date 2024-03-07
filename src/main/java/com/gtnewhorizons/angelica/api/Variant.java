@@ -24,6 +24,9 @@ public class Variant {
     public Matrix4f getAffineMatrix() {
 
         return new Matrix4f()
-            .translation(-.5f, -.5f, -.5f).rotateLocalY(x).rotateLocalX(y).translateLocal(.5f, .5f, .5f);
+            .translation(-.5f, -.5f, -.5f)
+            .rotateLocalY(x)
+            .rotateLocalX(y)
+            .translateLocal(.5f, .5f, .5f);
     }
 }

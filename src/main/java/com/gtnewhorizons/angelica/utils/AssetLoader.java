@@ -11,7 +11,19 @@ public class AssetLoader {
         "block/crafting_table_front",
         "block/crafting_table_side",
         "block/crafting_table_top",
-        "block/oak_planks"
+        "block/oak_planks",
+        "block/acacia_log_top",
+        "block/acacia_log",
+        "block/birch_log_top",
+        "block/birch_log",
+        "block/dark_oak_log_top",
+        "block/dark_oak_log",
+        "block/jungle_log_top",
+        "block/jungle_log",
+        "block/oak_log_top",
+        "block/oak_log",
+        "block/spruce_log_top",
+        "block/spruce_log"
     };
 
     // This can't be automatic because some of them are inconsistent
@@ -20,7 +32,19 @@ public class AssetLoader {
         "blocks/crafting_table_front",
         "blocks/crafting_table_side",
         "blocks/crafting_table_top",
-        "blocks/planks_oak"
+        "blocks/planks_oak",
+        "block/log_acacia_top",
+        "block/log_acacia",
+        "block/log_birch_top",
+        "block/log_birch",
+        "block/log_big_oak_top",
+        "block/log_big_oak",
+        "block/log_jungle_top",
+        "block/log_jungle",
+        "block/log_oak_top",
+        "block/log_oak",
+        "block/log_spruce_top",
+        "block/log_spruce"
     };
 
     public static final String[] testTexs = {
@@ -38,7 +62,8 @@ public class AssetLoader {
             addModelAssets(
                 "block/block",
                 "block/cube",
-                "block/cube_all"
+                "block/cube_all",
+                "block/cube_column"
             );
         }
 
@@ -47,7 +72,13 @@ public class AssetLoader {
         if (AngelicaConfig.injectQPRendering) {
             addModelAssets(
                 "block/stone",
-                "block/crafting_table");
+                "block/crafting_table",
+                "acacia_log",
+                "birch_log",
+                "dark_oak_log",
+                "jungle_log",
+                "oak_log",
+                "spruce_log");
             addTexAssets(oldInjectTexs, injectTexs, "1.7.10");
         }
 
