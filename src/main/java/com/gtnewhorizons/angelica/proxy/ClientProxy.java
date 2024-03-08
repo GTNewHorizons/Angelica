@@ -276,7 +276,8 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    @SubscribeEvent
+    // This is a bit of a hack to prevent the FOV from being modified by other mods
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onFOVModifierUpdate(FOVUpdateEvent event) {
         if (!(boolean)Settings.DYNAMIC_FOV.option.getStore()){
             event.newfov = 1.0F;
