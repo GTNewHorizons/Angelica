@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.hudcaching;
 import java.util.ArrayList;
 import java.util.List;
 
+import cpw.mods.fml.common.gameevent.PlayerEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -27,16 +29,14 @@ import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
 // See LICENSE+HUDCaching.md for license information.
 
 public class HUDCaching {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     public static Framebuffer framebuffer;
-    static {
-    	framebuffer = new Framebuffer(0, 0, true);
-    	framebuffer.setFramebufferColor(0, 0, 0, 0);
-    }
     private static boolean dirty = true;
 
     public static boolean renderingCacheOverride;
@@ -102,10 +102,17 @@ public class HUDCaching {
         }
     }
 
+    @SubscribeEvent
+    public void onJoinWorld(WorldEvent.Load event) {
+        framebuffer = new Framebuffer(0, 0, true);
+        framebuffer.setFramebufferColor(0, 0, 0, 0);
+        LOGGER.info("World loaded - Initialized HUDCaching");
+    }
+
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
 
-        if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled) {
+        if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
