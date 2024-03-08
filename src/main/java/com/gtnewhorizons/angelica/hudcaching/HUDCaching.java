@@ -3,12 +3,7 @@ package com.gtnewhorizons.angelica.hudcaching;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.gameevent.PlayerEvent;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
