@@ -63,6 +63,9 @@ public class HUDCaching {
 
     private final List<Long> updateTimeList = new ArrayList<>(21);
     private static boolean isEnabled = true;
+
+    // moved initialization to when its registered to avoid an empty Debug category, which can cause crashes when
+    // opening the controls menu and hudcaching is disabled in the config
     private static KeyBinding toggle;
 
     public static void registerKeyBindings() {
