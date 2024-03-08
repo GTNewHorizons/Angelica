@@ -63,9 +63,10 @@ public class HUDCaching {
 
     private final List<Long> updateTimeList = new ArrayList<>(21);
     private static boolean isEnabled = true;
-    private static final KeyBinding toggle = new KeyBinding("Toggle HUDCaching", 0, "Debug");
+    private static KeyBinding toggle;
 
     public static void registerKeyBindings() {
+        toggle = new KeyBinding("Toggle HUDCaching", 0, "Debug");
         ClientRegistry.registerKeyBinding(toggle);
     }
 
@@ -86,7 +87,7 @@ public class HUDCaching {
 
     @SubscribeEvent
     public void onKeypress(InputEvent.KeyInputEvent event) {
-        if (toggle.isPressed()) {
+        if (toggle != null && toggle.isPressed()) {
             isEnabled = !isEnabled;
             final String msg = isEnabled ? "Enabled HUDCaching" : "Disabled HUDCaching";
             if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(msg));
