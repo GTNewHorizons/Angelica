@@ -60,11 +60,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderer.scheduleTerrainUpdate();
     }
 
-    @Override
-    public int getChunksSubmitted() {
-        return this.renderer.getChunksSubmitted();
-    }
-
     @Inject(method="<init>", at=@At("RETURN"))
     private void sodium$initRenderer(Minecraft mc, CallbackInfo ci) {
         this.renderer = SodiumWorldRenderer.create(mc);

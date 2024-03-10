@@ -37,6 +37,7 @@ import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -97,7 +98,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     @Getter
     private int submitted;
-    private int totalSubmitted;
 
     private final boolean translucencySorting;
 
@@ -580,7 +580,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             sortedAnything = true;
             submitted++;
         }
-        totalSubmitted += submitted;
+        WorldRenderer.chunksUpdated += submitted;
 
         this.dirty |= submitted > 0;
 
@@ -594,13 +594,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
             this.dirty = true;
             this.backend.upload(RenderDevice.INSTANCE.createCommandList(), this.builder.filterChunkBuilds(new FutureDequeDrain<>(futures)));
         }
-    }
-
-    public int getAndResetSubmitted() {
-        // Return how many chunks were submitted since the last call to this method
-        final int submitted = totalSubmitted;
-        totalSubmitted = 0;
-        return submitted;
     }
 
     public void markDirty() {
