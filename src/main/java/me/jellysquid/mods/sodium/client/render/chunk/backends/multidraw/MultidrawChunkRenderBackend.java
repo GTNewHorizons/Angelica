@@ -42,6 +42,7 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.Util;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -238,19 +239,31 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
             commandList.uploadData(this.commandBuffer, this.commandClientBufferBuilder.getBuffer());
         }
 
-        long pointer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBufferAddress() : 0L;
+        long pointer = 0L;
+        ByteBuffer pointerBuffer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBuffer() : null;
+        int originalPointerBufferPos = pointerBuffer.position();
 
         for (ChunkRegion<?> region : this.pendingBatches) {
             final ChunkDrawCallBatcher batch = region.getDrawBatcher();
 
             if (!batch.isEmpty()) {
 	            try (DrawCommandList drawCommandList = commandList.beginTessellating(region.getTessellation())) {
-	                drawCommandList.multiDrawArraysIndirect(pointer, batch.getCount(), 0 /* tightly packed */);
+	                if(pointerBuffer == null) {
+	                    drawCommandList.multiDrawArraysIndirect(pointer, batch.getCount(), 0 /* tightly packed */);
+	                } else {
+	                    drawCommandList.multiDrawArraysIndirect(pointerBuffer, batch.getCount(), 0 /* tightly packed */);
+	                }
 	            }
             }
 
-            pointer += batch.getArrayLength();
+            if(pointerBuffer == null) {
+                pointer += batch.getArrayLength();
+            } else {
+                pointerBuffer.position(pointerBuffer.position() + batch.getArrayLength());
+            }
         }
+        
+        pointerBuffer.position(originalPointerBufferPos);
 
         this.pendingBatches.clear();
     }
