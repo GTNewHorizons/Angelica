@@ -240,8 +240,14 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
         }
 
         long pointer = 0L;
-        ByteBuffer pointerBuffer = this.commandBuffer == null ? this.commandClientBufferBuilder.getBuffer() : null;
-        int originalPointerBufferPos = pointerBuffer.position();
+        ByteBuffer pointerBuffer;
+        int originalPointerBufferPos = 0;
+        if (this.commandBuffer != null) {
+            pointerBuffer = null;
+        } else {
+            pointerBuffer = this.commandClientBufferBuilder.getBuffer();
+            originalPointerBufferPos = pointerBuffer.position();
+        }
 
         for (ChunkRegion<?> region : this.pendingBatches) {
             final ChunkDrawCallBatcher batch = region.getDrawBatcher();
@@ -262,8 +268,9 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
                 pointerBuffer.position(pointerBuffer.position() + batch.getArrayLength());
             }
         }
-        
-        pointerBuffer.position(originalPointerBufferPos);
+
+        if (pointerBuffer != null)
+            pointerBuffer.position(originalPointerBufferPos);
 
         this.pendingBatches.clear();
     }
