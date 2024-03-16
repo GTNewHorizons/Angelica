@@ -21,10 +21,10 @@ public class AnimationsRenderUtils {
         if (textureAtlasSprite != null && textureAtlasSprite.hasAnimationMetadata()) {
             // null if called by anything but chunk render cache update (for example to get blocks rendered as items in
             // inventory)
-            if (blockAccess instanceof ITexturesCache) {
-                ((ITexturesCache) blockAccess).getRenderedTextures().add(textureAtlasSprite);
-            } else {
-                ((IPatchedTextureAtlasSprite) textureAtlasSprite).markNeedsAnimationUpdate();
+            if (blockAccess instanceof ITexturesCache texturesCache) {
+                texturesCache.getRenderedTextures().add(textureAtlasSprite);
+            } else if(textureAtlasSprite instanceof IPatchedTextureAtlasSprite patchedSprite){
+                patchedSprite.markNeedsAnimationUpdate();
             }
         }
     }
