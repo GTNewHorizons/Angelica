@@ -52,7 +52,6 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-import static java.lang.Math.min;
 
 public class ClientProxy extends CommonProxy {
     final Minecraft mc = Minecraft.getMinecraft();
@@ -211,9 +210,9 @@ public class ClientProxy extends CommonProxy {
                     event.left.set(i + 4, String.format("lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
                         chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
-                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, min(bY, 255), bZ & 15),
-                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, min(bY, 255), bZ & 15),
-                        chunk.getBlockLightValue(bX & 15, bY, bZ & 15, 0)));
+                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
             event.setCanceled(true);
