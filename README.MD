@@ -1,4 +1,7 @@
-# Angelica
+# Angelica<img src="img/logo-readme.png" align="right">
+
+<sup>**[CurseForge](https://www.curseforge.com/minecraft/mc-mods/angelica) | [Modrinth](https://modrinth.com/mod/angelica)**</sup>
+
 * The little Angle [sic] that supports shaders while saving your fps from a certain death -boubou
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
