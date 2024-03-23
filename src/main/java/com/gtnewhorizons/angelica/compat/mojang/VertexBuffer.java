@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -63,6 +64,9 @@ public class VertexBuffer implements AutoCloseable {
     public void draw() {
         GL11.glDrawArrays(drawMode, 0, this.vertexCount);
     }
+    public void drawInstanced(int count) {
+        GL31.glDrawArraysInstanced(drawMode, 0, this.vertexCount, count);
+    }
 
     public void setupState() {
         if(format == null) throw new IllegalStateException("No format specified for VBO setup");
@@ -77,6 +81,11 @@ public class VertexBuffer implements AutoCloseable {
     public void render() {
         setupState();
         draw();
+        cleanupState();
+    }
+    public void renderInstanced(int count) {
+        setupState();
+        drawInstanced(count);
         cleanupState();
     }
 }

@@ -11,7 +11,11 @@ import com.gtnewhorizons.angelica.models.VanillaModels;
 import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.testing.BlockTESR;
+import com.gtnewhorizons.angelica.testing.TESR;
+import com.gtnewhorizons.angelica.testing.TileTESR;
 import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -20,6 +24,7 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
+import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
@@ -33,6 +38,7 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.item.Item;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
@@ -64,8 +70,10 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        if (AngelicaConfig.enableTestBlocks)
+        if (AngelicaConfig.enableTestBlocks) {
             Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
+
+        }
         if (AngelicaConfig.injectQPRendering)
             Loader.registerModels(VanillaModels::loadModels, VanillaModels.stoneVariant);
     }
@@ -107,6 +115,12 @@ public class ClientProxy extends CommonProxy {
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
+        }
+
+        if (AngelicaConfig.enableTestBlocks) {
+            BlockTESR.setRenderID(RenderingRegistry.getNextAvailableRenderId());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileTESR.class, new TESR());
+
         }
 
 

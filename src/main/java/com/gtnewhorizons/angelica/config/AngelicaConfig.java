@@ -24,7 +24,7 @@ public class AngelicaConfig {
     public static boolean injectQPRendering;
 
     @Config.Comment("Enable Angelica's test blocks")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.Ignore()
     public static boolean enableTestBlocks;
 
