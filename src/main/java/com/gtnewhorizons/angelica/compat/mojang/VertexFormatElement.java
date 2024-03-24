@@ -24,8 +24,8 @@ public class VertexFormatElement {
         this.byteSize = type.getSize() * count;
     }
 
-    public void setupBufferState(long l, int i) {
-        this.usage.setupBufferState(this.count, this.type.getGlType(), i, l, this.index);
+    public void setupBufferState(long offset, int stride) {
+        this.usage.setupBufferState(this.count, this.type.getGlType(), stride, offset, this.index);
     }
 
     public void clearBufferState() {
@@ -33,32 +33,32 @@ public class VertexFormatElement {
     }
 
     public enum Usage {
-        POSITION("Position", (i, j, k, l, m) -> {
-            GL11.glVertexPointer(i, j, k, l);
+        POSITION("Position", (size, type, stride, pointer, index) -> {
+            GL11.glVertexPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        }, (i) -> GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY)),
-        NORMAL("Normal", (i, j, k, l, m) -> {
-            GL11.glNormalPointer(j, k, l);
+        }, index -> GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY)),
+        NORMAL("Normal", (size, type, stride, pointer, index) -> {
+            GL11.glNormalPointer(type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_NORMAL_ARRAY);
-        }, (i) -> GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY)),
-        COLOR("Vertex Color", (i, j, k, l, m) -> {
-            GL11.glColorPointer(i, j, k, l);
+        }, index -> GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY)),
+        COLOR("Vertex Color", (size, type, stride, pointer, index) -> {
+            GL11.glColorPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
-        }, i -> GL11.glDisableClientState(GL11.GL_COLOR_ARRAY)),
-        UV("UV", (i, j, k, l, m) -> {
-            GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + m);
-            GL11.glTexCoordPointer(i, j, k, l);
+        }, index -> GL11.glDisableClientState(GL11.GL_COLOR_ARRAY)),
+        UV("UV", (size, type, stride, pointer, index) -> {
+            GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + index);
+            GL11.glTexCoordPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
-        }, i -> {
-            GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + i);
+        }, index -> {
+            GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + index);
             GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
         }),
-        PADDING("Padding", (i, j, k, l, m) -> {}, i-> {}),
-        GENERIC("Generic", (i, j, k, l, m) -> {
-            GL20.glEnableVertexAttribArray(m);
-            GL20.glVertexAttribPointer(m, i, j, false, k, l);
+        PADDING("Padding", (size, type, stride, pointer, index) -> {}, index-> {}),
+        GENERIC("Generic", (size, type, stride, pointer, index) -> {
+            GL20.glEnableVertexAttribArray(index);
+            GL20.glVertexAttribPointer(index, size, type, false, stride, pointer);
         }, GL20::glDisableVertexAttribArray);
 
         @Getter private final String name;
@@ -71,16 +71,16 @@ public class VertexFormatElement {
             this.clearState = clearState;
         }
 
-        private void setupBufferState(int i, int j, int k, long l, int m) {
-            this.setupState.setupBufferState(i, j, k, l, m);
+        private void setupBufferState(int size, int type, int stride, long pointer, int index) {
+            this.setupState.setupBufferState(size, type, stride, pointer, index);
         }
 
-        public void clearBufferState(int i) {
-            this.clearState.accept(i);
+        public void clearBufferState(int index) {
+            this.clearState.accept(index);
         }
 
         interface SetupState {
-            void setupBufferState(int i, int j, int k, long l, int m);
+            void setupBufferState(int size, int type, int stride, long pointer, int index);
         }
     }
 
