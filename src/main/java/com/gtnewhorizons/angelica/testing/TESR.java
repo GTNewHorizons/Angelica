@@ -38,7 +38,8 @@ public class TESR extends TileEntitySpecialRenderer  {
     /** Z edges of the helix */
     private static final float[] edgeZ = { SHORT_DISTANCE, -SHORT_DISTANCE, -LONG_DISTANCE, -LONG_DISTANCE,
         -SHORT_DISTANCE, SHORT_DISTANCE, LONG_DISTANCE, LONG_DISTANCE };
-
+    private static final float[] xOffsets = {0.0f, 0.0f, 1.0f, 1.0f};
+    private static final float[] zOffsets = {0.0f, 1.0f, 1.0f, 0.0f};
     boolean isInitialized = false;
     VertexBuffer vbo1;
 
@@ -215,7 +216,7 @@ public class TESR extends TileEntitySpecialRenderer  {
         for(int i = 0 ; i < 4 ; i ++) {
 
             modelProjection.pushMatrix();
-            modelProjection.translate((float) x, (float) y, (float) z);
+            modelProjection.translate((float) x + xOffsets[i], (float) y, (float) z + zOffsets[i] );
             modelProjection.rotate((float) Math.toRadians(90 * i), 0, 1, 0);
             modelProjection.get(0, bufModelViewProjection);
 
