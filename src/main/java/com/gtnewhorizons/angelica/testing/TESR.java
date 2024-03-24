@@ -216,13 +216,13 @@ public class TESR extends TileEntitySpecialRenderer  {
         for(int i = 0 ; i < 4 ; i ++) {
 
             modelProjection.pushMatrix();
-            modelProjection.translate((float) x + xOffsets[i], (float) y, (float) z + zOffsets[i] );
+            modelProjection.translate((float) x + xOffsets[i], (float) y - 23, (float) z + zOffsets[i] );
             modelProjection.rotate((float) Math.toRadians(90 * i), 0, 1, 0);
             modelProjection.get(0, bufModelViewProjection);
 
             GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
 
-            vbo1.renderInstanced(1);
+            vbo1.renderInstanced(sections);
             modelProjection.popMatrix();
         }
         GL30.glBindVertexArray(0);
