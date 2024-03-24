@@ -47,7 +47,7 @@ public abstract class GlProgram extends GlObject {
      * @throws NullPointerException If no uniform exists with the given name
      */
     public int getUniformLocation(String name) {
-        int index = GL20.glGetUniformLocation(this.handle(), name);
+        final int index = GL20.glGetUniformLocation(this.handle(), name);
 
         if (index < 0) {
             throw new NullPointerException("No uniform exists with name: " + name);
@@ -89,13 +89,13 @@ public abstract class GlProgram extends GlObject {
         public <P extends GlProgram> P build(ProgramFactory<P> factory) {
         	GL20.glLinkProgram(this.program);
 
-            String log = GL20.glGetProgramInfoLog(this.program, GL20.GL_INFO_LOG_LENGTH);
+            final String log = GL20.glGetProgramInfoLog(this.program, GL20.GL_INFO_LOG_LENGTH);
 
             if (!log.isEmpty()) {
                 LOGGER.warn("Program link log for " + this.name + ": " + log);
             }
 
-            int result = GL20.glGetProgrami(this.program, GL20.GL_LINK_STATUS);
+            final int result = GL20.glGetProgrami(this.program, GL20.GL_LINK_STATUS);
 
             if (result != GL11.GL_TRUE) {
                 throw new RuntimeException("Shader program linking failed, see log for details");

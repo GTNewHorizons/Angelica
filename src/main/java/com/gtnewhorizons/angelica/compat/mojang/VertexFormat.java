@@ -14,11 +14,9 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class VertexFormat {
-    @Getter
-    protected final ImmutableList<VertexFormatElement> elements;
-    protected final IntList offsets = new IntArrayList();
-    @Getter
-    protected final int vertexSize;
+    @Getter protected final ImmutableList<VertexFormatElement> elements;
+    @Getter protected final IntList offsets = new IntArrayList();
+    @Getter protected final int vertexSize;
 
     protected IWriteQuads quadWriter;
 
@@ -53,7 +51,7 @@ public class VertexFormat {
         final int listSize = list.size();
 
         for(int j = 0; j < listSize; ++j) {
-            list.get(j).setupBufferState(l + this.offsets.getInt(j), i);
+            list.get(j).setupBufferState(j, l + this.offsets.getInt(j), i);
         }
     }
 
@@ -71,7 +69,7 @@ public class VertexFormat {
         final int listSize = list.size();
 
         for(int i = 0 ; i < listSize; ++i) {
-            list.get(i).clearBufferState();
+            list.get(i).clearBufferState(i);
         }
     }
 

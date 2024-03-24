@@ -5,7 +5,6 @@ layout(location = 1) in vec2 a_TexCoord;
 
 uniform mat4 u_ModelProjection;
 uniform float u_SectionHeight;
-uniform vec2 u_TextureScale;
 
 out vec2 v_TexCoord;
 
@@ -17,5 +16,5 @@ void main() {
 
     gl_Position = projectedPosition;
 
-    v_TexCoord = a_TexCoord * u_TextureScale;
+    v_TexCoord = a_TexCoord;
 }

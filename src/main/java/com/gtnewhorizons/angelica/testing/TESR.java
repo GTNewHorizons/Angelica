@@ -18,6 +18,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -94,7 +95,7 @@ public class TESR extends TileEntitySpecialRenderer  {
     }
 
     private static int createProgram(String vert, String frag) {
-        int vertId = 0, fragId = 0, program = 0;
+        int vertId = 0, fragId = 0, program;
         if(vert != null) vertId = createShader(vert, GL20.GL_VERTEX_SHADER);
         if(frag != null) fragId = createShader(frag, GL20.GL_FRAGMENT_SHADER);
 
@@ -142,11 +143,11 @@ public class TESR extends TileEntitySpecialRenderer  {
         }
     }
 
+    private static int vao;
     private static int cableProgram;
     private static int uModelProjectionMatrix;
     private static int uBlockTex;
     private static int uSectionHeight;
-    private static int uTextureScale;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4f modelProjection = new Matrix4f();
@@ -158,16 +159,6 @@ public class TESR extends TileEntitySpecialRenderer  {
 
     @Override
     public void renderTileEntityAt(TileEntity tile, double x, double y, double z, float timeSinceLastTick) {
-        GL11.glPushMatrix();
-
-//        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-//        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, 10497.0F);
-//        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, 10497.0F);
-//        GL11.glDisable(GL11.GL_LIGHTING);
-//        GL11.glEnable(GL11.GL_BLEND);
-//        GL11.glDepthMask(true);
-//        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         this.bindTexture(TextureMap.locationBlocksTexture);
 
@@ -186,19 +177,27 @@ public class TESR extends TileEntitySpecialRenderer  {
             tes.startDrawingQuads();
 
             clockwiseHelixPart(tes, 0, 0, 0, 0, side, 0.75, minU, maxU, minV, maxV);
-            vbo1 = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION_TEXTURE);
+
+            vao = GL30.glGenVertexArrays();
+            GL30.glBindVertexArray(vao);
+
+            vbo1 = TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE);
+            GL30.glBindVertexArray(0);
 
             cableProgram = createProgram("/assets/angelica/shaders/tesr.v.glsl", "/assets/angelica/shaders/tesr.f.glsl");
+            GL20.glUseProgram(cableProgram);
+
             GL20.glBindAttribLocation(cableProgram, 0, "a_Pos");
             GL20.glBindAttribLocation(cableProgram, 1, "a_TexCoord");
+
             uModelProjectionMatrix = GL20.glGetUniformLocation(cableProgram, "u_ModelProjection");
             uBlockTex = GL20.glGetUniformLocation(cableProgram, "u_BlockTex");
             uSectionHeight = GL20.glGetUniformLocation(cableProgram, "u_SectionHeight");
-            uTextureScale = GL20.glGetUniformLocation(cableProgram, "u_TextureScale");
 
-            GL20.glUseProgram(cableProgram);
             GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
-            GL20.glUniform2f(uTextureScale, 1.0f / 32768.0f, 1.0f / 32768.0f);
+            GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
+
+
             GL20.glUseProgram(0);
 
             isInitialized = true;
@@ -208,37 +207,25 @@ public class TESR extends TileEntitySpecialRenderer  {
 
         GL20.glUseProgram(cableProgram);
 
-//        GL11.glTranslated(x, y, z);
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
         modelProjection.translate((float) x, (float) y - 23, (float) z);
 
         modelProjection.get(0, bufModelViewProjection);
 
-        GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
         GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
 
+        GL30.glBindVertexArray(vao);
         vbo1.renderInstanced(sections);
+        GL30.glBindVertexArray(0);
 
         GL20.glUseProgram(0);
 
-
-        // Reset open GL
-//        GL11.glDisable(GL11.GL_BLEND);
-//        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-//        GL11.glDepthMask(false);
-//        GL11.glEnable(GL11.GL_LIGHTING);
-//        GL11.glEnable(GL11.GL_TEXTURE_2D);
-//        GL11.glDepthMask(true);
-
-        GL11.glPopMatrix();
     }
 
     private void clockwiseHelixPart(Tessellator tes, double x, double y, double z, int offset, double side,
         double width, double minU, double maxU, double minV, double maxV) {
 
-        final double sectionHeight = 8 * side;
-//        final int sections = (int) Math.ceil(CABLE_HEIGHT / sectionHeight);
         // spotless:off
         for (int i = 0; i < 8; i++) {
             final int j = (i + offset) % 8;
