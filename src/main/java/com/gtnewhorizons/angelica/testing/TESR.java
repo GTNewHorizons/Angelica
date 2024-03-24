@@ -14,6 +14,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import org.apache.logging.log4j.Level;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -150,7 +151,7 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uSectionHeight;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
-    private static final Matrix4f modelProjection = new Matrix4f();
+    private static final Matrix4fStack modelProjection = new Matrix4fStack(2);
 
     private static final double CABLE_HEIGHT = 512.0;
     private static final double side = 2.0 / 5.4;
@@ -209,14 +210,20 @@ public class TESR extends TileEntitySpecialRenderer  {
 
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
-        modelProjection.translate((float) x, (float) y - 23, (float) z);
-
-        modelProjection.get(0, bufModelViewProjection);
-
-        GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
 
         GL30.glBindVertexArray(vao);
-        vbo1.renderInstanced(sections);
+        for(int i = 0 ; i < 4 ; i ++) {
+
+            modelProjection.pushMatrix();
+            modelProjection.translate((float) x, (float) y, (float) z);
+            modelProjection.rotate((float) Math.toRadians(90 * i), 0, 1, 0);
+            modelProjection.get(0, bufModelViewProjection);
+
+            GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
+
+            vbo1.renderInstanced(1);
+            modelProjection.popMatrix();
+        }
         GL30.glBindVertexArray(0);
 
         GL20.glUseProgram(0);
