@@ -36,20 +36,24 @@ public class VertexFormatElement {
         POSITION("Position", (size, type, stride, pointer, index) -> {
             GL11.glVertexPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+            GL20.glVertexAttribPointer(index, size, type, false, stride, pointer);
         }, index -> GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY)),
         NORMAL("Normal", (size, type, stride, pointer, index) -> {
             GL11.glNormalPointer(type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_NORMAL_ARRAY);
+            GL20.glVertexAttribPointer(index, size, type, false, stride, pointer);
         }, index -> GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY)),
         COLOR("Vertex Color", (size, type, stride, pointer, index) -> {
             GL11.glColorPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
+            GL20.glVertexAttribPointer(index, size, type, false, stride, pointer);
         }, index -> GL11.glDisableClientState(GL11.GL_COLOR_ARRAY)),
         UV("UV", (size, type, stride, pointer, index) -> {
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + index);
             GL11.glTexCoordPointer(size, type, stride, pointer);
             GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
+            GL20.glVertexAttribPointer(index, size, type, false, stride, pointer);
         }, index -> {
             GL13.glClientActiveTexture(GL13.GL_TEXTURE0 + index);
             GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
