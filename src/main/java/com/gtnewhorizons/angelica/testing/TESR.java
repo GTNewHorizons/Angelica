@@ -146,26 +146,31 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uModelProjectionMatrix;
     private static int uBlockTex;
     private static int uSectionHeight;
+    private static int uTextureScale;
+
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4f modelProjection = new Matrix4f();
+
+    private static final double CABLE_HEIGHT = 512.0;
+    private static final double side = 2.0 / 5.4;
+    private static final double sectionHeight = 8 * side;
+    private static final int sections = (int) Math.ceil(CABLE_HEIGHT / sectionHeight);
 
     @Override
     public void renderTileEntityAt(TileEntity tile, double x, double y, double z, float timeSinceLastTick) {
         GL11.glPushMatrix();
 
-        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, 10497.0F);
-        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, 10497.0F);
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDepthMask(true);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+//        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+//        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, 10497.0F);
+//        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, 10497.0F);
+//        GL11.glDisable(GL11.GL_LIGHTING);
+//        GL11.glEnable(GL11.GL_BLEND);
+//        GL11.glDepthMask(true);
+//        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        this.field_147501_a.field_147553_e.bindTexture(TextureMap.locationBlocksTexture);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        this.bindTexture(TextureMap.locationBlocksTexture);
 
-        final double side = 2.0 / 5.4;
-        final double sectionHeight = 8 * side;
-        final int sections = (int) Math.ceil(CABLE_HEIGHT / sectionHeight);
 
         if(!isInitialized) {
             // Draw the cable
@@ -179,7 +184,7 @@ public class TESR extends TileEntitySpecialRenderer  {
 
             tes.setColorOpaque_F(1F, 1F, 1F);
             tes.startDrawingQuads();
-            // TODO: Set this to 0,0,0 and offset via the matrix stack
+
             clockwiseHelixPart(tes, 0, 0, 0, 0, side, 0.75, minU, maxU, minV, maxV);
             vbo1 = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION_TEXTURE);
 
@@ -189,6 +194,12 @@ public class TESR extends TileEntitySpecialRenderer  {
             uModelProjectionMatrix = GL20.glGetUniformLocation(cableProgram, "u_ModelProjection");
             uBlockTex = GL20.glGetUniformLocation(cableProgram, "u_BlockTex");
             uSectionHeight = GL20.glGetUniformLocation(cableProgram, "u_SectionHeight");
+            uTextureScale = GL20.glGetUniformLocation(cableProgram, "u_TextureScale");
+
+            GL20.glUseProgram(cableProgram);
+            GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
+            GL20.glUniform2f(uTextureScale, 1.0f / 32768.0f, 1.0f / 32768.0f);
+            GL20.glUseProgram(0);
 
             isInitialized = true;
             LOGGER.info("Initialized TESR. Sections " + sections + " Shader " + cableProgram);
@@ -197,7 +208,7 @@ public class TESR extends TileEntitySpecialRenderer  {
 
         GL20.glUseProgram(cableProgram);
 
-        GL11.glTranslated(x, y, z);
+//        GL11.glTranslated(x, y, z);
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
         modelProjection.translate((float) x, (float) y - 23, (float) z);
@@ -205,25 +216,23 @@ public class TESR extends TileEntitySpecialRenderer  {
         modelProjection.get(0, bufModelViewProjection);
 
         GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
-        GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
         GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
 
         vbo1.renderInstanced(sections);
+
         GL20.glUseProgram(0);
 
 
         // Reset open GL
-        GL11.glDisable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-        GL11.glDepthMask(false);
-        GL11.glEnable(GL11.GL_LIGHTING);
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glDepthMask(true);
+//        GL11.glDisable(GL11.GL_BLEND);
+//        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+//        GL11.glDepthMask(false);
+//        GL11.glEnable(GL11.GL_LIGHTING);
+//        GL11.glEnable(GL11.GL_TEXTURE_2D);
+//        GL11.glDepthMask(true);
 
         GL11.glPopMatrix();
     }
-
-    private static final double CABLE_HEIGHT = 512.0;
 
     private void clockwiseHelixPart(Tessellator tes, double x, double y, double z, int offset, double side,
         double width, double minU, double maxU, double minV, double maxV) {
