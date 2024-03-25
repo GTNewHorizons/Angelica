@@ -89,6 +89,7 @@ public class SodiumGameOptionPages {
                 .setBinding((opts, value) -> opts.clouds = value, (opts) -> opts.clouds)
                 .setImpact(OptionImpact.LOW)
                 .build());
+        firstGroupBuilder.add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
 
 

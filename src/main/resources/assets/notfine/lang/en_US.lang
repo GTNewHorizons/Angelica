@@ -36,3 +36,4 @@ options.title.particle=Particle Settings
 options.title.sky=Atmosphere Settings
 options.title.video=Video Settings
 options.total_stars=Star Density
+options.void_fog=Void Fog
