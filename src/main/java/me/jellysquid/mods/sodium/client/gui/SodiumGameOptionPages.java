@@ -92,12 +92,12 @@ public class SodiumGameOptionPages {
         firstGroupBuilder.add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
 
-
+        int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(I18n.format("options.guiScale"))
                         .setTooltip(I18n.format("sodium.options.gui_scale.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 3, 1, ControlValueFormatter.guiScale()))
+                        .setControl(option -> new SliderControl(option, 0, maxGuiScale, 1, ControlValueFormatter.guiScale()))
                         .setBinding((opts, value) -> {
                             opts.guiScale = value;
                             // Resizing our window
