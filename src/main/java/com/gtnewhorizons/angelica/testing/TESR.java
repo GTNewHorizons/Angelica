@@ -13,7 +13,6 @@ import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import org.apache.logging.log4j.Level;
-import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -150,6 +149,8 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uModelProjectionMatrix;
     private static int uBlockTex;
     private static int uSectionHeight;
+    private static int uTime;
+    private static int uBaseY;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4fStack modelProjection = new Matrix4fStack(2);
@@ -195,6 +196,8 @@ public class TESR extends TileEntitySpecialRenderer  {
             uModelProjectionMatrix = GL20.glGetUniformLocation(cableProgram, "u_ModelProjection");
             uBlockTex = GL20.glGetUniformLocation(cableProgram, "u_BlockTex");
             uSectionHeight = GL20.glGetUniformLocation(cableProgram, "u_SectionHeight");
+            uTime = GL20.glGetUniformLocation(cableProgram, "u_Time");
+            uBaseY = GL20.glGetUniformLocation(cableProgram, "u_BaseY");
 
             GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
             GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
@@ -208,6 +211,8 @@ public class TESR extends TileEntitySpecialRenderer  {
         }
 
         GL20.glUseProgram(cableProgram);
+        GL20.glUniform1f(uTime, ((tile.getWorldObj().getWorldTime() % 20) + timeSinceLastTick) / 20f);
+        GL20.glUniform1i(uBaseY, (int) y - 23);
 
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
