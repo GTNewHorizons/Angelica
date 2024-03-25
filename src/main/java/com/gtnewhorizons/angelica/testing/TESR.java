@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import org.apache.logging.log4j.Level;
+import org.joml.Math;
 import org.joml.Matrix4fStack;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -150,6 +151,8 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uSectionHeight;
     private static int uTime;
     private static int uBaseY;
+    private static int uGlowU;
+    private static int uGlowV;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4fStack modelProjection = new Matrix4fStack(2);
@@ -171,6 +174,11 @@ public class TESR extends TileEntitySpecialRenderer  {
             final double maxU = BlockTESR.cableIcon.getMaxU();
             final double minV = BlockTESR.cableIcon.getMinV();
             final double maxV = BlockTESR.cableIcon.getMaxV();
+
+            final float glowMinU = (float) Math.lerp(minU, maxU, 7f / 16f);
+            final float glowMaxU = (float) Math.lerp(minU, maxU, 9f / 16f);
+            final float glowMinV = (float) Math.lerp(minV, maxV, 7f / 16f);
+            final float glowMaxV = (float) Math.lerp(minV, maxV, 9f / 16f);
 
             TessellatorManager.startCapturing();
             final CapturingTessellator tes = (CapturingTessellator) TessellatorManager.get();
@@ -197,10 +205,13 @@ public class TESR extends TileEntitySpecialRenderer  {
             uSectionHeight = GL20.glGetUniformLocation(cableProgram, "u_SectionHeight");
             uTime = GL20.glGetUniformLocation(cableProgram, "u_Time");
             uBaseY = GL20.glGetUniformLocation(cableProgram, "u_BaseY");
+            uGlowU = GL20.glGetUniformLocation(cableProgram, "u_GlowU");
+            uGlowV = GL20.glGetUniformLocation(cableProgram, "u_GlowV");
 
             GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
             GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
-
+            GL20.glUniform2f(uGlowU, glowMinU, glowMaxU);
+            GL20.glUniform2f(uGlowV, glowMinV, glowMaxV);
 
             GL20.glUseProgram(0);
 
