@@ -10,7 +10,6 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import org.apache.logging.log4j.Level;
 import org.joml.Matrix4fStack;
@@ -168,10 +167,10 @@ public class TESR extends TileEntitySpecialRenderer  {
 
         if(!isInitialized) {
             // Draw the cable
-            final double minU = Blocks.diamond_block.getIcon(0, 0).getMinU();
-            final double maxU = Blocks.diamond_block.getIcon(0, 0).getMaxU();
-            final double minV = Blocks.diamond_block.getIcon(0, 0).getMinV();
-            final double maxV = Blocks.diamond_block.getIcon(0, 0).getMaxV();
+            final double minU = BlockTESR.cableIcon.getMinU();
+            final double maxU = BlockTESR.cableIcon.getMaxU();
+            final double minV = BlockTESR.cableIcon.getMinV();
+            final double maxV = BlockTESR.cableIcon.getMaxV();
 
             TessellatorManager.startCapturing();
             final CapturingTessellator tes = (CapturingTessellator) TessellatorManager.get();
