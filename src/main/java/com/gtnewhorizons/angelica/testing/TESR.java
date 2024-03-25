@@ -1,13 +1,8 @@
 package com.gtnewhorizons.angelica.testing;
 
-import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import cpw.mods.fml.common.FMLLog;
 import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -18,7 +13,6 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -28,19 +22,7 @@ import java.nio.FloatBuffer;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class TESR extends TileEntitySpecialRenderer  {
-    private static final float LONG_DISTANCE = (float) (1.0f + Math.sqrt(2.0f)) / 5.4f;
-    /** Distance from center to end of parallel side */
-    private static final float SHORT_DISTANCE = 1.0f / 5.4f;
-
-    private static final float[] edgeX = { LONG_DISTANCE, LONG_DISTANCE, SHORT_DISTANCE, -SHORT_DISTANCE,
-        -LONG_DISTANCE, -LONG_DISTANCE, -SHORT_DISTANCE, SHORT_DISTANCE };
-    /** Z edges of the helix */
-    private static final float[] edgeZ = { SHORT_DISTANCE, -SHORT_DISTANCE, -LONG_DISTANCE, -LONG_DISTANCE,
-        -SHORT_DISTANCE, SHORT_DISTANCE, LONG_DISTANCE, LONG_DISTANCE };
-    private static final float[] xOffsets = {0.0f, 0.0f, 1.0f, 1.0f};
-    private static final float[] zOffsets = {0.0f, 1.0f, 1.0f, 0.0f};
     boolean isInitialized = false;
-    VertexBuffer vbo1;
 
     private static String readFileAsString(String filename) throws Exception {
         StringBuilder source = new StringBuilder();
@@ -144,7 +126,6 @@ public class TESR extends TileEntitySpecialRenderer  {
         }
     }
 
-    private static int vao;
     private static int cableProgram;
     private static int uModelProjectionMatrix;
     private static int uBlockTex;
@@ -153,48 +134,34 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uBaseY;
     private static int uGlowU;
     private static int uGlowV;
+    private static int uUV;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4fStack modelProjection = new Matrix4fStack(2);
 
-    private static final double CABLE_HEIGHT = 512.0;
-    private static final double side = 2.0 / 5.4;
-    private static final double sectionHeight = 8 * side;
-    private static final int sections = (int) Math.ceil(CABLE_HEIGHT / sectionHeight);
+    private static final float CABLE_HEIGHT = 512.0f;
+    private static final float SIDE = 2.0f / 5.4f;
+    private static final float SECTION_HEIGHT = 8 * SIDE;
+    private static final int SECTIONS = (int) Math.ceil(CABLE_HEIGHT / SECTION_HEIGHT);
 
     @Override
     public void renderTileEntityAt(TileEntity tile, double x, double y, double z, float timeSinceLastTick) {
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         this.bindTexture(TextureMap.locationBlocksTexture);
 
-
         if(!isInitialized) {
             // Draw the cable
-            final double minU = BlockTESR.cableIcon.getMinU();
-            final double maxU = BlockTESR.cableIcon.getMaxU();
-            final double minV = BlockTESR.cableIcon.getMinV();
-            final double maxV = BlockTESR.cableIcon.getMaxV();
+            final float minU = BlockTESR.cableIcon.getMinU();
+            final float maxU = BlockTESR.cableIcon.getMaxU();
+            final float minV = BlockTESR.cableIcon.getMinV();
+            final float maxV = BlockTESR.cableIcon.getMaxV();
 
-            final float glowMinU = (float) Math.lerp(minU, maxU, 7f / 16f);
-            final float glowMaxU = (float) Math.lerp(minU, maxU, 9f / 16f);
-            final float glowMinV = (float) Math.lerp(minV, maxV, 7f / 16f);
-            final float glowMaxV = (float) Math.lerp(minV, maxV, 9f / 16f);
+            final float glowMinU = Math.lerp(minU, maxU, 7f / 16f);
+            final float glowMaxU = Math.lerp(minU, maxU, 9f / 16f);
+            final float glowMinV = Math.lerp(minV, maxV, 7f / 16f);
+            final float glowMaxV = Math.lerp(minV, maxV, 9f / 16f);
 
-            TessellatorManager.startCapturing();
-            final CapturingTessellator tes = (CapturingTessellator) TessellatorManager.get();
-
-            tes.setColorOpaque_F(1F, 1F, 1F);
-            tes.startDrawingQuads();
-
-            clockwiseHelixPart(tes, 0, 0, 0, 0, side, 0.75, minU, maxU, minV, maxV);
-
-            vao = GL30.glGenVertexArrays();
-            GL30.glBindVertexArray(vao);
-
-            vbo1 = TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE);
-            GL30.glBindVertexArray(0);
-
-            cableProgram = createProgram("/assets/angelica/shaders/tesr.v.glsl", "/assets/angelica/shaders/tesr.f.glsl");
+            cableProgram = createProgram("/assets/angelica/shaders/tesr.vert.glsl", "/assets/angelica/shaders/tesr.frag.glsl");
             GL20.glUseProgram(cableProgram);
 
             GL20.glBindAttribLocation(cableProgram, 0, "a_Pos");
@@ -207,61 +174,41 @@ public class TESR extends TileEntitySpecialRenderer  {
             uBaseY = GL20.glGetUniformLocation(cableProgram, "u_BaseY");
             uGlowU = GL20.glGetUniformLocation(cableProgram, "u_GlowU");
             uGlowV = GL20.glGetUniformLocation(cableProgram, "u_GlowV");
+            uUV = GL20.glGetUniformLocation(cableProgram, "u_UV");
 
-            GL20.glUniform1f(uSectionHeight, (float) sectionHeight);
+            final FloatBuffer uvBuffer = BufferUtils.createFloatBuffer(4);
+            uvBuffer.put(0, minU);
+            uvBuffer.put(1, minV);
+            uvBuffer.put(2, maxU);
+            uvBuffer.put(3, maxV);
+
+            GL20.glUniform1f(uSectionHeight, SECTION_HEIGHT);
             GL20.glUniform1i(uBlockTex, OpenGlHelper.defaultTexUnit - GL13.GL_TEXTURE0);
             GL20.glUniform2f(uGlowU, glowMinU, glowMaxU);
             GL20.glUniform2f(uGlowV, glowMinV, glowMaxV);
+            GL20.glUniform2(uUV, uvBuffer);
 
             GL20.glUseProgram(0);
 
             isInitialized = true;
-            LOGGER.info("Initialized TESR. Sections " + sections + " Shader " + cableProgram);
+            LOGGER.info("Initialized TESR. Sections " + SECTIONS + " Shader " + cableProgram);
 
         }
 
         GL20.glUseProgram(cableProgram);
-        GL20.glUniform1f(uTime, ((tile.getWorldObj().getWorldTime() % 20) + timeSinceLastTick) / 20f);
+        GL20.glUniform1f(uTime, ((tile.getWorldObj().getTotalWorldTime() % 20) + timeSinceLastTick) / 20f);
         GL20.glUniform1i(uBaseY, (int) y - 23);
 
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
+        modelProjection.translate((float) x, (float) (y - 23), (float) z);
 
-        GL30.glBindVertexArray(vao);
         GL11.glDisable(GL11.GL_CULL_FACE);
-        for(int i = 0 ; i < 4 ; i ++) {
-
-            modelProjection.pushMatrix();
-            modelProjection.translate((float) x + xOffsets[i], (float) y - 23, (float) z + zOffsets[i] );
-            modelProjection.rotate((float) Math.toRadians(90 * i), 0, 1, 0);
-            modelProjection.get(0, bufModelViewProjection);
-
-            GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
-
-            vbo1.renderInstanced(sections);
-            modelProjection.popMatrix();
-        }
+        modelProjection.get(0, bufModelViewProjection);
+        GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 48 * 4 * SECTIONS);
         GL11.glEnable(GL11.GL_CULL_FACE);
-        GL30.glBindVertexArray(0);
-
         GL20.glUseProgram(0);
-
     }
-
-    private void clockwiseHelixPart(Tessellator tes, double x, double y, double z, int offset, double side,
-        double width, double minU, double maxU, double minV, double maxV) {
-
-        // spotless:off
-        for (int i = 0; i < 8; i++) {
-            final int j = (i + offset) % 8;
-            final int k = (i + 1 + offset) % 8;
-            tes.addVertexWithUV(x + 0.5f + edgeX[k], y + side * i + side, z + 0.5f + edgeZ[k], minU, maxV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[k], y + side * i + (side + width), z + 0.5f + edgeZ[k], minU, minV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i + width, z + 0.5f + edgeZ[j], maxU, minV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i, z + 0.5f + edgeZ[j], maxU, maxV);
-        }
-        // spotless:on
-    }
-
 
 }
