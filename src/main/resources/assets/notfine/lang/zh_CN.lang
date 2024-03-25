@@ -36,3 +36,4 @@ options.title.particle=粒子设置
 options.title.sky=大气设置
 options.title.video=视频设置
 options.total_stars=星星密度
+options.void_fog=Void Fog

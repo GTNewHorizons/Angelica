@@ -113,7 +113,8 @@ public enum Settings {
         public void applyChanges() {
             RenderStars.reloadStarRenderList(Minecraft.getMinecraft().renderGlobal);
         }
-    };
+    },
+    VOID_FOG(new NotFineOptionTickBox(false, OptionImpact.LOW));
 
     public final NotFineOption option;
 
