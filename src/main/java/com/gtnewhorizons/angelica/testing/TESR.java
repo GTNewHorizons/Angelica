@@ -228,6 +228,7 @@ public class TESR extends TileEntitySpecialRenderer  {
         modelProjection.mul(RenderingState.INSTANCE.getModelViewMatrix());
 
         GL30.glBindVertexArray(vao);
+        GL11.glDisable(GL11.GL_CULL_FACE);
         for(int i = 0 ; i < 4 ; i ++) {
 
             modelProjection.pushMatrix();
@@ -240,6 +241,7 @@ public class TESR extends TileEntitySpecialRenderer  {
             vbo1.renderInstanced(sections);
             modelProjection.popMatrix();
         }
+        GL11.glEnable(GL11.GL_CULL_FACE);
         GL30.glBindVertexArray(0);
 
         GL20.glUseProgram(0);
@@ -257,12 +259,6 @@ public class TESR extends TileEntitySpecialRenderer  {
             tes.addVertexWithUV(x + 0.5f + edgeX[k], y + side * i + (side + width), z + 0.5f + edgeZ[k], minU, minV);
             tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i + width, z + 0.5f + edgeZ[j], maxU, minV);
             tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i, z + 0.5f + edgeZ[j], maxU, maxV);
-
-            // Inner side
-            tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i, z + 0.5f + edgeZ[j], maxU, maxV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[j], y + side * i + width, z + 0.5f + edgeZ[j], maxU, minV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[k], y + side * i + (side + width), z + 0.5f + edgeZ[k], minU, minV);
-            tes.addVertexWithUV(x + 0.5f + edgeX[k], y + side * i + side, z + 0.5f + edgeZ[k], minU, maxV);
         }
         // spotless:on
     }
