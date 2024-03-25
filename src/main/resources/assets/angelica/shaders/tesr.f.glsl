@@ -7,6 +7,10 @@ uniform float u_Time; // loops from 0 to 1 every second
 
 out vec4 fragColor; // The frag color
 
+const vec3 MAX = vec3(1.0, 1.0, 1.0);
+const float glow_factor = 0.5;
+const vec3 glow_color = vec3(0.0, 0.325, 0.5) * glow_factor; // The RGB glow color to mix in
+
 vec3 frontWave(in vec3 color, in vec2 uv, in float t, in float waveletCount, in float speed) {
     float y = fract(v_yPos / 255.0 * waveletCount + speed * t);
     float sy = sin(y * 3.14);
@@ -16,6 +20,6 @@ vec3 frontWave(in vec3 color, in vec2 uv, in float t, in float waveletCount, in 
 void main() {
 
     vec4 tex = texture(u_BlockTex, v_TexCoord);
-    vec3 col = frontWave(vec3(1.0, 1.65, 0), v_TexCoord, u_Time, 5.0, -1.0);
-    fragColor = vec4(max(tex.rgb, col), 1.0);
+    vec3 col = frontWave(glow_color, v_TexCoord, u_Time, 5.0, -1.0);
+    fragColor = vec4(min(tex.rgb + col, MAX), tex.a);
 }
