@@ -11,11 +11,16 @@ out vec4 fragColor; // The frag color
 
 const vec3 MAX = vec3(1.0, 1.0, 1.0);
 const vec3 glow_color = vec3(0.0, 0.65, 1.0); // The glow color, RGB
+const float cableHeight = 512.0;
 
-vec3 frontWave(in vec3 color, in vec2 uv, in float t, in float waveletCount, in float speed) {
-    float y = fract(v_yPos / 255.0 * waveletCount + speed * t);
-    float sy = sin(y * 3.14);
-    return color * sy * pow(y, 4.0) * 6.0;
+vec3 frontWave(in vec3 color, in vec2 uv, in float t, in float sections, in float speed) {
+    float front = t;
+    float y = v_yPos / cableHeight;
+    float dist = abs(front - y);
+    //Disable lights if they are too far from the front
+    float lightsOn = dist <= 0.03 ? 1.0 : 0.0;
+    float sy = sin(1.57 + (dist*33) * 1.57);
+    return color * pow(sy, 2.0) * lightsOn;
 }
 
 void main() {
@@ -25,6 +30,6 @@ void main() {
     ? 1.0 : 0.0;
 
     vec4 tex = texture(u_BlockTex, v_TexCoord);
-    vec3 col = frontWave(glow_color, v_TexCoord, u_Time, 5.0, -1.0);
+    vec3 col = frontWave(glow_color, v_TexCoord, u_Time, 1.0, -10.0);
     fragColor = vec4(min(tex.rgb + col * glowMul, MAX), tex.a);
 }
