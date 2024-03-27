@@ -79,8 +79,13 @@ public class TessellatorManager {
      * Stops the CapturingTessellator, stores the quads in a buffer (based on the VertexFormat provided),
      * uploads the buffer to a new VertexBuffer, and clears the quads.
      */
+
     public static VertexBuffer stopCapturingToVBO(VertexFormat format) {
-        return new VertexBuffer(format, GL11.GL_QUADS).upload(stopCapturingToBuffer(format));
+        return new VertexBuffer(format, GL11.GL_QUADS).upload(stopCapturingToBuffer(format), false);
+    }
+
+    public static VertexBuffer stopCapturingToVAO(VertexFormat format) {
+        return new VertexBuffer(format, GL11.GL_QUADS).upload(stopCapturingToBuffer(format), true);
     }
 
     static {

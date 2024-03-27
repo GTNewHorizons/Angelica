@@ -51,7 +51,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             AngelicaConfig.enableMCPatcherForgeFeatures = Boolean.parseBoolean(System.getProperty("angelica.enableMCPatcherForgeFeatures", "false"));
 
             // Debug features
-            AngelicaConfig.enableTestBlocks = Boolean.parseBoolean(System.getProperty("angelica.enableTestBlocks", "false"));
+            AngelicaConfig.enableTestBlocks = Boolean.parseBoolean(System.getProperty("angelica.enableTestBlocks", "true"));
 
         } catch (ConfigException e) {
             throw new RuntimeException(e);

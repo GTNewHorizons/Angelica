@@ -2,10 +2,10 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-
 
 public class VertexBuffer implements AutoCloseable {
     private int id;
@@ -31,17 +31,21 @@ public class VertexBuffer implements AutoCloseable {
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
-    public void upload(ByteBuffer buffer, int vertexCount) {
-        if (this.id == -1) return;
+    private void uploadBuffer(ByteBuffer buffer, int vertexCount) {
         this.vertexCount = vertexCount;
-        this.bind();
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STATIC_DRAW);
-        this.unbind();
     }
 
-    public VertexBuffer upload(ByteBuffer buffer) {
-        if(format == null) throw new IllegalStateException("No format specified for VBO upload");
-        upload(buffer, buffer.remaining() / format.getVertexSize());
+    public VertexBuffer upload(ByteBuffer buffer, boolean vaoActive) {
+        if(format == null || this.id == -1) throw new IllegalStateException("No format specified for VBO upload");
+        this.bind();
+        uploadBuffer(buffer, buffer.remaining() / format.getVertexSize());
+
+        // Setup the format if we have an active VAO
+        if(vaoActive) setupFormat();
+
+        this.unbind();
+
         return this;
     }
 
@@ -63,20 +67,34 @@ public class VertexBuffer implements AutoCloseable {
     public void draw() {
         GL11.glDrawArrays(drawMode, 0, this.vertexCount);
     }
+    public void drawInstanced(int count) {
+        GL31.glDrawArraysInstanced(drawMode, 0, this.vertexCount, count);
+    }
 
-    public void setupState() {
+    public void setupFormat() {
         if(format == null) throw new IllegalStateException("No format specified for VBO setup");
-        bind();
         format.setupBufferState(0L);
     }
 
-    public void cleanupState() {
+    public void cleanupFormat() {
+        if(format == null) throw new IllegalStateException("No format specified for VBO cleanup");
         format.clearBufferState();
+    }
+    public void setupState() {
+        bind();
+        setupFormat();
+    }
+    public void cleanupState() {
+        cleanupFormat();
         unbind();
     }
     public void render() {
         setupState();
         draw();
         cleanupState();
+    }
+    public void renderInstanced(int count) {
+        // Assuming a VAO
+        drawInstanced(count);
     }
 }

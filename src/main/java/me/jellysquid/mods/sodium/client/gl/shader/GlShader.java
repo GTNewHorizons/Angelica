@@ -27,18 +27,18 @@ public class GlShader extends GlObject {
 
         src = processShader(src, constants);
 
-        int handle = GL20.glCreateShader(type.id);
+        final int handle = GL20.glCreateShader(type.id);
         // TODO: ShaderWorkaround
         GL20.glShaderSource(handle, src);
         GL20.glCompileShader(handle);
 
-        String log = GL20.glGetShaderInfoLog(handle, GL20.GL_INFO_LOG_LENGTH);
+        final String log = GL20.glGetShaderInfoLog(handle, GL20.GL_INFO_LOG_LENGTH);
 
         if (!log.isEmpty()) {
             LOGGER.warn("Shader compilation log for " + this.name + ": " + log);
         }
 
-        int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
+        final int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
 
         if (result != GL11.GL_TRUE) {
             throw new RuntimeException("Shader compilation failed, see log for details");
@@ -52,7 +52,7 @@ public class GlShader extends GlObject {
      * allows for ghetto shader specialization.
      */
     private static String processShader(String src, ShaderConstants constants) {
-        StringBuilder builder = new StringBuilder(src.length());
+        final StringBuilder builder = new StringBuilder(src.length());
         boolean patched = false;
 
         try (BufferedReader reader = new BufferedReader(new StringReader(src))) {
