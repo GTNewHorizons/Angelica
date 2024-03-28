@@ -6,8 +6,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackAO;
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackFO;
-import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackLM;
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackOP;
+import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.getLightMap;
 
 class AoFaceData {
     public final int[] lm = new int[4];
@@ -43,9 +43,9 @@ class AoFaceData {
 
         // Use the origin block's light values if the adjacent one is opaque
         if (offset && unpackFO(adjWord)) {
-            calm = unpackLM(cache.get(x, y, z));
+            calm = getLightMap(cache.get(x, y, z), pos);
         } else {
-            calm = unpackLM(adjWord);
+            calm = getLightMap(adjWord, pos);
         }
 
         final float caao = unpackAO(adjWord);
@@ -53,22 +53,22 @@ class AoFaceData {
         ForgeDirection[] faces = AoNeighborInfo.get(direction).faces;
 
         final long e0 = cache.get(adjX, adjY, adjZ, faces[0]);
-        final int e0lm = unpackLM(e0);
+        final int e0lm = getLightMap(e0, pos);
         final float e0ao = unpackAO(e0);
         final boolean e0op = unpackOP(e0);
 
         final long e1 = cache.get(adjX, adjY, adjZ, faces[1]);
-        final int e1lm = unpackLM(e1);
+        final int e1lm = getLightMap(e1, pos);
         final float e1ao = unpackAO(e1);
         final boolean e1op = unpackOP(e1);
 
         final long e2 = cache.get(adjX, adjY, adjZ, faces[2]);
-        final int e2lm = unpackLM(e2);
+        final int e2lm = getLightMap(e2, pos);
         final float e2ao = unpackAO(e2);
         final boolean e2op = unpackOP(e2);
 
         final long e3 = cache.get(adjX, adjY, adjZ, faces[3]);
-        final int e3lm = unpackLM(e3);
+        final int e3lm = getLightMap(e3, pos);
         final float e3ao = unpackAO(e3);
         final boolean e3op = unpackOP(e3);
 
@@ -81,7 +81,7 @@ class AoFaceData {
             c0ao = e0ao;
         } else {
             long d0 = cache.get(adjX, adjY, adjZ, faces[0], faces[2]);
-            c0lm = unpackLM(d0);
+            c0lm = getLightMap(d0, pos);
             c0ao = unpackAO(d0);
         }
 
@@ -93,7 +93,7 @@ class AoFaceData {
             c1ao = e0ao;
         } else {
             long d1 = cache.get(adjX, adjY, adjZ, faces[0], faces[3]);
-            c1lm = unpackLM(d1);
+            c1lm = getLightMap(d1, pos);
             c1ao = unpackAO(d1);
         }
 
@@ -106,7 +106,7 @@ class AoFaceData {
             c2ao = e1ao;
         } else {
             long d2 = cache.get(adjX, adjY, adjZ, faces[1], faces[2]);
-            c2lm = unpackLM(d2);
+            c2lm = getLightMap(d2, pos);
             c2ao = unpackAO(d2);
         }
 
@@ -119,7 +119,7 @@ class AoFaceData {
             c3ao = e1ao;
         } else {
             long d3 = cache.get(adjX, adjY, adjZ, faces[1], faces[3]);
-            c3lm = unpackLM(d3);
+            c3lm = getLightMap(d3, pos);
             c3ao = unpackAO(d3);
         }
 

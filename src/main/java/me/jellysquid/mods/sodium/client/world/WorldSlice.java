@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
@@ -194,6 +195,10 @@ public class WorldSlice implements IBlockAccess {
 
         if (blockBrightness < min) {
             blockBrightness = min;
+        }
+
+        if (DynamicLights.isEnabled()){
+            return DynamicLights.get().getLightmapWithDynamicLight(x, y, z, (skyBrightness << 20 | blockBrightness << 4));
         }
 
         return skyBrightness << 20 | blockBrightness << 4;
