@@ -1,12 +1,15 @@
-#version 330 core
+#version 120
+#extension GL_EXT_gpu_shader4 : require
+
+
 
 uniform mat4 u_ModelProjection;
 uniform float u_SectionHeight;
 uniform int u_BaseY;
 uniform vec2 u_UV[2]; // {min, max}
 
-out vec2 v_TexCoord;
-out float v_yPos; // The y-position of the vertex in world space
+varying vec2 v_TexCoord;
+varying float v_yPos; // The y-position of the vertex in world space
 
 const int QUAD_INDICES[] = int[] (0, 1, 2, 0, 2, 3);
 
