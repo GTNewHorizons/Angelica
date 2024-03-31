@@ -196,7 +196,7 @@ public class TESR extends TileEntitySpecialRenderer  {
         }
 
         GL20.glUseProgram(cableProgram);
-        GL20.glUniform1f(uTime, ((tile.getWorldObj().getWorldTime() % 60) + timeSinceLastTick) / 60f);
+        GL20.glUniform1f(uTime, ((tile.getWorldObj().getWorldInfo().getWorldTotalTime() % 60) + timeSinceLastTick) / 60f);
         GL20.glUniform1i(uBaseY, (int) y - 23);
 
         modelProjection.set(RenderingState.INSTANCE.getProjectionMatrix());
