@@ -163,6 +163,7 @@ public enum Mixins {
         .setApplyIf(() -> AngelicaConfig.enableHudCaching).addMixinClasses(
         	"angelica.hudcaching.GuiIngameAccessor",
         	"angelica.hudcaching.GuiIngameForgeAccessor",
+            "angelica.hudcaching.RenderGameOverlayEventAccessor",
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",
