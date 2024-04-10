@@ -3,7 +3,11 @@ package com.gtnewhorizons.angelica.hudcaching;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
 import cpw.mods.fml.common.eventhandler.EventPriority;
+import net.dries007.holoInventory.client.Renderer;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -28,6 +32,7 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
+import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -53,6 +58,8 @@ public class HUDCaching {
     public static float renderPortalCapturedTicks;
     // Crosshairs need to be blended with the scene
     public static boolean renderCrosshairsCaptured;
+
+    private static RenderGameOverlayEvent fakeHoloInventoryEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static final HUDCaching INSTANCE = new HUDCaching();
 
@@ -119,6 +126,11 @@ public class HUDCaching {
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
 
+        if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
+            // this used to be called by asming into renderGameOverlay, but we removed it
+            XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
+        }
+
         if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
@@ -152,11 +164,16 @@ public class HUDCaching {
         } else {
         	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
-
         if (ingame instanceof GuiIngameForge) {
         	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
         	if (renderHelmetCaptured) {
         		guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
+                if (ModStatus.isHoloInventoryLoaded){
+                    Renderer.INSTANCE.angelicaOverride = false;
+                    // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
+                    ((RenderGameOverlayEventAccessor) fakeHoloInventoryEvent).setPartialTicks(partialTicks);
+                    Renderer.INSTANCE.renderEvent(fakeHoloInventoryEvent);
+                }
         	}
         	if (renderPortalCapturedTicks > 0) {
         		guiForge.callRenderPortal(width, height, partialTicks);
@@ -164,6 +181,7 @@ public class HUDCaching {
         	if (renderCrosshairsCaptured) {
         		guiForge.callRenderCrosshairs(width, height);
         	}
+
         } else {
             if (renderHelmetCaptured)
             {
@@ -225,6 +243,13 @@ public class HUDCaching {
         tessellator.draw();
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+    }
+
+    // moved to here due to the method being called from a mixin
+    public static void disableHoloInventory() {
+        if (ModStatus.isHoloInventoryLoaded){
+            Renderer.INSTANCE.angelicaOverride = true;
+        }
     }
 
 }
