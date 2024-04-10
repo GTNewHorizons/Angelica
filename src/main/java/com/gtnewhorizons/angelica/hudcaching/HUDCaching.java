@@ -245,4 +245,11 @@ public class HUDCaching {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
+    // moved to here due to the method being called from a mixin
+    public static void disableHoloInventory() {
+        if (ModStatus.isHoloInventoryLoaded){
+            Renderer.INSTANCE.angelicaOverride = true;
+        }
+    }
+
 }

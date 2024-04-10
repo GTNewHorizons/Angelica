@@ -30,11 +30,15 @@ public class ModStatus {
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
-        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory") &&
-            new DefaultArtifactVersion("2.4.4-GTNH")
+        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
+
+        if (isHoloInventoryLoaded){
+            isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
                 .compareTo(
                     LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
                 ) <= 0;
+        }
+
 
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {

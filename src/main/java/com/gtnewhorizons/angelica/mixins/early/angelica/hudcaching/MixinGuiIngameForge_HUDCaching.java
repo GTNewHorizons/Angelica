@@ -1,9 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
-import com.gtnewhorizons.angelica.compat.ModStatus;
-import net.dries007.holoInventory.client.Renderer;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -40,12 +37,9 @@ public class MixinGuiIngameForge_HUDCaching {
     	if (HUDCaching.renderingCacheOverride) {
     		HUDCaching.renderHelmetCaptured = true;
         	ci.cancel();
-            return;
         }
 
-        if (ModStatus.isHoloInventoryLoaded){
-            Renderer.INSTANCE.angelicaOverride = true;
-        }
+        HUDCaching.disableHoloInventory();
     }
 
     @Inject(method = "renderPortal", at = @At("HEAD"), cancellable = true, remap = false)
