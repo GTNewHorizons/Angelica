@@ -90,6 +90,8 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
 
+    devOnlyNonPublishable("com.github.GTNewHorizons:HoloInventory:2.4.4-GTNH:dev")
+
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 
     // Hodgepodge

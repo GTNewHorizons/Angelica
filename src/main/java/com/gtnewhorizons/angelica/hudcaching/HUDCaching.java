@@ -5,6 +5,9 @@ import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import cpw.mods.fml.common.eventhandler.EventPriority;
+import net.dries007.holoInventory.HoloInventory;
+import net.dries007.holoInventory.client.Renderer;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -159,11 +162,16 @@ public class HUDCaching {
         } else {
         	GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
-
         if (ingame instanceof GuiIngameForge) {
         	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
         	if (renderHelmetCaptured) {
         		guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
+                if (ModStatus.isHoloInventoryLoaded){
+                    Renderer.INSTANCE.angelicaOverride = false;
+                    RenderGameOverlayEvent fakeEvent = new RenderGameOverlayEvent(partialTicks, resolution, mouseX, mouseY);
+                    fakeEvent = new RenderGameOverlayEvent.Pre(fakeEvent, RenderGameOverlayEvent.ElementType.HELMET);
+                    Renderer.INSTANCE.renderEvent(fakeEvent);
+                }
         	}
         	if (renderPortalCapturedTicks > 0) {
         		guiForge.callRenderPortal(width, height, partialTicks);
