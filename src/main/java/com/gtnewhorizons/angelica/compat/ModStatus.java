@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.versioning.ArtifactVersion;
+import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
+import net.dries007.holoInventory.HoloInventory;
 
 public class ModStatus {
     /**
@@ -26,7 +30,11 @@ public class ModStatus {
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
-        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
+        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory") &&
+            new DefaultArtifactVersion("2.4.4-GTNH")
+                .compareTo(
+                    LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
+                ) <= 0;
 
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {
