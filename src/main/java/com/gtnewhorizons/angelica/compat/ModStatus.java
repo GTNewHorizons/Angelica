@@ -16,6 +16,7 @@ public class ModStatus {
     public static boolean isLotrLoaded;
     public static boolean isChunkAPILoaded;
     public static boolean isEIDBiomeLoaded;
+    public static boolean isXaerosMinimapLoaded;
 
     public static void preInit(){
         isNEIDLoaded = Loader.isModLoaded("neid");
@@ -23,6 +24,7 @@ public class ModStatus {
         isLotrLoaded = Loader.isModLoaded("lotr");
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
+        isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
 
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {

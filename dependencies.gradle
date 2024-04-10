@@ -88,6 +88,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
+    compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 

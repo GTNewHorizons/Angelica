@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.hudcaching;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
@@ -28,6 +29,7 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
+import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -119,6 +121,11 @@ public class HUDCaching {
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
 
+        if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
+            // this used to be called by asming into renderGameOverlay, but we removed it
+            XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
+        }
+
         if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
@@ -164,6 +171,7 @@ public class HUDCaching {
         	if (renderCrosshairsCaptured) {
         		guiForge.callRenderCrosshairs(width, height);
         	}
+
         } else {
             if (renderHelmetCaptured)
             {

@@ -26,11 +26,31 @@ public class MixinCompatHackTweaker implements ITweaker {
             LOGGER.info("Disabling Optifine and Fastcraft (if present)");
             disableOptifineAndFastcraft();
         }
+        disableXaerosMinimapWaypointTransformer();
     }
 
     private void verifyDependencies() {
         if(MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
             throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
+        }
+    }
+
+    private void disableXaerosMinimapWaypointTransformer(){
+        try {
+            LaunchClassLoader lcl = Launch.classLoader;
+            Field xformersField = lcl.getClass().getDeclaredField("transformers");
+            xformersField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
+            for (int idx = xformers.size() - 1; idx >= 0; idx--) {
+                final String name = xformers.get(idx).getClass().getName();
+                if (name.startsWith("xaero.common.core.transformer.GuiIngameForgeTransformer")) {
+                    LOGGER.info("Removing transformer " + name);
+                    xformers.remove(idx);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
