@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
 import cpw.mods.fml.common.eventhandler.EventPriority;
-import net.dries007.holoInventory.HoloInventory;
 import net.dries007.holoInventory.client.Renderer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
@@ -58,6 +58,8 @@ public class HUDCaching {
     public static float renderPortalCapturedTicks;
     // Crosshairs need to be blended with the scene
     public static boolean renderCrosshairsCaptured;
+
+    private static RenderGameOverlayEvent fakeHoloInventoryEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static final HUDCaching INSTANCE = new HUDCaching();
 
@@ -168,9 +170,9 @@ public class HUDCaching {
         		guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
                 if (ModStatus.isHoloInventoryLoaded){
                     Renderer.INSTANCE.angelicaOverride = false;
-                    RenderGameOverlayEvent fakeEvent = new RenderGameOverlayEvent(partialTicks, resolution, mouseX, mouseY);
-                    fakeEvent = new RenderGameOverlayEvent.Pre(fakeEvent, RenderGameOverlayEvent.ElementType.HELMET);
-                    Renderer.INSTANCE.renderEvent(fakeEvent);
+                    // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
+                    ((RenderGameOverlayEventAccessor) fakeHoloInventoryEvent).setPartialTicks(partialTicks);
+                    Renderer.INSTANCE.renderEvent(fakeHoloInventoryEvent);
                 }
         	}
         	if (renderPortalCapturedTicks > 0) {
