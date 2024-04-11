@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.compat.toremove;
 import com.google.common.collect.Queues;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 
 import java.util.Deque;
 
@@ -79,6 +80,27 @@ public class MatrixStack {
 
     }
 
+    public void multiply(Quaternionf quaternion) {
+        MatrixStack.Entry entry = this.matrixStack.getLast();
+        entry.model.rotate(quaternion);
+        entry.normal.rotate(quaternion);
+    }
+
+    public void multiply(Quaternionf quaternion, float originX, float originY, float originZ) {
+        MatrixStack.Entry entry = this.matrixStack.getLast();
+        entry.model.rotateAround(quaternion, originX, originY, originZ);
+        entry.normal.rotate(quaternion);
+    }
+
+    public void loadIdentity() {
+        MatrixStack.Entry entry = this.matrixStack.getLast();
+        entry.model.identity();
+        entry.normal.identity();
+    }
+
+    public void multiplyPositionMatrix(Matrix4f matrix) {
+        this.matrixStack.getLast().model.mul(matrix);
+    }
 
     private static float invSqrt(float x) {
         float xhalf = 0.5f * x;
