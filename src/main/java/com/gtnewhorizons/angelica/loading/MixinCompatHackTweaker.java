@@ -26,7 +26,10 @@ public class MixinCompatHackTweaker implements ITweaker {
             LOGGER.info("Disabling Optifine and Fastcraft (if present)");
             disableOptifineAndFastcraft();
         }
-        disableXaerosMinimapWaypointTransformer();
+
+        if (AngelicaConfig.enableHudCaching){
+            disableXaerosMinimapWaypointTransformer();
+        }
     }
 
     private void verifyDependencies() {
