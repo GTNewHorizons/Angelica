@@ -162,6 +162,7 @@ public class NotFineGameOptionPages {
             .add(Settings.CLOUD_SCALE.option)
             .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
             .add(Settings.TOTAL_STARS.option)
+            .add(Settings.VOID_FOG.option)
         .build());
         return new OptionPage(I18n.format("options.button.sky"), ImmutableList.copyOf(groups));
     }

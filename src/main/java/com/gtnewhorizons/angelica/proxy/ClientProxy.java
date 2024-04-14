@@ -86,13 +86,15 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
 
-        // Register all blocks. Because blockids are unique to a world, this must be done each load
-        GameData.getBlockRegistry().forEach(o -> {
-
-            final Block b = (Block) o;
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
-        });
+        if(AngelicaConfig.enableSodium) {
+            // Register all blocks. Because blockids are unique to a world, this must be done each load
+            GameData.getBlockRegistry().forEach(o -> {
+    
+                final Block b = (Block) o;
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
+            });
+        }
     }
 
 
