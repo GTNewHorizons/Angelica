@@ -10,14 +10,19 @@ import org.apache.logging.log4j.Level;
 import org.joml.Math;
 import org.joml.Matrix4fStack;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.MemoryUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
@@ -135,6 +140,8 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static int uGlowU;
     private static int uGlowV;
     private static int uUV;
+    private static int aVertexID = -1;
+    private static int vertexIDBuffer = -1;
 
     private static final FloatBuffer bufModelViewProjection = BufferUtils.createFloatBuffer(16);
     private static final Matrix4fStack modelProjection = new Matrix4fStack(2);
@@ -143,6 +150,7 @@ public class TESR extends TileEntitySpecialRenderer  {
     private static final float SIDE = 2.0f / 5.4f;
     private static final float SECTION_HEIGHT = 8 * SIDE;
     private static final int SECTIONS = (int) Math.ceil(CABLE_HEIGHT / SECTION_HEIGHT);
+    private static final int VERTEX_COUNT = 48 * 4 * SECTIONS;
 
     @Override
     public void renderTileEntityAt(TileEntity tile, double x, double y, double z, float timeSinceLastTick) {
@@ -164,8 +172,7 @@ public class TESR extends TileEntitySpecialRenderer  {
             cableProgram = createProgram("/assets/angelica/shaders/tesr.vert.glsl", "/assets/angelica/shaders/tesr.frag.glsl");
             GL20.glUseProgram(cableProgram);
 
-            GL20.glBindAttribLocation(cableProgram, 0, "a_Pos");
-            GL20.glBindAttribLocation(cableProgram, 1, "a_TexCoord");
+            aVertexID = GL20.glGetAttribLocation(cableProgram, "vertexId");
 
             uModelProjectionMatrix = GL20.glGetUniformLocation(cableProgram, "u_ModelProjection");
             uBlockTex = GL20.glGetUniformLocation(cableProgram, "u_BlockTex");
@@ -175,6 +182,15 @@ public class TESR extends TileEntitySpecialRenderer  {
             uGlowU = GL20.glGetUniformLocation(cableProgram, "u_GlowU");
             uGlowV = GL20.glGetUniformLocation(cableProgram, "u_GlowV");
             uUV = GL20.glGetUniformLocation(cableProgram, "u_UV");
+
+            vertexIDBuffer = GL15.glGenBuffers();
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vertexIDBuffer);
+            final ByteBuffer vertexIDData = BufferUtils.createByteBuffer(VERTEX_COUNT * 4);
+            for (int i = 0; i < VERTEX_COUNT; i++) {
+                vertexIDData.putInt(i * 4, i);
+            }
+            GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertexIDData, GL15.GL_STATIC_DRAW);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
             final FloatBuffer uvBuffer = BufferUtils.createFloatBuffer(4);
             uvBuffer.put(0, minU);
@@ -206,7 +222,14 @@ public class TESR extends TileEntitySpecialRenderer  {
         GL11.glDisable(GL11.GL_CULL_FACE);
         modelProjection.get(0, bufModelViewProjection);
         GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
-        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 48 * 4 * SECTIONS);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vertexIDBuffer);
+        GL20.glEnableVertexAttribArray(aVertexID);
+        GL20.glVertexAttribPointer(aVertexID, 1, GL11.GL_INT, false, 0, 0);
+
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, VERTEX_COUNT);
+
+        GL20.glDisableVertexAttribArray(aVertexID);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL20.glUseProgram(0);
     }

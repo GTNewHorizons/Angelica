@@ -1,7 +1,7 @@
 #version 120
 #extension GL_EXT_gpu_shader4 : require
 
-
+attribute int vertexId;
 
 uniform mat4 u_ModelProjection;
 uniform float u_SectionHeight;
@@ -38,7 +38,8 @@ void main() {
     vec2 a_TexCoord;
 
     // Decompose the vertex ID into identifiers of the different "loops" involved in the helix construction
-    int id = gl_VertexID;
+    int id = vertexId;
+    id = gl_VertexID;
     int quadRawVtxIdx = imod(id, 6);
     int quadVtxIdx = QUAD_INDICES[quadRawVtxIdx];
     id = (id - quadRawVtxIdx) / 6;
