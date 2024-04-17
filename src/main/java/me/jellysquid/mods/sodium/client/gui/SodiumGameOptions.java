@@ -20,7 +20,6 @@ public class SodiumGameOptions {
     public final QualitySettings quality = new QualitySettings();
     public final AdvancedSettings advanced = new AdvancedSettings();
     public final PerformanceSettings performance = new PerformanceSettings();
-    public final NotificationSettings notifications = new NotificationSettings();
 
     private Path configPath;
 
@@ -62,10 +61,6 @@ public class SodiumGameOptions {
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public GraphicsQuality entityShadows = GraphicsQuality.DEFAULT;
         public GraphicsQuality enableVignette = GraphicsQuality.DEFAULT;
-    }
-
-    public static class NotificationSettings {
-        public boolean hideDonationButton = false;
     }
 
     private static final Gson GSON = new GsonBuilder()
