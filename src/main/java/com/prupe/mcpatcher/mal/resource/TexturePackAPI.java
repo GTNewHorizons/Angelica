@@ -34,7 +34,7 @@ import org.apache.commons.io.IOUtils;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.AbstractTextureExpansion;
+import jss.notfine.util.AbstractTextureExpansion;
 
 public class TexturePackAPI {
 

@@ -25,7 +25,7 @@ import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
 import com.prupe.mcpatcher.cc.ColorizeWorld;
 import com.prupe.mcpatcher.hd.FontUtils;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererExpansion;
+import jss.notfine.util.FontRendererExpansion;
 
 @Mixin(FontRenderer.class)
 public abstract class MixinFontRenderer implements FontRendererExpansion {

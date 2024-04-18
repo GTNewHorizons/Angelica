@@ -65,15 +65,15 @@ public class BlockStateMatcher {
         return fullString;
     }
 
-    public boolean match(IBlockAccess blockAccess, int i, int j, int k) {
-        Block block = BlockAPI.getBlockAt(blockAccess, i, j, k);
+    public boolean match(IBlockAccess blockAccess, int x, int y, int z) {
+        Block block = blockAccess.getBlock(x, y, z);
         if (block != this.block) {
             return false;
         }
-        int metadata = BlockAPI.getMetadataAt(blockAccess, i, j, k);
+        int metadata = blockAccess.getBlockMetadata(x, y, z);
         if (block == doublePlantBlock) {
-            if ((metadata & 0x8) != 0 && BlockAPI.getBlockAt(blockAccess, i, j - 1, k) == block) {
-                metadata = BlockAPI.getMetadataAt(blockAccess, i, j - 1, k);
+            if ((metadata & 0x8) != 0 && blockAccess.getBlock(x, y - 1, z) == block) {
+                metadata = blockAccess.getBlockMetadata(x, y - 1, z);
             }
             metadata &= 0x7;
         } else if (block == logBlock) {

@@ -26,7 +26,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 public class CTMUtils {
 
@@ -53,7 +53,7 @@ public class CTMUtils {
             Class.forName(MCPatcherUtils.RENDER_PASS_CLASS)
                 .getMethod("finish")
                 .invoke(null);
-        } catch (Throwable e) {}
+        } catch (Throwable ignore) {}
 
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CONNECTED_TEXTURES, 3) {
 

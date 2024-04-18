@@ -14,11 +14,14 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
-        NotFineConfig config = new NotFineConfig();
-        config.loadSettings();
-
         if(!NotFineConfig.allowAdvancedOpenGL) {
             Minecraft.getMinecraft().gameSettings.advancedOpengl = false;
+        }
+        if(!NotFineConfig.allowToggle3DAnaglyph) {
+            Minecraft.getMinecraft().gameSettings.anaglyph = false;
+        }
+        if(!NotFineConfig.allowToggleFBO) {
+            Minecraft.getMinecraft().gameSettings.fboEnable = true;
         }
 
         for(Settings setting : Settings.values()) {
