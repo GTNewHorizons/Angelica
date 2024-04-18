@@ -13,6 +13,7 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
 
     private float value;
     private boolean mousePressed;
+    private boolean dirty = false;
 
     public SliderControlElement(Option<Integer> option, Dim2i dim, int min, int max, int interval, ControlValueFormatter formatter) {
         super(option, dim);
@@ -60,6 +61,10 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
     @Override
     public void mouseReleased(int mouseX, int mouseY) {
         mousePressed = false;
+        if(dirty) {
+            onOptionValueChanged();
+            dirty = false;
+        }
     }
 
     private void updateSlider(int mouseX) {
@@ -79,7 +84,7 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
         //Normalize value
         value = MathHelper.clamp_float((value - min) / (max - min), 0f, 1f);
 
-        onOptionValueChanged();
+        dirty = true;
     }
 
 }

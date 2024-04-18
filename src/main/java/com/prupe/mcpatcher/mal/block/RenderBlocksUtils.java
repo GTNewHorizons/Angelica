@@ -2,19 +2,16 @@ package com.prupe.mcpatcher.mal.block;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 // Shared by both CTM and Custom Colors.
 public class RenderBlocksUtils {
 
     public static final boolean enableBetterGrass = MCPatcherForgeConfig.instance().betterGrass;
-
-    private static final Block grassBlock = BlockAPI.getFixedBlock("minecraft:grass");
-    private static final Block snowBlock = BlockAPI.getFixedBlock("minecraft:snow_layer");
-    private static final Block craftedSnowBlock = BlockAPI.getFixedBlock("minecraft:snow");
 
     private static final int COLOR = 0;
     private static final int NONCOLOR = 1;
@@ -28,7 +25,7 @@ public class RenderBlocksUtils {
     public static int layerIndex;
     public static IIcon blankIcon;
 
-    public static void setupColorMultiplier(Block block, IBlockAccess blockAccess, int i, int j, int k,
+    public static void setupColorMultiplier(Block block, IBlockAccess blockAccess, int x, int y, int z,
         boolean haveOverrideTexture, float r, float g, float b) {
         if (haveOverrideTexture || !RenderPassAPI.instance.useColorMultiplierThisPass(block)) {
             colorMultiplierType[0] = COLOR;
@@ -36,24 +33,24 @@ public class RenderBlocksUtils {
             colorMultiplierType[3] = COLOR;
             colorMultiplierType[4] = COLOR;
             colorMultiplierType[5] = COLOR;
-        } else if (block == grassBlock) {
+        } else if (block == Blocks.grass) {
             colorMultiplierType[0] = NONCOLOR;
             if (enableBetterGrass) {
-                if (isSnowCovered(blockAccess, i, j, k)) {
+                if (isSnowCovered(blockAccess, x, y, z)) {
                     colorMultiplierType[2] = NONCOLOR;
                     colorMultiplierType[3] = NONCOLOR;
                     colorMultiplierType[4] = NONCOLOR;
                     colorMultiplierType[5] = NONCOLOR;
                 } else {
-                    j--;
-                    colorMultiplierType[2] = block == BlockAPI.getBlockAt(blockAccess, i, j, k - 1)
-                        && !isSnowCovered(blockAccess, i, j, k - 1) ? COLOR : COLOR_AND_NONCOLOR;
-                    colorMultiplierType[3] = block == BlockAPI.getBlockAt(blockAccess, i, j, k + 1)
-                        && !isSnowCovered(blockAccess, i, j, k + 1) ? COLOR : COLOR_AND_NONCOLOR;
-                    colorMultiplierType[4] = block == BlockAPI.getBlockAt(blockAccess, i - 1, j, k)
-                        && !isSnowCovered(blockAccess, i - 1, j, k) ? COLOR : COLOR_AND_NONCOLOR;
-                    colorMultiplierType[5] = block == BlockAPI.getBlockAt(blockAccess, i + 1, j, k)
-                        && !isSnowCovered(blockAccess, i + 1, j, k) ? COLOR : COLOR_AND_NONCOLOR;
+                    y--;
+                    colorMultiplierType[2] = block == blockAccess.getBlock(x, y, z - 1)
+                        && !isSnowCovered(blockAccess, x, y, z - 1) ? COLOR : COLOR_AND_NONCOLOR;
+                    colorMultiplierType[3] = block == blockAccess.getBlock(x, y, z + 1)
+                        && !isSnowCovered(blockAccess, x, y, z + 1) ? COLOR : COLOR_AND_NONCOLOR;
+                    colorMultiplierType[4] = block == blockAccess.getBlock(x - 1, y, z)
+                        && !isSnowCovered(blockAccess, x - 1, y, z) ? COLOR : COLOR_AND_NONCOLOR;
+                    colorMultiplierType[5] = block == blockAccess.getBlock(x + 1, y, z)
+                        && !isSnowCovered(blockAccess, x + 1, y, z) ? COLOR : COLOR_AND_NONCOLOR;
                 }
             } else {
                 colorMultiplierType[2] = COLOR_AND_NONCOLOR;
@@ -68,7 +65,7 @@ public class RenderBlocksUtils {
             colorMultiplierType[4] = COLOR;
             colorMultiplierType[5] = COLOR;
         }
-        if (!isAmbientOcclusionEnabled() || BlockAPI.getBlockLightValue(block) != 0) {
+        if (!isAmbientOcclusionEnabled() || block.getLightValue() != 0) {
             setupColorMultiplier(0, r, g, b);
             setupColorMultiplier(1, r, g, b);
             setupColorMultiplier(2, r, g, b);
@@ -79,7 +76,7 @@ public class RenderBlocksUtils {
     }
 
     public static void setupColorMultiplier(Block block, boolean useColor) {
-        if (block == grassBlock || !useColor) {
+        if (block == Blocks.grass || !useColor) {
             colorMultiplierType[0] = NONCOLOR;
             colorMultiplierType[2] = NONCOLOR;
             colorMultiplierType[3] = NONCOLOR;
@@ -136,49 +133,39 @@ public class RenderBlocksUtils {
         return face < 0 ? 1 : face % 6;
     }
 
-    public static IIcon getGrassTexture(Block block, IBlockAccess blockAccess, int i, int j, int k, int face,
+    public static IIcon getGrassTexture(Block block, IBlockAccess blockAccess, int x, int y, int z, int face,
         IIcon topIcon) {
         if (!enableBetterGrass || face < 2) {
             return null;
         }
-        boolean isSnow = isSnowCovered(blockAccess, i, j, k);
-        j--;
+        boolean isSnow = isSnowCovered(blockAccess, x, y, z);
+        y--;
         switch (face) {
-            case 2:
-                k--;
-                break;
-
-            case 3:
-                k++;
-                break;
-
-            case 4:
-                i--;
-                break;
-
-            case 5:
-                i++;
-                break;
-
-            default:
+            case 2 -> z--;
+            case 3 -> z++;
+            case 4 -> x--;
+            case 5 -> x++;
+            default -> {
                 return null;
+            }
         }
-        if (block != BlockAPI.getBlockAt(blockAccess, i, j, k)) {
+        if (block != blockAccess.getBlock(x, y, z)) {
             return null;
         }
-        boolean neighborIsSnow = isSnowCovered(blockAccess, i, j, k);
+        boolean neighborIsSnow = isSnowCovered(blockAccess, x, y, z);
         if (isSnow != neighborIsSnow) {
             return null;
         }
-        return isSnow ? BlockAPI.getBlockIcon(snowBlock, blockAccess, i, j, k, face) : topIcon;
+        return isSnow ? Blocks.snow_layer.getIcon(blockAccess, x, y, z, face) : topIcon;
     }
 
-    private static boolean isSnowCovered(IBlockAccess blockAccess, int i, int j, int k) {
-        Block topBlock = BlockAPI.getBlockAt(blockAccess, i, j + 1, k);
-        return topBlock == snowBlock || topBlock == craftedSnowBlock;
+    private static boolean isSnowCovered(IBlockAccess blockAccess, int x, int y, int z) {
+        Block topBlock = blockAccess.getBlock(x, y + 1, z);
+        return topBlock == Blocks.snow_layer || topBlock == Blocks.snow;
     }
 
     public static boolean isAmbientOcclusionEnabled() {
         return Minecraft.isAmbientOcclusionEnabled();
     }
+
 }

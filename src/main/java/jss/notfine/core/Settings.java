@@ -79,6 +79,7 @@ public enum Settings {
             SettingsManager.leavesUpdated();
         }
     },
+    MODE_LIGHT_FLICKER(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_SHADOWS(new NotFineOptionCycling<>(GraphicsToggle.DEFAULT, OptionImpact.LOW)) {
         @Override
         public void applyChanges() {

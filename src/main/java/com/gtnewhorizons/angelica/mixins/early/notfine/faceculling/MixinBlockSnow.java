@@ -14,10 +14,6 @@ import net.minecraft.world.IBlockAccess;
 @Mixin(value = BlockSnow.class)
 public abstract class MixinBlockSnow extends Block implements IFaceObstructionCheckHelper {
 
-	MixinBlockSnow(Material material) {
-		super(material);
-	}
-
 	/**
 	 * @author jss2a98aj
 	 * @reason More accurate face culling.
@@ -56,5 +52,10 @@ public abstract class MixinBlockSnow extends Block implements IFaceObstructionCh
             default -> otherMaxY > (float) (2 * (1 + meta)) * 0.0625f;
         };
     }
+
+    MixinBlockSnow(Material material) {
+        super(material);
+    }
+
 }
 

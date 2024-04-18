@@ -20,7 +20,8 @@ public abstract class MixinBlockSlab extends Block implements IFaceObstructionCh
             int thisX = x + Facing.offsetsXForSide[Facing.oppositeSide[side]];
             int thisY = y + Facing.offsetsYForSide[Facing.oppositeSide[side]];
             int thisZ = z + Facing.offsetsZForSide[Facing.oppositeSide[side]];
-            if((worldIn.getBlockMetadata(thisX, thisY, thisZ) & 8) != side) {
+            boolean isTop = (worldIn.getBlockMetadata(thisX, thisY, thisZ) & 8) != 0;
+            if(isTop && side == 0 || !isTop && side == 1) {
                 return true;
             }
         }
@@ -61,7 +62,9 @@ public abstract class MixinBlockSlab extends Block implements IFaceObstructionCh
         };
     }
 
-    MixinBlockSlab(Material material) { super(material); }
+    MixinBlockSlab(Material material) {
+        super(material);
+    }
 
     @Shadow @Final protected boolean field_150004_a;
 }

@@ -376,7 +376,7 @@ abstract class TileOverride implements ITileOverride {
         i += offset[0];
         j += offset[1];
         k += offset[2];
-        Block neighbor = BlockAPI.getBlockAt(blockAccess, i, j, k);
+        Block neighbor = blockAccess.getBlock(i, j, k);
         if (neighbor == null) {
             return false;
         }
@@ -390,8 +390,7 @@ abstract class TileOverride implements ITileOverride {
             int blockFace = renderBlockState.getBlockFace();
             if (blockFace >= 0) {
                 int[] normal = NORMALS[blockFace];
-                if (!BlockAPI.shouldSideBeRendered(
-                    neighbor,
+                if (!neighbor.shouldSideBeRendered(
                     blockAccess,
                     i + normal[0],
                     j + normal[1],
@@ -417,34 +416,34 @@ abstract class TileOverride implements ITileOverride {
         }
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();
         Block block = renderBlockState.getBlock();
-        int i = renderBlockState.getI();
-        int j = renderBlockState.getJ();
-        int k = renderBlockState.getK();
+        int x = renderBlockState.getI();
+        int y = renderBlockState.getJ();
+        int z = renderBlockState.getK();
         if (renderBlockState.getBlockFace() < 0 && requiresFace()) {
             properties.warning(
                 "method=%s is not supported for non-standard block %s:%d @ %d %d %d",
                 getMethod(),
                 BlockAPI.getBlockName(block),
-                BlockAPI.getMetadataAt(blockAccess, i, j, k),
-                i,
-                j,
-                k);
+                blockAccess.getBlockMetadata(x, y, z),
+                x,
+                y,
+                z);
             return null;
         }
         if (block == null || RenderPassAPI.instance.skipThisRenderPass(block, renderPass)) {
             return null;
         }
         BlockStateMatcher filter = renderBlockState.getFilter();
-        if (filter != null && !filter.match(blockAccess, i, j, k)) {
+        if (filter != null && !filter.match(blockAccess, x, y, z)) {
             return null;
         }
         if (faceMatcher != null && !faceMatcher.match(renderBlockState)) {
             return null;
         }
-        if (height != null && !height.get(j)) {
+        if (height != null && !height.get(y)) {
             return null;
         }
-        if (biomes != null && !biomes.get(BiomeAPI.getBiomeIDAt(blockAccess, i, j, k))) {
+        if (biomes != null && !biomes.get(BiomeAPI.getBiomeIDAt(blockAccess, x, y, z))) {
             return null;
         }
         return getTileWorld_Impl(renderBlockState, origIcon);

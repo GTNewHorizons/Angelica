@@ -12,8 +12,8 @@ import net.minecraft.potion.PotionHelper;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.MapColorExpansion;
-import com.gtnewhorizons.angelica.mixins.interfaces.PotionExpansion;
+import jss.notfine.util.MapColorExpansion;
+import jss.notfine.util.PotionExpansion;
 
 public class ColorizeItem {
 

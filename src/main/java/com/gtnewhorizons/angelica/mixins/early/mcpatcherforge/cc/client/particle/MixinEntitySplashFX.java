@@ -26,6 +26,11 @@ public abstract class MixinEntitySplashFX extends EntityFX {
             this.particleRed = Colorizer.setColor[0];
             this.particleGreen = Colorizer.setColor[1];
             this.particleBlue = Colorizer.setColor[2];
+        } else {
+            this.particleRed = 0.2f;
+            this.particleGreen = 0.3f;
+            this.particleBlue = 1.0f;
         }
     }
+
 }

@@ -63,6 +63,7 @@ public abstract class MixinWorld {
         }
         return input;
     }
+
     @SuppressWarnings("InvalidInjectorMethodSignature")
     @ModifyVariable(
         method = "getSkyColorBody(Lnet/minecraft/entity/Entity;F)Lnet/minecraft/util/Vec3;",

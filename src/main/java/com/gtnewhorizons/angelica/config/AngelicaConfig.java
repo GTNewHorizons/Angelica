@@ -9,6 +9,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodium;
 
+    @Config.Comment("Enable NotFine Options")
+    @Config.DefaultBoolean(false)
+    public static boolean enableNotFineOptions;
+
     @Config.Comment("Enable Reese's Sodium Options")
     @Config.DefaultBoolean(true)
     public static boolean enableReesesSodiumOptions;
@@ -39,11 +43,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     @Config.Ignore()
     public static boolean enableMCPatcherForgeFeatures;
-
-    @Config.Comment("Enable NotFine optimizations")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean enableNotFineOptimizations;
 
     @Config.Comment("Replace some vanilla render paths with more optimized versions. Disable if you encounter mixin conflicts.")
     @Config.DefaultBoolean(true)

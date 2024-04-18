@@ -19,7 +19,7 @@ import com.prupe.mcpatcher.mal.resource.ResourceList;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 abstract public class ColorMap implements IColorMap {
 

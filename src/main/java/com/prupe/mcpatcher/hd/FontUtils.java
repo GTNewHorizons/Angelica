@@ -14,8 +14,8 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererExpansion;
+import jss.notfine.config.MCPatcherForgeConfig;
+import jss.notfine.util.FontRendererExpansion;
 
 public class FontUtils {
 
@@ -267,7 +267,7 @@ public class FontUtils {
                         charWidthf[ch] = width;
                         isOverride[ch] = true;
                     }
-                } catch (NumberFormatException e) {}
+                } catch (NumberFormatException ignore) {}
             }
         }
     }

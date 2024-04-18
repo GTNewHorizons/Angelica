@@ -8,7 +8,6 @@ import net.minecraft.world.IBlockAccess;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -32,18 +31,6 @@ public abstract class MixinRenderBlocks {
 
     @Shadow
     public abstract IIcon getBlockIconFromSideAndMetadata(Block block, int side, int meta);
-
-    @Unique
-    private int mcpatcherforge$neededSideRenderBlockLiquid;
-
-    @Unique
-    private float mcpatcherforge$neededFloat1;
-
-    @Unique
-    private float mcpatcherforge$neededFloat2;
-
-    @Unique
-    private float mcpatcherforge$neededFloat3;
 
     // Redirect calls to this.getBlockIcon when possible
 

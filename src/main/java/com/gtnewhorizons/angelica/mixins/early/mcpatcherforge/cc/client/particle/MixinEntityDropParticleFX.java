@@ -36,7 +36,7 @@ public abstract class MixinEntityDropParticleFX extends EntityFX {
         at = @At("RETURN"))
     private void modifyConstructor(World worldIn, double x, double y, double z, Material material, CallbackInfo ci) {
         if (material == Material.water) {
-            if (ColorizeBlock.computeWaterColor(true, (int) this.posX, (int) this.posY, (int) this.posZ)) {
+            if (ColorizeBlock.computeWaterColor(false, (int) this.posX, (int) this.posY, (int) this.posZ)) {
                 this.particleRed = Colorizer.setColor[0];
                 this.particleGreen = Colorizer.setColor[1];
                 this.particleBlue = Colorizer.setColor[2];
@@ -45,10 +45,6 @@ public abstract class MixinEntityDropParticleFX extends EntityFX {
                 this.particleGreen = 0.3f;
                 this.particleBlue = 1.0f;
             }
-        } else {
-            this.particleRed = 1.0F;
-            this.particleGreen = 0.0F;
-            this.particleBlue = 0.0F;
         }
     }
 
@@ -63,8 +59,8 @@ public abstract class MixinEntityDropParticleFX extends EntityFX {
         this.prevPosY = this.posY;
         this.prevPosZ = this.posZ;
 
+        // Patch start
         if (this.materialType != Material.water) {
-            // Patch start
             if (ColorizeEntity.computeLavaDropColor(40 - this.bobTimer)) {
                 this.particleRed = Colorizer.setColor[0];
                 this.particleGreen = Colorizer.setColor[1];
@@ -74,12 +70,8 @@ public abstract class MixinEntityDropParticleFX extends EntityFX {
                 this.particleGreen = 16.0f / (40 - this.bobTimer + 16);
                 this.particleBlue = 4.0f / (40 - this.bobTimer + 8);
             }
-            // Patch end
-        } else {
-            this.particleRed = 1.0F;
-            this.particleGreen = 16.0F / (float) (40 - this.bobTimer + 16);
-            this.particleBlue = 4.0F / (float) (40 - this.bobTimer + 8);
         }
+        // Patch end
 
         this.motionY -= this.particleGravity;
 

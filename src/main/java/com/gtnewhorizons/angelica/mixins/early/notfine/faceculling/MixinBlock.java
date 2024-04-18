@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.faceculling;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.util.IFaceObstructionCheckHelper;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
@@ -17,7 +15,6 @@ public abstract class MixinBlock {
      * @reason More accurate face culling.
      */
     @Overwrite()
-    @SideOnly(Side.CLIENT)
     public boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
         //Check if side is touching another block
         switch(side) {

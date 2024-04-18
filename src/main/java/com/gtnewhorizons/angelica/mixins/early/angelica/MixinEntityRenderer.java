@@ -1,13 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import jss.notfine.core.Settings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.world.WorldProvider;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -27,8 +23,4 @@ public abstract class MixinEntityRenderer {
         );
     }
 
-    @WrapOperation(method = "setupFog", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldProvider;getWorldHasVoidParticles()Z"))
-    private boolean angelica$wrapVoidFog(WorldProvider provider, Operation<Boolean> original){
-        return ((boolean)Settings.VOID_FOG.option.getStore()) ? original.call(provider) : false;
-    }
 }

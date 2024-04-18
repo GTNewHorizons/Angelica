@@ -14,7 +14,7 @@ import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.mal.biome.ColorUtils;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 public final class Lightmap {
 

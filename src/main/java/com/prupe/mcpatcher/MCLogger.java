@@ -8,7 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 public class MCLogger {
 
