@@ -289,7 +289,7 @@ public enum Mixins {
         .setSide(Side.CLIENT).setPhase(Phase.LATE)
         .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
         .addTargetedMod(TargetedMod.TWILIGHT_FOREST)
-        .addMixinClasses(addPrefix("notfine.leaves.twilightforest",
+        .addMixinClasses(addPrefix("notfine.leaves.twilightforest.",
             "MixinBlockTFLeaves",
             "MixinBlockTFLeaves3",
             // TODO: Verify 2.3.8.18 or later to support non NH builds?
