@@ -113,6 +113,7 @@ public enum Mixins {
             ,"sodium.MixinLongHashMap"
             ,"sodium.MixinRender"
             ,"sodium.MixinRenderingRegistry"
+            ,"sodium.MixinPlayerManager"
         )
     ),
 

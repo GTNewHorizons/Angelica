@@ -1,0 +1,29 @@
+package com.gtnewhorizons.angelica.mixins.early.sodium;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
+
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+
+import org.spongepowered.asm.mixin.injection.At;
+
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.management.PlayerManager;
+import net.minecraft.util.MathHelper;
+
+@Mixin(PlayerManager.class)
+public class MixinPlayerManager {
+
+    @ModifyArgs(method = "func_152622_a(I)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/MathHelper;clamp_int(III)I"))
+    public void clamp_int(Args args) {
+        args.set(2, 32);
+    }
+
+}
