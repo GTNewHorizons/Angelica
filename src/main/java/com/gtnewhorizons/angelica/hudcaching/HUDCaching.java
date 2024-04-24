@@ -248,7 +248,7 @@ public class HUDCaching {
     // moved to here due to the method being called from a mixin
     public static void disableHoloInventory() {
         if (ModStatus.isHoloInventoryLoaded){
-            Renderer.INSTANCE.angelicaOverride = true;
+            Renderer.INSTANCE.angelicaOverride = isEnabled;
         }
     }
 
