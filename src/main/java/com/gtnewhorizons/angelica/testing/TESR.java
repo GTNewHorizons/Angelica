@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.testing;
 
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import cpw.mods.fml.common.FMLLog;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -15,6 +16,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.KHRDebug;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -185,9 +187,11 @@ public class TESR extends TileEntitySpecialRenderer  {
 
             vertexIDBuffer = GL15.glGenBuffers();
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vertexIDBuffer);
-            final ByteBuffer vertexIDData = BufferUtils.createByteBuffer(VERTEX_COUNT * 4);
-            for (int i = 0; i < VERTEX_COUNT; i++) {
-                vertexIDData.putInt(i * 4, i);
+            // Make a 3x-sized buffer to act as a vec3 position input to the shader.
+            // Without a position input, the draw causes undefined behaviour in GL 2.x
+            final ByteBuffer vertexIDData = BufferUtils.createByteBuffer(VERTEX_COUNT * 4 * 3);
+            for (int i = 0; i < VERTEX_COUNT * 3; i++) {
+                vertexIDData.putFloat(i * 4, (float) i);
             }
             GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertexIDData, GL15.GL_STATIC_DRAW);
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -223,11 +227,14 @@ public class TESR extends TileEntitySpecialRenderer  {
         modelProjection.get(0, bufModelViewProjection);
         GL20.glUniformMatrix4(uModelProjectionMatrix, false, bufModelViewProjection);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vertexIDBuffer);
+        GL20.glVertexAttribPointer(aVertexID, 1, GL11.GL_FLOAT, false, 0, 0);
         GL20.glEnableVertexAttribArray(aVertexID);
-        GL20.glVertexAttribPointer(aVertexID, 1, GL11.GL_INT, false, 0, 0);
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 0, 0);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
 
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, VERTEX_COUNT);
 
+        GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
         GL20.glDisableVertexAttribArray(aVertexID);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL11.glEnable(GL11.GL_CULL_FACE);

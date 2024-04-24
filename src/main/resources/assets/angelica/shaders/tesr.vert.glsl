@@ -1,7 +1,6 @@
 #version 120
-#extension GL_EXT_gpu_shader4 : require
 
-attribute int vertexId;
+attribute float vertexId;
 
 uniform mat4 u_ModelProjection;
 uniform float u_SectionHeight;
@@ -30,7 +29,10 @@ const float SECTION_HEIGHT = 8 * SIDE;
 const int SECTIONS = int(ceil(CABLE_HEIGHT / SECTION_HEIGHT));
 
 int imod(int a, int d) {
-    return a - ((a / d) * d);
+    // Using integer ops generates random junk data on GLSL 120 here, so we have to use floats.
+    float A = float(a);
+    float D = float(d);
+    return int(mod(A, D));
 }
 
 void main() {
@@ -38,8 +40,7 @@ void main() {
     vec2 a_TexCoord;
 
     // Decompose the vertex ID into identifiers of the different "loops" involved in the helix construction
-    int id = vertexId;
-    id = gl_VertexID;
+    int id = int(vertexId);
     int quadRawVtxIdx = imod(id, 6);
     int quadVtxIdx = QUAD_INDICES[quadRawVtxIdx];
     id = (id - quadRawVtxIdx) / 6;
