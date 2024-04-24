@@ -22,6 +22,7 @@ public class ModStatus {
     public static boolean isEIDBiomeLoaded;
     public static boolean isXaerosMinimapLoaded;
     public static boolean isHoloInventoryLoaded;
+    public static boolean isEU2Loaded;
 
     public static void preInit(){
         isNEIDLoaded = Loader.isModLoaded("neid");
@@ -31,6 +32,7 @@ public class ModStatus {
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
+        isEU2Loaded = Loader.isModLoaded("ExtraUtilities");
 
         if (isHoloInventoryLoaded){
             isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
