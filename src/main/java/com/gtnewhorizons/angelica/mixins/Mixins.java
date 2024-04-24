@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -182,6 +183,14 @@ public enum Mixins {
             "angelica.animation.MixinRenderBlockFluid",
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
+
+    EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities 2").setPhase(Phase.LATE)
+        .addTargetedMod(TargetedMod.EXTRAUTILS).setSide(Side.CLIENT)
+        .setApplyIf(() -> AngelicaConfig.fixEU2SodiumCompat)
+        .addMixinClasses(
+            "client.extrautils.MixinRenderBlockConnectedTextures",
+            "client.extrautils.MixinRenderBlockConnectedTexturesEthereal",
+            "client.extrautils.MixinIconConnectedTexture")),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new Builder("Add animation speedup support to Campfire Backport").setPhase(Phase.LATE)
             .addTargetedMod(TargetedMod.CAMPFIRE_BACKPORT).setSide(Side.CLIENT)

@@ -12,7 +12,9 @@ import java.util.function.Supplier;
 public enum CompatASMTransformers {
 
     EXTRA_UTILITIES_ISBRH("RenderBlockColor Transformer", () -> AngelicaConfig.fixEU2SodiumCompat, Side.CLIENT,
-        "com.gtnewhorizons.angelica.transform.compat.extrautils.RenderBlockColorTransformer"
+        "com.gtnewhorizons.angelica.transform.compat.extrautils.RenderBlockColorTransformer",
+                    "com.gtnewhorizons.angelica.transform.compat.extrautils.RenderBlockConnectedTexturesTransformer",
+                    "com.gtnewhorizons.angelica.transform.compat.extrautils.RenderBlockConnectedTexturesEtherealTransformer"
     );
 
     private final Supplier<Boolean> applyIf;
