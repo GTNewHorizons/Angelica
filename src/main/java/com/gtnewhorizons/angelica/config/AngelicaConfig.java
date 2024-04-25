@@ -101,6 +101,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixLotrSodiumCompat;
 
+    @Config.Comment("Fix thread-safety in Extra Utilities rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixExtraUtilsSodiumCompat;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
