@@ -184,9 +184,9 @@ public enum Mixins {
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
 
-    EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities 2").setPhase(Phase.LATE)
+    EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities").setPhase(Phase.LATE)
         .addTargetedMod(TargetedMod.EXTRAUTILS).setSide(Side.CLIENT)
-        .setApplyIf(() -> AngelicaConfig.fixEU2SodiumCompat)
+        .setApplyIf(() -> AngelicaConfig.fixExtraUtilsSodiumCompat)
         .addMixinClasses(
             "client.extrautils.MixinRenderBlockConnectedTextures",
             "client.extrautils.MixinRenderBlockConnectedTexturesEthereal",
