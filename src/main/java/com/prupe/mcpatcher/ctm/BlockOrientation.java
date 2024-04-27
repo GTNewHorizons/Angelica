@@ -140,8 +140,7 @@ final class BlockOrientation extends RenderBlockState {
                 }
                 haveOffsets = block == blockAccess.getBlock(i + di, j, k + dk);
             }
-            default -> {
-            }
+            default -> {}
         }
         return haveOffsets;
     }

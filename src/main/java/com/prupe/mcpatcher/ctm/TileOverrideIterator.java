@@ -148,7 +148,8 @@ abstract public class TileOverrideIterator implements Iterator<ITileOverride> {
         }
 
         @Override
-        protected synchronized IIcon getTile(ITileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
+        protected synchronized IIcon getTile(ITileOverride override, RenderBlockState renderBlockState,
+            IIcon origIcon) {
             return override.getTileWorld(renderBlockState, origIcon);
         }
     }
@@ -160,7 +161,8 @@ abstract public class TileOverrideIterator implements Iterator<ITileOverride> {
         }
 
         @Override
-        protected synchronized IIcon getTile(ITileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
+        protected synchronized IIcon getTile(ITileOverride override, RenderBlockState renderBlockState,
+            IIcon origIcon) {
             return override.getTileHeld(renderBlockState, origIcon);
         }
     }

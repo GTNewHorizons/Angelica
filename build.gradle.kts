@@ -1,5 +1,6 @@
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 minecraft {
@@ -30,4 +31,11 @@ tasks.register<Copy>("copyDependencies") {
     description = "Collect dependencies into the testDependencies folder"
     from(configurations.default)
     into("testDependencies")
+}
+
+// Overwrite the targets so only select paths run spotless
+spotless {
+    java {
+        target("src/*/java/com/prupe/**/*.java")
+    }
 }

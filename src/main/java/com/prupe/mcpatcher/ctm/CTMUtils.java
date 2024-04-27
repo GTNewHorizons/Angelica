@@ -124,8 +124,8 @@ public class CTMUtils {
         haveBlockFace = false;
     }
 
-    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess,
-        int i, int j, int k, int face) {
+    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block,
+        IBlockAccess blockAccess, int i, int j, int k, int face) {
         lastOverride = null;
         if (blockAccess != null && checkFace(face)) {
             if (!haveBlockFace) {
@@ -141,7 +141,8 @@ public class CTMUtils {
         return lastOverride == null && skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : icon;
     }
 
-    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, int face, int metadata) {
+    public static synchronized IIcon getBlockIcon(IIcon icon, RenderBlocks renderBlocks, Block block, int face,
+        int metadata) {
         lastOverride = null;
         if (checkFace(face) && checkRenderType(block)) {
             renderBlockState.setBlockMetadata(block, metadata, face);

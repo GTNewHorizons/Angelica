@@ -390,12 +390,8 @@ abstract class TileOverride implements ITileOverride {
             int blockFace = renderBlockState.getBlockFace();
             if (blockFace >= 0) {
                 int[] normal = NORMALS[blockFace];
-                if (!neighbor.shouldSideBeRendered(
-                    blockAccess,
-                    i + normal[0],
-                    j + normal[1],
-                    k + normal[2],
-                    blockFace)) {
+                if (!neighbor
+                    .shouldSideBeRendered(blockAccess, i + normal[0], j + normal[1], k + normal[2], blockFace)) {
                     return false;
                 }
             }

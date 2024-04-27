@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.block.Block;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
 
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
@@ -100,7 +98,8 @@ public class BlockAPI {
         }
 
         if (MCPatcherUtils.isNullOrEmpty(namespace)) {
-            namespace = source.getResource().getResourceDomain();
+            namespace = source.getResource()
+                .getResourceDomain();
         }
         if (MCPatcherUtils.isNullOrEmpty(blockName)) {
             source.warning("cannot parse namespace/block name from %s", matchString);
