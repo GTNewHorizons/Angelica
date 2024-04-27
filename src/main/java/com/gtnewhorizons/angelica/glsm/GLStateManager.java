@@ -1160,7 +1160,7 @@ public class GLStateManager {
     public static void glMultMatrix(FloatBuffer floatBuffer) {
         GL11.glMultMatrix(floatBuffer);
         tempMatrix4f.set(floatBuffer);
-        getMatrixStack().mul(conersionMatrix4f);
+        getMatrixStack().mul(tempMatrix4f);
     }
 
     public static final Matrix4d conersionMatrix4d = new Matrix4d();
