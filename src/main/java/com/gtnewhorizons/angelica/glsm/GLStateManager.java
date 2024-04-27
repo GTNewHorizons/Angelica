@@ -1112,8 +1112,8 @@ public class GLStateManager {
     }
 
     public static void glLoadMatrix(DoubleBuffer m) {
-        conersionMatrix4d.set(m);
-        getMatrixStack().set(conersionMatrix4d);
+        conversionMatrix4d.set(m);
+        getMatrixStack().set(conversionMatrix4d);
         GL11.glLoadMatrix(m);
     }
 
@@ -1160,16 +1160,16 @@ public class GLStateManager {
     public static void glMultMatrix(FloatBuffer floatBuffer) {
         GL11.glMultMatrix(floatBuffer);
         tempMatrix4f.set(floatBuffer);
-        getMatrixStack().mul(conersionMatrix4f);
+        getMatrixStack().mul(tempMatrix4f);
     }
 
-    public static final Matrix4d conersionMatrix4d = new Matrix4d();
-    public static final Matrix4f conersionMatrix4f = new Matrix4f();
+    public static final Matrix4d conversionMatrix4d = new Matrix4d();
+    public static final Matrix4f conversionMatrix4f = new Matrix4f();
     public static void glMultMatrix(DoubleBuffer matrix) {
         GL11.glMultMatrix(matrix);
-        conersionMatrix4d.set(matrix);
-        conersionMatrix4f.set(conersionMatrix4d);
-        getMatrixStack().mul(conersionMatrix4f);
+        conversionMatrix4d.set(matrix);
+        conversionMatrix4f.set(conversionMatrix4d);
+        getMatrixStack().mul(conversionMatrix4f);
     }
 
     private static final Vector3f rotation = new Vector3f();
