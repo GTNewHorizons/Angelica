@@ -385,7 +385,7 @@ public enum Mixins {
     ),
     MCPATCHER_FORGE_CUSTOM_ITEM_TEXTURES(new Builder("MCP:F Custom Item Textures")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled)
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().customItemTexturesEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("mcpatcherforge.cit.",
             "client.renderer.entity.MixinRenderBiped",
@@ -410,7 +410,7 @@ public enum Mixins {
     ),
     MCPATCHER_FORGE_EXTENDED_HD(new Builder("MCP:F Extended hd")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures && MCPatcherForgeConfig.instance().extendedHDEnabled)
+        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().extendedHDEnabled)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("mcpatcherforge.hd.",
             "MixinTextureClock",
@@ -420,7 +420,7 @@ public enum Mixins {
     ),
     MCPATCHER_FORGE_EXTENDED_HD_FONT(new Builder("MCP:F Extended HD Font")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .setApplyIf(() -> (AngelicaConfig.enableNotFineFeatures && MCPatcherForgeConfig.instance().extendedHDEnabled && MCPatcherForgeConfig.instance().hdFont))
+        .setApplyIf(() -> (AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.instance().extendedHDEnabled && MCPatcherForgeConfig.instance().hdFont))
         .addTargetedMod(TargetedMod.VANILLA)
         .addExcludedMod(TargetedMod.COFHCORE)
         .addMixinClasses("mcpatcherforge.hd.MixinFontRenderer")
