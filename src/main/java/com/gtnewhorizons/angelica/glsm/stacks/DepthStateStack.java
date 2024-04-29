@@ -34,4 +34,7 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

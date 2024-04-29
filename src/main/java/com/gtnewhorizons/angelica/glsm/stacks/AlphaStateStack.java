@@ -34,4 +34,7 @@ public class AlphaStateStack extends AlphaState implements IStateStack<AlphaStat
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

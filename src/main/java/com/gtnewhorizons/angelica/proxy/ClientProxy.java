@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.proxy;
 import com.google.common.base.Objects;
 import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -81,7 +82,7 @@ public class ClientProxy extends CommonProxy {
         if(AngelicaConfig.enableSodium) {
             // Register all blocks. Because blockids are unique to a world, this must be done each load
             GameData.getBlockRegistry().forEach(o -> {
-    
+
                 final Block b = (Block) o;
                 AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
                 AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
@@ -119,6 +120,10 @@ public class ClientProxy extends CommonProxy {
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         Loader.loadModels();
+
+        if(ModStatus.isBetterCrashesLoaded) {
+            BetterCrashesCompat.init();
+        }
     }
 
     private boolean wasGLSMKeyPressed;

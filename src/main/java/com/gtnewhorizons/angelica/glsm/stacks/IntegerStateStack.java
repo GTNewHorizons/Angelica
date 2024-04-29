@@ -39,4 +39,7 @@ public class IntegerStateStack extends IntegerState implements IStateStack<Integ
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

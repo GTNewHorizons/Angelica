@@ -97,6 +97,9 @@ dependencies {
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
 
+    // Better Crashes
+    compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
+
 
     // Tests
     testImplementation(platform('org.junit:junit-bom:5.9.2'))

@@ -254,6 +254,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Inject(method = "loadRenderers", at = @At("RETURN"))
     private void onReload(CallbackInfo ci) {
+        reload();
+    }
+
+    public void reload() {
         RenderDevice.enterManagedCode();
 
         try {

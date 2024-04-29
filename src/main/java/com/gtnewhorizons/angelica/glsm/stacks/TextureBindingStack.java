@@ -37,4 +37,8 @@ public class TextureBindingStack extends TextureBinding implements IStateStack<T
     public TextureBinding peek() {
         return stack[pointer];
     }
+
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }
