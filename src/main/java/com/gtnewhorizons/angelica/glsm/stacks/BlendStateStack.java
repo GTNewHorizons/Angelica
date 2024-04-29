@@ -34,4 +34,7 @@ public class BlendStateStack extends BlendState implements IStateStack<BlendStat
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

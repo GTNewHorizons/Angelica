@@ -16,6 +16,7 @@ public class ModStatus {
      */
     public static boolean isOldNEIDLoaded;
 
+    public static boolean isBetterCrashesLoaded;
     public static boolean isNEIDMetadataExtended;
     public static boolean isLotrLoaded;
     public static boolean isChunkAPILoaded;
@@ -24,6 +25,7 @@ public class ModStatus {
     public static boolean isHoloInventoryLoaded;
 
     public static void preInit(){
+        isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
         isNEIDLoaded = Loader.isModLoaded("neid");
         isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
         isLotrLoaded = Loader.isModLoaded("lotr");

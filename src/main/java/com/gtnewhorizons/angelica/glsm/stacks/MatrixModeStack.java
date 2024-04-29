@@ -34,4 +34,7 @@ public class MatrixModeStack extends MatrixMode implements IStateStack<MatrixMod
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

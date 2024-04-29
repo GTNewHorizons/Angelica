@@ -105,7 +105,6 @@ public class GLStateManager {
     @Getter protected static final DepthStateStack depthState = new DepthStateStack();
     @Getter protected static final BooleanStateStack depthTest = new BooleanStateStack(GL11.GL_DEPTH_TEST);
 
-//    @Getter private static final FogState fogState = new FogState();
     @Getter protected static final FogStateStack fogState = new FogStateStack();
     @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
     @Getter protected static final Color4Stack color = new Color4Stack();
@@ -125,6 +124,19 @@ public class GLStateManager {
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
+    public static void reset() {
+        runningSplash = true;
+        while(!attribs.isEmpty()) {
+            attribs.popInt();
+        }
+        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+            while(!stack.isEmpty()) {
+                stack.pop();
+            }
+        }
+        modelViewMatrix.clear();
+        projectionMatrix.clear();
+    }
 
     // Iris Listeners
     private static Runnable blendFuncListener = null;

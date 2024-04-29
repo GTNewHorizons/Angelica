@@ -34,4 +34,7 @@ public class ColorMaskStack extends ColorMask implements IStateStack<ColorMaskSt
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }
