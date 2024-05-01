@@ -257,7 +257,7 @@ public class NotFineGameOptionPages {
                 .setBinding((opts, value) -> opts.anaglyph = value, opts -> opts.anaglyph)
                 .setImpact(OptionImpact.HIGH)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                .setEnabled(NotFineConfig.allowAdvancedOpenGL)
+                .setEnabled(NotFineConfig.allowToggle3DAnaglyph)
                 .build())
             .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                 .setName(I18n.format("options.showCape"))
