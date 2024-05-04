@@ -132,6 +132,7 @@ public enum Mixins {
             ,"shaders.MixinRender"
             ,"shaders.MixinRenderGlobal"
             ,"shaders.MixinRenderManager"
+            ,"shaders.MixinRendererLivingEntity"
         )
     ),
 
