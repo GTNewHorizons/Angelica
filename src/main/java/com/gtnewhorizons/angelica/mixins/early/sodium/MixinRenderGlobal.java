@@ -146,9 +146,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             pipeline = null;
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
-            pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
-
-            if(pass == 1) {
+            if(pass == 0) {
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+            } else if(pass == 1) {
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
 
                 // iris$beginTranslucents
