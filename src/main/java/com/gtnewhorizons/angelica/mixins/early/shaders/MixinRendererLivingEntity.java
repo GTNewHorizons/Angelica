@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
@@ -24,11 +25,18 @@ public class MixinRendererLivingEntity {
         )
     )
     private void iris$setEntityColor(EntityLivingBase elb, double d1, double d2, double d3, float f1, float f2, CallbackInfo ci, @Local int j) {
-        float a = (j >> 24 & 255) / 255.0F;
-        float r = (j >> 16 & 255) / 255.0F;
-        float g = (j >> 8 & 255) / 255.0F;
-        float b = (j & 255) / 255.0F;
+        final float a = (j >> 24 & 255) / 255.0F;
+        final float r = (j >> 16 & 255) / 255.0F;
+        final float g = (j >> 8 & 255) / 255.0F;
+        final float b = (j & 255) / 255.0F;
         CapturedRenderingState.INSTANCE.setCurrentEntityColor(r, g, b, 1.0F - a);
     }
 
+    @Inject(
+        method="Lnet/minecraft/client/renderer/entity/RendererLivingEntity;doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V", at=@At(value="INVOKE",
+        target="Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V", shift=At.Shift.BEFORE)
+    )
+    private void iris$teardownSpecialRenderConditions(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
+    }
 }

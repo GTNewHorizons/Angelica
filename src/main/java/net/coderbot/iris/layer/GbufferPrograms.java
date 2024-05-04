@@ -65,7 +65,7 @@ public class GbufferPrograms {
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {
-		WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
 		if (pipeline != null) {
 			return pipeline.getPhase();
@@ -75,7 +75,7 @@ public class GbufferPrograms {
 	}
 
 	private static void setPhase(WorldRenderingPhase phase) {
-		WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
 		if (pipeline != null) {
 			pipeline.setPhase(phase);
@@ -83,7 +83,7 @@ public class GbufferPrograms {
 	}
 
 	public static void setOverridePhase(WorldRenderingPhase phase) {
-		WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
 		if (pipeline != null) {
 			pipeline.setOverridePhase(phase);
@@ -100,7 +100,7 @@ public class GbufferPrograms {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(override));
 	}
 
-	public static void teardownSpecialRenderCondition(SpecialCondition override) {
+	public static void teardownSpecialRenderCondition() {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(null));
 	}
 

@@ -137,8 +137,12 @@ public enum Mixins {
             ,"shaders.MixinLocale"
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"
-            ,"shaders.MixinRenderGlobal"
+            ,"shaders.MixinRenderDragon"
+            ,"shaders.MixinRenderEnderman"
             ,"shaders.MixinRendererLivingEntity"
+            ,"shaders.MixinRenderGlobal"
+            ,"shaders.MixinRenderSpider"
+            ,"shaders.MixinTileEntityBeaconRenderer"
         )
     ),
 
