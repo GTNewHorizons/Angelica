@@ -81,6 +81,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 
+    @Config.Comment("Enable Dynamic Lights")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableDynamicLights;
+
     @Config.Comment("Optimize world update light. [From Hodgepodge]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
