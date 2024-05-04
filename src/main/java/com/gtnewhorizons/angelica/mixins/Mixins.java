@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -319,12 +318,17 @@ public enum Mixins {
             "base.MixinSimpleReloadableResourceManager",
 
             "base.MixinMinecraft"
-
-            // TODO merge renderpass changes into Sodium renderer
-            // "renderpass.MixinEntityRenderer",
-            // "renderpass.MixinRenderBlocks",
-            // "renderpass.MixinRenderGlobal",
-            // "renderpass.MixinWorldRenderer"
+        ))
+    ),
+    MCPATCHER_FORGE_RENDERPASS(new Builder("MCPatcher Forge Renderpass")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> NotFineConfig.renderPass)
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses(addPrefix("mcpatcherforge.",
+            "renderpass.MixinEntityRenderer",
+            "renderpass.MixinRenderBlocks",
+            "renderpass.MixinRenderGlobal",
+            "renderpass.MixinWorldRenderer"
         ))
     ),
     MCPATCHER_FORGE_CUSTOM_COLORS(new Builder("MCP:F Custom Colors")
@@ -522,10 +526,6 @@ public enum Mixins {
 
     public static List<String> getEarlyMixins(Set<String> loadedCoreMods) {
         NotFineConfig.loadSettings();
-        //These will probably break hard with Angelica.
-        //AdvancedOpenGL even breaks hard on its own.
-        NotFineConfig.allowAdvancedOpenGL = false;
-        NotFineConfig.allowToggleFBO = false;
         //This may be possible to handle differently or fix.
         if(loadedCoreMods.contains("cofh.asm.LoadingPlugin")) {
             MCPatcherForgeConfig.instance().hdFont = false;
