@@ -59,10 +59,6 @@ class AttributeTransformer {
 
 		patchTextureMatrices(t, tree, root, parameters.inputs.lightmap);
 
-		if (parameters.inputs.overlay) {
-			patchOverlayColor(t, tree, root, parameters);
-		}
-
 		if (parameters.type.glShaderType == ShaderType.VERTEX
 				&& root.identifierIndex.has("gl_MultiTexCoord3")
 				&& !root.identifierIndex.has("mc_midTexCoord")) {
@@ -111,57 +107,5 @@ class AttributeTransformer {
 				"mat4(1.0)," +
 				"mat4(1.0)" +
 				");");
-	}
-
-	private static final AutoHintedMatcher<ExternalDeclaration> uniformVec4EntityColor = new AutoHintedMatcher<>(
-			"uniform vec4 entityColor;", Matcher.externalDeclarationPattern);
-
-	// Add entity color -> overlay color attribute support.
-	private static void patchOverlayColor(
-			ASTParser t,
-			TranslationUnit tree,
-			Root root,
-			AttributeParameters parameters) {
-		// delete original declaration
-		root.processMatches(t, uniformVec4EntityColor, ASTNode::detachAndDelete);
-
-		if (parameters.type.glShaderType == ShaderType.VERTEX) {
-			// add our own declarations
-			// TODO: We're exposing entityColor to this stage even if it isn't declared in
-			// this stage. But this is needed for the pass-through behavior.
-			tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-					"uniform sampler2D iris_overlay;",
-					"varying vec4 entityColor;");
-
-			// this is so we can pass through the overlay color at the end to the geometry
-			// or fragment stage.
-			tree.prependMain(t,
-					"vec4 overlayColor = texture2D(iris_overlay, (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy);",
-					"entityColor = vec4(overlayColor.rgb, 1.0 - overlayColor.a);",
-					// Workaround for a shader pack bug:
-					// https://github.com/IrisShaders/Iris/issues/1549
-					// Some shader packs incorrectly ignore the alpha value, and assume that rgb
-					// will be
-					// zero if there is no hit flash, we try to emulate that here
-					"entityColor.rgb *= float(entityColor.a != 0.0);");
-		} else if (parameters.type.glShaderType == ShaderType.GEOMETRY) {
-			// replace read references to grab the color from the first vertex.
-			root.replaceReferenceExpressions(t, "entityColor", "entityColor[0]");
-
-			// TODO: this is passthrough behavior
-			tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-					"out vec4 entityColorGS;");
-			tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-					"in vec4 entityColor[];");
-			tree.prependMain(t, "entityColorGS = entityColor[0];");
-		} else if (parameters.type.glShaderType == ShaderType.FRAGMENT) {
-			tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-					"varying vec4 entityColor;");
-
-			// Different output name to avoid a name collision in the geometry shader.
-			if (parameters.hasGeometry) {
-				root.rename("entityColor", "entityColorGS");
-			}
-		}
 	}
 }
