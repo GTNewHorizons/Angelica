@@ -79,6 +79,7 @@ public enum Settings {
             SettingsManager.leavesUpdated();
         }
     },
+    MODE_LIGHT_FLICKER(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     MODE_SHADOWS(new NotFineOptionCycling<>(GraphicsToggle.DEFAULT, OptionImpact.LOW)) {
         @Override
         public void applyChanges() {
@@ -113,7 +114,8 @@ public enum Settings {
         public void applyChanges() {
             RenderStars.reloadStarRenderList(Minecraft.getMinecraft().renderGlobal);
         }
-    };
+    },
+    VOID_FOG(new NotFineOptionTickBox(false, OptionImpact.LOW));
 
     public final NotFineOption option;
 

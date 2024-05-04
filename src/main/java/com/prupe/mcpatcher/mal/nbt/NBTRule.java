@@ -14,8 +14,8 @@ import net.minecraft.nbt.NBTTagLong;
 import net.minecraft.nbt.NBTTagShort;
 import net.minecraft.nbt.NBTTagString;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.NBTTagCompoundExpansion;
-import com.gtnewhorizons.angelica.mixins.interfaces.NBTTagListExpansion;
+import jss.notfine.util.NBTTagCompoundExpansion;
+import jss.notfine.util.NBTTagListExpansion;
 
 abstract public class NBTRule {
 

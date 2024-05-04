@@ -34,4 +34,7 @@ public class FogStateStack extends FogState implements IStateStack<FogStateStack
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

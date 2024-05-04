@@ -8,6 +8,7 @@ import java.util.Properties;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 
@@ -27,7 +28,7 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.ResourceList;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 public class ColorizeBlock {
 
@@ -39,8 +40,8 @@ public class ColorizeBlock {
     private static final boolean useStemColors = MCPatcherForgeConfig.instance().ccStem;
     private static final boolean useBlockColors = MCPatcherForgeConfig.instance().ccOtherBlocks;
 
-    static final boolean enableSmoothBiomes = MCPatcherForgeConfig.instance().smoothBiomes;
-    static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.instance().testColorSmoothing;
+    private static final boolean enableSmoothBiomes = MCPatcherForgeConfig.instance().smoothBiomes;
+    private static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.instance().testColorSmoothing;
 
     private static final ResourceLocation REDSTONE_COLORS = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/redstone.png");
@@ -58,16 +59,14 @@ public class ColorizeBlock {
         "minecraft:textures/colormap/grass.png");
     private static final ResourceLocation DEFAULT_FOLIAGECOLOR = new ResourceLocation(
         "minecraft:textures/colormap/foliage.png");
-    private static final ResourceLocation PINECOLOR = TexturePackAPI.newMCPatcherResourceLocation("colormap/pine.png");
+    private static final ResourceLocation PINECOLOR = TexturePackAPI
+        .newMCPatcherResourceLocation("colormap/pine.png");
     private static final ResourceLocation BIRCHCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/birch.png");
     private static final ResourceLocation WATERCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/water.png");
 
     private static final String PALETTE_BLOCK_KEY = "palette.block.";
-
-    private static Block waterBlock;
-    private static Block staticWaterBlock;
 
     // bitmaps from palette.block.*
     private static final Map<Block, List<BlockStateMatcher>> blockColorMaps = new IdentityHashMap<>();
@@ -136,9 +135,6 @@ public class ColorizeBlock {
     }
 
     static void reset() {
-        waterBlock = BlockAPI.getFixedBlock("minecraft:flowing_water");
-        staticWaterBlock = BlockAPI.getFixedBlock("minecraft:water");
-
         blockColorMaps.clear();
         waterColorMap = null;
         resetVertexColors();
@@ -193,10 +189,6 @@ public class ColorizeBlock {
 
     private static void reloadWaterColors(PropertiesFile properties) {
         waterColorMap = registerColorMap(WATERCOLOR, "minecraft:flowing_water minecraft:water");
-        if (waterColorMap == null) {
-            waterColorMap = new ColorMap.Water();
-            registerColorMap(waterColorMap, null, "minecraft:flowing_water minecraft:water");
-        }
     }
 
     private static void reloadSwampColors(PropertiesFile properties) {
@@ -333,11 +325,11 @@ public class ColorizeBlock {
         return null;
     }
 
-    private static IColorMap findColorMap(Block block, IBlockAccess blockAccess, int i, int j, int k) {
+    private static IColorMap findColorMap(Block block, IBlockAccess blockAccess, int x, int y, int z) {
         List<BlockStateMatcher> maps = findColorMaps(block);
         if (maps != null) {
             for (BlockStateMatcher matcher : maps) {
-                if (matcher.match(blockAccess, i, j, k)) {
+                if (matcher.match(blockAccess, x, y, z)) {
                     return getThreadLocal(matcher);
                 }
             }
@@ -361,17 +353,17 @@ public class ColorizeBlock {
         }
     }
 
-    public static boolean colorizeBlock(Block block, IBlockAccess blockAccess, int i, int j, int k) {
-        IColorMap colorMap = findColorMap(block, blockAccess, i, j, k);
-        return colorizeBlock(block, blockAccess, colorMap, i, j, k);
+    public static boolean colorizeBlock(Block block, IBlockAccess blockAccess, int x, int y, int z) {
+        IColorMap colorMap = findColorMap(block, blockAccess, x, y, z);
+        return colorizeBlock(blockAccess, colorMap, x, y, z);
     }
 
-    private static boolean colorizeBlock(Block block, IBlockAccess blockAccess, IColorMap colorMap, int i, int j,
-        int k) {
+    private static boolean colorizeBlock(IBlockAccess blockAccess, IColorMap colorMap, int x, int y,
+        int z) {
         if (colorMap == null) {
             return false;
         } else {
-            blockColor = colorMap.getColorMultiplier(blockAccess, i, j, k);
+            blockColor = colorMap.getColorMultiplier(blockAccess, x, y, z);
             return true;
         }
     }
@@ -382,11 +374,11 @@ public class ColorizeBlock {
         }
     }
 
-    public static boolean computeWaterColor(boolean includeBaseColor, int i, int j, int k) {
+    public static boolean computeWaterColor(boolean includeBaseColor, int x, int y, int z) {
         if (waterColorMap == null) {
             return false;
         } else {
-            Colorizer.setColorF(waterColorMap.getColorMultiplierF(BiomeAPI.getWorld(), i, j, k));
+            Colorizer.setColorF(waterColorMap.getColorMultiplierF(BiomeAPI.getWorld(), x, y, z));
             if (includeBaseColor) {
                 Colorizer.setColor[0] *= ColorizeEntity.waterBaseColor[0];
                 Colorizer.setColor[1] *= ColorizeEntity.waterBaseColor[1];
@@ -397,7 +389,7 @@ public class ColorizeBlock {
     }
 
     public static void colorizeWaterBlockGL(Block block) {
-        if (block == waterBlock || block == staticWaterBlock) {
+        if (block == Blocks.flowing_water || block == Blocks.water) {
             float[] waterColor;
             if (waterColorMap == null) {
                 waterColor = ColorizeEntity.waterBaseColor;
@@ -418,46 +410,46 @@ public class ColorizeBlock {
         }
     }
 
-    public static int colorizeRedstoneWire(IBlockAccess blockAccess, int i, int j, int k, int defaultColor) {
+    public static int colorizeRedstoneWire(IBlockAccess blockAccess, int x, int y, int z, int defaultColor) {
         if (redstoneColor == null) {
             return defaultColor;
         } else {
-            int metadata = Math.max(Math.min(BlockAPI.getMetadataAt(blockAccess, i, j, k), 15), 0);
+            int metadata = Math.max(Math.min(blockAccess.getBlockMetadata(x, y, z), 15), 0);
             return ColorUtils.float3ToInt(redstoneColor[metadata]);
         }
     }
 
-    private static float[] getVertexColor(IBlockAccess blockAccess, IColorMap colorMap, int i, int j, int k,
+    private static float[] getVertexColor(IBlockAccess blockAccess, IColorMap colorMap, int x, int y, int z,
         int[] offsets) {
         if (enableTestColorSmoothing) {
             int rgb = 0;
-            if ((i + offsets[0]) % 2 == 0) {
+            if ((x + offsets[0]) % 2 == 0) {
                 rgb |= 0xff0000;
             }
-            if ((j + offsets[1]) % 2 == 0) {
+            if ((y + offsets[1]) % 2 == 0) {
                 rgb |= 0x00ff00;
             }
-            if ((k + offsets[2]) % 2 == 0) {
+            if ((z + offsets[2]) % 2 == 0) {
                 rgb |= 0x0000ff;
             }
             ColorUtils.intToFloat3(rgb, Colorizer.setColor);
             return Colorizer.setColor;
         } else {
-            return colorMap.getColorMultiplierF(blockAccess, i + offsets[0], j + offsets[1], k + offsets[2]);
+            return colorMap.getColorMultiplierF(blockAccess, x + offsets[0], y + offsets[1], z + offsets[2]);
         }
     }
 
     // Called by asm
     @SuppressWarnings("unused")
-    public static boolean setupBlockSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int i,
-        int j, int k, int face, float topLeft, float bottomLeft, float bottomRight, float topRight) {
+    public static boolean setupBlockSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int x,
+        int y, int z, int face, float topLeft, float bottomLeft, float bottomRight, float topRight) {
         return RenderBlocksUtils.useColorMultiplier(face) && setupBiomeSmoothing(
             renderBlocks,
             block,
             blockAccess,
-            i,
-            j,
-            k,
+            x,
+            y,
+            z,
             face,
             true,
             topLeft,
@@ -469,14 +461,14 @@ public class ColorizeBlock {
     // TODO: remove
     @Deprecated
     public static boolean setupBlockSmoothingGrassSide(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess,
-        int i, int j, int k, int face, float topLeft, float bottomLeft, float bottomRight, float topRight) {
+        int x, int y, int z, int face, float topLeft, float bottomLeft, float bottomRight, float topRight) {
         return checkBiomeSmoothing(block, face) && setupBiomeSmoothing(
             renderBlocks,
             block,
             blockAccess,
-            i,
-            j,
-            k,
+            x,
+            y,
+            z,
             face,
             true,
             topLeft,
@@ -485,21 +477,21 @@ public class ColorizeBlock {
             topRight);
     }
 
-    public static boolean setupBlockSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int i,
-        int j, int k, int face) {
+    public static boolean setupBlockSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int x,
+        int y, int z, int face) {
         return checkBiomeSmoothing(block, face)
-            && setupBiomeSmoothing(renderBlocks, block, blockAccess, i, j, k, face, true, 1.0f, 1.0f, 1.0f, 1.0f);
+            && setupBiomeSmoothing(renderBlocks, block, blockAccess, x, y, z, face, true, 1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     private static boolean checkBiomeSmoothing(Block block, int face) {
         return enableSmoothBiomes && face >= 0
             && RenderBlocksUtils.isAmbientOcclusionEnabled()
-            && BlockAPI.getBlockLightValue(block) == 0;
+            && block.getLightValue() == 0;
     }
 
-    private static boolean setupBiomeSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int i,
-        int j, int k, int face, boolean useAO, float topLeft, float bottomLeft, float bottomRight, float topRight) {
-        if (!setupBlockSmoothing(block, blockAccess, i, j, k, face)) {
+    private static boolean setupBiomeSmoothing(RenderBlocks renderBlocks, Block block, IBlockAccess blockAccess, int x,
+        int y, int z, int face, boolean useAO, float topLeft, float bottomLeft, float bottomRight, float topRight) {
+        if (!setupBlockSmoothing(block, blockAccess, x, y, z, face)) {
             return false;
         }
 
@@ -530,18 +522,18 @@ public class ColorizeBlock {
         return true;
     }
 
-    public static void setupBlockSmoothing(Block block, IBlockAccess blockAccess, int i, int j, int k, int face,
+    public static void setupBlockSmoothing(Block block, IBlockAccess blockAccess, int x, int y, int z, int face,
         float r, float g, float b) {
-        if (!setupBlockSmoothing(block, blockAccess, i, j, k, face)) {
+        if (!setupBlockSmoothing(block, blockAccess, x, y, z, face)) {
             setVertexColors(r, g, b);
         }
     }
 
-    private static boolean setupBlockSmoothing(Block block, IBlockAccess blockAccess, int i, int j, int k, int face) {
+    private static boolean setupBlockSmoothing(Block block, IBlockAccess blockAccess, int x, int y, int z, int face) {
         if (!checkBiomeSmoothing(block, face)) {
             return false;
         }
-        IColorMap colorMap = findColorMap(block, blockAccess, i, j, k);
+        IColorMap colorMap = findColorMap(block, blockAccess, x, y, z);
         if (colorMap == null) {
             return false;
         }
@@ -549,22 +541,22 @@ public class ColorizeBlock {
         int[][] offsets = FACE_VERTICES[face];
         float[] color;
 
-        color = getVertexColor(blockAccess, colorMap, i, j, k, offsets[0]);
+        color = getVertexColor(blockAccess, colorMap, x, y, z, offsets[0]);
         colorRedTopLeft = color[0];
         colorGreenTopLeft = color[1];
         colorBlueTopLeft = color[2];
 
-        color = getVertexColor(blockAccess, colorMap, i, j, k, offsets[1]);
+        color = getVertexColor(blockAccess, colorMap, x, y, z, offsets[1]);
         colorRedBottomLeft = color[0];
         colorGreenBottomLeft = color[1];
         colorBlueBottomLeft = color[2];
 
-        color = getVertexColor(blockAccess, colorMap, i, j, k, offsets[2]);
+        color = getVertexColor(blockAccess, colorMap, x, y, z, offsets[2]);
         colorRedBottomRight = color[0];
         colorGreenBottomRight = color[1];
         colorBlueBottomRight = color[2];
 
-        color = getVertexColor(blockAccess, colorMap, i, j, k, offsets[3]);
+        color = getVertexColor(blockAccess, colorMap, x, y, z, offsets[3]);
         colorRedTopRight = color[0];
         colorGreenTopRight = color[1];
         colorBlueTopRight = color[2];
@@ -581,4 +573,5 @@ public class ColorizeBlock {
         colorGreenTopLeft = colorGreenBottomLeft = colorGreenBottomRight = colorGreenTopRight = g;
         colorBlueTopLeft = colorBlueBottomLeft = colorBlueBottomRight = colorBlueTopRight = b;
     }
+
 }

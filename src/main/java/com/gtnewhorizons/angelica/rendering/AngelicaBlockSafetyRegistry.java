@@ -37,7 +37,9 @@ public class AngelicaBlockSafetyRegistry {
                 && (isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class)
                 || isbrh instanceof ThreadSafeISBRHFactory);
          } else {
-            canBeOffThread = !(block.getClass().getName().startsWith("com.github.bartimaeusnek."));
+            // Check blacklist here
+            // !(block.getClass().getName().startsWith("com.github.bartimaeusnek."));
+            canBeOffThread = true;
         }
 
         final long stamp = LOCK.writeLock();

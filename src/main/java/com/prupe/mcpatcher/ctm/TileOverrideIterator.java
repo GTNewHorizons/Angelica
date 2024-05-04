@@ -11,7 +11,7 @@ import net.minecraft.util.IIcon;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
 
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 abstract public class TileOverrideIterator implements Iterator<ITileOverride> {
 

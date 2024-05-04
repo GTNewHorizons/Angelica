@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
+import net.minecraft.client.gui.ScaledResolution;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,7 +22,7 @@ public class MixinGuiIngameForge_HUDCaching {
         	HUDCaching.renderCrosshairsCaptured = false;
         }
     }
-	
+
     @Inject(method = "renderCrosshairs", at = @At("HEAD"), cancellable = true, remap = false)
     private void angelica$captureRenderCrosshair(CallbackInfo ci) {
         if (HUDCaching.renderingCacheOverride) {
@@ -30,15 +31,17 @@ public class MixinGuiIngameForge_HUDCaching {
         	ci.cancel();
         }
     }
-    
+
     @Inject(method = "renderHelmet", at = @At("HEAD"), cancellable = true, remap = false)
-    private void angelica$captureRenderHelmet(CallbackInfo ci) {
+    private void angelica$captureRenderHelmet(ScaledResolution res, float partialTicks, boolean hasScreen, int mouseX, int mouseY, CallbackInfo ci) {
     	if (HUDCaching.renderingCacheOverride) {
     		HUDCaching.renderHelmetCaptured = true;
         	ci.cancel();
         }
+
+        HUDCaching.disableHoloInventory();
     }
-    
+
     @Inject(method = "renderPortal", at = @At("HEAD"), cancellable = true, remap = false)
     private void angelica$captureRenderPortal(int width, int height, float partialTicks, CallbackInfo ci) {
     	if (HUDCaching.renderingCacheOverride) {
@@ -46,7 +49,7 @@ public class MixinGuiIngameForge_HUDCaching {
         	ci.cancel();
         }
     }
-    
+
     @Inject(method = "renderBossHealth", at = @At("HEAD"))
     private void angelica$bindBossHealthTexture(CallbackInfo ci) {
     	// boss health texture is bind in renderCrosshairs

@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.MapColorExpansion;
+import jss.notfine.util.MapColorExpansion;
 
 @Mixin(MapColor.class)
 public abstract class MixinMapColor implements MapColorExpansion {

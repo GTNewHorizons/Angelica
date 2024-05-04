@@ -6,4 +6,6 @@ public interface IStateStack<T>{
 
     T pop();
 
+    boolean isEmpty();
+
 }

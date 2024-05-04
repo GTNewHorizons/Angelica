@@ -6,6 +6,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import jss.notfine.gui.GuiCustomMenu;
+import jss.notfine.gui.NotFineGameOptionPages;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
@@ -27,9 +28,12 @@ public class ClientProxy extends CommonProxy {
     public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
         if(event.gui instanceof GuiVideoSettings eventGui) {
             event.setCanceled(true);
-            if(GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, SodiumGameOptionPages.general(),
-                    SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
+            if(AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
+                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen,
+                    NotFineGameOptionPages.general(),
+                    NotFineGameOptionPages.detail(), NotFineGameOptionPages.atmosphere(),
+                    NotFineGameOptionPages.particles(), NotFineGameOptionPages.other()
+                ));
             } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
             } else {

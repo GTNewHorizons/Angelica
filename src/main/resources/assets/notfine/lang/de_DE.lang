@@ -52,3 +52,4 @@ options.title.particle=Partikeleinstellungen
 options.title.sky=Atmosphäreneinstellungen
 options.title.video=Grafikeinstellungen
 options.total_stars=Sternendichte
+options.void_fog=Void Fog

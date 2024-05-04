@@ -39,4 +39,7 @@ public class Color4Stack extends Color4 implements IStateStack<Color4Stack> {
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

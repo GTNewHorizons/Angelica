@@ -67,11 +67,14 @@ public abstract class MixinRenderBlocks {
     }
 
     @Redirect(
-        method = { "renderBlockVine(Lnet/minecraft/block/Block;III)Z",
-            "renderBlockLilyPad(Lnet/minecraft/block/Block;III)Z", "renderBlockLadder(Lnet/minecraft/block/Block;III)Z",
+        method = {
+            "renderBlockVine(Lnet/minecraft/block/Block;III)Z",
+            "renderBlockLilyPad(Lnet/minecraft/block/Block;III)Z",
+            "renderBlockLadder(Lnet/minecraft/block/Block;III)Z",
             "renderBlockTripWireSource(Lnet/minecraft/block/Block;III)Z",
             "renderBlockLever(Lnet/minecraft/block/Block;III)Z",
-            "renderBlockTripWire(Lnet/minecraft/block/Block;III)Z", },
+            "renderBlockTripWire(Lnet/minecraft/block/Block;III)Z"
+        },
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSide(Lnet/minecraft/block/Block;I)Lnet/minecraft/util/IIcon;"))

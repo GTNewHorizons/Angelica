@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.proxy;
 import com.google.common.base.Objects;
 import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -79,13 +80,15 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
 
-        // Register all blocks. Because blockids are unique to a world, this must be done each load
-        GameData.getBlockRegistry().forEach(o -> {
+        if(AngelicaConfig.enableSodium) {
+            // Register all blocks. Because blockids are unique to a world, this must be done each load
+            GameData.getBlockRegistry().forEach(o -> {
 
-            final Block b = (Block) o;
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
-        });
+                final Block b = (Block) o;
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
+            });
+        }
     }
 
 
@@ -118,6 +121,10 @@ public class ClientProxy extends CommonProxy {
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         Loader.loadModels();
+
+        if(ModStatus.isBetterCrashesLoaded) {
+            BetterCrashesCompat.init();
+        }
     }
 
     private boolean wasGLSMKeyPressed;
@@ -221,9 +228,9 @@ public class ClientProxy extends CommonProxy {
                     event.left.set(i + 4, String.format("lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
                         chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
-                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, bY, bZ & 15),
-                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, bY, bZ & 15),
-                        chunk.getBlockLightValue(bX & 15, bY, bZ & 15, 0)));
+                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
             event.setCanceled(true);
@@ -287,7 +294,8 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    @SubscribeEvent
+    // This is a bit of a hack to prevent the FOV from being modified by other mods
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onFOVModifierUpdate(FOVUpdateEvent event) {
         if (!(boolean)Settings.DYNAMIC_FOV.option.getStore()){
             event.newfov = 1.0F;

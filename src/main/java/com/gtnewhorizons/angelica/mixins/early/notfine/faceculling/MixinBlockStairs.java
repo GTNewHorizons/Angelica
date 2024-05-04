@@ -25,7 +25,7 @@ public abstract class MixinBlockStairs extends Block implements IFaceObstruction
         };
     }
 
-    private MixinBlockStairs(Material materialIn) {
+    MixinBlockStairs(Material materialIn) {
         super(materialIn);
     }
 

@@ -78,25 +78,24 @@ public class SodiumGameOptionPages {
                 .setControl(opt -> new SliderControl(opt, 0, 100, 1, ControlValueFormatter.brightness()))
                 .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
                 .build());
-        firstGroupBuilder.add(Settings.MODE_SKY.option);
-        firstGroupBuilder.add(Settings.MODE_SUN_MOON.option);
-        firstGroupBuilder.add(Settings.MODE_STARS.option);
-        firstGroupBuilder.add(Settings.TOTAL_STARS.option);
-        firstGroupBuilder.add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
-                .setName(I18n.format("sodium.options.clouds.name"))
-                .setTooltip(I18n.format("sodium.options.clouds.tooltip"))
-                .setControl(TickBoxControl::new)
-                .setBinding((opts, value) -> opts.clouds = value, (opts) -> opts.clouds)
-                .setImpact(OptionImpact.LOW)
-                .build());
+        firstGroupBuilder.add(Settings.MODE_LIGHT_FLICKER.option)
+            .add(Settings.MODE_SKY.option)
+            .add(Settings.MODE_SUN_MOON.option)
+            //.add(Settings.RENDER_DISTANCE_CLOUDS.option)
+            .add(Settings.CLOUD_HEIGHT.option)
+            //.add(Settings.CLOUD_SCALE.option)
+            .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
+            .add(Settings.MODE_STARS.option)
+            .add(Settings.TOTAL_STARS.option);
+        firstGroupBuilder.add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
 
-
+        int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(I18n.format("options.guiScale"))
                         .setTooltip(I18n.format("sodium.options.gui_scale.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 3, 1, ControlValueFormatter.guiScale()))
+                        .setControl(option -> new SliderControl(option, 0, maxGuiScale, 1, ControlValueFormatter.guiScale()))
                         .setBinding((opts, value) -> {
                             opts.guiScale = value;
                             // Resizing our window
@@ -151,6 +150,8 @@ public class SodiumGameOptionPages {
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
                 .add(Settings.DYNAMIC_FOV.option)
+                .add(Settings.MODE_WATER.option)
+                .add(Settings.MODE_DROPPED_ITEMS.option)
                 .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
@@ -174,29 +175,9 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
-                        .setName(I18n.format("options.renderClouds"))
-                        .setTooltip(I18n.format("sodium.options.clouds_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
-                        .setBinding((opts, value) -> opts.quality.cloudQuality = value, opts -> opts.quality.cloudQuality)
-                        .setImpact(OptionImpact.LOW)
-                        .build())
-                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
-                        .setName(I18n.format("soundCategory.weather"))
-                        .setTooltip(I18n.format("sodium.options.weather_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
-                        .setBinding((opts, value) -> opts.quality.weatherQuality = value, opts -> opts.quality.weatherQuality)
-                        .setImpact(OptionImpact.MEDIUM)
-                        .build())
-                .add(AngelicaConfig.enableNotFineFeatures ? Settings.MODE_LEAVES.option :
-                    OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.leaves_quality.name"))
-                        .setTooltip(I18n.format("sodium.options.leaves_quality.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
-                        .setBinding((opts, value) -> opts.quality.leavesQuality = value, opts -> opts.quality.leavesQuality)
-                        .setImpact(OptionImpact.MEDIUM)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
+                .add(Settings.MODE_CLOUDS.option)
+                .add(Settings.DOWNFALL_DISTANCE.option)
+                .add(Settings.MODE_LEAVES.option)
                 .add(OptionImpl.createBuilder(ParticleMode.class, vanillaOpts)
                         .setName(I18n.format("options.particles"))
                         .setTooltip(I18n.format("sodium.options.particle_quality.tooltip"))
@@ -204,6 +185,7 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.particleSetting = value.ordinal(), (opts) -> ParticleMode.fromOrdinal(opts.particleSetting))
                         .setImpact(OptionImpact.LOW)
                         .build())
+                .add(Settings.PARTICLES_ENC_TABLE.option)
                 .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                     .setName(I18n.format("sodium.options.grass_quality.name"))
                     .setTooltip(I18n.format("sodium.options.grass_quality.tooltip"))
@@ -237,20 +219,8 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.MEDIUM)
                         .build()
                 )*/
-                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
-                        .setName(I18n.format("options.entityShadows"))
-                        .setTooltip(I18n.format("sodium.options.entity_shadows.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
-                        .setBinding((opts, value) -> opts.quality.entityShadows = value, opts -> opts.quality.entityShadows)
-                        .setImpact(OptionImpact.LOW)
-                        .build())
-                .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.vignette.name"))
-                        .setTooltip(I18n.format("sodium.options.vignette.tooltip"))
-                        .setControl(option -> new CyclingControl<>(option, GraphicsQuality.class))
-                        .setBinding((opts, value) -> opts.quality.enableVignette = value, opts -> opts.quality.enableVignette)
-                        .setImpact(OptionImpact.LOW)
-                        .build())
+                .add(Settings.MODE_SHADOWS.option)
+                .add(Settings.MODE_VIGNETTE.option)
                 .build());
 
 

@@ -22,4 +22,5 @@ public abstract class MixinEntityRenderer {
             viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks
         );
     }
+
 }

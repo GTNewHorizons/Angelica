@@ -258,7 +258,6 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
         GLStateManager.glShadeModel(GL_FLAT);
 
-        glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
         glTexCoordPointer(2, 0, batchVtxTexCoords);
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         glColorPointer(4, GL_UNSIGNED_BYTE, 0, batchVtxColors);
@@ -289,7 +288,9 @@ public class BatchingFontRenderer {
             glDrawElements(GL_TRIANGLES, batchIndices);
         }
 
-        glPopClientAttrib();
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL_COLOR_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);

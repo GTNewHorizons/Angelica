@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.prupe.mcpatcher.cc.ColorizeItem;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.PotionExpansion;
+import jss.notfine.util.PotionExpansion;
 
 @Mixin(Potion.class)
 public abstract class MixinPotion implements PotionExpansion {

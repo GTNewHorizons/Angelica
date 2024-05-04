@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -16,7 +15,6 @@ import me.jellysquid.mods.sodium.client.gui.options.control.Control;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.control.element.SodiumControlElementFactory;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
-import me.jellysquid.mods.sodium.client.gui.utils.URLUtils;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -25,7 +23,6 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -49,7 +46,6 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
     protected OptionPage currentPage;
 
     protected FlatButtonWidget applyButton, closeButton, undoButton;
-    protected FlatButtonWidget donateButton, hideDonateButton;
 
     protected boolean hasPendingChanges;
     protected ControlElement<?> hoveredElement;
@@ -107,44 +103,16 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         this.undoButton = new FlatButtonWidget(new Dim2i(this.width - 211, this.height - 26, 65, 20), I18n.format("sodium.options.buttons.undo"), this::undoChanges);
         this.applyButton = new FlatButtonWidget(new Dim2i(this.width - 142, this.height - 26, 65, 20), I18n.format("sodium.options.buttons.apply"), this::applyChanges);
         this.closeButton = new FlatButtonWidget(new Dim2i(this.width - 73, this.height - 26, 65, 20), I18n.format("gui.done"), this::onClose);
-        final String donateToJelly = I18n.format("sodium.options.buttons.donate");
-        final int width = 12 + this.fontRendererObj.getStringWidth(donateToJelly);
-        this.donateButton = new FlatButtonWidget(new Dim2i(this.width - width - 32, 6, width, 20), donateToJelly, () -> openDonationPage("https://caffeinemc.net/donate"));
-        this.hideDonateButton = new FlatButtonWidget(new Dim2i(this.width - 26, 6, 20, 20), "x", this::hideDonationButton);
-
-        if (SodiumClientMod.options().notifications.hideDonationButton) {
-            this.setDonationButtonVisibility(false);
-        }
 
         this.children.add(this.undoButton);
         this.children.add(this.applyButton);
         this.children.add(this.closeButton);
-        this.children.add(this.donateButton);
-        this.children.add(this.hideDonateButton);
 
         for (Element element : this.children) {
             if (element instanceof Drawable) {
                 this.drawable.add((Drawable) element);
             }
         }
-    }
-
-    private void setDonationButtonVisibility(boolean value) {
-        this.donateButton.setVisible(value);
-        this.hideDonateButton.setVisible(value);
-    }
-
-    private void hideDonationButton() {
-        final SodiumGameOptions options = SodiumClientMod.options();
-        options.notifications.hideDonationButton = true;
-
-        try {
-            options.writeChanges();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to save configuration", e);
-        }
-
-        this.setDonationButtonVisibility(false);
     }
 
     private void rebuildGUIPages() {
@@ -307,10 +275,6 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
     private void undoChanges() {
         this.getAllOptions().forEach(Option::reset);
-    }
-
-    private void openDonationPage(String url) {
-        URLUtils.open(url);
     }
 
     @Override

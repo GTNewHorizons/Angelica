@@ -139,7 +139,6 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
             }
         }
 
-        System.gc();
         long timeDiff = System.currentTimeMillis() - startTime;
         Runtime runtime = Runtime.getRuntime();
         long memDiff = runtime.totalMemory() - runtime.freeMemory() - startMem;

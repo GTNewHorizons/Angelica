@@ -39,4 +39,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

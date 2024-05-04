@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocksNoCC {
+
     @Shadow
     public IBlockAccess blockAccess;
 

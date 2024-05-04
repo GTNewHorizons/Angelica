@@ -127,10 +127,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
     }
 
-    public int getChunksSubmitted() {
-        return this.chunkRenderManager != null ? this.chunkRenderManager.getAndResetSubmitted() : 0;
-    }
-
     private void loadWorld(WorldClient world) {
         this.world = world;
 

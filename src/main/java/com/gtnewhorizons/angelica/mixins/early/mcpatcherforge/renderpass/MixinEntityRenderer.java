@@ -39,7 +39,8 @@ public abstract class MixinEntityRenderer {
         return RenderPass.setAmbientOcclusion(this.mc.gameSettings.ambientOcclusion != 0);
     }
 
-    @WrapOperation(method = "renderWorld(FJ)V",
+    @WrapOperation(
+        method = "renderWorld(FJ)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
@@ -57,6 +58,5 @@ public abstract class MixinEntityRenderer {
         this.mc.renderGlobal.sortAndRender(this.mc.renderViewEntity, 5, partialTickTime);
         this.renderRainSnow(partialTickTime);
     }
-
 
 }

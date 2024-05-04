@@ -7,9 +7,10 @@ import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
+import com.gtnewhorizons.angelica.transform.compat.CompatASMTransformers;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
-import mist475.mcpatcherforge.asm.AsmTransformers;
-import mist475.mcpatcherforge.asm.mappings.Namer;
+import jss.notfine.asm.AsmTransformers;
+import jss.notfine.asm.mappings.Namer;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +20,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -67,10 +70,17 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         }
 
         // Return any others here
-
         if (transformerClasses == null) {
+
+            //Mod Compat transformers
+            List<String> transformers = new ArrayList<String>();
+            transformers.addAll(CompatASMTransformers.getTransformers());
+
+            //NotFine transformers
             Namer.initNames();
-            transformerClasses = AsmTransformers.getTransformers();
+            transformers.addAll(Arrays.asList(AsmTransformers.getTransformers()));
+
+            transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;
     }

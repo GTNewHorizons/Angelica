@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import com.prupe.mcpatcher.cc.ColorizeEntity;
 import com.prupe.mcpatcher.cc.Colorizer;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.EntityAuraFXExpansion;
+import jss.notfine.util.EntityAuraFXExpansion;
 
 @Mixin(EntityAuraFX.class)
 public abstract class MixinEntityAuraFX extends EntityFX implements EntityAuraFXExpansion {

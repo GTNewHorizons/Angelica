@@ -34,4 +34,7 @@ public class ViewPortStateStack extends ViewportState implements IStateStack<Vie
         return this;
     }
 
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

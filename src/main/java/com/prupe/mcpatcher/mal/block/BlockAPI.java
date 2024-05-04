@@ -50,19 +50,6 @@ public class BlockAPI {
         }
     }
 
-    public static Block getFixedBlock(String name) {
-        Block block = parseBlockName(name);
-        if (block == null) {
-            new IllegalArgumentException("unknown block " + name).printStackTrace();
-        }
-        return block;
-    }
-
-    public static Block parseBlockName(String name) {
-        return GameData.getBlockRegistry()
-            .getObject(name);
-    }
-
     public static String getBlockName(Block block) {
         return block == null ? "(null)" : block.getUnlocalizedName();
     }
@@ -76,26 +63,6 @@ public class BlockAPI {
             }
         }
         return blocks;
-    }
-
-    public static Block getBlockAt(IBlockAccess blockAccess, int i, int j, int k) {
-        return blockAccess.getBlock(i, j, k);
-    }
-
-    public static int getMetadataAt(IBlockAccess blockAccess, int i, int j, int k) {
-        return blockAccess.getBlockMetadata(i, j, k);
-    }
-
-    public static IIcon getBlockIcon(Block block, IBlockAccess blockAccess, int i, int j, int k, int face) {
-        return block.getIcon(blockAccess, i, j, k, face);
-    }
-
-    public static boolean shouldSideBeRendered(Block block, IBlockAccess blockAccess, int i, int j, int k, int face) {
-        return block.shouldSideBeRendered(blockAccess, i, j, k, face);
-    }
-
-    public static int getBlockLightValue(Block block) {
-        return block.getLightValue();
     }
 
     public static BlockStateMatcher createMatcher(PropertiesFile source, String matchString) {
@@ -133,14 +100,14 @@ public class BlockAPI {
         }
 
         if (MCPatcherUtils.isNullOrEmpty(namespace)) {
-            namespace = source.getResource()
-                .getResourceDomain();
+            namespace = source.getResource().getResourceDomain();
         }
         if (MCPatcherUtils.isNullOrEmpty(blockName)) {
             source.warning("cannot parse namespace/block name from %s", matchString);
             return null;
         }
-        Block block = parseBlockName(namespace + ':' + blockName);
+        Block block = GameData.getBlockRegistry()
+            .getObject(namespace + ':' + blockName);
         if (block == null) {
             source.warning("unknown block %s:%s", namespace, blockName);
             return null;
@@ -151,4 +118,5 @@ public class BlockAPI {
             metadata.toString()
                 .trim());
     }
+
 }

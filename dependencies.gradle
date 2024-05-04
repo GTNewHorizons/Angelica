@@ -88,11 +88,17 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     // HMMMMM
     compileOnly(rfg.deobf("curse.maven:journeymap-32274:2367915"))
+    compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
+
+    compileOnly("com.github.GTNewHorizons:HoloInventory:2.4.4-GTNH:dev")
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
+
+    // Better Crashes
+    compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
 
 
     // Tests

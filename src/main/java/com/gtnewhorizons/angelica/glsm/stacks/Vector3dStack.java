@@ -32,4 +32,8 @@ public class Vector3dStack extends Vector3d implements IStateStack<Vector3dStack
         set(stack[--pointer]);
         return this;
     }
+
+    public boolean isEmpty() {
+        return pointer == 0;
+    }
 }

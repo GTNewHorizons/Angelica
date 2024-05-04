@@ -5,17 +5,13 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.world.IBlockAccess;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.prupe.mcpatcher.renderpass.RenderPass;
 
-@Mixin(RenderBlocks.class)
+@Mixin(value = RenderBlocks.class)
 public abstract class MixinRenderBlocks {
-
-    @Shadow
-    public IBlockAccess blockAccess;
 
     @Redirect(
         method = { "renderBlockBed(Lnet/minecraft/block/Block;III)Z",
@@ -30,6 +26,5 @@ public abstract class MixinRenderBlocks {
     private boolean redirectShouldSideBeRendered(Block block, IBlockAccess worldIn, int x, int y, int z, int side) {
         return RenderPass.shouldSideBeRendered(block, worldIn, x, y, z, side);
     }
-
 
 }

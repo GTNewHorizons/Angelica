@@ -8,9 +8,7 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
-import com.prupe.mcpatcher.mal.block.BlockAPI;
-
-import mist475.mcpatcherforge.config.MCPatcherForgeConfig;
+import jss.notfine.config.MCPatcherForgeConfig;
 
 public class GlassPaneRenderer {
 
@@ -47,14 +45,14 @@ public class GlassPaneRenderer {
         }
     }
 
-    private static boolean setupIcons(RenderBlocks renderBlocks, Block blockPane, IIcon origIcon, int i, int j, int k) {
+    private static boolean setupIcons(RenderBlocks renderBlocks, Block blockPane, IIcon origIcon, int x, int y, int z) {
         skipPaneRendering = skipBottomEdgeRendering = skipTopEdgeRendering = false;
         if (!enable) {
             return false;
         }
         for (int face = BlockOrientation.NORTH_FACE; face <= BlockOrientation.EAST_FACE; face++) {
             icons[face] = CTMUtils
-                .getBlockIcon(origIcon, renderBlocks, blockPane, renderBlocks.blockAccess, i, j, k, face);
+                .getBlockIcon(origIcon, renderBlocks, blockPane, renderBlocks.blockAccess, x, y, z, face);
             if (icons[face] == null) {
                 skipPaneRendering = false;
                 return false;
@@ -65,24 +63,24 @@ public class GlassPaneRenderer {
         return skipPaneRendering;
     }
 
-    private static void setupPaneEdges(RenderBlocks renderBlocks, Block blockPane, int i, int j, int k) {
+    private static void setupPaneEdges(RenderBlocks renderBlocks, Block blockPane, int x, int y, int z) {
         IBlockAccess blockAccess = renderBlocks.blockAccess;
-        int metadata = BlockAPI.getMetadataAt(blockAccess, i, j, k);
-        skipBottomEdgeRendering = BlockAPI.getBlockAt(blockAccess, i, j - 1, k) == blockPane
-            && BlockAPI.getMetadataAt(blockAccess, i, j - 1, k) == metadata;
-        skipTopEdgeRendering = BlockAPI.getBlockAt(blockAccess, i, j + 1, k) == blockPane
-            && BlockAPI.getMetadataAt(blockAccess, i, j + 1, k) == metadata;
+        int metadata = blockAccess.getBlockMetadata(x, y, z);
+        skipBottomEdgeRendering = blockAccess.getBlock(x, y - 1, z) == blockPane
+            && blockAccess.getBlockMetadata(x, y - 1, z) == metadata;
+        skipTopEdgeRendering = blockAccess.getBlock(x, y + 1, z) == blockPane
+            && blockAccess.getBlockMetadata(x, y + 1, z) == metadata;
     }
 
-    private static void render(int i, int j, int k, boolean connectNorth, boolean connectSouth, boolean connectWest,
+    private static void render(int x, int y, int z, boolean connectNorth, boolean connectSouth, boolean connectWest,
         boolean connectEast, double thickness, double uOffset, double yOffset, boolean edges) {
-        final double i0 = i;
+        final double i0 = x;
         final double i1 = i0 + 0.5 - thickness;
         final double i2 = i0 + 0.5 + thickness;
         final double i3 = i0 + 1.0;
-        final double j0 = j + yOffset;
-        final double j1 = j + 1.0 - yOffset;
-        final double k0 = k;
+        final double j0 = y + yOffset;
+        final double j1 = y + 1.0 - yOffset;
+        final double k0 = z;
         final double k1 = k0 + 0.5 - thickness;
         final double k2 = k0 + 0.5 + thickness;
         final double k3 = k0 + 1.0;

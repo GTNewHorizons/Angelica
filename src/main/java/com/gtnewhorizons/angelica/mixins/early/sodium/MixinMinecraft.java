@@ -25,11 +25,6 @@ public class MixinMinecraft {
         }
     }
 
-    @Redirect(method="runGameLoop", at=@At(value="FIELD", target="Lnet/minecraft/client/renderer/WorldRenderer;chunksUpdated:I", ordinal=0))
-    private int sodium$chunksUpdated() {
-        return ((IRenderGlobalExt)this.renderGlobal).getChunksSubmitted();
-    }
-
     @Redirect(method = "runGameLoop", at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z"))
     private boolean sodium$overrideFancyGrass(GameSettings gameSettings) {
         return SodiumClientMod.options().quality.grassQuality.isFancy();

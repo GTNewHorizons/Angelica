@@ -8,23 +8,46 @@ import java.io.File;
 
 public class NotFineConfig {
 
-    public static boolean allowAdvancedOpenGL = true;
+    private static final String CATEGORY_GENERAL = "general";
+    private static final String CATEGORY_TOGGLE = "toggle";
+    private static final String CATEGORY_UNFINISHED = "unfinished";
 
-    public static final String CATEGORY_CLIENT = "client";
+    public static boolean allowAdvancedOpenGL;
+    public static boolean allowToggle3DAnaglyph;
+    public static boolean allowToggleFBO;
 
-    private final Configuration notFineConfig;
+    public static boolean betterBlockFaceCulling;
+    public static boolean renderPass;
 
-    public NotFineConfig() {
+    public static void loadSettings() {
         File configFile = new File(Launch.minecraftHome + File.separator + "config" + File.separator + NotFine.MODID + File.separator + "notfine.cfg");
-        notFineConfig = new Configuration(configFile);
-    }
+        Configuration config = new Configuration(configFile);
 
-    public void loadSettings() {
-        allowAdvancedOpenGL = notFineConfig.getBoolean("allowAdvancedOpenGL", CATEGORY_CLIENT, true, "Allow or always disable the Advanced OpenGL button");
+        allowAdvancedOpenGL = config.getBoolean("allowAdvancedOpenGL", CATEGORY_GENERAL, false,
+            "Allow Advanced OpenGL to be enabled when it might be supported.");
+        allowToggle3DAnaglyph = config.getBoolean("allowToggle3DAnaglyph", CATEGORY_GENERAL, true,
+            "Allow 3D Anaglyph to be enabled.");
+        allowToggleFBO = config.getBoolean("allowToggleFBO", CATEGORY_GENERAL, false,
+            "Allow FBOs to be disabled.");
 
-        if(notFineConfig.hasChanged()) {
-            notFineConfig.save();
+        config.setCategoryComment(CATEGORY_TOGGLE, "Toggle mod features.");
+        betterBlockFaceCulling = config.getBoolean("betterBlockFaceCulling", CATEGORY_TOGGLE, true,
+            "Use more accurate block face culling when building chunk meshes.");
+        config.setCategoryComment(CATEGORY_TOGGLE, "Enable or disable various mod features.");
+
+        config.setCategoryComment(CATEGORY_UNFINISHED, "Toggle mod features that are unfinished or require compatibility improvements.");
+        renderPass = config.getBoolean("renderPass", CATEGORY_UNFINISHED, false,
+            "Allows resource pack artists to add block textures to be rendered during additional passes.");
+
+        if(config.hasChanged()) {
+            config.save();
         }
+
+        //These will probably break hard with Angelica.
+        //AdvancedOpenGL even breaks hard on its own.
+        allowAdvancedOpenGL = false;
+        allowToggleFBO = false;
+        renderPass = false;
     }
 
 }

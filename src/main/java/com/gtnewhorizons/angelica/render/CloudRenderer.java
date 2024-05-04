@@ -28,7 +28,8 @@ import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.VBOManager;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import jss.notfine.core.Settings;
+import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -92,7 +93,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private void vertices(CapturingTessellator tessellator) {
-        boolean fancy = SodiumClientMod.options().quality.cloudQuality.isFancy();
+        GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
+        boolean fancy = cloudGraphicsQuality == GraphicsQualityOff.FANCY || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics;
 
         float scale = getScale();
         float CULL_DIST = 2 * scale;
@@ -235,7 +237,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     public void checkSettings() {
-        final int cloudQualitySetting =  SodiumClientMod.options().quality.cloudQuality.isFancy() ? 2 : 1;
+        GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
+        final int cloudQualitySetting =  cloudGraphicsQuality == GraphicsQualityOff.FANCY
+            || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics ? 2 : 1;
         boolean newEnabled = mc.gameSettings.shouldRenderClouds()
             && mc.theWorld != null
             && mc.theWorld.provider.isSurfaceWorld();
