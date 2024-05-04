@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import jss.notfine.config.MCPatcherForgeConfig;
+import jss.notfine.config.NotFineConfig;
 
 /**
  * Adapted from Hodgepodge
@@ -19,7 +20,7 @@ public enum AsmTransformers {
     RENDERBLOCKS("RenderBlocks transformer", () -> AngelicaConfig.enableMCPatcherForgeFeatures
         && MCPatcherForgeConfig.instance().customColorsEnabled,
         Side.CLIENT, "jss.notfine.asm.RenderBlocksTransformer"),
-    WORLDRENDERER("WorldRenderer transformer", () -> AngelicaConfig.enableMCPatcherForgeFeatures, Side.CLIENT,
+    WORLDRENDERER("WorldRenderer transformer", () -> NotFineConfig.renderPass, Side.CLIENT,
                   "jss.notfine.asm.WorldRendererTransformer");
 
     private final Supplier<Boolean> applyIf;

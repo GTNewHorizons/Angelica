@@ -1,6 +1,8 @@
 package jss.notfine.core;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLightsMode;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
@@ -46,6 +48,12 @@ public enum Settings {
         }
     },
     DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
+    DYNAMIC_LIGHTS(new NotFineOptionCycling(DynamicLightsMode.OFF, OptionImpact.VARIES)){
+        @Override
+        public void applyChanges() {
+            DynamicLights.Mode = (DynamicLightsMode) DYNAMIC_LIGHTS.option.getStore();
+        }
+    },
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
         @Override
         public void applyChanges() {
