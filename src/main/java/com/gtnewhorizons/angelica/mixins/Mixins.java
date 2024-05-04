@@ -54,7 +54,7 @@ public enum Mixins {
         )
     ),
     ANGELICA_DYNAMIC_LIGHTS(new Builder("Angelica Dynamic Lights").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).addMixinClasses(
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableDynamicLights).addMixinClasses(
             "angelica.dynamiclights.MixinEntityRenderer"
             ,"angelica.dynamiclights.MixinEntity"
             ,"angelica.dynamiclights.MixinWorld"
