@@ -29,30 +29,14 @@ public abstract class MixinEntity implements IDynamicLightSource {
     @Shadow
     public double posZ;
     @Shadow
-    public int serverPosX;
-    @Shadow
-    public int serverPosY;
-    @Shadow
-    public int serverPosZ;
-    @Shadow
     public int chunkCoordX;
     @Shadow
-    public int chunkCoordY;
-    @Shadow
     public int chunkCoordZ;
-
     @Shadow
     public abstract float getEyeHeight();
-
-    @Shadow
-    public int fire;
-    @Shadow
-    protected boolean inWater;
     @Shadow
     public boolean isDead;
 
-    @Shadow
-    private int entityId;
     @Unique
     protected int angelica$luminance = 0;
     @Unique

@@ -5,12 +5,9 @@ import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -21,7 +18,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
@@ -341,11 +337,11 @@ public class DynamicLights {
 
         if (entity.fire > 0) return 15;
 
-        if (entity instanceof EntityItem item){
+        if (entity instanceof EntityItem item) {
             return getLuminanceFromItemStack(item.getEntityItem(), item.isInWater());
         }
 
-        if (entity instanceof EntityLivingBase living){
+        if (entity instanceof EntityLivingBase living) {
             int luminance = 0;
 
             boolean inWater = living.isInWater();

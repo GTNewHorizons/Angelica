@@ -11,7 +11,6 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(ItemRenderer.class)
 public class MixinItemRenderer {
 
-
     @WrapOperation(method = "renderItemInFirstPerson", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getLightBrightnessForSkyBlocks(IIII)I"))
     private int angelica$dynamiclights_renderItemInFirstPerson(WorldClient theWorld, int posX, int posY, int posZ, int p_72802_4_, Operation<Integer> original){
         int lightmap = original.call(theWorld, posX, posY, posZ, p_72802_4_);
