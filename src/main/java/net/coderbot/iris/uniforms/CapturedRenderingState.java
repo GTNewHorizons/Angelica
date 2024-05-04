@@ -46,10 +46,7 @@ public class CapturedRenderingState {
 	}
 
     public void setCurrentEntityColor(float r, float g, float b, float a) {
-        this.currentEntityColor.x = r;
-        this.currentEntityColor.y = g;
-        this.currentEntityColor.z = b;
-        this.currentEntityColor.w = a;
+        this.currentEntityColor.set(r, g, b, a);
 
         if (this.entityColorListener != null) {
             this.entityColorListener.run();

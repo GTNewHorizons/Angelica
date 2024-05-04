@@ -774,10 +774,10 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
-            if (textureUnit == GL13.GL_TEXTURE0) {
+            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = true;
                 updatePipeline = true;
-            } else if (textureUnit == GL13.GL_TEXTURE1) {
+            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = true;
                 updatePipeline = true;
             } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
@@ -798,10 +798,10 @@ public class GLStateManager {
         if (AngelicaConfig.enableIris) {
             // Iris
             boolean updatePipeline = false;
-            if (textureUnit == GL13.GL_TEXTURE0) {
+            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = false;
                 updatePipeline = true;
-            } else if (textureUnit == GL13.GL_TEXTURE1) {
+            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = false;
                 updatePipeline = true;
             } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {

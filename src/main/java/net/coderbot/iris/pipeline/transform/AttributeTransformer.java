@@ -36,7 +36,7 @@ class AttributeTransformer {
 		// lightmap texture coordinate.
 		// See https://github.com/IrisShaders/Iris/issues/1149
 		if (parameters.inputs.lightmap) {
-			root.rename("gl_MultiTexCoord1", "gl_MultiTexCoord2");
+			root.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
 		}
 
 		Stream<Identifier> stream = Stream.empty();
@@ -87,7 +87,7 @@ class AttributeTransformer {
 				"const float iris_ONE_OVER_32 = iris_ONE_OVER_256 * 8;");
 		if (hasLightmap) {
 			tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-					"mat4 iris_LightmapTextureMatrix = gl_TextureMatrix[2];");
+					"mat4 iris_LightmapTextureMatrix = gl_TextureMatrix[1];");
 		} else {
 			tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_FUNCTIONS, "mat4 iris_LightmapTextureMatrix =" +
 					"mat4(iris_ONE_OVER_256, 0.0, 0.0, 0.0," +
