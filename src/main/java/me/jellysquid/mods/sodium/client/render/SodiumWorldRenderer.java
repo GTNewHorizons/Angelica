@@ -29,10 +29,13 @@ import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
 import net.coderbot.iris.sodium.vertex_format.IrisModelVertexFormats;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -332,7 +335,13 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             return;
 
         try {
+            if(AngelicaConfig.enableIris) {
+                final Block block = tileEntity.getWorldObj().getBlock(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
+                CapturedRenderingState.INSTANCE.setCurrentBlockEntity(Block.getIdFromBlock(block));
+                GbufferPrograms.beginBlockEntities();
+            }
             TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
+
         } catch(RuntimeException e) {
             if(tileEntity.isInvalid()) {
                 SodiumClientMod.logger().error("Suppressing crash from invalid tile entity", e);
@@ -340,10 +349,16 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
                 throw e;
             }
         }
+        finally {
+            if(AngelicaConfig.enableIris) {
+                CapturedRenderingState.INSTANCE.setCurrentBlockEntity(-1);
+                GbufferPrograms.endBlockEntities();
+            }
+        }
     }
 
     public void renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks) {
-        int pass = MinecraftForgeClient.getRenderPass();
+        final int pass = MinecraftForgeClient.getRenderPass();
         for (TileEntity tileEntity : this.chunkRenderManager.getVisibleTileEntities()) {
             renderTE(tileEntity, pass, partialTicks);
         }

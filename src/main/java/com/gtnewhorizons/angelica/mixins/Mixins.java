@@ -138,7 +138,6 @@ public enum Mixins {
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"
             ,"shaders.MixinRenderGlobal"
-            ,"shaders.MixinRenderManager"
             ,"shaders.MixinRendererLivingEntity"
         )
     ),
@@ -216,7 +215,7 @@ public enum Mixins {
     //From NotFine
     NOTFINE_BASE_MOD(new Builder("NotFine")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures && false)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("notfine.",
             "clouds.MixinEntityRenderer",
