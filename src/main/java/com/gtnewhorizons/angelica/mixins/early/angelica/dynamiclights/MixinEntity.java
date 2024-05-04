@@ -169,14 +169,14 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
                 for (int i = 0; i < 7; i++) {
                     if (i % 4 == 0) {
-                        chunkPos.offset(directionX); // X
+                        chunkPos = chunkPos.offset(directionX); // X
                     } else if (i % 4 == 1) {
-                        chunkPos.offset(directionZ); // XZ
+                        chunkPos = chunkPos.offset(directionZ); // XZ
                     } else if (i % 4 == 2) {
-                        chunkPos.offset(directionX.getOpposite()); // Z
+                        chunkPos = chunkPos.offset(directionX.getOpposite()); // Z
                     } else {
-                        chunkPos.offset(directionZ.getOpposite()); // origin
-                        chunkPos.offset(directionY); // Y
+                        chunkPos = chunkPos.offset(directionZ.getOpposite()); // origin
+                        chunkPos = chunkPos.offset(directionY); // Y
                     }
                     DynamicLights.scheduleChunkRebuild(renderer, chunkPos);
                     DynamicLights.updateTrackedChunks(chunkPos, this.angelica$trackedLitChunkPos, newPos);
