@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.dynamiclights;
 import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -28,7 +29,7 @@ public class DynamicLights {
 
     private static final double MAX_RADIUS = 7.75;
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
-    private final Set<IDynamicLightSource> dynamicLightSources = new HashSet<>();
+    private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
@@ -153,9 +154,6 @@ public class DynamicLights {
      * @return {@code true} if the light source is tracked, else {@code false}
      */
     public boolean containsLightSource(@NotNull IDynamicLightSource lightSource) {
-        //if (!lightSource.angelica$getDynamicLightWorld().isClientSide())
-        //return false;
-
         boolean result;
         this.lightSourcesLock.readLock().lock();
         result = this.dynamicLightSources.contains(lightSource);

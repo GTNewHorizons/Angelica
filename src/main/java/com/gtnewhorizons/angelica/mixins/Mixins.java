@@ -28,10 +28,6 @@ public enum Mixins {
             ,"angelica.MixinEntityRenderer"
             ,"angelica.MixinMinecraft"
             ,"angelica.optimizations.MixinRendererLivingEntity"
-            ,"angelica.dynamiclights.MixinEntityRenderer"
-            ,"angelica.dynamiclights.MixinEntity"
-            ,"angelica.dynamiclights.MixinWorld"
-            ,"angelica.dynamiclights.MixinItemRenderer"
         )
     ),
     ANGELICA_VBO(
@@ -55,6 +51,14 @@ public enum Mixins {
              "angelica.debug.MixinProfiler"
             ,"angelica.debug.MixinSplashProgress"
             ,"angelica.debug.MixinTextureManager"
+        )
+    ),
+    ANGELICA_DYNAMIC_LIGHTS(new Builder("Angelica Dynamic Lights").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).addMixinClasses(
+            "angelica.dynamiclights.MixinEntityRenderer"
+            ,"angelica.dynamiclights.MixinEntity"
+            ,"angelica.dynamiclights.MixinWorld"
+            ,"angelica.dynamiclights.MixinItemRenderer"
         )
     ),
 
