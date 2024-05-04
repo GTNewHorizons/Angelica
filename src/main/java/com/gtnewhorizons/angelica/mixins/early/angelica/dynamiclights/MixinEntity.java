@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -163,9 +162,9 @@ public abstract class MixinEntity implements IDynamicLightSource {
                 DynamicLights.scheduleChunkRebuild(renderer, chunkPos);
                 DynamicLights.updateTrackedChunks(chunkPos, this.angelica$trackedLitChunkPos, newPos);
 
-                var directionX = (this.serverPosX & 15) >= 8 ? ForgeDirection.EAST : ForgeDirection.WEST;
-                var directionY = (MathHelper.floor_double(posY + getEyeHeight()) & 15) >= 8 ? ForgeDirection.UP : ForgeDirection.DOWN;
-                var directionZ = (this.serverPosZ & 15) >= 8 ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
+                var directionX = ((MathHelper.floor_double(posX) & 15) >= 8) ? ForgeDirection.EAST : ForgeDirection.WEST;
+                var directionY = ((MathHelper.floor_double(posY + getEyeHeight()) & 15) >= 8) ? ForgeDirection.UP : ForgeDirection.DOWN;
+                var directionZ = ((MathHelper.floor_double(posZ) & 15) >= 8) ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
 
                 for (int i = 0; i < 7; i++) {
                     if (i % 4 == 0) {
