@@ -40,8 +40,8 @@ public class ColorizeBlock {
     private static final boolean useStemColors = MCPatcherForgeConfig.instance().ccStem;
     private static final boolean useBlockColors = MCPatcherForgeConfig.instance().ccOtherBlocks;
 
-    static final boolean enableSmoothBiomes = MCPatcherForgeConfig.instance().smoothBiomes;
-    static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.instance().testColorSmoothing;
+    private static final boolean enableSmoothBiomes = MCPatcherForgeConfig.instance().smoothBiomes;
+    private static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.instance().testColorSmoothing;
 
     private static final ResourceLocation REDSTONE_COLORS = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/redstone.png");
@@ -59,16 +59,14 @@ public class ColorizeBlock {
         "minecraft:textures/colormap/grass.png");
     private static final ResourceLocation DEFAULT_FOLIAGECOLOR = new ResourceLocation(
         "minecraft:textures/colormap/foliage.png");
-    private static final ResourceLocation PINECOLOR = TexturePackAPI.newMCPatcherResourceLocation("colormap/pine.png");
+    private static final ResourceLocation PINECOLOR = TexturePackAPI
+        .newMCPatcherResourceLocation("colormap/pine.png");
     private static final ResourceLocation BIRCHCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/birch.png");
     private static final ResourceLocation WATERCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/water.png");
 
     private static final String PALETTE_BLOCK_KEY = "palette.block.";
-
-    private static Block waterBlock;
-    private static Block staticWaterBlock;
 
     // bitmaps from palette.block.*
     private static final Map<Block, List<BlockStateMatcher>> blockColorMaps = new IdentityHashMap<>();
@@ -137,9 +135,6 @@ public class ColorizeBlock {
     }
 
     static void reset() {
-        waterBlock = Blocks.flowing_water;
-        staticWaterBlock = Blocks.water;
-
         blockColorMaps.clear();
         waterColorMap = null;
         resetVertexColors();
@@ -360,10 +355,10 @@ public class ColorizeBlock {
 
     public static boolean colorizeBlock(Block block, IBlockAccess blockAccess, int x, int y, int z) {
         IColorMap colorMap = findColorMap(block, blockAccess, x, y, z);
-        return colorizeBlock(block, blockAccess, colorMap, x, y, z);
+        return colorizeBlock(blockAccess, colorMap, x, y, z);
     }
 
-    private static boolean colorizeBlock(Block block, IBlockAccess blockAccess, IColorMap colorMap, int x, int y,
+    private static boolean colorizeBlock(IBlockAccess blockAccess, IColorMap colorMap, int x, int y,
         int z) {
         if (colorMap == null) {
             return false;
@@ -394,7 +389,7 @@ public class ColorizeBlock {
     }
 
     public static void colorizeWaterBlockGL(Block block) {
-        if (block == waterBlock || block == staticWaterBlock) {
+        if (block == Blocks.flowing_water || block == Blocks.water) {
             float[] waterColor;
             if (waterColorMap == null) {
                 waterColor = ColorizeEntity.waterBaseColor;
@@ -578,4 +573,5 @@ public class ColorizeBlock {
         colorGreenTopLeft = colorGreenBottomLeft = colorGreenBottomRight = colorGreenTopRight = g;
         colorBlueTopLeft = colorBlueBottomLeft = colorBlueBottomRight = colorBlueTopRight = b;
     }
+
 }
