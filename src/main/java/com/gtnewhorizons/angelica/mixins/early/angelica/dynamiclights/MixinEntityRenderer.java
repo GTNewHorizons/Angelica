@@ -17,7 +17,7 @@ public class MixinEntityRenderer {
 
     @Inject(method = "renderWorld", at = @At("HEAD"))
     private void updateDynamicLights(float p_78471_1_, long p_78471_2_, CallbackInfo ci){
-        mc.mcProfiler.endStartSection("dynamic_lighting");
+        mc.mcProfiler.endStartSection("angelica_dynamic_lighting");
         DynamicLights.get().updateAll(SodiumWorldRenderer.getInstance());
     }
 }

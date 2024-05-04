@@ -16,8 +16,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.Objects;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IDynamicLightSource {
@@ -41,6 +40,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     public int chunkCoordY;
     @Shadow
     public int chunkCoordZ;
+
     @Shadow
     public abstract float getEyeHeight();
 
@@ -51,6 +51,8 @@ public abstract class MixinEntity implements IDynamicLightSource {
     @Shadow
     public boolean isDead;
 
+    @Shadow
+    private int entityId;
     @Unique
     protected int angelica$luminance = 0;
     @Unique
@@ -89,35 +91,25 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public boolean angelica$shouldUpdateDynamicLight() {
-        //var mode = DynamicLightsConfig.Quality.get();
-        //if (Objects.equals(mode, QualityMode.OFF))
-            //return false;
+        if (DynamicLights.Mode.hasDelay()) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime < angelica$lastUpdate + DynamicLights.Mode.getDelay())
+                return false;
 
-        // TODO throttling
-        long currentTime = System.currentTimeMillis();
+            angelica$lastUpdate = currentTime;
+        }
 
-        //if (Objects.equals(mode, QualityMode.SLOW) && currentTime < lambdynlights_lastUpdate + 500)
-            //return false;
-
-
-        //if (Objects.equals(mode, QualityMode.FAST) && currentTime < lambdynlights_lastUpdate + 200)
-          //  return false;
-
-        angelica$lastUpdate = currentTime;
         return true;
     }
 
 
     @Inject(method = "onEntityUpdate", at = @At("TAIL"))
-    public void angelica$onUpdate(CallbackInfo ci){
-        if (worldObj != null && worldObj.isRemote){
-            if (isDead){
+    public void angelica$onUpdate(CallbackInfo ci) {
+        if (worldObj != null && worldObj.isRemote) {
+            if (isDead) {
                 angelica$setDynamicLightEnabled(false);
-            }else {
+            } else {
                 angelica$dynamicLightTick();
-//                if ((!DynamicLightsConfig.TileEntityLighting.get() && this.getType() != EntityType.PLAYER)
-//                    || !DynamicLightHandlers.canLightUp((Entity) (Object) this))
-//                    this.angelica$luminance = 0;
                 DynamicLights.updateTracking(this);
             }
         }
@@ -125,12 +117,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public void angelica$dynamicLightTick() {
-        this.angelica$luminance = this.fire > 0 ? 15 : 0;
-
-        // TODO entity type specific light sources
-        int luminance = 15; //DynamicLightHandlers.getLuminanceFrom((Entity) (Object) this);
-        if (luminance > this.angelica$luminance)
-            this.angelica$luminance = luminance;
+        this.angelica$luminance = DynamicLights.getLuminanceFromEntity((Entity) (Object) this);
     }
 
     @Override

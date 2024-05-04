@@ -221,6 +221,7 @@ public class SodiumGameOptionPages {
                 )*/
                 .add(Settings.MODE_SHADOWS.option)
                 .add(Settings.MODE_VIGNETTE.option)
+                .add(Settings.DYNAMIC_LIGHTS.option)
                 .build());
 
 

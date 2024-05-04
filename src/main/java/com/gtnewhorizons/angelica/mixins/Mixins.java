@@ -30,8 +30,8 @@ public enum Mixins {
             ,"angelica.optimizations.MixinRendererLivingEntity"
             ,"angelica.dynamiclights.MixinEntityRenderer"
             ,"angelica.dynamiclights.MixinEntity"
-            ,"angelica.dynamiclights.MixinEntityPlayerSP"
             ,"angelica.dynamiclights.MixinWorld"
+            ,"angelica.dynamiclights.MixinItemRenderer"
         )
     ),
     ANGELICA_VBO(
