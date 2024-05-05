@@ -283,6 +283,15 @@ public enum Mixins {
             "MixinRenderItem"
         ))
     ),
+    NOTFINE_NATURA(new Builder("NotFine Natura compat")
+        .setSide(Side.CLIENT).setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addTargetedMod(TargetedMod.NATURA)
+        .addMixinClasses(addPrefix("notfine.leaves.natura.",
+            "MixinBerryBush",
+            "MixinNetherBerryBush"
+        ))
+    ),
     NOTFINE_THAUMCRAFT(new Builder("NotFine Thaumcraft compat")
         .setSide(Side.CLIENT).setPhase(Phase.LATE)
         .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
@@ -298,6 +307,12 @@ public enum Mixins {
             "MixinBlockStoneDevice",
             "MixinBlockTable"
         ))
+    ),
+    NOTFINE_TINKERS_CONSTRUCT(new Builder("NotFine Tinker's Construct compat")
+        .setSide(Side.CLIENT).setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addTargetedMod(TargetedMod.TINKERS_CONSTRUCT)
+        .addMixinClasses("notfine.leaves.tconstruct.MixinOreberryBush")
     ),
     NOTFINE_WITCHERY(new Builder("NotFine Witchery compat")
         .setSide(Side.CLIENT).setPhase(Phase.LATE)

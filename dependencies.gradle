@@ -75,6 +75,8 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.5.16:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
 
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.0:api") { transitive = false }
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0002:dev") { transitive = false }
