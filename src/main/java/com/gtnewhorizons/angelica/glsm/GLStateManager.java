@@ -58,6 +58,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLContext;
+import org.lwjgl.opengl.KHRDebug;
 
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
@@ -121,8 +122,9 @@ public class GLStateManager {
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
     @Getter protected static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
 
-
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
+
+    @Getter protected static int activeProgram = 0;
 
     public static void reset() {
         runningSplash = true;
@@ -354,6 +356,7 @@ public class GLStateManager {
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
             case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL20.GL_CURRENT_PROGRAM -> activeProgram;
 
             default -> GL11.glGetInteger(pname);
         };
@@ -1422,4 +1425,18 @@ public class GLStateManager {
     public static void glDepthRange(double near, double far) {
         GL11.glDepthRange(near, far);
     }
+
+    public static void glUseProgram(int program) {
+        if(program != activeProgram || shouldBypassCache()) {
+            activeProgram = program;
+            if(AngelicaMod.lwjglDebug) {
+                final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
+                GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
+            }
+            GL20.glUseProgram(program);
+        }
+    }
+
+
+
 }
