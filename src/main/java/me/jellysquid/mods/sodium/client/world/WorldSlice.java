@@ -197,7 +197,7 @@ public class WorldSlice implements IBlockAccess {
             blockBrightness = min;
         }
 
-        if (DynamicLights.isEnabled()){
+        if (DynamicLights.isEnabled() && !getBlock(x, y, z).isOpaqueCube()) {
             return DynamicLights.get().getLightmapWithDynamicLight(x, y, z, (skyBrightness << 20 | blockBrightness << 4));
         }
 
