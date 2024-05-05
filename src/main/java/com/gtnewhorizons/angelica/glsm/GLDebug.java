@@ -316,6 +316,9 @@ public final class GLDebug {
 
         @Override
         public String getObjectLabel(int glProgram, int program) {
+            if(program == 0)
+                return "";
+
             return KHRDebug.glGetObjectLabel(glProgram, program, maxNameLength);
         }
     }

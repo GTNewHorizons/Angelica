@@ -28,10 +28,13 @@ import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -54,6 +57,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Shadow public int renderDistanceChunks;
     @Shadow public WorldRenderer[] worldRenderers;
     @Shadow public WorldRenderer[] sortedWorldRenderers;
+    @Shadow @Final private TextureManager renderEngine;
+
 
     @Getter
     @Unique private SodiumWorldRenderer renderer;
@@ -157,6 +162,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
                 HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, mc.renderGlobal, pipeline);
                 mc.mcProfiler.endStartSection("iris_pre_translucent");
                 pipeline.beginTranslucents();
+                this.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             }
         }
         // Handle view distance change
@@ -178,6 +184,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         try {
             final MatrixStack matrixStack = new MatrixStack(ShadowRenderer.ACTIVE ? ShadowRenderer.MODELVIEW : RenderingState.INSTANCE.getModelViewMatrix());
+            mc.mcProfiler.endStartSection("draw_chunk_layer_" + pass);
             this.renderer.drawChunkLayer(BlockRenderPass.VALUES[pass], matrixStack, x, y, z);
         } finally {
             RenderDevice.exitManagedCode();
