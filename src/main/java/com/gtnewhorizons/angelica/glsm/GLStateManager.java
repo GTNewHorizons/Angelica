@@ -780,10 +780,6 @@ public class GLStateManager {
             } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = true;
                 updatePipeline = true;
-            } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
-                // TODO: what do we do with overlay texture?
-                StateTracker.INSTANCE.overlaySampler = true;
-                updatePipeline = true;
             }
 
             if (updatePipeline) {
@@ -803,10 +799,6 @@ public class GLStateManager {
                 updatePipeline = true;
             } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.lightmapSampler = false;
-                updatePipeline = true;
-            } else if (textureUnit == IrisSamplers.OVERLAY_TEXTURE_UNIT) {
-                // TODO: What do we do with overlay texture?
-                StateTracker.INSTANCE.overlaySampler = false;
                 updatePipeline = true;
             }
 

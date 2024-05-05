@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
@@ -18,15 +19,13 @@ import java.util.function.Supplier;
 
 public class IrisSamplers {
 	public static final int ALBEDO_TEXTURE_UNIT = 0;
-    // TODO: Find equivalent in 1.7.10
-	public static final int OVERLAY_TEXTURE_UNIT = 2;
 	public static final int LIGHTMAP_TEXTURE_UNIT = 1;
 
-	public static final ImmutableSet<Integer> WORLD_RESERVED_TEXTURE_UNITS = ImmutableSet.of(0, 1, 2);
+	public static final ImmutableSet<Integer> WORLD_RESERVED_TEXTURE_UNITS = ImmutableSet.of(0, 1);
 
 	// TODO: In composite programs, there shouldn't be any reserved textures.
 	// We need a way to restore these texture bindings.
-	public static final ImmutableSet<Integer> COMPOSITE_RESERVED_TEXTURE_UNITS = ImmutableSet.of(1, 2);
+	public static final ImmutableSet<Integer> COMPOSITE_RESERVED_TEXTURE_UNITS = ImmutableSet.of(1);
 
 	private IrisSamplers() {
 		// no construction allowed
@@ -139,14 +138,6 @@ public class IrisSamplers {
 			samplers.addDynamicSampler(whitePixel::getGlTextureId, "lightmap");
 		}
 
-		if (availability.overlay) {
-            // TODO: Overlay equivalent in 1.7.10?
-//			samplers.addExternalSampler(OVERLAY_TEXTURE_UNIT, "iris_overlay");
-            samplers.addDynamicSampler(whitePixel::getGlTextureId, "iris_overlay");
-		} else {
-			samplers.addDynamicSampler(whitePixel::getGlTextureId, "iris_overlay");
-		}
-
 		samplers.addDynamicSampler(pipeline::getCurrentNormalTexture, StateUpdateNotifiers.normalTextureChangeNotifier, "normals");
 		samplers.addDynamicSampler(pipeline::getCurrentSpecularTexture, StateUpdateNotifiers.specularTextureChangeNotifier, "specular");
 	}
@@ -158,11 +149,8 @@ public class IrisSamplers {
 	}
 
 	public static void addCompositeSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
-		samplers.addDynamicSampler(renderTargets::getDepthTexture,
-				"gdepthtex", "depthtex0");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId,
-				"depthtex1");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoHand()::getTextureId,
-				"depthtex2");
+		samplers.addDynamicSampler(renderTargets::getDepthTexture, "gdepthtex", "depthtex0");
+		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1");
+		samplers.addDynamicSampler(renderTargets.getDepthTextureNoHand()::getTextureId, "depthtex2");
 	}
 }

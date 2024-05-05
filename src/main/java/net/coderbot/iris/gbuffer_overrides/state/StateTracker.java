@@ -11,12 +11,8 @@ public class StateTracker {
 	public boolean albedoSampler;
 	// LightmapStateShard / TextureUnit.LIGHTMAP
 	public boolean lightmapSampler;
-	// OverlayStateShard / TextureUnit.OVERLAY
-	public boolean overlaySampler;
 
 	public InputAvailability getInputs() {
-		return new InputAvailability(albedoSampler,
-				lightmapSampler,
-				overlaySampler);
+		return new InputAvailability(albedoSampler, lightmapSampler);
 	}
 }
