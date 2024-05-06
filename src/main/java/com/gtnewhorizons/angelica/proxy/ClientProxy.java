@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.common.BlockTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -187,6 +188,16 @@ public class ClientProxy extends CommonProxy {
             int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
+        }
+        if (DynamicLights.isEnabled()){
+            var builder = new StringBuilder("Dynamic Light Sources: ");
+            DynamicLights dl = DynamicLights.get();
+            builder.append(dl.getLightSourcesCount())
+                .append(" (U: ")
+                .append(dl.getLastUpdateCount())
+                .append(')');
+
+            event.right.add(builder.toString());
         }
         if(AngelicaConfig.modernizeF3Screen) {
             boolean hasReplacedXYZ = false;

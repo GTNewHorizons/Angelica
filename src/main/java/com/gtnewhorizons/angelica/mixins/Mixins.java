@@ -53,6 +53,14 @@ public enum Mixins {
             ,"angelica.debug.MixinTextureManager"
         )
     ),
+    ANGELICA_DYNAMIC_LIGHTS(new Builder("Angelica Dynamic Lights").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableDynamicLights).addMixinClasses(
+            "angelica.dynamiclights.MixinEntityRenderer"
+            ,"angelica.dynamiclights.MixinEntity"
+            ,"angelica.dynamiclights.MixinWorld"
+            ,"angelica.dynamiclights.MixinItemRenderer"
+        )
+    ),
 
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
