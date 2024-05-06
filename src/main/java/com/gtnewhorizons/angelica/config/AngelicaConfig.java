@@ -70,7 +70,6 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean showSplashMemoryBar;
 
-
     @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance. [Experimental]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -82,7 +81,7 @@ public class AngelicaConfig {
     public static boolean enableFontRenderer;
 
     @Config.Comment("Enable Dynamic Lights")
-    @Config.DefaultBoolean(true)
+    @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableDynamicLights;
 
