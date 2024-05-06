@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.dynamiclights;
 
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.world.World;
@@ -24,6 +26,14 @@ public abstract class MixinWorld {
         if (entity instanceof IDynamicLightSource lightSource){
             lightSource.angelica$setDynamicLightEnabled(false);
         }
+    }
+
+    @ModifyReturnValue(method = "getLightBrightnessForSkyBlocks", at = @At(value = "RETURN"))
+    private int angelica$dynamiclights_getLightBrightnessForSkyBlocks(int lightmap, int p_72802_1_, int p_72802_2_, int p_72802_3_, int p_72802_4_){
+        if (DynamicLights.isEnabled()){
+            return DynamicLights.get().getLightmapWithDynamicLight(p_72802_1_, p_72802_2_, p_72802_3_, lightmap);
+        }
+        return lightmap;
     }
 
 }
