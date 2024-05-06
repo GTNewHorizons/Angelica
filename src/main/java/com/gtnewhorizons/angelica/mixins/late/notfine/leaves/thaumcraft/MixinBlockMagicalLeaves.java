@@ -1,13 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.late.notfine.leaves.thaumcraft;
 
-import jss.notfine.gui.options.named.LeavesQuality;
+import jss.notfine.util.IFaceObstructionCheckHelper;
 import jss.notfine.util.ILeafBlock;
-import jss.notfine.core.Settings;
-import jss.notfine.core.SettingsManager;
 import jss.notfine.util.LeafRenderUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.util.Facing;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,21 +13,12 @@ import org.spongepowered.asm.mixin.Shadow;
 import thaumcraft.common.blocks.BlockMagicalLeaves;
 
 @Mixin(value = BlockMagicalLeaves.class)
-public abstract class MixinBlockMagicalLeaves extends Block implements ILeafBlock {
+public abstract class MixinBlockMagicalLeaves extends Block implements IFaceObstructionCheckHelper, ILeafBlock {
 
     @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
         int maskedMeta = world.getBlockMetadata(x, y, z) & 3;
-        int renderMode;
-        if(Settings.MODE_LEAVES.option.getStore() == LeavesQuality.SHELLED_FAST) {
-            renderMode = world.getBlock(
-                x + Facing.offsetsXForSide[side],
-                y + Facing.offsetsYForSide[side],
-                z + Facing.offsetsZForSide[side]
-            ) instanceof ILeafBlock ? 1 : 0;
-        } else {
-            renderMode = SettingsManager.leavesOpaque ? 1 : 0;
-        }
+        final int renderMode = LeafRenderUtil.selectRenderMode(world, x, y, z, side) ? 1 : 0;
         maskedMeta = maskedMeta > 1 ? 0 : maskedMeta;
         return icon[renderMode + maskedMeta * 2];
     }
@@ -42,6 +30,11 @@ public abstract class MixinBlockMagicalLeaves extends Block implements ILeafBloc
     @Overwrite
     public boolean shouldSideBeRendered(IBlockAccess world, int x, int y, int z, int side) {
         return LeafRenderUtil.shouldSideBeRendered(world, x, y, z, side);
+    }
+
+    @Override()
+    public boolean isFaceNonObstructing(IBlockAccess world, int x, int y, int z, int side, double otherMinX, double otherMinY, double otherMinZ, double otherMaxX, double otherMaxY, double otherMaxZ) {
+        return LeafRenderUtil.isFaceNonObstructing(world, x, y, z);
     }
 
     private MixinBlockMagicalLeaves(Material material) {

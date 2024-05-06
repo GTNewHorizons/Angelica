@@ -25,12 +25,12 @@ public class LeafRenderUtil {
         5, 4, 1, 0, 3, 2
     };
 
-    public static boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
-        Block otherBlock = worldIn.getBlock(x, y, z);
+    public static boolean shouldSideBeRendered(IBlockAccess world, int x, int y, int z, int side) {
+        final Block otherBlock = world.getBlock(x, y, z);
         if(otherBlock.isOpaqueCube()) {
             return false;
         }
-        if(otherBlock instanceof ILeafBlock) {
+        if(otherBlock instanceof ILeafBlock otherLeaf && otherLeaf.isFullLeaf(world, x, y, z)) {
             switch ((LeavesQuality)Settings.MODE_LEAVES.option.getStore()) {
                 case FAST, SMART -> {
                     return false;
@@ -40,76 +40,33 @@ public class LeafRenderUtil {
                     y -= Facing.offsetsYForSide[side];
                     z -= Facing.offsetsZForSide[side];
                     int renderCheck = 0;
-                    otherBlock = worldIn.getBlock(x + 1, y, z);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
-                    otherBlock = worldIn.getBlock(x - 1, y, z);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
-                    otherBlock = worldIn.getBlock(x, y + 1, z);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
-                    otherBlock = worldIn.getBlock(x, y - 1, z);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
-                    otherBlock = worldIn.getBlock(x, y, z + 1);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
-                    otherBlock = worldIn.getBlock(x, y, z - 1);
-                    if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
-                        renderCheck++;
-                    }
+                    renderCheck += ignoreWhenCulling(world, x + 1, y, z) ? 0 : 1;
+                    renderCheck += ignoreWhenCulling(world, x - 1, y, z) ? 0 : 1;
+                    renderCheck += ignoreWhenCulling(world, x, y + 1, z) ? 0 : 1;
+                    renderCheck += ignoreWhenCulling(world, x, y - 1, z) ? 0 : 1;
+                    renderCheck += ignoreWhenCulling(world, x, y, z + 1) ? 0 : 1;
+                    renderCheck += ignoreWhenCulling(world, x, y, z - 1) ? 0 : 1;
                     boolean renderSide = renderCheck == 6;
                     if (renderSide) {
                         x += 2 * Facing.offsetsXForSide[side];
                         y += 2 * Facing.offsetsYForSide[side];
                         z += 2 * Facing.offsetsZForSide[side];
-                        otherBlock = worldIn.getBlock(x, y, z);
-                        if(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube()) {
+                        if(!ignoreWhenCulling(world, x, y, z)) {
                             renderSide = false;
                         }
                         x -= Facing.offsetsXForSide[side];
                         y -= Facing.offsetsYForSide[side];
                         z -= Facing.offsetsZForSide[side];
-                        int nextSide = relativeADirections[side];
-                        otherBlock = worldIn.getBlock(
-                            x + Facing.offsetsXForSide[nextSide],
-                            y + Facing.offsetsYForSide[nextSide],
-                            z + Facing.offsetsZForSide[nextSide]
-                        );
-                        if(!(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube())) {
+                        if(ignoreWhenCulling(world, x, y, z, relativeADirections[side])) {
                             return true;
                         }
-                        nextSide = relativeBDirections[side];
-                        otherBlock = worldIn.getBlock(
-                            x + Facing.offsetsXForSide[nextSide],
-                            y + Facing.offsetsYForSide[nextSide],
-                            z + Facing.offsetsZForSide[nextSide]
-                        );
-                        if(!(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube())) {
+                        if(ignoreWhenCulling(world, x, y, z, relativeBDirections[side])) {
                             return true;
                         }
-                        nextSide = relativeCDirections[side];
-                        otherBlock = worldIn.getBlock(
-                            x + Facing.offsetsXForSide[nextSide],
-                            y + Facing.offsetsYForSide[nextSide],
-                            z + Facing.offsetsZForSide[nextSide]
-                        );
-                        if(!(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube())) {
+                        if(ignoreWhenCulling(world, x, y, z, relativeCDirections[side])) {
                             return true;
                         }
-                        nextSide = relativeDDirections[side];
-                        otherBlock = worldIn.getBlock(
-                            x + Facing.offsetsXForSide[nextSide],
-                            y + Facing.offsetsYForSide[nextSide],
-                            z + Facing.offsetsZForSide[nextSide]
-                        );
-                        if(!(otherBlock instanceof ILeafBlock || otherBlock.isOpaqueCube())) {
+                        if(ignoreWhenCulling(world, x, y, z, relativeDDirections[side])) {
                             return true;
                         }
                     }
@@ -122,9 +79,55 @@ public class LeafRenderUtil {
         }
         //Check for IFaceObstructionCheckHelper
         if(otherBlock instanceof IFaceObstructionCheckHelper target) {
-            return target.isFaceNonObstructing(worldIn, x, y, z, side, 0D, 0D, 0D, 1D, 1D, 1D);
+            return target.isFaceNonObstructing(world, x, y, z, side, 0D, 0D, 0D, 1D, 1D, 1D);
         }
         return true;
+    }
+
+    public static boolean isFaceNonObstructing(IBlockAccess world, int x, int y, int z) {
+        if(Settings.MODE_LEAVES.option.getStore() != LeavesQuality.SHELLED_FAST) {
+            return !SettingsManager.leavesOpaque;
+        }
+        if(ignoreWhenCulling(world, x + 1, y, z)) {
+            return true;
+        }
+        if(ignoreWhenCulling(world, x - 1, y, z)) {
+            return true;
+        }
+        if(ignoreWhenCulling(world, x, y + 1, z)) {
+            return true;
+        }
+        if(ignoreWhenCulling(world, x, y - 1, z)) {
+            return true;
+        }
+        if(ignoreWhenCulling(world, x, y, z + 1)) {
+            return true;
+        }
+        return ignoreWhenCulling(world, x, y, z - 1);
+    }
+
+    public static boolean ignoreWhenCulling(IBlockAccess world, int x, int y, int z) {
+        Block otherBlock = world.getBlock(x, y, z);
+        return !(otherBlock instanceof ILeafBlock leafBlock && leafBlock.isFullLeaf(world, x, y, z) || otherBlock.isOpaqueCube());
+    }
+
+    public static boolean ignoreWhenCulling(IBlockAccess world, int x, int y, int z, int side) {
+        x += Facing.offsetsXForSide[side];
+        y += Facing.offsetsYForSide[side];
+        z += Facing.offsetsZForSide[side];
+        final Block otherBlock = world.getBlock(x, y, z);
+        return !(otherBlock instanceof ILeafBlock leafBlock && leafBlock.isFullLeaf(world, x, y, z) || otherBlock.isOpaqueCube());
+    }
+
+    public static boolean selectRenderMode(IBlockAccess world, int x, int y, int z, int side) {
+        if(Settings.MODE_LEAVES.option.getStore() == LeavesQuality.SHELLED_FAST) {
+            x += Facing.offsetsXForSide[side];
+            y += Facing.offsetsYForSide[side];
+            z += Facing.offsetsZForSide[side];
+            final Block otherBlock = world.getBlock(x, y, z);
+            return otherBlock instanceof ILeafBlock leafBlock && leafBlock.isFullLeaf(world, x, y, z);
+        }
+        return SettingsManager.leavesOpaque;
     }
 
 }
