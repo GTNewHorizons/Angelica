@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.dynamiclights;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
@@ -41,7 +42,7 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return Mode.isEnabled();
+        return Mode.isEnabled() && AngelicaConfig.enableDynamicLights;
     }
 
     /**

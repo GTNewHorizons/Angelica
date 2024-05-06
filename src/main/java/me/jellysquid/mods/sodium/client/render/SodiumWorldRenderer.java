@@ -119,7 +119,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         // If we have a world is already loaded, unload the renderer
         if (this.world != null) {
-            DynamicLights.get().clearLightSources();
+            if (DynamicLights.isEnabled()){
+                DynamicLights.get().clearLightSources();
+            }
             this.unloadWorld();
         }
 
