@@ -21,20 +21,23 @@ public class TextureInfoCache {
 	}
 
 	public TextureInfo getInfo(int id) {
+        if(id < 0) return null;
 		return cache.computeIfAbsent(id, TextureInfo::new);
 	}
 
 	public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels) {
-		if (level == 0) {
+		if (target == GL11.GL_TEXTURE_2D && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
+            if(info == null) return;
 			info.internalFormat = internalformat;
 			info.width = width;
 			info.height = height;
 		}
 	}
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-		if (level == 0) {
+		if (target == GL11.GL_TEXTURE_2D && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
+            if(info == null) return;
 			info.internalFormat = internalformat;
 			info.width = width;
 			info.height = height;
@@ -42,7 +45,7 @@ public class TextureInfoCache {
 	}
 
 	public void onDeleteTexture(int id) {
-		cache.remove(id);
+		if(id >= 0) cache.remove(id);
 	}
 
 }
