@@ -108,6 +108,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixExtraUtilsSodiumCompat;
 
+    @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixFluidRendererCheckingBlockAgain;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

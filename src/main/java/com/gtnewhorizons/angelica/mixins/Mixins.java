@@ -63,6 +63,12 @@ public enum Mixins {
         )
     ),
 
+    ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
+        new Builder("Fix RenderBlockFluid reading the block type from the world access multiple times")
+            .setPhase(Phase.EARLY).addMixinClasses("angelica.bugfixes.MixinRenderBlockFluid").setSide(Side.BOTH)
+            .setApplyIf(() -> AngelicaConfig.fixFluidRendererCheckingBlockAgain)
+            .addTargetedMod(TargetedMod.VANILLA)),
+
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(
