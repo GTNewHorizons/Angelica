@@ -103,7 +103,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     @Shadow
     protected abstract String bidiReorder(String p_147647_1_);
 
-    @Shadow
+    @Shadow(remap = false)
     protected abstract void bindTexture(ResourceLocation location);
 
     @Unique
