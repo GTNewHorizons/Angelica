@@ -11,7 +11,7 @@ public class MixinFMLClientHandler {
      * @reason Remove more traces of Optifine
      */
     @Overwrite
-    public void detectOptifine() {
+    private void detectOptifine() {
         // Do nothing
     }
 
