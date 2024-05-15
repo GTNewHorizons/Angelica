@@ -1259,6 +1259,9 @@ public class GLStateManager {
             return true;
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        if (info == null) {
+            return true;
+        }
         switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> {
                 if(info.getMinFilter() == param && !shouldBypassCache()) return false;
@@ -1330,6 +1333,9 @@ public class GLStateManager {
             return true;
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        if (info == null) {
+            return true;
+        }
         switch (pname) {
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
                 if(info.getMaxAnisotropy() == param && !shouldBypassCache()) return false;
@@ -1355,7 +1361,9 @@ public class GLStateManager {
 
     public static int getTexParameterOrDefault(int texture, int pname, IntSupplier defaultSupplier) {
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
-
+        if (info == null) {
+            return defaultSupplier.getAsInt();
+        }
         return switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> info.getMinFilter();
             case GL11.GL_TEXTURE_MAG_FILTER -> info.getMagFilter();
@@ -1379,6 +1387,9 @@ public class GLStateManager {
             return GL11.glGetTexParameterf(target, pname);
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+        if(info == null) {
+            return GL11.glGetTexParameterf(target, pname);
+        }
 
         return switch (pname) {
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> info.getMaxAnisotropy();
@@ -1392,7 +1403,9 @@ public class GLStateManager {
             return GL11.glGetTexLevelParameteri(target, level, pname);
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
-
+        if (info == null) {
+            return GL11.glGetTexLevelParameteri(target, level, pname);
+        }
         return switch (pname) {
             case GL11.GL_TEXTURE_WIDTH -> info.getWidth();
             case GL11.GL_TEXTURE_HEIGHT -> info.getHeight();
