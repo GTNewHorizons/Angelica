@@ -238,6 +238,9 @@ public class GLStateManager {
 
     }
 
+    public static boolean isMainThread() {
+        return Thread.currentThread() == MainThread;
+    }
 
     public static void assertMainThread() {
         if (Thread.currentThread() != CurrentThread && !runningSplash) {
