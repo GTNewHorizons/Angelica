@@ -30,6 +30,12 @@ public class OptionGroup {
             return this;
         }
 
+        public Builder add(Option<?> option, boolean isVisible){
+            if (isVisible) return add(option);
+
+            return this;
+        }
+
         public OptionGroup build() {
             Validate.notEmpty(this.options, "At least one option must be specified");
 
