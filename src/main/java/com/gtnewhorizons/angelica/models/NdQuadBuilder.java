@@ -17,6 +17,17 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.Arrays;
 
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.DOWN;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.EAST;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.NORTH;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.SOUTH;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.UP;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.WEST;
+import static java.lang.Float.MAX_VALUE;
+import static java.lang.Float.MIN_VALUE;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 public class NdQuadBuilder extends Quad implements QuadBuilder {
 
     private ForgeDirection nominalFace = ForgeDirection.UNKNOWN;
@@ -163,7 +174,49 @@ public class NdQuadBuilder extends Quad implements QuadBuilder {
 
     @Override
     public float posByIndex(int vertexIndex, int coordinateIndex) {
-        return Float.intBitsToFloat(this.data[vertexIndex * Quad.INTS_PER_VERTEX + Quad.X_INDEX + coordinateIndex]);
+        return Float.intBitsToFloat(this.data[vertexIndex * Quad.VERTEX_STRIDE + Quad.X_INDEX + coordinateIndex]);
+    }
+
+    /**
+     * Rewinds the quad to the standard order.
+     */
+    public void rewind() {
+        boolean[] targets = switch (getLightFace()) {
+            case DOWN -> DOWN;
+            case UP -> UP;
+            case NORTH -> NORTH;
+            case SOUTH -> SOUTH;
+            case WEST -> WEST;
+            case EAST -> EAST;
+            case UNKNOWN -> throw new RuntimeException("Expected non-UNKNOWN face!");
+        };
+
+        int iFirst = 0;
+        float tx = targets[0] ? MIN_VALUE : MAX_VALUE;
+        float ty = targets[1] ? MIN_VALUE : MAX_VALUE;
+        float tz = targets[2] ? MIN_VALUE : MAX_VALUE;
+
+        // Find the correct starting vertex
+        for (int i = 0; i < 4; ++i) {
+            float otx = tx;
+            float oty = ty;
+            float otz = tz;
+
+            tx = targets[0] ? max(getX(i), tx) : min(getX(i), tx);
+            ty = targets[1] ? max(getY(i), ty) : min(getY(i), ty);
+            tz = targets[2] ? max(getZ(i), tz) : min(getZ(i), tz);
+
+            // If the vertex pushed one of the target values, it's potentially the right one
+            if (otx != tx || oty != ty || otz != otz) iFirst = i;
+        }
+
+        assert (tx == getX(iFirst) && ty == getY(iFirst) && tz == getZ(iFirst));
+
+        // Shift the vertices - copy to a temp array, then copy back in the right order, wrapping appropriately
+        int[] tmp = getRawData().clone();
+        for (int i = 0; i < 4; ++i) {
+            System.arraycopy(tmp, (iFirst + i) % 4 * VERTEX_STRIDE, data, i * VERTEX_STRIDE, VERTEX_STRIDE);
+        }
     }
 
     @Override

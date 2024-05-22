@@ -101,6 +101,7 @@ public class ModelLoader {
             final JsonModel dough = new JsonModel(loadedModels.get(l.getKey().getModel()));
 
             // Resolve the parent chain
+            //noinspection SuspiciousMethodCalls
             dough.resolveParents(loadedModels::get);
 
             // Bake

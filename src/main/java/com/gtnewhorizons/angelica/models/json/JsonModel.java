@@ -6,7 +6,11 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.gtnewhorizons.angelica.api.*;
+import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
+import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.api.Variant;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import com.gtnewhorizons.angelica.utils.DirUtil;
@@ -133,6 +137,9 @@ public class JsonModel implements QuadProvider {
 
                 // Set AO
                 builder.mat.setAO(this.useAO);
+
+                // Rewind the quad
+                //builder.rewind();
 
                 // Bake and add it
                 final QuadView q = builder.build(new Quad());

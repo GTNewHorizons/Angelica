@@ -157,12 +157,12 @@ public class VanillaModels {
             OAK_LEAVES = new BlockColoredCube("leaves_oak");
             SPRUCE_LEAVES = new BlockColoredCube("leaves_spruce");
 
-            ACACIA_LOG = new Column3Rot(new ModelLocation("acacia_log"));
-            BIRCH_LOG = new Column3Rot(new ModelLocation("birch_log"));
-            DARK_OAK_LOG = new Column3Rot(new ModelLocation("dark_oak_log"));
-            JUNGLE_LOG = new Column3Rot(new ModelLocation("jungle_log"));
-            OAK_LOG = new Column3Rot(new ModelLocation("oak_log"));
-            SPRUCE_LOG = new Column3Rot(new ModelLocation("spruce_log"));
+            ACACIA_LOG = new Column3Rot(new ModelLocation("block/acacia_log"));
+            BIRCH_LOG = new Column3Rot(new ModelLocation("block/birch_log"));
+            DARK_OAK_LOG = new Column3Rot(new ModelLocation("block/dark_oak_log"));
+            JUNGLE_LOG = new Column3Rot(new ModelLocation("block/jungle_log"));
+            OAK_LOG = new Column3Rot(new ModelLocation("block/oak_log"));
+            SPRUCE_LOG = new Column3Rot(new ModelLocation("block/spruce_log"));
 
             ACACIA_WOOD = new BlockStaticCube("log_acacia");
             BIRCH_WOOD = new BlockStaticCube("log_birch");

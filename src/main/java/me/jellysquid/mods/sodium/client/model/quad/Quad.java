@@ -18,8 +18,8 @@ import java.util.Locale;
 public class Quad implements QuadView {
     // Adapted from Neodymium
 
-    public static final int INTS_PER_VERTEX = 8;
-    public static final int QUAD_STRIDE = INTS_PER_VERTEX * 4;
+    public static final int VERTEX_STRIDE = 8;
+    public static final int QUAD_STRIDE = VERTEX_STRIDE * 4;
     public static final int X_INDEX = 0;
     public static final int Y_INDEX = 1;
     public static final int Z_INDEX = 2;
@@ -60,42 +60,42 @@ public class Quad implements QuadView {
 
     @Override
     public float getX(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + X_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + X_INDEX]);
     }
 
     @Override
     public float getY(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + Y_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + Y_INDEX]);
     }
 
     @Override
     public float getZ(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + Z_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + Z_INDEX]);
     }
 
     @Override
     public float getTexU(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + U_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + U_INDEX]);
     }
 
     @Override
     public float getTexV(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + V_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + V_INDEX]);
     }
 
     @Override
     public int getColor(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + COLOR_INDEX];
+        return this.data[idx * VERTEX_STRIDE + COLOR_INDEX];
     }
 
     @Override
     public int getLight(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + LIGHTMAP_INDEX];
+        return this.data[idx * VERTEX_STRIDE + LIGHTMAP_INDEX];
     }
 
     @Override
     public int getNormal(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + NORMAL_INDEX];
+        return this.data[idx * VERTEX_STRIDE + NORMAL_INDEX];
     }
 
     @Override
@@ -121,42 +121,42 @@ public class Quad implements QuadView {
 
     @Override
     public void setX(int idx, float x) {
-        this.data[idx * INTS_PER_VERTEX + X_INDEX] = Float.floatToRawIntBits(x);
+        this.data[idx * VERTEX_STRIDE + X_INDEX] = Float.floatToRawIntBits(x);
     }
 
     @Override
     public void setY(int idx, float y) {
-        this.data[idx * INTS_PER_VERTEX + Y_INDEX] = Float.floatToRawIntBits(y);
+        this.data[idx * VERTEX_STRIDE + Y_INDEX] = Float.floatToRawIntBits(y);
     }
 
     @Override
     public void setZ(int idx, float z) {
-        this.data[idx * INTS_PER_VERTEX + Z_INDEX] = Float.floatToRawIntBits(z);
+        this.data[idx * VERTEX_STRIDE + Z_INDEX] = Float.floatToRawIntBits(z);
     }
 
     @Override
     public void setTexU(int idx, float u) {
-        this.data[idx * INTS_PER_VERTEX + U_INDEX] = Float.floatToRawIntBits(u);
+        this.data[idx * VERTEX_STRIDE + U_INDEX] = Float.floatToRawIntBits(u);
     }
 
     @Override
     public void setTexV(int idx, float v) {
-        this.data[idx * INTS_PER_VERTEX + V_INDEX] = Float.floatToRawIntBits(v);
+        this.data[idx * VERTEX_STRIDE + V_INDEX] = Float.floatToRawIntBits(v);
     }
 
     @Override
     public void setColor(int idx, int c) {
-        this.data[idx * INTS_PER_VERTEX + COLOR_INDEX] = c;
+        this.data[idx * VERTEX_STRIDE + COLOR_INDEX] = c;
     }
 
     @Override
     public void setLight(int idx, int l) {
-        this.data[idx * INTS_PER_VERTEX + LIGHTMAP_INDEX] = l;
+        this.data[idx * VERTEX_STRIDE + LIGHTMAP_INDEX] = l;
     }
 
     @Override
     public void setNormal(int idx, int n) {
-        this.data[idx * INTS_PER_VERTEX + NORMAL_INDEX] = n;
+        this.data[idx * VERTEX_STRIDE + NORMAL_INDEX] = n;
     }
 
     @Override
@@ -183,14 +183,14 @@ public class Quad implements QuadView {
      * Convenience: access x, y, z by index 0-2.
      */
     private float posByIndex(int vertexIndex, int coordinateIndex) {
-        return Float.intBitsToFloat(this.data[vertexIndex * INTS_PER_VERTEX + coordinateIndex]);
+        return Float.intBitsToFloat(this.data[vertexIndex * VERTEX_STRIDE + coordinateIndex]);
     }
 
     /**
      * Convenience: access x, y, z by index 0-2.
      */
     private void setPosByIndex(int vertexIndex, int coordinateIndex, float val) {
-        this.data[vertexIndex * INTS_PER_VERTEX + coordinateIndex] = Float.floatToRawIntBits(val);
+        this.data[vertexIndex * VERTEX_STRIDE + coordinateIndex] = Float.floatToRawIntBits(val);
     }
 
     /**

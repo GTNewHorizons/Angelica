@@ -73,12 +73,12 @@ public class AssetLoader {
             addModelAssets(
                 "block/stone",
                 "block/crafting_table",
-                "acacia_log",
-                "birch_log",
-                "dark_oak_log",
-                "jungle_log",
-                "oak_log",
-                "spruce_log");
+                "block/acacia_log",
+                "block/birch_log",
+                "block/dark_oak_log",
+                "block/jungle_log",
+                "block/oak_log",
+                "block/spruce_log");
             addTexAssets(oldInjectTexs, injectTexs, "1.7.10");
         }
 
