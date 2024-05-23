@@ -54,6 +54,7 @@ public enum Settings {
             DynamicLights.Mode = (DynamicLightsMode) DYNAMIC_LIGHTS.option.getStore();
         }
     },
+    FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
         @Override
         public void applyChanges() {
@@ -186,6 +187,19 @@ public enum Settings {
             value = store;
             modifiedValue = store;
         }
+    }
+
+    public static class NotFineOptionSliderPercentage extends NotFineOptionSlider {
+
+        protected NotFineOptionSliderPercentage(int base, int min, int max, int step,  OptionImpact impact, OptionFlag... optionFlags) {
+            super(base, min, max, step, impact, optionFlags);
+        }
+
+        @Override
+        public Control<Integer> getControl() {
+            return new SliderControl(this, min, max, step, NotFineControlValueFormatter.percentage());
+        }
+
     }
 
     public static class NotFineOptionTickBox extends NotFineOption<Boolean> {
