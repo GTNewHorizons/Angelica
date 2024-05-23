@@ -28,7 +28,7 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 
-abstract class TileOverride implements ITileOverride {
+abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
@@ -306,7 +306,6 @@ abstract class TileOverride implements ITileOverride {
         return String.format("%s[%s] (%d tiles)", getMethod(), properties, getNumberOfTiles());
     }
 
-    @Override
     public final void registerIcons() {
         icons = new IIcon[tileNames.size()];
         for (int i = 0; i < icons.length; i++) {
@@ -314,17 +313,14 @@ abstract class TileOverride implements ITileOverride {
         }
     }
 
-    @Override
     final public boolean isDisabled() {
         return !properties.valid();
     }
 
-    @Override
     final public List<BlockStateMatcher> getMatchingBlocks() {
         return matchBlocks;
     }
 
-    @Override
     final public Set<String> getMatchingTiles() {
         if (MCPatcherUtils.isNullOrEmpty(matchTiles)) {
             return null;
@@ -333,18 +329,16 @@ abstract class TileOverride implements ITileOverride {
         }
     }
 
-    @Override
     final public int getRenderPass() {
         return renderPass;
     }
 
-    @Override
     final public int getWeight() {
         return weight;
     }
 
     @Override
-    public int compareTo(ITileOverride o) {
+    public int compareTo(TileOverride o) {
         int result = o.getWeight() - getWeight();
         if (result != 0) {
             return result;
@@ -370,19 +364,19 @@ abstract class TileOverride implements ITileOverride {
     private boolean shouldConnect(RenderBlockState renderBlockState, IIcon icon, int[] offset) {
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();
         Block block = renderBlockState.getBlock();
-        int i = renderBlockState.getI();
-        int j = renderBlockState.getJ();
-        int k = renderBlockState.getK();
-        i += offset[0];
-        j += offset[1];
-        k += offset[2];
-        Block neighbor = blockAccess.getBlock(i, j, k);
+        int x = renderBlockState.getX();
+        int y = renderBlockState.getY();
+        int z = renderBlockState.getZ();
+        x += offset[0];
+        y += offset[1];
+        z += offset[2];
+        Block neighbor = blockAccess.getBlock(x, y, z);
         if (neighbor == null) {
             return false;
         }
         if (block == neighbor) {
             BlockStateMatcher filter = renderBlockState.getFilter();
-            if (filter != null && !filter.match(blockAccess, i, j, k)) {
+            if (filter != null && !filter.match(blockAccess, x, y, z)) {
                 return false;
             }
         }
@@ -392,23 +386,22 @@ abstract class TileOverride implements ITileOverride {
                 int[] normal = NORMALS[blockFace];
                 if (!neighbor.shouldSideBeRendered(
                     blockAccess,
-                    i + normal[0],
-                    j + normal[1],
-                    k + normal[2],
+                    x + normal[0],
+                    y + normal[1],
+                    z + normal[2],
                     blockFace)) {
                     return false;
                 }
             }
         }
         return switch (connectType) {
-            case CONNECT_BY_TILE -> renderBlockState.shouldConnectByTile(neighbor, icon, i, j, k);
-            case CONNECT_BY_BLOCK -> renderBlockState.shouldConnectByBlock(neighbor, i, j, k);
+            case CONNECT_BY_TILE -> renderBlockState.shouldConnectByTile(neighbor, icon, x, y, z);
+            case CONNECT_BY_BLOCK -> renderBlockState.shouldConnectByBlock(neighbor, x, y, z);
             case CONNECT_BY_MATERIAL -> block.blockMaterial == neighbor.blockMaterial;
             default -> false;
         };
     }
 
-    @Override
     public final IIcon getTileWorld(RenderBlockState renderBlockState, IIcon origIcon) {
         if (icons == null) {
             properties.error("no images loaded, disabling");
@@ -416,9 +409,9 @@ abstract class TileOverride implements ITileOverride {
         }
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();
         Block block = renderBlockState.getBlock();
-        int x = renderBlockState.getI();
-        int y = renderBlockState.getJ();
-        int z = renderBlockState.getK();
+        int x = renderBlockState.getX();
+        int y = renderBlockState.getY();
+        int z = renderBlockState.getZ();
         if (renderBlockState.getBlockFace() < 0 && requiresFace()) {
             properties.warning(
                 "method=%s is not supported for non-standard block %s:%d @ %d %d %d",
@@ -449,7 +442,6 @@ abstract class TileOverride implements ITileOverride {
         return getTileWorld_Impl(renderBlockState, origIcon);
     }
 
-    @Override
     public final IIcon getTileHeld(RenderBlockState renderBlockState, IIcon origIcon) {
         if (icons == null) {
             properties.error("no images loaded, disabling");
