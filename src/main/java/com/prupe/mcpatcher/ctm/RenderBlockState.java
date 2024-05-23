@@ -64,9 +64,9 @@ abstract public class RenderBlockState {
 
     protected boolean offsetsComputed;
     protected boolean haveOffsets;
-    protected int di;
-    protected int dj;
-    protected int dk;
+    protected int dx;
+    protected int dy;
+    protected int dz;
 
     final public IBlockAccess getBlockAccess() {
         return blockAccess;
@@ -99,23 +99,21 @@ abstract public class RenderBlockState {
         inWorld = false;
         offsetsComputed = false;
         haveOffsets = false;
-        di = dj = dk = 0;
+        dx = dy = dz = 0;
         setFilter(null);
     }
 
-    abstract public int getI();
+    abstract public int getX();
 
-    abstract public int getJ();
+    abstract public int getY();
 
-    abstract public int getK();
+    abstract public int getZ();
 
     abstract public int getBlockFace();
 
     abstract public int getTextureFace();
 
     abstract public int getTextureFaceOrig();
-
-    abstract public String getTextureFaceName();
 
     abstract public int getFaceForHV();
 
@@ -125,20 +123,20 @@ abstract public class RenderBlockState {
 
     abstract public boolean setCoordOffsetsForRenderType();
 
-    final public int getDI() {
-        return di;
+    final public int getDX() {
+        return dx;
     }
 
-    final public int getDJ() {
-        return dj;
+    final public int getDY() {
+        return dy;
     }
 
-    final public int getDK() {
-        return dk;
+    final public int getDZ() {
+        return dz;
     }
 
-    abstract public boolean shouldConnectByBlock(Block neighbor, int neighborI, int neighborJ, int neighborK);
+    abstract public boolean shouldConnectByBlock(Block neighbor, int neighborX, int neighborY, int neighborZ);
 
-    abstract public boolean shouldConnectByTile(Block neighbor, IIcon origIcon, int neighborI, int neighborJ,
-        int neighborK);
+    abstract public boolean shouldConnectByTile(Block neighbor, IIcon origIcon, int neighborX, int neighborY,
+        int neighborZ);
 }
