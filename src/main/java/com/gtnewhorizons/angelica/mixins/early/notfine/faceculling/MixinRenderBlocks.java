@@ -17,7 +17,7 @@ public abstract class MixinRenderBlocks {
 
     /**
      * @author jss2a98aj
-     * @reason Culling a few more faces
+     * @reason Do not render fence arms unless actually required.
      */
     @Overwrite
     public boolean renderBlockFence(BlockFence fence, int x, int y, int z) {
@@ -71,6 +71,30 @@ public abstract class MixinRenderBlocks {
 
     /**
      * @author jss2a98aj
+     * @reason Cull faces against solid blocks, fix door smooth lighting
+     */
+    @Overwrite
+    public boolean renderBlockDoor(Block block, int x, int y, int z) {
+        final int meta = blockAccess.getBlockMetadata(x, y, z);
+
+        if((meta & 8) != 0) {
+            if (blockAccess.getBlock(x, y - 1, z) != block) {
+                return false;
+            }
+        } else if (blockAccess.getBlock(x, y + 1, z) != block) {
+            return false;
+        }
+
+        if ((meta & 8) != 0) {
+            uvRotateTop = meta % 6;
+        }
+        boolean flag = renderStandardBlock(block, x, y, z);
+        uvRotateTop = 0;
+        return flag;
+    }
+
+    /**
+     * @author jss2a98aj
      * @reason Fix modded wall detection
      */
     @Redirect(
@@ -87,6 +111,7 @@ public abstract class MixinRenderBlocks {
 
     @Shadow public IBlockAccess blockAccess;
     @Shadow public boolean field_152631_f;
+    @Shadow public int uvRotateTop;
     @Shadow public abstract void setRenderBounds(double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
     @Shadow public abstract boolean renderStandardBlock(Block blockType, int blockX, int blockY, int blockZ);
 
