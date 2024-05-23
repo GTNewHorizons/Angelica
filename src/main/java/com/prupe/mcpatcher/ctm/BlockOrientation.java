@@ -30,9 +30,7 @@ final class BlockOrientation extends RenderBlockState {
         { WEST_FACE, EAST_FACE, NORTH_FACE, SOUTH_FACE, TOP_FACE, BOTTOM_FACE, 2, -2, -2, -2, 0, 0 },
         { NORTH_FACE, SOUTH_FACE, TOP_FACE, BOTTOM_FACE, WEST_FACE, EAST_FACE, 0, 0, 0, 0, -2, -2 }, };
 
-    private int i;
-    private int j;
-    private int k;
+    private int x, y, z;
     private int metadata;
     private int altMetadata;
     private int metadataBits;
@@ -46,29 +44,29 @@ final class BlockOrientation extends RenderBlockState {
     @Override
     public void clear() {
         super.clear();
-        i = j = k = 0;
+        x = y = z = 0;
         renderType = -1;
         metadata = 0;
         blockFace = textureFace = 0;
         rotateUV = 0;
         offsetsComputed = false;
         haveOffsets = false;
-        di = dj = dk = 0;
+        dx = dy = dz = 0;
     }
 
     @Override
-    public int getI() {
-        return i;
+    public int getX() {
+        return x;
     }
 
     @Override
-    public int getJ() {
-        return j;
+    public int getY() {
+        return y;
     }
 
     @Override
-    public int getK() {
-        return k;
+    public int getZ() {
+        return z;
     }
 
     @Override
@@ -87,18 +85,13 @@ final class BlockOrientation extends RenderBlockState {
     }
 
     @Override
-    public String getTextureFaceName() {
-        throw new UnsupportedOperationException("getTextureName");
-    }
-
-    @Override
     public int getFaceForHV() {
         return blockFace;
     }
 
     @Override
     public boolean match(BlockStateMatcher matcher) {
-        return isInWorld() ? matcher.match(blockAccess, i, j, k) : matcher.match(block, metadata);
+        return isInWorld() ? matcher.match(blockAccess, x, y, z) : matcher.match(block, metadata);
     }
 
     @Override
@@ -113,32 +106,32 @@ final class BlockOrientation extends RenderBlockState {
         }
         offsetsComputed = true;
         haveOffsets = false;
-        di = dj = dk = 0;
+        dx = dy = dz = 0;
         switch (renderType) {
             case 1 -> { // renderCrossedSquares
-                while (j + dj > 0 && block == blockAccess.getBlock(i, j + dj - 1, k)) {
-                    dj--;
+                while (y + dy > 0 && block == blockAccess.getBlock(x, y + dy - 1, z)) {
+                    dy--;
                     haveOffsets = true;
                 }
             } // renderBlockDoor
             case 7, 40 -> { // renderBlockDoublePlant
-                if ((metadata & 0x8) != 0 && block == blockAccess.getBlock(i, j - 1, k)) {
-                    dj--;
+                if ((metadata & 0x8) != 0 && block == blockAccess.getBlock(x, y - 1, z)) {
+                    dy--;
                     haveOffsets = true;
                 }
             }
             case 14 -> { // renderBlockBed
-                metadata = blockAccess.getBlockMetadata(i, j, k);
+                metadata = blockAccess.getBlockMetadata(x, y, z);
                 switch (metadata) {
-                    case 0, 4 -> dk = 1; // head is one block south
-                    case 1, 5 -> di = -1; // head is one block west
-                    case 2, 6 -> dk = -1; // head is one block north
-                    case 3, 7 -> di = 1; // head is one block east
+                    case 0, 4 -> dz = 1; // head is one block south
+                    case 1, 5 -> dx = -1; // head is one block west
+                    case 2, 6 -> dz = -1; // head is one block north
+                    case 3, 7 -> dx = 1; // head is one block east
                     default -> {
                         return false; // head itself, no offset
                     }
                 }
-                haveOffsets = block == blockAccess.getBlock(i + di, j, k + dk);
+                haveOffsets = block == blockAccess.getBlock(x + dx, y, z + dz);
             }
             default -> {
             }
@@ -161,9 +154,9 @@ final class BlockOrientation extends RenderBlockState {
         this.block = block;
         this.blockAccess = blockAccess;
         inWorld = true;
-        this.i = x;
-        this.j = y;
-        this.k = z;
+        this.x = x;
+        this.y = y;
+        this.z = z;
         renderType = block.getRenderType();
         metadata = altMetadata = blockAccess.getBlockMetadata(x, y, z);
         offsetsComputed = false;
@@ -181,12 +174,12 @@ final class BlockOrientation extends RenderBlockState {
         this.block = block;
         blockAccess = null;
         inWorld = false;
-        i = j = k = 0;
+        x = y = z = 0;
         renderType = block.getRenderType();
         blockFace = textureFace = textureFaceOrig = face;
         this.metadata = metadata;
         metadataBits = 1 << metadata;
-        di = dj = dk = 0;
+        dx = dy = dz = 0;
         rotateUV = 0;
     }
 

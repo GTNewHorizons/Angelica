@@ -358,8 +358,7 @@ public class ColorizeBlock {
         return colorizeBlock(blockAccess, colorMap, x, y, z);
     }
 
-    private static boolean colorizeBlock(IBlockAccess blockAccess, IColorMap colorMap, int x, int y,
-        int z) {
+    private static boolean colorizeBlock(IBlockAccess blockAccess, IColorMap colorMap, int x, int y, int z) {
         if (colorMap == null) {
             return false;
         } else {
