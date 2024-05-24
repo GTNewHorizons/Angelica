@@ -9,10 +9,10 @@ import net.minecraftforge.fluids.BlockFluidBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(BlockFluidBase.class)
+@Mixin(value = BlockFluidBase.class, remap = false)
 public class MixinBlockFluidBase {
 
-    @WrapOperation(method = "getFlowDirection", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/material/Material;isLiquid()Z"))
+    @WrapOperation(method = "getFlowDirection", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/material/Material;isLiquid()Z"), remap = true)
     private static boolean isLiquid(Material instance, Operation<Boolean> original, @Local Block block) {
         if (block instanceof BlockFluidBase) {
             return original.call(instance);
