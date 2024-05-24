@@ -49,7 +49,7 @@ public class TexturePackAPI {
 
     public static List<IResourcePack> getResourcePacks(String namespace) {
         List<IResourcePack> resourcePacks = new ArrayList<>();
-        IResourceManager resourceManager = getResourceManager();
+        IResourceManager resourceManager = Minecraft.getMinecraft().getResourceManager();
         if (resourceManager instanceof SimpleReloadableResourceManager) {
             Set<Map.Entry<String, FallbackResourceManager>> entrySet = ((SimpleReloadableResourceManager) resourceManager).domainResourceManagers
                 .entrySet();
@@ -69,7 +69,7 @@ public class TexturePackAPI {
     public static Set<String> getNamespaces() {
         Set<String> namespaces = new HashSet<>();
         namespaces.add(DEFAULT_NAMESPACE);
-        IResourceManager resourceManager = getResourceManager();
+        IResourceManager resourceManager = Minecraft.getMinecraft().getResourceManager();
         if (resourceManager instanceof SimpleReloadableResourceManager simpleReloadableResourceManager) {
             namespaces.addAll(simpleReloadableResourceManager.domainResourceManagers.keySet());
         }
@@ -307,8 +307,7 @@ public class TexturePackAPI {
     }
 
     public static void flushUnusedTextures() {
-        TextureManager textureManager = Minecraft.getMinecraft()
-            .getTextureManager();
+        TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
         if (textureManager != null) {
             Set<ResourceLocation> texturesToUnload = new HashSet<>();
             Set<Map.Entry<ResourceLocation, ITextureObject>> entrySet = textureManager.mapTextureObjects.entrySet();
@@ -326,8 +325,4 @@ public class TexturePackAPI {
         }
     }
 
-    private static IResourceManager getResourceManager() {
-        return Minecraft.getMinecraft()
-            .getResourceManager();
-    }
 }

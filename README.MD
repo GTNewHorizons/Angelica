@@ -17,10 +17,12 @@
 # Known (temporary) Incompatibilities
 * Forge Relocation - Currently non Thread Safe; safe if not in use
 * ProjectRed Frames - Currently non Thread Safe; safe if not in use
-* EndlessIDs - Future compat planned
-* FalseTweaks - Future compat planned
-* SmoothFont - Future compat planned
-* RPLE - Future compat planned
+
+# Known - Incompatibilities
+* EndlessIDs - Not currently planned (Looking for volunteers)
+* FalseTweaks - Not currently planned (Looking for volunteers)
+* SmoothFont - Not currently planned (Looking for volunteers)
+* RPLE - Not currently planned (Looking for volunteers)
 
 # Permanent Incompatibilities
 * Optifine [Disabled, won't fix]

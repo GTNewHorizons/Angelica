@@ -362,15 +362,15 @@ class TileOverrideImpl {
             if (face < 0) {
                 face = 0;
             }
-            int i = renderBlockState.getI();
-            int j = renderBlockState.getJ();
-            int k = renderBlockState.getK();
+            int x = renderBlockState.getX();
+            int y = renderBlockState.getY();
+            int z = renderBlockState.getZ();
             if (linked && renderBlockState.setCoordOffsetsForRenderType()) {
-                i += renderBlockState.getDI();
-                j += renderBlockState.getDJ();
-                k += renderBlockState.getDK();
+                x += renderBlockState.getDX();
+                y += renderBlockState.getDY();
+                z += renderBlockState.getDZ();
             }
-            long hash = WeightedIndex.hash128To64(i, j, k, face / symmetry);
+            long hash = WeightedIndex.hash128To64(x, y, z, face / symmetry);
             int index = chooser.choose(hash);
             return icons[index];
         }
@@ -424,25 +424,25 @@ class TileOverrideImpl {
                 face = 0;
             }
             face &= symmetry;
-            int i = renderBlockState.getI();
-            int j = renderBlockState.getJ();
-            int k = renderBlockState.getK();
+            int x = renderBlockState.getX();
+            int y = renderBlockState.getY();
+            int z = renderBlockState.getZ();
             int[] xOffset = renderBlockState.getOffset(face, REL_R);
             int[] yOffset = renderBlockState.getOffset(face, REL_D);
-            int x = i * xOffset[0] + j * xOffset[1] + k * xOffset[2];
-            int y = i * yOffset[0] + j * yOffset[1] + k * yOffset[2];
+            int offsetX = x * xOffset[0] + y * xOffset[1] + z * xOffset[2];
+            int offsetY = x * yOffset[0] + y * yOffset[1] + z * yOffset[2];
             if (face == NORTH_FACE || face == EAST_FACE) {
-                x--;
+                offsetX--;
             }
-            x %= width;
-            if (x < 0) {
-                x += width;
+            offsetX %= width;
+            if (offsetX < 0) {
+                offsetX += width;
             }
-            y %= height;
-            if (y < 0) {
-                y += height;
+            offsetY %= height;
+            if (offsetY < 0) {
+                offsetY += height;
             }
-            return icons[width * y + x];
+            return icons[width * offsetY + offsetX];
         }
 
         @Override

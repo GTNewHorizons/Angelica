@@ -14,6 +14,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import org.lwjgl.opengl.GL11;
+
 @Mixin(EntityRenderer.class)
 abstract public class MixinEntityRenderer {
 
@@ -30,6 +32,10 @@ abstract public class MixinEntityRenderer {
         return SettingsManager.waterDetail;
     }
 
+    /**
+     * @author Caedis
+     * @reason Void fog toggle
+     */
     @WrapOperation(
         method = "setupFog",
         at = @At(
@@ -37,8 +43,20 @@ abstract public class MixinEntityRenderer {
             target = "Lnet/minecraft/world/WorldProvider;getWorldHasVoidParticles()Z"
         )
     )
-    private boolean angelica$wrapVoidFog(WorldProvider provider, Operation<Boolean> original){
+    private boolean notFine$toggleVoidFog(WorldProvider provider, Operation<Boolean> original){
         return ((boolean)Settings.VOID_FOG.option.getStore()) ? original.call(provider) : false;
+    }
+
+    @Redirect(
+        method = "setupFog",
+        at = @At(
+            value = "INVOKE",
+            target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V",
+            ordinal = 14
+        )
+    )
+    private void notFine$nearFogDistance(int mode, float value) {
+        GL11.glFogf(mode, farPlaneDistance * (int)Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F);
     }
 
     @Redirect(
@@ -48,7 +66,7 @@ abstract public class MixinEntityRenderer {
             target = "Lnet/minecraft/client/renderer/EntityRenderer;updateTorchFlicker()V"
         )
     )
-    private void toggleTorchFlicker(EntityRenderer instance) {
+    private void notFine$toggleTorchFlicker(EntityRenderer instance) {
         if((boolean)Settings.MODE_LIGHT_FLICKER.option.getStore()) {
             updateTorchFlicker();
         } else {
@@ -59,6 +77,10 @@ abstract public class MixinEntityRenderer {
     @Shadow
     abstract void updateTorchFlicker();
 
-    @Shadow private boolean lightmapUpdateNeeded;
+    @Shadow
+    private boolean lightmapUpdateNeeded;
+
+    @Shadow
+    private float farPlaneDistance;
 
 }
