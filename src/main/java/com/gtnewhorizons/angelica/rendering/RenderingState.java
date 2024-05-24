@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
+import lombok.Setter;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
@@ -21,6 +22,9 @@ public class RenderingState {
     private final Matrix4f projectionMatrix = new Matrix4f().identity();
     @Getter
     private final Matrix4f modelViewMatrix = new Matrix4f().identity();
+    @Getter
+    @Setter
+    private float fov;
 
 
     public void setCameraPosition(double x, double y, double z) {
