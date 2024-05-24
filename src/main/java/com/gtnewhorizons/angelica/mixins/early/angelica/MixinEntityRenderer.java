@@ -7,6 +7,7 @@ import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityRenderer.class)
@@ -23,4 +24,9 @@ public abstract class MixinEntityRenderer {
         );
     }
 
+    @ModifyArg(method = "setupCameraTransform", at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/glu/Project;gluPerspective(FFFF)V", ordinal = 0), index = 0)
+    private float captureFov(float fov) {
+        RenderingState.INSTANCE.setFov(fov);
+        return fov;
+    }
 }

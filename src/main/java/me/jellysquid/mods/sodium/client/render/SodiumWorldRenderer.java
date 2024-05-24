@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -64,6 +65,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     private int renderDistance;
 
     private double lastCameraX, lastCameraY, lastCameraZ;
+    private float lastFov;
     private double lastCameraPitch, lastCameraYaw;
     private float lastFogDistance;
 
@@ -213,8 +215,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
         float fogDistance = FogHelper.getFogCutoff();
 
+        float fov = RenderingState.INSTANCE.getFov();
+
         boolean dirty = pos.x != this.lastCameraX || pos.y != this.lastCameraY || pos.z != this.lastCameraZ ||
-                pitch != this.lastCameraPitch || yaw != this.lastCameraYaw || fogDistance != this.lastFogDistance;
+                pitch != this.lastCameraPitch || yaw != this.lastCameraYaw || fogDistance != this.lastFogDistance || fov != this.lastFov;
 
         if(AngelicaConfig.enableIris) {
             iris$ensureStateSwapped();
@@ -232,6 +236,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         this.lastCameraPitch = pitch;
         this.lastCameraYaw = yaw;
         this.lastFogDistance = fogDistance;
+        this.lastFov = fov;
 
         profiler.endStartSection("chunk_update");
 
