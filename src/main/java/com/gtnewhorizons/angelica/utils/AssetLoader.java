@@ -6,6 +6,7 @@ import glowredman.txloader.TXLoaderCore;
 
 public class AssetLoader {
 
+    // Texture paths from modern, starting with "minecraft/textures/"
     public static final String[] injectTexs = {
         "block/stone",
         "block/crafting_table_front",
@@ -26,6 +27,7 @@ public class AssetLoader {
         "block/spruce_log"
     };
 
+    // Any equivalents from 7.10, starting with "minecraft/"
     // This can't be automatic because some of them are inconsistent
     public static final String[] oldInjectTexs = {
         "blocks/stone",
@@ -33,18 +35,18 @@ public class AssetLoader {
         "blocks/crafting_table_side",
         "blocks/crafting_table_top",
         "blocks/planks_oak",
-        "block/log_acacia_top",
-        "block/log_acacia",
-        "block/log_birch_top",
-        "block/log_birch",
-        "block/log_big_oak_top",
-        "block/log_big_oak",
-        "block/log_jungle_top",
-        "block/log_jungle",
-        "block/log_oak_top",
-        "block/log_oak",
-        "block/log_spruce_top",
-        "block/log_spruce"
+        "blocks/log_acacia_top",
+        "blocks/log_acacia",
+        "blocks/log_birch_top",
+        "blocks/log_birch",
+        "blocks/log_big_oak_top",
+        "blocks/log_big_oak",
+        "blocks/log_jungle_top",
+        "blocks/log_jungle",
+        "blocks/log_oak_top",
+        "blocks/log_oak",
+        "blocks/log_spruce_top",
+        "blocks/log_spruce"
     };
 
     public static final String[] testTexs = {
