@@ -3,7 +3,7 @@ description: "Request a feature."
 body:
   - type: markdown
     attributes:
-      value: ""
+      value: "Please use this form to request features. We ask you check if it was already requested though"
   - type: input
     id: discord
     attributes:
