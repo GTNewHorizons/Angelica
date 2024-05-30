@@ -1,0 +1,32 @@
+name: Feature Request
+description: "Request a feature."
+body:
+  - type: markdown
+    attributes:
+      value: ""
+  - type: input
+    id: discord
+    attributes:
+      label: Your GTNH Discord Username
+      description: Leave empty if you don't have one, but this will make it harder to contact you if we need additional info.
+      placeholder: "Example: Wumpus#1234"
+  - type: textarea
+    id: request
+    attributes:
+      label: Feature Request
+      description: "Relevant information, as well as relevant images"
+      placeholder: "Example: https://mclo.gs/ OR submit the file to github by dragging it to this textbox."
+    validations:
+      required: true
+  - type: checkboxes
+    id: final
+    attributes:
+      label: Final Checklist
+      description: Certify that you read things
+      options:
+        - label: "I have searched the issues and haven't found a similar issue."
+          required: true
+        - label: "I have read the known incompatibilities and this is not related to one of those."
+          required: true
+        - label: "This issue is not related to a feature that is disabed by default - Shaders, MCPF, etc.  [They'll be enabled when they're ready for testing]"
+          required: true
