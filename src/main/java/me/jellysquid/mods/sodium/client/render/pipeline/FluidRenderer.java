@@ -45,6 +45,7 @@ public class FluidRenderer {
     private final QuadLightData quadLightData = new QuadLightData();
     private boolean useSeparateAo;
     private final int[] quadColors = new int[4];
+    private final TextureAtlasSprite missingTex = Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite("minecraft:missing");
 
     public FluidRenderer(LightPipelineProvider lpp) {
         int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
@@ -95,7 +96,7 @@ public class FluidRenderer {
         int posZ = pos.z;
 
         Fluid fluid = ((IFluidBlock) block).getFluid();
-        if(fluid == null) return false;
+        if (fluid == null) return false;
 
         // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
@@ -115,8 +116,13 @@ public class FluidRenderer {
         TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
             (TextureAtlasSprite) fluid.getStillIcon(),
             (TextureAtlasSprite) fluid.getFlowingIcon(),
-            null
+            missingTex
         };
+
+        // Because some mods are wack and return null textures here
+        sprites[0] = sprites[0] == null ? missingTex : sprites[0];
+        sprites[1] = sprites[1] == null ? missingTex : sprites[1];
+
         boolean hc = fluid.getColor() != 0xffffffff;
 
         boolean rendered = false;
