@@ -116,7 +116,7 @@ public class FluidRenderer {
         TextureAtlasSprite[] sprites = new TextureAtlasSprite[]{
             (TextureAtlasSprite) fluid.getStillIcon(),
             (TextureAtlasSprite) fluid.getFlowingIcon(),
-            missingTex
+            null
         };
 
         // Because some mods are wack and return null textures here
