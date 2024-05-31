@@ -69,8 +69,8 @@ public class AssetLoader {
             );
         }
 
-        // This ordering is intentional. injectQPRendering prioritizes 7.10 textures, so it should run first to prevent
-        // modern textures from loading.
+        // For textures, we first clone old assets to their locations in modern, then copy any modern textures we don't
+        // have equivalents for (only the lectern rn). Models are always downloaded, 7.10 doesn't have any.
         if (AngelicaConfig.injectQPRendering) {
             addModelAssets(
                 "block/stone",

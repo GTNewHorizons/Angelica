@@ -139,7 +139,7 @@ public class JsonModel implements QuadProvider {
                 builder.mat.setAO(this.useAO);
 
                 // Rewind the quad
-                //builder.rewind();
+                builder.rewind();
 
                 // Bake and add it
                 final QuadView q = builder.build(new Quad());
