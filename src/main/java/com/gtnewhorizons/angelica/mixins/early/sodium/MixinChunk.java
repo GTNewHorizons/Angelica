@@ -5,6 +5,9 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
+
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.endlessids.EndlessIDsCompat;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -29,14 +32,18 @@ public abstract class MixinChunk {
         if(this.worldObj.isRemote && !Minecraft.getMinecraft().isSingleplayer()) {
             // We are in multiplayer, the server might not have sent all biomes to the client.
             // Populate them now while we're on the main thread.
-            WorldChunkManager manager =  this.worldObj.getWorldChunkManager();
-            for(int z = 0; z < 16; z++) {
-                for(int x = 0; x < 16; x++) {
-                    int idx = (z << 4) + x;
-                    int biome = this.blockBiomeArray[idx] & 255;
-                    if(biome == 255) {
-                        BiomeGenBase generated = manager.getBiomeGenAt((this.xPosition << 4) + x, (this.zPosition << 4) + z);
-                        this.blockBiomeArray[idx] = (byte)(generated.biomeID & 255);
+            if (ModStatus.isEIDBiomeLoaded) {
+                EndlessIDsCompat.sodium$populateBiomes((Chunk) (Object) this);
+            } else {
+                WorldChunkManager manager = this.worldObj.getWorldChunkManager();
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        int idx = (z << 4) + x;
+                        int biome = this.blockBiomeArray[idx] & 255;
+                        if (biome == 255) {
+                            BiomeGenBase generated = manager.getBiomeGenAt((this.xPosition << 4) + x, (this.zPosition << 4) + z);
+                            this.blockBiomeArray[idx] = (byte) (generated.biomeID & 255);
+                        }
                     }
                 }
             }
