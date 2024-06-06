@@ -6,6 +6,9 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.config.IrisConfig;
+import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -42,7 +45,7 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return Mode.isEnabled() && AngelicaConfig.enableDynamicLights;
+        return AngelicaConfig.enableDynamicLights && Mode.isEnabled() && !IrisApi.getInstance().isShaderPackInUse();
     }
 
     /**
