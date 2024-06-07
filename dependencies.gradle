@@ -84,6 +84,8 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
 
+    compileOnly("curse.maven:minefactory-reloaded-66672:2277486")
+
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.0.3:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
