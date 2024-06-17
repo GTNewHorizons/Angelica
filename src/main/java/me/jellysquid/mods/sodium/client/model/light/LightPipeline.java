@@ -18,5 +18,5 @@ public interface LightPipeline {
      * @param face The pre-computed facing vector of the quad
      * @param shade True if the block is shaded by ambient occlusion
      */
-	void calculate(ModelQuadView quad, BlockPosImpl pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
+    void calculate(ModelQuadView quad, BlockPosImpl pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
 }

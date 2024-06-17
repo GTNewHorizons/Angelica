@@ -55,8 +55,26 @@ public class BlockPosImpl extends Vector3i implements MutableBlockPos {
     }
 
     @Override
+    public MutableBlockPos move(int dX, int dY, int dZ) { x += dX; y += dY; z += dZ; return this; }
+
+    @Override
+    public MutableBlockPos move(ForgeDirection d) { x += d.offsetX; y += d.offsetY; z += d.offsetZ; return this; }
+
+    @Override
     public BlockPosImpl set(int x, int y, int z) {
         super.set(x, y, z);
+        return this;
+    }
+
+    @Override
+    public BlockPosImpl set(BlockPos b, ForgeDirection d) {
+        super.set(b.getX() + d.offsetX, b.getY() + d.offsetY, b.getZ() + d.offsetZ);
+        return this;
+    }
+
+    @Override
+    public BlockPosImpl set(BlockPos b) {
+        super.set(b.getX(), b.getY(), b.getZ());
         return this;
     }
 

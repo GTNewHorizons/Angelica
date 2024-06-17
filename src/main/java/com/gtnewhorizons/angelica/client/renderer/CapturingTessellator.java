@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.client.renderer;
 
+import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadView;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
@@ -48,7 +49,7 @@ public class CapturingTessellator extends Tessellator implements ITessellatorIns
 
     private final Vector3dStack storedTranslation = new Vector3dStack();
 
-    public void setOffset(BlockPosImpl pos) {
+    public void setOffset(BlockPos pos) {
         this.offset.set(pos);
     }
     public void resetOffset() {
