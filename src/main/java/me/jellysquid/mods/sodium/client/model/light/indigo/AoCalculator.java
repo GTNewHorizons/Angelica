@@ -20,15 +20,15 @@ import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.MutableBlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
-import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.block.Block;
-import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags.*;
 import static me.jellysquid.mods.sodium.client.util.MathUtil.fuzzy_eq;
@@ -37,7 +37,7 @@ import static net.minecraftforge.common.util.ForgeDirection.*;
 /**
  * Adaptation of inner, non-static class in BlockModelRenderer that serves same purpose.
  */
-public class AoCalculator implements LightPipeline {
+public abstract class AoCalculator implements LightPipeline {
 	/**
 	 * Vanilla models with cubic quads have vertices in a certain order, which allows
 	 * us to map them using a lookup. Adapted from enum in vanilla AoCalculator.
@@ -52,20 +52,17 @@ public class AoCalculator implements LightPipeline {
 		VERTEX_MAP[EAST.ordinal()] = new int[] { 1, 2, 3, 0 };
 	}
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(AoCalculator.class);
+
 	private final MutableBlockPos lightPos = new BlockPosImpl();
 	private final MutableBlockPos searchPos = new BlockPosImpl();
-	//protected final BlockRenderInfo blockInfo;
-	protected final LightDataAccess lightData;
+	protected final BlockRenderInfo blockInfo;
 
-	public int light(BlockPos pos, Block state) {
-		return AoCalculator.getLightmapCoordinates(lightData, state, pos);
-	}
+	public abstract int light(BlockPos pos, Block state);
 
-	public float ao(BlockPos pos, Block state) {
-		return AoLuminanceFix.INSTANCE.apply(lightData.getWorld(), pos, state);
-	}
+	public abstract float ao(BlockPos pos, Block state);
 
-	/** caches results of {@link #computeFace(BlockPos, ForgeDirection, boolean, boolean)} for the current block. */
+	/** caches results of {@link #computeFace(net.minecraftforge.common.util.ForgeDirection, boolean, boolean)} for the current block. */
 	private final AoFaceData[] faceData = new AoFaceData[24];
 
 	/** indicates which elements of {@link #faceData} have been computed for the current block. */
@@ -78,9 +75,8 @@ public class AoCalculator implements LightPipeline {
 	public final float[] ao = new float[4];
 	public final int[] light = new int[4];
 
-	public AoCalculator(LightDataAccess lda) {
-		lightData = lda;
-		//this.blockInfo = blockInfo;
+	public AoCalculator(BlockRenderInfo blockInfo) {
+		this.blockInfo = blockInfo;
 
 		for (int i = 0; i < 24; i++) {
 			faceData[i] = new AoFaceData();
@@ -94,30 +90,29 @@ public class AoCalculator implements LightPipeline {
 
 
     public void calculate(ModelQuadView quad, BlockPosImpl pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade) {
-		clear();
-        calcEnhanced(quad, pos, shade);
+        calcEnhanced(quad, shade);
 	}
 
-	private void calcEnhanced(ModelQuadView quad, BlockPos pos, boolean hasShade) {
+	private void calcEnhanced(ModelQuadView quad, boolean hasShade) {
 		switch (quad.getFlags()) {
 		case FRAPI_AXIS_ALIGNED_FLAG | FRAPI_LIGHT_FACE_FLAG:
 		case FRAPI_AXIS_ALIGNED_FLAG | FRAPI_NON_CUBIC_FLAG | FRAPI_LIGHT_FACE_FLAG:
-			vanillaPartialFace(pos, quad, quad.getLightFace(), true, hasShade);
+			vanillaPartialFace(quad, quad.getLightFace(), true, hasShade);
 			break;
 
 		case FRAPI_AXIS_ALIGNED_FLAG:
 		case FRAPI_AXIS_ALIGNED_FLAG | FRAPI_NON_CUBIC_FLAG:
-			blendedPartialFace(pos, quad, quad.getLightFace(), hasShade);
+			blendedPartialFace(quad, quad.getLightFace(), hasShade);
 			break;
 
 		default:
-			irregularFace(pos, quad, hasShade);
+			irregularFace(quad, hasShade);
 			break;
 		}
 	}
 
-	private void vanillaPartialFace(BlockPos pos, ModelQuadView quad, ForgeDirection lightFace, boolean isOnLightFace, boolean shade) {
-		AoFaceData faceData = computeFace(pos, lightFace, isOnLightFace, shade);
+	private void vanillaPartialFace(ModelQuadView quad, ForgeDirection lightFace, boolean isOnLightFace, boolean shade) {
+		AoFaceData faceData = computeFace(lightFace, isOnLightFace, shade);
 		final AoFace.WeightFunction wFunc = AoFace.get(lightFace).weightFunc;
 		final float[] w = this.w;
 
@@ -128,35 +123,35 @@ public class AoCalculator implements LightPipeline {
 		}
 	}
 
-	/** used in {@link #blendedInsetFace(BlockPos, ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade)} as return variable to avoid new allocation. */
+	/** used in {@link #blendedInsetFace(ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade)} as return variable to avoid new allocation. */
 	AoFaceData tmpFace = new AoFaceData();
 
 	/** Returns linearly interpolated blend of outer and inner face based on depth of vertex in face. */
-	private AoFaceData blendedInsetFace(BlockPos pos, ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade) {
+	private AoFaceData blendedInsetFace(ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade) {
 		final float w1 = AoFace.get(lightFace).depthFunc.apply(quad, vertexIndex);
 		final float w0 = 1 - w1;
-		return AoFaceData.weightedMean(computeFace(pos, lightFace, true, shade), w0, computeFace(pos, lightFace, false, shade), w1, tmpFace);
+		return AoFaceData.weightedMean(computeFace(lightFace, true, shade), w0, computeFace(lightFace, false, shade), w1, tmpFace);
 	}
 
 	/**
-	 * Like {@link #blendedInsetFace(BlockPos, ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade)} but optimizes if depth is 0 or 1.
+	 * Like {@link #blendedInsetFace(ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade)} but optimizes if depth is 0 or 1.
 	 * Used for irregular faces when depth varies by vertex to avoid unneeded interpolation.
 	 */
-	private AoFaceData gatherInsetFace(BlockPos pos, ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade) {
+	private AoFaceData gatherInsetFace(ModelQuadView quad, int vertexIndex, ForgeDirection lightFace, boolean shade) {
 		final float w1 = AoFace.get(lightFace).depthFunc.apply(quad, vertexIndex);
 
 		if (fuzzy_eq(w1, 0)) {
-			return computeFace(pos, lightFace, true, shade);
+			return computeFace(lightFace, true, shade);
 		} else if (fuzzy_eq(w1, 1)) {
-			return computeFace(pos, lightFace, false, shade);
+			return computeFace(lightFace, false, shade);
 		} else {
 			final float w0 = 1 - w1;
-			return AoFaceData.weightedMean(computeFace(pos, lightFace, true, shade), w0, computeFace(pos, lightFace, false, shade), w1, tmpFace);
+			return AoFaceData.weightedMean(computeFace(lightFace, true, shade), w0, computeFace(lightFace, false, shade), w1, tmpFace);
 		}
 	}
 
-	private void blendedPartialFace(BlockPos pos, ModelQuadView quad, ForgeDirection lightFace, boolean shade) {
-		AoFaceData faceData = blendedInsetFace(pos, quad, 0, lightFace, shade);
+	private void blendedPartialFace(ModelQuadView quad, ForgeDirection lightFace, boolean shade) {
+		AoFaceData faceData = blendedInsetFace(quad, 0, lightFace, shade);
 		final AoFace.WeightFunction wFunc = AoFace.get(lightFace).weightFunc;
 
 		for (int i = 0; i < 4; i++) {
@@ -166,7 +161,7 @@ public class AoCalculator implements LightPipeline {
 		}
 	}
 
-	private void irregularFace(BlockPos pos, ModelQuadView quad, boolean shade) {
+	private void irregularFace(ModelQuadView quad, boolean shade) {
         if (!(quad instanceof Quad q))
             throw new RuntimeException("Found " + quad.getClass() + ", expected a different Quad!");
 
@@ -186,7 +181,7 @@ public class AoCalculator implements LightPipeline {
 
 			if (!fuzzy_eq(0f, x)) {
 				final ForgeDirection face = x > 0 ? EAST : WEST;
-				final AoFaceData fd = gatherInsetFace(pos, quad, i, face, shade);
+				final AoFaceData fd = gatherInsetFace(quad, i, face, shade);
 				AoFace.get(face).weightFunc.apply(quad, i, w);
 				final float n = x * x;
 				final float a = fd.weigtedAo(w);
@@ -204,7 +199,7 @@ public class AoCalculator implements LightPipeline {
 
 			if (!fuzzy_eq(0f, y)) {
 				final ForgeDirection face = y > 0 ? UP : DOWN;
-				final AoFaceData fd = gatherInsetFace(pos, quad, i, face, shade);
+				final AoFaceData fd = gatherInsetFace(quad, i, face, shade);
 				AoFace.get(face).weightFunc.apply(quad, i, w);
 				final float n = y * y;
 				final float a = fd.weigtedAo(w);
@@ -222,7 +217,7 @@ public class AoCalculator implements LightPipeline {
 
 			if (!fuzzy_eq(0f, z)) {
 				final ForgeDirection face = z > 0 ? SOUTH : NORTH;
-				final AoFaceData fd = gatherInsetFace(pos, quad, i, face, shade);
+				final AoFaceData fd = gatherInsetFace(quad, i, face, shade);
 				AoFace.get(face).weightFunc.apply(quad, i, w);
 				final float n = z * z;
 				final float a = fd.weigtedAo(w);
@@ -241,14 +236,14 @@ public class AoCalculator implements LightPipeline {
 		}
 	}
 
-	private AoFaceData computeFace(BlockPos pos, ForgeDirection lightFace, boolean isOnBlockFace, boolean shade) {
+	private AoFaceData computeFace(ForgeDirection lightFace, boolean isOnBlockFace, boolean shade) {
 		final int faceDataIndex = shade ? (isOnBlockFace ? lightFace.ordinal() : lightFace.ordinal() + 6) : (isOnBlockFace ? lightFace.ordinal() + 12 : lightFace.ordinal() + 18);
 		final int mask = 1 << faceDataIndex;
 		final AoFaceData result = faceData[faceDataIndex];
 
 		if ((completionFlags & mask) == 0) {
 			completionFlags |= mask;
-			computeFace(pos, result, lightFace, isOnBlockFace, shade);
+			computeFace(result, lightFace, isOnBlockFace, shade);
 		}
 
 		return result;
@@ -262,9 +257,10 @@ public class AoCalculator implements LightPipeline {
 	 * in vanilla logic for some blocks that aren't full opaque cubes.
 	 * Except for parameterization, the logic itself is practically identical to vanilla.
 	 */
-	private void computeFace(BlockPos pos, AoFaceData result, ForgeDirection lightFace, boolean isOnBlockFace, boolean shade) {
-		final WorldSlice world = lightData.getWorld();
-		final Block block = world.getBlock(pos);
+	private void computeFace(AoFaceData result, ForgeDirection lightFace, boolean isOnBlockFace, boolean shade) {
+		final WorldSlice world = blockInfo.blockView;
+		final BlockPos pos = blockInfo.blockPos;
+		final Block blockState = blockInfo.block;
 		final MutableBlockPos lightPos = this.lightPos;
 		final MutableBlockPos searchPos = this.searchPos;
 		Block searchState;
@@ -381,8 +377,8 @@ public class AoCalculator implements LightPipeline {
 			lightCenter = light(searchPos, searchState);
 			emCenter = hasEmissiveLighting(world, searchPos, searchState);
 		} else {
-			lightCenter = light(pos, block);
-			emCenter = hasEmissiveLighting(world, pos, block);
+			lightCenter = light(pos, blockState);
+			emCenter = hasEmissiveLighting(world, pos, blockState);
 		}
 
 		float aoCenter = ao(lightPos, world.getBlock(lightPos));
@@ -398,23 +394,6 @@ public class AoCalculator implements LightPipeline {
 		result.l2(meanBrightness(light2, light1, cLight2, lightCenter, em2, em1, cEm2, emCenter));
 		result.l3(meanBrightness(light3, light1, cLight3, lightCenter, em3, em1, cEm3, emCenter));
 	}
-
-	public static int getLightmapCoordinates(LightDataAccess world, Block state, BlockPos pos) {
-        // Same as WorldRenderer.getLightmapCoordinates but without the hasEmissiveLighting check.
-        // We don't want emissive lighting to influence the minimum lightmap in a quad,
-        // so when the fix is enabled we apply emissive lighting after the quad minimum is computed.
-        // See AoCalculator#meanBrightness.
-		// TODO: this is probably way slower than it has to be since we have the light cache
-        int i = world.getWorld().getLightLevel(EnumSkyBlock.Sky, pos.getX(), pos.getY(), pos.getZ());
-        int j = world.getWorld().getLightLevel(EnumSkyBlock.Block, pos.getX(), pos.getY(), pos.getZ());
-        int k = state.getLightValue(); // TODO: should this use the world call?
-
-        if (j < k) {
-            j = k;
-        }
-
-        return i << 20 | j << 4;
-    }
 
 	private boolean hasEmissiveLighting(WorldSlice world, BlockPos pos, Block block) {
         // TODO: we have the world - is this the best way to check if the block is emitting light?

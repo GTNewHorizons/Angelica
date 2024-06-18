@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.MutableBlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
@@ -39,8 +39,8 @@ public abstract class LightDataAccess {
         return this.get(pos.x, pos.y, pos.z, dir);
     }
 
-    public long get(BlockPos pos) {
-        return this.get(pos.getX(), pos.getY(), pos.getZ());
+    public long get(BlockPosImpl pos) {
+        return this.get(pos.x, pos.y, pos.getZ());
     }
 
     /**
