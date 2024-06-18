@@ -22,21 +22,6 @@ public class ModelQuadFlags {
     public static final int IS_ALIGNED = 0b100;
 
     /**
-     * Negative alias - see {@link #IS_PARTIAL}
-     */
-    public static final int FRAPI_NON_CUBIC_FLAG = IS_PARTIAL;
-
-    /**
-     * Alias - see {@link #IS_PARALLEL}
-     */
-    public static final int FRAPI_AXIS_ALIGNED_FLAG = IS_PARALLEL;
-
-    /**
-     * Alias - see {@link #IS_ALIGNED}
-     */
-    public static final int FRAPI_LIGHT_FACE_FLAG = IS_ALIGNED;
-
-    /**
      * @return True if the bit-flag of {@link ModelQuadFlags} contains the given flag
      */
     public static boolean contains(int flags, int mask) {

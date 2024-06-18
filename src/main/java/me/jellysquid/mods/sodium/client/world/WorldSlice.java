@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.world;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
+import java.util.Arrays;
+
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -22,8 +23,6 @@ import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.common.util.ForgeDirection;
-
-import java.util.Arrays;
 
 /**
  * Takes a slice of world state (block states, biome and light data arrays) and copies the data for use in off-thread
@@ -316,10 +315,6 @@ public class WorldSlice implements IBlockAccess {
 
         // TODO: Can this be optimized?
         copyBlocks(blocks, metas, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
-    }
-
-    public Block getBlock(BlockPos b) {
-        return getBlock(b.getX(), b.getY(), b.getZ());
     }
 
     public Block getBlock(int x, int y, int z) {

@@ -37,8 +37,7 @@ public class Quad implements QuadView {
     @Getter
     private boolean deleted = false;
 
-    // These fields are cached, as the quad might be reused - no need to allocate each time.
-    private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f();
+    private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
     @Getter
     private boolean shade;
@@ -47,8 +46,6 @@ public class Quad implements QuadView {
     private ForgeDirection face;
     private int colorIndex = -1;
     private TextureAtlasSprite sprite = null;
-    private final Vector3f normal = new Vector3f();
-    private boolean isNormalCached = false;
 
     /** Returns the face, forced to take one of 6 directions to mirror the behavior of baked quads in 1.16.5. */
     @Override
@@ -229,9 +226,7 @@ public class Quad implements QuadView {
             && this.getY(2) == this.getY(3);
     }
 
-    public Vector3f getNormal() {
-        if (this.isNormalCached) return normal;
-
+    private void calcNormal() {
         this.vectorA.set(
             this.getX(1) - this.getX(0),
             this.getY(1) - this.getY(0),
@@ -242,9 +237,7 @@ public class Quad implements QuadView {
             this.getY(2) - this.getY(1),
             this.getZ(2) - this.getZ(1)
         );
-        this.vectorA.cross(this.vectorB, this.normal);
-        this.isNormalCached = true;
-        return normal;
+        this.vectorA.cross(this.vectorB, this.vectorC);
     }
 
     protected void quadrangulate() {
@@ -304,8 +297,8 @@ public class Quad implements QuadView {
             return;
         }
 
-        this.getNormal();
-        this.face = ModelQuadFacing.toDirection(ModelQuadFacing.fromVector(this.normal));
+        this.calcNormal();
+        this.face = ModelQuadFacing.toDirection(ModelQuadFacing.fromVector(this.vectorC));
         this.cachedFlags = ModelQuadFlags.getQuadFlags(this);
     }
 
