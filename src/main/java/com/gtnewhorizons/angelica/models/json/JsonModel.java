@@ -40,6 +40,8 @@ import static com.gtnewhorizons.angelica.utils.JsonUtil.loadBool;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadFloat;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadInt;
 import static com.gtnewhorizons.angelica.utils.JsonUtil.loadStr;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
 
 public class JsonModel implements QuadProvider {
@@ -96,13 +98,29 @@ public class JsonModel implements QuadProvider {
 
             for (ModelElement.Face f : e.getFaces()) {
 
+                float x = Float.MAX_VALUE;
+                float y = Float.MAX_VALUE;
+                float z = Float.MAX_VALUE;
+                float X = Float.MIN_VALUE;
+                float Y = Float.MIN_VALUE;
+                float Z = Float.MIN_VALUE;
+
                 // Assign vertexes
                 for (int i = 0; i < 4; ++i) {
 
                     final Vector3f vert =
                         QuadBuilder.mapSideToVertex(from, to, i, f.getName()).mulPosition(rot).mulPosition(vRot);
                     builder.pos(i, vert.x, vert.y, vert.z);
+                    x = min(x, vert.x);
+                    y = min(y, vert.y);
+                    z = min(z, vert.z);
+                    X = max(X, vert.x);
+                    Y = max(Y, vert.y);
+                    Z = max(Z, vert.z);
                 }
+
+                // Rewind the quad
+                builder.rewind(x, y, z, X, Y, Z);
 
                 // Set culling and nominal faces
                 builder.setCullFace();
@@ -116,6 +134,7 @@ public class JsonModel implements QuadProvider {
                 };
 
                 // Set UV
+                // TODO: UV locking
                 final Vector4f uv = f.getUv();
                 if (uv != null) {
 
@@ -137,9 +156,6 @@ public class JsonModel implements QuadProvider {
 
                 // Set AO
                 builder.mat.setAO(this.useAO);
-
-                // Rewind the quad
-                builder.rewind();
 
                 // Bake and add it
                 final QuadView q = builder.build(new Quad());

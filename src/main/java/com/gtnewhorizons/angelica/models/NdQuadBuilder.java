@@ -17,16 +17,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.Arrays;
 
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.DOWN;
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.EAST;
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.NORTH;
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.SOUTH;
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.UP;
-import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.WEST;
-import static java.lang.Float.MAX_VALUE;
-import static java.lang.Float.MIN_VALUE;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
+import static com.gtnewhorizons.angelica.models.json.FaceRewindHelper.*;
 
 public class NdQuadBuilder extends Quad implements QuadBuilder {
 
@@ -177,10 +168,20 @@ public class NdQuadBuilder extends Quad implements QuadBuilder {
         return Float.intBitsToFloat(this.data[vertexIndex * Quad.VERTEX_STRIDE + Quad.X_INDEX + coordinateIndex]);
     }
 
+    final int MIN_X = 0;
+    final int MIN_Y = 1;
+    final int MIN_Z = 2;
+    final int MAX_X = 3;
+    final int MAX_Y = 4;
+    final int MAX_Z = 5;
+
     /**
-     * Rewinds the quad to the standard order.
+     * Rewinds the quad to the standard order. Works as long as four vertex positions have been assigned, and will
+     * not rewind any non-position data. Recommended to do immediately after vertex assignment, and to set/reset UVs,
+     * colors, etc. afterwards.
      */
-    public void rewind() {
+    public void rewind(float x, float y, float z, float X, float Y, float Z) {
+        // Reset the vertices, given the bounds
         boolean[] targets = switch (getLightFace()) {
             case DOWN -> DOWN;
             case UP -> UP;
@@ -191,31 +192,8 @@ public class NdQuadBuilder extends Quad implements QuadBuilder {
             case UNKNOWN -> throw new RuntimeException("Expected non-UNKNOWN face!");
         };
 
-        int iFirst = 0;
-        float tx = targets[0] ? MIN_VALUE : MAX_VALUE;
-        float ty = targets[1] ? MIN_VALUE : MAX_VALUE;
-        float tz = targets[2] ? MIN_VALUE : MAX_VALUE;
-
-        // Find the correct starting vertex
         for (int i = 0; i < 4; ++i) {
-            float otx = tx;
-            float oty = ty;
-            float otz = tz;
-
-            tx = targets[0] ? max(getX(i), tx) : min(getX(i), tx);
-            ty = targets[1] ? max(getY(i), ty) : min(getY(i), ty);
-            tz = targets[2] ? max(getZ(i), tz) : min(getZ(i), tz);
-
-            // If the vertex pushed one of the target values, it's potentially the right one
-            if (otx != tx || oty != ty || otz != otz) iFirst = i;
-        }
-
-        assert (tx == getX(iFirst) && ty == getY(iFirst) && tz == getZ(iFirst));
-
-        // Shift the vertices - copy to a temp array, then copy back in the right order, wrapping appropriately
-        int[] tmp = getRawData().clone();
-        for (int i = 0; i < 4; ++i) {
-            System.arraycopy(tmp, (iFirst + i) % 4 * VERTEX_STRIDE, data, i * VERTEX_STRIDE, VERTEX_STRIDE);
+            pos(i, targets[i * 3] ? X : x,  targets[i * 3 + 1] ? Y : y,  targets[i * 3 + 2] ? Z : z);
         }
     }
 
