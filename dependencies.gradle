@@ -77,6 +77,7 @@ dependencies {
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
     compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
+    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev")
 
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.1:api") { transitive = false }
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0003:dev") { transitive = false }
