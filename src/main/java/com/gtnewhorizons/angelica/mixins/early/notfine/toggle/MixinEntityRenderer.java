@@ -52,7 +52,8 @@ abstract public class MixinEntityRenderer {
         at = @At(
             value = "INVOKE",
             target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V",
-            ordinal = 14
+            ordinal = 14,
+            remap = false
         )
     )
     private void notFine$nearFogDistance(int mode, float value) {
