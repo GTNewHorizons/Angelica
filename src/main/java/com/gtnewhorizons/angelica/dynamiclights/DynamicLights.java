@@ -1,19 +1,21 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
-import net.coderbot.iris.Iris;
-import net.coderbot.iris.config.IrisConfig;
+import mods.battlegear2.api.core.IBattlePlayer;
+import mods.battlegear2.api.core.IInventoryPlayerBattle;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -23,7 +25,6 @@ import net.minecraft.util.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
@@ -352,11 +353,22 @@ public class DynamicLights {
 
             boolean inWater = living.isInsideOfMaterial(Material.water);
 
-            // check equipment + hand for light
+            // check equipment + hand for light (should work for all entities)
             ItemStack itemStack;
             for (int i = 0; i < 5; i++) {
                 if ((itemStack = living.getEquipmentInSlot(i)) != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(itemStack, inWater));
+                }
+            }
+
+            if (ModStatus.isBattlegearLoaded &&
+                living instanceof EntityPlayer player &&
+                player instanceof IBattlePlayer battlePlayer &&
+                battlePlayer.battlegear2$isBattlemode()
+            ) {
+                ItemStack offhand = ((IInventoryPlayerBattle) player.inventory).battlegear2$getCurrentOffhandWeapon();
+                if (offhand != null) {
+                    luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
                 }
             }
 
