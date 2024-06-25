@@ -228,7 +228,7 @@ public enum Mixins {
     //From NotFine
     NOTFINE_BASE_MOD(new Builder("NotFine")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures && false)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(addPrefix("notfine.",
             "clouds.MixinEntityRenderer",
