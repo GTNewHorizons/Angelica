@@ -10,6 +10,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.config.IrisConfig;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
@@ -322,6 +323,9 @@ public class DynamicLights {
      * @return the luminance of the item
      */
     public static int getLuminanceFromItemStack(@NotNull ItemStack stack, boolean submergedInWater) {
+        // TODO only have certain items not glow in water?
+        if (submergedInWater) return 0;
+
         Item item = stack.getItem();
         if (item instanceof ItemBlock itemBlock) {
             Block block = itemBlock.field_150939_a;
@@ -340,13 +344,13 @@ public class DynamicLights {
         if (entity.fire > 0) return 15;
 
         if (entity instanceof EntityItem item) {
-            return getLuminanceFromItemStack(item.getEntityItem(), item.isInWater());
+            return getLuminanceFromItemStack(item.getEntityItem(), item.isInsideOfMaterial(Material.water));
         }
 
         if (entity instanceof EntityLivingBase living) {
             int luminance = 0;
 
-            boolean inWater = living.isInWater();
+            boolean inWater = living.isInsideOfMaterial(Material.water);
 
             // check equipment + hand for light
             ItemStack itemStack;
