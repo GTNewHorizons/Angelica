@@ -212,6 +212,11 @@ public enum Mixins {
             "client.extrautils.MixinRenderBlockConnectedTexturesEthereal",
             "client.extrautils.MixinIconConnectedTexture")),
 
+    MFR_THREAD_SAFETY(new Builder("Enable thread safety fixes for MineFactory Reloaded").setPhase(Phase.LATE)
+            .addTargetedMod(TargetedMod.MINEFACTORY_RELOADED).setSide(Side.CLIENT)
+            .setApplyIf(() -> AngelicaConfig.fixMineFactoryReloadedSodiumCompat)
+            .addMixinClasses("client.minefactoryreloaded.MixinRedNetCableRenderer")),
+
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new Builder("Add animation speedup support to Campfire Backport").setPhase(Phase.LATE)
             .addTargetedMod(TargetedMod.CAMPFIRE_BACKPORT).setSide(Side.CLIENT)
             .setApplyIf(() -> AngelicaConfig.speedupAnimations)

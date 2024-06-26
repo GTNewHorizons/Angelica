@@ -15,6 +15,7 @@ public enum TargetedMod {
     , DYNAMIC_SURROUNDINGS_MIST("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround")
     , DYNAMIC_SURROUNDINGS_ORIGINAL("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround")
     , EXTRAUTILS("ExtraUtilities", null, "ExtraUtilities")
+    ,  MINEFACTORY_RELOADED("MineFactory Reloaded", null, "MineFactoryReloaded")
     , GTNHLIB("GTNHLib", "com.gtnewhorizon.gtnhlib.core.GTNHLibCore", "gtnhlib")
     , IC2("IC2", "ic2.core.coremod.IC2core", "IC2")
     , JABBA("JABBA", null, "JABBA")
