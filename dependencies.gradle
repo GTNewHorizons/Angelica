@@ -77,8 +77,9 @@ dependencies {
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
     compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
-    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev")
-    compileOnly(rfg.deobf('curse.maven:backhand-654404:5475047'))
+
+    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
+    compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
 
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
     compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
