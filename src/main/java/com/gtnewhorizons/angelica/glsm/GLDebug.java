@@ -271,17 +271,20 @@ public final class GLDebug {
 
 	private static DebugState debugState;
 
-	private interface DebugState {
+    private interface DebugState {
 		void nameObject(int id, int object, String name);
 		void pushGroup(String name);
 		void popGroup();
         void debugMessage(String name);
-	}
+
+        String getObjectLabel(int glProgram, int program);
+    }
 
 	private static class KHRDebugState implements DebugState {
         private static final int ID = 0;
 		private int depth = 0;
         private static final int maxDepth = GL11.glGetInteger(KHRDebug.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
+        private static final int maxNameLength = GL11.glGetInteger(KHRDebug.GL_MAX_LABEL_LENGTH);
 
 		@Override
 		public void nameObject(int id, int object, String name) {
@@ -310,6 +313,14 @@ public final class GLDebug {
         public void debugMessage(String message) {
             KHRDebug.glDebugMessageInsert(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, KHRDebug.GL_DEBUG_TYPE_MARKER, ID, KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION, message);
         }
+
+        @Override
+        public String getObjectLabel(int glProgram, int program) {
+            if(program == 0)
+                return "";
+
+            return KHRDebug.glGetObjectLabel(glProgram, program, maxNameLength);
+        }
     }
 
 	private static class UnsupportedDebugState implements DebugState {
@@ -328,6 +339,11 @@ public final class GLDebug {
         @Override
         public void debugMessage(String name) {
 
+        }
+
+        @Override
+        public String getObjectLabel(int glProgram, int program) {
+            return "";
         }
     }
 
@@ -359,4 +375,12 @@ public final class GLDebug {
             debugState.debugMessage(message);
         }
     }
+    public static String getObjectLabel(int glProgram, int program) {
+        if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            return debugState.getObjectLabel(glProgram, program);
+        }
+        return "";
+    }
+
+
 }

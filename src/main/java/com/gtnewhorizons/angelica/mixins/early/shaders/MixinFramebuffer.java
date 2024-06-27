@@ -71,6 +71,9 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
     @Inject(method="createFramebuffer(II)V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;useDepth:Z", shift=At.Shift.BEFORE, ordinal = 1))
     private void iris$createDepthTexture(int width, int height, CallbackInfo ci) {
         if(this.iris$useDepth) {
+            if(this.iris$depthTextureId == -1) {
+                this.iris$depthTextureId = GL11.glGenTextures();
+            }
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.iris$depthTextureId);
 
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);

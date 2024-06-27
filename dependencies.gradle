@@ -81,6 +81,9 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
     compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
 
+    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
+    compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
+
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.1:api") { transitive = false }
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0003:dev") { transitive = false }
 

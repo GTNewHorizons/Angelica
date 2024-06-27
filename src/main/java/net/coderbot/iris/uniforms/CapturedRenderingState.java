@@ -3,6 +3,8 @@ package net.coderbot.iris.uniforms;
 import lombok.Getter;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
+import org.joml.Vector4f;
+
 public class CapturedRenderingState {
 	public static final CapturedRenderingState INSTANCE = new CapturedRenderingState();
 
@@ -15,6 +17,10 @@ public class CapturedRenderingState {
 	@Getter
     private int currentRenderedEntity = -1;
 	private Runnable entityIdListener = null;
+
+    @Getter
+    private final Vector4f currentEntityColor = new Vector4f();
+    private Runnable entityColorListener = null;
 
 	private CapturedRenderingState() {
 	}
@@ -39,6 +45,14 @@ public class CapturedRenderingState {
 		}
 	}
 
+    public void setCurrentEntityColor(float r, float g, float b, float a) {
+        this.currentEntityColor.set(r, g, b, a);
+
+        if (this.entityColorListener != null) {
+            this.entityColorListener.run();
+        }
+    }
+
 	public ValueUpdateNotifier getEntityIdNotifier() {
 		return listener -> this.entityIdListener = listener;
 	}
@@ -46,4 +60,6 @@ public class CapturedRenderingState {
 	public ValueUpdateNotifier getBlockEntityIdNotifier() {
 		return listener -> this.blockEntityIdListener = listener;
 	}
+
+    public ValueUpdateNotifier getEntityColorNotifier() { return listener -> this.entityColorListener = listener; }
 }

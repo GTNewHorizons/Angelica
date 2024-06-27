@@ -510,7 +510,7 @@ public abstract class MixinRenderBlocks {
      * @author roadhog360
      */
     @SuppressWarnings("UnreachableCode")
-    @Inject(method = "renderBlockStainedGlassPane", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/BlockPane;canPaneConnectTo(Lnet/minecraft/world/IBlockAccess;IIILnet/minecraftforge/common/util/ForgeDirection;)Z", ordinal = 3, shift = At.Shift.BY, by = 2), cancellable = true)
+    @Inject(method = "renderBlockStainedGlassPane", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/BlockPane;canPaneConnectTo(Lnet/minecraft/world/IBlockAccess;IIILnet/minecraftforge/common/util/ForgeDirection;)Z", ordinal = 3, shift = At.Shift.BY, by = 2, remap = false), cancellable = true)
     private void tweakStainedPaneRenderer(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir,
                                            @Local(name = "iicon") IIcon iicon,
                                            @Local(name = "d22") double d22, @Local(name = "d0") double d0, @Local(name = "d1") double d1, @Local(name = "d2") double d2,

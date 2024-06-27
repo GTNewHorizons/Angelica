@@ -17,7 +17,7 @@ public abstract class MixinGuiIngame {
             target = "Lnet/minecraft/client/Minecraft;isFancyGraphicsEnabled()Z"
         )
     )
-    private boolean notFine$toggleVignette(float whyAndHowIsThisAFloat) {
+    private boolean notFine$toggleVignette() {
         return SettingsManager.vignette;
     }
 

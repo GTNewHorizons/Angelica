@@ -140,7 +140,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         private final RenderPhase.DepthTest depthTest;
         private final RenderPhase.Cull cull;
         private final RenderPhase.Lightmap lightmap;
-        private final RenderPhase.Overlay overlay;
         private final RenderPhase.Fog fog;
         private final RenderPhase.Layering layering;
         private final RenderPhase.Target target;
@@ -150,7 +149,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         private final OutlineMode outlineMode;
         private final ImmutableList<RenderPhase> phases;
 
-        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Overlay overlay, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, RenderPhase.LineWidth lineWidth, OutlineMode outlineMode) {
+        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, RenderPhase.LineWidth lineWidth, OutlineMode outlineMode) {
             this.texture = texture;
             this.transparency = transparency;
             this.diffuseLighting = diffuseLighting;
@@ -159,7 +158,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.depthTest = depthTest;
             this.cull = cull;
             this.lightmap = lightmap;
-            this.overlay = overlay;
             this.fog = fog;
             this.layering = layering;
             this.target = target;
@@ -167,7 +165,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.writeMaskState = writeMaskState;
             this.lineWidth = lineWidth;
             this.outlineMode = outlineMode;
-            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.overlay, this.fog, this.layering, this.target, new RenderPhase[]{this.texturing, this.writeMaskState, this.lineWidth});
+            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.lineWidth);
         }
 
         public boolean equals(Object object) {
@@ -202,7 +200,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             private RenderPhase.DepthTest depthTest;
             private RenderPhase.Cull cull;
             private RenderPhase.Lightmap lightmap;
-            private RenderPhase.Overlay overlay;
             private RenderPhase.Fog fog;
             private RenderPhase.Layering layering;
             private RenderPhase.Target target;
@@ -219,7 +216,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 this.depthTest = RenderPhase.LEQUAL_DEPTH_TEST;
                 this.cull = RenderPhase.ENABLE_CULLING;
                 this.lightmap = RenderPhase.DISABLE_LIGHTMAP;
-                this.overlay = RenderPhase.DISABLE_OVERLAY_COLOR;
                 this.fog = RenderPhase.FOG;
                 this.layering = RenderPhase.NO_LAYERING;
                 this.target = RenderPhase.MAIN_TARGET;
@@ -263,11 +259,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 return this;
             }
 
-            public Builder overlay(RenderPhase.Overlay overlay) {
-                this.overlay = overlay;
-                return this;
-            }
-
             public Builder fog(RenderPhase.Fog fog) {
                 this.fog = fog;
                 return this;
@@ -288,7 +279,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             }
 
             public MultiPhaseParameters build(OutlineMode outlineMode) {
-                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.overlay, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.lineWidth, outlineMode);
+                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.lineWidth, outlineMode);
             }
         }
     }

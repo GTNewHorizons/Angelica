@@ -24,7 +24,7 @@ public abstract class MixinEntityRenderer {
         );
     }
 
-    @ModifyArg(method = "setupCameraTransform", at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/glu/Project;gluPerspective(FFFF)V", ordinal = 0), index = 0)
+    @ModifyArg(method = "setupCameraTransform", at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/glu/Project;gluPerspective(FFFF)V", ordinal = 0, remap = false), index = 0)
     private float captureFov(float fov) {
         RenderingState.INSTANCE.setFov(fov);
         return fov;

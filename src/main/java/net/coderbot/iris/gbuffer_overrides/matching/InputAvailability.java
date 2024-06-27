@@ -5,28 +5,18 @@ public class InputAvailability {
 
 	public final boolean texture;
 	public final boolean lightmap;
-	public final boolean overlay;
 
-	public InputAvailability(boolean texture, boolean lightmap, boolean overlay) {
+	public InputAvailability(boolean texture, boolean lightmap) {
 		this.texture = texture;
 		this.lightmap = lightmap;
-		this.overlay = overlay;
-	}
-
-	public InputAvailability withoutOverlay() {
-		return new InputAvailability(texture, lightmap, false);
 	}
 
 	public static InputAvailability unpack(int packed) {
-		return new InputAvailability((packed & 1) == 1, (packed & 2) == 2, (packed & 4) == 4);
+		return new InputAvailability((packed & 1) == 1, (packed & 2) == 2);
 	}
 
 	public int pack() {
 		int packed = 0;
-
-		if (overlay) {
-			packed |= 4;
-		}
 
 		if (lightmap) {
 			packed |= 2;
@@ -44,7 +34,6 @@ public class InputAvailability {
 		return "InputAvailability{" +
 			"texture=" + texture +
 			", lightmap=" + lightmap +
-			", overlay=" + overlay +
 			'}';
 	}
 
@@ -53,7 +42,6 @@ public class InputAvailability {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + (lightmap ? 1231 : 1237);
-		result = prime * result + (overlay ? 1231 : 1237);
 		result = prime * result + (texture ? 1231 : 1237);
 		return result;
 	}
@@ -68,8 +56,6 @@ public class InputAvailability {
 			return false;
 		InputAvailability other = (InputAvailability) obj;
 		if (lightmap != other.lightmap)
-			return false;
-		if (overlay != other.overlay)
 			return false;
 		if (texture != other.texture)
 			return false;

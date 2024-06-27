@@ -202,6 +202,7 @@ public class RedirectorTransformer implements IClassTransformer {
         );
         methodRedirects.put(GL20, RedirectMap.newMap()
             .add("glBlendEquationSeparate")
+            .add("glUseProgram")
         );
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
             .add("glBlendFunc", "tryBlendFuncSeparate")

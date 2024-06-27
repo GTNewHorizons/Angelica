@@ -49,7 +49,7 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return Mode.isEnabled() && AngelicaConfig.enableDynamicLights;
+        return AngelicaConfig.enableDynamicLights && Mode.isEnabled() && !IrisApi.getInstance().isShaderPackInUse();
     }
 
     /**
