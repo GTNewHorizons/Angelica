@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -278,7 +278,7 @@ public class DynamicLights {
      * @param chunkPos the packed chunk position
      */
     public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, long chunkPos) {
-        scheduleChunkRebuild(renderer, BlockPos.unpackLongX(chunkPos), BlockPos.unpackLongY(chunkPos), BlockPos.unpackLongZ(chunkPos));
+        scheduleChunkRebuild(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
     }
 
     public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, int x, int y, int z) {
@@ -294,7 +294,7 @@ public class DynamicLights {
      */
     public static void updateTrackedChunks(@NotNull BlockPosImpl chunkPos, @Nullable LongOpenHashSet old, @Nullable LongOpenHashSet newPos) {
         if (old != null || newPos != null) {
-            long pos = chunkPos.asLong();
+            final long pos = chunkPos.asLong();
             if (old != null)
                 old.remove(pos);
             if (newPos != null)
