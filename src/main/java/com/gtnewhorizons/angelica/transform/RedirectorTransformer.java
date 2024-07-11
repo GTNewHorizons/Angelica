@@ -145,6 +145,8 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glGetTexParameteri")
             .add("glIsEnabled")
             .add("glLight")
+            .add("glLightf")
+            .add("glLighti")
             .add("glLightModel")
             .add("glLightModelf")
             .add("glLightModeli")
