@@ -190,7 +190,7 @@ public class LightState implements ISettableState<LightState> {
 
     public void setSpotCutoff(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotCutoff) != 0) {
-            this.spotExponent = f;
+            this.spotCutoff = f;
             GL11.glLightf(this.light, GL11.GL_SPOT_CUTOFF, f);
         }
     }
@@ -261,6 +261,9 @@ public class LightState implements ISettableState<LightState> {
         this.spotDirection.set(state.spotDirection);
         this.spotExponent = state.spotExponent;
         this.spotCutoff = state.spotCutoff;
+        this.constantAttenuation = state.constantAttenuation;
+        this.linearAttenuation = state.linearAttenuation;
+        this.quadraticAttenuation = state.quadraticAttenuation;
 
         return this;
     }
@@ -269,7 +272,16 @@ public class LightState implements ISettableState<LightState> {
     public boolean sameAs(Object state) {
         if (this == state) return true;
         if (!(state instanceof LightState lightState)) return false;
-        return this.ambient.equals(lightState.ambient) && this.diffuse.equals(lightState.diffuse) && this.specular.equals(lightState.specular) && this.position.equals(lightState.position) && this.spotDirection.equals(lightState.spotDirection) && Float.compare(this.spotCutoff, lightState.spotCutoff) == 0 && Float.compare(this.spotExponent, lightState.spotExponent) == 0;
+        return this.ambient.equals(lightState.ambient)
+            && this.diffuse.equals(lightState.diffuse)
+            && this.specular.equals(lightState.specular)
+            && this.position.equals(lightState.position)
+            && this.spotDirection.equals(lightState.spotDirection)
+            && Float.compare(this.spotCutoff, lightState.spotCutoff) == 0
+            && Float.compare(this.spotExponent, lightState.spotExponent) == 0
+            && Float.compare(this.linearAttenuation, lightState.linearAttenuation) == 0
+            && Float.compare(this.constantAttenuation, lightState.constantAttenuation) == 0
+            && Float.compare(this.quadraticAttenuation, lightState.quadraticAttenuation) == 0;
     }
 
     @Override

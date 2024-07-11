@@ -135,11 +135,6 @@ public class GLSM_Lighting_UnitTest {
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{20.0F}, "GL_LIGHT0 attrib push state changed check");
         GLStateManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
-
-
-
-
-
     }
 
     static void newf4b(float x, float y, float z, float w) {
