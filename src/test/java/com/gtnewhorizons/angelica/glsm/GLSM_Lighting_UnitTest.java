@@ -34,6 +34,8 @@ public class GLSM_Lighting_UnitTest {
 
     @Test
     void testLightValues() {
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0F, 0F, 0F, 1F},  "GL_LIGHT0 Initial Ambient");
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, new float[]{1F, 1F, 1F, 1F}, "GL_LIGHT0 Initial Diffuse");
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, new float[]{1F, 1F, 1F, 1F}, "GL_LIGHT0 Initial Specular");
@@ -54,17 +56,24 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 attrib pop state check");
 
-        // TODO: Need to test position with a non identity modelview matrix because it's stored in eye coordinates
+        // The position is stored in eye coordinates, so we're moving around the modelview matrix before changing them
+        // That way we can test that the client side transformation of them via GLSM is working and matches the OpenGL
+        // transformation. This doesn't seem like float precision should break this test, but it may be possible for it
+        // to need tweaked a bit more.
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glPushMatrix();
+        GLStateManager.glTranslatef(25.0F, 25.0F, 25.0F);
+        GLStateManager.glRotatef(35.0F, 10.0F, 15.0F, 20.0F);
         newf4b(0.25F, 0.5F, 0.25F, 0.0F);
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, f4b);
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.25F, 0.5F, 0.25F, 0.0F}, "GL_LIGHT0 Position Changed State");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.1090F, 0.5189F, 0.3062F, 0.0F}, "GL_LIGHT0 Position Changed State");
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.0F);
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, f4b);
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.3F, 0.4F, 0.5F, 0.0F}, "GL_LIGHT0 attrib push state changed check");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.2824F, 0.4200F, 0.4937F, 0.0F}, "GL_LIGHT0 attrib push state changed check");
         GLStateManager.glPopAttrib();
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.25F, 0.5F, 0.25F, 0.0F}, "GL_LIGHT0 attrib pop state check");
-
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.1090F, 0.5189F, 0.3062F, 0.0F}, "GL_LIGHT0 attrib pop state check");
+        GLStateManager.glPopMatrix();
 
         newf4b(0.25F, 0.5F, 0.25F, 0.5F);
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, f4b);
@@ -135,6 +144,8 @@ public class GLSM_Lighting_UnitTest {
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{20.0F}, "GL_LIGHT0 attrib push state changed check");
         GLStateManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
+
+        GLStateManager.glPopAttrib();
     }
 
     static void newf4b(float x, float y, float z, float w) {
