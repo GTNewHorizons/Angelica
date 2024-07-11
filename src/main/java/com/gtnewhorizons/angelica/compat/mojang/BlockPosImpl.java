@@ -1,14 +1,11 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizons.angelica.api.MutableBlockPos;
 import net.minecraft.world.ChunkPosition;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3i;
 
-import static com.gtnewhorizons.angelica.api.BlockPos.unpackLongX;
-import static com.gtnewhorizons.angelica.api.BlockPos.unpackLongY;
-import static com.gtnewhorizons.angelica.api.BlockPos.unpackLongZ;
 
 // Should we keep this?
 public class BlockPosImpl extends Vector3i implements MutableBlockPos {
@@ -54,7 +51,7 @@ public class BlockPosImpl extends Vector3i implements MutableBlockPos {
 
     @Override
     public long asLong() {
-        return BlockPos.asLong(this.x, this.y, this.z);
+        return CoordinatePacker.pack(this.x, this.y, this.z);
     }
 
     @Override
@@ -65,6 +62,7 @@ public class BlockPosImpl extends Vector3i implements MutableBlockPos {
 
     @Override
     public BlockPosImpl set(long packedPos) {
-        return set(unpackLongX(packedPos), unpackLongY(packedPos), unpackLongZ(packedPos));
+        CoordinatePacker.unpack(packedPos, this);
+        return this;
     }
 }

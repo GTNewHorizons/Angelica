@@ -5,6 +5,7 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.ArtifactVersion;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import net.dries007.holoInventory.HoloInventory;
+import xonin.backhand.Backhand;
 
 public class ModStatus {
     /**
@@ -23,6 +24,8 @@ public class ModStatus {
     public static boolean isEIDBiomeLoaded;
     public static boolean isXaerosMinimapLoaded;
     public static boolean isHoloInventoryLoaded;
+    public static boolean isBattlegearLoaded;
+    public static boolean isBackhandLoaded;
 
     public static void preInit(){
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
@@ -33,11 +36,20 @@ public class ModStatus {
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
+        isBattlegearLoaded = Loader.isModLoaded("battlegear2");
+        isBackhandLoaded = Loader.isModLoaded("backhand");
 
         if (isHoloInventoryLoaded){
             isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
                 .compareTo(
                     LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
+                ) <= 0;
+        }
+
+        if (isBackhandLoaded){
+            isBackhandLoaded = new DefaultArtifactVersion("1.4.1")
+                .compareTo(
+                    LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()
                 ) <= 0;
         }
 

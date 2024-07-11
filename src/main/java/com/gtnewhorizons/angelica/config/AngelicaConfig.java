@@ -110,6 +110,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixExtraUtilsSodiumCompat;
 
+    @Config.Comment("Fix thread-safety issues in MineFactory Reloaded")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixMineFactoryReloadedSodiumCompat;
+
     @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

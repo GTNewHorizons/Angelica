@@ -58,7 +58,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:24.0.1')
-    api("com.github.GTNewHorizons:GTNHLib:0.2.9:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.3.2:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     implementation("io.github.douira:glsl-transformer:1.0.0")
     shadowImplementation("io.github.douira:glsl-transformer:1.0.0") { // glsl-transformer Noncommercial License 1.0.0
@@ -78,11 +78,16 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
 
-    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.0:api") { transitive = false }
-    compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0002:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
+    compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
+
+    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.1:api") { transitive = false }
+    compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0003:dev") { transitive = false }
 
     compileOnly(rfg.deobf("curse.maven:extrautils-225561:2264383"))
     compileOnly(rfg.deobf("curse.maven:dynamiclights-227874:2337326"))
+
+    compileOnly("curse.maven:minefactory-reloaded-66672:2277486")
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.0.3:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
