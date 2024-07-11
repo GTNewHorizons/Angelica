@@ -9,7 +9,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @ExtendWith(AngelicaExtension.class)
 public class GLSM_Lighting_UnitTest {

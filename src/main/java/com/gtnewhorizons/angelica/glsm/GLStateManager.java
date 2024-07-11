@@ -46,6 +46,7 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLContext;
 
+import java.lang.Math;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -419,6 +420,12 @@ public class GLStateManager {
             case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
             case GL11.GL_SPECULAR -> state.specular.get(0, params);
             case GL11.GL_POSITION -> state.position.get(0, params);
+            case GL11.GL_SPOT_DIRECTION -> state.spotDirection.get(0, params);
+            case GL11.GL_SPOT_EXPONENT -> params.put(state.spotExponent);
+            case GL11.GL_SPOT_CUTOFF -> params.put(state.spotCutoff);
+            case GL11.GL_CONSTANT_ATTENUATION -> params.put(state.constantAttenuation);
+            case GL11.GL_LINEAR_ATTENUATION -> params.put(state.linearAttenuation);
+            case GL11.GL_QUADRATIC_ATTENUATION -> params.put(state.quadraticAttenuation);
         }
         GL11.glGetLight(light, pname, params);
     }
