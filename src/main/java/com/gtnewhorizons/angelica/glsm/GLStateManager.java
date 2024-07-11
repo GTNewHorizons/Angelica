@@ -634,6 +634,8 @@ public class GLStateManager {
         return ((b - Byte.MIN_VALUE) & 0xFF) / 255.0F;
     }
 
+    public static float i2f(int i) { return ((i - Integer.MIN_VALUE) & 0xFFFFFF) / 4294967295.0F; }
+
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
         if (shouldBypassCache() || red != color.getRed() || green != color.getGreen() || blue != color.getBlue() || alpha != color.getAlpha()) {
@@ -1194,6 +1196,10 @@ public class GLStateManager {
         }
     }
 
+    public static Matrix4f getModelviewMatrix() {
+        return modelViewMatrix;
+    }
+
     public static void glLoadIdentity() {
         GL11.glLoadIdentity();
         getMatrixStack().identity();
@@ -1471,12 +1477,55 @@ public class GLStateManager {
             case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
             case GL11.GL_SPECULAR -> lightState.setSpecular(params);
             case GL11.GL_POSITION -> lightState.setPosition(params);
+            case GL11.GL_SPOT_DIRECTION -> lightState.setSpotDirection(params);
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(params);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(params);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
             default -> GL11.glLight(light, pname, params);
         }
     }
 
     public static void glLight(int light, int pname, IntBuffer params) {
-        GL11.glLight(light, pname, params);
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_AMBIENT -> lightState.setAmbient(params);
+            case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
+            case GL11.GL_SPECULAR -> lightState.setSpecular(params);
+            case GL11.GL_POSITION -> lightState.setPosition(params);
+            case GL11.GL_SPOT_DIRECTION -> lightState.setSpotDirection(params);
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(params);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(params);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
+            default -> GL11.glLight(light, pname, params);
+        }
+    }
+
+    public static void glLightf(int light, int pname, float param) {
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
+            default -> GL11.glLightf(light, pname, param);
+        }
+    }
+
+    public static void glLighti(int light, int pname, int param) {
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
+            default -> GL11.glLighti(light, pname, param);
+        }
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {

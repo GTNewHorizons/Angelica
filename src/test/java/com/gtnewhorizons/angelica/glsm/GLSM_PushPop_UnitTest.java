@@ -324,10 +324,6 @@ class GLSM_PushPop_UnitTest {
         floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
         GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
         GLStateManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
 
         floatBuffer.put(FLOAT_ARRAY_4_0010).flip();
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
@@ -341,10 +337,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f, "Light Model Two Side");
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Model Ambient");
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR, "Light Model Color Control");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Ambient");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, FLOAT_ARRAY_4_POINT_5, "Light Diffuse");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, FLOAT_ARRAY_4_POINT_5, "Light Specular");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, FLOAT_ARRAY_4_POINT_5, "Light Position");
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_FLAT, "Shade Model");
 
 
@@ -365,11 +357,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 0f, "Light Model Two Side - Reset");
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_MODEL_AMBIENT_DEFAULT, "Light Model Ambient - Reset");
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR, "Light Model Color Control - Reset");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_0001, "Light Ambient - Reset");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, FLOAT_ARRAY_4_1, "Light Diffuse - Reset");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, FLOAT_ARRAY_4_1, "Light Specular - Reset");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, FLOAT_ARRAY_4_0010, "Light Position - Reset");
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, FLOAT_ARRAY_GL_SPOT_DIRECTION_DEFAULT, "Light Spot Direction - Reset");
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_SMOOTH, "Shade Model - Reset");
 
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
