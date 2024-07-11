@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import org.joml.Matrix3f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
@@ -18,14 +19,15 @@ public class LightState implements ISettableState<LightState> {
     private static final Vector4f vector4f = new Vector4f();
     private static final Vector3i vector3i = new Vector3i();
     private static final Vector3f vector3f = new Vector3f();
+    private static final Matrix3f matrix3f = new Matrix3f();
 
     public int light;
 
-    public Vector4f ambient;
-    public Vector4f diffuse;
-    public Vector4f specular;
-    public Vector4f position;
-    public Vector3f spotDirection;
+    public final Vector4f ambient;
+    public final Vector4f diffuse;
+    public final Vector4f specular;
+    public final Vector4f position;
+    public final Vector3f spotDirection;
     public float spotExponent;
     public float spotCutoff;
     public float constantAttenuation;
@@ -57,13 +59,18 @@ public class LightState implements ISettableState<LightState> {
         this.ambient = ambient;
         this.diffuse = diffuse;
         this.specular = specular;
-        this.position = position;
-        this.spotDirection = spotDirection;
         this.spotExponent = spotExponent;
         this.spotCutoff = spotCutoff;
         this.constantAttenuation = constantAttenuation;
         this.linearAttenuation = linearAttenuation;
         this.quadraticAttenuation = quadraticAttenuation;
+
+        this.position = position;
+        this.position.mul(GLStateManager.getModelviewMatrix());
+
+        this.spotDirection = spotDirection;
+        GLStateManager.getModelviewMatrix().get3x3(matrix3f);
+        this.spotDirection.mul(matrix3f);
     }
 
     public void setAmbient(FloatBuffer newBuffer) {
@@ -118,43 +125,37 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public void setPosition(FloatBuffer newBuffer) {
-        vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.position.equals(vector4f)) {
-            // The position is stored in eye coordinates(AKA multiplied by the modelview matrix
-            // OpenGL does this itself, so we are applying it to our cached version, and passing the
-            // untransformed buffer through to OpenGL. It is very important that OpenGL receives
-            // the untransformed position to glLight.
-            vector4f.mul(GLStateManager.getModelviewMatrix());
-            this.position.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
-        }
+        // We are bypassing cache everytime for position, because the necessary components to enable tracking the cache
+        // are big and probably more than just bypassing. We would need to track the modelview matrix it was transformed
+        // with and the untransformed coordinates in addition to the final transformation.
+        this.position.set(newBuffer);
+        this.position.mul(GLStateManager.getModelviewMatrix());
+        GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
     }
 
     public void setPosition(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
-        vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.position.equals(vector4f)) {
-            vector4f.mul(GLStateManager.getModelviewMatrix());
-            this.position.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
-        }
+        this.position.set((float) vector4i.x, (float) vector4i.y, (float) vector4i.z, (float) vector4i.w);
+        this.position.mul(GLStateManager.getModelviewMatrix());
+        GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
     }
 
     public void setSpotDirection(FloatBuffer newBuffer) {
-        vector3f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.spotDirection.equals(vector3f)) {
-            this.spotDirection.set(vector3f);
-            GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
-        }
+        // We are bypassing cache everytime for spot direction, because the necessary components to enable tracking the cache
+        // are big and probably more than just bypassing. We would need to track the modelview matrix it was transformed
+        // with and the untransformed coordinates in addition to the final transformation.
+        GLStateManager.getModelviewMatrix().get3x3(matrix3f);
+        this.spotDirection.set(newBuffer);
+        this.spotDirection.mul(matrix3f);
+        GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
     }
 
     public void setSpotDirection(IntBuffer newBuffer) {
         vector3i.set(newBuffer);
-        vector3f.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
-        if (GLStateManager.shouldBypassCache() || !this.spotDirection.equals(vector3f)) {
-            this.spotDirection.set(vector3f);
-            GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
-        }
+        GLStateManager.getModelviewMatrix().get3x3(matrix3f);
+        this.spotDirection.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
+        this.spotDirection.mul(matrix3f);
+        GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
     }
 
     public void setSpotExponent(FloatBuffer newBuffer) {
