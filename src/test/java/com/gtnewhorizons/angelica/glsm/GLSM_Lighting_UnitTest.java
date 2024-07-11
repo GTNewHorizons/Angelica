@@ -95,15 +95,20 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 attrib pop state check");
 
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glPushMatrix();
+        GLStateManager.glTranslatef(25.0F, 25.0F, 25.0F);
+        GLStateManager.glRotatef(35.0F, 10.0F, 15.0F, 20.0F);
         newf4b(0.25F, 0.5F, 0.25F, 0.0F);
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, f4b);
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.25F, 0.5F, 0.25F}, "GL_LIGHT0 Spot Direction Changed State");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.1090F, 0.5189F, 0.3062F}, "GL_LIGHT0 Spot Direction Changed State");
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.0F);
         GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, f4b);
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.3F, 0.4F, 0.5F}, "GL_LIGHT0 attrib push state changed check");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.2824F, 0.4200F, 0.4937F}, "GL_LIGHT0 attrib push state changed check");
         GLStateManager.glPopAttrib();
-        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.25F, 0.5F, 0.25F}, "GL_LIGHT0 attrib pop state check");
+        verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.1090F, 0.5189F, 0.3062F}, "GL_LIGHT0 attrib pop state check");
+        GLStateManager.glPopMatrix();
 
         GLStateManager.glLightf(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, 1.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, new float[]{1.0F}, "GL_LIGHT0 Spot Exponent Changed State");
