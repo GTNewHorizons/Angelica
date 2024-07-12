@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
@@ -59,6 +60,7 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLContext;
 
+import java.lang.Math;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -121,6 +123,14 @@ public class GLStateManager {
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
     @Getter protected static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
 
+    @Getter protected static final BooleanStateStack[] lightStates = new BooleanStateStack[8];
+    @Getter protected static final LightStateStack[] lightDataStates = new LightStateStack[8];
+    static {
+        for (int i = 0; i < lightStates.length; i ++) {
+            lightStates[i] = new BooleanStateStack(GL11.GL_LIGHT0 + i);
+            lightDataStates[i] = new LightStateStack(GL11.GL_LIGHT0 + i);
+        }
+    }
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
@@ -259,6 +269,14 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_FOG -> enableFog();
             case GL11.GL_LIGHTING -> enableLighting();
+            case GL11.GL_LIGHT0 -> enableLight(0);
+            case GL11.GL_LIGHT1 -> enableLight(1);
+            case GL11.GL_LIGHT2 -> enableLight(2);
+            case GL11.GL_LIGHT3 -> enableLight(3);
+            case GL11.GL_LIGHT4 -> enableLight(4);
+            case GL11.GL_LIGHT5 -> enableLight(5);
+            case GL11.GL_LIGHT6 -> enableLight(6);
+            case GL11.GL_LIGHT7 -> enableLight(7);
             case GL11.GL_SCISSOR_TEST -> enableScissorTest();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
@@ -274,6 +292,14 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_FOG -> disableFog();
             case GL11.GL_LIGHTING -> disableLighting();
+            case GL11.GL_LIGHT0 -> disableLight(0);
+            case GL11.GL_LIGHT1 -> disableLight(1);
+            case GL11.GL_LIGHT2 -> disableLight(2);
+            case GL11.GL_LIGHT3 -> disableLight(3);
+            case GL11.GL_LIGHT4 -> disableLight(4);
+            case GL11.GL_LIGHT5 -> disableLight(5);
+            case GL11.GL_LIGHT6 -> disableLight(6);
+            case GL11.GL_LIGHT7 -> disableLight(7);
             case GL11.GL_SCISSOR_TEST -> disableScissorTest();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
@@ -292,6 +318,14 @@ public class GLStateManager {
             case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
             case GL11.GL_FOG -> fogMode.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
+            case GL11.GL_LIGHT0 -> lightStates[0].isEnabled();
+            case GL11.GL_LIGHT1 -> lightStates[1].isEnabled();
+            case GL11.GL_LIGHT2 -> lightStates[2].isEnabled();
+            case GL11.GL_LIGHT3 -> lightStates[3].isEnabled();
+            case GL11.GL_LIGHT4 -> lightStates[4].isEnabled();
+            case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
+            case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
+            case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
             case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
@@ -311,6 +345,14 @@ public class GLStateManager {
             case GL11.GL_DEPTH_WRITEMASK -> depthState.isEnabled();
             case GL11.GL_FOG -> fogMode.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
+            case GL11.GL_LIGHT0 -> lightStates[0].isEnabled();
+            case GL11.GL_LIGHT1 -> lightStates[1].isEnabled();
+            case GL11.GL_LIGHT2 -> lightStates[2].isEnabled();
+            case GL11.GL_LIGHT3 -> lightStates[3].isEnabled();
+            case GL11.GL_LIGHT4 -> lightStates[4].isEnabled();
+            case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
+            case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
+            case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
             case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
@@ -381,6 +423,24 @@ public class GLStateManager {
     }
 
     public static void glGetLight(int light, int pname, FloatBuffer params) {
+        if (shouldBypassCache()) {
+            GL11.glGetLight(light, pname, params);
+            return;
+        }
+
+        LightStateStack state = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_AMBIENT -> state.ambient.get(0, params);
+            case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
+            case GL11.GL_SPECULAR -> state.specular.get(0, params);
+            case GL11.GL_POSITION -> state.position.get(0, params);
+            case GL11.GL_SPOT_DIRECTION -> state.spotDirection.get(0, params);
+            case GL11.GL_SPOT_EXPONENT -> params.put(state.spotExponent);
+            case GL11.GL_SPOT_CUTOFF -> params.put(state.spotCutoff);
+            case GL11.GL_CONSTANT_ATTENUATION -> params.put(state.constantAttenuation);
+            case GL11.GL_LINEAR_ATTENUATION -> params.put(state.linearAttenuation);
+            case GL11.GL_QUADRATIC_ATTENUATION -> params.put(state.quadraticAttenuation);
+        }
         GL11.glGetLight(light, pname, params);
     }
 
@@ -594,6 +654,8 @@ public class GLStateManager {
     private static float b2f(byte b) {
         return ((b - Byte.MIN_VALUE) & 0xFF) / 255.0F;
     }
+
+    public static float i2f(int i) { return ((i - Integer.MIN_VALUE) & 0xFFFFFF) / 4294967295.0F; }
 
     private static boolean changeColor(float red, float green, float blue, float alpha) {
         // Helper function for glColor*
@@ -900,8 +962,16 @@ public class GLStateManager {
         lightingState.enable();
     }
 
+    public static void enableLight(int light) {
+        lightStates[light].enable();
+    }
+
     public static void disableLighting() {
         lightingState.disable();
+    }
+
+    public static void disableLight(int light) {
+        lightStates[light].disable();
     }
 
     public static void enableRescaleNormal() {
@@ -1145,6 +1215,10 @@ public class GLStateManager {
             }
             default -> throw new IllegalStateException("Unknown matrix mode: " + matrixMode.getMode());
         }
+    }
+
+    public static Matrix4f getModelviewMatrix() {
+        return modelViewMatrix;
     }
 
     public static void glLoadIdentity() {
@@ -1418,10 +1492,61 @@ public class GLStateManager {
     }
 
     public static void glLight(int light, int pname, FloatBuffer params) {
-        GL11.glLight(light, pname, params);
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_AMBIENT -> lightState.setAmbient(params);
+            case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
+            case GL11.GL_SPECULAR -> lightState.setSpecular(params);
+            case GL11.GL_POSITION -> lightState.setPosition(params);
+            case GL11.GL_SPOT_DIRECTION -> lightState.setSpotDirection(params);
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(params);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(params);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
+            default -> GL11.glLight(light, pname, params);
+        }
     }
+
     public static void glLight(int light, int pname, IntBuffer params) {
-        GL11.glLight(light, pname, params);
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_AMBIENT -> lightState.setAmbient(params);
+            case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
+            case GL11.GL_SPECULAR -> lightState.setSpecular(params);
+            case GL11.GL_POSITION -> lightState.setPosition(params);
+            case GL11.GL_SPOT_DIRECTION -> lightState.setSpotDirection(params);
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(params);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(params);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
+            default -> GL11.glLight(light, pname, params);
+        }
+    }
+
+    public static void glLightf(int light, int pname, float param) {
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
+            default -> GL11.glLightf(light, pname, param);
+        }
+    }
+
+    public static void glLighti(int light, int pname, int param) {
+        LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
+        switch (pname) {
+            case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
+            case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
+            case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
+            case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
+            case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
+            default -> GL11.glLighti(light, pname, param);
+        }
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {

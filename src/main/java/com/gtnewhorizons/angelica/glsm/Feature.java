@@ -82,7 +82,14 @@ public class Feature {
             , GLStateManager.depthTest // GL_DEPTH_TEST flag
             // GL_DITHER flag
             , GLStateManager.fogMode // GL_FOG flag
-            // GL_LIGHTi where 0 <= i < GL_MAX_LIGHTS
+            , GLStateManager.lightStates[0] // GL_LIGHT0
+            , GLStateManager.lightStates[1] // GL_LIGHT1
+            , GLStateManager.lightStates[2] // GL_LIGHT2
+            , GLStateManager.lightStates[3] // GL_LIGHT3
+            , GLStateManager.lightStates[4] // GL_LIGHT4
+            , GLStateManager.lightStates[5] // GL_LIGHT5
+            , GLStateManager.lightStates[6] // GL_LIGHT6
+            , GLStateManager.lightStates[7] // GL_LIGHT7
             , GLStateManager.lightingState // GL_LIGHTING flag
             // GL_LINE_SMOOTH flag
             // GL_LINE_STIPPLE flag
@@ -149,9 +156,25 @@ public class Feature {
             // GL_LIGHT_MODEL_TWO_SIDE setting
               GLStateManager.lightingState  // GL_LIGHTING enable bit
             // Enable bit for each light
+            , GLStateManager.lightStates[0] // GL_LIGHT0
+            , GLStateManager.lightStates[1] // GL_LIGHT1
+            , GLStateManager.lightStates[2] // GL_LIGHT2
+            , GLStateManager.lightStates[3] // GL_LIGHT3
+            , GLStateManager.lightStates[4] // GL_LIGHT4
+            , GLStateManager.lightStates[5] // GL_LIGHT5
+            , GLStateManager.lightStates[6] // GL_LIGHT6
+            , GLStateManager.lightStates[7] // GL_LIGHT7
             // Ambient, diffuse, and specular intensity for each light
             // Direction, position, exponent, and cutoff angle for each light
             // Constant, linear, and quadratic attenuation factors for each light
+            , GLStateManager.lightDataStates[0]
+            , GLStateManager.lightDataStates[1]
+            , GLStateManager.lightDataStates[2]
+            , GLStateManager.lightDataStates[3]
+            , GLStateManager.lightDataStates[4]
+            , GLStateManager.lightDataStates[5]
+            , GLStateManager.lightDataStates[6]
+            , GLStateManager.lightDataStates[7]
             // Ambient, diffuse, specular, and emissive color for each material
             // Ambient, diffuse, and specular color indices for each material
             // Specular exponent for each material

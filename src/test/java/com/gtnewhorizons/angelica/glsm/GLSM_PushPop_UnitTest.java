@@ -133,10 +133,10 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
         GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
         GLStateManager.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
-                // GL_CURRENT_RASTER_POSITION_VALID flag
-                // RGBA color associated with current raster position
-                // Color index associated with current raster position
-                // Texture coordinates associated with current raster position
+        // GL_CURRENT_RASTER_POSITION_VALID flag
+        // RGBA color associated with current raster position
+        // Color index associated with current raster position
+        // Texture coordinates associated with current raster position
         GLStateManager.glEdgeFlag(false); // GL_EDGE_FLAG flag
 
 
