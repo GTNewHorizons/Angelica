@@ -36,10 +36,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Supplier;
 
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadBool;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadFloat;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadInt;
-import static com.gtnewhorizons.angelica.utils.JsonUtil.loadStr;
+import static com.gtnewhorizons.angelica.utils.JsonUtil.*;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
@@ -83,7 +80,6 @@ public class JsonModel implements QuadProvider {
     public void bake(Variant v) {
 
         final Matrix4f vRot = v.getAffineMatrix();
-
         final NdQuadBuilder builder = new NdQuadBuilder();
 
         // Append faces from each element
@@ -118,9 +114,6 @@ public class JsonModel implements QuadProvider {
                     Y = max(Y, vert.y);
                     Z = max(Z, vert.z);
                 }
-
-                // Rewind the quad
-                builder.rewind(x, y, z, X, Y, Z);
 
                 // Set culling and nominal faces
                 builder.setCullFace();

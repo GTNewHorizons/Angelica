@@ -21,7 +21,7 @@ public class ModelDisplay {
         this.scale = scale;
     }
 
-    enum Position {
+    public enum Position {
         thirdperson_righthand,
         thirdperson_lefthand,
         firstperson_righthand,

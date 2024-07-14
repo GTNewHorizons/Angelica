@@ -179,9 +179,12 @@ public class NdQuadBuilder extends Quad implements QuadBuilder {
      * Rewinds the quad to the standard order. Works as long as four vertex positions have been assigned, and will
      * not rewind any non-position data. Recommended to do immediately after vertex assignment, and to set/reset UVs,
      * colors, etc. afterwards.
+     *
+     * PS: this should only be used on quads parallel to the block grid.
+     *
+     * TODO: this doesn't actually work
      */
     public void rewind(float x, float y, float z, float X, float Y, float Z) {
-        // Reset the vertices, given the bounds
         boolean[] targets = switch (getLightFace()) {
             case DOWN -> DOWN;
             case UP -> UP;
@@ -192,8 +195,36 @@ public class NdQuadBuilder extends Quad implements QuadBuilder {
             case UNKNOWN -> throw new RuntimeException("Expected non-UNKNOWN face!");
         };
 
+        final float ox = getX(0);
+        final float oy = getY(0);
+        final float oz = getZ(0);
+
+        // Reset the vertices, given the bounds
+        int iFirst = 0;
         for (int i = 0; i < 4; ++i) {
-            pos(i, targets[i * 3] ? X : x,  targets[i * 3 + 1] ? Y : y,  targets[i * 3 + 2] ? Z : z);
+            final float px = targets[i * 3] ? X : x;
+            final float py = targets[i * 3 + 1] ? Y : y;
+            final float pz = targets[i * 3 + 2] ? Z : z;
+            pos(i, px, py, pz);
+
+            // Save the original first vertex
+            if (px == ox && py == oy && pz == oz)
+                iFirst = i;
+        }
+
+        // Shift the UVs - copy to a temp array, then copy back in the right order, wrapping appropriately
+        float[] uvs = {
+            getTexU(0),
+            getTexV(0),
+            getTexU(1),
+            getTexV(1),
+            getTexU(2),
+            getTexV(2),
+            getTexU(3),
+            getTexV(3)
+        };
+        for (int i = 0; i < 4; ++i) {
+            uv((i + iFirst) % 4, uvs[i * 2], uvs[i * 2 + 1]);
         }
     }
 

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.models;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
 import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import static me.jellysquid.mods.sodium.client.util.MathUtil.fuzzy_eq;
@@ -34,10 +35,17 @@ public abstract class GeometryHelper {
      */
     public static ForgeDirection lightFace(NdQuadBuilder quad) {
         final Vector3f normal = quad.faceNormal;
-        return switch (GeometryHelper.longestAxis(normal)) {
-            case X -> normal.x() > 0 ? ForgeDirection.EAST : ForgeDirection.WEST;
-            case Y -> normal.y() > 0 ? ForgeDirection.UP : ForgeDirection.DOWN;
-            case Z -> normal.z() > 0 ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
+        return coerceVector(normal);
+    }
+
+    /**
+     * Returns the direction closest to the given vector.
+     */
+    private static ForgeDirection coerceVector(Vector3f v) {
+        return switch (GeometryHelper.longestAxis(v)) {
+            case X -> v.x() > 0 ? ForgeDirection.EAST : ForgeDirection.WEST;
+            case Y -> v.y() > 0 ? ForgeDirection.UP : ForgeDirection.DOWN;
+            case Z -> v.z() > 0 ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
             default -> ForgeDirection.UP; // handle WTF case
         };
     }
@@ -65,4 +73,18 @@ public abstract class GeometryHelper {
 		return Math.abs(normalZ) > longest
 				? Axis.Z : result;
 	}
+
+    /**
+     * Rotates the given direction by the matrix, and returns the closest direction to the output.
+     */
+    public static ForgeDirection rotate(ForgeDirection d, Matrix4f rotMat) {
+        return rotate(d, rotMat, new Vector3f());
+    }
+
+    /**
+     * See {@link #rotate(ForgeDirection, Matrix4f)}. This overload allows you to pass a scratch vector instead.
+     */
+    public static ForgeDirection rotate(ForgeDirection d, Matrix4f rotMat, Vector3f v) {
+        return coerceVector(v.set(d.offsetX, d.offsetY, d.offsetZ).mulPosition(rotMat));
+    }
 }
