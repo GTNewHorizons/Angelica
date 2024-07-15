@@ -6,15 +6,19 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -23,10 +27,14 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -49,6 +57,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Shadow public int renderDistanceChunks;
     @Shadow public WorldRenderer[] worldRenderers;
     @Shadow public WorldRenderer[] sortedWorldRenderers;
+    @Shadow @Final private TextureManager renderEngine;
+
 
     @Getter
     @Unique private SodiumWorldRenderer renderer;
@@ -141,9 +151,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             pipeline = null;
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
-            pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
-
-            if(pass == 1) {
+            if(pass == 0) {
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+            } else if(pass == 1) {
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
 
                 // iris$beginTranslucents
@@ -151,6 +162,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
                 HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, mc.renderGlobal, pipeline);
                 mc.mcProfiler.endStartSection("iris_pre_translucent");
                 pipeline.beginTranslucents();
+                this.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             }
         }
         // Handle view distance change
@@ -172,6 +184,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         try {
             final MatrixStack matrixStack = new MatrixStack(ShadowRenderer.ACTIVE ? ShadowRenderer.MODELVIEW : RenderingState.INSTANCE.getModelViewMatrix());
+            mc.mcProfiler.endStartSection("draw_chunk_layer_" + pass);
             this.renderer.drawChunkLayer(BlockRenderPass.VALUES[pass], matrixStack, x, y, z);
         } finally {
             RenderDevice.exitManagedCode();
@@ -284,6 +297,19 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderChunksTall = 0;
         this.renderChunksDeep = 0;
     }
+
+    @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
+    private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
+        CapturedRenderingState.INSTANCE.setCurrentEntity(entity.getEntityId());
+        GbufferPrograms.beginEntities();
+        try {
+            return original.call(instance, entity, partialTicks);
+        } finally {
+            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+            GbufferPrograms.endEntities();
+        }
+    }
+
 
     @Inject(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER))
     public void sodium$renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks, CallbackInfo ci) {

@@ -69,8 +69,6 @@ public abstract class RenderPhase {
     protected static final Texturing ENTITY_GLINT_TEXTURING;
     protected static final Lightmap ENABLE_LIGHTMAP;
     protected static final Lightmap DISABLE_LIGHTMAP;
-    protected static final Overlay ENABLE_OVERLAY_COLOR;
-    protected static final Overlay DISABLE_OVERLAY_COLOR;
     protected static final DiffuseLighting ENABLE_DIFFUSE_LIGHTING;
     protected static final DiffuseLighting DISABLE_DIFFUSE_LIGHTING;
     protected static final Cull ENABLE_CULLING;
@@ -177,8 +175,6 @@ public abstract class RenderPhase {
         });
         ENABLE_LIGHTMAP = new Lightmap(true);
         DISABLE_LIGHTMAP = new Lightmap(false);
-        ENABLE_OVERLAY_COLOR = new Overlay(true);
-        DISABLE_OVERLAY_COLOR = new Overlay(false);
         ENABLE_DIFFUSE_LIGHTING = new DiffuseLighting(true);
         DISABLE_DIFFUSE_LIGHTING = new DiffuseLighting(false);
         ENABLE_CULLING = new Cull(true);
@@ -501,25 +497,6 @@ public abstract class RenderPhase {
                 }
 
             }, guiLighting);
-        }
-    }
-
-
-    public static class Overlay extends Toggleable {
-        public Overlay(boolean overlayColor) {
-            super("overlay", () -> {
-                if (overlayColor) {
-                    throw new RuntimeException("Not Implemented Yet");
-//                    MinecraftClient.getInstance().gameRenderer.getOverlayTexture().setupOverlayColor();
-                }
-
-            }, () -> {
-                if (overlayColor) {
-                    throw new RuntimeException("Not Implemented Yet");
-//                    MinecraftClient.getInstance().gameRenderer.getOverlayTexture().teardownOverlayColor();
-                }
-
-            }, overlayColor);
         }
     }
 

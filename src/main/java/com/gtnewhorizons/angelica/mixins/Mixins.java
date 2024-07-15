@@ -140,13 +140,18 @@ public enum Mixins {
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
              "shaders.MixinEntityRenderer"
+            ,"shaders.MixinGuiIngameForge"
             ,"shaders.MixinFramebuffer"
             ,"shaders.MixinItem"
             ,"shaders.MixinLocale"
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"
+            ,"shaders.MixinRenderDragon"
+            ,"shaders.MixinRenderEnderman"
+            ,"shaders.MixinRendererLivingEntity"
             ,"shaders.MixinRenderGlobal"
-            ,"shaders.MixinRenderManager"
+            ,"shaders.MixinRenderSpider"
+            ,"shaders.MixinTileEntityBeaconRenderer"
         )
     ),
 

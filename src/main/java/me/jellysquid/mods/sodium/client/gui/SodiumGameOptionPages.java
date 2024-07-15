@@ -187,6 +187,7 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.LOW)
                         .build())
                 .add(Settings.PARTICLES_ENC_TABLE.option)
+                .add(Settings.PARTICLES_VOID.option)
                 .add(OptionImpl.createBuilder(GraphicsQuality.class, sodiumOpts)
                     .setName(I18n.format("sodium.options.grass_quality.name"))
                     .setTooltip(I18n.format("sodium.options.grass_quality.tooltip"))
