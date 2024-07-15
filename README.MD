@@ -6,7 +6,10 @@
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
 
-**Beta Quality - Here there be Dragons**
+## **Beta Quality - Here there be Dragons**
+* Shaders sneak preview - Please don't report issues yet, but please do submit fixes
+   * Complementary & BSL mostly function, but have some bugs
+   * Sildurs, Seus, and any other shader probably doesn't work
 
 
 # Required Dependencies
