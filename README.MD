@@ -6,7 +6,7 @@
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
 
-**Alpha Quality - Here there be Dragons**
+**Beta Quality - Here there be Dragons**
 
 
 # Required Dependencies
@@ -16,11 +16,13 @@
 
 # Known (temporary) Incompatibilities
 * Forge Relocation - Currently non Thread Safe; safe if not in use
-* ProjectRed Frames - Currently non Thread Safe; safe if not in use
+* ProjectRed Frames - Currently non Thread Safe; safe if not in use'
 
-# Known - Incompatibilities
-* EndlessIDs - Not currently planned (Looking for volunteers)
-* FalseTweaks - Not currently planned (Looking for volunteers)
+# Potential Incompatibilities
+* EndlessIDs - Compat commits have been made, might work, might not - not fully tested
+
+# Known Incompatibilities
+* FalseTweaks - Not currently planned (Looking for volunteers) [Might work if you effectively disable most of the mod]
 * SmoothFont - Not currently planned (Looking for volunteers)
 * RPLE - Not currently planned (Looking for volunteers)
 
@@ -31,7 +33,7 @@
 * LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
 * Hodgepodge 2.4.3 and below - [Use 2.4.4 or above](https://github.com/GTNewHorizons/Hodgepodge/releases)
-* CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.2.0+
+* CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible.  (Chunk Meshing is definitely incompatible, other features might work depending on config)
 
 # Credits
