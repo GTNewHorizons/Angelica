@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import net.dries007.holoInventory.client.Renderer;
@@ -43,6 +44,7 @@ public class HUDCaching {
     private static final Minecraft mc = Minecraft.getMinecraft();
     public static Framebuffer framebuffer;
     private static boolean dirty = true;
+    private static long nextHudRefresh;
 
     public static boolean renderingCacheOverride;
 
@@ -106,13 +108,6 @@ public class HUDCaching {
 
     /* TODO END REMOVE DEBUG STUFF */
 
-    @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            dirty = true;
-        }
-    }
-
     // highest so it runs before the GLSM load event
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onJoinWorld(WorldEvent.Load event) {
@@ -136,8 +131,13 @@ public class HUDCaching {
             return;
         }
 
+        if (System.currentTimeMillis() > nextHudRefresh) {
+            dirty = true;
+        }
+
         if (dirty) {
             dirty = false;
+            nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
             resetFramebuffer(mc.displayWidth, mc.displayHeight);
             framebuffer.bindFramebuffer(false);
             renderingCacheOverride = true;
