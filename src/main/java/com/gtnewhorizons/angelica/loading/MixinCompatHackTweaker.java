@@ -23,7 +23,7 @@ public class MixinCompatHackTweaker implements ITweaker {
         verifyDependencies();
 
         if(DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS) {
-            LOGGER.info("Disabling Optifinem, Fastcraft, and BetterFPS (if present)");
+            LOGGER.info("Disabling Optifine, Fastcraft, and BetterFPS (if present)");
             disableOptifineFastcraftAndBetterFPS();
         }
 
