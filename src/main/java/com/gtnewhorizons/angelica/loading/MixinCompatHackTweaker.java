@@ -17,14 +17,14 @@ import java.util.List;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class MixinCompatHackTweaker implements ITweaker {
-    public static final boolean DISABLE_OPTIFINE_AND_FASTCRAFT = true;
+    public static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
         verifyDependencies();
 
-        if(DISABLE_OPTIFINE_AND_FASTCRAFT) {
-            LOGGER.info("Disabling Optifine and Fastcraft (if present)");
-            disableOptifineAndFastcraft();
+        if(DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS) {
+            LOGGER.info("Disabling Optifinem, Fastcraft, and BetterFPS (if present)");
+            disableOptifineFastcraftAndBetterFPS();
         }
 
         if (AngelicaConfig.enableHudCaching){
@@ -57,8 +57,8 @@ public class MixinCompatHackTweaker implements ITweaker {
         }
     }
 
-    private void disableOptifineAndFastcraft() {
-        // Remove Optifine and Fastcraft transformers & Mod Containers
+    private void disableOptifineFastcraftAndBetterFPS() {
+        // Remove Optifine, Fastcraft, and BetterFPS transformers & Mod Containers
         try {
             LaunchClassLoader lcl = Launch.classLoader;
             Field xformersField = lcl.getClass().getDeclaredField("transformers");
@@ -67,7 +67,7 @@ public class MixinCompatHackTweaker implements ITweaker {
             List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
             for (int idx = xformers.size() - 1; idx >= 0; idx--) {
                 final String name = xformers.get(idx).getClass().getName();
-                if (name.startsWith("optifine") || name.startsWith("fastcraft")) {
+                if (name.startsWith("optifine") || name.startsWith("fastcraft") || name.startsWith("me.guichaguri.betterfps")) {
                     LOGGER.info("Removing transformer " + name);
                     xformers.remove(idx);
                 }
