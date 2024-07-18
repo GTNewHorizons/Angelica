@@ -121,7 +121,7 @@ public class GLStateManager {
     @Getter protected static final BooleanStateStack rescaleNormalState = new BooleanStateStack(GL12.GL_RESCALE_NORMAL);
 
     @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
-    protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
+    @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
     @Getter protected static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
 
     @Getter protected static final BooleanStateStack[] lightStates = new BooleanStateStack[8];
@@ -1213,10 +1213,6 @@ public class GLStateManager {
             }
             default -> throw new IllegalStateException("Unknown matrix mode: " + matrixMode.getMode());
         }
-    }
-
-    public static Matrix4f getModelviewMatrix() {
-        return modelViewMatrix;
     }
 
     public static void glLoadIdentity() {
