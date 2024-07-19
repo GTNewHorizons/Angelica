@@ -1215,10 +1215,6 @@ public class GLStateManager {
         }
     }
 
-    public static Matrix4f getModelviewMatrix() {
-        return modelViewMatrix;
-    }
-
     public static void glLoadIdentity() {
         GL11.glLoadIdentity();
         getMatrixStack().identity();
