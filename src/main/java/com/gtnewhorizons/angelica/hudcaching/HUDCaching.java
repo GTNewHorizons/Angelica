@@ -21,7 +21,6 @@ import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameForg
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -33,6 +32,7 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
+import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
@@ -61,7 +61,8 @@ public class HUDCaching {
     // Crosshairs need to be blended with the scene
     public static boolean renderCrosshairsCaptured;
 
-    private static RenderGameOverlayEvent fakeHoloInventoryEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
+    private final static RenderGameOverlayEvent fakeTextEvent = new RenderGameOverlayEvent.Text(new RenderGameOverlayEvent(0, null, 0, 0), null, null);
+    private final static RenderGameOverlayEvent fakePreEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static final HUDCaching INSTANCE = new HUDCaching();
 
@@ -81,21 +82,6 @@ public class HUDCaching {
         toggle = new KeyBinding("Toggle HUDCaching", 0, "Debug");
         ClientRegistry.registerKeyBinding(toggle);
     }
-
-    //    @SubscribeEvent
-//    public void onFrame(RenderGameOverlayEvent.Post event) {
-//        if (event.type == RenderGameOverlayEvent.ElementType.TEXT) {
-//            final long currentTimeMillis = System.currentTimeMillis();
-//            updateTimeList.removeIf(time -> currentTimeMillis - time > 1000L);
-//            String text = EnumChatFormatting.GREEN + "HUD Fps : " + updateTimeList.size();
-//            mc.fontRenderer.drawStringWithShadow(
-//                    text,
-//                    event.resolution.getScaledWidth() / 4,
-//                    event.resolution.getScaledHeight() / 4,
-//                    0xFFFFFF);
-//            updateTimeList.add(currentTimeMillis);
-//        }
-//    }
 
     @SubscribeEvent
     public void onKeypress(InputEvent.KeyInputEvent event) {
@@ -120,7 +106,6 @@ public class HUDCaching {
 
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
-
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
@@ -171,8 +156,8 @@ public class HUDCaching {
                 if (ModStatus.isHoloInventoryLoaded){
                     Renderer.INSTANCE.angelicaOverride = false;
                     // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
-                    ((RenderGameOverlayEventAccessor) fakeHoloInventoryEvent).setPartialTicks(partialTicks);
-                    Renderer.INSTANCE.renderEvent(fakeHoloInventoryEvent);
+                    ((RenderGameOverlayEventAccessor) fakePreEvent).setPartialTicks(partialTicks);
+                    Renderer.INSTANCE.renderEvent(fakePreEvent);
                 }
         	}
         	if (renderPortalCapturedTicks > 0) {
@@ -181,7 +166,13 @@ public class HUDCaching {
         	if (renderCrosshairsCaptured) {
         		guiForge.callRenderCrosshairs(width, height);
         	}
-
+            if (ModStatus.isThaumcraftLoaded){
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setPartialTicks(partialTicks);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setResolution(resolution);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseX(mouseX);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseY(mouseY);
+                Thaumcraft.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+            }
         } else {
             if (renderHelmetCaptured)
             {
