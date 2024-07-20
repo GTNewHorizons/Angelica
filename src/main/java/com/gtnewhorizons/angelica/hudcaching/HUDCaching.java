@@ -242,10 +242,17 @@ public class HUDCaching {
             Renderer.INSTANCE.angelicaOverride = isEnabled;
         }
     }
-    public static boolean shouldReturnEarly(String clazz, String method){
-        if (clazz.equals("thaumcraft.client.lib.RenderEventHandler") && method.equals("renderOverlay"))
-            return renderingCacheOverride;
 
-        return false;
+    public static class Hooks {
+        public static boolean shouldReturnEarly(String clazz, String method){
+            if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
+                return false;
+            }
+
+            if (clazz.equals("thaumcraft.client.lib.RenderEventHandler") && method.equals("renderOverlay"))
+                return renderingCacheOverride;
+
+            return false;
+        }
     }
 }

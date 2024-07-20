@@ -115,7 +115,7 @@ public class MixinCompatHackTweaker implements ITweaker {
             if(AngelicaConfig.enableSodium) {
                 Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
             }
-            if (AngelicaConfig.enableHudCachingEventTransformer){
+            if (AngelicaConfig.enableHudCaching && AngelicaConfig.enableHudCachingEventTransformer){
                 Launch.classLoader.registerTransformer(HUDCachingTransformer.class.getName());
             }
         }
