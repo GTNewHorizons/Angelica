@@ -1,0 +1,13 @@
+{
+  "ideaDirPath": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea",
+  "modulesMap": {
+    "Angelica": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.iml",
+    "Angelica:mcLauncher": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.mcLauncher.iml",
+    "Angelica:patchedMc": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.patchedMc.iml",
+    "Angelica:test": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.test.iml",
+    "Angelica:injectedTags": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.injectedTags.iml",
+    "Angelica:main": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/GTNewHorizons.Angelica.main.iml",
+    "Angelica:api": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.api.iml",
+    "Angelica:ideVirtualMain": "/mnt/games/Minecraft/Repos/GTNewHorizons/Angelica/.idea/modules/Angelica.ideVirtualMain.iml"
+  }
+}
