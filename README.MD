@@ -30,14 +30,14 @@
 * RPLE - Not currently planned (Looking for volunteers)
 
 # Permanent Incompatibilities
-* Optifine [Disabled, won't fix]
-* Fastcraft [Disable, won't fix]
-* BetterFPS [Won't fix]
+* OptiFine [Disabled, won't fix]
+* FastCraft [Disabled, won't fix]
+* BetterFPS [Disabled, won't fix]
 * LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
 * Hodgepodge 2.4.3 and below - [Use 2.4.4 or above](https://github.com/GTNewHorizons/Hodgepodge/releases)
 * CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
-* Neodymium - Untested, but unlikely to be compatible.  (Chunk Meshing is definitely incompatible, other features might work depending on config)
+* Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
 
 # Credits
 * ShadersMod
