@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.transform.BlockTransformer;
-import com.gtnewhorizons.angelica.transform.HUDCachingTransformer;
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -114,9 +113,6 @@ public class MixinCompatHackTweaker implements ITweaker {
             }
             if(AngelicaConfig.enableSodium) {
                 Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
-            }
-            if (AngelicaConfig.enableHudCaching && AngelicaConfig.enableHudCachingEventTransformer){
-                Launch.classLoader.registerTransformer(HUDCachingTransformer.class.getName());
             }
         }
 
