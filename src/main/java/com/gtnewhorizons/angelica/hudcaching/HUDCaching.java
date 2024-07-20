@@ -2,7 +2,9 @@ package com.gtnewhorizons.angelica.hudcaching;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
@@ -244,13 +246,18 @@ public class HUDCaching {
     }
 
     public static class Hooks {
-        public static boolean shouldReturnEarly(String clazz, String method){
-            if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
+        static final Set<String> ReturnEarlyMethods = ImmutableSet.of(
+            "thaumcraft.client.lib.RenderEventHandler#renderOverlay"
+        );
+
+        public static boolean shouldReturnEarly(String signature){
+            if (signature == null || !OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
                 return false;
             }
 
-            if (clazz.equals("thaumcraft.client.lib.RenderEventHandler") && method.equals("renderOverlay"))
+            if (ReturnEarlyMethods.contains(signature)){
                 return renderingCacheOverride;
+            }
 
             return false;
         }

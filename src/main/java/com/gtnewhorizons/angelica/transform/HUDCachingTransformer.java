@@ -50,9 +50,8 @@ public class HUDCachingTransformer implements IClassTransformer {
                             AngelicaTweaker.LOGGER.info("Injecting HUDCaching Conditional Return: " + transformedName + "#" + method.name);
                             final InsnList list = new InsnList();
                             LabelNode exitLabel = new LabelNode();
-                            list.add(new LdcInsnNode(transformedName));
-                            list.add(new LdcInsnNode(method.name));
-                            list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "(Ljava/lang/String;Ljava/lang/String;)Z", false));
+                            list.add(new LdcInsnNode(transformedName + "#" + method.name));
+                            list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "(Ljava/lang/String;)Z", false));
                             list.add(new JumpInsnNode(Opcodes.IFEQ, exitLabel));
                             list.add(new InsnNode(Opcodes.RETURN));
                             method.instructions.insert(exitLabel); // label will be after the list
