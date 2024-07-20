@@ -53,7 +53,12 @@ public class HUDCachingTransformer implements IClassTransformer {
                             list.add(new LdcInsnNode(transformedName + "#" + method.name));
                             list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "(Ljava/lang/String;)Z", false));
                             list.add(new JumpInsnNode(Opcodes.IFEQ, exitLabel));
-                            list.add(new InsnNode(Opcodes.RETURN));
+                            if (method.desc.endsWith("Z") || method.desc.endsWith("I")){
+                                list.add(new InsnNode(Opcodes.ICONST_0));
+                                list.add(new InsnNode(Opcodes.IRETURN));
+                            }else {
+                                list.add(new InsnNode(Opcodes.RETURN));
+                            }
                             method.instructions.insert(exitLabel); // label will be after the list
                             method.instructions.insert(list);
 
