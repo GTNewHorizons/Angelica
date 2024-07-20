@@ -78,6 +78,8 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
 
+    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.6.1:dev")
+
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.0:dev") { transitive = false }
     compileOnly(rfg.deobf('maven.modrinth:backhand:1.4.1')) { transitive = false }
 
