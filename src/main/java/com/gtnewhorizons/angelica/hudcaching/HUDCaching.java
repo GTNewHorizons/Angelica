@@ -242,5 +242,10 @@ public class HUDCaching {
             Renderer.INSTANCE.angelicaOverride = isEnabled;
         }
     }
+    public static boolean shouldReturnEarly(String clazz, String method){
+        if (clazz.equals("thaumcraft.client.lib.RenderEventHandler") && method.equals("renderOverlay"))
+            return renderingCacheOverride;
 
+        return false;
+    }
 }
