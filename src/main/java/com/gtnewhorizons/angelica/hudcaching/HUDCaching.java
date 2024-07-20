@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
+import com.kentington.thaumichorizons.common.ThaumicHorizons;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import net.dries007.holoInventory.client.Renderer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -168,12 +169,17 @@ public class HUDCaching {
         	if (renderCrosshairsCaptured) {
         		guiForge.callRenderCrosshairs(width, height);
         	}
-            if (ModStatus.isThaumcraftLoaded){
+            if (ModStatus.isThaumcraftLoaded || ModStatus.isThaumicHorizonsLoaded){
                 ((RenderGameOverlayEventAccessor) fakeTextEvent).setPartialTicks(partialTicks);
                 ((RenderGameOverlayEventAccessor) fakeTextEvent).setResolution(resolution);
                 ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseX(mouseX);
                 ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseY(mouseY);
-                Thaumcraft.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+                if (ModStatus.isThaumcraftLoaded){
+                    Thaumcraft.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+                }
+                if (ModStatus.isThaumicHorizonsLoaded){
+                    ThaumicHorizons.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+                }
             }
         } else {
             if (renderHelmetCaptured)
