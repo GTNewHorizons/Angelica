@@ -6,16 +6,17 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.io.FileUtils;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.InsnNode;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.lib.ClassReader;
+import org.spongepowered.asm.lib.ClassWriter;
+import org.spongepowered.asm.lib.Opcodes;
+import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.InsnList;
+import org.spongepowered.asm.lib.tree.InsnNode;
+import org.spongepowered.asm.lib.tree.JumpInsnNode;
+import org.spongepowered.asm.lib.tree.LabelNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.transformers.MixinClassWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class HUDCachingTransformer implements IClassTransformer {
+public class HUDCachingTransformer implements IClassTransformer, Opcodes {
     static final String HUDCaching = "com/gtnewhorizons/angelica/hudcaching/HUDCaching$HUDCachingHooks";
     private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
 
@@ -50,20 +51,20 @@ public class HUDCachingTransformer implements IClassTransformer {
                     InsnList list = new InsnList();
                     LabelNode exitLabel = new LabelNode();
                     AngelicaTweaker.LOGGER.info("Injecting HUDCaching Conditional Return: " + transformedName + "#" + method.name);
-                    list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "()Z", false));
-                    list.add(new JumpInsnNode(Opcodes.IFEQ, exitLabel));
+                    list.add(new MethodInsnNode(INVOKESTATIC, HUDCaching, "shouldReturnEarly", "()Z", false));
+                    list.add(new JumpInsnNode(IFEQ, exitLabel));
                     if (method.desc.endsWith("Z") || method.desc.endsWith("I")) {
-                        list.add(new InsnNode(Opcodes.ICONST_0));
-                        list.add(new InsnNode(Opcodes.IRETURN));
+                        list.add(new InsnNode(ICONST_0));
+                        list.add(new InsnNode(IRETURN));
                     } else {
-                        list.add(new InsnNode(Opcodes.RETURN));
+                        list.add(new InsnNode(RETURN));
                     }
                     list.add(exitLabel);
                     method.instructions.insert(list);
                 }
             }
 
-            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+            MixinClassWriter cw = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
             saveTransformedClass(bytes, transformedName);
