@@ -251,10 +251,6 @@ public class HUDCaching {
 
     public static class HUDCachingHooks {
         public static boolean shouldReturnEarly(){
-            if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
-                return false;
-            }
-
             return renderingCacheOverride;
         }
     }
