@@ -72,6 +72,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableHudCaching;
+    @Config.Comment("Inject a conditional early return into all RenderGameOverlayEvent receivers; Requires enableHudCaching")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableHudCachingEventTransformer;
 
     @Config.Comment("The amount of frames to wait before updating the HUD elements. [Experimental]")
     @Config.DefaultInt(20)

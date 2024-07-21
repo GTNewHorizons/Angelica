@@ -249,4 +249,9 @@ public class HUDCaching {
         }
     }
 
+    public static class HUDCachingHooks {
+        public static boolean shouldReturnEarly(){
+            return renderingCacheOverride;
+        }
+    }
 }
