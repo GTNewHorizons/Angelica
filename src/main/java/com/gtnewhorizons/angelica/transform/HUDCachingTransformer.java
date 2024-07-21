@@ -21,6 +21,7 @@ public class HUDCachingTransformer implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
+        if (basicClass == null) return null;
 
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
@@ -28,6 +29,7 @@ public class HUDCachingTransformer implements IClassTransformer {
 
         final boolean changed = transformClassNode(transformedName, cn);
         if (changed) {
+            //MixinClassWriter mcw = new MixinClassWriter(ClassWriter.COMPUTE_FRAMES);
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
             cn.accept(cw);
             return cw.toByteArray();
