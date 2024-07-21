@@ -83,7 +83,7 @@ public class HUDCachingTransformer implements IClassTransformer, Opcodes {
             return;
         }
         if (outputDir == null) {
-            outputDir = new File(Launch.minecraftHome, "HUD_CACHING");
+            outputDir = new File(Launch.minecraftHome, "ASM_HUD_CACHING");
             try {
                 FileUtils.deleteDirectory(outputDir);
             } catch (IOException ignored) {}
