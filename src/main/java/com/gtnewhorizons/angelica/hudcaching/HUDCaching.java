@@ -251,21 +251,13 @@ public class HUDCaching {
         }
     }
 
-    public static class Hooks {
-        static final Set<String> ReturnEarlyMethods = ImmutableSet.of(
-            "thaumcraft.client.lib.RenderEventHandler#renderOverlay"
-        );
-
-        public static boolean shouldReturnEarly(String signature){
-            if (signature == null || !OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
+    public static class HUDCachingHooks {
+        public static boolean shouldReturnEarly(){
+            if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null){
                 return false;
             }
 
-            if (ReturnEarlyMethods.contains(signature)){
-                return renderingCacheOverride;
-            }
-
-            return false;
+            return renderingCacheOverride;
         }
     }
 }

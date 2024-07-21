@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
+import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
@@ -11,13 +12,17 @@ import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import java.util.Set;
+
 
 public class HUDCachingTransformer implements IClassTransformer {
-    private static final String HUDCaching = "com/gtnewhorizons/angelica/hudcaching/HUDCaching$Hooks";
+    static final String HUDCaching = "com/gtnewhorizons/angelica/hudcaching/HUDCaching$HUDCachingHooks";
+    static final Set<String> ReturnEarlyMethods = ImmutableSet.of(
+        "thaumcraft.client.lib.RenderEventHandler#renderOverlay"
+    );
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
@@ -29,7 +34,6 @@ public class HUDCachingTransformer implements IClassTransformer {
 
         final boolean changed = transformClassNode(transformedName, cn);
         if (changed) {
-            //MixinClassWriter mcw = new MixinClassWriter(ClassWriter.COMPUTE_FRAMES);
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
             cn.accept(cw);
             return cw.toByteArray();
@@ -37,8 +41,7 @@ public class HUDCachingTransformer implements IClassTransformer {
         return basicClass;
     }
 
-    public boolean transformClassNode(String transformedName, ClassNode cn)
-    {
+    public boolean transformClassNode(String transformedName, ClassNode cn) {
         if (cn == null) {
             return false;
         }
@@ -49,23 +52,25 @@ public class HUDCachingTransformer implements IClassTransformer {
                 for (AnnotationNode anno : method.visibleAnnotations) {
                     if (anno.desc.equals("Lcpw/mods/fml/common/eventhandler/SubscribeEvent;")) {
                         if (method.desc.startsWith("(Lnet/minecraftforge/client/event/RenderGameOverlayEvent")) { // no ending to capture base and subclasses
-                            AngelicaTweaker.LOGGER.info("Injecting HUDCaching Conditional Return: " + transformedName + "#" + method.name);
-                            final InsnList list = new InsnList();
-                            LabelNode exitLabel = new LabelNode();
-                            list.add(new LdcInsnNode(transformedName + "#" + method.name));
-                            list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "(Ljava/lang/String;)Z", false));
-                            list.add(new JumpInsnNode(Opcodes.IFEQ, exitLabel));
-                            if (method.desc.endsWith("Z") || method.desc.endsWith("I")){
-                                list.add(new InsnNode(Opcodes.ICONST_0));
-                                list.add(new InsnNode(Opcodes.IRETURN));
-                            }else {
-                                list.add(new InsnNode(Opcodes.RETURN));
-                            }
-                            method.instructions.insert(exitLabel); // label will be after the list
-                            method.instructions.insert(list);
+                            String methodSig = transformedName + "#" + method.name;
+                            if (ReturnEarlyMethods.contains(methodSig)) {
+                                final InsnList list = new InsnList();
+                                LabelNode exitLabel = new LabelNode();
+                                AngelicaTweaker.LOGGER.info("Injecting HUDCaching Conditional Return: " + methodSig);
+                                list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HUDCaching, "shouldReturnEarly", "()Z", false));
+                                list.add(new JumpInsnNode(Opcodes.IFEQ, exitLabel));
+                                if (method.desc.endsWith("Z") || method.desc.endsWith("I")) {
+                                    list.add(new InsnNode(Opcodes.ICONST_0));
+                                    list.add(new InsnNode(Opcodes.IRETURN));
+                                } else {
+                                    list.add(new InsnNode(Opcodes.RETURN));
+                                }
+                                list.add(exitLabel);
+                                method.instructions.insert(list);
 
-                            changed = true;
-                            break;
+                                changed = true;
+                            }
+                            break; // annotation loop
                         }
                     }
                 }
