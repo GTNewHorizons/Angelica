@@ -56,8 +56,11 @@ public class HUDCachingTransformer implements IClassTransformer, Opcodes {
                     if (method.desc.endsWith("Z") || method.desc.endsWith("I")) {
                         list.add(new InsnNode(ICONST_0));
                         list.add(new InsnNode(IRETURN));
-                    } else {
+                    } else if (method.desc.endsWith("V")) {
                         list.add(new InsnNode(RETURN));
+                    } else {
+                        AngelicaTweaker.LOGGER.warn("HUDCaching Conditional Return - Unknown return type: " + transformedName + "#" + method.name + ":" + method.desc);
+                        return basicClass;
                     }
                     list.add(exitLabel);
                     method.instructions.insert(list);
@@ -80,7 +83,7 @@ public class HUDCachingTransformer implements IClassTransformer, Opcodes {
             return;
         }
         if (outputDir == null) {
-            outputDir = new File(Launch.minecraftHome, "ASM_REDIRECTOR");
+            outputDir = new File(Launch.minecraftHome, "HUD_CACHING");
             try {
                 FileUtils.deleteDirectory(outputDir);
             } catch (IOException ignored) {}
