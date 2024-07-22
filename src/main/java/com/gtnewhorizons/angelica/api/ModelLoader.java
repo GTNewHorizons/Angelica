@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.api;
 
+import com.google.common.annotations.Beta;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
@@ -28,6 +29,7 @@ import java.util.Map;
  *</ul>
  * <p>As for icons, register them in {@link Block#registerBlockIcons}. Whatever gets them in the block texture atlas.
  */
+@Beta
 public class ModelLoader {
 
     private static final Gson GSON = new GsonBuilder()

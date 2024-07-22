@@ -1,11 +1,13 @@
 package com.gtnewhorizons.angelica.api;
 
+import com.google.common.annotations.Beta;
 import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 
 import static java.lang.Math.toRadians;
 
+@Beta
 public class Variant {
 
     @Getter
