@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizons.angelica.api.*;
+import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.ModelLoader;
+import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.api.Variant;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.models.json.ModelLocation;
 import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
