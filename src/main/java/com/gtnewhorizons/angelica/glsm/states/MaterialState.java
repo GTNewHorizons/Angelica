@@ -35,7 +35,7 @@ public class MaterialState implements ISettableState<MaterialState> {
         specular = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
         emission = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
         shininess = 0.0F;
-        colorIndexes = new Vector3f();
+        colorIndexes = new Vector3f(0.0F, 1.0F, 1.0F);
     }
 
     public void setAmbient(FloatBuffer newBuffer) {

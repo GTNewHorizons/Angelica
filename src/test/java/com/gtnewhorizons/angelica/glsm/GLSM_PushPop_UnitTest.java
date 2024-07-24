@@ -257,7 +257,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         bits.forEach(bit -> {
             verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
             if(bit.initial()) {
