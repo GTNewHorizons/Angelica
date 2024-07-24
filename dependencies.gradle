@@ -57,7 +57,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.22")
 
     // Use modern models+textures to inject QuadProviders
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:banana:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.7.0:dev')
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:24.0.1')
