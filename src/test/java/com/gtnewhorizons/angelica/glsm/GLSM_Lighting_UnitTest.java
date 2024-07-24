@@ -198,7 +198,32 @@ public class GLSM_Lighting_UnitTest {
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true);
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
+    }
 
+    @Test
+    void testColorMaterial() {
+        verifyState(GL11.GL_COLOR_MATERIAL, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
+        verifyState(GL11.GL_COLOR_MATERIAL, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_COLOR_MATERIAL, false);
+
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT_AND_DIFFUSE);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_SPECULAR);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_SPECULAR);
+        GLStateManager.glColorMaterial(GL11.GL_BACK, GL11.GL_DIFFUSE);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_DIFFUSE);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
     }
 
     static void newf4b(float x, float y, float z, float w) {
