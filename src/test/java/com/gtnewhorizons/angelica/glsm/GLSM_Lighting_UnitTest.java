@@ -12,6 +12,7 @@ import java.nio.FloatBuffer;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyMaterialState;
 
 @ExtendWith(AngelicaExtension.class)
 public class GLSM_Lighting_UnitTest {
@@ -224,6 +225,11 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+    }
+
+    @Test
+    void testMaterial() {
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
     }
 
     static void newf4b(float x, float y, float z, float w) {
