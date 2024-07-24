@@ -337,8 +337,8 @@ class GLSM_PushPop_UnitTest {
 
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT, "Color Material Face");
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT, "Color Material Parameter");
-        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f, "Light Model Local Viewer");
-        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f, "Light Model Two Side");
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, true, "Light Model Local Viewer");
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true, "Light Model Two Side");
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Model Ambient");
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR, "Light Model Color Control");
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_POINT_5, "Light Ambient");
@@ -361,8 +361,8 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK, "Color Material Face - Reset");
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE, "Color Material Parameter - Reset");
-        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 0f, "Light Model Local Viewer - Reset");
-        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, 0f, "Light Model Two Side - Reset");
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false, "Light Model Local Viewer - Reset");
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false, "Light Model Two Side - Reset");
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, FLOAT_ARRAY_MODEL_AMBIENT_DEFAULT, "Light Model Ambient - Reset");
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR, "Light Model Color Control - Reset");
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, FLOAT_ARRAY_4_0001, "Light Ambient - Reset");
