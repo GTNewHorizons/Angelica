@@ -1,64 +1,34 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
 import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.models.json.JsonModel;
-import com.gtnewhorizons.angelica.models.json.Loader;
-import com.gtnewhorizons.angelica.models.json.Variant;
-import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
+import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
+import com.gtnewhorizons.angelica.utils.AssetLoader;
+import lombok.Getter;
+import lombok.Setter;
+import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Random;
-import java.util.function.Supplier;
+import static com.gtnewhorizons.angelica.models.VanillaModels.LECTERN;
 
-public class BlockTest extends Block implements QuadProvider {
+public class BlockTest extends Block implements ModeledBlock {
 
-    public static final Variant[] modelId = {
-        new Variant(
-            new ResourceLocation("blocks/lectern"),
-            0,
-            0,
-            false
-        ),
-        new Variant(
-            new ResourceLocation("blocks/lectern"),
-            180,
-            0,
-            false
-        ),
-        new Variant(
-            new ResourceLocation("blocks/lectern"),
-            90,
-            0,
-            false
-        ),
-        new Variant(
-            new ResourceLocation("blocks/lectern"),
-            270,
-            0,
-            false
-        ),
-    };
-    private static final List<QuadView> EMPTY = ObjectImmutableList.of();
-    private static final JsonModel[] model = new JsonModel[4];
+    @Getter
+    @Setter
+    private QuadProvider model;
 
     public BlockTest() {
 
         super(Material.rock);
-    }
-
-    public static void loadModel() {
-        for (int i = 0; i < 4; ++i)
-            model[i] = Loader.getModel(modelId[i]);
+        this.setBlockTextureName("missingno");
+        this.setModel((world, pos, block, meta, dir, random, color, quadPool) -> {
+            if (meta < 2 || meta > 5) meta = 2;
+            return LECTERN.models[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
+        });
     }
 
     @Override
@@ -68,21 +38,9 @@ public class BlockTest extends Block implements QuadProvider {
 
     @Override
     public void registerBlockIcons(IIconRegister reg) {
-
-        reg.registerIcon("angelica:test_block");
-        reg.registerIcon("lectern_base");
-        reg.registerIcon("lectern_front");
-        reg.registerIcon("lectern_sides");
-        reg.registerIcon("lectern_top");
-        reg.registerIcon("oak_planks");
-    }
-
-    @Override
-    public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
-
-        if (meta < 2 || meta > 5) meta = 2;
-
-        return (model[meta - 2] != null) ? model[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool) : EMPTY;
+        for (String s : AssetLoader.testTexs) {
+            reg.registerIcon(s);
+        }
     }
 
     /**
@@ -92,7 +50,7 @@ public class BlockTest extends Block implements QuadProvider {
     public int onBlockPlaced(@NotNull World worldIn, int x, int y, int z, int side, float subX, float subY, float subZ, int meta) {
 
         // Face NORTH if placed up or down
-        final ForgeDirection s = ForgeDirection.values()[side];
+        final ForgeDirection s = DirectionUtil.ALL_DIRECTIONS[side];
         if (s == ForgeDirection.UP || s == ForgeDirection.DOWN)
             return 2;
 

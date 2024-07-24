@@ -533,16 +533,14 @@ public enum Mixins {
     ),
     //End from NotFine
 
-    NOVIS_OCULIS(new Builder("Non-Tessellator Quad provider")
+    QPR(new Builder("Adds a QuadProvider field to blocks without populating it")
         .setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.injectQPRendering)
+        .setApplyIf(() -> true)
         .addTargetedMod(TargetedMod.VANILLA)
         .addMixinClasses(
-            "angelica.models.MixinBlockStone",
-            "angelica.models.MixinBlockAir",
-            "angelica.models.MixinBlockWorkbench",
-            "angelica.models.MixinBlockLeaves")),
+            "angelica.models.MixinBlock",
+            "angelica.models.MixinBlockOldLeaf")),
 
     ;
 

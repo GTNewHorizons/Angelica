@@ -1,11 +1,13 @@
-package com.gtnewhorizons.angelica.models.json;
+package com.gtnewhorizons.angelica.api;
 
+import com.google.common.annotations.Beta;
 import lombok.Getter;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 
 import static java.lang.Math.toRadians;
 
+@Beta
 public class Variant {
 
     @Getter
@@ -21,9 +23,12 @@ public class Variant {
         this.uvLock = uvLock;
     }
 
-    Matrix4f getAffineMatrix() {
+    public Matrix4f getAffineMatrix() {
 
         return new Matrix4f()
-            .translation(-.5f, -.5f, -.5f).rotateLocalY(x).rotateLocalX(y).translateLocal(.5f, .5f, .5f);
+            .translation(-.5f, -.5f, -.5f)
+            .rotateLocalY(x)
+            .rotateLocalX(y)
+            .translateLocal(.5f, .5f, .5f);
     }
 }

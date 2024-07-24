@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -14,19 +15,19 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class CubeModel implements QuadProvider {
+public class DynamicCubeModel implements QuadProvider {
 
     /*
     * By the power of ~~theft~~ inspiration, this class is wayyy simpler.
     * It's also a basic example of dynamic model building.
     */
 
-    public static final ThreadLocal<CubeModel> INSTANCE = ThreadLocal.withInitial(CubeModel::new);
+    public static final ThreadLocal<DynamicCubeModel> INSTANCE = ThreadLocal.withInitial(DynamicCubeModel::new);
     private final NdQuadBuilder builder = new NdQuadBuilder();
     private static final List<QuadView> EMPTY = ObjectImmutableList.of();
     private final List<QuadView> ONE = new ObjectArrayList<>(1);
 
-    public CubeModel() {
+    public DynamicCubeModel() {
 
         this.ONE.add(null);
     }
@@ -44,9 +45,9 @@ public class CubeModel implements QuadProvider {
 
         this.builder.square(dir, 0, 0, 1, 1, 0);
         final IIcon tex = block.getIcon(dir.ordinal(), meta);
-        this.builder.spriteBake(tex, NdQuadBuilder.BAKE_LOCK_UV);
+        this.builder.spriteBake(tex, QuadBuilder.BAKE_LOCK_UV);
 
-        this.builder.color(color, color, color, color);
+        this.builder.setColors(color);
 
         ONE.set(0, this.builder.build(quadPool.get()));
         return ONE;

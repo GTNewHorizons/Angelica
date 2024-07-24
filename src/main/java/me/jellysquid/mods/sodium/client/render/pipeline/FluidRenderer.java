@@ -45,6 +45,7 @@ public class FluidRenderer {
     private final QuadLightData quadLightData = new QuadLightData();
     private boolean useSeparateAo;
     private final int[] quadColors = new int[4];
+    private final int[] biomeColors = new int[4];
     private final TextureAtlasSprite missingTex = Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite("minecraft:missing");
 
     public FluidRenderer(LightPipelineProvider lpp) {
@@ -359,16 +360,13 @@ public class FluidRenderer {
         QuadLightData light = this.quadLightData;
         lighter.calculate(quad, pos, light, null, dir, false);
 
-        int[] biomeColors = null;
-
         if (colorized) {
-            biomeColors = new int[4];
             int color = slice.getBlock(pos.x,pos.y,pos.z).colorMultiplier(slice,pos.x,pos.y,pos.z);
-            Arrays.fill(biomeColors,ColorARGB.toABGR(color));
+            Arrays.fill(this.biomeColors, ColorARGB.toABGR(color));
         }
 
         for (int i = 0; i < 4; i++) {
-            int color = biomeColors != null ? biomeColors[i] : 0xFFFFFFFF;
+            int color = colorized ? biomeColors[i] : 0xFFFFFFFF;
             final float ao = light.br[i] * brightness;
             if (useSeparateAo) {
                 color &= 0x00FFFFFF;
