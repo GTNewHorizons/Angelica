@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
+import com.kentington.thaumichorizons.common.ThaumicHorizons;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import net.dries007.holoInventory.client.Renderer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -20,7 +22,6 @@ import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameForg
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -32,6 +33,7 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
+import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
@@ -43,6 +45,7 @@ public class HUDCaching {
     private static final Minecraft mc = Minecraft.getMinecraft();
     public static Framebuffer framebuffer;
     private static boolean dirty = true;
+    private static long nextHudRefresh;
 
     public static boolean renderingCacheOverride;
 
@@ -59,7 +62,8 @@ public class HUDCaching {
     // Crosshairs need to be blended with the scene
     public static boolean renderCrosshairsCaptured;
 
-    private static RenderGameOverlayEvent fakeHoloInventoryEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
+    private final static RenderGameOverlayEvent fakeTextEvent = new RenderGameOverlayEvent.Text(new RenderGameOverlayEvent(0, null, 0, 0), null, null);
+    private final static RenderGameOverlayEvent fakePreEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static final HUDCaching INSTANCE = new HUDCaching();
 
@@ -80,21 +84,6 @@ public class HUDCaching {
         ClientRegistry.registerKeyBinding(toggle);
     }
 
-    //    @SubscribeEvent
-//    public void onFrame(RenderGameOverlayEvent.Post event) {
-//        if (event.type == RenderGameOverlayEvent.ElementType.TEXT) {
-//            final long currentTimeMillis = System.currentTimeMillis();
-//            updateTimeList.removeIf(time -> currentTimeMillis - time > 1000L);
-//            String text = EnumChatFormatting.GREEN + "HUD Fps : " + updateTimeList.size();
-//            mc.fontRenderer.drawStringWithShadow(
-//                    text,
-//                    event.resolution.getScaledWidth() / 4,
-//                    event.resolution.getScaledHeight() / 4,
-//                    0xFFFFFF);
-//            updateTimeList.add(currentTimeMillis);
-//        }
-//    }
-
     @SubscribeEvent
     public void onKeypress(InputEvent.KeyInputEvent event) {
         if (toggle != null && toggle.isPressed()) {
@@ -105,13 +94,6 @@ public class HUDCaching {
     }
 
     /* TODO END REMOVE DEBUG STUFF */
-
-    @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            dirty = true;
-        }
-    }
 
     // highest so it runs before the GLSM load event
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -125,7 +107,6 @@ public class HUDCaching {
 
     @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
-
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
@@ -136,8 +117,13 @@ public class HUDCaching {
             return;
         }
 
+        if (System.currentTimeMillis() > nextHudRefresh) {
+            dirty = true;
+        }
+
         if (dirty) {
             dirty = false;
+            nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
             resetFramebuffer(mc.displayWidth, mc.displayHeight);
             framebuffer.bindFramebuffer(false);
             renderingCacheOverride = true;
@@ -171,8 +157,8 @@ public class HUDCaching {
                 if (ModStatus.isHoloInventoryLoaded){
                     Renderer.INSTANCE.angelicaOverride = false;
                     // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
-                    ((RenderGameOverlayEventAccessor) fakeHoloInventoryEvent).setPartialTicks(partialTicks);
-                    Renderer.INSTANCE.renderEvent(fakeHoloInventoryEvent);
+                    ((RenderGameOverlayEventAccessor) fakePreEvent).setPartialTicks(partialTicks);
+                    Renderer.INSTANCE.renderEvent(fakePreEvent);
                 }
         	}
         	if (renderPortalCapturedTicks > 0) {
@@ -181,7 +167,18 @@ public class HUDCaching {
         	if (renderCrosshairsCaptured) {
         		guiForge.callRenderCrosshairs(width, height);
         	}
-
+            if (ModStatus.isThaumcraftLoaded || ModStatus.isThaumicHorizonsLoaded){
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setPartialTicks(partialTicks);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setResolution(resolution);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseX(mouseX);
+                ((RenderGameOverlayEventAccessor) fakeTextEvent).setMouseY(mouseY);
+                if (ModStatus.isThaumcraftLoaded){
+                    Thaumcraft.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+                }
+                if (ModStatus.isThaumicHorizonsLoaded){
+                    ThaumicHorizons.instance.renderEventHandler.renderOverlay(fakeTextEvent);
+                }
+            }
         } else {
             if (renderHelmetCaptured)
             {
@@ -252,4 +249,9 @@ public class HUDCaching {
         }
     }
 
+    public static class HUDCachingHooks {
+        public static boolean shouldReturnEarly(){
+            return renderingCacheOverride;
+        }
+    }
 }

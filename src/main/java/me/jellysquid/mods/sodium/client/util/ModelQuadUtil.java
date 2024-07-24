@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.util;
 
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraftforge.common.util.ForgeDirection;
 
 /**
@@ -30,11 +29,11 @@ public class ModelQuadUtil {
     public static final int VERTEX_SIZE_BYTES = VERTEX_SIZE * 4;
 
     // Cached array of normals for every facing to avoid expensive computation
-    static final int[] NORMALS = new int[DirectionUtil.ALL_DIRECTIONS.length];
+    static final int[] NORMALS = new int[ForgeDirection.VALID_DIRECTIONS.length];
 
     static {
         for (int i = 0; i < NORMALS.length; i++) {
-            final ForgeDirection dir = DirectionUtil.ALL_DIRECTIONS[i];
+            final ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
             NORMALS[i] = Norm3b.pack(dir.offsetX, dir.offsetY, dir.offsetZ);
         }
     }

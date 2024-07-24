@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntPriorityQueue;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.BitSet;
@@ -17,7 +16,7 @@ public class ChunkOcclusionDataBuilder {
     private static final int STEP_X = (int)Math.pow(16.0, 0.0);
     private static final int STEP_Z = (int)Math.pow(16.0, 1.0);
     private static final int STEP_Y = (int)Math.pow(16.0, 2.0);
-    private static final ForgeDirection[] DIRECTIONS = DirectionUtil.ALL_DIRECTIONS;
+    private static final ForgeDirection[] DIRECTIONS = ForgeDirection.VALID_DIRECTIONS;
     private final BitSet closed = new BitSet(4096);
     private static final int[] EDGE_POINTS = new int[1352];
 

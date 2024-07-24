@@ -9,11 +9,10 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraft.util.MathHelper;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,7 +46,7 @@ public class ChunkGraphCuller implements ChunkCuller {
             ChunkGraphNode node = queue.getNode(i);
             short cullData = node.computeQueuePop();
 
-            for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+            for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
                 if (useOcclusionCulling && (cullData & (1 << dir.ordinal())) == 0) {
                     continue;
                 }
@@ -148,7 +147,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     }
 
     private void connectNeighborNodes(ChunkGraphNode node) {
-        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
             ChunkGraphNode adj = this.findAdjacentNode(node, dir);
 
             if (adj != null) {
@@ -160,7 +159,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     }
 
     private void disconnectNeighborNodes(ChunkGraphNode node) {
-        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
             ChunkGraphNode adj = node.getConnectedNode(dir);
 
             if (adj != null) {

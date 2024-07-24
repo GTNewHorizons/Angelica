@@ -7,10 +7,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import com.gtnewhorizons.angelica.api.QuadProvider;
 import com.gtnewhorizons.angelica.api.QuadView;
+import com.gtnewhorizons.angelica.api.Variant;
 import com.gtnewhorizons.angelica.compat.mojang.Axis;
-import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import com.gtnewhorizons.angelica.utils.DirUtil;
 import it.unimi.dsi.fastutil.Function;
@@ -18,6 +19,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectImmutableList;
 import lombok.Getter;
+import me.jellysquid.mods.sodium.client.model.quad.Quad;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
@@ -35,6 +37,8 @@ import java.util.Random;
 import java.util.function.Supplier;
 
 import static com.gtnewhorizons.angelica.utils.JsonUtil.*;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.ALL_DIRECTIONS;
 
 public class JsonModel implements QuadProvider {
@@ -52,7 +56,7 @@ public class JsonModel implements QuadProvider {
     private final Map<ForgeDirection, List<QuadView>> sidedQuadStore = new Object2ObjectOpenHashMap<>();
     private static final List<QuadView> EMPTY = ObjectImmutableList.of();
 
-    JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
+    public JsonModel(@Nullable ResourceLocation parentId, boolean useAO, Map<ModelDisplay.Position, ModelDisplay> display, Map<String, String> textures, List<ModelElement> elements) {
         this.parentId = parentId;
         this.useAO = useAO;
         this.display = display;
@@ -63,7 +67,7 @@ public class JsonModel implements QuadProvider {
     /**
      * Makes a shallow copy of og. This allows you to bake the same model multiple times with various transformations.
      */
-    JsonModel(JsonModel og) {
+    public JsonModel(JsonModel og) {
 
         this.parentId = og.parentId;
         this.parent = og.parent;
@@ -76,7 +80,6 @@ public class JsonModel implements QuadProvider {
     public void bake(Variant v) {
 
         final Matrix4f vRot = v.getAffineMatrix();
-
         final NdQuadBuilder builder = new NdQuadBuilder();
 
         // Append faces from each element
@@ -91,28 +94,40 @@ public class JsonModel implements QuadProvider {
 
             for (ModelElement.Face f : e.getFaces()) {
 
+                float x = Float.MAX_VALUE;
+                float y = Float.MAX_VALUE;
+                float z = Float.MAX_VALUE;
+                float X = Float.MIN_VALUE;
+                float Y = Float.MIN_VALUE;
+                float Z = Float.MIN_VALUE;
+
                 // Assign vertexes
                 for (int i = 0; i < 4; ++i) {
 
                     final Vector3f vert =
-                        rot.transformPosition(NdQuadBuilder.mapSideToVertex(from, to, i, f.getName()));
-                    vRot.transformPosition(vert);
+                        QuadBuilder.mapSideToVertex(from, to, i, f.getName()).mulPosition(rot).mulPosition(vRot);
                     builder.pos(i, vert.x, vert.y, vert.z);
+                    x = min(x, vert.x);
+                    y = min(y, vert.y);
+                    z = min(z, vert.z);
+                    X = max(X, vert.x);
+                    Y = max(Y, vert.y);
+                    Z = max(Z, vert.z);
                 }
 
                 // Set culling and nominal faces
-                builder.cullFace(f.getCullFace());
-                builder.nominalFace(f.getName());
+                builder.setCullFace();
 
                 // Set bake flags
                 int flags = switch(f.getRotation()) {
-                    case 90 -> NdQuadBuilder.BAKE_ROTATE_90;
-                    case 180 -> NdQuadBuilder.BAKE_ROTATE_180;
-                    case 270 -> NdQuadBuilder.BAKE_ROTATE_270;
-                    default -> NdQuadBuilder.BAKE_ROTATE_NONE;
+                    case 90 -> QuadBuilder.BAKE_ROTATE_90;
+                    case 180 -> QuadBuilder.BAKE_ROTATE_180;
+                    case 270 -> QuadBuilder.BAKE_ROTATE_270;
+                    default -> QuadBuilder.BAKE_ROTATE_NONE;
                 };
 
                 // Set UV
+                // TODO: UV locking
                 final Vector4f uv = f.getUv();
                 if (uv != null) {
 
@@ -123,15 +138,14 @@ public class JsonModel implements QuadProvider {
                 } else {
 
                     // Not sure if this is correct, but it seems to fix things
-                    flags |= NdQuadBuilder.BAKE_LOCK_UV;
+                    flags |= QuadBuilder.BAKE_LOCK_UV;
                 }
 
                 // Set the sprite
                 builder.spriteBake(this.textures.get(f.getTexture()), flags);
 
                 // Set the tint index
-                final int tint = f.getTintIndex();
-                builder.color(tint, tint, tint, tint);
+                builder.setColors(f.getTintIndex());
 
                 // Set AO
                 builder.mat.setAO(this.useAO);
@@ -139,7 +153,7 @@ public class JsonModel implements QuadProvider {
                 // Bake and add it
                 final QuadView q = builder.build(new Quad());
                 this.allQuadStore.add(q);
-                this.sidedQuadStore.computeIfAbsent(f.getCullFace(),
+                this.sidedQuadStore.computeIfAbsent(q.getCullFace(),
                     o -> new ObjectArrayList<>()).add(q);
             }
         }
@@ -207,7 +221,7 @@ public class JsonModel implements QuadProvider {
         }
     }
 
-    static class Deserializer implements JsonDeserializer<JsonModel> {
+    public static class Deserializer implements JsonDeserializer<JsonModel> {
 
         private Vector3f loadVec3(JsonObject in, String name) {
 
@@ -275,7 +289,15 @@ public class JsonModel implements QuadProvider {
 
                     // Trim leading octothorpes. They indicate a texture variable, but I don't actually care.
                     String s = e.getValue().getAsString();
-                    if (s.startsWith("#")) s = s.substring(1);
+                    if (s.startsWith("#")) {
+                        s = s.substring(1);
+                    } else if (s.startsWith("minecraft:")) {
+
+                        // Because of how we fetch textures from the atlas, minecraft textures need to have their domain
+                        // stripped
+                        s = s.substring(10);
+                    }
+
                     textures.put(e.getKey(), s);
                 }
             }
@@ -352,7 +374,14 @@ public class JsonModel implements QuadProvider {
             final JsonObject in = json.getAsJsonObject();
 
             final String parent = loadStr(in, "parent", "");
-            final ResourceLocation parentId = (parent.isEmpty()) ? null : new ResourceLocation(parent);
+            ResourceLocation parentId = null;
+            if (!parent.isEmpty()) {
+                if (parent.contains(":")) {
+                    parentId = new ModelLocation(parent.split(":")[0], parent.split(":")[1]);
+                } else {
+                    parentId = new ModelLocation(parent);
+                }
+            }
 
             final boolean useAO = loadBool(in, "ambientocclusion", true);
             final Map<ModelDisplay.Position, ModelDisplay> display = loadDisplay(in);

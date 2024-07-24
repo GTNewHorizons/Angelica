@@ -1,6 +1,5 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import com.gtnewhorizons.angelica.compat.toremove.OverlayTexture;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
@@ -52,7 +51,7 @@ public class GlyphVertexBufferWriterNio extends VertexBufferWriterNio implements
 
 	@Override
 	public void writeGlyph(float x, float y, float z, int color, float u, float v, int light) {
-		writeQuad(x, y, z, color, u, v, light, OverlayTexture.NO_OVERLAY, 0);
+		writeQuad(x, y, z, color, u, v, light, 0, 0);
 	}
 
 	private void endQuad(int normal) {

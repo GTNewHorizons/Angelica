@@ -26,6 +26,8 @@ public class ModStatus {
     public static boolean isHoloInventoryLoaded;
     public static boolean isBattlegearLoaded;
     public static boolean isBackhandLoaded;
+    public static boolean isThaumcraftLoaded;
+    public static boolean isThaumicHorizonsLoaded;
 
     public static void preInit(){
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
@@ -38,6 +40,8 @@ public class ModStatus {
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBattlegearLoaded = Loader.isModLoaded("battlegear2");
         isBackhandLoaded = Loader.isModLoaded("backhand");
+        isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
+        isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
 
         if (isHoloInventoryLoaded){
             isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")

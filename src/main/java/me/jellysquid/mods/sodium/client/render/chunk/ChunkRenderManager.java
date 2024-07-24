@@ -32,7 +32,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderListIterat
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
@@ -459,7 +458,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void connectNeighborColumns(ChunkRenderColumn<T> column) {
-        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
             ChunkRenderColumn<T> adj = this.getAdjacentColumn(column, dir);
 
             if (adj != null) {
@@ -471,7 +470,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void disconnectNeighborColumns(ChunkRenderColumn<T> column) {
-        for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
+        for (ForgeDirection dir : ForgeDirection.VALID_DIRECTIONS) {
             ChunkRenderColumn<T> adj = column.getAdjacentColumn(dir);
 
             if (adj != null) {

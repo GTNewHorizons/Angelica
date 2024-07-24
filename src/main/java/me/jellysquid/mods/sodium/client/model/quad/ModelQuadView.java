@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.quad;
 
+import com.gtnewhorizons.angelica.models.NdQuadBuilder;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -59,6 +60,14 @@ public interface ModelQuadView {
      * @return The color index of this quad.
      */
     int getColorIndex();
+
+    /**
+     * If not {@link ForgeDirection#UNKNOWN}, quad should not be rendered in-world if the
+     * opposite face of a neighbor block occludes it.
+     *
+     * @see NdQuadBuilder#cullFace(ForgeDirection)
+     */
+    ForgeDirection getCullFace();
 
     /**
      * This is the face used for vanilla lighting calculations and will be the block face

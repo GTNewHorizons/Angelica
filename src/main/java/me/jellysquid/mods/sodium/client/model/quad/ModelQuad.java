@@ -77,6 +77,12 @@ public class ModelQuad implements ModelQuadViewMutable {
         this.colorIdx = index;
     }
 
+    /**
+     * Doesn't do anything useful, but I'm not sure if it has to.
+     */
+    @Override
+    public void setCullFace(ForgeDirection f) {}
+
     @Override
     public int getLight(int idx) {
         return this.data[vertexOffset(idx) + LIGHT_INDEX];
@@ -93,11 +99,19 @@ public class ModelQuad implements ModelQuadViewMutable {
     }
 
     /**
-     * Doesn't do anything useful, but I'm not sure if it has to anyways.
+     * Doesn't do anything useful, but I'm not sure if it has to.
      */
     @Override
     public ForgeDirection getLightFace() {
         return ForgeDirection.UP;
+    }
+
+    /**
+     * Doesn't do anything useful, but I'm not sure if it has to.
+     */
+    @Override
+    public ForgeDirection getCullFace() {
+        return ForgeDirection.UNKNOWN;
     }
 
     @Override

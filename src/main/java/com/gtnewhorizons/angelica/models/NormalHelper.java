@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.models;
 
-import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
@@ -9,9 +8,6 @@ import org.joml.Vector3i;
 import static me.jellysquid.mods.sodium.common.util.DirectionUtil.STEP;
 
 public class NormalHelper {
-
-    private static final float PACK = 127.0f;
-    private static final float UNPACK = 1.0f / PACK;
 
     /**
      * Computes the face normal of the given quad and saves it in the provided non-null vector.
@@ -24,7 +20,7 @@ public class NormalHelper {
     public static void computeFaceNormal(@NotNull Vector3f saveTo, NdQuadBuilder q) {
         final ForgeDirection nominalFace = q.nominalFace();
 
-        if (nominalFace != null && GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
+        if (nominalFace != ForgeDirection.UNKNOWN && GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
             Vector3i vec = STEP[nominalFace.ordinal()];
             saveTo.set(vec.x, vec.y, vec.z);
             return;
@@ -63,23 +59,5 @@ public class NormalHelper {
         }
 
         saveTo.set(normX, normY, normZ);
-    }
-
-    /**
-     * Like {@link #packNormal(float, float, float, float)}, but without a {@code w} value.
-     */
-    public static int packNormal(float x, float y, float z) {
-        x = MathHelper.clamp_float(x, -1, 1);
-        y = MathHelper.clamp_float(y, -1, 1);
-        z = MathHelper.clamp_float(z, -1, 1);
-
-        return ((int) (x * PACK) & 0xFF) | (((int) (y * PACK) & 0xFF) << 8) | (((int) (z * PACK) & 0xFF) << 16);
-    }
-
-    /**
-     * Like {@link #packNormal(Vector3f, float)}, but without a {@code w} value.
-     */
-    public static int packNormal(Vector3f normal) {
-        return packNormal(normal.x, normal.y, normal.z);
     }
 }

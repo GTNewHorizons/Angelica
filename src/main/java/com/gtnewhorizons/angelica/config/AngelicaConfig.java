@@ -35,13 +35,11 @@ public class AngelicaConfig {
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
-    @Config.Ignore()
     public static boolean enableIris;
 
     @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
-    @Config.Ignore()
     public static boolean enableMCPatcherForgeFeatures;
 
     @Config.Comment("Replace some vanilla render paths with more optimized versions. Disable if you encounter mixin conflicts.")
@@ -70,10 +68,19 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean showSplashMemoryBar;
 
-    @Config.Comment("Renders the HUD elements once per tick and reuses the pixels to improve performance. [Experimental]")
+    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Experimental]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableHudCaching;
+    @Config.Comment("Inject a conditional early return into all RenderGameOverlayEvent receivers; Requires enableHudCaching")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableHudCachingEventTransformer;
+
+    @Config.Comment("The amount of frames to wait before updating the HUD elements. [Experimental]")
+    @Config.DefaultInt(20)
+    @Config.RangeInt(min = 1, max = 60)
+    public static int hudCachingFPS = 20;
 
     @Config.Comment("Batch drawScreen fonts [Experimental]")
     @Config.DefaultBoolean(true)
@@ -81,7 +88,7 @@ public class AngelicaConfig {
     public static boolean enableFontRenderer;
 
     @Config.Comment("Enable Dynamic Lights")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableDynamicLights;
 

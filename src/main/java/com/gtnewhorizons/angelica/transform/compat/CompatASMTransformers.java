@@ -13,7 +13,10 @@ public enum CompatASMTransformers {
 
     EXTRA_UTILITIES_ISBRH("RenderBlockColor Transformer", () -> AngelicaConfig.fixExtraUtilsSodiumCompat, Side.CLIENT,
         "com.gtnewhorizons.angelica.transform.compat.ExtraUtilsTransformer"
-    );
+    ),
+    HUD_CACHING("HUDCaching Early Return Transformer", () -> AngelicaConfig.enableHudCaching && AngelicaConfig.enableHudCachingEventTransformer, Side.CLIENT,
+        "com.gtnewhorizons.angelica.transform.HUDCachingTransformer")
+    ;
 
     private final Supplier<Boolean> applyIf;
     private final Side side;
