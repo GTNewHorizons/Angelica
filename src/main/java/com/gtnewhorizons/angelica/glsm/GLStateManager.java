@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.LightModelStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
@@ -94,13 +95,9 @@ public class GLStateManager {
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
-    protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack();
-    protected static final IntegerStateStack shadeModelState = new IntegerStateStack();
+    protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
+    protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
-    static {
-        activeTextureUnit.setValue(0); // GL_TEXTURE0
-        shadeModelState.setValue(GL11.GL_SMOOTH);
-    }
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
     @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
@@ -126,6 +123,11 @@ public class GLStateManager {
 
     @Getter protected static final BooleanStateStack[] lightStates = new BooleanStateStack[8];
     @Getter protected static final LightStateStack[] lightDataStates = new LightStateStack[8];
+    @Getter protected static final BooleanStateStack colorMaterial = new BooleanStateStack(GL11.GL_COLOR_MATERIAL);
+    @Getter protected static final IntegerStateStack colorMaterialFace = new IntegerStateStack(GL11.GL_FRONT_AND_BACK);
+    @Getter protected static final IntegerStateStack colorMaterialParameter = new IntegerStateStack(GL11.GL_AMBIENT_AND_DIFFUSE);
+    @Getter protected static final LightModelStateStack lightModel = new LightModelStateStack();
+
     static {
         for (int i = 0; i < lightStates.length; i ++) {
             lightStates[i] = new BooleanStateStack(GL11.GL_LIGHT0 + i);
@@ -402,6 +404,8 @@ public class GLStateManager {
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
             case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
+            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
 
             default -> GL11.glGetInteger(pname);
@@ -1544,20 +1548,44 @@ public class GLStateManager {
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {
-        GL11.glLightModel(pname, params);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
+            default -> GL11.glLightModel(pname, params);
+        }
     }
     public static void glLightModel(int pname, IntBuffer params) {
-        GL11.glLightModel(pname, params);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
+            case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(params);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
+            default -> GL11.glLightModel(pname, params);
+        }
     }
     public static void glLightModelf(int pname, float param) {
-        GL11.glLightModelf(pname, param);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
+            default -> GL11.glLightModelf(pname, param);
+        }
     }
     public static void glLightModeli(int pname, int param) {
-        GL11.glLightModeli(pname, param);
+        switch (pname) {
+            case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(param);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
+            default -> GL11.glLightModeli(pname, param);
+        }
     }
 
     public static void glColorMaterial(int face, int mode) {
-        GL11.glColorMaterial(face, mode);
+        if (shouldBypassCache() || (colorMaterialFace.getValue() != face || colorMaterialParameter.getValue() != mode)) {
+            colorMaterialFace.setValue(face);
+            colorMaterialParameter.setValue(mode);
+            GL11.glColorMaterial(face, mode);
+        }
     }
 
     public static void glDepthRange(double near, double far) {

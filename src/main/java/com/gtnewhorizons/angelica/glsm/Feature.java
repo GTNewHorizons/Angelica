@@ -77,7 +77,7 @@ public class Feature {
             // GL_AUTO_NORMAL flag
             , GLStateManager.blendMode // GL_BLEND flag
             // Enable bits for the user-definable clipping planes
-            // GL_COLOR_MATERIAL
+            , GLStateManager.colorMaterial // GL_COLOR_MATERIAL
             , GLStateManager.cullState // GL_CULL_FACE flag
             , GLStateManager.depthTest // GL_DEPTH_TEST flag
             // GL_DITHER flag
@@ -148,13 +148,11 @@ public class Feature {
             // GL_TEXTURE_COMPRESSION_HINT setting
         ));
         attribToFeatures.put(GL11.GL_LIGHTING_BIT, ImmutableSet.of(
-            // GL_COLOR_MATERIAL enable bit
-            // GL_COLOR_MATERIAL_FACE value
-            // Color material parameters that are tracking the current color
-            // Ambient scene color
-            // GL_LIGHT_MODEL_LOCAL_VIEWER value
-            // GL_LIGHT_MODEL_TWO_SIDE setting
-              GLStateManager.lightingState  // GL_LIGHTING enable bit
+            GLStateManager.colorMaterial // GL_COLOR_MATERIAL enable bit
+            , GLStateManager.colorMaterialFace // GL_COLOR_MATERIAL_FACE value
+            , GLStateManager.colorMaterialParameter // Color material parameters that are tracking the current color
+            , GLStateManager.lightModel // Ambient scene color, GL_LIGHT_MODEL_LOCAL_VIEWER, GL_LIGHT_MODEL_TWO_SIDE
+            , GLStateManager.lightingState  // GL_LIGHTING enable bit
             // Enable bit for each light
             , GLStateManager.lightStates[0] // GL_LIGHT0
             , GLStateManager.lightStates[1] // GL_LIGHT1

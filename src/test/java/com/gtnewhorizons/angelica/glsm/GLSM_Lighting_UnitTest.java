@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -151,6 +152,78 @@ public class GLSM_Lighting_UnitTest {
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
 
         GLStateManager.glPopAttrib();
+    }
+
+    @Test
+    void testLightModel() {
+        verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "GL_LIGHT_MODEL_AMBIENT initial state");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, f4b);
+        verifyState(GL11.GL_LIGHT_MODEL_AMBIENT,  new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "GL_LIGHT_MODEL_AMBIENT changed state");
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F});
+
+        verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        GLStateManager.glPopAttrib();
+        verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR);
+
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 0.8F);
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
+
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glLightModeli(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
+
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 0.8F);
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
+
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glLightModeli(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1);
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
+    }
+
+    @Test
+    void testColorMaterial() {
+        verifyState(GL11.GL_COLOR_MATERIAL, false);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
+        verifyState(GL11.GL_COLOR_MATERIAL, true);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_COLOR_MATERIAL, false);
+
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT_AND_DIFFUSE);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_SPECULAR);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_SPECULAR);
+        GLStateManager.glColorMaterial(GL11.GL_BACK, GL11.GL_DIFFUSE);
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_DIFFUSE);
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
+        verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
     }
 
     static void newf4b(float x, float y, float z, float w) {
