@@ -293,20 +293,15 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{0.0F}, "");
 
-//        FloatBuffer glFloatBuffer = BufferUtils.createFloatBuffer(16);
-//        glFloatBuffer.put(0.8F).put(0.6F).put(0.4F).put(0.2F).flip();
-//        GL11.glMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, glFloatBuffer);
-//        GL11.glGetMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, glFloatBuffer);
-//        Vector3f thing = new Vector3f(glFloatBuffer);
-//        System.out.println(thing.x);
-//        System.out.println(thing.y);
-//        System.out.println(thing.z);
-
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.0F);
         GLStateManager.glMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, f4b);
-        verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.4F, 0.6F}, "");
+        if (GLStateManager.isNVIDIA()) {
+            verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.4F, 0.6F}, "");
+        } else {
+            verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.6F, 0.4F}, "");
+        }
         GLStateManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
 

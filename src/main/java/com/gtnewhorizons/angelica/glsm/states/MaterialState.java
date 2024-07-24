@@ -120,7 +120,16 @@ public class MaterialState implements ISettableState<MaterialState> {
     public void setShininess(int val) { setShininess((float) val);}
 
     public void setColorIndexes(FloatBuffer newBuffer) {
-        vector3f.set(newBuffer);
+        // You are reading this correctly, nvidia drivers flip the y and z values in
+        // glMaterial specifically for GL_COLOR_INDEXES. Other drivers do not do this.
+        // This probably breaks things but who knows, GLSM is setup to track to what the
+        // driver is doing for it right now.
+        if (GLStateManager.isNVIDIA()) {
+            vector3f.set(newBuffer.get(0), newBuffer.get(2), newBuffer.get(1));
+        } else {
+            vector3f.set(newBuffer);
+        }
+
         if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
             GL11.glMaterial(face, GL11.GL_COLOR_INDEXES, newBuffer);
@@ -128,7 +137,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     }
 
     public void setColorIndexes(IntBuffer newBuffer) {
-        vector3i.set(newBuffer);
+        vector3i.set(newBuffer.get(0), newBuffer.get(2), newBuffer.get(1));
         vector3f.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
         if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
