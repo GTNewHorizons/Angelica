@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizons.angelica.common.BlockTest;
+import com.gtnewhorizons.angelica.api.ModelLoader;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -10,9 +10,9 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.models.VanillaModels;
-import com.gtnewhorizons.angelica.models.json.Loader;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.utils.AssetLoader;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -66,10 +66,7 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        if (AngelicaConfig.enableTestBlocks)
-            Loader.registerModels(BlockTest::loadModel, BlockTest.modelId);
-        if (AngelicaConfig.injectQPRendering)
-            Loader.registerModels(VanillaModels::loadModels, VanillaModels.stoneVariant);
+        AssetLoader.load();
     }
 
 
@@ -120,7 +117,7 @@ public class ClientProxy extends CommonProxy {
         glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
-        Loader.loadModels();
+        VanillaModels.init();
 
         if(ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
@@ -152,6 +149,9 @@ public class ClientProxy extends CommonProxy {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
+
+        Minecraft.getMinecraft().refreshResources();
+        ModelLoader.loadModels();
     }
 
     float lastIntegratedTickTime;
@@ -289,7 +289,7 @@ public class ClientProxy extends CommonProxy {
         }
 
         if (!baked) {
-            Loader.bakeModels();
+            ModelLoader.bakeModels();
             baked = true;
         }
     }

@@ -10,7 +10,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
-import javax.annotation.Nullable;
 import java.util.Locale;
 
 /**
@@ -19,8 +18,8 @@ import java.util.Locale;
 public class Quad implements QuadView {
     // Adapted from Neodymium
 
-    public static final int INTS_PER_VERTEX = 8;
-    public static final int QUAD_STRIDE = INTS_PER_VERTEX * 4;
+    public static final int VERTEX_STRIDE = 8;
+    public static final int QUAD_STRIDE = VERTEX_STRIDE * 4;
     public static final int X_INDEX = 0;
     public static final int Y_INDEX = 1;
     public static final int Z_INDEX = 2;
@@ -33,10 +32,10 @@ public class Quad implements QuadView {
     private final static int DEFAULT_LIGHTMAP = 15 << 20 | 15 << 4;
     private final static int DEFAULT_COLOR = 0xFFFFFFFF;
 
-    private final int[] data = new int[QUAD_STRIDE];
+    protected final int[] data = new int[QUAD_STRIDE];
 
     @Getter
-    private boolean deleted;
+    private boolean deleted = false;
 
     private final Vector3f vectorA = new Vector3f(), vectorB = new Vector3f(), vectorC = new Vector3f();
 
@@ -55,43 +54,48 @@ public class Quad implements QuadView {
     }
 
     @Override
+    public ForgeDirection getCullFace() {
+        return this.face;
+    }
+
+    @Override
     public float getX(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + X_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + X_INDEX]);
     }
 
     @Override
     public float getY(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + Y_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + Y_INDEX]);
     }
 
     @Override
     public float getZ(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + Z_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + Z_INDEX]);
     }
 
     @Override
     public float getTexU(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + U_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + U_INDEX]);
     }
 
     @Override
     public float getTexV(int idx) {
-        return Float.intBitsToFloat(this.data[idx * INTS_PER_VERTEX + V_INDEX]);
+        return Float.intBitsToFloat(this.data[idx * VERTEX_STRIDE + V_INDEX]);
     }
 
     @Override
     public int getColor(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + COLOR_INDEX];
+        return this.data[idx * VERTEX_STRIDE + COLOR_INDEX];
     }
 
     @Override
     public int getLight(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + LIGHTMAP_INDEX];
+        return this.data[idx * VERTEX_STRIDE + LIGHTMAP_INDEX];
     }
 
     @Override
     public int getNormal(int idx) {
-        return this.data[idx * INTS_PER_VERTEX + NORMAL_INDEX];
+        return this.data[idx * VERTEX_STRIDE + NORMAL_INDEX];
     }
 
     @Override
@@ -109,44 +113,50 @@ public class Quad implements QuadView {
         return this.sprite;
     }
 
+
+    @Override
+    public void setCullFace(ForgeDirection face) {
+        this.face = face;
+    }
+
     @Override
     public void setX(int idx, float x) {
-        this.data[idx * INTS_PER_VERTEX + X_INDEX] = Float.floatToRawIntBits(x);
+        this.data[idx * VERTEX_STRIDE + X_INDEX] = Float.floatToRawIntBits(x);
     }
 
     @Override
     public void setY(int idx, float y) {
-        this.data[idx * INTS_PER_VERTEX + Y_INDEX] = Float.floatToRawIntBits(y);
+        this.data[idx * VERTEX_STRIDE + Y_INDEX] = Float.floatToRawIntBits(y);
     }
 
     @Override
     public void setZ(int idx, float z) {
-        this.data[idx * INTS_PER_VERTEX + Z_INDEX] = Float.floatToRawIntBits(z);
+        this.data[idx * VERTEX_STRIDE + Z_INDEX] = Float.floatToRawIntBits(z);
     }
 
     @Override
     public void setTexU(int idx, float u) {
-        this.data[idx * INTS_PER_VERTEX + U_INDEX] = Float.floatToRawIntBits(u);
+        this.data[idx * VERTEX_STRIDE + U_INDEX] = Float.floatToRawIntBits(u);
     }
 
     @Override
     public void setTexV(int idx, float v) {
-        this.data[idx * INTS_PER_VERTEX + V_INDEX] = Float.floatToRawIntBits(v);
+        this.data[idx * VERTEX_STRIDE + V_INDEX] = Float.floatToRawIntBits(v);
     }
 
     @Override
     public void setColor(int idx, int c) {
-        this.data[idx * INTS_PER_VERTEX + COLOR_INDEX] = c;
+        this.data[idx * VERTEX_STRIDE + COLOR_INDEX] = c;
     }
 
     @Override
     public void setLight(int idx, int l) {
-        this.data[idx * INTS_PER_VERTEX + LIGHTMAP_INDEX] = l;
+        this.data[idx * VERTEX_STRIDE + LIGHTMAP_INDEX] = l;
     }
 
     @Override
     public void setNormal(int idx, int n) {
-        this.data[idx * INTS_PER_VERTEX + NORMAL_INDEX] = n;
+        this.data[idx * VERTEX_STRIDE + NORMAL_INDEX] = n;
     }
 
     @Override
@@ -165,7 +175,7 @@ public class Quad implements QuadView {
     }
 
     @Override
-    public int[] getRawVertexes() {
+    public int[] getRawData() {
         return this.data;
     }
 
@@ -173,14 +183,14 @@ public class Quad implements QuadView {
      * Convenience: access x, y, z by index 0-2.
      */
     private float posByIndex(int vertexIndex, int coordinateIndex) {
-        return Float.intBitsToFloat(this.data[vertexIndex * INTS_PER_VERTEX + coordinateIndex]);
+        return Float.intBitsToFloat(this.data[vertexIndex * VERTEX_STRIDE + coordinateIndex]);
     }
 
     /**
      * Convenience: access x, y, z by index 0-2.
      */
     private void setPosByIndex(int vertexIndex, int coordinateIndex, float val) {
-        this.data[vertexIndex * INTS_PER_VERTEX + coordinateIndex] = Float.floatToRawIntBits(val);
+        this.data[vertexIndex * VERTEX_STRIDE + coordinateIndex] = Float.floatToRawIntBits(val);
     }
 
     /**
@@ -191,13 +201,6 @@ public class Quad implements QuadView {
         this.setPosByIndex(1, idx, this.posByIndex(1, idx) + offset);
         this.setPosByIndex(2, idx, this.posByIndex(2, idx) + offset);
         this.setPosByIndex(3, idx, this.posByIndex(3, idx) + offset);
-    }
-
-    private void clearColors() {
-        this.setColor(0, DEFAULT_COLOR);
-        this.setColor(1, DEFAULT_COLOR);
-        this.setColor(2, DEFAULT_COLOR);
-        this.setColor(3, DEFAULT_COLOR);
     }
 
     private void clearNormals() {
@@ -237,10 +240,23 @@ public class Quad implements QuadView {
         this.vectorA.cross(this.vectorB, this.vectorC);
     }
 
-    @Override
-    public void copyFrom(QuadView quad) {
+    protected void quadrangulate() {
+        this.setX(3, this.getX(2));
+        this.setY(3, this.getY(2));
+        this.setZ(3, this.getZ(2));
 
-        System.arraycopy(quad.getRawVertexes(), 0, this.data, 0, QUAD_STRIDE);
+        this.setTexU(3, this.getTexU(2));
+        this.setTexV(3, this.getTexV(2));
+
+        this.setLight(3, this.getLight(2));
+        this.setColor(3, this.getColor(2));
+        this.setNormal(3, this.getNormal(2));
+    }
+
+    @Override
+    public QuadView copyFrom(QuadView quad) {
+
+        System.arraycopy(quad.getRawData(), 0, this.data, 0, QUAD_STRIDE);
 
         this.deleted = quad.isDeleted();
         this.shade = quad.isShade();
@@ -248,21 +264,8 @@ public class Quad implements QuadView {
         this.colorIndex = quad.getColorIndex();
         this.cachedFlags = quad.getFlags();
         this.sprite = quad.rubidium$getSprite();
-    }
 
-    /**
-     * Unlike setState, setRaw assumes your quad is valid and does not compute normals, clear color/normal/lightmap
-     * values, or quadrangulate. Basically the same as copyFrom but without an input quad.
-     */
-    public void setRaw(int[] data, boolean shade, @Nullable ForgeDirection face, int colorIndex, int flags) {
-
-        System.arraycopy(data, 0, this.data, 0, QUAD_STRIDE);
-
-        this.deleted = false;
-        this.shade = shade;
-        this.face = face;
-        this.colorIndex = colorIndex;
-        this.cachedFlags = flags;
+        return this;
     }
 
     private void read(int[] rawBuffer, int offset, float offsetX, float offsetY, float offsetZ, int drawMode, BlockRenderer.Flags flags) {
@@ -272,27 +275,14 @@ public class Quad implements QuadView {
         if (offsetY != 0) this.offsetPos(1, offsetY);
         if (offsetZ != 0) this.offsetPos(2, offsetZ);
 
-        if (!flags.hasColor) this.clearColors();
+        if (!flags.hasColor) this.setColors(DEFAULT_COLOR);
         if (!flags.hasNormals) this.clearNormals();
         if (!flags.hasBrightness) this.clearLight();
 
         // sus
         this.shade = flags.hasBrightness;
 
-        if (drawMode == GL11.GL_TRIANGLES) {
-
-            // Quadrangulate!
-            this.setX(3, this.getX(2));
-            this.setY(3, this.getY(2));
-            this.setZ(3, this.getZ(2));
-
-            this.setTexU(3, this.getTexU(2));
-            this.setTexV(3, this.getTexV(2));
-
-            this.setLight(3, this.getLight(2));
-            this.setColor(3, this.getColor(2));
-            this.setNormal(3, this.getNormal(2));
-        }
+        if (drawMode == GL11.GL_TRIANGLES) this.quadrangulate();
     }
 
     @Override

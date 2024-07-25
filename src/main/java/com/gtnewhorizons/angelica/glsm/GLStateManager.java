@@ -11,7 +11,9 @@ import com.gtnewhorizons.angelica.glsm.stacks.DepthStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.LightModelStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
@@ -94,13 +96,9 @@ public class GLStateManager {
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
-    protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack();
-    protected static final IntegerStateStack shadeModelState = new IntegerStateStack();
+    protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
+    protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
-    static {
-        activeTextureUnit.setValue(0); // GL_TEXTURE0
-        shadeModelState.setValue(GL11.GL_SMOOTH);
-    }
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
     @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
@@ -126,6 +124,14 @@ public class GLStateManager {
 
     @Getter protected static final BooleanStateStack[] lightStates = new BooleanStateStack[8];
     @Getter protected static final LightStateStack[] lightDataStates = new LightStateStack[8];
+    @Getter protected static final BooleanStateStack colorMaterial = new BooleanStateStack(GL11.GL_COLOR_MATERIAL);
+    @Getter protected static final IntegerStateStack colorMaterialFace = new IntegerStateStack(GL11.GL_FRONT_AND_BACK);
+    @Getter protected static final IntegerStateStack colorMaterialParameter = new IntegerStateStack(GL11.GL_AMBIENT_AND_DIFFUSE);
+    @Getter protected static final LightModelStateStack lightModel = new LightModelStateStack();
+
+    @Getter protected static final MaterialStateStack frontMaterial = new MaterialStateStack(GL11.GL_FRONT);
+    @Getter protected static final MaterialStateStack backMaterial = new MaterialStateStack(GL11.GL_BACK);
+
     static {
         for (int i = 0; i < lightStates.length; i ++) {
             lightStates[i] = new BooleanStateStack(GL11.GL_LIGHT0 + i);
@@ -280,6 +286,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> enableLight(5);
             case GL11.GL_LIGHT6 -> enableLight(6);
             case GL11.GL_LIGHT7 -> enableLight(7);
+            case GL11.GL_COLOR_MATERIAL -> enableColorMaterial();
             case GL11.GL_SCISSOR_TEST -> enableScissorTest();
             case GL11.GL_TEXTURE_2D -> enableTexture();
             case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
@@ -303,6 +310,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> disableLight(5);
             case GL11.GL_LIGHT6 -> disableLight(6);
             case GL11.GL_LIGHT7 -> disableLight(7);
+            case GL11.GL_COLOR_MATERIAL -> disableColorMaterial();
             case GL11.GL_SCISSOR_TEST -> disableScissorTest();
             case GL11.GL_TEXTURE_2D -> disableTexture();
             case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
@@ -329,6 +337,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
             case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
             case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
+            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
             case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
@@ -356,6 +365,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
             case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
             case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
+            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
             case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
             case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
@@ -402,6 +412,8 @@ public class GLStateManager {
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
             case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
+            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
 
             default -> GL11.glGetInteger(pname);
@@ -426,6 +438,32 @@ public class GLStateManager {
         }
     }
 
+    public static void glGetMaterial(int face, int pname, FloatBuffer params) {
+        if (shouldBypassCache()) {
+            GL11.glGetMaterial(face, pname, params);
+            return;
+        }
+
+        MaterialStateStack state;
+        if (face == GL11.GL_FRONT) {
+            state = frontMaterial;
+        } else  if (face == GL11.GL_BACK) {
+            state = backMaterial;
+        } else {
+            throw new RuntimeException("Invalid face parameter specified to glGetMaterial: " + face);
+        }
+
+        switch (pname) {
+            case GL11.GL_AMBIENT -> state.ambient.get(0, params);
+            case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
+            case GL11.GL_SPECULAR -> state.specular.get(0, params);
+            case GL11.GL_EMISSION -> state.emission.get(0, params);
+            case GL11.GL_SHININESS -> params.put(state.shininess);
+            case GL11.GL_COLOR_INDEXES -> state.colorIndexes.get(0, params);
+            default -> GL11.glGetMaterial(face, pname, params);
+        }
+    }
+
     public static void glGetLight(int light, int pname, FloatBuffer params) {
         if (shouldBypassCache()) {
             GL11.glGetLight(light, pname, params);
@@ -444,8 +482,8 @@ public class GLStateManager {
             case GL11.GL_CONSTANT_ATTENUATION -> params.put(state.constantAttenuation);
             case GL11.GL_LINEAR_ATTENUATION -> params.put(state.linearAttenuation);
             case GL11.GL_QUADRATIC_ATTENUATION -> params.put(state.quadraticAttenuation);
+            default -> GL11.glGetLight(light, pname, params);
         }
-        GL11.glGetLight(light, pname, params);
     }
 
     public static void glGetFloat(int pname, FloatBuffer params) {
@@ -962,6 +1000,42 @@ public class GLStateManager {
 
     public static void enableLight(int light) {
         lightStates[light].enable();
+    }
+
+    public static void enableColorMaterial() {
+        colorMaterial.enable();
+        float r = getColor().getRed();
+        float g = getColor().getGreen();
+        float b = getColor().getBlue();
+        float a = getColor().getAlpha();
+        if (colorMaterialFace.getValue() == GL11.GL_FRONT || colorMaterialFace.getValue() == GL11.GL_FRONT_AND_BACK) {
+            switch (colorMaterialParameter.getValue()) {
+                case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                    frontMaterial.ambient.set(r, g, b, a);
+                    frontMaterial.diffuse.set(r, g, b, a);
+                }
+                case GL11.GL_AMBIENT -> frontMaterial.ambient.set(r, g, b, a);
+                case GL11.GL_DIFFUSE -> frontMaterial.diffuse.set(r, g, b, a);
+                case GL11.GL_SPECULAR -> frontMaterial.specular.set(r, g, b, a);
+                case GL11.GL_EMISSION -> frontMaterial.emission.set(r, g, b, a);
+            }
+        }
+        if (colorMaterialFace.getValue() == GL11.GL_BACK || colorMaterialFace.getValue() == GL11.GL_FRONT_AND_BACK) {
+            switch (colorMaterialParameter.getValue()) {
+                case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                    backMaterial.ambient.set(r, g, b, a);
+                    backMaterial.diffuse.set(r, g, b, a);
+                }
+                case GL11.GL_AMBIENT -> backMaterial.ambient.set(r, g, b, a);
+                case GL11.GL_DIFFUSE -> backMaterial.diffuse.set(r, g, b, a);
+                case GL11.GL_SPECULAR -> backMaterial.specular.set(r, g, b, a);
+                case GL11.GL_EMISSION -> backMaterial.emission.set(r, g, b, a);
+            }
+        }
+    }
+
+    public static void disableColorMaterial() {
+        colorMaterial.disable();
     }
 
     public static void disableLighting() {
@@ -1485,6 +1559,115 @@ public class GLStateManager {
         };
     }
 
+    private static void glMaterialFront(int pname, FloatBuffer params) {
+        switch (pname) {
+            case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
+            case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
+            case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
+            case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
+            case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                frontMaterial.setAmbient(params);
+                frontMaterial.setDiffuse(params);
+            }
+            case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
+        }
+    }
+
+    private static void glMaterialBack(int pname, FloatBuffer params) {
+        switch (pname) {
+            case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
+            case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
+            case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
+            case GL11.GL_EMISSION -> backMaterial.setEmission(params);
+            case GL11.GL_SHININESS -> backMaterial.setShininess(params);
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                backMaterial.setAmbient(params);
+                backMaterial.setDiffuse(params);
+            }
+            case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
+        }
+    }
+
+    private static void glMaterialFront(int pname, IntBuffer params) {
+        switch (pname) {
+            case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
+            case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
+            case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
+            case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
+            case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                frontMaterial.setAmbient(params);
+                frontMaterial.setDiffuse(params);
+            }
+            case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
+        }
+    }
+
+    private static void glMaterialBack(int pname, IntBuffer params) {
+        switch (pname) {
+            case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
+            case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
+            case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
+            case GL11.GL_EMISSION -> backMaterial.setEmission(params);
+            case GL11.GL_SHININESS -> backMaterial.setShininess(params);
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> {
+                backMaterial.setAmbient(params);
+                backMaterial.setDiffuse(params);
+            }
+            case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
+        }
+    }
+
+    public static void glMaterial(int face, int pname, FloatBuffer params) {
+        if (face == GL11.GL_FRONT) {
+            glMaterialFront(pname, params);
+        } else if (face == GL11.GL_BACK) {
+            glMaterialBack(pname, params);
+        } else if (face == GL11.GL_FRONT_AND_BACK) {
+            glMaterialFront(pname, params);
+            glMaterialBack(pname, params);
+        } else {
+            throw new RuntimeException("Unsupported face value for glMaterial: " + face);
+        }
+    }
+
+    public static void glMaterial(int face, int pname, IntBuffer params) {
+        if (face == GL11.GL_FRONT) {
+            glMaterialFront(pname, params);
+        } else if (face == GL11.GL_BACK) {
+            glMaterialBack(pname, params);
+        } else if (face == GL11.GL_FRONT_AND_BACK) {
+            glMaterialFront(pname, params);
+            glMaterialBack(pname, params);
+        } else {
+            throw new RuntimeException("Unsupported face value for glMaterial: " + face);
+        }
+    }
+
+    public static void glMaterialf(int face, int pname, float val) {
+        if (pname != GL11.GL_SHININESS) {
+            // it is only valid to call glMaterialf for the GL_SHININESS parameter
+            return;
+        }
+
+        if (face == GL11.GL_FRONT) {
+            frontMaterial.setShininess(val);
+        } else if (face == GL11.GL_BACK) {
+            backMaterial.setShininess(val);
+        } else if (face == GL11.GL_FRONT_AND_BACK) {
+            frontMaterial.setShininess(val);
+            backMaterial.setShininess(val);
+        } else {
+            throw new RuntimeException("Unsupported face value for glMaterial: " + face);
+        }
+    }
+
+    public static void glMateriali(int face, int pname, int val) {
+        // This will end up no-opping if pname != GL_SHININESS, it is invalid to call this with another pname
+        glMaterialf(face, pname, (float) val);
+    }
+
     public static void glLight(int light, int pname, FloatBuffer params) {
         LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
         switch (pname) {
@@ -1544,20 +1727,44 @@ public class GLStateManager {
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {
-        GL11.glLightModel(pname, params);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
+            default -> GL11.glLightModel(pname, params);
+        }
     }
     public static void glLightModel(int pname, IntBuffer params) {
-        GL11.glLightModel(pname, params);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
+            case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(params);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
+            default -> GL11.glLightModel(pname, params);
+        }
     }
     public static void glLightModelf(int pname, float param) {
-        GL11.glLightModelf(pname, param);
+        switch (pname) {
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
+            default -> GL11.glLightModelf(pname, param);
+        }
     }
     public static void glLightModeli(int pname, int param) {
-        GL11.glLightModeli(pname, param);
+        switch (pname) {
+            case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(param);
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
+            default -> GL11.glLightModeli(pname, param);
+        }
     }
 
     public static void glColorMaterial(int face, int mode) {
-        GL11.glColorMaterial(face, mode);
+        if (shouldBypassCache() || (colorMaterialFace.getValue() != face || colorMaterialParameter.getValue() != mode)) {
+            colorMaterialFace.setValue(face);
+            colorMaterialParameter.setValue(mode);
+            GL11.glColorMaterial(face, mode);
+        }
     }
 
     public static void glDepthRange(double near, double far) {

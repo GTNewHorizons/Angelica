@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.models;
 
+import com.gtnewhorizons.angelica.api.QuadBuilder;
 import net.minecraft.util.IIcon;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -35,10 +36,10 @@ public class TexHelper {
      * rotation, interpolation, etc. Textures must not be already baked.
      */
     public static void bakeSprite(NdQuadBuilder quad, IIcon sprite, int bakeFlags) {
-        if (quad.nominalFace() != ForgeDirection.UNKNOWN && (NdQuadBuilder.BAKE_LOCK_UV & bakeFlags) != 0) {
+        if (quad.nominalFace() != ForgeDirection.UNKNOWN && (QuadBuilder.BAKE_LOCK_UV & bakeFlags) != 0) {
             // Assigns normalized UV coordinates based on vertex positions
             applyModifier(quad, UVLOCKERS[quad.nominalFace().ordinal()]);
-        } else if ((NdQuadBuilder.BAKE_NORMALIZED & bakeFlags) == 0) { // flag is NOT set, UVs are assumed to not be normalized yet as is the default, normalize through dividing by 16
+        } else if ((QuadBuilder.BAKE_NORMALIZED & bakeFlags) == 0) { // flag is NOT set, UVs are assumed to not be normalized yet as is the default, normalize through dividing by 16
             // Scales from 0-16 to 0-1
             applyModifier(quad, (q, i) -> q.uv(i, q.getTexU(i) * NORMALIZER, q.getTexV(i) * NORMALIZER));
         }
@@ -51,12 +52,12 @@ public class TexHelper {
             applyModifier(quad, ROTATIONS[rotation]);
         }
 
-        if ((NdQuadBuilder.BAKE_FLIP_U & bakeFlags) != 0) {
+        if ((QuadBuilder.BAKE_FLIP_U & bakeFlags) != 0) {
             // Inverts U coordinates.  Assumes normalized (0-1) values.
             applyModifier(quad, (q, i) -> q.uv(i, 1 - q.getTexU(i), q.getTexV(i)));
         }
 
-        if ((NdQuadBuilder.BAKE_FLIP_V & bakeFlags) != 0) {
+        if ((QuadBuilder.BAKE_FLIP_V & bakeFlags) != 0) {
             // Inverts V coordinates.  Assumes normalized (0-1) values.
             applyModifier(quad, (q, i) -> q.uv(i, q.getTexU(i), 1 - q.getTexV(i)));
         }

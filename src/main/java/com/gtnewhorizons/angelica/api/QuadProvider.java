@@ -15,11 +15,17 @@ public interface QuadProvider {
     int B_MASK = 0xFF;
 
     /**
-     * Returns the color packed as ABGR. If you want to vary colors within a block, just ignore the color passed into
-     * {@link #getQuads} and use whatever you want. You might want to override this to return a constant if you're
-     * extending a block with an expensive color call, like leaves.
+     * Called once per block and returns the color packed as ABGR. If you want to vary colors within a block, just
+     * ignore the color passed into {@link #getQuads} and use your own function, don't override this. But if you only
+     * want to change color once per block, like vanilla leaves, override this. The default vanilla adapter is
+     * {@link #getDefaultColor}
      */
     default int getColor(IBlockAccess world, BlockPos pos, Block block, int meta, Random random) {
+
+        return -1;
+    }
+
+    static int getDefaultColor(IBlockAccess world, BlockPos pos, Block block) {
 
         final int cin = block.colorMultiplier(world, pos.getX(), pos.getY(), pos.getZ());
         return (0xFF << 24) | ((cin & B_MASK) << 16) | (cin & G_MASK) | ((cin & R_MASK) >>> 16);
