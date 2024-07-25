@@ -257,7 +257,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
 
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
         bits.forEach(bit -> {
             verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
             if(bit.initial()) {
@@ -269,6 +269,16 @@ class GLSM_PushPop_UnitTest {
         });
 
         GLStateManager.glPopAttrib();
+
+        //glEnable(GL_COLOR_MATERIAL) changes the material color state when it is triggered. We need to reset that
+        //here to not mess up the default state for other tests. We're not resetting with glPush/PopAttrib because
+        //we're specifically trying to test GL_ENABLE_BIT here.
+        FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
+        floatBuffer.put(0.2F).put(0.2F).put(0.2F).put(1.0F).flip();
+        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, floatBuffer);
+        floatBuffer.put(0.8F).put(0.8F).put(0.8F).put(1.0F).flip();
+        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, floatBuffer);
+
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
 
     }
