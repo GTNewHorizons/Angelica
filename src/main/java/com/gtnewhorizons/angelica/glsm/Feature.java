@@ -176,6 +176,8 @@ public class Feature {
             // Ambient, diffuse, specular, and emissive color for each material
             // Ambient, diffuse, and specular color indices for each material
             // Specular exponent for each material
+            , GLStateManager.frontMaterial
+            , GLStateManager.backMaterial
             , GLStateManager.shadeModelState // GL_SHADE_MODEL setting
         ));
         attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(

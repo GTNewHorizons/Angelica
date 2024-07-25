@@ -124,4 +124,13 @@ public class GLSMUtil {
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
         ));
     }
+
+    public static void verifyMaterialState(int face, int pname, float[] expected, String message) {
+        GL11.glGetMaterial(face, pname, (FloatBuffer) glFloatBuffer.clear());
+        GLStateManager.glGetMaterial(face, pname, (FloatBuffer) glsmFloatBuffer.clear());
+        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
+            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+            () -> assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
+        ));
+    }
 }

@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
+import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -12,6 +14,7 @@ import java.nio.FloatBuffer;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyMaterialState;
 
 @ExtendWith(AngelicaExtension.class)
 public class GLSM_Lighting_UnitTest {
@@ -203,11 +206,17 @@ public class GLSM_Lighting_UnitTest {
     @Test
     void testColorMaterial() {
         verifyState(GL11.GL_COLOR_MATERIAL, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT | GL11.GL_CURRENT_BIT);
+        GLStateManager.glColor4f(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
         GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
-        verifyState(GL11.GL_COLOR_MATERIAL, true);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        verifyState(GL11.GL_COLOR_MATERIAL, false);
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL, false);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
 
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
@@ -224,6 +233,78 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
+    }
+
+    @Test
+    void testMaterial() {
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, f4b);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, f4b);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE, f4b);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
+
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glMaterial(GL11.GL_BACK, GL11.GL_SPECULAR, f4b);
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
+
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.2F);
+        GLStateManager.glMaterial(GL11.GL_BACK, GL11.GL_EMISSION, f4b);
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
+
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{0.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLStateManager.glMaterialf(GL11.GL_FRONT, GL11.GL_SHININESS, 5.5F);
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{5.5F}, "");
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{0.0F}, "");
+
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        newf4b(0.8F, 0.6F, 0.4F, 0.0F);
+        GLStateManager.glMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, f4b);
+        if (GLStateManager.isNVIDIA()) {
+            verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.4F, 0.6F}, "");
+        } else {
+            verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.6F, 0.4F}, "");
+        }
+        GLStateManager.glPopAttrib();
+        verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
+
     }
 
     static void newf4b(float x, float y, float z, float w) {
