@@ -43,6 +43,7 @@ public class BlockRenderer {
 
     private final boolean useAmbientOcclusion;
     private boolean useSeparateAo;
+    public static boolean forceSodiumSmoothLighting = SodiumClientMod.options().advanced.useSodiumSmoothLighting;
 
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
@@ -102,7 +103,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, SodiumClientMod.options().advanced.useSodiumSmoothLighting);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, forceSodiumSmoothLighting);
                 }
 
                 if (!quads.isEmpty()) rendered = true;

@@ -22,6 +22,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
+import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
@@ -326,16 +327,11 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.use_sodium_smooth_lighting.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.LOW)
-                        .setBinding((opts, value) -> opts.advanced.useSodiumSmoothLighting = value, opts -> opts.advanced.useSodiumSmoothLighting)
+                        .setBinding((opts, value) -> {
+                            opts.advanced.useSodiumSmoothLighting = value;
+                            BlockRenderer.forceSodiumSmoothLighting = value;
+                        }, opts -> opts.advanced.useSodiumSmoothLighting)
                         .build()
-                )
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                    .setName(I18n.format("sodium.options.use_smooth_lighting_optimizations.name"))
-                    .setTooltip(I18n.format("sodium.options.use_smooth_lighting_optimizations.tooltip"))
-                    .setControl(TickBoxControl::new)
-                    .setImpact(OptionImpact.MEDIUM)
-                    .setBinding((opts, value) -> opts.advanced.useSmoothLightingOptimizations = value, opts -> opts.advanced.useSmoothLightingOptimizations)
-                    .build()
                 )
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.animate_only_visible_textures.name"))
