@@ -323,17 +323,6 @@ public class SodiumGameOptionPages {
                         .build()
                 )
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_sodium_smooth_lighting.name"))
-                        .setTooltip(I18n.format("sodium.options.use_sodium_smooth_lighting.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.LOW)
-                        .setBinding((opts, value) -> {
-                            opts.advanced.useSodiumSmoothLighting = value;
-                            BlockRenderer.forceSodiumSmoothLighting = value;
-                        }, opts -> opts.advanced.useSodiumSmoothLighting)
-                        .build()
-                )
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.animate_only_visible_textures.name"))
                         .setTooltip(I18n.format("sodium.options.animate_only_visible_textures.tooltip"))
                         .setControl(TickBoxControl::new)
