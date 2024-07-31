@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
-import com.gtnewhorizons.angelica.api.MutableBlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
@@ -24,7 +23,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  * You can use the various static pack/unpack methods to extract these values in a usable format.
  */
 public abstract class LightDataAccess {
-    private final BlockPosImpl pos = new BlockPosImpl();
+    public static final ThreadLocal<BlockPosImpl> DynamicLightsPos = ThreadLocal.withInitial(BlockPosImpl::new);
     protected WorldSlice world;
 
     public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
@@ -121,7 +120,7 @@ public abstract class LightDataAccess {
         return aoi * (1.0f / 4096.0f);
     }
 
-    public static int getLightMap(long originWord, BlockPosImpl pos) {
+    public static int getLightMap(long originWord) {
         if (!DynamicLights.isEnabled()) {
             return unpackLM(originWord);
         }
@@ -129,7 +128,7 @@ public abstract class LightDataAccess {
             return unpackLM(originWord);
         }
 
-        double dynamic = DynamicLights.get().getDynamicLightLevel(pos);
+        double dynamic = DynamicLights.get().getDynamicLightLevel(DynamicLightsPos.get());
         return DynamicLights.get().getLightmapWithDynamicLight(dynamic, unpackLM(originWord));
 
     }
