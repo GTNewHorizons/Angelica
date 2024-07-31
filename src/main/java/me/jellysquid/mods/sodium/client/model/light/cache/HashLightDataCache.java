@@ -18,6 +18,7 @@ public class HashLightDataCache extends LightDataAccess {
 
     @Override
     public long get(int x, int y, int z) {
+        DynamicLightsPos.get().set(x, y, z);
         long key = BlockPos.asLong(x, y, z);
         long word = this.map.getAndMoveToFirst(key);
 

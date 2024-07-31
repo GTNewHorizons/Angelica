@@ -42,6 +42,7 @@ public class ArrayLightDataCache extends LightDataAccess {
 
     @Override
     public long get(int x, int y, int z) {
+        DynamicLightsPos.get().set(x, y, z);
         int l = this.index(x, y, z);
 
         long word = this.light[l];

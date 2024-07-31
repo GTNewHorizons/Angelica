@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.model.light.smooth;
 import com.google.common.math.DoubleMath;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
@@ -243,6 +242,7 @@ public class SmoothLightPipeline implements LightPipeline {
      * Returns the cached data for a given facing or calculates it if it hasn't been cached.
      */
     private AoFaceData getCachedFaceData(BlockPosImpl pos, ForgeDirection face, boolean offset) {
+
         final AoFaceData data = this.cachedFaceData[offset ? face.ordinal() : face.ordinal() + 6];
 
         if (!data.hasLightData()) {
