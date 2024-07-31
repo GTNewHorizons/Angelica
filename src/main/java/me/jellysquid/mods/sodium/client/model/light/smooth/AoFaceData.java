@@ -43,9 +43,9 @@ class AoFaceData {
 
         // Use the origin block's light values if the adjacent one is opaque
         if (offset && unpackFO(adjWord)) {
-            calm = getLightMap(cache.get(x, y, z), pos);
+            calm = getLightMap(cache.get(x, y, z));
         } else {
-            calm = getLightMap(adjWord, pos);
+            calm = getLightMap(adjWord);
         }
 
         final float caao = unpackAO(adjWord);
@@ -53,22 +53,22 @@ class AoFaceData {
         ForgeDirection[] faces = AoNeighborInfo.get(direction).faces;
 
         final long e0 = cache.get(adjX, adjY, adjZ, faces[0]);
-        final int e0lm = getLightMap(e0, pos);
+        final int e0lm = getLightMap(e0);
         final float e0ao = unpackAO(e0);
         final boolean e0op = unpackOP(e0);
 
         final long e1 = cache.get(adjX, adjY, adjZ, faces[1]);
-        final int e1lm = getLightMap(e1, pos);
+        final int e1lm = getLightMap(e1);
         final float e1ao = unpackAO(e1);
         final boolean e1op = unpackOP(e1);
 
         final long e2 = cache.get(adjX, adjY, adjZ, faces[2]);
-        final int e2lm = getLightMap(e2, pos);
+        final int e2lm = getLightMap(e2);
         final float e2ao = unpackAO(e2);
         final boolean e2op = unpackOP(e2);
 
         final long e3 = cache.get(adjX, adjY, adjZ, faces[3]);
-        final int e3lm = getLightMap(e3, pos);
+        final int e3lm = getLightMap(e3);
         final float e3ao = unpackAO(e3);
         final boolean e3op = unpackOP(e3);
 
@@ -81,7 +81,7 @@ class AoFaceData {
             c0ao = e0ao;
         } else {
             long d0 = cache.get(adjX, adjY, adjZ, faces[0], faces[2]);
-            c0lm = getLightMap(d0, pos);
+            c0lm = getLightMap(d0);
             c0ao = unpackAO(d0);
         }
 
@@ -93,7 +93,7 @@ class AoFaceData {
             c1ao = e0ao;
         } else {
             long d1 = cache.get(adjX, adjY, adjZ, faces[0], faces[3]);
-            c1lm = getLightMap(d1, pos);
+            c1lm = getLightMap(d1);
             c1ao = unpackAO(d1);
         }
 
@@ -106,7 +106,7 @@ class AoFaceData {
             c2ao = e1ao;
         } else {
             long d2 = cache.get(adjX, adjY, adjZ, faces[1], faces[2]);
-            c2lm = getLightMap(d2, pos);
+            c2lm = getLightMap(d2);
             c2ao = unpackAO(d2);
         }
 
@@ -119,7 +119,7 @@ class AoFaceData {
             c3ao = e1ao;
         } else {
             long d3 = cache.get(adjX, adjY, adjZ, faces[1], faces[3]);
-            c3lm = getLightMap(d3, pos);
+            c3lm = getLightMap(d3);
             c3ao = unpackAO(d3);
         }
 
