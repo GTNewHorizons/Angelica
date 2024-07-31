@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.model.light.smooth;
 import com.google.common.math.DoubleMath;
 import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
@@ -40,6 +41,8 @@ import net.minecraftforge.common.util.ForgeDirection;
  */
 public class SmoothLightPipeline implements LightPipeline {
     public static final double TOLERANCE = 1.0E-5F;
+
+    public static final boolean useSmoothLightingOptimizations = false;
     /**
      * The cache which light data will be accessed from.
      */
@@ -80,14 +83,18 @@ public class SmoothLightPipeline implements LightPipeline {
         // map the corner values onto this quad's vertices. This covers most situations during rendering and provides
         // a modest speed-up.
         // To match vanilla behavior, also treat the face as aligned if it is parallel and the block state is a full cube
-        if ((flags & ModelQuadFlags.IS_ALIGNED) != 0 || ((flags & ModelQuadFlags.IS_PARALLEL) != 0 && LightDataAccess.unpackFC(this.lightCache.get(pos)))) {
-            if ((flags & ModelQuadFlags.IS_PARTIAL) == 0) {
-                this.applyAlignedFullFace(neighborInfo, pos, face, out);
+        if (useSmoothLightingOptimizations) {
+            if ((flags & ModelQuadFlags.IS_ALIGNED) != 0 || ((flags & ModelQuadFlags.IS_PARALLEL) != 0 && LightDataAccess.unpackFC(this.lightCache.get(pos)))) {
+                if ((flags & ModelQuadFlags.IS_PARTIAL) == 0) {
+                    this.applyAlignedFullFace(neighborInfo, pos, face, out);
+                } else {
+                    this.applyAlignedPartialFace(neighborInfo, quad, pos, face, out);
+                }
+            } else if ((flags & ModelQuadFlags.IS_PARALLEL) != 0) {
+                this.applyParallelFace(neighborInfo, quad, pos, face, out);
             } else {
-                this.applyAlignedPartialFace(neighborInfo, quad, pos, face, out);
+                this.applyNonParallelFace(neighborInfo, quad, pos, face, out);
             }
-        } else if ((flags & ModelQuadFlags.IS_PARALLEL) != 0) {
-            this.applyParallelFace(neighborInfo, quad, pos, face, out);
         } else {
             this.applyNonParallelFace(neighborInfo, quad, pos, face, out);
         }

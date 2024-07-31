@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -101,7 +102,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, false);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, block.getRenderType() == 0);
                 }
 
                 if (!quads.isEmpty()) rendered = true;
