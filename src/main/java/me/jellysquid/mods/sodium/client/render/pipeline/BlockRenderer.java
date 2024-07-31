@@ -59,7 +59,7 @@ public class BlockRenderer {
     }
 
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPosImpl pos, ChunkModelBuffers buffers, boolean cull, long seed) {
-        final LightMode mode = this.getLightingMode(block);
+        final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
@@ -102,7 +102,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, block.getRenderType() == 0);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, this.useAmbientOcclusion);
                 }
 
                 if (!quads.isEmpty()) rendered = true;
