@@ -42,6 +42,7 @@ public class BlockRenderer {
     private final QuadLightData cachedQuadLightData = new QuadLightData();
 
     private final boolean useAmbientOcclusion;
+    private final boolean useSodiumAO;
     private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
@@ -55,6 +56,7 @@ public class BlockRenderer {
         this.lighters = lighters;
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
+        this.useSodiumAO = SodiumClientMod.options().quality.useSodiumAO;
         this.occlusionCache = new BlockOcclusionCache();
     }
 
@@ -102,7 +104,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, this.useAmbientOcclusion);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
                 }
 
                 if (!quads.isEmpty()) rendered = true;
