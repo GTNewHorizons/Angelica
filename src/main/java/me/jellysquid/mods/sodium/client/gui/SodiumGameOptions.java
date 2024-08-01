@@ -56,7 +56,7 @@ public class SodiumGameOptions {
     }
     public static class QualitySettings {
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
-        public boolean useSodiumAO = true;
+        public boolean useSodiumAO = false;
     }
 
     private static final Gson GSON = new GsonBuilder()
