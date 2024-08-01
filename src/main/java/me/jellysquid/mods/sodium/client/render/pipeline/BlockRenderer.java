@@ -129,11 +129,6 @@ public class BlockRenderer {
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
             final QuadView quad = quads.get(i);
 
-            // If we aren't using sodium light (i.e. it's the CapturingTesselator)
-            // manually filter quads by side
-            if (!useSodiumLight && quad.getFace() != cullFace)
-                continue;
-
             final QuadLightData light = this.cachedQuadLightData;
 
             if (useSodiumLight || this.useSeparateAo)
