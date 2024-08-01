@@ -131,6 +131,9 @@ public class BlockRenderer {
 
             final QuadLightData light = this.cachedQuadLightData;
 
+            if (!useSodiumLight && quad.getFace() != cullFace)
+                continue;
+
             if (useSodiumLight || this.useSeparateAo)
                 lighter.calculate(quad, pos, light, cullFace, quad.getLightFace(), quad.isShade());
 
