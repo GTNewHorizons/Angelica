@@ -131,7 +131,7 @@ public class BlockRenderer {
 
             final QuadLightData light = this.cachedQuadLightData;
 
-            if (!useSodiumLight && quad.getFace() != cullFace)
+            if (quad.getFace() != cullFace)
                 continue;
 
             if (useSodiumLight || this.useSeparateAo)
