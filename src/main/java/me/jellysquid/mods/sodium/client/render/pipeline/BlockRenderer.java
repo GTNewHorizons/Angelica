@@ -42,6 +42,7 @@ public class BlockRenderer {
     private final QuadLightData cachedQuadLightData = new QuadLightData();
 
     private final boolean useAmbientOcclusion;
+    private final boolean useSodiumAO;
     private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
@@ -55,11 +56,12 @@ public class BlockRenderer {
         this.lighters = lighters;
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
+        this.useSodiumAO = SodiumClientMod.options().quality.useSodiumAO;
         this.occlusionCache = new BlockOcclusionCache();
     }
 
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPosImpl pos, ChunkModelBuffers buffers, boolean cull, long seed) {
-        final LightMode mode = this.getLightingMode(block);
+        final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
@@ -102,7 +104,7 @@ public class BlockRenderer {
 
                 for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                     this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, block.getRenderType() == 0);
+                    this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
                 }
 
                 if (!quads.isEmpty()) rendered = true;
@@ -127,12 +129,10 @@ public class BlockRenderer {
         for (int i = 0, quadsSize = quads.size(); i < quadsSize; i++) {
             final QuadView quad = quads.get(i);
 
-            // If we aren't using sodium light (i.e. it's the CapturingTesselator)
-            // manually filter quads by side
-            if (!useSodiumLight && quad.getFace() != cullFace)
-                continue;
-
             final QuadLightData light = this.cachedQuadLightData;
+
+            if (quad.getFace() != cullFace)
+                continue;
 
             if (useSodiumLight || this.useSeparateAo)
                 lighter.calculate(quad, pos, light, cullFace, quad.getLightFace(), quad.isShade());
