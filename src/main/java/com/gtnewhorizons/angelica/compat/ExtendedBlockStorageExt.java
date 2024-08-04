@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.falsepattern.chunk.api.DataRegistry;
-import com.gtnewhorizons.angelica.mixins.early.sodium.MixinExtendedBlockStorage;
+import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedBlockStorageAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
 
@@ -19,7 +19,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     }
 
     public ExtendedBlockStorageExt(Chunk chunk, ExtendedBlockStorage storage) {
-        super(((MixinExtendedBlockStorage) storage).getYBase(), storage.getSkylightArray() != null);
+        super(((ExtendedBlockStorageAccessor) storage).getYBase(), storage.getSkylightArray() != null);
 
         if (ModStatus.isChunkAPILoaded) {
             if (storage.getSkylightArray() != null) {
@@ -68,7 +68,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                 copyNibbleArray((ExtendedNibbleArray) storage.getSkylightArray(), (ExtendedNibbleArray) this.getSkylightArray());
             }
         }
-        ((MixinExtendedBlockStorage) this).setBlockRefCount(((MixinExtendedBlockStorage) storage).getBlockRefCount());
+        ((ExtendedBlockStorageAccessor) this).setBlockRefCount(((ExtendedBlockStorageAccessor) storage).getBlockRefCount());
     }
 
 

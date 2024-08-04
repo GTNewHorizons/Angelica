@@ -1,30 +1,30 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.accessors;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
-import org.spongepowered.asm.mixin.gen.Invoker;
 
 import java.util.List;
 
 @Mixin(TextureAtlasSprite.class)
-public interface TextureAtlasSpriteAccessor {
+public abstract class MixinTextureAtlasSprite implements TextureAtlasSpriteAccessor {
     @Accessor("animationMetadata")
-    AnimationMetadataSection getMetadata();
+    public abstract AnimationMetadataSection getMetadata();
 
     @Accessor("framesTextureData")
-    List<int[][]> getFramesTextureData();
+    public abstract  List<int[][]> getFramesTextureData();
 
     @Accessor("frameCounter")
-    int getFrame();
+    public abstract int getFrame();
 
     @Accessor("frameCounter")
-    void setFrame(int frame);
+    public abstract void setFrame(int frame);
 
     @Accessor("tickCounter")
-    int getSubFrame();
+    public abstract int getSubFrame();
 
     @Accessor("tickCounter")
-    void setSubFrame(int subFrame);
+    public abstract void setSubFrame(int subFrame);
 }

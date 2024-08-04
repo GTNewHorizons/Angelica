@@ -1,8 +1,8 @@
 package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
-import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureAtlasSpriteAccessor;
-import com.gtnewhorizons.angelica.mixins.early.shaders.accessors.TextureMapAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
 import lombok.Getter;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;

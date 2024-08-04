@@ -6,7 +6,9 @@ import java.util.List;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.RenderGameOverlayEventAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
+import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import net.dries007.holoInventory.client.Renderer;
@@ -16,8 +18,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameAccessor;
-import com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching.GuiIngameForgeAccessor;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

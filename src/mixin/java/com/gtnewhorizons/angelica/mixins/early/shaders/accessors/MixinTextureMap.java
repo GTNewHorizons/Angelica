@@ -8,18 +8,18 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import java.util.Map;
 
 @Mixin(TextureMap.class)
-public interface TextureMapAccessor {
+public abstract class MixinTextureMap {
 
     @Accessor("mapUploadedSprites")
-    Map getMapUploadedSprites();
+    public abstract Map getMapUploadedSprites();
 
     @Accessor("anisotropicFiltering")
-    int getAnisotropicFiltering();
+    public abstract int getAnisotropicFiltering();
 
     @Accessor("mipmapLevels")
-    int getMipmapLevels();
+    public abstract int getMipmapLevels();
 
     @Accessor("locationBlocksTexture")
-    ResourceLocation getLocationBlocksTexture();
+    public abstract ResourceLocation getLocationBlocksTexture();
 
 }

@@ -1,16 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedBlockStorageAccessor;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(ExtendedBlockStorage.class)
-public interface MixinExtendedBlockStorage {
+public abstract class MixinExtendedBlockStorage implements ExtendedBlockStorageAccessor {
 
     @Accessor("yBase")
-    int getYBase();
+    public abstract int getYBase();
     @Accessor("blockRefCount")
-    int getBlockRefCount();
+    public abstract int getBlockRefCount();
     @Accessor("blockRefCount")
-    void setBlockRefCount(int blockRefCount);
+    public abstract void setBlockRefCount(int blockRefCount);
 }

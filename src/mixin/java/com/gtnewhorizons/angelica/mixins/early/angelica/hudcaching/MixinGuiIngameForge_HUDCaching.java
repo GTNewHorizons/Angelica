@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import net.minecraft.client.gui.ScaledResolution;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

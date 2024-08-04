@@ -1,13 +1,14 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.accessors;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.player.EntityPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(EntityRenderer.class)
-public interface EntityRendererAccessor {
+public abstract class MixinEntityRenderer implements EntityRendererAccessor  {
     @Invoker
-    float invokeGetNightVisionBrightness(EntityPlayer entityPlayer, float partialTicks);
+    public abstract float invokeGetNightVisionBrightness(EntityPlayer entityPlayer, float partialTicks);
 
 }
