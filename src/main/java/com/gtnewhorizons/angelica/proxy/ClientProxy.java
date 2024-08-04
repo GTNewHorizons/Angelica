@@ -129,17 +129,18 @@ public class ClientProxy extends CommonProxy {
                 }
                 return false;
             });
-            FMLCommonHandler.instance().bus().register(this);
-            MinecraftForge.EVENT_BUS.register(this);
+        }
 
-            glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
-            ClientRegistry.registerKeyBinding(glsmKeyBinding);
+        FMLCommonHandler.instance().bus().register(this);
+        MinecraftForge.EVENT_BUS.register(this);
 
-            VanillaModels.init();
+        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
+        ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
-            if (ModStatus.isBetterCrashesLoaded) {
-                BetterCrashesCompat.init();
-            }
+        VanillaModels.init();
+
+        if (ModStatus.isBetterCrashesLoaded) {
+            BetterCrashesCompat.init();
         }
     }
 
