@@ -1,9 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.VBOManager;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;

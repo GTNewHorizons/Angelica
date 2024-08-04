@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.line;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer.LineVertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer.LineVertexBufferWriterUnsafe;

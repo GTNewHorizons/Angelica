@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.dynamiclights;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -16,7 +17,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IDynamicLightSource {
@@ -128,7 +128,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
             var newPos = new LongOpenHashSet();
 
             if (luminance > 0) {
-                var chunkPos = new BlockPosImpl(chunkCoordX, MathHelper.floor_double(posY + getEyeHeight()) >> 4, chunkCoordZ);
+                IBlockPos chunkPos = new BlockPos(chunkCoordX, MathHelper.floor_double(posY + getEyeHeight()) >> 4, chunkCoordZ);
 
                 DynamicLights.scheduleChunkRebuild(renderer, chunkPos);
                 DynamicLights.updateTrackedChunks(chunkPos, this.angelica$trackedLitChunkPos, newPos);

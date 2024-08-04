@@ -122,7 +122,6 @@ public enum Mixins {
             ,"sodium.MixinRenderBlocks"
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
-            ,"sodium.MixinTessellator"
             ,"sodium.MixinTileEntity"
             ,"sodium.MixinEffectRenderer"
             ,"sodium.MixinTileEntityRendererDispatcher"

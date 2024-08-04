@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
@@ -13,7 +14,7 @@ import org.joml.Vector4f;
 @Getter
 public class Camera {
     final Vector3d pos = new Vector3d();
-    final BlockPosImpl blockPos = new BlockPosImpl();
+    final BlockPos blockPos = new BlockPos();
     float pitch;
     float yaw;
     EntityLivingBase entity;

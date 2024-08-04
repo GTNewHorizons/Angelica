@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.models;
 
-import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
+import com.gtnewhorizons.angelica.models.VanillaModels;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.block.Block;
@@ -12,7 +13,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.gtnewhorizons.angelica.models.VanillaModels.*;
 
 @Mixin(Block.class)
 public abstract class MixinBlock implements ModeledBlock {
@@ -27,12 +27,12 @@ public abstract class MixinBlock implements ModeledBlock {
         if (!AngelicaConfig.injectQPRendering)
             return;
 
-        ((ModeledBlock) Blocks.stone).setModel(STONE);
-        ((ModeledBlock) Blocks.glass).setModel(GLASS);
-        ((ModeledBlock) Blocks.crafting_table).setModel(WORKBENCH);
-        ((ModeledBlock) Blocks.leaves).setModel(OLD_LEAF);
-        ((ModeledBlock) Blocks.leaves2).setModel(NEW_LEAF);
-        ((ModeledBlock) Blocks.log).setModel(OLD_LOG);
-        ((ModeledBlock) Blocks.log2).setModel(NEW_LOG);
+        ((ModeledBlock) Blocks.stone).setModel(VanillaModels.STONE);
+        ((ModeledBlock) Blocks.glass).setModel(VanillaModels.GLASS);
+        ((ModeledBlock) Blocks.crafting_table).setModel(VanillaModels.WORKBENCH);
+        ((ModeledBlock) Blocks.leaves).setModel(VanillaModels.OLD_LEAF);
+        ((ModeledBlock) Blocks.leaves2).setModel(VanillaModels.NEW_LEAF);
+        ((ModeledBlock) Blocks.log).setModel(VanillaModels.OLD_LOG);
+        ((ModeledBlock) Blocks.log2).setModel(VanillaModels.NEW_LOG);
     }
 }

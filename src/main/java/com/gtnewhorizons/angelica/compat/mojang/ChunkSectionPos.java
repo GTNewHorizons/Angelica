@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import org.joml.Vector3i;
 
 // See if we can merge/mixin/extend ChunkPosition maybe?
@@ -19,7 +20,7 @@ public class ChunkSectionPos extends Vector3i {
         return new ChunkSectionPos(x, y, z);
     }
 
-    public static ChunkSectionPos from(BlockPosImpl pos) {
+    public static ChunkSectionPos from(BlockPos pos) {
         return new ChunkSectionPos(getSectionCoord(pos.getX()), getSectionCoord(pos.getY()), getSectionCoord(pos.getZ()));
     }
 

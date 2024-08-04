@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
 import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkRenderColumn<T extends ChunkGraphicsState> {

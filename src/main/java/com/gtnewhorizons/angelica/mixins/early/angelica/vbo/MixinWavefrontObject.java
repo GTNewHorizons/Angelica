@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
-import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.mixins.interfaces.IModelCustomExt;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -25,7 +25,8 @@ public abstract class MixinWavefrontObject implements IModelCustomExt {
 
     @Shadow public abstract void tessellateAll(Tessellator tessellator);
 
-    @Unique VertexFormat format = DefaultVertexFormat.POSITION_TEXTURE_NORMAL;
+    @Unique
+    VertexFormat format = DefaultVertexFormat.POSITION_TEXTURE_NORMAL;
 
     @Override
     public void rebuildVBO() {

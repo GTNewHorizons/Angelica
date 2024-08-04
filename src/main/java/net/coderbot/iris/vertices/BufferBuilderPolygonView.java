@@ -2,7 +2,7 @@ package net.coderbot.iris.vertices;
 
 import java.nio.ByteBuffer;
 
-public class BufferBuilderPolygonView implements QuadView {
+public class BufferBuilderPolygonView implements IrisQuadView {
 	private ByteBuffer buffer;
 	private int writePointer;
 	private int stride = 48;

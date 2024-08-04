@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.VBOManager;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import net.minecraft.client.model.ModelRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

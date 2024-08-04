@@ -1,11 +1,14 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadOrientation;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.ObjectPooler;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -13,9 +16,8 @@ import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
-import me.jellysquid.mods.sodium.client.model.quad.Quad;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.Quad;
+
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
@@ -23,7 +25,6 @@ import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -48,6 +49,7 @@ public class BlockRenderer {
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
 
+    private Object Quad;
     private final ObjectPooler<QuadView> quadPool = new ObjectPooler<>(Quad::new);
     // TODO: Use modern model API, and store them here
 
@@ -60,7 +62,7 @@ public class BlockRenderer {
         this.occlusionCache = new BlockOcclusionCache();
     }
 
-    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPosImpl pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
@@ -116,7 +118,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(BlockPosImpl pos, LightPipeline lighter, ChunkModelBuffers buffers, List<QuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<QuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
         final ForgeDirection cullFace = ModelQuadFacing.toDirection(facing);
 
         final ModelVertexSink sink = buffers.getSink(facing);

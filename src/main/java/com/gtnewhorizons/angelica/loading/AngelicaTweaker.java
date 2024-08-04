@@ -107,9 +107,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
-        // TODO: Sodium
-//        mixins.addAll(getNotFineMixins(loadedCoreMods));
-//        mixins.addAll(getArchaicMixins(loadedCoreMods));
         return Mixins.getEarlyMixins(loadedCoreMods);
     }
 

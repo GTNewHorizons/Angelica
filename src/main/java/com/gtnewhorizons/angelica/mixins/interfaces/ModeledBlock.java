@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.interfaces;
 
-import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
 
 public interface ModeledBlock {
 

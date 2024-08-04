@@ -1,6 +1,6 @@
 package net.coderbot.iris.vertices;
 
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 
 public interface ExtendingBufferBuilder {
 	void iris$beginWithoutExtending(int drawMode, VertexFormat vertexFormat);

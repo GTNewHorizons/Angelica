@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizons.angelica.api.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
 import lombok.Getter;
 import lombok.Setter;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;

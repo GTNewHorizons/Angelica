@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBufferSorter;
@@ -32,10 +32,10 @@ public class ChunkRenderTranslucencySortTask<T extends ChunkGraphicsState> exten
     private static final BlockRenderPass[] NO_PASSES = new BlockRenderPass[0];
 
     private final ChunkRenderContainer<T> render;
-    private final BlockPosImpl offset;
+    private final BlockPos offset;
     private final Vector3d camera;
 
-    public ChunkRenderTranslucencySortTask(ChunkRenderContainer<T> render, BlockPosImpl offset, Vector3d camera) {
+    public ChunkRenderTranslucencySortTask(ChunkRenderContainer<T> render, BlockPos offset, Vector3d camera) {
         this.render = render;
         this.offset = offset;
         this.camera = camera;
