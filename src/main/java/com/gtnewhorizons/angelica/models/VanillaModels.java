@@ -1,16 +1,17 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
-import com.gtnewhorizons.angelica.api.ModelLoader;
-import com.gtnewhorizons.angelica.api.QuadProvider;
-import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.api.Variant;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
+import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
+import com.gtnewhorizon.gtnhlib.client.model.Variant;
+import com.gtnewhorizon.gtnhlib.client.model.json.ModelLocation;
+import com.gtnewhorizon.gtnhlib.client.model.template.BlockColoredCube;
+import com.gtnewhorizon.gtnhlib.client.model.template.BlockStaticCube;
+import com.gtnewhorizon.gtnhlib.client.model.template.Column3Rot;
+import com.gtnewhorizon.gtnhlib.client.model.template.Model4Rot;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.models.json.ModelLocation;
-import com.gtnewhorizons.angelica.models.template.BlockColoredCube;
-import com.gtnewhorizons.angelica.models.template.BlockStaticCube;
-import com.gtnewhorizons.angelica.models.template.Column3Rot;
-import com.gtnewhorizons.angelica.models.template.Model4Rot;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -32,12 +33,12 @@ public class VanillaModels {
     public static BlockColoredCube JUNGLE_LEAVES;
     public static QuadProvider OLD_LEAF = new QuadProvider() {
         @Override
-        public int getColor(IBlockAccess world, BlockPos pos, Block block, int meta, Random random) {
+        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
             return QuadProvider.getDefaultColor(world, pos, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 4) {
                 case 0 -> OAK_LEAVES;
                 case 1 -> SPRUCE_LEAVES;
@@ -52,12 +53,12 @@ public class VanillaModels {
     public static BlockColoredCube DARK_OAK_LEAVES;
     public static QuadProvider NEW_LEAF = new QuadProvider() {
         @Override
-        public int getColor(IBlockAccess world, BlockPos pos, Block block, int meta, Random random) {
+        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
             return QuadProvider.getDefaultColor(world, pos, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 2) {
                 case 0 -> ACACIA_LEAVES;
                 case 1 -> DARK_OAK_LEAVES;
@@ -76,7 +77,7 @@ public class VanillaModels {
     public static BlockStaticCube JUNGLE_WOOD;
     public static QuadProvider OLD_LOG = new QuadProvider() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {
@@ -111,7 +112,7 @@ public class VanillaModels {
     public static BlockStaticCube DARK_OAK_WOOD;
     public static QuadProvider NEW_LOG = new QuadProvider() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, BlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {

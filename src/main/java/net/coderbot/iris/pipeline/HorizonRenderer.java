@@ -1,9 +1,10 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.client.renderer.CapturingTessellator;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexBuffer;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;

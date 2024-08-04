@@ -4,10 +4,8 @@ import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL14;
-import org.lwjgl.opengl.GL20;
 
-import static com.gtnewhorizons.angelica.util.GLSMUtil.*;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @ExtendWith(AngelicaExtension.class)
 class GLSM_DisplayList_UnitTest {

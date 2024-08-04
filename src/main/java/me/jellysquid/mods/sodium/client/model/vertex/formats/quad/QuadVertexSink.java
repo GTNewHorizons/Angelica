@@ -1,8 +1,10 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.quad;
 
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+
 import me.jellysquid.mods.sodium.client.model.vertex.VertexSink;
 import me.jellysquid.mods.sodium.client.util.math.Matrix4fExtended;
 import me.jellysquid.mods.sodium.client.util.math.MatrixUtil;

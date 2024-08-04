@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntPriorityQueue;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -35,12 +36,12 @@ public class ChunkOcclusionDataBuilder {
     }
     private int openCount = 4096;
 
-    public void markClosed(BlockPosImpl pos) {
+    public void markClosed(BlockPos pos) {
         this.closed.set(pack(pos), true);
         --this.openCount;
     }
 
-    private static int pack(BlockPosImpl pos) {
+    private static int pack(BlockPos pos) {
         return pack(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15);
     }
 

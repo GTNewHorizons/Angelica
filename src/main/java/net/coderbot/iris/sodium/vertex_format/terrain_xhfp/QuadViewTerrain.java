@@ -1,11 +1,11 @@
 package net.coderbot.iris.sodium.vertex_format.terrain_xhfp;
 
 import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
-import net.coderbot.iris.vertices.QuadView;
+import net.coderbot.iris.vertices.IrisQuadView;
 
 import java.nio.ByteBuffer;
 
-public abstract class QuadViewTerrain implements QuadView {
+public abstract class QuadViewTerrain implements IrisQuadView {
 	long writePointer;
 	int stride;
 

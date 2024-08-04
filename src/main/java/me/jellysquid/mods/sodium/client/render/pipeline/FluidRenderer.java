@@ -1,24 +1,24 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuad;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuadViewMutable;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuad;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuadView;
-import me.jellysquid.mods.sodium.client.model.quad.ModelQuadViewMutable;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import me.jellysquid.mods.sodium.common.util.DirectionUtil;
-import me.jellysquid.mods.sodium.common.util.WorldUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -38,7 +38,7 @@ public class FluidRenderer {
 	private static final float EPSILON = 0.001f;
     private final LightPipelineProvider lpp;
 
-    private final BlockPosImpl scratchPos = new BlockPosImpl();
+    private final BlockPos scratchPos = new BlockPos();
 
     private final ModelQuadViewMutable quad = new ModelQuad();
 
@@ -71,7 +71,7 @@ public class FluidRenderer {
     }
 
     private boolean isSideExposed(IBlockAccess world, int x, int y, int z, ForgeDirection dir, float height) {
-        BlockPosImpl pos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
+        BlockPos pos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
         Block block = world.getBlock(pos.x, pos.y, pos.z);
 
         if (block.getMaterial().isOpaque()) {
@@ -89,7 +89,7 @@ public class FluidRenderer {
         return true;
     }
 
-    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPosImpl pos, ChunkModelBuffers buffers) {
+    public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         int posX = pos.x;
@@ -356,7 +356,7 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad, BlockPosImpl pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
         QuadLightData light = this.quadLightData;
         lighter.calculate(quad, pos, light, null, dir, false);
 
@@ -441,7 +441,7 @@ public class FluidRenderer {
                 return 1.0F;
             }
 
-            BlockPosImpl pos = this.scratchPos.set(x2, y, z2);
+            BlockPos pos = this.scratchPos.set(x2, y, z2);
 
             block = world.getBlock(pos.x, pos.y, pos.z);
             int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);

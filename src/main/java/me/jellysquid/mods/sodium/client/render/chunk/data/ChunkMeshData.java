@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
 import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
-import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 
 import java.util.EnumMap;
 import java.util.Map;

@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.compat.nd.writers;
 
-import com.gtnewhorizons.angelica.api.QuadView;
-import com.gtnewhorizons.angelica.compat.nd.IWriteQuads;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.writers.IWriteQuads;
 
 import java.nio.ByteBuffer;
 

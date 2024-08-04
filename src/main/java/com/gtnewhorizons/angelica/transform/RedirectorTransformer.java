@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
@@ -42,8 +43,7 @@ import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockClass;
 import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockPackage;
 
 /**
- * This transformer redirects all Tessellator.instance field accesses to go through our TessellatorManager.
- * As well as redirect some GL calls to our custom GLStateManager
+ * This transformer redirects many GL calls to our custom GLStateManager
  */
 public class RedirectorTransformer implements IClassTransformer {
 
@@ -60,7 +60,6 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
-    private static final String TessellatorClass = "net/minecraft/client/renderer/Tessellator";
     private static final String MinecraftClient = "net.minecraft.client";
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
@@ -77,8 +76,7 @@ public class RedirectorTransformer implements IClassTransformer {
         "net/minecraft/block/material/"
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, TessellatorClass, BlockPackage,
-        Project);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final List<String> TransformerExclusions = Arrays.asList(
@@ -280,7 +278,7 @@ public class RedirectorTransformer implements IClassTransformer {
         cr.accept(cn, 0);
         final boolean changed = transformClassNode(transformedName, cn);
         if (changed) {
-            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
             saveTransformedClass(bytes, transformedName);
@@ -290,8 +288,7 @@ public class RedirectorTransformer implements IClassTransformer {
     }
 
     /** @return Was the class changed? */
-    public boolean transformClassNode(String transformedName, ClassNode cn)
-    {
+    public boolean transformClassNode(String transformedName, ClassNode cn) {
         if (cn == null) {
             return false;
         }
@@ -383,15 +380,6 @@ public class RedirectorTransformer implements IClassTransformer {
                         }
                     }
                 }
-                else if (node.getOpcode() == Opcodes.GETSTATIC && node instanceof FieldInsnNode fNode) {
-                    if ((fNode.name.equals("field_78398_a") || fNode.name.equals("instance")) && fNode.owner.equals(TessellatorClass)) {
-                        if (IrisLogging.ENABLE_SPAM) {
-                            AngelicaTweaker.LOGGER.info("Redirecting Tessellator.instance field in {} to TessellatorManager.get()", transformedName);
-                        }
-                        mn.instructions.set(node, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/gtnewhorizons/angelica/glsm/TessellatorManager", "get", "()Lnet/minecraft/client/renderer/Tessellator;", false));
-                        changed = true;
-                    }
-                }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
                         Pair<String, String> fieldToRedirect = null;
@@ -409,7 +397,7 @@ public class RedirectorTransformer implements IClassTransformer {
                             fNode.name = fieldToRedirect.getLeft(); // use unobfuscated name
                             fNode.owner = ThreadedBlockData;
                             // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                            MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+                            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
                             if(node.getOpcode() == Opcodes.GETFIELD) {
                                 mn.instructions.insertBefore(fNode, getter);
                             } else if(node.getOpcode() == Opcodes.PUTFIELD) {

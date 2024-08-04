@@ -20,8 +20,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
 
-import static org.lwjgl.opengl.GL11.*;
-
 /**
  * A batching replacement for {@code FontRenderer}
  *
@@ -255,15 +253,15 @@ public class BatchingFontRenderer {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-        GLStateManager.glShadeModel(GL_FLAT);
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.glShadeModel(GL11.GL_FLAT);
 
-        glTexCoordPointer(2, 0, batchVtxTexCoords);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, batchVtxColors);
-        glEnableClientState(GL_COLOR_ARRAY);
-        glVertexPointer(2, 0, batchVtxPositions);
-        glEnableClientState(GL_VERTEX_ARRAY);
+        GL11.glTexCoordPointer(2, 0, batchVtxTexCoords);
+        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 0, batchVtxColors);
+        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glVertexPointer(2, 0, batchVtxPositions);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
         GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
@@ -285,12 +283,12 @@ public class BatchingFontRenderer {
             }
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
-            glDrawElements(GL_TRIANGLES, batchIndices);
+            GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
         }
 
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        glDisableClientState(GL_COLOR_ARRAY);
-        glDisableClientState(GL_VERTEX_ARRAY);
+        GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);

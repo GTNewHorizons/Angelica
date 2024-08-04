@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.MatrixMode;
 

@@ -43,7 +43,7 @@ public abstract class NormalHelper {
 	 * <p>Assumes counter-clockwise winding order, which is the norm.
 	 * Expects convex quads with all points co-planar.
 	 */
-	public static void computeFaceNormal(@NotNull Vector3f saveTo, QuadView q) {
+	public static void computeFaceNormal(@NotNull Vector3f saveTo, IrisQuadView q) {
 //		final Direction nominalFace = q.nominalFace();
 //
 //		if (GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
