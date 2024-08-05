@@ -14,7 +14,7 @@
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.14
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.3.2
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.4.0
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities
@@ -33,6 +33,7 @@
 * OptiFine [Disabled, won't fix]
 * FastCraft [Disabled, won't fix]
 * BetterFPS [Disabled, won't fix]
+* Amazing Trophies 1.2.1 and below - use 1.2.2+
 * LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
 * ArchaicFix 0.6.2 and below - Use 0.7.0 or above
 * Hodgepodge 2.4.3 and below - [Use 2.4.4 or above](https://github.com/GTNewHorizons/Hodgepodge/releases)
