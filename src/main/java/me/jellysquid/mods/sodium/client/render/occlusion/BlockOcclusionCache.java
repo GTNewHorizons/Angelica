@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.occlusion;
 
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
@@ -11,7 +11,7 @@ public class BlockOcclusionCache {
 
     private final Object2ByteLinkedOpenHashMap<CachedOcclusionShapeTest> map;
     private final CachedOcclusionShapeTest cachedTest = new CachedOcclusionShapeTest();
-    private final BlockPosImpl cpos = new BlockPosImpl();
+    private final BlockPos cpos = new BlockPos();
 
     public BlockOcclusionCache() {
         this.map = new Object2ByteLinkedOpenHashMap<>(2048, 0.5F);
@@ -26,14 +26,14 @@ public class BlockOcclusionCache {
      * @param facing The facing direction of the side to check
      * @return True if the block side facing {@param dir} is not occluded, otherwise false
      */
-    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPosImpl pos, ForgeDirection facing) {
+    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPos pos, ForgeDirection facing) {
         if (facing == ForgeDirection.UNKNOWN)
             return true;
 
-        BlockPosImpl adjPos = this.cpos;
+        final BlockPos adjPos = this.cpos;
         adjPos.set(pos.getX() + facing.offsetX, pos.getY() + facing.offsetY, pos.getZ() + facing.offsetZ);
 
-        Block adjState = view.getBlock(adjPos.x, adjPos.y, adjPos.z);
+        final Block adjState = view.getBlock(adjPos.x, adjPos.y, adjPos.z);
 
         return !adjState.isOpaqueCube();
 
@@ -41,18 +41,18 @@ public class BlockOcclusionCache {
     }
 
     private boolean calculate(Block selfShape, Block adjShape) {
-        CachedOcclusionShapeTest cache = this.cachedTest;
+        final CachedOcclusionShapeTest cache = this.cachedTest;
         cache.a = selfShape;
         cache.b = adjShape;
         cache.updateHash();
 
-        byte cached = this.map.getByte(cache);
+        final byte cached = this.map.getByte(cache);
 
         if (cached != UNCACHED_VALUE) {
             return cached == 1;
         }
 
-        boolean ret = adjShape.isOpaqueCube() && selfShape.isOpaqueCube();
+        final boolean ret = adjShape.isOpaqueCube() && selfShape.isOpaqueCube();
 
         this.map.put(cache.copy(), (byte) (ret ? 1 : 0));
 
@@ -90,11 +90,8 @@ public class BlockOcclusionCache {
 
         @Override
         public boolean equals(Object o) {
-            if (o instanceof CachedOcclusionShapeTest) {
-                CachedOcclusionShapeTest that = (CachedOcclusionShapeTest) o;
-
-                return this.a == that.a &&
-                    this.b == that.b;
+            if (o instanceof CachedOcclusionShapeTest that) {
+                return this.a == that.a && this.b == that.b;
             }
 
             return false;

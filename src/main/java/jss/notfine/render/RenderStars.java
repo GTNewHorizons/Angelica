@@ -1,8 +1,9 @@
 package jss.notfine.render;
 
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.glsm.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.VBOManager;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import jss.notfine.core.Settings;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.renderer.RenderGlobal;

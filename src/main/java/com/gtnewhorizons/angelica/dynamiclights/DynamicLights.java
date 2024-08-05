@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -25,7 +26,6 @@ import net.minecraft.util.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import xonin.backhand.api.core.BackhandUtils;
-import xonin.backhand.api.core.IBackhandPlayer;
 
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -195,7 +195,7 @@ public class DynamicLights {
         return MathHelper.clamp_double(result, 0, 15);
     }
 
-    public double getDynamicLightLevel(@NotNull BlockPosImpl pos) {
+    public double getDynamicLightLevel(@NotNull BlockPos pos) {
         return this.getDynamicLightLevel(pos.getX(), pos.getY(), pos.getZ());
     }
 
@@ -229,7 +229,7 @@ public class DynamicLights {
      * @param currentLightLevel the current surrounding dynamic light level
      * @return the dynamic light level at the specified position
      */
-    public static double maxDynamicLightLevel(@NotNull BlockPosImpl pos, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
+    public static double maxDynamicLightLevel(@NotNull BlockPos pos, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
         return maxDynamicLightLevel(pos.getX(), pos.getY(), pos.getZ(), lightSource, currentLightLevel);
     }
 
@@ -267,7 +267,7 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, @NotNull BlockPosImpl chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
         scheduleChunkRebuild(renderer, chunkPos.getX(), chunkPos.getY(), chunkPos.getZ());
     }
 
@@ -292,7 +292,7 @@ public class DynamicLights {
      * @param old      the set of old chunk coordinates to remove this chunk from it
      * @param newPos   the set of new chunk coordinates to add this chunk to it
      */
-    public static void updateTrackedChunks(@NotNull BlockPosImpl chunkPos, @Nullable LongOpenHashSet old, @Nullable LongOpenHashSet newPos) {
+    public static void updateTrackedChunks(@NotNull IBlockPos chunkPos, @Nullable LongOpenHashSet old, @Nullable LongOpenHashSet newPos) {
         if (old != null || newPos != null) {
             final long pos = chunkPos.asLong();
             if (old != null)

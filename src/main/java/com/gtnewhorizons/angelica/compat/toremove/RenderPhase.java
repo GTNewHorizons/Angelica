@@ -64,9 +64,6 @@ public abstract class RenderPhase {
     protected static final Texture BLOCK_ATLAS_TEXTURE;
     protected static final Texture NO_TEXTURE;
     protected static final Texturing DEFAULT_TEXTURING;
-    protected static final Texturing OUTLINE_TEXTURING;
-    protected static final Texturing GLINT_TEXTURING;
-    protected static final Texturing ENTITY_GLINT_TEXTURING;
     protected static final Lightmap ENABLE_LIGHTMAP;
     protected static final Lightmap DISABLE_LIGHTMAP;
     protected static final DiffuseLighting ENABLE_DIFFUSE_LIGHTING;
@@ -80,19 +77,12 @@ public abstract class RenderPhase {
     protected static final WriteMaskState COLOR_MASK;
     protected static final WriteMaskState DEPTH_MASK;
     protected static final Layering NO_LAYERING;
-    protected static final Layering POLYGON_OFFSET_LAYERING;
-    protected static final Layering VIEW_OFFSET_Z_LAYERING;
     protected static final Fog NO_FOG;
     protected static final Fog FOG;
     protected static final Fog BLACK_FOG;
     protected static final Target MAIN_TARGET;
     protected static final Target OUTLINE_TARGET;
     protected static final Target TRANSLUCENT_TARGET;
-    protected static final Target PARTICLES_TARGET;
-    protected static final Target WEATHER_TARGET;
-    protected static final Target CLOUDS_TARGET;
-    protected static final Target ITEM_TARGET;
-    protected static final LineWidth FULL_LINE_WIDTH;
 
     public RenderPhase(String name, Runnable beginAction, Runnable endAction) {
         this.name = name;
@@ -127,20 +117,6 @@ public abstract class RenderPhase {
         return this.name;
     }
 
-    private static void setupGlintTexturing(float scale) {
-        throw new RuntimeException("Not Implemented Yet");
-//        RenderSystem.matrixMode(5890);
-//        RenderSystem.pushMatrix();
-//        RenderSystem.loadIdentity();
-//        long l = Util.getMeasuringTimeMs() * 8L;
-//        float g = (float)(l % 110000L) / 110000.0F;
-//        float h = (float)(l % 30000L) / 30000.0F;
-//        RenderSystem.translatef(-g, h, 0.0F);
-//        RenderSystem.rotatef(10.0F, 0.0F, 0.0F, 1.0F);
-//        RenderSystem.scalef(scale, scale, scale);
-//        RenderSystem.matrixMode(5888);
-    }
-
     private static ResourceLocation ATLAS = TextureMap.locationBlocksTexture;
     static {
         // TODO: Sodium - SpriteAtlasTexture
@@ -149,29 +125,6 @@ public abstract class RenderPhase {
         NO_TEXTURE = new Texture();
         DEFAULT_TEXTURING = new Texturing("default_texturing", () -> {
         }, () -> {
-        });
-        OUTLINE_TEXTURING = new Texturing("outline_texturing", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.setupOutline();
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.teardownOutline();
-        });
-        GLINT_TEXTURING = new Texturing("glint_texturing", () -> {
-            setupGlintTexturing(8.0F);
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.matrixMode(5890);
-//            RenderSystem.popMatrix();
-//            RenderSystem.matrixMode(5888);
-        });
-        ENTITY_GLINT_TEXTURING = new Texturing("entity_glint_texturing", () -> {
-            setupGlintTexturing(0.16F);
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.matrixMode(5890);
-//            RenderSystem.popMatrix();
-//            RenderSystem.matrixMode(5888);
         });
         ENABLE_LIGHTMAP = new Lightmap(true);
         DISABLE_LIGHTMAP = new Lightmap(false);
@@ -185,26 +138,7 @@ public abstract class RenderPhase {
         ALL_MASK = new WriteMaskState(true, true);
         COLOR_MASK = new WriteMaskState(true, false);
         DEPTH_MASK = new WriteMaskState(false, true);
-        NO_LAYERING = new Layering("no_layering", () -> {
-        }, () -> {
-        });
-        POLYGON_OFFSET_LAYERING = new Layering("polygon_offset_layering", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.polygonOffset(-1.0F, -10.0F);
-//            RenderSystem.enablePolygonOffset();
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.polygonOffset(0.0F, 0.0F);
-//            RenderSystem.disablePolygonOffset();
-        });
-        VIEW_OFFSET_Z_LAYERING = new Layering("view_offset_z_layering", () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem.pushMatrix();
-//            RenderSystem.scalef(0.99975586F, 0.99975586F, 0.99975586F);
-        }, () -> {
-            throw new RuntimeException("Not Implemented Yet");
-//            RenderSystem::popMatrix();
-        });
+        NO_LAYERING = new Layering("no_layering", () -> {}, () -> {});
         NO_FOG = new Fog("no_fog", () -> {
         }, () -> {
         });
@@ -246,103 +180,6 @@ public abstract class RenderPhase {
             }
 
         });
-        PARTICLES_TARGET = new Target("particles_target", () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                throw new RuntimeException("Not Implemented Yet");
-//                MinecraftClient.getInstance().worldRenderer.getParticlesFramebuffer().beginWrite(false);
-            }
-
-        }, () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
-            }
-
-        });
-        WEATHER_TARGET = new Target("weather_target", () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                throw new RuntimeException("Not Implemented Yet");
-//                MinecraftClient.getInstance().worldRenderer.getWeatherFramebuffer().beginWrite(false);
-            }
-
-        }, () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
-            }
-
-        });
-        CLOUDS_TARGET = new Target("clouds_target", () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                throw new RuntimeException("Not Implemented Yet");
-//                MinecraftClient.getInstance().worldRenderer.getCloudsFramebuffer().beginWrite(false);
-            }
-
-        }, () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
-            }
-
-        });
-        ITEM_TARGET = new Target("item_entity_target", () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                throw new RuntimeException("Not Implemented Yet");
-//                MinecraftClient.getInstance().worldRenderer.getEntityFramebuffer().beginWrite(false);
-            }
-
-        }, () -> {
-            if (Minecraft.isFancyGraphicsEnabled()) {
-                Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
-            }
-
-        });
-        FULL_LINE_WIDTH = new LineWidth(OptionalDouble.of(1.0));
-    }
-
-
-    public static class LineWidth extends RenderPhase {
-        private final OptionalDouble width;
-
-        public LineWidth(OptionalDouble optionalDouble) {
-            super("line_width", () -> {
-                if (!Objects.equals(optionalDouble, OptionalDouble.of(1.0))) {
-                    if (optionalDouble.isPresent()) {
-                        throw new RuntimeException("Not Implemented Yet");
-//                        RenderSystem.lineWidth((float)optionalDouble.getAsDouble());
-                    } else {
-                        throw new RuntimeException("Not Implemented Yet");
-//                        RenderSystem.lineWidth(Math.max(2.5F, (float)MinecraftClient.getInstance().getWindow().getFramebufferWidth() / 1920.0F * 2.5F));
-                    }
-                }
-
-            }, () -> {
-                if (!Objects.equals(optionalDouble, OptionalDouble.of(1.0))) {
-                    throw new RuntimeException("Not Implemented Yet");
-//                    RenderSystem.lineWidth(1.0F);
-                }
-
-            });
-            this.width = optionalDouble;
-        }
-
-        @Override
-        public boolean equals(@Nullable Object object) {
-            if (this == object) {
-                return true;
-            } else if (object != null && this.getClass() == object.getClass()) {
-                return !super.equals(object) ? false : Objects.equals(this.width, ((LineWidth)object).width);
-            } else {
-                return false;
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), this.width);
-        }
-
-        @Override
-        public String toString() {
-            return this.name + '[' + (this.width.isPresent() ? this.width.getAsDouble() : "window_scale") + ']';
-        }
     }
 
 
@@ -553,93 +390,6 @@ public abstract class RenderPhase {
         @Override
         public String toString() {
             return this.name + '[' + this.enabled + ']';
-        }
-    }
-
-
-    public static final class PortalTexturing extends Texturing {
-        private final int layer;
-
-        public PortalTexturing(int layer) {
-            super("portal_texturing", () -> {
-                  throw new RuntimeException("Not Implemented Yet");
-//                RenderSystem.matrixMode(5890);
-//                RenderSystem.pushMatrix();
-//                RenderSystem.loadIdentity();
-//                RenderSystem.translatef(0.5F, 0.5F, 0.0F);
-//                RenderSystem.scalef(0.5F, 0.5F, 1.0F);
-//                RenderSystem.translatef(17.0F / (float)layer, (2.0F + (float)layer / 1.5F) * ((float)(Util.getMeasuringTimeMs() % 800000L) / 800000.0F), 0.0F);
-//                RenderSystem.rotatef(((float)(layer * layer) * 4321.0F + (float)layer * 9.0F) * 2.0F, 0.0F, 0.0F, 1.0F);
-//                RenderSystem.scalef(4.5F - (float)layer / 4.0F, 4.5F - (float)layer / 4.0F, 1.0F);
-//                RenderSystem.mulTextureByProjModelView();
-//                RenderSystem.matrixMode(5888);
-//                RenderSystem.setupEndPortalTexGen();
-            }, () -> {
-                  throw new RuntimeException("Not Implemented Yet");
-//                RenderSystem.matrixMode(5890);
-//                RenderSystem.popMatrix();
-//                RenderSystem.matrixMode(5888);
-//                RenderSystem.clearTexGen();
-            });
-            this.layer = layer;
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) {
-                return true;
-            } else if (object != null && this.getClass() == object.getClass()) {
-                PortalTexturing lv = (PortalTexturing)object;
-                return this.layer == lv.layer;
-            } else {
-                return false;
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return Integer.hashCode(this.layer);
-        }
-    }
-
-
-    public static final class OffsetTexturing extends Texturing {
-        private final float x;
-        private final float y;
-
-        public OffsetTexturing(float x, float y) {
-            super("offset_texturing", () -> {
-                throw new RuntimeException("Not Implemented Yet");
-//                RenderSystem.matrixMode(5890);
-//                RenderSystem.pushMatrix();
-//                RenderSystem.loadIdentity();
-//                RenderSystem.translatef(x, y, 0.0F);
-//                RenderSystem.matrixMode(5888);
-            }, () -> {
-                throw new RuntimeException("Not Implemented Yet");
-//                RenderSystem.matrixMode(5890);
-//                RenderSystem.popMatrix();
-//                RenderSystem.matrixMode(5888);
-            });
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) {
-                return true;
-            } else if (object != null && this.getClass() == object.getClass()) {
-                OffsetTexturing lv = (OffsetTexturing)object;
-                return Float.compare(lv.x, this.x) == 0 && Float.compare(lv.y, this.y) == 0;
-            } else {
-                return false;
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(this.x, this.y);
         }
     }
 

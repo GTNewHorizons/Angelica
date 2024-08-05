@@ -61,7 +61,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:24.0.1')
-    api("com.github.GTNewHorizons:GTNHLib:0.3.2:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.4.0:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     implementation("io.github.douira:glsl-transformer:1.0.0")
     shadowImplementation("io.github.douira:glsl-transformer:1.0.0") { // glsl-transformer Noncommercial License 1.0.0
@@ -78,7 +78,7 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.5.16:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.12.0-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.6.1:dev")
 
     compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.6.1:dev")

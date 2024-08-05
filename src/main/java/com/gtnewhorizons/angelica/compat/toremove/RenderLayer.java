@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import lombok.Getter;
@@ -58,7 +60,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
     }
 
     public static RenderLayer getOutline(ResourceLocation texture, RenderPhase.Cull cull) {
-        return of("outline", DefaultVertexFormat.POSITION_COLOR_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(texture, false, false)).cull(cull).depthTest(ALWAYS_DEPTH_TEST).alpha(ONE_TENTH_ALPHA).texturing(OUTLINE_TEXTURING).fog(NO_FOG).target(OUTLINE_TARGET).build(RenderLayer.OutlineMode.IS_OUTLINE));
+        return of("outline", DefaultVertexFormat.POSITION_COLOR_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(texture, false, false)).cull(cull).depthTest(ALWAYS_DEPTH_TEST).alpha(ONE_TENTH_ALPHA).fog(NO_FOG).target(OUTLINE_TARGET).build(RenderLayer.OutlineMode.IS_OUTLINE));
     }
 
     public int mode() {
@@ -145,11 +147,10 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         private final RenderPhase.Target target;
         private final RenderPhase.Texturing texturing;
         private final RenderPhase.WriteMaskState writeMaskState;
-        private final RenderPhase.LineWidth lineWidth;
         private final OutlineMode outlineMode;
         private final ImmutableList<RenderPhase> phases;
 
-        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, RenderPhase.LineWidth lineWidth, OutlineMode outlineMode) {
+        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, OutlineMode outlineMode) {
             this.texture = texture;
             this.transparency = transparency;
             this.diffuseLighting = diffuseLighting;
@@ -163,9 +164,8 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.target = target;
             this.texturing = texturing;
             this.writeMaskState = writeMaskState;
-            this.lineWidth = lineWidth;
             this.outlineMode = outlineMode;
-            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.lineWidth);
+            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState);
         }
 
         public boolean equals(Object object) {
@@ -205,7 +205,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             private RenderPhase.Target target;
             private RenderPhase.Texturing texturing;
             private RenderPhase.WriteMaskState writeMaskState;
-            private RenderPhase.LineWidth lineWidth;
 
             private Builder() {
                 this.texture = RenderPhase.NO_TEXTURE ;
@@ -221,7 +220,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 this.target = RenderPhase.MAIN_TARGET;
                 this.texturing = RenderPhase.DEFAULT_TEXTURING;
                 this.writeMaskState = RenderPhase.ALL_MASK;
-                this.lineWidth = RenderPhase.FULL_LINE_WIDTH;
             }
 
             public Builder texture(RenderPhase.Texture texture) {
@@ -279,7 +277,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             }
 
             public MultiPhaseParameters build(OutlineMode outlineMode) {
-                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.lineWidth, outlineMode);
+                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, outlineMode);
             }
         }
     }

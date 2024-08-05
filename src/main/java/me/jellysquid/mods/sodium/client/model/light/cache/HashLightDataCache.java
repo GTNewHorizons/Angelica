@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.cache;
 
-import com.gtnewhorizons.angelica.api.BlockPos;
+import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
@@ -18,7 +18,8 @@ public class HashLightDataCache extends LightDataAccess {
 
     @Override
     public long get(int x, int y, int z) {
-        long key = BlockPos.asLong(x, y, z);
+        DynamicLightsPos.get().set(x, y, z);
+        long key = IBlockPos.asLong(x, y, z);
         long word = this.map.getAndMoveToFirst(key);
 
         if (word == 0) {

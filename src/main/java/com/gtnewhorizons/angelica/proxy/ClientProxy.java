@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizons.angelica.api.ModelLoader;
+import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -27,6 +29,7 @@ import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
+import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -53,9 +56,11 @@ import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
+
     final Minecraft mc = Minecraft.getMinecraft();
     private static boolean baked = false;
 
@@ -69,7 +74,6 @@ public class ClientProxy extends CommonProxy {
         AssetLoader.load();
     }
 
-
     @SubscribeEvent
     public void worldLoad(WorldEvent.Load event) {
         if (GLStateManager.isRunningSplash()) {
@@ -77,7 +81,7 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
 
-        if(AngelicaConfig.enableSodium) {
+        if (AngelicaConfig.enableSodium) {
             // Register all blocks. Because blockids are unique to a world, this must be done each load
             GameData.getBlockRegistry().forEach(o -> {
 
@@ -88,49 +92,66 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-
     private static KeyBinding glsmKeyBinding;
+
     @Override
     public void init(FMLInitializationEvent event) {
         super.init(event);
 
-        if(AngelicaConfig.enableHudCaching) {
+        if (AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
             MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
             HUDCaching.registerKeyBindings();
         }
-        if(AngelicaConfig.enableSodium) {
+        if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
         }
-        if(AngelicaConfig.enableIris) {
+        if (AngelicaConfig.enableIris) {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
 
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
-        }
 
+            VertexFormat.registerSetupBufferStateOverride((vertexFormat, l) -> {
+                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
+                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
+                    IrisVertexFormats.TERRAIN.setupBufferState(l);
+                    return true;
+                }
+                return false;
+            });
+            VertexFormat.registerClearBufferStateOverride(vertexFormat -> {
+                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
+                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
+                    IrisVertexFormats.TERRAIN.clearBufferState();
+                    return true;
+                }
+                return false;
+            });
+        }
 
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding  = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
+        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         VanillaModels.init();
 
-        if(ModStatus.isBetterCrashesLoaded) {
+        if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
         }
     }
 
     private boolean wasGLSMKeyPressed;
+
     @SubscribeEvent
     public void onKeypress(TickEvent.ClientTickEvent event) {
         final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode());
-        if(isPressed && !wasGLSMKeyPressed) {
-                OpenGLDebugging.checkGLSM();
-            }
+        if (isPressed && !wasGLSMKeyPressed) {
+            OpenGLDebugging.checkGLSM();
+        }
         wasGLSMKeyPressed = isPressed;
     }
 
@@ -141,11 +162,10 @@ public class ClientProxy extends CommonProxy {
         if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
-                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"naturalBlockClassTable");
-                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"naturalBlockTable");
-                ReflectionHelper.setPrivateValue(lotrRendering,null,new ConcurrentHashMap<>(),"cachedNaturalBlocks");
-            }
-            catch (ClassNotFoundException e) {
+                ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
+                ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockTable");
+                ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "cachedNaturalBlocks");
+            } catch (ClassNotFoundException e) {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
@@ -155,25 +175,24 @@ public class ClientProxy extends CommonProxy {
     }
 
     float lastIntegratedTickTime;
+
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
-        if(FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
+        if (FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
             IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
-            if(srv != null) {
+            if (srv != null) {
                 long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
-                lastIntegratedTickTime = lastIntegratedTickTime * 0.8F + (float)currentTickTime / 1000000.0F * 0.2F;
-            } else
-                lastIntegratedTickTime = 0;
+                lastIntegratedTickTime = lastIntegratedTickTime * 0.8F + (float) currentTickTime / 1000000.0F * 0.2F;
+            } else lastIntegratedTickTime = 0;
         }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if(event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.size() < 1)
-            return;
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.size() < 1) return;
         NetHandlerPlayClient cl = mc.getNetHandler();
-        if(cl != null) {
+        if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
 
             if (srv != null) {
@@ -181,34 +200,29 @@ public class ClientProxy extends CommonProxy {
                 event.left.add(1, s);
             }
         }
-        if(AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            if(!event.right.isEmpty() && Objects.firstNonNull(event.right.get(event.right.size() - 1), "").length() > 0)
-                event.right.add("");
+        if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+            if (!event.right.isEmpty() && Objects.firstNonNull(event.right.get(event.right.size() - 1), "").length() > 0) event.right.add("");
             Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
-        if (DynamicLights.isEnabled()){
+        if (DynamicLights.isEnabled()) {
             var builder = new StringBuilder("Dynamic Light Sources: ");
             DynamicLights dl = DynamicLights.get();
-            builder.append(dl.getLightSourcesCount())
-                .append(" (U: ")
-                .append(dl.getLastUpdateCount())
-                .append(')');
+            builder.append(dl.getLightSourcesCount()).append(" (U: ").append(dl.getLastUpdateCount()).append(')');
 
             event.right.add(builder.toString());
         }
-        if(AngelicaConfig.modernizeF3Screen) {
+        if (AngelicaConfig.modernizeF3Screen) {
             boolean hasReplacedXYZ = false;
-            for(int i = 0; i < event.left.size() - 3; i++) {
+            for (int i = 0; i < event.left.size() - 3; i++) {
                 /* These checks should not be inefficient as most of the time the first one will already fail */
-                if(!hasReplacedXYZ && Objects.firstNonNull(event.left.get(i), "").startsWith("x:")
-                    && Objects.firstNonNull(event.left.get(i + 1), "").startsWith("y:")
-                    && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:")
-                    && Objects.firstNonNull(event.left.get(i + 3), "").startsWith("f:")) {
+                if (!hasReplacedXYZ && Objects.firstNonNull(event.left.get(i), "").startsWith("x:") && Objects.firstNonNull(event.left.get(i + 1), "")
+                    .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
+                    .startsWith("f:")) {
                     hasReplacedXYZ = true;
-                    int heading = MathHelper.floor_double((double)(mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                    int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
                     String heading_str = switch (heading) {
                         case 0 -> "Towards positive Z";
                         case 1 -> "Towards negative X";
@@ -222,10 +236,16 @@ public class ClientProxy extends CommonProxy {
                     int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
                     event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
                     event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
-                    event.left.set(i + 3, String.format("Facing: %s (%s) (%.1f / %.1f)", Direction.directions[heading].toLowerCase(Locale.ROOT), heading_str, MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw), MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
+                    event.left.set(i + 3, String.format(
+                        "Facing: %s (%s) (%.1f / %.1f)",
+                        Direction.directions[heading].toLowerCase(Locale.ROOT),
+                        heading_str,
+                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
+                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
 
                     Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
-                    event.left.set(i + 4, String.format("lc: %d b: %s bl: %d sl: %d rl: %d",
+                    event.left.set(i + 4, String.format(
+                        "lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
                         chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
                         chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
@@ -238,8 +258,7 @@ public class ClientProxy extends CommonProxy {
             FontRenderer fontrenderer = mc.fontRenderer;
             int fontColor = 0xe0e0e0;
             int rectColor = 0x90505050;
-            for (int x = 0; x < event.left.size(); x++)
-            {
+            for (int x = 0; x < event.left.size(); x++) {
                 String msg = event.left.get(x);
                 if (msg == null) continue;
                 int strX = 2;
@@ -248,8 +267,7 @@ public class ClientProxy extends CommonProxy {
                 fontrenderer.drawString(msg, strX, strY, fontColor);
             }
             int width = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaledWidth();
-            for (int x = 0; x < event.right.size(); x++)
-            {
+            for (int x = 0; x < event.right.size(); x++) {
                 String msg = event.right.get(x);
                 if (msg == null) continue;
                 int w = fontrenderer.getStringWidth(msg);
@@ -265,7 +283,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
-        if(!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
+        if (!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
             gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
             LOGGER.info("The game loaded in " + gameStartTime + " seconds.");
         }
@@ -274,12 +292,9 @@ public class ClientProxy extends CommonProxy {
     /* coerce NaN fog values back to 0 (https://bugs.mojang.com/browse/MC-10480) - from ArchaicFix */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onFogColor(EntityViewRenderEvent.FogColors event) {
-        if(Float.isNaN(event.red))
-            event.red = 0f;
-        if(Float.isNaN(event.green))
-            event.green = 0f;
-        if(Float.isNaN(event.blue))
-            event.blue = 0f;
+        if (Float.isNaN(event.red)) event.red = 0f;
+        if (Float.isNaN(event.green)) event.green = 0f;
+        if (Float.isNaN(event.blue)) event.blue = 0f;
     }
 
     @SubscribeEvent
@@ -297,7 +312,7 @@ public class ClientProxy extends CommonProxy {
     // This is a bit of a hack to prevent the FOV from being modified by other mods
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onFOVModifierUpdate(FOVUpdateEvent event) {
-        if (!(boolean)Settings.DYNAMIC_FOV.option.getStore()){
+        if (!(boolean) Settings.DYNAMIC_FOV.option.getStore()) {
             event.newfov = 1.0F;
         }
     }

@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import com.gtnewhorizons.angelica.transform.ClassConstantPoolParser;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;

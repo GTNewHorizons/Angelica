@@ -122,7 +122,6 @@ public enum Mixins {
             ,"sodium.MixinRenderBlocks"
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
-            ,"sodium.MixinTessellator"
             ,"sodium.MixinTileEntity"
             ,"sodium.MixinEffectRenderer"
             ,"sodium.MixinTileEntityRendererDispatcher"
@@ -157,12 +156,12 @@ public enum Mixins {
 
     IRIS_ACCESSORS(new Builder("Iris Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
-             "shaders.accessors.MinecraftAccessor"
-            ,"shaders.accessors.EntityRendererAccessor"
-            ,"shaders.accessors.SimpleTextureAccessor"
-            ,"shaders.accessors.TextureAtlasSpriteAccessor"
-            ,"shaders.accessors.TextureMapAccessor"
-            ,"shaders.accessors.AnimationMetadataSectionAccessor"
+             "shaders.accessors.MixinMinecraft"
+            ,"shaders.accessors.MixinEntityRenderer"
+            ,"shaders.accessors.MixinSimpleTexture"
+            ,"shaders.accessors.MixinTextureAtlasSprite"
+            ,"shaders.accessors.MixinTextureMap"
+            ,"shaders.accessors.MixinAnimationMetadataSection"
         )
     ),
 
@@ -175,9 +174,9 @@ public enum Mixins {
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
         .addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableHudCaching).addMixinClasses(
-        	"angelica.hudcaching.GuiIngameAccessor",
-        	"angelica.hudcaching.GuiIngameForgeAccessor",
-            "angelica.hudcaching.RenderGameOverlayEventAccessor",
+        	"angelica.hudcaching.MixinGuiIngame",
+        	"angelica.hudcaching.MixinGuiIngameForge",
+            "angelica.hudcaching.MixinRenderGameOverlayEvent",
             "angelica.hudcaching.MixinEntityRenderer_HUDCaching",
             "angelica.hudcaching.MixinFramebuffer_HUDCaching",
             "angelica.hudcaching.MixinGuiIngame_HUDCaching",

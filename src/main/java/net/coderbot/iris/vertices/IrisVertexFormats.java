@@ -1,9 +1,10 @@
 package net.coderbot.iris.vertices;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormat;
-import com.gtnewhorizons.angelica.compat.mojang.VertexFormatElement;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
 
 public class IrisVertexFormats {
 	public static final VertexFormatElement ENTITY_ELEMENT;
@@ -38,12 +39,11 @@ public class IrisVertexFormats {
 		entityElements.add(DefaultVertexFormat.POSITION_ELEMENT); // 12
 		entityElements.add(DefaultVertexFormat.COLOR_ELEMENT); // 16
 		entityElements.add(DefaultVertexFormat.TEXTURE_ELEMENT); // 24
-		entityElements.add(DefaultVertexFormat.OVERLAY_ELEMENT); // 28
-		entityElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 32
-		entityElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 35
-		entityElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 36
-		entityElements.add(MID_TEXTURE_ELEMENT); // 44
-		entityElements.add(TANGENT_ELEMENT); // 48
+		entityElements.add(DefaultVertexFormat.LIGHT_ELEMENT); // 28
+		entityElements.add(DefaultVertexFormat.NORMAL_ELEMENT); // 31
+		entityElements.add(DefaultVertexFormat.PADDING_ELEMENT); // 32
+		entityElements.add(MID_TEXTURE_ELEMENT); // 40
+		entityElements.add(TANGENT_ELEMENT); // 44
 
 		TERRAIN = new VertexFormat(terrainElements.build());
 		ENTITY = new VertexFormat(entityElements.build());

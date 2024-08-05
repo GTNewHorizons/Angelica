@@ -1,6 +1,7 @@
 package net.coderbot.iris.postprocess;
 
-import com.gtnewhorizons.angelica.compat.mojang.DefaultVertexFormat;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.BufferUtils;

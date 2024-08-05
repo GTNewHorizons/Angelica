@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
-import com.gtnewhorizons.angelica.api.MutableBlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.BlockPosImpl;
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
@@ -24,7 +23,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  * You can use the various static pack/unpack methods to extract these values in a usable format.
  */
 public abstract class LightDataAccess {
-    private final BlockPosImpl pos = new BlockPosImpl();
+    public static final ThreadLocal<BlockPos> DynamicLightsPos = ThreadLocal.withInitial(BlockPos::new);
     protected WorldSlice world;
 
     public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
@@ -35,11 +34,11 @@ public abstract class LightDataAccess {
         return this.get(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
     }
 
-    public long get(BlockPosImpl pos, ForgeDirection dir) {
+    public long get(BlockPos pos, ForgeDirection dir) {
         return this.get(pos.x, pos.y, pos.z, dir);
     }
 
-    public long get(BlockPosImpl pos) {
+    public long get(BlockPos pos) {
         return this.get(pos.x, pos.y, pos.getZ());
     }
 
@@ -121,7 +120,7 @@ public abstract class LightDataAccess {
         return aoi * (1.0f / 4096.0f);
     }
 
-    public static int getLightMap(long originWord, BlockPosImpl pos) {
+    public static int getLightMap(long originWord) {
         if (!DynamicLights.isEnabled()) {
             return unpackLM(originWord);
         }
@@ -129,7 +128,7 @@ public abstract class LightDataAccess {
             return unpackLM(originWord);
         }
 
-        double dynamic = DynamicLights.get().getDynamicLightLevel(pos);
+        double dynamic = DynamicLights.get().getDynamicLightLevel(DynamicLightsPos.get());
         return DynamicLights.get().getLightmapWithDynamicLight(dynamic, unpackLM(originWord));
 
     }
