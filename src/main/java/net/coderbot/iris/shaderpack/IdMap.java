@@ -13,6 +13,9 @@ import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
+import net.minecraftforge.oredict.OreDictionary;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -176,7 +179,7 @@ public class IdMap {
 
 		properties.forEach((keyObject, valueObject) -> {
 			final String key = (String) keyObject;
-			final String value = (String) valueObject;
+			StringBuilder value = new StringBuilder((String) valueObject);
 
 			if (!key.startsWith(keyPrefix)) {
 				// Not a valid line, ignore it
@@ -195,8 +198,18 @@ public class IdMap {
 
 			final List<BlockEntry> entries = new ArrayList<>();
 
+			if (value.toString().contains("minecraft:leaves")) {
+				ArrayList<ItemStack> leaves = OreDictionary.getOres("treeLeaves");
+				for (ItemStack leaf : leaves) {
+					if (leaf.getItem() instanceof ItemBlock) {
+						Iris.logger.warn("Found leaf " + leaf.getItem().itemRegistry.getNameForObject(leaf.getItem()));
+						value.append(" ").append(leaf.getItem().itemRegistry.getNameForObject(leaf.getItem()));
+					}
+				}
+			}
+
 			// Split on whitespace groups, not just single spaces
-			for (String part : value.split("\\s+")) {
+			for (String part : value.toString().split("\\s+")) {
 				if (part.isEmpty()) {
 					continue;
 				}
