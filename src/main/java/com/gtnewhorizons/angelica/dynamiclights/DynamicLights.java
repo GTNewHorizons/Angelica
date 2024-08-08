@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
+import baubles.common.lib.PlayerHandler;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
@@ -377,6 +378,18 @@ public class DynamicLights {
                 ItemStack offhand = BackhandUtils.getOffhandItem(player);
                 if (offhand != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+                }
+            }
+
+            if (ModStatus.isBaublesLoaded && living instanceof EntityPlayer player){
+                var playerBaubles = PlayerHandler.getPlayerBaubles(player);
+                if (playerBaubles != null){
+                    for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
+                        var stack = playerBaubles.getStackInSlot(i);
+                        if (stack != null){
+                            luminance = Math.max(luminance, getLuminanceFromItemStack(stack, inWater));
+                        }
+                    }
                 }
             }
 
