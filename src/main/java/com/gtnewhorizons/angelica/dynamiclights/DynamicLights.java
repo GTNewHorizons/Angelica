@@ -4,6 +4,7 @@ import baubles.common.lib.PlayerHandler;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
+import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -17,6 +18,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -336,6 +338,8 @@ public class DynamicLights {
             if (block != null) {
                 return block.getLightValue();
             }
+        } else if (item instanceof IDynamicLightProducer lightProducer){
+            return lightProducer.getLuminance();
         }
 
         if (item == Items.lava_bucket) return Blocks.lava.getLightValue();
