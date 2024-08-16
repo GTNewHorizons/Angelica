@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
+import baubles.common.lib.PlayerHandler;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
+import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -16,6 +18,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -335,6 +338,8 @@ public class DynamicLights {
             if (block != null) {
                 return block.getLightValue();
             }
+        } else if (item instanceof IDynamicLightProducer lightProducer){
+            return lightProducer.getLuminance();
         }
 
         if (item == Items.lava_bucket) return Blocks.lava.getLightValue();
@@ -377,6 +382,18 @@ public class DynamicLights {
                 ItemStack offhand = BackhandUtils.getOffhandItem(player);
                 if (offhand != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+                }
+            }
+
+            if (ModStatus.isBaublesLoaded && living instanceof EntityPlayer player){
+                var playerBaubles = PlayerHandler.getPlayerBaubles(player);
+                if (playerBaubles != null){
+                    for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
+                        var stack = playerBaubles.getStackInSlot(i);
+                        if (stack != null){
+                            luminance = Math.max(luminance, getLuminanceFromItemStack(stack, inWater));
+                        }
+                    }
                 }
             }
 
