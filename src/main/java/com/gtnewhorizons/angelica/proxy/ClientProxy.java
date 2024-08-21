@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -56,13 +55,11 @@ import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
-
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
-    private static boolean baked = false;
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -169,9 +166,6 @@ public class ClientProxy extends CommonProxy {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
-
-        Minecraft.getMinecraft().refreshResources();
-        ModelLoader.loadModels();
     }
 
     float lastIntegratedTickTime;
@@ -301,11 +295,6 @@ public class ClientProxy extends CommonProxy {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
-        }
-
-        if (!baked) {
-            ModelLoader.bakeModels();
-            baked = true;
         }
     }
 
