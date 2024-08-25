@@ -28,7 +28,12 @@ import java.util.Map;
 import java.util.Set;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.transform.RedirectorTransformer")
+@IFMLLoadingPlugin.TransformerExclusions(
+    {
+        "com.gtnewhorizons.angelica.transform.RedirectorTransformer",
+        "com.gtnewhorizons.angelica.glsm.GLStateManager"
+    }
+)
 @IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
@@ -40,9 +45,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
-            LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-            Configuration config = ctx.getConfiguration();
-            LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+            final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+            final Configuration config = ctx.getConfiguration();
+            final LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
             if (AngelicaConfig.enableDebugLogging) {
                 loggerConfig.setLevel(Level.DEBUG);
             }
@@ -59,7 +64,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     @Override
     public String[] getASMTransformerClass() {
         // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
-        List<String> mixinTweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
+        final List<String> mixinTweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
         if (mixinTweakClasses != null) {
             mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
         }
@@ -68,7 +73,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         if (transformerClasses == null) {
 
             //Mod Compat transformers
-            List<String> transformers = new ArrayList<String>();
+            final List<String> transformers = new ArrayList<>();
             transformers.addAll(CompatASMTransformers.getTransformers());
 
             //NotFine transformers
