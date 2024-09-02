@@ -80,11 +80,9 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableSodium) {
             // Register all blocks. Because blockids are unique to a world, this must be done each load
-            GameData.getBlockRegistry().forEach(o -> {
-
-                final Block b = (Block) o;
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
+            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
             });
         }
     }
@@ -184,7 +182,7 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.size() < 1) return;
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
@@ -195,7 +193,7 @@ public class ClientProxy extends CommonProxy {
             }
         }
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            if (!event.right.isEmpty() && Objects.firstNonNull(event.right.get(event.right.size() - 1), "").length() > 0) event.right.add("");
+            if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
             Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
@@ -279,7 +277,7 @@ public class ClientProxy extends CommonProxy {
     public void onGuiOpen(GuiOpenEvent event) {
         if (!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
             gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
-            LOGGER.info("The game loaded in " + gameStartTime + " seconds.");
+            LOGGER.info("The game loaded in {} seconds.", gameStartTime);
         }
     }
 
