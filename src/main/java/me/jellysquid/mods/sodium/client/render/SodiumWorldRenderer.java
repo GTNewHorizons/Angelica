@@ -269,6 +269,10 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
+        // This fix a long-standing issue with culling state leaking because of mods,
+        // or other factors as having clouds disabled.
+        GLStateManager.enableCull();
+
         if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already
         // pass.startDrawing();
