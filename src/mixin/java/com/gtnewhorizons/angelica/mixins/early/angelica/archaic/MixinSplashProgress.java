@@ -13,6 +13,7 @@ import org.lwjgl.opengl.Display;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -36,6 +37,8 @@ public class MixinSplashProgress {
     private static float memoryColorPercent;
     private static long memoryColorChangeTime;
     private static FontRenderer fontRenderer = null;
+    @Unique
+    private static Boolean angelica$isArchaicFixPresent = null;
     @Inject(method = "run", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 1, remap = false, shift = At.Shift.AFTER), remap = false, require = 0)
     private void injectDrawMemoryBar(CallbackInfo ci) {
         // NOTE: Disable this if you're checking for off thread GL calls via `-Dangelica.assertMainThread=true`
@@ -49,11 +52,23 @@ public class MixinSplashProgress {
                 return;
             }
         }
+
+        // This runs before Loader.isModLoaded() works
+        if (angelica$isArchaicFixPresent == null) {
+            try {
+                Class.forName("org.embeddedt.archaicfix.ArchaicCore");
+                angelica$isArchaicFixPresent = true;
+            }
+            catch (Exception e) {
+                angelica$isArchaicFixPresent = false;
+            }
+        }
+
         glPushMatrix();
         glTranslatef(320 - Display.getWidth() / 2 + 4, 240 + Display.getHeight() / 2 - textHeight2, 0);
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        fontRenderer.drawString("Angelica " + Tags.VERSION, 0, 0, 0x000000);
+        fontRenderer.drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
         if(AngelicaConfig.showSplashMemoryBar) {
