@@ -33,10 +33,10 @@
 * OptiFine [Disabled, won't fix]
 * FastCraft [Disabled, won't fix]
 * BetterFPS [Disabled, won't fix]
-* Amazing Trophies 1.2.1 and below - use 1.2.2+
-* LWJGL3ify 1.5.4 and below - Use the latest version available, 1.5.7+
-* ArchaicFix 0.6.2 and below - Use 0.7.0 or above
-* Hodgepodge 2.4.3 and below - [Use 2.4.4 or above](https://github.com/GTNewHorizons/Hodgepodge/releases)
+* [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - use 1.2.2+
+* [LWJGL3ify 1.5.4 and below](https://github.com/GTNewHorizons/lwjgl3ify/releases/) - Use the latest version available, 1.5.7+
+* [ArchaicFix 0.6.2 and below](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) - Use 0.7.0 or above
+* [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 2.4.4 or above
 * CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
 
