@@ -48,7 +48,7 @@ public enum Settings {
         }
     },
     DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
-    DYNAMIC_LIGHTS(new NotFineOptionCycling(DynamicLightsMode.OFF, OptionImpact.VARIES)){
+    DYNAMIC_LIGHTS(new NotFineOptionCycling(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
         @Override
         public void applyChanges() {
             DynamicLights.Mode = (DynamicLightsMode) DYNAMIC_LIGHTS.option.getStore();
