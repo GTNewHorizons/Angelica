@@ -27,7 +27,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
 import java.util.Arrays;
@@ -96,7 +95,8 @@ public class FluidRenderer {
         int posY = pos.y;
         int posZ = pos.z;
 
-        Fluid fluid = ((IFluidBlock) block).getFluid();
+
+        Fluid fluid = WorldUtil.getFluid(block);
         if (fluid == null) return false;
 
         // Check for occluded sides; if everything is occluded, don't render
@@ -437,7 +437,7 @@ public class FluidRenderer {
 
             Block block = world.getBlock(x2, y + 1, z2);
 
-            if (block instanceof IFluidBlock && ((IFluidBlock) block).getFluid() == fluid) {
+            if (WorldUtil.getFluid(block) == fluid) {
                 return 1.0F;
             }
 
@@ -445,7 +445,7 @@ public class FluidRenderer {
 
             block = world.getBlock(pos.x, pos.y, pos.z);
             int meta = world.getBlockMetadata(pos.x, pos.y, pos.z);
-            Fluid fluid2 = block instanceof IFluidBlock ? ((IFluidBlock) world.getBlock(pos.x, pos.y, pos.z)).getFluid() : null;
+            Fluid fluid2 = WorldUtil.getFluid(block);
 
             if (fluid2 == fluid) {
                 float height = WorldUtil.getFluidHeight(fluid2, meta);
