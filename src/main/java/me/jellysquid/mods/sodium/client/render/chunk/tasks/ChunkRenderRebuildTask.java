@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
@@ -32,7 +33,6 @@ import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.IIcon;
-import net.minecraftforge.fluids.IFluidBlock;
 import org.joml.Vector3d;
 
 import java.util.concurrent.CompletableFuture;
@@ -153,7 +153,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if (rendersOffThread(block)) {
                         // Do regular block rendering
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                            if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                            if (block.canRenderInPass(pass.ordinal()) && !shouldUseSodiumFluidRendering(block)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
                                 final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                                 if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
@@ -169,7 +169,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     }
 
                     // Do fluid rendering without RenderBlocks
-                    if (AngelicaConfig.enableSodiumFluidRendering && block instanceof IFluidBlock) {
+                    if (shouldUseSodiumFluidRendering(block)) {
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (block.canRenderInPass(pass.ordinal())) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
@@ -273,7 +273,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             // Do regular block rendering
             for (BlockRenderPass pass : BlockRenderPass.VALUES) {
-                if (block.canRenderInPass(pass.ordinal()) && (!AngelicaConfig.enableSodiumFluidRendering || !(block instanceof IFluidBlock))) {
+                if (block.canRenderInPass(pass.ordinal()) && !shouldUseSodiumFluidRendering(block)) {
                     ChunkRenderManager.setWorldRenderPass(pass);
                     final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                     if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
@@ -305,5 +305,9 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             + ", translucencySorting="
             + translucencySorting
             + '}';
+    }
+
+    private static boolean shouldUseSodiumFluidRendering(Block block) {
+        return AngelicaConfig.enableSodiumFluidRendering && WorldUtil.isFluidBlock(block);
     }
 }

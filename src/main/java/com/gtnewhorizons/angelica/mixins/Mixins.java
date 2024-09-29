@@ -131,11 +131,6 @@ public enum Mixins {
         )
     ),
 
-    // Required for Sodium's FluidRenderer, so it treats vanilla liquids as IFluidBlocks
-    SODIUM_WISHLIST(new Builder("Sodiumer").addTargetedMod(TargetedMod.VANILLA).setSide(Side.BOTH)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodiumFluidRendering).addMixinClasses(
-        "sodium.MixinBlockLiquid")),
-
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
              "shaders.MixinEntityRenderer"
