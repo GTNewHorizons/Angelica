@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
@@ -273,10 +272,7 @@ public class RedirectorTransformer implements IClassTransformer {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            if (AngelicaTweaker.DUMP_CLASSES()) {
-                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
-                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
-            }
+            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
         return basicClass;

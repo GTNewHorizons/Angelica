@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
@@ -64,10 +63,7 @@ public class HUDCachingTransformer implements IClassTransformer, Opcodes {
             MixinClassWriter cw = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            if (AngelicaTweaker.DUMP_CLASSES()) {
-                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
-                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
-            }
+            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
 

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
@@ -21,7 +22,6 @@ import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -123,6 +123,13 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
      */
     public static boolean isObfEnv() {
         return OBF_ENV;
+    }
+
+    public static void dumpClass(String className, byte[] originalBytes, byte[] transformedBytes, Object transformer) {
+        if (AngelicaTweaker.DUMP_CLASSES()) {
+            ASMUtil.saveAsRawClassFile(originalBytes, className + "_PRE", transformer);
+            ASMUtil.saveAsRawClassFile(transformedBytes, className + "_POST", transformer);
+        }
     }
 
     private static final ImmutableMap<String, TargetedMod> MODS_BY_CLASS = ImmutableMap.<String, TargetedMod>builder()
