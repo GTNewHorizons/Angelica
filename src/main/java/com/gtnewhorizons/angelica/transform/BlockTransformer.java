@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
@@ -10,9 +12,8 @@ import org.objectweb.asm.tree.ClassNode;
 import java.util.List;
 
 public class BlockTransformer implements IClassTransformer {
-    public static final String BlockClass = "net/minecraft/block/Block";
-    public static final String BlockPackage = BlockClass.substring(0, BlockClass.lastIndexOf('/') + 1);
-    private static final String BlockClassFriendly = BlockClass.replace('/', '.');
+
+    private static final String BlockClassFriendly = "net.minecraft.block.Block";
     public static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
         Pair.of("minX", "field_149759_B"),
         Pair.of("minY", "field_149760_C"),
@@ -28,18 +29,20 @@ public class BlockTransformer implements IClassTransformer {
      */
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        if(basicClass != null && transformedName.equals(BlockClassFriendly)) {
+        if (basicClass != null && BlockClassFriendly.equals(transformedName)) {
             final ClassReader cr = new ClassReader(basicClass);
             final ClassNode cn = new ClassNode();
             cr.accept(cn, 0);
-
-            cn.fields.removeIf(node -> BlockBoundsFields.stream().anyMatch(pair -> node.name.equals(pair.getLeft()) || node.name.equals(pair.getRight())));
-
+            cn.fields.removeIf(field -> BlockBoundsFields.stream().anyMatch(pair -> field.name.equals(pair.getLeft()) || field.name.equals(pair.getRight())));
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
-            basicClass = cw.toByteArray();
+            final byte[] bytes = cw.toByteArray();
+            if (AngelicaTweaker.DUMP_CLASSES()) {
+                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
+                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
+            }
+            return bytes;
         }
-
         return basicClass;
     }
 }

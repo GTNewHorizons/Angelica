@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
-import net.minecraft.launchwrapper.LaunchClassLoader;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -23,12 +21,8 @@ import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,17 +32,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockBoundsFields;
-import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockClass;
-import static com.gtnewhorizons.angelica.transform.BlockTransformer.BlockPackage;
-
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
  */
 public class RedirectorTransformer implements IClassTransformer {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
-    private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
@@ -56,6 +45,9 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
     private static final String Project = "org/lwjgl/util/glu/Project";
+
+    private static final String BlockClass = "net/minecraft/block/Block";
+    private static final String BlockPackage = "net/minecraft/block/Block";
 
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
@@ -233,9 +225,9 @@ public class RedirectorTransformer implements IClassTransformer {
     }
 
     private boolean isVanillaBlockSubclass(String className) {
-        if(className.startsWith(BlockTransformer.BlockPackage)) {
-            for(String exclusion : VanillaBlockExclusions) {
-                if(className.startsWith(exclusion)) {
+        if (className.startsWith(BlockPackage)) {
+            for (String exclusion : VanillaBlockExclusions) {
+                if (className.startsWith(exclusion)) {
                     return false;
                 }
             }
@@ -281,7 +273,10 @@ public class RedirectorTransformer implements IClassTransformer {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            saveTransformedClass(bytes, transformedName);
+            if (AngelicaTweaker.DUMP_CLASSES()) {
+                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
+                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
+            }
             return bytes;
         }
         return basicClass;
@@ -309,7 +304,7 @@ public class RedirectorTransformer implements IClassTransformer {
             } else {
                 // Check if we declare any known field names
                 Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
-                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
+                doWeShadow = BlockTransformer.BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
             }
             if(doWeShadow) {
                 AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
@@ -383,7 +378,7 @@ public class RedirectorTransformer implements IClassTransformer {
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
                         Pair<String, String> fieldToRedirect = null;
-                        for(Pair<String, String> blockPairs : BlockBoundsFields) {
+                        for(Pair<String, String> blockPairs : BlockTransformer.BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
                                 fieldToRedirect = blockPairs;
                                 break;
@@ -428,40 +423,6 @@ public class RedirectorTransformer implements IClassTransformer {
         }
 
         return changed;
-    }
-
-    private File outputDir = null;
-
-    private void saveTransformedClass(final byte[] data, final String transformedName) {
-        if (!DUMP_CLASSES) {
-            return;
-        }
-        if (outputDir == null) {
-            outputDir = new File(Launch.minecraftHome, "ASM_REDIRECTOR");
-            try {
-                FileUtils.deleteDirectory(outputDir);
-            } catch (IOException ignored) {}
-            if (!outputDir.exists()) {
-                //noinspection ResultOfMethodCallIgnored
-                outputDir.mkdirs();
-            }
-        }
-        final String fileName = transformedName.replace('.', File.separatorChar);
-        final File classFile = new File(outputDir, fileName + ".class");
-        final File outDir = classFile.getParentFile();
-        if (!outDir.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            outDir.mkdirs();
-        }
-        if (classFile.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            classFile.delete();
-        }
-        try (final OutputStream output = Files.newOutputStream(classFile.toPath())) {
-            output.write(data);
-        } catch (IOException e) {
-            AngelicaTweaker.LOGGER.error("Could not save transformed class (byte[]) " + transformedName, e);
-        }
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {
