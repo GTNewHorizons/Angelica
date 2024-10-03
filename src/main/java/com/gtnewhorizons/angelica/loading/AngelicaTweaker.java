@@ -28,15 +28,14 @@ import java.util.Map;
 import java.util.Set;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions(
-    {
+@IFMLLoadingPlugin.TransformerExclusions({
         "com.gtnewhorizons.angelica.transform.RedirectorTransformer",
-        "com.gtnewhorizons.angelica.glsm.GLStateManager"
-    }
-)
+        "com.gtnewhorizons.angelica.glsm.GLStateManager"})
 @IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
+    private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
+    private static boolean OBF_ENV;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     private String[] transformerClasses;
@@ -97,7 +96,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        // no-op
+        OBF_ENV = (boolean) data.get("runtimeDeobfuscationEnabled");
     }
 
     @Override
@@ -113,6 +112,17 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
         return Mixins.getEarlyMixins(loadedCoreMods);
+    }
+
+    public static boolean DUMP_CLASSES() {
+        return DUMP_CLASSES || !OBF_ENV;
+    }
+
+    /**
+     * Returns true if we are in an obfuscated environment, returns false in dev environment.
+     */
+    public static boolean isObfEnv() {
+        return OBF_ENV;
     }
 
     private static final ImmutableMap<String, TargetedMod> MODS_BY_CLASS = ImmutableMap.<String, TargetedMod>builder()

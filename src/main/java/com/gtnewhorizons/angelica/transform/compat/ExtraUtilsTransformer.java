@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat;
 
+import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
@@ -51,7 +52,12 @@ public class ExtraUtilsTransformer implements IClassTransformer {
 
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         cn.accept(cw);
-        return cw.toByteArray();
+        final byte[] bytes = cw.toByteArray();
+        if (AngelicaTweaker.DUMP_CLASSES()) {
+            ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
+            ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
+        }
+        return bytes;
     }
 
     public void addThreadSafeISBRHAnnotation(String transformedName, ClassNode cn) {
