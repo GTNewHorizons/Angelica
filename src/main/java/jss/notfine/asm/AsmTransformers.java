@@ -45,7 +45,7 @@ public enum AsmTransformers {
                 .isClient());
     }
 
-    public static String[] getTransformers() {
+    public static List<String> getTransformers() {
         final List<String> list = new ArrayList<>();
         for (AsmTransformers transformer : values()) {
             if (transformer.shouldBeLoaded()) {
@@ -55,7 +55,7 @@ public enum AsmTransformers {
                 AngelicaTweaker.LOGGER.info("Not loading transformer {}", (Object[]) transformer.transformerClasses);
             }
         }
-        return list.toArray(new String[0]);
+        return list;
     }
 
     private enum Side {

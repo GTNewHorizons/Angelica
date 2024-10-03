@@ -68,17 +68,17 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
         }
 
-        // Return any others here
+        // ================== Important ==================
+        // Due to a bug with mixins, the IClassTransformer registered here
+        // will not respect the sorting index defined in @IFMLLoadingPlugin.SortingIndex
+        // They will instead use default index 0 which means they will deal with
+        // obfuscated mappings and not SRG mappings when running outside of dev env
+        // ===============================================
         if (transformerClasses == null) {
-
-            //Mod Compat transformers
-            final List<String> transformers = new ArrayList<>();
-            transformers.addAll(CompatASMTransformers.getTransformers());
-
-            //NotFine transformers
-            Namer.initNames();
-            transformers.addAll(Arrays.asList(AsmTransformers.getTransformers()));
-
+            final List<String> transformers = new ArrayList<>(CompatASMTransformers.getTransformers());
+            final List<String> notFineTransformers = AsmTransformers.getTransformers();
+            if (!notFineTransformers.isEmpty()) Namer.initNames();
+            transformers.addAll(notFineTransformers);
             transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;
