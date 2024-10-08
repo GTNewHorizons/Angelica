@@ -357,7 +357,7 @@ public class BatchingFontRenderer {
             final float underlineY = anchorY + underlying.FONT_HEIGHT - 1.0f;
             float underlineStartX = 0.0f;
             float underlineEndX = 0.0f;
-            final float strikethroughY = anchorY + (float) (underlying.FONT_HEIGHT / 2);
+            final float strikethroughY = anchorY + (float) (underlying.FONT_HEIGHT / 2) - 1.0F;
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
