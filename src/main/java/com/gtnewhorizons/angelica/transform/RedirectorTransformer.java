@@ -1,19 +1,17 @@
 package com.gtnewhorizons.angelica.transform;
 
-import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
-import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
@@ -30,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
@@ -52,13 +49,10 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
-    private static final String MinecraftClient = "net.minecraft.client";
-    private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
-        "startGame", "func_71384_a",
-        "initializeTextures", "func_77474_a"
-    );
+    private static final String MinecraftClient_dot = "net.minecraft.client.Minecraft";
+    private static final String SplashProgress_dot = "cpw.mods.fml.client.SplashProgress";
+    private static final String OpenGlHelper_dot = "net.minecraft.client.renderer.OpenGlHelper";
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final List<String> VanillaBlockExclusions = Arrays.asList(
         "net/minecraft/block/IGrowable",
@@ -273,10 +267,7 @@ public class RedirectorTransformer implements IClassTransformer {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            if (AngelicaTweaker.DUMP_CLASSES()) {
-                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
-                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
-            }
+            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
         return basicClass;
@@ -295,18 +286,25 @@ public class RedirectorTransformer implements IClassTransformer {
         }
 
         // Check if this class shadows any fields of the parent class
-        if(moddedBlockSubclasses.contains(cn.name)) {
-            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
-            // superclass
-            boolean doWeShadow;
-            if(blockOwnerExclusions.contains(cn.superName)) {
+        if (moddedBlockSubclasses.contains(cn.name)) {
+            // If a superclass shadows, then so do we, because JVM
+            // will resolve a reference on our class to that superclass
+            final boolean doWeShadow;
+            if (blockOwnerExclusions.contains(cn.superName)) {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
-                Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
-                doWeShadow = BlockTransformer.BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
+                final List<String> blockBoundsNames = BlockTransformer.getBlockBoundsFields();
+                boolean b = false;
+                for (FieldNode field : cn.fields) {
+                    if (blockBoundsNames.contains(field.name)) {
+                        b = true;
+                        break;
+                    }
+                }
+                doWeShadow = b;
             }
-            if(doWeShadow) {
+            if (doWeShadow) {
                 AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
                 blockOwnerExclusions.add(cn.name);
             }
@@ -314,7 +312,7 @@ public class RedirectorTransformer implements IClassTransformer {
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
-            if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
+            if (transformedName.equals(OpenGlHelper_dot) && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
             boolean redirectInMethod = false;
@@ -376,26 +374,26 @@ public class RedirectorTransformer implements IClassTransformer {
                     }
                 }
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
-                        Pair<String, String> fieldToRedirect = null;
-                        for(Pair<String, String> blockPairs : BlockTransformer.BlockBoundsFields) {
-                            if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
-                                fieldToRedirect = blockPairs;
+                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
+                        String fieldToRedirect = null;
+                        for (String name : BlockTransformer.getBlockBoundsFields()) {
+                            if (fNode.name.equals(name)) {
+                                fieldToRedirect = name;
                                 break;
                             }
                         }
-                        if(fieldToRedirect != null) {
+                        if (fieldToRedirect != null) {
                             if (IrisLogging.ENABLE_SPAM) {
                                 AngelicaTweaker.LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
                             }
                             // Perform the redirect
-                            fNode.name = fieldToRedirect.getLeft(); // use unobfuscated name
+                            fNode.name = fieldToRedirect;
                             fNode.owner = ThreadedBlockData;
                             // Inject getter before the field access, to turn Block -> ThreadedBlockData
                             final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                            if(node.getOpcode() == Opcodes.GETFIELD) {
+                            if (node.getOpcode() == Opcodes.GETFIELD) {
                                 mn.instructions.insertBefore(fNode, getter);
-                            } else if(node.getOpcode() == Opcodes.PUTFIELD) {
+                            } else if (node.getOpcode() == Opcodes.PUTFIELD) {
                                 // FIXME: this code assumes doubles
                                 // Stack: Block, double
                                 final InsnList beforePut = new InsnList();
@@ -413,16 +411,25 @@ public class RedirectorTransformer implements IClassTransformer {
                             }
                             changed = true;
                         }
-
                     }
                 }
             }
-            if (ASSERT_MAIN_THREAD && redirectInMethod && !transformedName.startsWith(SplashProgress) && !(transformedName.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
+            if (ASSERT_MAIN_THREAD && redirectInMethod && !isExcludeFromMainThreadAssert(transformedName, mn.name)) {
                 mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateManager, "assertMainThread", "()V", false));
             }
         }
 
         return changed;
+    }
+
+    private static boolean isExcludeFromMainThreadAssert(String className, String methodName) {
+        if (className.startsWith(SplashProgress_dot)) {
+            return true;
+        }
+        if (MinecraftClient_dot.equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_71384_a" :"startGame")) {
+            return true;
+        }
+        return OpenGlHelper_dot.equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_77474_a" : "initializeTextures");
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {

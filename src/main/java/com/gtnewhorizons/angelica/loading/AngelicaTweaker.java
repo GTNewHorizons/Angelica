@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
@@ -21,17 +22,24 @@ import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// ================== Important ==================
+// Due to a bug caused by this class both implementing
+// IFMLLoadingPlugin and IEarlyMixinLoader,
+// the IClassTransformer registered in this class
+// will not respect the sorting index defined.
+// They will instead use default index 0 which means they will see
+// obfuscated mappings and not SRG mappings when running outside of dev env.
+// ===============================================
+//@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({
         "com.gtnewhorizons.angelica.transform.RedirectorTransformer",
         "com.gtnewhorizons.angelica.glsm.GLStateManager"})
-@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
@@ -67,13 +75,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         if (mixinTweakClasses != null) {
             mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
         }
-
-        // ================== Important ==================
-        // Due to a bug with mixins, the IClassTransformer registered here
-        // will not respect the sorting index defined in @IFMLLoadingPlugin.SortingIndex
-        // They will instead use default index 0 which means they will deal with
-        // obfuscated mappings and not SRG mappings when running outside of dev env
-        // ===============================================
         if (transformerClasses == null) {
             final List<String> transformers = new ArrayList<>(CompatASMTransformers.getTransformers());
             final List<String> notFineTransformers = AsmTransformers.getTransformers();
@@ -123,6 +124,13 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
      */
     public static boolean isObfEnv() {
         return OBF_ENV;
+    }
+
+    public static void dumpClass(String className, byte[] originalBytes, byte[] transformedBytes, Object transformer) {
+        if (AngelicaTweaker.DUMP_CLASSES()) {
+            ASMUtil.saveAsRawClassFile(originalBytes, className + "_PRE", transformer);
+            ASMUtil.saveAsRawClassFile(transformedBytes, className + "_POST", transformer);
+        }
     }
 
     private static final ImmutableMap<String, TargetedMod> MODS_BY_CLASS = ImmutableMap.<String, TargetedMod>builder()

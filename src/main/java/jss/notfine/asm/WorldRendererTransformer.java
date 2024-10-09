@@ -2,7 +2,6 @@ package jss.notfine.asm;
 
 import static jss.notfine.asm.ASMUtils.matchesNodeSequence;
 
-import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 
@@ -29,10 +28,7 @@ public class WorldRendererTransformer implements IClassTransformer {
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         if ("net.minecraft.client.renderer.WorldRenderer".equals(transformedName)) {
             final byte[] bytes = patchWorldRenderer(basicClass);
-            if (AngelicaTweaker.DUMP_CLASSES()) {
-                ASMUtil.saveAsRawClassFile(basicClass, transformedName + "_PRE", this);
-                ASMUtil.saveAsRawClassFile(bytes, transformedName + "_POST", this);
-            }
+            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
         return basicClass;
