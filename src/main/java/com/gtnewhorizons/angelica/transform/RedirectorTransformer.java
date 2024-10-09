@@ -50,6 +50,9 @@ public class RedirectorTransformer implements IClassTransformer {
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
+    private static final String MinecraftClient_dot = "net.minecraft.client.Minecraft";
+    private static final String SplashProgress_dot = "cpw.mods.fml.client.SplashProgress";
+    private static final String OpenGlHelper_dot = "net.minecraft.client.renderer.OpenGlHelper";
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final List<String> VanillaBlockExclusions = Arrays.asList(
         "net/minecraft/block/IGrowable",
@@ -309,7 +312,7 @@ public class RedirectorTransformer implements IClassTransformer {
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
-            if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
+            if (transformedName.equals(OpenGlHelper_dot) && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
             boolean redirectInMethod = false;
@@ -420,13 +423,13 @@ public class RedirectorTransformer implements IClassTransformer {
     }
 
     private static boolean isExcludeFromMainThreadAssert(String className, String methodName) {
-        if (className.startsWith("cpw.mods.fml.client.SplashProgress")) {
+        if (className.startsWith(SplashProgress_dot)) {
             return true;
         }
-        if ("net.minecraft.client.Minecraft".equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_71384_a" :"startGame")) {
+        if (MinecraftClient_dot.equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_71384_a" :"startGame")) {
             return true;
         }
-        return "net.minecraft.client.renderer.OpenGlHelper".equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_77474_a" : "initializeTextures");
+        return OpenGlHelper_dot.equals(className) && methodName.equals(AngelicaTweaker.isObfEnv() ? "func_77474_a" : "initializeTextures");
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {
