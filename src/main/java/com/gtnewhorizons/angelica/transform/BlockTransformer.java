@@ -31,6 +31,10 @@ public class BlockTransformer implements IClassTransformer {
         return AngelicaTweaker.isObfEnv() ? srgMapping : mcpMapping;
     }
 
+    public static String getClearFieldName(String name) {
+        return AngelicaTweaker.isObfEnv() ? mcpMapping.get(srgMapping.indexOf(name)) : name;
+    }
+
     /**
      * Delete the global vanilla bounding box fields off the Block object. {@link RedirectorTransformer}
      * replaces these with a thread-safe alternative.
