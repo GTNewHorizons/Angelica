@@ -387,7 +387,7 @@ public class RedirectorTransformer implements IClassTransformer {
                                 AngelicaTweaker.LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
                             }
                             // Perform the redirect
-                            fNode.name = fieldToRedirect;
+                            fNode.name = BlockTransformer.getClearFieldName(fieldToRedirect);
                             fNode.owner = ThreadedBlockData;
                             // Inject getter before the field access, to turn Block -> ThreadedBlockData
                             final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
