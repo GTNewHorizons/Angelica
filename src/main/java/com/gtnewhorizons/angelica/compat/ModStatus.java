@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.ArtifactVersion;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
+import mods.battlegear2.Battlegear;
 import net.dries007.holoInventory.HoloInventory;
 import xonin.backhand.Backhand;
 
@@ -49,6 +50,14 @@ public class ModStatus {
             isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
                 .compareTo(
                     LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
+                ) <= 0;
+        }
+
+        // remove compat with original release of BG2
+        if (isBattlegearLoaded){
+            isBattlegearLoaded = new DefaultArtifactVersion("1.2.0")
+                .compareTo(
+                    LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion()
                 ) <= 0;
         }
 
