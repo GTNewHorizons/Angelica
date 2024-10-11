@@ -110,6 +110,7 @@ public enum Mixins {
             ,"sodium.MixinChunkProviderServer"
             ,"sodium.MixinClientRegistry"
             ,"sodium.MixinEntity_RenderDist"
+            ,"sodium.MixinEntityItem_RenderDist"
             ,"sodium.MixinRenderManager"
             ,"sodium.MixinExtendedBlockStorage"
             ,"sodium.MixinEntityRenderer"
