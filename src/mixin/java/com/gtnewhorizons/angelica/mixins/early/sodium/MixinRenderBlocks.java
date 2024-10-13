@@ -3,8 +3,11 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.src.FMLRenderAccessLibrary;
+import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,6 +29,21 @@ public abstract class MixinRenderBlocks {
     @Inject(method = "renderBlockByRenderType", at = @At("TAIL"))
     private void renderingByTypeDisable(CallbackInfoReturnable<Boolean> ci) {
         this.isRenderingByType = false;
+    }
+
+    @Redirect(
+        method = "renderBlockByRenderType",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/src/FMLRenderAccessLibrary;renderWorldBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;I)Z",
+            remap = false
+        )
+    )
+    private boolean wrapRenderWorldBlock(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
+        try {
+            return FMLRenderAccessLibrary.renderWorldBlock(rb, world, x, y, z, block, modelId);
+        } catch (NullPointerException ignored) {}
+        return false;
     }
 
     @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
