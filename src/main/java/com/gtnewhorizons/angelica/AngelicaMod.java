@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
+import com.gtnewhorizons.angelica.render.ErrorBlock;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import cpw.mods.fml.common.Mod;
@@ -27,6 +28,8 @@ public class AngelicaMod {
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
+    public static ErrorBlock errorBlock;
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();
@@ -36,6 +39,7 @@ public class AngelicaMod {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
+        errorBlock = new ErrorBlock();
     }
 
     @Mod.EventHandler
