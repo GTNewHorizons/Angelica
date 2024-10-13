@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica;
 
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
@@ -27,10 +28,13 @@ public class AngelicaMod {
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
+    public static BlockError blockError;
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();
         proxy.preInit(event);
+        blockError = new BlockError();
     }
 
     @Mod.EventHandler
