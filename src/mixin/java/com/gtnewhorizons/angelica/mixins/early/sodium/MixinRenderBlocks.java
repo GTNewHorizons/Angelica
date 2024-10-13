@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.render.ErrorBlock;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -45,7 +44,7 @@ public abstract class MixinRenderBlocks {
         try {
             return FMLRenderAccessLibrary.renderWorldBlock(rb, world, x, y, z, block, modelId);
         } catch (NullPointerException ignored) {
-            rb.renderStandardBlock(AngelicaMod.errorBlock, x, y, z);
+            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
         }
         return false;
     }
