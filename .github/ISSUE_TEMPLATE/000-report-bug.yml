@@ -62,7 +62,7 @@ body:
   - type: dropdown
     id: mcpf
     attributes:
-      label: Shaders
+      label: MCPF or other features disabled by default
       description: Do you have MCPF or any other features that are disabled by default enabled?
       options:
         - "No: Go ahead and create an issue"
