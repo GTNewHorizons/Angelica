@@ -48,6 +48,28 @@ body:
         - Mesa/Software
     validations:
       required: true
+  - type: dropdown
+    id: shaders
+    attributes:
+      label: Shaders
+      description: Do you have Iris/Shaders enabled?
+      options:
+        - "No: Go ahead and create an issue"
+        - "Yes: I will not create an issue"
+        - "Yes: I don't read and shouldn't be creating an issue"
+    validations:
+      required: true
+  - type: dropdown
+    id: mcpf
+    attributes:
+      label: MCPF or other features disabled by default
+      description: Do you have MCPF or any other features that are disabled by default enabled?
+      options:
+        - "No: Go ahead and create an issue"
+        - "Yes: I will not create an issue"
+        - "Yes: I don't read and shouldn't be creating an issue"
+    validations:
+      required: true
   - type: textarea
     id: report
     attributes:
