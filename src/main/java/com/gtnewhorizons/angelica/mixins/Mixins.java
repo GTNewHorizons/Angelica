@@ -70,6 +70,11 @@ public enum Mixins {
             .setApplyIf(() -> AngelicaConfig.fixFluidRendererCheckingBlockAgain)
             .addTargetedMod(TargetedMod.VANILLA)),
 
+    ANGELICA_LIMIT_DROPPED_ITEM_ENTITIES(new Builder("Dynamically modifies the render distance of dropped items entities to preserve performance")
+        .setPhase(Phase.EARLY).addMixinClasses("angelica.optimizations.MixinRenderGlobal_ItemRenderDist").setSide(Side.CLIENT)
+        .setApplyIf(() -> AngelicaConfig.dynamicItemRenderDistance)
+        .addTargetedMod(TargetedMod.VANILLA)),
+
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(

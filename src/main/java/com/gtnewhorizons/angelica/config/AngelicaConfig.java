@@ -127,6 +127,16 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixFluidRendererCheckingBlockAgain;
 
+    @Config.Comment("Dynamically modifies the render distance of dropped items entities to preserve performance."
+                  + " It starts reducing the render distance when exceeding the threshold set below.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean dynamicItemRenderDistance;
+
+    @Config.Comment("Max amount of dropped item rendered")
+    @Config.DefaultInt(256)
+    public static int droppedItemLimit;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
