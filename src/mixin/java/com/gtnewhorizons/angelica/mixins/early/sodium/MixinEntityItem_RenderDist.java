@@ -18,7 +18,8 @@ public abstract class MixinEntityItem_RenderDist extends Entity {
         double d4 = this.posY - y;
         double d5 = this.posZ - z;
         double d6 = d3 * d3 + d4 * d4 + d5 * d5;
-        return this.isInRangeToRenderDist(d6);
+        // set render distance to 32 blocks
+        return this.isInRangeToRenderDist(d6 / 4.0D);
     }
 
 }
