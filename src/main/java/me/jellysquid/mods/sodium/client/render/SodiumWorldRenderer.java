@@ -24,6 +24,8 @@ import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.Multidra
 import me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot.ChunkRenderBackendOneshot;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.DefaultModelVertexFormats;
+import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTracker;
+import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTrackerHolder;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
@@ -59,7 +61,7 @@ import java.util.Set;
 /**
  * Provides an extension to vanilla's {@link WorldRenderer}.
  */
-public class SodiumWorldRenderer implements ChunkStatusListener {
+public class SodiumWorldRenderer {
     private static SodiumWorldRenderer instance;
 
     private final Minecraft client;
@@ -155,7 +157,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             this.chunkRenderBackend = null;
         }
 
-        this.loadedChunkPositions.clear();
         this.globalTileEntities.clear();
 
         this.world = null;
@@ -193,6 +194,8 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      */
     public void updateChunks(Camera camera, Frustrum frustum, boolean hasForcedFrustum, int frame, boolean spectator) {
         this.frustum = frustum;
+
+        this.processChunkEvents();
 
         this.useEntityCulling = SodiumClientMod.options().advanced.useEntityCulling;
 
@@ -265,6 +268,11 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         }
     }
 
+    private void processChunkEvents() {
+        var tracker = ChunkTrackerHolder.get(this.world);
+        tracker.forEachEvent(this.chunkRenderManager::onChunkAdded, this.chunkRenderManager::onChunkRemoved);
+    }
+
     /**
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
@@ -324,7 +332,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         this.chunkRenderBackend.createShaders(device);
 
         this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.world, this.renderDistance);
-        this.chunkRenderManager.restoreChunks(this.loadedChunkPositions);
+
+        var tracker = ChunkTrackerHolder.get(this.world);
+        ChunkTracker.forEachChunk(tracker.getReadyChunks(), this.chunkRenderManager::onChunkAdded);
     }
 
     private static ChunkRenderBackend<?> createChunkRenderBackend(RenderDevice device, SodiumGameOptions options, ChunkVertexType vertexFormat) {
@@ -377,18 +387,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         for (TileEntity tileEntity : this.globalTileEntities) {
             renderTE(tileEntity, pass, partialTicks);
         }
-    }
-
-    @Override
-    public void onChunkAdded(int x, int z) {
-        this.loadedChunkPositions.add(ChunkPos.toLong(x, z));
-        this.chunkRenderManager.onChunkAdded(x, z);
-    }
-
-    @Override
-    public void onChunkRemoved(int x, int z) {
-        this.loadedChunkPositions.remove(ChunkPos.toLong(x, z));
-        this.chunkRenderManager.onChunkRemoved(x, z);
     }
 
     public void onChunkRenderUpdated(int x, int y, int z, ChunkRenderData meshBefore, ChunkRenderData meshAfter) {
