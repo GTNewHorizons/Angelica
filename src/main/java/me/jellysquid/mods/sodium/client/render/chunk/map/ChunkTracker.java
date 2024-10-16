@@ -1,6 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.map;
 
-import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongCollection;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.LongSets;
 import net.minecraft.world.ChunkCoordIntPair;
 
 public class ChunkTracker implements ClientChunkEventListener {
