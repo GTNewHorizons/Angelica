@@ -19,6 +19,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
@@ -36,6 +37,7 @@ import java.util.List;
 public class SodiumGameOptionPages {
     private static final SodiumOptionsStorage sodiumOpts = new SodiumOptionsStorage();
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
+    private static final AngelicaOptionsStorage angelicaOpts = new AngelicaOptionsStorage();
 
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
@@ -153,6 +155,15 @@ public class SodiumGameOptionPages {
                 .add(Settings.DYNAMIC_FOV.option)
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
+                .add(
+                    OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.droppedItemLimit"))
+                        .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
+                        .setControl(option -> new SliderControl(option, 32, 32000, 32, ControlValueFormatter.droppedItemLimitLimit()))
+                        .setBinding((options, value) -> AngelicaConfig.droppedItemLimit = value, options -> AngelicaConfig.droppedItemLimit)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .build()
+                )
                 .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
@@ -246,7 +257,7 @@ public class SodiumGameOptionPages {
                         .build())
                 .build());
         groups.add(OptionGroup.createBuilder()
-            .add(Settings.MODE_GLINT_INV.option)
+        .add(Settings.MODE_GLINT_INV.option)
             .add(Settings.MODE_GLINT_WORLD.option)
             .build());
 

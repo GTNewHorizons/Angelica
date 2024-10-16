@@ -135,6 +135,7 @@ public class AngelicaConfig {
 
     @Config.Comment("Max amount of dropped item rendered")
     @Config.DefaultInt(256)
+    @Config.RangeInt(min = 32, max = 32000)
     public static int droppedItemLimit;
 
     @Config.Comment("Enable Debug Logging")
