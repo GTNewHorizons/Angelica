@@ -159,7 +159,7 @@ public class SodiumGameOptionPages {
                     OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.droppedItemLimit"))
                         .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
-                        .setControl(option -> new SliderControl(option, 32, 32000, 32, ControlValueFormatter.droppedItemLimitLimit()))
+                        .setControl(option -> new SliderControl(option, 32, 2048, 32, ControlValueFormatter.droppedItemLimitLimit()))
                         .setBinding((options, value) -> AngelicaConfig.droppedItemLimit = value, options -> AngelicaConfig.droppedItemLimit)
                         .setImpact(OptionImpact.MEDIUM)
                         .build()

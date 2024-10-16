@@ -22,7 +22,7 @@ public class MixinRenderGlobal_ItemRenderDist {
     private void sodium$resetEntitycount(CallbackInfo ci) {
         int entityCount = 0;
         boolean reachedLimit = false;
-        final int itemLimit = AngelicaConfig.droppedItemLimit == 32000 ? Integer.MAX_VALUE : AngelicaConfig.droppedItemLimit;
+        final int itemLimit = AngelicaConfig.droppedItemLimit == 2048 ? Integer.MAX_VALUE : AngelicaConfig.droppedItemLimit;
         for (int i = 0; i < sodium$entityItemCount.length; i++) {
             entityCount += sodium$entityItemCount[i];
             sodium$entityItemCount[i] = 0;

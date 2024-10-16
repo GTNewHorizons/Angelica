@@ -17,8 +17,7 @@ public class AngelicaOptionsStorage implements OptionStorage<AngelicaConfig> {
 
     @Override
     public void save() {
-            ConfigurationManager.save(AngelicaConfig.class);
-
+        ConfigurationManager.save(AngelicaConfig.class);
         SodiumClientMod.logger().info("Flushed changes to Angelica configuration");
     }
 }

@@ -11,7 +11,7 @@ public interface ControlValueFormatter {
         return (v) -> (v == 260) ? I18n.format("options.framerateLimit.max") : I18n.format("options.framerate", v);
     }
     static ControlValueFormatter droppedItemLimitLimit() {
-        return (v) -> (v == 32000) ? I18n.format("options.droppedItems.max") : I18n.format("options.droppedItems", v);
+        return (v) -> (v == 2048) ? I18n.format("options.droppedItems.max") : I18n.format("options.droppedItems", v);
     }
 
     static ControlValueFormatter brightness() {
