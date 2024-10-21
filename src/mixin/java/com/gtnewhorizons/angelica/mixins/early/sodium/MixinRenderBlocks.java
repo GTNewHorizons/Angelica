@@ -1,8 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.client.registry.RenderingRegistry;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -18,6 +22,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks {
+
+    @Unique
+    private static final ObjectOpenHashSet<String> isbrhExceptionCache = new ObjectOpenHashSet<>();
+
+    @Unique
+    private static final Object2IntOpenHashMap<Class<? extends Exception>> exceptionErrorBlockMap = new Object2IntOpenHashMap<>();
+
+    static {
+        exceptionErrorBlockMap.put(NullPointerException.class, 0);
+        exceptionErrorBlockMap.put(ArrayIndexOutOfBoundsException.class, 1);
+    }
 
     @Unique
     private boolean isRenderingByType = false;
@@ -54,12 +69,7 @@ public abstract class MixinRenderBlocks {
         expect = 0
     )
     private boolean wrapRenderWorldBlockObfuscated(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
-        try {
-            return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
-        } catch (NullPointerException ignored) {
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
-        }
-        return false;
+        return handleISBRHException(rb, world, x, y, z, block, modelId);
     }
 
     @Redirect(
@@ -72,12 +82,7 @@ public abstract class MixinRenderBlocks {
         expect = 0
     )
     private boolean wrapRenderWorldBlockDeobfuscated(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
-        try {
-            return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
-        } catch (NullPointerException ignored) {
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
-        }
-        return false;
+        return handleISBRHException(rb, world, x, y, z, block, modelId);
     }
 
     @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
@@ -88,5 +93,24 @@ public abstract class MixinRenderBlocks {
         }
 
         return Minecraft.isAmbientOcclusionEnabled();
+    }
+
+    private boolean handleISBRHException(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
+        try {
+            return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
+        } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
+            // Render Error Block
+            int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
+            rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
+            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
+            rb.overrideBlockTexture = null;
+
+            // Check if we've already caught the exception for this block and log it if we haven't
+            String key = block.getUnlocalizedName() + ":" + meta;
+            if (isbrhExceptionCache.add(key)) {
+                AngelicaTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
+            }
+        }
+        return false;
     }
 }

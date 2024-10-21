@@ -2,9 +2,11 @@ package com.gtnewhorizons.angelica.common;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.util.IIcon;
 
 /**
  * This Block is not actually getting registered. A static instance is created in AngelicaMod.
@@ -19,6 +21,8 @@ import net.minecraft.client.renderer.texture.IIconRegister;
 
 public class BlockError extends Block {
 
+    public static final IIcon[] icons = new IIcon[2];
+
     public BlockError() {
         super(Material.rock);
     }
@@ -27,7 +31,15 @@ public class BlockError extends Block {
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister reg)
     {
-        this.blockIcon = reg.registerIcon("angelica:error_block");
+        for (int i = 0; i < icons.length; i++) {
+            icons[i] = reg.registerIcon("angelica:error_block_" + i);
+        }
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public IIcon getIcon(int side, int meta) {
+        return icons[meta];
     }
 
 }
