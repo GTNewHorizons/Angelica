@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinEntityRenderer implements IResourceManagerReloadListener {
     @Shadow public Minecraft mc;
 
-    @Inject(at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glClear(I)V", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V", remap = false)
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
         SystemTimeUniforms.COUNTER.beginFrame();
