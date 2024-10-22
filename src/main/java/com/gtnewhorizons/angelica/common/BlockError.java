@@ -11,7 +11,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 /**
  * This Block is not actually getting registered. A static instance is created in AngelicaMod.
- * Actually registering the block on the client but not the server can cause block IDs to 
+ * Actually registering the block on the client but not the server can cause block IDs to
  * different between client/server, which is not good.
 
  * We're essentially injecting the block's texture, so that we may use this block as if it were
@@ -30,6 +30,7 @@ public class BlockError extends Block {
     }
 
     @SubscribeEvent
+    @SideOnly(Side.CLIENT)
     public void onTextureStitch(TextureStitchEvent.Pre event) {
         if (event.map.getTextureType() == 0) {
             for (int i = 0; i < icons.length; i++) {
