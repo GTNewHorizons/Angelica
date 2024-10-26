@@ -15,8 +15,10 @@ import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
+import net.minecraft.entity.EntityLivingBase;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -98,4 +100,10 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().setPhase(WorldRenderingPhase.NONE);
     }
 
+    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V"))
+    private void iris$blockDamageTexture(RenderGlobal instance, Tessellator tessellator, EntityLivingBase entity, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        pipeline.get().setPhase(WorldRenderingPhase.DESTROY);
+        original.call(instance, tessellator, entity, partialTicks);
+        pipeline.get().setPhase(WorldRenderingPhase.NONE);
+    }
 }
