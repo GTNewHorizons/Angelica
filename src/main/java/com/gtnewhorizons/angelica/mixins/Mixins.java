@@ -29,6 +29,7 @@ public enum Mixins {
             ,"angelica.MixinMinecraft"
             ,"angelica.optimizations.MixinRendererLivingEntity"
             ,"angelica.MixinFMLClientHandler"
+            ,"angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
         )
     ),
     ANGELICA_VBO(
