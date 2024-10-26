@@ -24,7 +24,7 @@ public class MixinRendererLivingEntity {
         final float r = (j >> 16 & 255) / 255.0F;
         final float g = (j >> 8 & 255) / 255.0F;
         final float b = (j & 255) / 255.0F;
-        CapturedRenderingState.INSTANCE.setCurrentEntityColor(r, g, b, 1.0F - a);
+        CapturedRenderingState.INSTANCE.setCurrentEntityColor(r, g, b, a);
         return j;
     }
 
