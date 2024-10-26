@@ -971,6 +971,20 @@ public class GLStateManager {
         GL11.glDrawBuffer(mode);
     }
 
+    public static void glDrawElements(int mode, IntBuffer indices) {
+        if(AngelicaConfig.enableIris) {
+            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        }
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glBegin(int mode) {
+        if (AngelicaConfig.enableIris) {
+            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+        }
+        GL11.glBegin(mode);
+    }
+
     public static void glLogicOp(int opcode) {
         GL11.glLogicOp(opcode);
     }

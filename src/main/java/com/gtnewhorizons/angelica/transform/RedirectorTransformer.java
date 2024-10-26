@@ -97,6 +97,7 @@ public class RedirectorTransformer implements IClassTransformer {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST, "ScissorTest");
         methodRedirects.put(GL11, RedirectMap.newMap()
             .add("glAlphaFunc")
+            .add("glBegin")
             .add("glBindTexture")
             .add("glBlendFunc")
             .add("glCallList")
@@ -119,6 +120,7 @@ public class RedirectorTransformer implements IClassTransformer {
             .add("glDepthRange")
             .add("glDrawArrays")
             .add("glDrawBuffer")
+            .add("glDrawElements")
             .add("glEdgeFlag")
             .add("glEndList")
             .add("glFog")
