@@ -143,6 +143,7 @@ public enum Mixins {
             ,"shaders.MixinGuiIngameForge"
             ,"shaders.MixinFramebuffer"
             ,"shaders.MixinItem"
+            ,"shaders.MixinItemRenderer"
             ,"shaders.MixinLocale"
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"

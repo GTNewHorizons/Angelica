@@ -154,13 +154,14 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             if(pass == 0) {
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
             } else if(pass == 1) {
-                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
 
                 // iris$beginTranslucents
                 pipeline.beginHand();
-                HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, mc.renderGlobal, pipeline);
+                HandRenderer.INSTANCE.renderSolid((float) partialTicks, camera, mc.renderGlobal, pipeline);
+
                 mc.mcProfiler.endStartSection("iris_pre_translucent");
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 pipeline.beginTranslucents();
                 this.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             }
