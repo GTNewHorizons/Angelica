@@ -159,9 +159,11 @@ public class ShaderTransformer {
                 default:
                     throw new IllegalStateException("Unknown patch type: " + patchType.name());
             }
+            CompatibilityTransformer.transformEach(translationUnit, parameters);
             types.put(type, translationUnit);
             prepatched.put(type, getFormattedShader((ParseTree) pre, profileString));
         }
+        CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
             result.put(entry.getKey(), getFormattedShader(entry.getValue(), prepatched.get(entry.getKey())));
         }
