@@ -33,7 +33,7 @@ public class AngelicaConfig {
     public static boolean enableTestBlocks;
 
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableIris;
 
