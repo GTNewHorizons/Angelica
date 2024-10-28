@@ -6,7 +6,6 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
-import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -14,19 +13,30 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.taumc.glsl.Util;
 import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
-import org.taumc.glsl.grammar.GLSLPreParser;
 
-import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ShaderTransformer {
     static String tab = "";
 
+    private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
+
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
     private static final boolean useCache = true;
+
+    private static final List<String> reservedWords = new ArrayList<>();;
+
+    static {
+        reservedWords.add("texture");
+        reservedWords.add("sample");
+    }
 
     private static final class TransformKey<P extends Parameters> {
         private final Patch patchType;
@@ -117,34 +127,39 @@ public class ShaderTransformer {
             if (inputs.get(type) == null) {
                 continue;
             }
-            GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(inputs.get(type)));
-            GLSLPreParser preParser = new GLSLPreParser(new BufferedTokenStream(lexer));
-            GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
-            parser.setBuildParseTree(true);
-            var pre = preParser.translation_unit();
-            var translationUnit = parser.translation_unit();
-            var preparsed = pre.compiler_directive();
-            String profile = "";
-            String versionString = "0";
-            GLSLPreParser.Compiler_directiveContext version = null;
-            for (var entry: preparsed) {
-                if (entry.version_directive() != null) {
-                    version = entry;
-                    if (entry.version_directive().number() != null) {
-                        versionString = entry.version_directive().number().getText();
-                    }
-                    if (entry.version_directive().profile() != null) {
-                        profile = entry.version_directive().profile().getText();
-                    }
-                }
+
+            String input = inputs.get(type);
+
+            Matcher matcher = versionPattern.matcher(input);
+            if (!matcher.find()) {
+                throw new IllegalArgumentException("No #version directive found in source code!");
             }
-            pre.children.remove(version);
+
+            String versionString = matcher.group(1);
             if (versionString == null) {
                 continue;
             }
 
-            String profileString = "#version " + versionString + " " + profile;
+            String profile = "";
             int versionInt = Integer.parseInt(versionString);
+            if (versionInt >= 150) {
+                profile = matcher.group(2);
+                if (profile == null) {
+                    profile = "core";
+                }
+            }
+
+            String profileString = "#version " + versionString + " " + profile;
+
+            for (String reservedWord : reservedWords) {
+                String newName = "iris_renamed_" + reservedWord;
+                input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+            }
+
+            GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(input));
+            GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
+            parser.setBuildParseTree(true);
+            var translationUnit = parser.translation_unit();
 
             switch(patchType) {
                 case SODIUM_TERRAIN:
@@ -161,7 +176,7 @@ public class ShaderTransformer {
             }
             CompatibilityTransformer.transformEach(translationUnit, parameters);
             types.put(type, translationUnit);
-            prepatched.put(type, getFormattedShader((ParseTree) pre, profileString));
+            prepatched.put(type, profileString);
         }
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
