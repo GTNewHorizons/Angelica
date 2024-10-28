@@ -149,7 +149,7 @@ public class ShaderTransformer {
                 }
             }
 
-            String profileString = "#version " + versionString + " " + profile;
+            String profileString = "#version " + versionString + " " + profile + "\n";
 
             for (String reservedWord : reservedWords) {
                 String newName = "iris_renamed_" + reservedWord;
