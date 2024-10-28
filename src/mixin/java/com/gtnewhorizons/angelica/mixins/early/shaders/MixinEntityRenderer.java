@@ -35,7 +35,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
         SystemTimeUniforms.COUNTER.beginFrame();
-        SystemTimeUniforms.TIMER.beginFrame(startTime);
+        SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
 
         Program.unbind();
 
