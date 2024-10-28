@@ -112,8 +112,6 @@ dependencies {
     // Better Crashes
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
 
-    api("com.github.GTNewHorizons:StorageDrawers:69.69.69")
-
     // Tests
     testImplementation(platform('org.junit:junit-bom:5.9.2'))
     testImplementation('org.junit.jupiter:junit-jupiter')
