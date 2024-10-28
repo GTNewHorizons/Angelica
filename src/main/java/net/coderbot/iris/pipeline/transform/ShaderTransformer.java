@@ -151,9 +151,14 @@ public class ShaderTransformer {
 
             String profileString = "#version " + versionString + " " + profile + "\n";
 
-            for (String reservedWord : reservedWords) {
-                String newName = "iris_renamed_" + reservedWord;
-                input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+            // This handles some reserved keywords which cause the AST parser to fail
+            // but aren't necessarily invalid for GLSL versions prior to 400. This simple
+            // renames the matching strings and prefixes them with iris_renamed_
+            if (versionInt < 400) {
+                for (String reservedWord : reservedWords) {
+                    String newName = "iris_renamed_" + reservedWord;
+                    input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+                }
             }
 
             GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(input));
