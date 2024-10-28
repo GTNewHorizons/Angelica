@@ -52,11 +52,10 @@ body:
     id: shaders
     attributes:
       label: Shaders
-      description: Do you have Iris/Shaders enabled?
+      description: Do you have a shaderpack enabled?
       options:
-        - "No: Go ahead and create an issue"
-        - "Yes: I will not create an issue"
-        - "Yes: I don't read and shouldn't be creating an issue"
+        - "No"
+        - "Yes: Please put relevant information about shaderpack in the report(what shaderpack, any special settings of note, etc)"
     validations:
       required: true
   - type: dropdown
@@ -98,6 +97,6 @@ body:
           required: true
         - label: "I am running an officially released version.  (Or, if I've compiled it myself I plan to fix the issue)"
           required: true
-        - label: "This issue is not related to a feature that is disabed by default - Shaders, MCPF, etc.  [They'll be enabled when they're ready for testing]"
+        - label: "This issue is not related to a feature that is disabed by default - MCPF, etc.  [They'll be enabled when they're ready for testing]"
           required: true
-                    
+

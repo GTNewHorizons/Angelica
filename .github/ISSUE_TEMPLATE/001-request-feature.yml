@@ -29,5 +29,5 @@ body:
           required: true
         - label: "I have read the known incompatibilities and this is not related to one of those."
           required: true
-        - label: "This issue is not related to a feature that is disabed by default - Shaders, MCPF, etc.  [They'll be enabled when they're ready for testing]"
+        - label: "This issue is not related to a feature that is disabed by default - MCPF, etc.  [They'll be enabled when they're ready for testing]"
           required: true
