@@ -75,4 +75,6 @@
     license, see LICENSE in `com.gtnewhorizons.angelica.models`
 * Dynamic Lights
   * LambdAurora for [LambDynamicLights](https://github.com/LambdAurora/LambDynamicLights) under the MIT license, and the Forge port anthxnymc for [DynamicLightsReforged](https://github.com/anthxnymc/DynamicLightsReforged), also under the MIT license
-
+* Embeddedt and Ferri_Arnus for [glsl-transformation-lib](https://github.com/TauMC/glsl-transformation-lib)
+  * Also for work on [Monocle](https://github.com/ferriarnus/Monocle) which was used as a reference for implementing glsl-transformation-lib
+  * Code from both glsl-transformation-lib and Monocle taken under their respective LGPL 3.0 licenses

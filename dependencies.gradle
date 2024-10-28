@@ -63,10 +63,10 @@ dependencies {
     compileOnly('org.jetbrains:annotations:24.0.1')
     api("com.github.GTNewHorizons:GTNHLib:0.5.12:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
-    implementation("io.github.douira:glsl-transformer:1.0.0")
-    shadowImplementation("io.github.douira:glsl-transformer:1.0.0") { // glsl-transformer Noncommercial License 1.0.0
+    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
+    shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
@@ -111,7 +111,6 @@ dependencies {
 
     // Better Crashes
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
-
 
     // Tests
     testImplementation(platform('org.junit:junit-bom:5.9.2'))
