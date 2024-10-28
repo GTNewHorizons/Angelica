@@ -12,8 +12,10 @@ import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
+import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
@@ -44,18 +46,25 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().beginLevelRendering();
     }
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
+    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
     private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // TODO: Iris
         final Camera camera = new Camera(mc.renderViewEntity, partialTicks);
-        HandRenderer.INSTANCE.renderTranslucent(null /*poseStack*/, partialTicks, camera, mc.renderGlobal, pipeline.get());
+        HandRenderer.INSTANCE.renderTranslucent(partialTicks, camera, mc.renderGlobal, pipeline.get());
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
         pipeline.get().finalizeLevelRendering();
         pipeline.set(null);
         Program.unbind();
     }
 
-    @Inject(at = @At(value= "INVOKE", target="Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V", shift=At.Shift.AFTER), method = "renderWorld(FJ)V")
+    @WrapOperation(method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
+    private void iris$disableVanillaRenderHand(ItemRenderer instance, float partialTicks, Operation<Void> original) {
+        if (!IrisApi.getInstance().isShaderPackInUse()) {
+            original.call(instance, partialTicks);
+        }
+    }
+
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V", shift = At.Shift.AFTER), method = "renderWorld(FJ)V")
     private void iris$beginEntities(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         final Camera camera = new Camera(mc.renderViewEntity, partialTicks);
         pipeline.get().renderShadows((EntityRenderer) (Object) this, camera);
