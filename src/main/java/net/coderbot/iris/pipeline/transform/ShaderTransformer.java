@@ -15,7 +15,9 @@ import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,11 +33,12 @@ public class ShaderTransformer {
     private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
     private static final boolean useCache = true;
 
-    private static final List<String> reservedWords = new ArrayList<>();;
+    private static final List<String> fullReservedWords = new ArrayList<>();
+    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();;
 
     static {
-        reservedWords.add("texture");
-        reservedWords.add("sample");
+        fullReservedWords.add("texture");
+        versionedReservedWords.put(400, Arrays.asList("sample"));
     }
 
     private static final class TransformKey<P extends Parameters> {
@@ -154,10 +157,16 @@ public class ShaderTransformer {
             // This handles some reserved keywords which cause the AST parser to fail
             // but aren't necessarily invalid for GLSL versions prior to 400. This simple
             // renames the matching strings and prefixes them with iris_renamed_
-            if (versionInt < 400) {
-                for (String reservedWord : reservedWords) {
-                    String newName = "iris_renamed_" + reservedWord;
-                    input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+            for (String reservedWord : fullReservedWords) {
+                String newName = "iris_renamed_" + reservedWord;
+                input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+            }
+            for (int version : versionedReservedWords.keySet()) {
+                if (versionInt < version) {
+                    for (String reservedWord : versionedReservedWords.get(version)) {
+                        String newName = "iris_renamed_" + reservedWord;
+                        input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+                    }
                 }
             }
 
