@@ -122,6 +122,7 @@ public class ShaderTransformer {
         EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, GLSLParser.Translation_unitContext> types = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, String> prepatched = new EnumMap<>(PatchShaderType.class);
+        List<GLSLParser.Translation_unitContext> textureLodExtensionPatches = new ArrayList<>();
 
         Stopwatch watch = Stopwatch.createStarted();
 
@@ -180,7 +181,7 @@ public class ShaderTransformer {
                     SodiumTransformer.transform(translationUnit, parameters);
                     break;
                 case COMPOSITE:
-                    CompositeTransformer.transform(translationUnit, versionInt);
+                    CompositeDepthTransformer.transform(translationUnit);
                     break;
                 case ATTRIBUTES:
                     AttributeTransformer.transform(translationUnit, (AttributeParameters) parameters, profile, versionInt);
@@ -188,13 +189,29 @@ public class ShaderTransformer {
                 default:
                     throw new IllegalStateException("Unknown patch type: " + patchType.name());
             }
+
+            // Check if we need to patch in texture LOD extension enabling
+            if (versionInt <= 120 && (Util.containsCall(translationUnit, "texture2DLod") || Util.containsCall(translationUnit, "texture3DLod"))) {
+                textureLodExtensionPatches.add(translationUnit);
+            }
+
             CompatibilityTransformer.transformEach(translationUnit, parameters);
             types.put(type, translationUnit);
             prepatched.put(type, profileString);
         }
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
-            result.put(entry.getKey(), getFormattedShader(entry.getValue(), prepatched.get(entry.getKey())));
+            // This is a hack to inject an extension declaration when the GLSL version is less than 120
+            // Doing this as a string manipulation on the final shader output since it needs to put this
+            // before variables, didn't see an easy way to do that with glsl-transformation-lib
+            // Eventually this can probably be moved to use glsl-transformation-lib
+            String formattedShader = getFormattedShader(entry.getValue(), prepatched.get(entry.getKey()));
+            if (textureLodExtensionPatches.contains(entry.getValue())) {
+                String[] parts = formattedShader.split("\n", 2);
+                parts[1] = "#extension GL_ARB_shader_texture_lod : require\n" + parts[1];
+                formattedShader = parts[0] + "\n" + parts[1];
+            }
+            result.put(entry.getKey(), formattedShader);
         }
         watch.stop();
         Iris.logger.info("Transformed shader for {} in {}", patchType.name(), watch);
