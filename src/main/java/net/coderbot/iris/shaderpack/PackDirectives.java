@@ -71,7 +71,7 @@ public class PackDirectives {
 		sun = properties.getSun().orElse(true);
 		moon = properties.getMoon().orElse(true);
 		rainDepth = properties.getRainDepth().orElse(false);
-		separateAo = properties.getSeparateAo().orElse(false);
+		separateAo = false; //properties.getSeparateAo().orElse(false);
 		oldLighting = properties.getOldLighting().orElse(false);
 		concurrentCompute = properties.getConcurrentCompute().orElse(false);
 		oldHandLight = properties.getOldHandLight().orElse(true);
