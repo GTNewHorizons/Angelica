@@ -33,11 +33,23 @@ public class ShaderTransformer {
     private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
     private static final boolean useCache = true;
 
+    /**
+     * These are words which need to be renamed by iris if a shader uses them, regardless o the GLSL version.
+     * The words will get caught and renamed to iris_renamed_$WORD
+     */
     private static final List<String> fullReservedWords = new ArrayList<>();
+
+    /**
+     * This does the same thing as fullReservedWords, but based on a maximum GLSL version. As an example
+     * if something was register to 400 here, it would get applied on any version below 400.
+     */
     private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();;
 
     static {
+        // texture seems to be reserved by some drivers but not others, however this is not actually reserved by the GLSL spec
         fullReservedWords.add("texture");
+
+        // sample was added as a keyword in GLSL 400, many shaders use it
         versionedReservedWords.put(400, Arrays.asList("sample"));
     }
 
@@ -155,9 +167,9 @@ public class ShaderTransformer {
 
             String profileString = "#version " + versionString + " " + profile + "\n";
 
-            // This handles some reserved keywords which cause the AST parser to fail
-            // but aren't necessarily invalid for GLSL versions prior to 400. This simple
-            // renames the matching strings and prefixes them with iris_renamed_
+            // The primary reason we rename words here using regex, is because if the words cause invalid
+            // GLSL, regardless of the version being used, it will cause glsl-transformation-lib to fail
+            // so we need to rename them prior to passing the shader input to glsl-transformation-lib.
             for (String reservedWord : fullReservedWords) {
                 String newName = "iris_renamed_" + reservedWord;
                 input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
