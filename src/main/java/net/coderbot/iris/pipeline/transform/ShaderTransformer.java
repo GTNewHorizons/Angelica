@@ -43,7 +43,7 @@ public class ShaderTransformer {
      * This does the same thing as fullReservedWords, but based on a maximum GLSL version. As an example
      * if something was register to 400 here, it would get applied on any version below 400.
      */
-    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();;
+    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();
 
     static {
         // texture seems to be reserved by some drivers but not others, however this is not actually reserved by the GLSL spec
