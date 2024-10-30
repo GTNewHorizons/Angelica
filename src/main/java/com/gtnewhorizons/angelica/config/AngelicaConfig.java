@@ -138,6 +138,11 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 32, max = 2048)
     public static int droppedItemLimit;
 
+    @Config.Comment("Use total world time instead of normal world time. Allows most shader animations to play when "
+                  + "doDaylightCycle is off, but causes shader animations to desync from time of day.")
+    @Config.DefaultBoolean(false)
+    public static boolean useTotalWorldTime;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

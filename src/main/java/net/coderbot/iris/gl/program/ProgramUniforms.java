@@ -1,7 +1,15 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalInt;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
@@ -11,19 +19,12 @@ import net.coderbot.iris.gl.uniform.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
-
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalInt;
 
 public class ProgramUniforms {
 	private static ProgramUniforms active;
@@ -52,8 +53,11 @@ public class ProgramUniforms {
 	}
 
 	private static long getCurrentTick() {
-		if (Minecraft.getMinecraft().theWorld != null) {
-			return Minecraft.getMinecraft().theWorld.getTotalWorldTime();
+        final WorldClient world = Minecraft.getMinecraft().theWorld;
+		if (world != null) {
+            return AngelicaConfig.useTotalWorldTime
+                ? world.getWorldTime()
+                : world.getTotalWorldTime();
 		} else {
 			return 0L;
 		}
