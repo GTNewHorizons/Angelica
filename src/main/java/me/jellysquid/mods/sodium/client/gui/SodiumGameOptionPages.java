@@ -243,6 +243,7 @@ public class SodiumGameOptionPages {
                 .add(Settings.MODE_SHADOWS.option)
                 .add(Settings.MODE_VIGNETTE.option)
                 .add(Settings.DYNAMIC_LIGHTS.option, AngelicaConfig.enableDynamicLights)
+                .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, AngelicaConfig.enableDynamicLights)
                 .build());
 
 

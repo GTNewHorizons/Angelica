@@ -37,6 +37,7 @@ import java.util.function.Predicate;
 public class DynamicLights {
     private static DynamicLights instance;
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
+    public static boolean ShaderForce = false;
 
     private static final double MAX_RADIUS = 7.75;
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
@@ -52,7 +53,11 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return AngelicaConfig.enableDynamicLights && Mode.isEnabled() && !IrisApi.getInstance().isShaderPackInUse();
+        return AngelicaConfig.enableDynamicLights &&
+            Mode.isEnabled() &&
+            // if shader force is enabled then true
+            // if not, then true when shaders are not in use
+            (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
     }
 
     /**
@@ -65,7 +70,7 @@ public class DynamicLights {
             return;
 
         long now = System.currentTimeMillis();
-        if (now >= this.lastUpdate + 50) {
+        if (now >= this.lastUpdate + Mode.getDelay()) {
             this.lastUpdate = now;
             this.lastUpdateCount = 0;
 

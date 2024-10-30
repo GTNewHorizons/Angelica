@@ -51,7 +51,13 @@ public enum Settings {
     DYNAMIC_LIGHTS(new NotFineOptionCycling(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
         @Override
         public void applyChanges() {
-            DynamicLights.Mode = (DynamicLightsMode) DYNAMIC_LIGHTS.option.getStore();
+            DynamicLights.Mode = (DynamicLightsMode) this.option.getStore();
+        }
+    },
+    DYNAMIC_LIGHTS_SHADER_FORCE(new NotFineOptionTickBox(false, OptionImpact.VARIES)){
+        @Override
+        public void applyChanges() {
+            DynamicLights.ShaderForce = (boolean) this.option.getStore();
         }
     },
     FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
