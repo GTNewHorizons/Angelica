@@ -5,8 +5,12 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import cpw.mods.fml.relauncher.ReflectionHelper;
+import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
+import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -27,9 +31,12 @@ import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
@@ -349,17 +356,13 @@ public class ShadowRenderer {
 	}
 
 	private void renderEntities(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-        // TODO: Render
-//		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
-
-		int shadowEntities = 0;
+        int shadowEntities = 0;
 
 		profiler.startSection("cull");
 
 		List<Entity> renderedEntities = new ArrayList<>(32);
 
 		// TODO: I'm sure that this can be improved / optimized.
-        // TODO: Render
         // TODO: Entity culling
 		for (Entity entity : getLevel().loadedEntityList) {
 			if (false/*!dispatcher.shouldRender(entity, frustum, cameraX, cameraY, cameraZ) || entity.isSpectator()*/) {
@@ -383,7 +386,7 @@ public class ShadowRenderer {
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
         GL11.glLoadMatrix(MODELVIEW_BUFFER);
 		for (Entity entity : renderedEntities) {
-			RenderManager.instance.renderEntitySimple(entity, tickDelta);//(entity, cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+			RenderManager.instance.renderEntitySimple(entity, tickDelta);
 			shadowEntities++;
 		}
         GL11.glPopMatrix();
@@ -394,13 +397,11 @@ public class ShadowRenderer {
 	}
 
 	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-        // TODO: Render
-//		EntityRenderDispatcher dispatcher = levelRenderer.getEntityRenderDispatcher();
-
 		profiler.startSection("cull");
 
 		Entity player = Minecraft.getMinecraft().thePlayer;
 
+        // TODO: Entity culling
 //		if (!dispatcher.shouldRender(player, frustum, cameraX, cameraY, cameraZ) || player.isSpectator()) {
 //			return;
 //		}
@@ -409,19 +410,24 @@ public class ShadowRenderer {
 
 		int shadowEntities = 0;
 
-//		if (!player.getPassengers().isEmpty()) {
-//			for (int i = 0; i < player.getPassengers().size(); i++) {
-//				levelRenderer.invokeRenderEntity(player.getPassengers().get(i), cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
-//				shadowEntities++;
-//			}
-//		}
-//
-//		if (player.getVehicle() != null) {
-//			levelRenderer.invokeRenderEntity(player.getVehicle(), cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
-//			shadowEntities++;
-//		}
-//
-//		levelRenderer.invokeRenderEntity(player, cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+        GL11.glPushMatrix();
+        MODELVIEW_BUFFER.clear().rewind();
+        modelView.peek().getModel().get(MODELVIEW_BUFFER);
+        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+
+        if (player.riddenByEntity != null) {
+            RenderManager.instance.renderEntitySimple(player.riddenByEntity, tickDelta);
+            shadowEntities++;
+        }
+
+        if (player.ridingEntity != null) {
+            RenderManager.instance.renderEntitySimple(player.ridingEntity, tickDelta);
+            shadowEntities++;
+        }
+
+        RenderManager.instance.renderEntitySimple(player, tickDelta);
+
+        GL11.glPopMatrix();
 
 		shadowEntities++;
 
@@ -429,6 +435,21 @@ public class ShadowRenderer {
 
 		profiler.endSection();
 	}
+
+    private void renderTileEntity(TileEntity tile, double cameraX, double cameraY, double cameraZ, float partialTicks) {
+        if (tile.getDistanceFrom(cameraX, cameraY, cameraZ) >= tile.getMaxRenderDistanceSquared()) {
+            return;
+        }
+        int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
+        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float) brightness % 65536, (float) brightness / 65536);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
+            (double)tile.xCoord - cameraX,
+            (double)tile.yCoord - cameraY,
+            (double)tile.zCoord - cameraZ,
+            partialTicks
+        );
+    }
 
 	private void renderTileEntities(Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
 		profiler.startSection("build blockentities");
@@ -440,17 +461,19 @@ public class ShadowRenderer {
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 
+        GL11.glPushMatrix();
+        MODELVIEW_BUFFER.clear().rewind();
+        modelView.peek().getModel().get(MODELVIEW_BUFFER);
+        GL11.glLoadMatrix(MODELVIEW_BUFFER);
 		for (TileEntity tileEntity : visibleTileEntities) {
 			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
                 continue;
 			}
-			modelView.push();
-			modelView.translate(tileEntity.xCoord - cameraX, tileEntity.yCoord - cameraY, tileEntity.zCoord - cameraZ);
-            TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
-			modelView.pop();
+            renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
 
 			shadowTileEntities++;
 		}
+        GLStateManager.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
 
@@ -464,8 +487,6 @@ public class ShadowRenderer {
         // We have to re-query this each frame since this changes based on whether the profiler is active
 		// If the profiler is inactive, it will return InactiveProfiler.INSTANCE
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
-
-		Minecraft client = Minecraft.getMinecraft();
 
 		profiler.endStartSection("shadows");
 		ACTIVE = true;
@@ -523,7 +544,6 @@ public class ShadowRenderer {
 
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
         mc.renderGlobal.clipRenderersByFrustum(terrainFrustumHolder.getFrustum(), playerCamera.getPartialTicks());
-//		levelRenderer.invokeSetupRender(playerCamera, terrainFrustumHolder.getFrustum(), false, levelRenderer.getFrameId(), false);
 
 		// Don't forget to increment the frame counter! This variable is arbitrary and only used in terrain setup,
 		// and if it's not incremented, the vanilla culling code will get confused and think that it's already seen
@@ -536,11 +556,8 @@ public class ShadowRenderer {
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
+            mc.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
-
-//          levelRenderer.invokeRenderChunkLayer(RenderLayer.solid(), modelView, cameraX, cameraY, cameraZ);
-//			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutout(), modelView, cameraX, cameraY, cameraZ);
-//			levelRenderer.invokeRenderChunkLayer(RenderLayer.cutoutMipped(), modelView, cameraX, cameraY, cameraZ);
 		}
 
 		profiler.endStartSection("entities");
@@ -564,27 +581,15 @@ public class ShadowRenderer {
 		entityShadowFrustum.setPosition(cameraX, cameraY, cameraZ);
 
 		// Render nearby entities
-		//
-		// Note: We must use a separate BuilderBufferStorage object here, or else very weird things will happen during
-		// rendering.
-//		if (renderBuffersExt != null) {
-//			renderBuffersExt.beginLevelRendering();
-//		}
-
-//		if (buffers instanceof DrawCallTrackingRenderBuffers) {
-//			((DrawCallTrackingRenderBuffers) buffers).resetDrawCounts();
-//		}
-
-//		BufferSource bufferSource = buffers.bufferSource();
 
 		if (shouldRenderEntities) {
 			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		} else if (shouldRenderPlayer) {
-//			renderPlayerEntity(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
 		}
 
 		if (shouldRenderBlockEntities) {
-//			renderTileEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+			renderTileEntities(null, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
@@ -592,21 +597,16 @@ public class ShadowRenderer {
 		// NB: Don't try to draw the translucent parts of entities afterwards. It'll cause problems since some
 		// shader packs assume that everything drawn afterwards is actually translucent and should cast a colored
 		// shadow...
-//		bufferSource.endBatch();
 
 		copyPreTranslucentDepth();
 
 		profiler.endStartSection("translucent terrain");
 
-		// TODO: Prevent these calls from scheduling translucent sorting...
+		// TODO (Iris): Prevent these calls from scheduling translucent sorting...
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-            // TODO: Render
-            // TODO -- This makes everything look... weird
-//            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
-
-//			levelRenderer.invokeRenderChunkLayer(RenderLayer.translucent(), modelView, cameraX, cameraY, cameraZ);
+            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.
@@ -616,7 +616,6 @@ public class ShadowRenderer {
 //			renderBuffersExt.endLevelRendering();
 //		}
 
-        // TODO: Render
 		debugStringTerrain = SodiumWorldRenderer.getInstance().getChunksDebugString();
 
 		profiler.endStartSection("generate mipmaps");
@@ -630,9 +629,6 @@ public class ShadowRenderer {
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).restoreState();
 		}
-
-        // TODO: Render
-//		levelRenderer.setRenderBuffers(playerBuffers);
 
 		ACTIVE = false;
 		profiler.endSection();
