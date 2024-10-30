@@ -1,8 +1,8 @@
 package net.coderbot.iris.uniforms;
 
-import static com.gtnewhorizons.angelica.config.AngelicaConfig.useTotalWorldTime;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_TICK;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.Objects;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
@@ -26,7 +26,7 @@ public final class WorldTimeUniforms {
 
 	static int getWorldDayTime() {
         final WorldClient world = getWorld();
-        return (int) ((useTotalWorldTime ? world.getWorldTime() : world.getTotalWorldTime()) % 24000L);
+        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getWorldTime() : world.getTotalWorldTime()) % 24000L);
 
     //  long dayTime = ((DimensionTypeAccessor) getWorld().dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
 	}
