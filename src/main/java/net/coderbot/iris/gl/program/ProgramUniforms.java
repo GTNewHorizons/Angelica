@@ -1,5 +1,7 @@
 package net.coderbot.iris.gl.program;
 
+import static com.gtnewhorizons.angelica.config.AngelicaConfig.useTotalWorldTime;
+
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.Iris;
@@ -11,6 +13,7 @@ import net.coderbot.iris.gl.uniform.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
@@ -52,8 +55,11 @@ public class ProgramUniforms {
 	}
 
 	private static long getCurrentTick() {
-		if (Minecraft.getMinecraft().theWorld != null) {
-			return Minecraft.getMinecraft().theWorld.getTotalWorldTime();
+        final WorldClient world = Minecraft.getMinecraft().theWorld;
+		if (world != null) {
+            return useTotalWorldTime
+                ? world.getWorldTime()
+                : world.getTotalWorldTime();
 		} else {
 			return 0L;
 		}
