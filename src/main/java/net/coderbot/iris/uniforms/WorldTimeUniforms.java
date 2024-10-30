@@ -25,13 +25,13 @@ public final class WorldTimeUniforms {
 	}
 
 	static int getWorldDayTime() {
-		return (int) (getWorld().getWorldTime() % 24000L);
+    		return (int) (getWorld().getTotalWorldTime() % 24000L);
 
     //  long dayTime = ((DimensionTypeAccessor) getWorld().dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
 	}
 
 	private static int getWorldDay() {
-        return (int) (getWorld().getWorldTime() / 24000L);
+        return (int) (getWorld().getTotalWorldTime() / 24000L);
 	}
 
 	private static WorldClient getWorld() {

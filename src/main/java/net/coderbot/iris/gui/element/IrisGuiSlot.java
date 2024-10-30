@@ -109,7 +109,10 @@ public abstract class IrisGuiSlot extends GuiSlot {
             this.amountScrolled += ((float) mouseY - this.initialClickY);
             this.initialClickY = mouseY;
         } else if (this.mc.currentScreen != null ){
-            for (; !this.mc.gameSettings.touchscreen && Mouse.next(); this.mc.currentScreen.handleMouseInput()) {
+            while (!this.mc.gameSettings.touchscreen && Mouse.next()) {
+                if(this.mc.currentScreen != null) {
+                    this.mc.currentScreen.handleMouseInput();
+                }
                 int dWheel = Mouse.getEventDWheel();
 
                 if (dWheel != 0) {

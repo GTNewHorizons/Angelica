@@ -53,7 +53,7 @@ public class ProgramUniforms {
 
 	private static long getCurrentTick() {
 		if (Minecraft.getMinecraft().theWorld != null) {
-			return Minecraft.getMinecraft().theWorld.getWorldTime();
+			return Minecraft.getMinecraft().theWorld.getTotalWorldTime();
 		} else {
 			return 0L;
 		}

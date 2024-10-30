@@ -157,7 +157,7 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static int getWorldDayTime() {
-        return (int) (Minecraft.getMinecraft().theWorld.getWorldTime() % 24000L);
+        return (int) (Minecraft.getMinecraft().theWorld.getTotalWorldTime() % 24000L);
 //		Level level = Minecraft.getMinecraft().theWorld;
 //		long  timeOfDay = level.getDayTime();
 //		long dayTime = ((DimensionTypeAccessor) level.dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
