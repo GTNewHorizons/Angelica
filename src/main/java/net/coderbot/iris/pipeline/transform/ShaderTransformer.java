@@ -33,11 +33,23 @@ public class ShaderTransformer {
     private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
     private static final boolean useCache = true;
 
+    /**
+     * These are words which need to be renamed by iris if a shader uses them, regardless o the GLSL version.
+     * The words will get caught and renamed to iris_renamed_$WORD
+     */
     private static final List<String> fullReservedWords = new ArrayList<>();
-    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();;
+
+    /**
+     * This does the same thing as fullReservedWords, but based on a maximum GLSL version. As an example
+     * if something was register to 400 here, it would get applied on any version below 400.
+     */
+    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();
 
     static {
+        // texture seems to be reserved by some drivers but not others, however this is not actually reserved by the GLSL spec
         fullReservedWords.add("texture");
+
+        // sample was added as a keyword in GLSL 400, many shaders use it
         versionedReservedWords.put(400, Arrays.asList("sample"));
     }
 
@@ -122,6 +134,7 @@ public class ShaderTransformer {
         EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, GLSLParser.Translation_unitContext> types = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, String> prepatched = new EnumMap<>(PatchShaderType.class);
+        List<GLSLParser.Translation_unitContext> textureLodExtensionPatches = new ArrayList<>();
 
         Stopwatch watch = Stopwatch.createStarted();
 
@@ -154,9 +167,9 @@ public class ShaderTransformer {
 
             String profileString = "#version " + versionString + " " + profile + "\n";
 
-            // This handles some reserved keywords which cause the AST parser to fail
-            // but aren't necessarily invalid for GLSL versions prior to 400. This simple
-            // renames the matching strings and prefixes them with iris_renamed_
+            // The primary reason we rename words here using regex, is because if the words cause invalid
+            // GLSL, regardless of the version being used, it will cause glsl-transformation-lib to fail
+            // so we need to rename them prior to passing the shader input to glsl-transformation-lib.
             for (String reservedWord : fullReservedWords) {
                 String newName = "iris_renamed_" + reservedWord;
                 input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
@@ -180,7 +193,7 @@ public class ShaderTransformer {
                     SodiumTransformer.transform(translationUnit, parameters);
                     break;
                 case COMPOSITE:
-                    CompositeTransformer.transform(translationUnit, versionInt);
+                    CompositeDepthTransformer.transform(translationUnit);
                     break;
                 case ATTRIBUTES:
                     AttributeTransformer.transform(translationUnit, (AttributeParameters) parameters, profile, versionInt);
@@ -188,13 +201,29 @@ public class ShaderTransformer {
                 default:
                     throw new IllegalStateException("Unknown patch type: " + patchType.name());
             }
+
+            // Check if we need to patch in texture LOD extension enabling
+            if (versionInt <= 120 && (Util.containsCall(translationUnit, "texture2DLod") || Util.containsCall(translationUnit, "texture3DLod"))) {
+                textureLodExtensionPatches.add(translationUnit);
+            }
+
             CompatibilityTransformer.transformEach(translationUnit, parameters);
             types.put(type, translationUnit);
             prepatched.put(type, profileString);
         }
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
-            result.put(entry.getKey(), getFormattedShader(entry.getValue(), prepatched.get(entry.getKey())));
+            // This is a hack to inject an extension declaration when the GLSL version is less than 120
+            // Doing this as a string manipulation on the final shader output since it needs to put this
+            // before variables, didn't see an easy way to do that with glsl-transformation-lib
+            // Eventually this can probably be moved to use glsl-transformation-lib
+            String formattedShader = getFormattedShader(entry.getValue(), prepatched.get(entry.getKey()));
+            if (textureLodExtensionPatches.contains(entry.getValue())) {
+                String[] parts = formattedShader.split("\n", 2);
+                parts[1] = "#extension GL_ARB_shader_texture_lod : require\n" + parts[1];
+                formattedShader = parts[0] + "\n" + parts[1];
+            }
+            result.put(entry.getKey(), formattedShader);
         }
         watch.stop();
         Iris.logger.info("Transformed shader for {} in {}", patchType.name(), watch);

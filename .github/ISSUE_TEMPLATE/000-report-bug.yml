@@ -18,6 +18,14 @@ body:
       placeholder: "Example: 1.0.0-alpha1"
     validations:
       required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Bug Report
+      description: "Relevant information, as well as relevant logs attached such as `logs/fml-client-latest.log."
+      placeholder: "Example: https://mclo.gs/ OR submit the file to github by dragging it to this textbox."
+    validations:
+      required: true
   - type: dropdown
     id: java
     attributes:
@@ -70,14 +78,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: report
-    attributes:
-      label: Bug Report
-      description: "Relevant information, as well as relevant logs attached such as `logs/fml-client-latest.log."
-      placeholder: "Example: https://mclo.gs/ OR submit the file to github by dragging it to this textbox."
-    validations:
-      required: true
-  - type: textarea
     id: modlist
     attributes:
       label: Mod List or GTNH Pack Version
@@ -97,6 +97,5 @@ body:
           required: true
         - label: "I am running an officially released version.  (Or, if I've compiled it myself I plan to fix the issue)"
           required: true
-        - label: "This issue is not related to a feature that is disabed by default - MCPF, etc.  [They'll be enabled when they're ready for testing]"
-          required: true
+
 
