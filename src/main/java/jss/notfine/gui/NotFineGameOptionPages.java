@@ -191,6 +191,7 @@ public class NotFineGameOptionPages {
             .add(Settings.DOWNFALL_DISTANCE.option)
             .add(Settings.MODE_VIGNETTE.option)
             .add(Settings.DYNAMIC_LIGHTS.option, AngelicaConfig.enableDynamicLights)
+            .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, AngelicaConfig.enableDynamicLights)
             .add(Settings.MODE_SHADOWS.option)
             .add(Settings.VOID_FOG.option)
             .add(Settings.MODE_DROPPED_ITEMS.option)

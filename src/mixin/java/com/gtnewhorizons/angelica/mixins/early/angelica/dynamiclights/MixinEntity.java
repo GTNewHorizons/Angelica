@@ -73,19 +73,6 @@ public abstract class MixinEntity implements IDynamicLightSource {
         this.angelica$lastLuminance = 0;
     }
 
-    @Override
-    public boolean angelica$shouldUpdateDynamicLight() {
-        if (DynamicLights.Mode.hasDelay()) {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime < angelica$lastUpdate + DynamicLights.Mode.getDelay())
-                return false;
-
-            angelica$lastUpdate = currentTime;
-        }
-
-        return true;
-    }
-
 
     @Inject(method = "onEntityUpdate", at = @At("TAIL"))
     public void angelica$onUpdate(CallbackInfo ci) {
@@ -111,8 +98,6 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer) {
-        if (!this.angelica$shouldUpdateDynamicLight())
-            return false;
         double deltaX = this.posX - this.angelica$prevX;
         double deltaY = this.posY - this.angelica$prevY;
         double deltaZ = this.posZ - this.angelica$prevZ;
