@@ -66,7 +66,7 @@
 * HUDCaching
   * Created by [Moulberry](https://github.com/Moulberry/MCHUDCaching), backported from [Patcher](https://github.com/Sk1erLLC/Patcher) mod by Alexdoru under the CC-BY-SA-NC 4.0 license
 * Angelica
-  * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto for helping get Angelica up and running!
+  * mitchej123, Omni, Makamys, Embeddedt, NanoLive, Caedis, Cardinalstar, Alexdoru, Eigenraven, mist475, Clepto, kurrycat for helping get Angelica up and running!
   * IMS, jss2a98aj, || dbp ||, roadhog360 for advice and moral support
 * Forge 1.12+
   * Some files have been taken from Minecraft Forge under the LGPL 2.1 license and are marked as such
