@@ -14,6 +14,8 @@ public enum CompatASMTransformers {
     EXTRA_UTILITIES_ISBRH("RenderBlockColor Transformer", () -> AngelicaConfig.fixExtraUtilsSodiumCompat, Side.CLIENT,
         "com.gtnewhorizons.angelica.transform.compat.ExtraUtilsTransformer"
     ),
+    STACKS_ON_STACKS_ISBRH("RenderTilePile Transformer", () -> AngelicaConfig.fixStacksOnStacksSodiumCompat, Side.CLIENT, "com.gtnewhorizons.angelica.transform.compat.StacksOnStacksTransformer"),
+    FIELD_LEVEL_TESSELLATOR("Field Level Tessellator Transformer", () -> AngelicaConfig.enableSodium, Side.CLIENT, "com.gtnewhorizons.angelica.transform.compat.FieldLevelTessellatorTransformer"),
     HUD_CACHING("HUDCaching Early Return Transformer", () -> AngelicaConfig.enableHudCaching && AngelicaConfig.enableHudCachingEventTransformer, Side.CLIENT,
         "com.gtnewhorizons.angelica.transform.HUDCachingTransformer")
     ;
