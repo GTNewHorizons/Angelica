@@ -160,7 +160,7 @@ public class HardcodedCustomUniforms {
 
 	private static int getWorldDayTime() {
         final WorldClient world = Minecraft.getMinecraft().theWorld;
-        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getWorldTime() : world.getTotalWorldTime()) % 24000L);
+        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getTotalWorldTime() : world.getWorldTime()) % 24000L);
 //		Level level = Minecraft.getMinecraft().theWorld;
 //		long  timeOfDay = level.getDayTime();
 //		long dayTime = ((DimensionTypeAccessor) level.dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);

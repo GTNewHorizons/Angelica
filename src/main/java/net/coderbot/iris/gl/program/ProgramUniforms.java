@@ -56,8 +56,8 @@ public class ProgramUniforms {
         final WorldClient world = Minecraft.getMinecraft().theWorld;
 		if (world != null) {
             return AngelicaConfig.useTotalWorldTime
-                ? world.getWorldTime()
-                : world.getTotalWorldTime();
+                ? world.getTotalWorldTime()
+                : world.getWorldTime();
 		} else {
 			return 0L;
 		}

@@ -26,7 +26,7 @@ public final class WorldTimeUniforms {
 
 	static int getWorldDayTime() {
         final WorldClient world = getWorld();
-        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getWorldTime() : world.getTotalWorldTime()) % 24000L);
+        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getTotalWorldTime() : world.getWorldTime()) % 24000L);
 
     //  long dayTime = ((DimensionTypeAccessor) getWorld().dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
 	}
