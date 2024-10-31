@@ -111,6 +111,12 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             }
         }
 
+        if (hoveredElement != null) {
+            hoveredElementCommentTimer++;
+        } else {
+            hoveredElementCommentTimer = 0;
+        }
+
         final float previousHoverTimer = this.guiButtonHoverTimer;
         super.drawScreen(mouseX, mouseY, delta);
         if (previousHoverTimer == this.guiButtonHoverTimer) {
