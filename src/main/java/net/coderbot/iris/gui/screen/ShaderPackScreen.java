@@ -380,6 +380,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     public void applyChanges() {
         final ShaderPackEntry entry = this.shaderPackList.getSelected();
 
+        if (entry == null) return;
+        
         this.shaderPackList.setApplied(entry);
 
         final String name = entry.getPackName();
