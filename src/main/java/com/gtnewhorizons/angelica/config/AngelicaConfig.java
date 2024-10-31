@@ -117,6 +117,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixExtraUtilsSodiumCompat;
 
+    @Config.Comment("Fix thread-safety in Stacks on Stacks rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixStacksOnStacksSodiumCompat;
+
     @Config.Comment("Fix thread-safety issues in MineFactory Reloaded")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
