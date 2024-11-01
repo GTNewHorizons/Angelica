@@ -13,7 +13,6 @@ import org.spongepowered.asm.lib.tree.FieldInsnNode;
 import org.spongepowered.asm.lib.tree.FieldNode;
 import org.spongepowered.asm.lib.tree.InsnList;
 import org.spongepowered.asm.lib.tree.InsnNode;
-import org.spongepowered.asm.lib.tree.JumpInsnNode;
 import org.spongepowered.asm.lib.tree.LabelNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
