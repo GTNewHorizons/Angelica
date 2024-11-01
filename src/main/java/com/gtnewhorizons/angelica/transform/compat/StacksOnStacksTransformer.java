@@ -110,19 +110,6 @@ public class StacksOnStacksTransformer implements IClassTransformer {
                             mn.instructions.remove(fin);
                         }
                     }
-                    // Adds a null guard for the IBlockAccess.getTileEntity call
-                    if (in instanceof VarInsnNode vin) {
-                        if (vin.getOpcode() == Opcodes.ASTORE && vin.var == 8) {
-                            InsnList list = new InsnList();
-                            LabelNode exit = new LabelNode();
-                            list.add(new VarInsnNode(Opcodes.ALOAD, 8));
-                            list.add(new JumpInsnNode(Opcodes.IFNONNULL, exit));
-                            list.add(new InsnNode(Opcodes.ICONST_0));
-                            list.add(new InsnNode(Opcodes.IRETURN));
-                            list.add(exit);
-                            mn.instructions.insert(vin, list);
-                        }
-                    }
                 }
             }
         }
