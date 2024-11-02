@@ -198,7 +198,7 @@ public class ShaderTransformer {
             GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(input));
             GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
             parser.setBuildParseTree(true);
-            parser.setErrorHandler(new BailErrorStrategy());
+            configureNoError(parser);
 
             GLSLParser.Translation_unitContext translationUnit;
             try {
