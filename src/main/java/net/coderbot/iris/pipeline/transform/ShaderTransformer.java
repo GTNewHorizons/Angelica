@@ -6,8 +6,8 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.taumc.glsl.Util;
@@ -130,6 +130,18 @@ public class ShaderTransformer {
         }
     }
 
+    private static void configureNoError(Parser parser) {
+        parser.setErrorHandler(new BailErrorStrategy());
+        parser.removeErrorListeners();
+        parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
+    }
+
+    private static void configureError(Parser parser) {
+        parser.setErrorHandler(new DefaultErrorStrategy());
+        parser.addErrorListener(ConsoleErrorListener.INSTANCE);
+        parser.getInterpreter().setPredictionMode(PredictionMode.LL);
+    }
+
     private static <P extends Parameters> Map<PatchShaderType, String> transformInternal(EnumMap<PatchShaderType, String> inputs, Patch patchType, P parameters) {
         EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, GLSLParser.Translation_unitContext> types = new EnumMap<>(PatchShaderType.class);
@@ -186,28 +198,22 @@ public class ShaderTransformer {
             GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(input));
             GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
             parser.setBuildParseTree(true);
-            var translationUnit = parser.translation_unit();
+            parser.setErrorHandler(new BailErrorStrategy());
 
-            switch(patchType) {
-                case SODIUM_TERRAIN:
-                    SodiumTransformer.transform(translationUnit, parameters);
-                    break;
-                case COMPOSITE:
-                    CompositeDepthTransformer.transform(translationUnit);
-                    break;
-                case ATTRIBUTES:
-                    AttributeTransformer.transform(translationUnit, (AttributeParameters) parameters, profile, versionInt);
-                    break;
-                default:
-                    throw new IllegalStateException("Unknown patch type: " + patchType.name());
+            GLSLParser.Translation_unitContext translationUnit;
+            try {
+                translationUnit = doTransform(parser, patchType, parameters, profile, versionInt);
+            } catch (Exception e) {
+                lexer.reset();
+                parser.reset();
+                configureError(parser);
+                translationUnit = doTransform(parser, patchType, parameters, profile, versionInt);
             }
 
             // Check if we need to patch in texture LOD extension enabling
             if (versionInt <= 120 && (Util.containsCall(translationUnit, "texture2DLod") || Util.containsCall(translationUnit, "texture3DLod"))) {
                 textureLodExtensionPatches.add(translationUnit);
             }
-
-            CompatibilityTransformer.transformEach(translationUnit, parameters);
             types.put(type, translationUnit);
             prepatched.put(type, profileString);
         }
@@ -228,6 +234,25 @@ public class ShaderTransformer {
         watch.stop();
         Iris.logger.info("Transformed shader for {} in {}", patchType.name(), watch);
         return result;
+    }
+
+    private static GLSLParser.Translation_unitContext doTransform(GLSLParser parser, Patch patchType, Parameters parameters, String profile, int versionInt) {
+        GLSLParser.Translation_unitContext translationUnit = parser.translation_unit();
+        switch (patchType) {
+            case SODIUM_TERRAIN:
+                SodiumTransformer.transform(translationUnit, parameters);
+                break;
+            case COMPOSITE:
+                CompositeDepthTransformer.transform(translationUnit);
+                break;
+            case ATTRIBUTES:
+                AttributeTransformer.transform(translationUnit, (AttributeParameters) parameters, profile, versionInt);
+                break;
+            default:
+                throw new IllegalStateException("Unknown patch type: " + patchType.name());
+        }
+        CompatibilityTransformer.transformEach(translationUnit, parameters);
+        return translationUnit;
     }
 
     public static void applyIntelHd4000Workaround(GLSLParser.Translation_unitContext translationUnit) {
