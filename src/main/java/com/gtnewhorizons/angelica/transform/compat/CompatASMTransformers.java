@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform.compat;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 
 import java.util.ArrayList;
@@ -11,14 +12,15 @@ import java.util.function.Supplier;
 
 public enum CompatASMTransformers {
 
-    EXTRA_UTILITIES_ISBRH("RenderBlockColor Transformer", () -> AngelicaConfig.fixExtraUtilsSodiumCompat, Side.CLIENT,
-        "com.gtnewhorizons.angelica.transform.compat.ExtraUtilsTransformer"
-    ),
-    STACKS_ON_STACKS_ISBRH("RenderTilePile Transformer", () -> AngelicaConfig.fixStacksOnStacksSodiumCompat, Side.CLIENT, "com.gtnewhorizons.angelica.transform.compat.StacksOnStacksTransformer"),
-    FIELD_LEVEL_TESSELLATOR("Field Level Tessellator Transformer", () -> AngelicaConfig.enableSodium, Side.CLIENT, "com.gtnewhorizons.angelica.transform.compat.FieldLevelTessellatorTransformer"),
-    HUD_CACHING("HUDCaching Early Return Transformer", () -> AngelicaConfig.enableHudCaching && AngelicaConfig.enableHudCachingEventTransformer, Side.CLIENT,
-        "com.gtnewhorizons.angelica.transform.HUDCachingTransformer")
-    ;
+    FIELD_LEVEL_TESSELLATOR("Field Level Tessellator Transformer", () -> AngelicaConfig.enableSodium, Side.CLIENT,
+        "com.gtnewhorizons.angelica.transform.compat.transformers.generic.FieldLevelTessellatorTransformer"),
+    GET_TILE_ENTITY_NULL_GUARD("getTileEntity Null Guard Transformer", () -> AngelicaConfig.enableSodium, Side.CLIENT,
+        "com.gtnewhorizons.angelica.transform.compat.transformers.generic.GetTileEntityNullGuardTransformer"),
+    THREAD_SAFE_ISBRH_ANNOTATION("ThreadSafeISBRHAnnotation Transformer", () -> AngelicaConfig.enableSodium,
+        Side.CLIENT, "com.gtnewhorizons.angelica.transform.compat.transformers.generic.ThreadSafeISBRHAnnotationTransformer"),
+    HUDCACHING_EARLY_RETURN("HUDCaching Early Return Transformer", () -> AngelicaConfig.enableHudCaching, Side.CLIENT,
+        "com.gtnewhorizons.angelica.transform.compat.transformers.generic.HUDCachingEarlyReturnTransformer");
+
 
     private final Supplier<Boolean> applyIf;
     private final Side side;
@@ -49,6 +51,13 @@ public enum CompatASMTransformers {
                 AngelicaTweaker.LOGGER.info("Not loading transformer {}", (Object[]) transformer.transformerClasses);
             }
         }
+
+        for (CompatHandler compatHandler : CompatRegistry.INSTANCE.getHandlers()) {
+            if (compatHandler.extraTransformers() != null) {
+                list.addAll(compatHandler.extraTransformers());
+            }
+        }
+
         return list;
     }
 

@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -154,7 +155,7 @@ public class ClientProxy extends CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
 
-        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
+        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && CompatConfig.fixLotr) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");

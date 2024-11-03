@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import jss.notfine.config.MCPatcherForgeConfig;
@@ -204,7 +205,7 @@ public enum Mixins {
 
     EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities").setPhase(Phase.LATE)
         .addTargetedMod(TargetedMod.EXTRAUTILS).setSide(Side.CLIENT)
-        .setApplyIf(() -> AngelicaConfig.fixExtraUtilsSodiumCompat)
+        .setApplyIf(() -> CompatConfig.fixExtraUtils)
         .addMixinClasses(
             "client.extrautils.MixinRenderBlockConnectedTextures",
             "client.extrautils.MixinRenderBlockConnectedTexturesEthereal",
@@ -212,7 +213,7 @@ public enum Mixins {
 
     MFR_THREAD_SAFETY(new Builder("Enable thread safety fixes for MineFactory Reloaded").setPhase(Phase.LATE)
             .addTargetedMod(TargetedMod.MINEFACTORY_RELOADED).setSide(Side.CLIENT)
-            .setApplyIf(() -> AngelicaConfig.fixMineFactoryReloadedSodiumCompat)
+            .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
             .addMixinClasses("client.minefactoryreloaded.MixinRedNetCableRenderer")),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new Builder("Add animation speedup support to Campfire Backport").setPhase(Phase.LATE)

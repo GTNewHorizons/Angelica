@@ -107,26 +107,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeTextureLoading;
 
-    @Config.Comment("Fix thread-safety in lotrs rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixLotrSodiumCompat;
-
-    @Config.Comment("Fix thread-safety in Extra Utilities rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixExtraUtilsSodiumCompat;
-
-    @Config.Comment("Fix thread-safety in Stacks on Stacks rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixStacksOnStacksSodiumCompat;
-
-    @Config.Comment("Fix thread-safety issues in MineFactory Reloaded")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixMineFactoryReloadedSodiumCompat;
-
     @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

@@ -1,20 +1,13 @@
-package com.gtnewhorizons.angelica.transform.compat;
+package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.transform.AsmUtil;
+import com.gtnewhorizons.angelica.transform.compat.CompatRegistry;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
-import org.spongepowered.asm.lib.tree.AbstractInsnNode;
-import org.spongepowered.asm.lib.tree.ClassNode;
-import org.spongepowered.asm.lib.tree.FieldInsnNode;
-import org.spongepowered.asm.lib.tree.InsnList;
-import org.spongepowered.asm.lib.tree.LabelNode;
-import org.spongepowered.asm.lib.tree.LocalVariableNode;
-import org.spongepowered.asm.lib.tree.MethodNode;
-import org.spongepowered.asm.lib.tree.VarInsnNode;
+import org.spongepowered.asm.lib.tree.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +15,8 @@ import java.util.Map;
 
 public class FieldLevelTessellatorTransformer implements IClassTransformer {
 
-    private static final Map<String, List<String>> patchMethods = ImmutableMap.of(
-        "com.tierzero.stacksonstacks.util.ClientUtils", ImmutableList.of("drawQuad", "drawRectangularPrism")
-    );
+    private static final Map<String, List<String>> patchMethods = CompatRegistry.INSTANCE
+        .getFieldLevelTessellatorTransforms();
 
     public byte[] transform(final String className, String transformedName, byte[] basicClass) {
         if (basicClass == null) return null;
@@ -47,6 +39,7 @@ public class FieldLevelTessellatorTransformer implements IClassTransformer {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
+        AngelicaTweaker.LOGGER.info("[Angelica Compat]Applied FieldLevelTessellator fixes to {}", transformedName);
         AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
     }
@@ -59,11 +52,9 @@ public class FieldLevelTessellatorTransformer implements IClassTransformer {
         for (int i = 0; i < mn.instructions.size(); i++) {
             AbstractInsnNode in = mn.instructions.get(i);
             if (in instanceof FieldInsnNode fin) {
-                if (
-                    (fin.getOpcode() == Opcodes.GETSTATIC || fin.getOpcode() == Opcodes.GETFIELD)
-                        && fin.desc.equals("Lnet/minecraft/client/renderer/Tessellator;")
-                        && !fin.owner.equals("net/minecraft/client/renderer/Tessellator")
-                ) {
+                if ((fin.getOpcode() == Opcodes.GETSTATIC || fin.getOpcode() == Opcodes.GETFIELD)
+                    && fin.desc.equals("Lnet/minecraft/client/renderer/Tessellator;")
+                    && !fin.owner.equals("net/minecraft/client/renderer/Tessellator")) {
                     fields.add(fin.owner + ";" + fin.name);
                 }
             }
@@ -75,27 +66,37 @@ public class FieldLevelTessellatorTransformer implements IClassTransformer {
         int localIndex = mn.maxLocals;
         LabelNode startLabel = new LabelNode();
         LabelNode endLabel = new LabelNode();
-        LocalVariableNode tesNode = new LocalVariableNode("tes", "Lnet/minecraft/client/renderer/Tessellator;", null, startLabel, endLabel, localIndex);
+        LocalVariableNode tesNode = new LocalVariableNode(
+            "tes",
+            "Lnet/minecraft/client/renderer/Tessellator;",
+            null,
+            startLabel,
+            endLabel,
+            localIndex);
         mn.localVariables.add(tesNode);
 
         // Actually initialize the new local Tessellator
         InsnList list = new InsnList();
         list.add(startLabel);
-        list.add(new FieldInsnNode(Opcodes.GETSTATIC, "net/minecraft/client/renderer/Tessellator", AngelicaTweaker.isObfEnv() ? "field_78398_a" : "instance", "Lnet/minecraft/client/renderer/Tessellator;"));
+        list.add(
+            new FieldInsnNode(
+                Opcodes.GETSTATIC,
+                "net/minecraft/client/renderer/Tessellator",
+                AsmUtil.obf("instance", "field_78398_a"),
+                "Lnet/minecraft/client/renderer/Tessellator;"));
         list.add(new VarInsnNode(Opcodes.ASTORE, localIndex));
         mn.instructions.insert(list);
 
-        // This searches through all the instructions and finds usage of the previously discovered fields, then it replaces them
+        // This searches through all the instructions and finds usage of the previously discovered fields, then it
+        // replaces them
         // with an ALOAD for our new local instead of the GETSTATIC/GETFIELD
         for (int i = 0; i < mn.instructions.size(); i++) {
             AbstractInsnNode in = mn.instructions.get(i);
             if (in instanceof FieldInsnNode fin) {
                 String hash = fin.owner + ";" + fin.name;
-                if (
-                    (fin.getOpcode() == Opcodes.GETSTATIC || fin.getOpcode() == Opcodes.GETFIELD)
-                        && fin.desc.equals("Lnet/minecraft/client/renderer/Tessellator;")
-                        && fields.contains(hash)
-                ) {
+                if ((fin.getOpcode() == Opcodes.GETSTATIC || fin.getOpcode() == Opcodes.GETFIELD)
+                    && fin.desc.equals("Lnet/minecraft/client/renderer/Tessellator;")
+                    && fields.contains(hash)) {
                     mn.instructions.insertBefore(in, new VarInsnNode(Opcodes.ALOAD, localIndex));
                     mn.instructions.remove(in);
                 }

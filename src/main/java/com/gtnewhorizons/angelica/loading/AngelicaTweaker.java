@@ -6,9 +6,13 @@ import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import com.gtnewhorizons.angelica.transform.compat.CompatASMTransformers;
+import com.gtnewhorizons.angelica.transform.compat.CompatRegistry;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
@@ -52,6 +56,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
+            ConfigurationManager.registerConfig(CompatConfig.class);
             final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
             final Configuration config = ctx.getConfiguration();
             final LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
@@ -65,6 +70,10 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
         } catch (ConfigException e) {
             throw new RuntimeException(e);
+        }
+
+        for (CompatHandler handler : CompatHandlers.getHandlers()) {
+            CompatRegistry.INSTANCE.register(handler);
         }
     }
 
