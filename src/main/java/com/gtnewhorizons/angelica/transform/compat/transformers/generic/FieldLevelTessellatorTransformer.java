@@ -7,7 +7,14 @@ import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
-import org.spongepowered.asm.lib.tree.*;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.InsnList;
+import org.spongepowered.asm.lib.tree.LabelNode;
+import org.spongepowered.asm.lib.tree.LocalVariableNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.VarInsnNode;
 
 import java.util.ArrayList;
 import java.util.List;
