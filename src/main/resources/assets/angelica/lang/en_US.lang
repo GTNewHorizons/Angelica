@@ -1,5 +1,6 @@
 options.button.shader=Shaders...
 
+key.skidzoom=Zoom
 options.chunks=%s chunks
 options.entityShadows=Entity Shadows
 options.droppedItems=%s items

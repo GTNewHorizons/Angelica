@@ -1,5 +1,6 @@
 options.button.shader=Shadery...
 
+key.skidzoom=Brzęczenie
 options.chunks=%s chunków
 options.entityShadows=Cienie bytów
 sodium.option_impact.low=Niski

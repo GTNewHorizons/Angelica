@@ -1,5 +1,6 @@
 options.button.shader=Шейдеры...
 
+key.skidzoom=Увеличить
 options.chunks=%s чанков
 options.entityShadows=Тени сущностей
 sodium.option_impact.low=Низкий

@@ -530,7 +530,13 @@ public enum Mixins {
         .addMixinClasses("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine
-
+//SkidZoom
+    SKIDZOOM(new Builder("zoom zoom")
+        .setSide(Side.CLIENT).setPhase(Phase.LATE)
+        .addTargetedMod(TargetedMod.VANILLA)
+        .addMixinClasses("client.skidzoom.InventoryPlayerMixin")
+    ),
+    //End SkidZoom
     QPR(new Builder("Adds a QuadProvider field to blocks without populating it")
         .setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)

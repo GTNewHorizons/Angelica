@@ -1,5 +1,6 @@
 options.button.shader=光影包……
 
+key.skidzoom=飛漲
 options.chunks=%s 区块
 options.entityShadows=实体阴影
 sodium.option_impact.low=低
