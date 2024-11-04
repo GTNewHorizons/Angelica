@@ -34,4 +34,9 @@ public class CompatConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixThaumicHorizons;
+
+    @Config.Comment("Apply fixes to Immersive Engineering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixImmersiveEngineering;
 }

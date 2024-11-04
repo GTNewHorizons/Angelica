@@ -11,6 +11,7 @@ public enum CompatHandlers {
 
     STACKS_ON_STACKS(() -> CompatConfig.fixStacksOnStacks, new StacksOnStacksCompatHandler()),
     EXTRA_UTILS(() -> CompatConfig.fixExtraUtils, new ExtraUtilsCompatHandler()),
+    IMMERSIVE_ENGINEERING(() -> CompatConfig.fixImmersiveEngineering, new ImmersiveEngineeringCompatHandler()),
     THAUMCRAFT(() -> CompatConfig.fixThaumcraft, new ThaumcraftCompatHandler()),
     THAUMIC_HORIZONS(() -> CompatConfig.fixThaumicHorizons, new ThaumicHorizonsCompatHandler());
 
