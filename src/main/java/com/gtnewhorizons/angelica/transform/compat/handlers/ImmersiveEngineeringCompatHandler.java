@@ -8,10 +8,9 @@ import java.util.Map;
 
 public class ImmersiveEngineeringCompatHandler implements CompatHandler {
 
-    private static final List<String> renderWorldBlockExclusive = ImmutableList.of("renderWorldBlock");
-
     @Override
     public Map<String, List<String>> getTileEntityNullGuard() {
+        final List<String> renderWorldBlockExclusive = ImmutableList.of("renderWorldBlock");
         return ImmutableMap.<String, List<String>>builder()
             .put("blusunrize.immersiveengineering.client.render.BlockRenderClothDevices", renderWorldBlockExclusive)
             .put("blusunrize.immersiveengineering.client.render.BlockRenderMetalDecoration", renderWorldBlockExclusive)

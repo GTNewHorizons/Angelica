@@ -1,11 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.transform.AsmUtil;
-import com.gtnewhorizons.angelica.transform.compat.CompatRegistry;
-import net.minecraft.launchwrapper.IClassTransformer;
-import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
@@ -19,37 +14,15 @@ import org.spongepowered.asm.lib.tree.TypeInsnNode;
 import org.spongepowered.asm.lib.tree.VarInsnNode;
 
 import java.util.List;
-import java.util.Map;
 
-public class GetTileEntityNullGuardTransformer implements IClassTransformer {
+public class TileEntityNullGuardTransformer {
 
-    private static final Map<String, List<String>> patchMethods = CompatRegistry.INSTANCE
-        .getTileEntityNullGuardTransforms();
-
-    public byte[] transform(final String className, String transformedName, byte[] basicClass) {
-        if (basicClass == null) return null;
-
-        if (!patchMethods.containsKey(transformedName)) {
-            return basicClass;
-        }
-
-        ClassReader cr = new ClassReader(basicClass);
-        ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-
-        for (String targetMethod : patchMethods.get(transformedName)) {
-            for (MethodNode method : cn.methods) {
-                if (!method.name.equals(targetMethod)) continue;
+    public static void transform(ClassNode cn, List<String> patchMethods) {
+        for (MethodNode method : cn.methods) {
+            if (patchMethods.contains(method.name)) {
                 injectGetTileEntityNullGuard(method);
             }
         }
-
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cn.accept(cw);
-        final byte[] bytes = cw.toByteArray();
-        AngelicaTweaker.LOGGER.info("[Angelica Compat]Applied GetTileEntityNullGuard fixes to {}", transformedName);
-        AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
-        return bytes;
     }
 
     public static void injectGetTileEntityNullGuard(MethodNode mn) {

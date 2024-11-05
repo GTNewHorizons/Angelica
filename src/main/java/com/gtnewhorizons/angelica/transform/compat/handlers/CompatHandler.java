@@ -1,15 +1,9 @@
 package com.gtnewhorizons.angelica.transform.compat.handlers;
 
-import com.gtnewhorizons.angelica.transform.compat.CompatHandlerVisitor;
-
 import java.util.List;
 import java.util.Map;
 
 public interface CompatHandler {
-
-    default void accept(CompatHandlerVisitor visitor) {
-        visitor.visit(this);
-    }
 
     default Map<String, List<String>> getFieldLevelTessellator() {
         return null;
