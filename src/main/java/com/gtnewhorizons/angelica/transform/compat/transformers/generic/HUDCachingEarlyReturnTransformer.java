@@ -30,11 +30,8 @@ public class HUDCachingEarlyReturnTransformer {
                     list.add(new InsnNode(Opcodes.RETURN));
                 } else {
                     AngelicaTweaker.LOGGER.warn(
-                        "HUDCaching Conditional Return - Unknown return type: " + cn.name
-                            + "#"
-                            + method.name
-                            + ":"
-                            + method.desc);
+                        "HUDCaching Conditional Return - Unknown return type: {}#{}:{}", cn.name, method.name, method.desc
+                    );
                     return;
                 }
                 list.add(exitLabel);

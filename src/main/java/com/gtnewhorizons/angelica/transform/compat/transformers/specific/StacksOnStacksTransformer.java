@@ -54,7 +54,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
     /**
      * Injects initializers for the field level PileRender objects which used to be static into the <init>
      */
-    private InsnList injectPileRenderInitializer(MethodNode mn, String type) {
+    private static InsnList buildPilerRenderInitializer(String type) {
         LabelNode start = new LabelNode();
         LabelNode end = new LabelNode();
         InsnList list = new InsnList();
@@ -94,9 +94,9 @@ public class StacksOnStacksTransformer implements IClassTransformer {
                 // Build the initializer InsnLists and then insert them in reverse order, such that the dustRender comes
                 // last
                 // because we are adding the return opcode back in as part of that one's InsnList
-                InsnList ingotRender = injectPileRenderInitializer(mn, "Ingot");
-                InsnList gemRender = injectPileRenderInitializer(mn, "Gem");
-                InsnList dustRender = injectPileRenderInitializer(mn, "Dust");
+                InsnList ingotRender = buildPilerRenderInitializer("Ingot");
+                InsnList gemRender = buildPilerRenderInitializer("Gem");
+                InsnList dustRender = buildPilerRenderInitializer("Dust");
                 dustRender.add(new InsnNode(Opcodes.RETURN));
                 mn.instructions.insert(objectInsn, dustRender);
                 mn.instructions.insert(objectInsn, gemRender);

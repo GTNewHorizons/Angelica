@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.transform.AsmUtil;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
@@ -71,8 +72,15 @@ public class TileEntityNullGuardTransformer {
                                     LabelNode exit = new LabelNode();
                                     list.add(new VarInsnNode(Opcodes.ALOAD, astoreNodeVar.var));
                                     list.add(new JumpInsnNode(Opcodes.IFNONNULL, exit));
-                                    list.add(new InsnNode(Opcodes.ICONST_0));
-                                    list.add(new InsnNode(Opcodes.IRETURN));
+                                    if (mn.desc.endsWith("Z") || mn.desc.endsWith("I")) {
+                                        list.add(new InsnNode(Opcodes.ICONST_0));
+                                        list.add(new InsnNode(Opcodes.IRETURN));
+                                    } else if (mn.desc.endsWith("V")) {
+                                        list.add(new InsnNode(Opcodes.RETURN));
+                                    } else {
+                                        AngelicaTweaker.LOGGER.warn("TileEntityNullGuard - Unknown Return Type: {}:{}", mn.name, mn.desc);
+                                        return;
+                                    }
                                     list.add(exit);
                                     mn.instructions.insert(astoreNodeVar, list);
                                 }

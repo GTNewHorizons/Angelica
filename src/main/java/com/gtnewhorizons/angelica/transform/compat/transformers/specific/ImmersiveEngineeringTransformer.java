@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.transform.compat.transformers.specific;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
@@ -12,6 +11,7 @@ import org.spongepowered.asm.lib.tree.InsnNode;
 import org.spongepowered.asm.lib.tree.JumpInsnNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.transformers.MixinClassWriter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,7 @@ public class ImmersiveEngineeringTransformer implements IClassTransformer {
             staticRenderPassPatcher(cn);
         }
 
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        MixinClassWriter cw = new MixinClassWriter(MixinClassWriter.COMPUTE_FRAMES);
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
         AngelicaTweaker.LOGGER.info("[AngelicaCompat]Extra Transformers: Applied ImmersiveEngineeringTransformer");
@@ -91,7 +91,6 @@ public class ImmersiveEngineeringTransformer implements IClassTransformer {
                     mn.desc.equals("(Lnet/minecraft/world/IBlockAccess;IIILnet/minecraftforge/client/model/obj/WavefrontObject;Lnet/minecraft/util/IIcon;Lnet/minecraft/client/renderer/Tessellator;Lblusunrize/immersiveengineering/common/util/chickenbones/Matrix4;Lblusunrize/immersiveengineering/common/util/chickenbones/Matrix4;IZFFF[Ljava/lang/String;)V")
                     || mn.desc.equals("(Lnet/minecraft/world/IBlockAccess;IIILnet/minecraftforge/client/model/obj/WavefrontObject;Lnet/minecraft/client/renderer/Tessellator;Lblusunrize/immersiveengineering/common/util/chickenbones/Matrix4;Lblusunrize/immersiveengineering/common/util/chickenbones/Matrix4;IZFFF[Ljava/lang/String;)V")
                 ) {
-                    System.out.println("We have arrived");
                     for (int i = 0; i < mn.instructions.size(); i++) {
                         AbstractInsnNode ain = mn.instructions.get(i);
                         if (ain instanceof JumpInsnNode jump && jump.getOpcode() == Opcodes.IFNULL) {

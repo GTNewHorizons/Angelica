@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.transform.compat;
 
-import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.FieldLevelTessellatorTransformer;
@@ -12,8 +11,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
-import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.transformers.MixinClassWriter;
 
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,7 @@ public class GenericCompatTransformer implements IClassTransformer {
             HUDCachingEarlyReturnTransformer.transform(cn, hudCachingEarlyReturn.get(transformedName));
         }
 
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        MixinClassWriter cw = new MixinClassWriter(MixinClassWriter.COMPUTE_MAXS | MixinClassWriter.COMPUTE_FRAMES);
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
         AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
