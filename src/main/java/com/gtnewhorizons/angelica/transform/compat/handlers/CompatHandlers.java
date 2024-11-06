@@ -15,11 +15,7 @@ public enum CompatHandlers {
     THAUMCRAFT(() -> CompatConfig.fixThaumcraft, new ThaumcraftCompatHandler()),
     THAUMIC_HORIZONS(() -> CompatConfig.fixThaumicHorizons, new ThaumicHorizonsCompatHandler());
 
-    private static List<CompatHandler> compatHandlers = null;
-
     private final Supplier<Boolean> applyIf;
-
-    @Getter
     private final CompatHandler handler;
 
     CompatHandlers(Supplier<Boolean> applyIf, CompatHandler handler) {
@@ -27,18 +23,16 @@ public enum CompatHandlers {
         this.handler = handler;
     }
 
-    public boolean shouldBeLoaded() {
-        return applyIf.get();
-    }
+    private static List<CompatHandler> compatHandlers = null;
 
     public static List<CompatHandler> getHandlers() {
         if (compatHandlers != null) {
             return compatHandlers;
         }
         compatHandlers = new ArrayList<>();
-        for (CompatHandlers handler : values()) {
-            if (handler.shouldBeLoaded()) {
-                compatHandlers.add(handler.getHandler());
+        for (CompatHandlers value : values()) {
+            if (value.applyIf.get()) {
+                compatHandlers.add(value.handler);
             }
         }
         return compatHandlers;

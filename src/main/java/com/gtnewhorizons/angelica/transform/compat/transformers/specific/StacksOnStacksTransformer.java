@@ -78,7 +78,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
         return list;
     }
 
-    private void transformRenderTilePile(ClassNode cn) {
+    private static void transformRenderTilePile(ClassNode cn) {
         MethodNode clinit = null;
         for (MethodNode mn : cn.methods) {
             // Handles injecting field initializers for the various PileRender fields which used to be static
@@ -140,7 +140,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
         }
     }
 
-    private void transformClientUtils(ClassNode cn) {
+    private static void transformClientUtils(ClassNode cn) {
         // Various things throughout the ISBRH call these functions which in turn call GL11.glPush/PopMatrix
         // Upon checking, these aren't called anywhere but in the ISBRH, and they're entirely unnecessary in there.
         // This just makes the methods no-op, since they aren't required by any other part of the mod to be working.

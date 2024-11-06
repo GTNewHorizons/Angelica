@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform.compat.handlers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.transform.compat.transformers.specific.StacksOnStacksTransformer;
 
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,6 @@ public class StacksOnStacksCompatHandler implements CompatHandler {
 
     @Override
     public List<String> extraTransformers() {
-        return ImmutableList.of("com.gtnewhorizons.angelica.transform.compat.transformers.specific.StacksOnStacksTransformer");
+        return ImmutableList.of(StacksOnStacksTransformer.class.getName());
     }
 }

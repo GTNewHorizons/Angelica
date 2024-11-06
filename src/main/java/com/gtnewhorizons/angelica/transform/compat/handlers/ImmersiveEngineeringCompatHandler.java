@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform.compat.handlers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.transform.compat.transformers.specific.ImmersiveEngineeringTransformer;
 
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class ImmersiveEngineeringCompatHandler implements CompatHandler {
 
     @Override
     public List<String> extraTransformers() {
-        return ImmutableList.of("com.gtnewhorizons.angelica.transform.compat.transformers.specific.ImmersiveEngineeringTransformer");
+        return ImmutableList.of(ImmersiveEngineeringTransformer.class.getName());
     }
 
 }

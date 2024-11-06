@@ -24,7 +24,7 @@ public class FieldLevelTessellatorTransformer {
         }
     }
 
-    public static void injectLocalTessellatorAndReplaceFieldUsage(MethodNode mn) {
+    private static void injectLocalTessellatorAndReplaceFieldUsage(MethodNode mn) {
         // This part searches the instructions to see if there is any usage of a Tessellator field
         // which is NOT owned by Minecraft itself. This means anyone that caches it into a field will get caught
         // but not direct usage of Tessellator.instance.whatever()

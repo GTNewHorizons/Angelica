@@ -91,7 +91,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             }
 
             GenericCompatTransformer.build();
-            transformers.add("com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer");
+            transformers.add(GenericCompatTransformer.class.getName());
 
             // Add NotFine transformers
             final List<String> notFineTransformers = AsmTransformers.getTransformers();
