@@ -1,26 +1,23 @@
-package com.gtnewhorizons.angelica.transform.compat;
+package com.gtnewhorizons.angelica.transform.compat.transformers.specific;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.minecraft.launchwrapper.IClassTransformer;
-import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.ClassReader;
+import org.spongepowered.asm.lib.ClassWriter;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
-import org.spongepowered.asm.lib.tree.AnnotationNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.lib.tree.FieldInsnNode;
 import org.spongepowered.asm.lib.tree.FieldNode;
 import org.spongepowered.asm.lib.tree.InsnList;
 import org.spongepowered.asm.lib.tree.InsnNode;
-import org.spongepowered.asm.lib.tree.JumpInsnNode;
 import org.spongepowered.asm.lib.tree.LabelNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
 import org.spongepowered.asm.lib.tree.TypeInsnNode;
 import org.spongepowered.asm.lib.tree.VarInsnNode;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class StacksOnStacksTransformer implements IClassTransformer {
@@ -49,6 +46,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
         ClassWriter cw = new ClassWriter(0);
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
+        AngelicaTweaker.LOGGER.info("[AngelicaCompat]Extra Transformers: Applied StacksOnStacksTransformer");
         AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
     }
@@ -56,7 +54,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
     /**
      * Injects initializers for the field level PileRender objects which used to be static into the <init>
      */
-    private InsnList injectPileRenderInitializer(MethodNode mn, String type) {
+    private static InsnList buildPilerRenderInitializer(String type) {
         LabelNode start = new LabelNode();
         LabelNode end = new LabelNode();
         InsnList list = new InsnList();
@@ -64,13 +62,23 @@ public class StacksOnStacksTransformer implements IClassTransformer {
         list.add(new VarInsnNode(Opcodes.ALOAD, 0));
         list.add(new TypeInsnNode(Opcodes.NEW, "com/tierzero/stacksonstacks/client/render/PileRender" + type));
         list.add(new InsnNode(Opcodes.DUP));
-        list.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "com/tierzero/stacksonstacks/client/render/PileRender" + type, "<init>", "()V"));
-        list.add(new FieldInsnNode(Opcodes.PUTFIELD, "com/tierzero/stacksonstacks/client/render/RenderTilePile", type.toLowerCase() + "Render", "Lcom/tierzero/stacksonstacks/client/render/PileRender;"));
+        list.add(
+            new MethodInsnNode(
+                Opcodes.INVOKESPECIAL,
+                "com/tierzero/stacksonstacks/client/render/PileRender" + type,
+                "<init>",
+                "()V"));
+        list.add(
+            new FieldInsnNode(
+                Opcodes.PUTFIELD,
+                "com/tierzero/stacksonstacks/client/render/RenderTilePile",
+                type.toLowerCase() + "Render",
+                "Lcom/tierzero/stacksonstacks/client/render/PileRender;"));
         list.add(end);
         return list;
     }
 
-    private void transformRenderTilePile(ClassNode cn) {
+    private static void transformRenderTilePile(ClassNode cn) {
         MethodNode clinit = null;
         for (MethodNode mn : cn.methods) {
             // Handles injecting field initializers for the various PileRender fields which used to be static
@@ -83,11 +91,12 @@ public class StacksOnStacksTransformer implements IClassTransformer {
                     if (ain.getOpcode() == Opcodes.RETURN) mn.instructions.remove(ain);
                     if (ain.getOpcode() == Opcodes.INVOKESPECIAL) objectInsn = mn.instructions.get(i);
                 }
-                // Build the initializer InsnLists and then insert them in reverse order, such that the dustRender comes last
+                // Build the initializer InsnLists and then insert them in reverse order, such that the dustRender comes
+                // last
                 // because we are adding the return opcode back in as part of that one's InsnList
-                InsnList ingotRender = injectPileRenderInitializer(mn, "Ingot");
-                InsnList gemRender = injectPileRenderInitializer(mn, "Gem");
-                InsnList dustRender = injectPileRenderInitializer(mn, "Dust");
+                InsnList ingotRender = buildPilerRenderInitializer("Ingot");
+                InsnList gemRender = buildPilerRenderInitializer("Gem");
+                InsnList dustRender = buildPilerRenderInitializer("Dust");
                 dustRender.add(new InsnNode(Opcodes.RETURN));
                 mn.instructions.insert(objectInsn, dustRender);
                 mn.instructions.insert(objectInsn, gemRender);
@@ -100,33 +109,26 @@ public class StacksOnStacksTransformer implements IClassTransformer {
             if (mn.name.equals("renderWorldBlock")) {
                 for (int i = 0; i < mn.instructions.size(); i++) {
                     AbstractInsnNode in = mn.instructions.get(i);
-                    // This part removes the GETSTATIC for the field level PileRender objects which used to be static, and replaces them with
+                    // This part removes the GETSTATIC for the field level PileRender objects which used to be static,
+                    // and replaces them with
                     // a non-static GETFIELD
                     if (in instanceof FieldInsnNode fin) {
                         if (fin.getOpcode() == Opcodes.GETSTATIC && staticRemovers.contains(fin.name)) {
-                            FieldInsnNode nonStatic = new FieldInsnNode(Opcodes.GETFIELD, "com/tierzero/stacksonstacks/client/render/RenderTilePile", fin.name, "Lcom/tierzero/stacksonstacks/client/render/PileRender;");
+                            FieldInsnNode nonStatic = new FieldInsnNode(
+                                Opcodes.GETFIELD,
+                                "com/tierzero/stacksonstacks/client/render/RenderTilePile",
+                                fin.name,
+                                "Lcom/tierzero/stacksonstacks/client/render/PileRender;");
                             mn.instructions.insertBefore(fin, new VarInsnNode(Opcodes.ALOAD, 0));
                             mn.instructions.insertBefore(fin, nonStatic);
                             mn.instructions.remove(fin);
                         }
                     }
-                    // Adds a null guard for the IBlockAccess.getTileEntity call
-                    if (in instanceof VarInsnNode vin) {
-                        if (vin.getOpcode() == Opcodes.ASTORE && vin.var == 8) {
-                            InsnList list = new InsnList();
-                            LabelNode exit = new LabelNode();
-                            list.add(new VarInsnNode(Opcodes.ALOAD, 8));
-                            list.add(new JumpInsnNode(Opcodes.IFNONNULL, exit));
-                            list.add(new InsnNode(Opcodes.ICONST_0));
-                            list.add(new InsnNode(Opcodes.IRETURN));
-                            list.add(exit);
-                            mn.instructions.insert(vin, list);
-                        }
-                    }
                 }
             }
         }
-        // Remove clinit after iterating. Nothing else happens in here besides the field initialization, so no reason to drill down
+        // Remove clinit after iterating. Nothing else happens in here besides the field initialization, so no reason to
+        // drill down
         // into the instructions
         if (clinit != null) cn.methods.remove(clinit);
 
@@ -136,17 +138,9 @@ public class StacksOnStacksTransformer implements IClassTransformer {
                 fn.access = fn.access & (~Opcodes.ACC_STATIC);
             }
         }
-
-        // Add a ThreadSafeISBRH annotation
-        AnnotationNode isbrhAnnotation = new AnnotationNode("Lcom/gtnewhorizons/angelica/api/ThreadSafeISBRH;");
-        isbrhAnnotation.values = ImmutableList.of("perThread", true);
-        if (cn.visibleAnnotations == null) {
-            cn.visibleAnnotations = new ArrayList<>();
-        }
-        cn.visibleAnnotations.add(isbrhAnnotation);
     }
 
-    private void transformClientUtils(ClassNode cn) {
+    private static void transformClientUtils(ClassNode cn) {
         // Various things throughout the ISBRH call these functions which in turn call GL11.glPush/PopMatrix
         // Upon checking, these aren't called anywhere but in the ISBRH, and they're entirely unnecessary in there.
         // This just makes the methods no-op, since they aren't required by any other part of the mod to be working.

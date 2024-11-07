@@ -6,9 +6,12 @@ import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.mixins.TargetedMod;
-import com.gtnewhorizons.angelica.transform.compat.CompatASMTransformers;
+import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
@@ -52,6 +55,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
+            ConfigurationManager.registerConfig(CompatConfig.class);
             final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
             final Configuration config = ctx.getConfiguration();
             final LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
@@ -76,10 +80,24 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
         }
         if (transformerClasses == null) {
-            final List<String> transformers = new ArrayList<>(CompatASMTransformers.getTransformers());
+            final List<String> transformers = new ArrayList<>();
+
+            // Regsiter compat handlers, and add extra specific transformers, then build and register the generic transformer
+            for (CompatHandler handler : CompatHandlers.getHandlers()) {
+                GenericCompatTransformer.register(handler);
+                if (handler.extraTransformers() != null) {
+                    transformers.addAll(handler.extraTransformers());
+                }
+            }
+
+            GenericCompatTransformer.build();
+            transformers.add(GenericCompatTransformer.class.getName());
+
+            // Add NotFine transformers
             final List<String> notFineTransformers = AsmTransformers.getTransformers();
             if (!notFineTransformers.isEmpty()) Namer.initNames();
             transformers.addAll(notFineTransformers);
+
             transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;
