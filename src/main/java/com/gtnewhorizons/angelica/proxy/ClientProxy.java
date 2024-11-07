@@ -97,8 +97,7 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
-            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
-            HUDCaching.registerKeyBindings();
+            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE);
         }
         if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
