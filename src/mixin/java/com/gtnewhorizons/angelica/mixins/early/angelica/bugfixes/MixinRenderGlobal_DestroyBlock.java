@@ -18,8 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinRenderGlobal_DestroyBlock {
     @Inject(
         method = "drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V"),
-        remap = false
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V")
     )
     private void iris$beginDrawBlockDamageTexture(Tessellator tessellator, EntityLivingBase entity, float partialTicks, CallbackInfo ci, @Share("lastMin") LocalIntRef lastMin, @Share("lastMag") LocalIntRef lastMag) {
         TextureInfo info = TextureInfoCache.INSTANCE.getInfo(GLStateManager.getBoundTexture());
