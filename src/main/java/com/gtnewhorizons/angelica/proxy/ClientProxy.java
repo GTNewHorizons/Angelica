@@ -139,7 +139,7 @@ public class ClientProxy extends CommonProxy {
             BetterCrashesCompat.init();
         }
         if (AngelicaConfig.enableZoom) {
-            ClientRegistry.registerKeyBinding(Zoom.getZoomKey());
+            Zoom.init();
         }
     }
 
