@@ -171,6 +171,11 @@ public enum Mixins {
             ,"angelica.textures.MixinTextureUtil"
         )),
 
+    ANGELICA_ZOOM(new Builder("Zoom").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableZoom)
+        .addMixinClasses("angelica.zoom.MixinEntityRenderer_Zoom",
+            "angelica.zoom.MixinMinecraft_Zoom")),
+
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
         .addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableHudCaching).addMixinClasses(
