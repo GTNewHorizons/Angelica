@@ -46,7 +46,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().beginLevelRendering();
     }
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
+    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V", remap = false))
     private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // TODO: Iris
         final Camera camera = new Camera(mc.renderViewEntity, partialTicks);
@@ -109,7 +109,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().setPhase(WorldRenderingPhase.NONE);
     }
 
-    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V"))
+    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V", remap = false))
     private void iris$blockDamageTexture(RenderGlobal instance, Tessellator tessellator, EntityLivingBase entity, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.DESTROY);
         original.call(instance, tessellator, entity, partialTicks);
