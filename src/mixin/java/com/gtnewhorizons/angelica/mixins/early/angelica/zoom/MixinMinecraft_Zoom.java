@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(Minecraft.class)
 public class MixinMinecraft_Zoom {
 
-    @ModifyExpressionValue(method = "runTick", at = @At(value = "INVOKE", target = "Lorg/lwjgl/input/Mouse;getEventDWheel()I"))
+    @ModifyExpressionValue(method = "runTick", at = @At(value = "INVOKE", target = "Lorg/lwjgl/input/Mouse;getEventDWheel()I", remap = false))
     private int angelica$captureMouseWheel(int original) {
         if (Zoom.getZoomKey().getIsKeyPressed()) {
             Zoom.modifyZoom(original);
