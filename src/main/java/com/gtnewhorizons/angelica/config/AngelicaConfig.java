@@ -132,4 +132,9 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableDebugLogging;
+
+    @Config.Comment("Enable Zoom")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableZoom;
 }

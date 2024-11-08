@@ -19,9 +19,7 @@ import org.lwjgl.opengl.GL30;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
-import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.InputEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -29,9 +27,7 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
-import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.GuiIngameForge;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
@@ -70,31 +66,6 @@ public class HUDCaching {
 
     private HUDCaching() {}
 
-    /* TODO START REMOVE DEBUG STUFF */
-
-    private final List<Long> updateTimeList = new ArrayList<>(21);
-    private static boolean isEnabled = true;
-
-    // moved initialization to when its registered to avoid an empty Debug category, which can cause crashes when
-    // opening the controls menu and hudcaching is disabled in the config
-    private static KeyBinding toggle;
-
-    public static void registerKeyBindings() {
-        toggle = new KeyBinding("Toggle HUDCaching", 0, "Debug");
-        ClientRegistry.registerKeyBinding(toggle);
-    }
-
-    @SubscribeEvent
-    public void onKeypress(InputEvent.KeyInputEvent event) {
-        if (toggle != null && toggle.isPressed()) {
-            isEnabled = !isEnabled;
-            final String msg = isEnabled ? "Enabled HUDCaching" : "Disabled HUDCaching";
-            if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(msg));
-        }
-    }
-
-    /* TODO END REMOVE DEBUG STUFF */
-
     // highest so it runs before the GLSM load event
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onJoinWorld(WorldEvent.Load event) {
@@ -112,7 +83,7 @@ public class HUDCaching {
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
 
-        if (!OpenGlHelper.isFramebufferEnabled() || !isEnabled || framebuffer == null) {
+        if (!OpenGlHelper.isFramebufferEnabled() || framebuffer == null) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
@@ -244,13 +215,14 @@ public class HUDCaching {
 
     // moved to here due to the method being called from a mixin
     public static void disableHoloInventory() {
-        if (ModStatus.isHoloInventoryLoaded){
-            Renderer.INSTANCE.angelicaOverride = isEnabled;
+        if (ModStatus.isHoloInventoryLoaded) {
+            Renderer.INSTANCE.angelicaOverride = true;
         }
     }
 
+    @SuppressWarnings("unused") // called via ASM
     public static class HUDCachingHooks {
-        public static boolean shouldReturnEarly(){
+        public static boolean shouldReturnEarly() {
             return renderingCacheOverride;
         }
     }

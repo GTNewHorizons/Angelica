@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.models.VanillaModels;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
+import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -96,8 +97,7 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
-            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
-            HUDCaching.registerKeyBindings();
+            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE);
         }
         if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
@@ -130,13 +130,16 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
+        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         VanillaModels.init();
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
+        }
+        if (AngelicaConfig.enableZoom) {
+            Zoom.init();
         }
     }
 
