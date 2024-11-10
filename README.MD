@@ -5,6 +5,7 @@
 * The little Angle [sic] that supports shaders while saving your fps from a certain death -boubou
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
+* It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
 ## **Beta Quality - Here there be Dragons**
 * Shaders sneak preview - Please don't report issues yet, but please do submit fixes
