@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.transform.BlockTransformer;
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.relauncher.CoreModManager;
+    import cpw.mods.fml.relauncher.CoreModManager;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -106,6 +106,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 final String coreMod = reparsedCoremods.get(idx);
                 if (coreMod.startsWith("optimizationsandtweaks")) {
                     LOGGER.info("Removing reparsed coremod " + coreMod);
+                    // Fool the CoreModManager into not checking for a mod container again later
                     loadedCoremods.add(reparsedCoremods.remove(idx));
 
                 }
