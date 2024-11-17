@@ -250,8 +250,8 @@ public class ClientProxy extends CommonProxy {
                 }
             }
             event.setCanceled(true);
-            // TODO don't cancel the event and render is here
-            //  instead mixin into the vanilla code and a background to it
+            // TODO don't cancel the event and render here,
+            //  instead mixin into the vanilla code and add a background to it
             /* render ourselves for modern background */
             FontRenderer fontrenderer = mc.fontRenderer;
             int fontColor = 0xe0e0e0;
