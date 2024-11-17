@@ -119,7 +119,7 @@ public class MixinCompatHackTweaker implements ITweaker {
             if (mixinConfigsDefault != null) {
                 for (int idx = mixinConfigsDefault.size() - 1; idx >= 0; idx--) {
                     final String name = mixinConfigsDefault.get(idx);
-                    if (name.contains("optimizationsandtweaks")) {
+                    if (name != null && name.contains("optimizationsandtweaks")) {
                         LOGGER.info("Removing mixin config " + name);
                         mixinConfigsDefault.remove(idx);
                     }
@@ -129,7 +129,8 @@ public class MixinCompatHackTweaker implements ITweaker {
             final Set<Config> toRemove = new HashSet<>();
             if (mixinConfigs != null) {
                 for (Config config : mixinConfigs) {
-                    if (config.getName().contains("optimizationsandtweaks")) {
+                    final String name = config.getName();
+                    if (name != null && name.contains("optimizationsandtweaks")) {
                         LOGGER.info("Removing queued mixin config " + config.getName());
                         toRemove.add(config);
                     }
@@ -142,7 +143,8 @@ public class MixinCompatHackTweaker implements ITweaker {
                 containersField.setAccessible(true);
                 final Map<IContainerHandle, MixinContainer> containers = (Map<IContainerHandle, MixinContainer>) containersField.get(platformManager);
                 for (Map.Entry<IContainerHandle, MixinContainer> entry : containers.entrySet()) {
-                    if(entry.getKey().getAttribute("MixinConfigs").contains("optimizationsandtweaks")) {
+                    final String attribute = entry.getKey().getAttribute("MixinConfigs");
+                    if(attribute != null && attribute.contains("optimizationsandtweaks")) {
                         LOGGER.info("Removing mixin container " + entry.getKey().toString());
                         containers.remove(entry.getKey());
                     }
