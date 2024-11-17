@@ -2,7 +2,6 @@ package net.coderbot.iris.client;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.mitchej123.hodgepodge.client.HodgepodgeClient;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.coderbot.iris.Iris;
@@ -39,7 +38,7 @@ public class IrisDebugScreenHandler {
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
         final Minecraft mc = Minecraft.getMinecraft();
         if (mc.gameSettings.showDebugInfo) {
-            event.right.add(2, "Direct Buffers: +" + iris$humanReadableByteCountBin(iris$directPool.getMemoryUsed()));
+            event.right.add(Math.min(event.right.size(), 2), "Direct Buffers: +" + iris$humanReadableByteCountBin(iris$directPool.getMemoryUsed()));
 
             event.right.add("");
 
@@ -49,8 +48,8 @@ public class IrisDebugScreenHandler {
             } else {
                 event.right.add("[" + Iris.MODNAME + "] Shaders are disabled");
             }
-            if(AngelicaConfig.speedupAnimations) {
-                event.right.add(9, "animationsMode: " + AngelicaMod.animationsMode);
+            if (AngelicaConfig.speedupAnimations) {
+                event.right.add(Math.min(event.right.size(), 9), "animationsMode: " + AngelicaMod.animationsMode);
             }
 
             Iris.getPipelineManager().getPipeline().ifPresent(pipeline -> pipeline.addDebugText(event.left));

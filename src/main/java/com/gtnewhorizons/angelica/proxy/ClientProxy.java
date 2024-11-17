@@ -193,7 +193,7 @@ public class ClientProxy extends CommonProxy {
 
             if (srv != null) {
                 String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
-                event.left.add(1, s);
+                event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
@@ -250,6 +250,8 @@ public class ClientProxy extends CommonProxy {
                 }
             }
             event.setCanceled(true);
+            // TODO don't cancel the event and render here,
+            //  instead mixin into the vanilla code and add a background to it
             /* render ourselves for modern background */
             FontRenderer fontrenderer = mc.fontRenderer;
             int fontColor = 0xe0e0e0;

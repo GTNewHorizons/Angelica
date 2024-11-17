@@ -17,7 +17,7 @@ public class SodiumDebugScreenHandler {
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
         final Minecraft mc = Minecraft.getMinecraft();
         if (mc.gameSettings.showDebugInfo) {
-            event.right.add(2, "Off-Heap: +" + ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed() / 1024L / 1024L + "MB");
+            event.right.add(Math.min(event.right.size(), 2), "Off-Heap: +" + ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed() / 1024L / 1024L + "MB");
 
             event.right.add("");
             event.right.add("Sodium (Embeddium) Renderer");
