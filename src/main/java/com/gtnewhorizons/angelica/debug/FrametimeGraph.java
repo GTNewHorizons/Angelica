@@ -3,8 +3,12 @@ package com.gtnewhorizons.angelica.debug;
 import static org.lwjgl.opengl.GL11.GL_ALPHA_TEST;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
 import static org.lwjgl.opengl.GL11.GL_VERTEX_ARRAY;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
 import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.glDisableClientState;
 import static org.lwjgl.opengl.GL11.glDrawArrays;
@@ -26,6 +30,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
 
 public class FrametimeGraph {
@@ -45,6 +51,10 @@ public class FrametimeGraph {
     private static final int VERT_COUNT = 4;
     // Due to GLSL 120 limitations, it's just easier to use floats
     private final FloatBuffer frametimesBuf = BufferUtils.createFloatBuffer(NUM_FRAMETIMES);
+    private static final int WEIGHT = 2;
+    private static final int HEIGHT = 120 + 2 * WEIGHT;
+    private static final int WIDTH = (NUM_FRAMETIMES + 2) * WEIGHT;
+    private static final ResourceLocation TEXTURE = new ResourceLocation("angelica:textures/frametimes_bg.png");
 
     public void putFrameTime(long time) {
         frametimesBuf.put(frametimesHead, (float) time);
@@ -111,8 +121,11 @@ public class FrametimeGraph {
         shader.use();
 
         // Load uniforms
-        glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
-        glUniform1f(uFBHeight, Minecraft.getMinecraft().displayHeight);
+        final Minecraft minecraft = Minecraft.getMinecraft();
+        final int width = minecraft.displayWidth;
+        final int height = minecraft.displayHeight;
+        glUniform1f(uFBWidth, width);
+        glUniform1f(uFBHeight, height);
         glUniform1i(uHeadIdx, frametimesHead);
         glUniform1(uFrametimes, frametimesBuf);
 
@@ -133,5 +146,28 @@ public class FrametimeGraph {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         ShaderProgram.clear();
+
+        // Now that the graph is done, overlay the guides
+        
+        // Tesselator should be fine
+        final Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
+        tess.addVertexWithUV(0, height, -1, 0, 0);
+        tess.addVertexWithUV(WIDTH, height, -1, 1, 0);
+        tess.addVertexWithUV(WIDTH, height - HEIGHT, -1, 1, 1);
+        tess.addVertexWithUV(0, height - HEIGHT, -1, 0, 1);
+
+        glEnable(GL_TEXTURE_2D);
+        minecraft.getTextureManager().bindTexture(TEXTURE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        tess.draw();
+
+        glDisable(GL_BLEND);
+        glDisable(GL_TEXTURE_2D);
+
+        // this one draws... but how?
+        // Gui.drawRect(0, 0, WIDTH, HEIGHT, -1);
     }
 }
