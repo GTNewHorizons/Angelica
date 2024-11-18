@@ -33,6 +33,7 @@
 * OptiFine [Disabled, won't fix]
 * FastCraft [Disabled, won't fix]
 * BetterFPS [Disabled, won't fix]
+* OptimizationsAndTweaks [Disabled, won't fix]
 * [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - use 1.2.2+
 * [LWJGL3ify 1.5.4 and below](https://github.com/GTNewHorizons/lwjgl3ify/releases/) - Use the latest version available, 1.5.7+
 * [ArchaicFix 0.6.2 and below](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) - Use 0.7.0 or above
