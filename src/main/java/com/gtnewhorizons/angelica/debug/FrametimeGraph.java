@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.debug;
 
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
 import static org.lwjgl.opengl.GL11.GL_VERTEX_ARRAY;
 import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.glDisableClientState;
@@ -20,6 +20,7 @@ import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import java.nio.ByteBuffer;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.BufferUtils;
@@ -42,6 +43,7 @@ public class FrametimeGraph {
 
 
     private void init() {
+        GLDebug.debugMessage("init fgshader");
         shader = new ShaderProgram(
             "angelica",
             "shaders/frametimes.vert.glsl",
@@ -74,6 +76,7 @@ public class FrametimeGraph {
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
 
         ShaderProgram.clear();
+        GLDebug.debugMessage("finish init fgshader");
     }
 
     public void render() {
@@ -90,7 +93,7 @@ public class FrametimeGraph {
          * 484x124 translucent rect, and finally FontRenderer slaps the text on top. The shader pipeline is only needed
          * for the first draw.
          */
-
+        GLDebug.debugMessage("render fgshader");
         shader.use();
 
         // Load uniforms
@@ -103,7 +106,7 @@ public class FrametimeGraph {
         glEnableClientState(GL_VERTEX_ARRAY);
         glDisable(GL_BLEND);
 
-        glDrawArrays(GL_TRIANGLES, 0, VERT_COUNT);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
 
         glEnable(GL_BLEND);
         glDisableClientState(GL_VERTEX_ARRAY);
@@ -111,5 +114,6 @@ public class FrametimeGraph {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         ShaderProgram.clear();
+        GLDebug.debugMessage("finish render fgshader");
     }
 }
