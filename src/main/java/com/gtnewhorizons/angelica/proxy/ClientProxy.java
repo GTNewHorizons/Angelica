@@ -317,4 +317,9 @@ public class ClientProxy extends CommonProxy {
             event.newfov = 1.0F;
         }
     }
+
+    @Override
+    public void putFrametime(long time) {
+        graph.putFrameTime(time);
+    }
 }

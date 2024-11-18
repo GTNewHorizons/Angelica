@@ -1,9 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
-import static com.gtnewhorizons.angelica.debug.FrametimeGraph.NUM_FRAMETIMES;
-import static com.gtnewhorizons.angelica.debug.FrametimeGraph.frametimes;
-import static com.gtnewhorizons.angelica.debug.FrametimeGraph.frametimesHead;
-
+import com.gtnewhorizons.angelica.AngelicaMod;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,8 +29,7 @@ public class MixinMinecraft {
     )
     private void angelica$trackFrametimes(CallbackInfo ci) {
         long time = System.nanoTime();
-        frametimes[frametimesHead] = time - angelica$lastFrameTime;
-        frametimesHead = (frametimesHead + 1) % NUM_FRAMETIMES;
+        AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
         angelica$lastFrameTime = time;
     }
 }

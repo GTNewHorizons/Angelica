@@ -16,30 +16,37 @@ import static org.lwjgl.opengl.GL15.glBufferData;
 import static org.lwjgl.opengl.GL15.glGenBuffers;
 import static org.lwjgl.opengl.GL20.glDisableVertexAttribArray;
 import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glUniform1;
 import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.BufferUtils;
 
 public class FrametimeGraph {
     public static final int NUM_FRAMETIMES = 240;
-    public static final long[] frametimes = new long[NUM_FRAMETIMES];
     // Circular buffer holding the last 240 frametimes, in nanoseconds
-    public static int frametimesHead = 0; // one ahead of the position of the last frametime
+    public int frametimesHead = 0; // one ahead of the position of the last frametime
     private boolean initialized = false;
     private ShaderProgram shader;
-    private static final int WEIGHT = 2; // in pixels
-    private static final int SAMPLES_WIDTH = NUM_FRAMETIMES * WEIGHT;
     private int aPos;
     private int uFBWidth;
+    private int uFBHeight;
+    private int uFrametimes;
     private int vertBuf;
     // Two floats (x,y)
     private static final int VERT_FLOATS = 2;
     private static final int VERT_COUNT = 4;
+    // Due to GLSL 120 limitations, it's just easier to use floats
+    private final FloatBuffer frametimesBuf = BufferUtils.createFloatBuffer(NUM_FRAMETIMES);
 
+    public void putFrameTime(long time) {
+        frametimesBuf.put(frametimesHead, (float) time);
+        frametimesHead = (frametimesHead + 1) % NUM_FRAMETIMES;
+    }
 
     private void init() {
         shader = new ShaderProgram(
@@ -53,6 +60,8 @@ public class FrametimeGraph {
 
         // Register uniforms
         uFBWidth = shader.getUniformLocation("fbWidth");
+        uFBHeight = shader.getUniformLocation("fbHeight");
+        uFrametimes = shader.getUniformLocation("frametimes");
 
         // Load vertex buffer
         vertBuf = glGenBuffers();
@@ -73,6 +82,8 @@ public class FrametimeGraph {
 
         // Load initial value for uniforms
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
+        glUniform1f(uFBHeight, Minecraft.getMinecraft().displayHeight);
+        glUniform1(uFrametimes, frametimesBuf);
 
         ShaderProgram.clear();
     }
@@ -82,6 +93,7 @@ public class FrametimeGraph {
             init();
             initialized = true;
         }
+
         /**
          * We try to copy modern vanilla's tracker.
          * It is 484 wide by 124 tall, including the 2px borders.
@@ -95,6 +107,8 @@ public class FrametimeGraph {
 
         // Load uniforms
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
+        glUniform1f(uFBHeight, Minecraft.getMinecraft().displayHeight);
+        glUniform1(uFrametimes, frametimesBuf);
 
         // Draw!
         glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
