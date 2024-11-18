@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -26,6 +28,10 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
@@ -53,15 +59,13 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
 
-import java.lang.management.ManagementFactory;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
+    public static final int NUM_FRAMETIMES = 240;
+    // Circular buffer holding the last 240 frametimes, in nanoseconds
+    public static final LongArrayList frametimes = new LongArrayList(NUM_FRAMETIMES);
+    public static int frametimesHead = 0; // one ahead of the position of the last frametime
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
