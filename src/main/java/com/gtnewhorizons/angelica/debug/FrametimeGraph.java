@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.debug;
 
+import static org.lwjgl.opengl.GL11.GL_ALPHA_TEST;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
@@ -18,6 +19,7 @@ import static org.lwjgl.opengl.GL20.glDisableVertexAttribArray;
 import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
 import static org.lwjgl.opengl.GL20.glUniform1;
 import static org.lwjgl.opengl.GL20.glUniform1f;
+import static org.lwjgl.opengl.GL20.glUniform1i;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
@@ -35,6 +37,7 @@ public class FrametimeGraph {
     private int aPos;
     private int uFBWidth;
     private int uFBHeight;
+    private int uHeadIdx;
     private int uFrametimes;
     private int vertBuf;
     // Two floats (x,y)
@@ -62,6 +65,7 @@ public class FrametimeGraph {
         uFBWidth = shader.getUniformLocation("fbWidth");
         uFBHeight = shader.getUniformLocation("fbHeight");
         uFrametimes = shader.getUniformLocation("frametimes");
+        uHeadIdx = shader.getUniformLocation("headIdx");
 
         // Load vertex buffer
         vertBuf = glGenBuffers();
@@ -83,6 +87,7 @@ public class FrametimeGraph {
         // Load initial value for uniforms
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
         glUniform1f(uFBHeight, Minecraft.getMinecraft().displayHeight);
+        glUniform1i(uHeadIdx, frametimesHead);
         glUniform1(uFrametimes, frametimesBuf);
 
         ShaderProgram.clear();
@@ -108,6 +113,7 @@ public class FrametimeGraph {
         // Load uniforms
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
         glUniform1f(uFBHeight, Minecraft.getMinecraft().displayHeight);
+        glUniform1i(uHeadIdx, frametimesHead);
         glUniform1(uFrametimes, frametimesBuf);
 
         // Draw!
@@ -116,9 +122,11 @@ public class FrametimeGraph {
         glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDisable(GL_BLEND);
+        glEnable(GL_ALPHA_TEST);
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
 
+        glDisable(GL_ALPHA_TEST);
         glEnable(GL_BLEND);
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableVertexAttribArray(aPos);

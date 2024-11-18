@@ -2,8 +2,8 @@
 
 attribute vec2 pos;
 
-uniform float fbHeight;
 uniform float fbWidth;
+uniform float fbHeight;
 
 void main() {
     // Shift the bounds (x = 2 through x = 482, y = 0 through y = max - 2) to clip space
