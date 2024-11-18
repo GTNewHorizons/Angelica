@@ -11,8 +11,8 @@ void main() {
     int dy = int(gl_FragCoord.y) - 2;
 
     // Get the frametime for this frag. Last at the left edge, first at the right, shifting as needed when the head
-    // moves. Since head is one ahead of the last frame, remove one.
-    int idx = int(mod(clamp(dx / 2 , 0, 239) + headIdx - 1, 240));
+    // moves.
+    int idx = int(mod(dx / 2 + headIdx, 240));
     float time = frametimes[idx];
 
     // Time is in nanoseconds. The bar should be 120 px high at 30 FPS, i.e. 33333333ns = 120px. 0.0000036 px/ns
