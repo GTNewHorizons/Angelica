@@ -20,7 +20,6 @@ import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
-import com.gtnewhorizons.angelica.glsm.GLDebug;
 import java.nio.ByteBuffer;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.BufferUtils;
@@ -43,7 +42,6 @@ public class FrametimeGraph {
 
 
     private void init() {
-        GLDebug.debugMessage("init fgshader");
         shader = new ShaderProgram(
             "angelica",
             "shaders/frametimes.vert.glsl",
@@ -63,12 +61,13 @@ public class FrametimeGraph {
         final ByteBuffer vertexes = BufferUtils.createByteBuffer(4 * VERT_COUNT * VERT_FLOATS);
         // The Y coords are simple - the rect is from top to bottom, 1.0 to -1.0
         // The X coord get scaled by the framebuffer size in the vert shader
-        for (int x = 0; x < 2; ++x) {
-            for (int y = -1; y < 2; y += 2) {
+        for (int y = -1; y < 2; y += 2) {
+            for (int x = 0; x < 2; ++x) {
                 vertexes.putFloat(x == 0 ? 2 : 482);
                 vertexes.putFloat(y);
             }
         }
+        vertexes.rewind();
         glBufferData(GL_ARRAY_BUFFER, vertexes, GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -76,7 +75,6 @@ public class FrametimeGraph {
         glUniform1f(uFBWidth, Minecraft.getMinecraft().displayWidth);
 
         ShaderProgram.clear();
-        GLDebug.debugMessage("finish init fgshader");
     }
 
     public void render() {
@@ -93,7 +91,6 @@ public class FrametimeGraph {
          * 484x124 translucent rect, and finally FontRenderer slaps the text on top. The shader pipeline is only needed
          * for the first draw.
          */
-        GLDebug.debugMessage("render fgshader");
         shader.use();
 
         // Load uniforms
@@ -114,6 +111,5 @@ public class FrametimeGraph {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         ShaderProgram.clear();
-        GLDebug.debugMessage("finish render fgshader");
     }
 }

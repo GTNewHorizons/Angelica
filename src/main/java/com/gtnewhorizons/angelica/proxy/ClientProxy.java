@@ -188,8 +188,7 @@ public class ClientProxy extends CommonProxy {
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
-        // Draw a frametime graph
-        graph.render();
+
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
@@ -199,6 +198,7 @@ public class ClientProxy extends CommonProxy {
                 event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
+
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
             Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
@@ -206,6 +206,7 @@ public class ClientProxy extends CommonProxy {
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
+
         if (DynamicLights.isEnabled()) {
             var builder = new StringBuilder("Dynamic Light Sources: ");
             DynamicLights dl = DynamicLights.get();
@@ -213,6 +214,7 @@ public class ClientProxy extends CommonProxy {
 
             event.right.add(builder.toString());
         }
+
         if (AngelicaConfig.modernizeF3Screen) {
             boolean hasReplacedXYZ = false;
             for (int i = 0; i < event.left.size() - 3; i++) {
@@ -277,6 +279,9 @@ public class ClientProxy extends CommonProxy {
                 Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
                 fontrenderer.drawString(msg, strX, strY, fontColor);
             }
+
+            // Draw a frametime graph
+            graph.render();
         }
     }
 
