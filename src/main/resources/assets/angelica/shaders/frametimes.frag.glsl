@@ -22,8 +22,9 @@ void main() {
 
     // Increase red from 0-28ms, and decrease green from 28-56ms
     vec4 color = vec4(0.0, 0.0, 0.0, 0.0);
-    float r = clamp(time / 28000000.0, 0, 1);
-    float g = clamp((time - 28000000.0) / 28000000.0, 0, 1);
-    if (dy <= height) color = vec4(mix(0.0, 255.0, r), mix(255.0, 0.0, g), 0.0, 1.0);
+    float r = clamp(time / 28000000.0, 0.0, 1.0);
+    float g = 1.0 - clamp((time - 28000000.0) / 28000000.0, 0.0, 1.0);
+    if (dy <= height)
+        color = vec4(r, g, 0.0, 1.0);
     gl_FragColor = color;
 }
