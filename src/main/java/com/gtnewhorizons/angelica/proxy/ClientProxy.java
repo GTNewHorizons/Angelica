@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -28,7 +29,6 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.relauncher.ReflectionHelper;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,10 +62,7 @@ import org.lwjgl.input.Keyboard;
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
-    public static final int NUM_FRAMETIMES = 240;
-    // Circular buffer holding the last 240 frametimes, in nanoseconds
-    public static final LongArrayList frametimes = new LongArrayList(NUM_FRAMETIMES);
-    public static int frametimesHead = 0; // one ahead of the position of the last frametime
+    final FrametimeGraph graph = new FrametimeGraph();
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -191,6 +188,8 @@ public class ClientProxy extends CommonProxy {
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
+        // Draw a frametime graph
+        graph.render();
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
