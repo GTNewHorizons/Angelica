@@ -37,10 +37,13 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
 
-public class FrametimeGraph {
+/**
+ * Pretty much just {@link FrametimeGraph} but on the left
+ */
+public class TPSGraph {
     public static final int NUM_SAMPLES = 240;
-    // Circular buffer holding the last 240 frametimes, in nanoseconds
-    public int samplesHead = 0; // one ahead of the position of the last frametime
+    // Circular buffer holding the last 240 samples, in nanoseconds
+    public int samplesHead = 0; // one ahead of the position of the last sample
     private boolean initialized = false;
     private ShaderProgram shader;
     private int aPos;
@@ -59,11 +62,11 @@ public class FrametimeGraph {
     private static final int HEIGHT = 60;
     private static final int WIDTH = NUM_SAMPLES;
     private static final int FONT_COLOR = 0xFFE0E0E0;
-    private static final ResourceLocation TEXTURE = new ResourceLocation("angelica:textures/frametimes_fg.png");
-    // At 1x scale, 30 FPS should be 60 px. 30 FPS = 33_333_333ns per frame, 60px/33_333_333ns = 0.0000018f px/ns
-    private static final float PIXELS_PER_NS = 0.0000018f;
+    private static final ResourceLocation TEXTURE = new ResourceLocation("angelica:textures/tps_fg.png");
+    // At 1x scale, 20 TPS should be 60 px. 20 FPS = 50_000_000ns per frame, 60px/50_000_000ns = 0.0000012 px/ns
+    private static final float PIXELS_PER_NS = 0.0000012f;
 
-    public void putFrameTime(long time) {
+    public void putSample(long time) {
         sampleBuf.put(samplesHead, (float) time);
         samplesHead = (samplesHead + 1) % NUM_SAMPLES;
     }
