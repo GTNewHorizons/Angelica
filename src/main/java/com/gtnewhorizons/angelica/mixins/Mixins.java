@@ -27,6 +27,7 @@ public enum Mixins {
         .setPhase(Phase.EARLY).addMixinClasses(
              "angelica.MixinActiveRenderInfo"
             ,"angelica.MixinEntityRenderer"
+            ,"angelica.MixinGameSettings"
             ,"angelica.MixinMinecraft"
             ,"angelica.optimizations.MixinRendererLivingEntity"
             ,"angelica.MixinFMLClientHandler"

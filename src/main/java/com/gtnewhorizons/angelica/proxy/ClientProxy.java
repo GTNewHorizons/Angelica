@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
+import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -281,7 +282,9 @@ public class ClientProxy extends CommonProxy {
             }
 
             // Draw a frametime graph
-            graph.render();
+            if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
+                graph.render();
+            }
         }
     }
 
