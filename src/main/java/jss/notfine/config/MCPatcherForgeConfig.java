@@ -143,27 +143,21 @@ public class MCPatcherForgeConfig {
         public static LogLevel logging;
 
         @Config.DefaultInt(4)
-        @Config.RequiresMcRestart
         public static int maxRecursion;
 
         @Config.DefaultBoolean(false)
-        @Config.RequiresMcRestart
         public static boolean debugTextures;
 
         @Config.DefaultBoolean(false)
-        @Config.RequiresMcRestart
         public static boolean betterGrass;
 
         @Config.DefaultBoolean(true)
-        @Config.RequiresMcRestart
         public static boolean standard;
 
         @Config.DefaultBoolean(true)
-        @Config.RequiresMcRestart
         public static boolean nonStandard;
 
         @Config.DefaultBoolean(false)
-        @Config.RequiresMcRestart
         public static boolean glassPane;
     }
 

@@ -12,8 +12,6 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 public class GlassPaneRenderer {
 
-    private static final boolean enable = MCPatcherForgeConfig.ConnectedTextures.glassPane;
-
     public static boolean skipPaneRendering;
     public static boolean skipTopEdgeRendering;
     public static boolean skipBottomEdgeRendering;
@@ -47,7 +45,7 @@ public class GlassPaneRenderer {
 
     private static boolean setupIcons(RenderBlocks renderBlocks, Block blockPane, IIcon origIcon, int x, int y, int z) {
         skipPaneRendering = skipBottomEdgeRendering = skipTopEdgeRendering = false;
-        if (!enable) {
+        if (!MCPatcherForgeConfig.ConnectedTextures.glassPane) {
             return false;
         }
         for (int face = BlockOrientation.NORTH_FACE; face <= BlockOrientation.EAST_FACE; face++) {

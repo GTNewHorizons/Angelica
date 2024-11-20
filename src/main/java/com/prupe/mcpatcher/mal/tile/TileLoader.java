@@ -31,7 +31,6 @@ public class TileLoader {
 
     private static final List<TileLoader> loaders = new ArrayList<>();
 
-    private static final boolean debugTextures = MCPatcherForgeConfig.ConnectedTextures.debugTextures;
     private static final Map<String, String> specialTextures = new HashMap<>();
 
     private static final TexturePackChangeHandler changeHandler;
@@ -220,7 +219,7 @@ public class TileLoader {
             return true;
         }
         BufferedImage image = null;
-        if (!debugTextures) {
+        if (!MCPatcherForgeConfig.ConnectedTextures.debugTextures) {
             image = TexturePackAPI.getImage(resource);
             if (image == null) {
                 subLogger.warning("missing %s", resource);

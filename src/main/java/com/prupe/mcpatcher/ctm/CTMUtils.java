@@ -31,9 +31,6 @@ public class CTMUtils {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private static final boolean enableStandard = MCPatcherForgeConfig.ConnectedTextures.standard;
-    private static final boolean enableNonStandard = MCPatcherForgeConfig.ConnectedTextures.nonStandard;
-
     private static final List<TileOverride> allOverrides = new ArrayList<>();
     private static final Map<Block, List<BlockStateMatcher>> blockOverrides = new IdentityHashMap<>();
     private static final Map<String, List<TileOverride>> tileOverrides = new HashMap<>();
@@ -80,7 +77,7 @@ public class CTMUtils {
                 tileLoader = new TileLoader("textures/blocks", logger);
                 RenderPassAPI.instance.refreshBlendingOptions();
 
-                if (enableStandard || enableNonStandard) {
+                if (MCPatcherForgeConfig.ConnectedTextures.standard || MCPatcherForgeConfig.ConnectedTextures.nonStandard) {
                     for (ResourceLocation resource : ResourceList.getInstance()
                         .listResources(TexturePackAPI.MCPATCHER_SUBDIR + "ctm", ".properties", true)) {
                         registerOverride(TileOverride.create(resource, tileLoader));
@@ -159,7 +156,7 @@ public class CTMUtils {
     public static void reset() {}
 
     private static boolean checkFace(int face) {
-        return face < 0 ? enableNonStandard : enableStandard;
+        return face < 0 ? MCPatcherForgeConfig.ConnectedTextures.nonStandard : MCPatcherForgeConfig.ConnectedTextures.standard;
     }
 
     private static boolean checkRenderType(Block block) {

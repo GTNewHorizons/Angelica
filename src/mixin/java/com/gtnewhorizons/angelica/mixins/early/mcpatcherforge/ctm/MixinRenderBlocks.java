@@ -1,10 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.ctm;
 
-import static net.minecraftforge.common.util.ForgeDirection.EAST;
-import static net.minecraftforge.common.util.ForgeDirection.NORTH;
-import static net.minecraftforge.common.util.ForgeDirection.SOUTH;
-import static net.minecraftforge.common.util.ForgeDirection.WEST;
-
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAnvil;
@@ -16,19 +11,14 @@ import net.minecraft.block.BlockHopper;
 import net.minecraft.block.BlockPane;
 import net.minecraft.block.BlockRailBase;
 import net.minecraft.block.BlockRedstoneDiode;
-import net.minecraft.block.BlockStainedGlassPane;
-import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.*;
 
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import com.prupe.mcpatcher.ctm.GlassPaneRenderer;
@@ -65,7 +55,7 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon modifyRenderBlockMinecartTrack(RenderBlocks instance, Block block, int side, int meta,
         BlockRailBase specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(
@@ -92,7 +82,7 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon modifyRenderBlockBrewingStand(RenderBlocks instance, Block block, int side, int meta,
         BlockBrewingStand specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(
@@ -112,7 +102,7 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon modifyRenderBlockAnvilRotate(RenderBlocks instance, Block block, int side, int meta,
         BlockAnvil specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(
@@ -122,14 +112,13 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon modifyRenderRedstoneDiodeMetadata(RenderBlocks instance, Block block, int side, int meta,
         BlockRedstoneDiode specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
 
     @Redirect(method = "renderBlockPane", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
-    private IIcon tweakPaneIcons(RenderBlocks instance, Block block, int side, int meta_unused,
-                                 @Local(name = "p_147767_2_") int x, @Local(name = "p_147767_3_") int y, @Local(name = "p_147767_4_") int z) {
-        return this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+    private IIcon tweakPaneIcons(RenderBlocks instance, Block block, int side, int meta) {
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     /**
@@ -497,9 +486,8 @@ public abstract class MixinRenderBlocks {
     }
 
     @Redirect(method = "renderBlockStainedGlassPane", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
-    private IIcon tweakStainedPaneIcons(RenderBlocks instance, Block block, int side, int meta_unused,
-                                            @Local(name = "p_147733_2_") int x, @Local(name = "p_147733_3_") int y, @Local(name = "p_147733_4_") int z) {
-        return this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+    private IIcon tweakStainedPaneIcons(RenderBlocks instance, Block block, int side, int meta) {
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     /**
@@ -845,7 +833,7 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon redirectGetBlockIconFromSideAndMetadata(RenderBlocks instance, Block block, int side, int meta,
         Block specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(
@@ -863,6 +851,44 @@ public abstract class MixinRenderBlocks {
             y,
             z,
             -1);
+    }
+
+    @Inject(
+        method = "renderStandardBlockWithColorMultiplier",
+        at = {
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", ordinal = 0),
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", ordinal = 0),
+        }
+    )
+    private void fixBetterGrassColorMultiplierZ(Block block, int x, int y, int z, float red, float green, float blue,
+                                                CallbackInfoReturnable<Boolean> cir,
+                                                @Local(name = "tessellator") Tessellator tessellator,
+                                                @Local(name = "iicon") IIcon iicon,
+                                                @Local(name = "f11") float r,
+                                                @Local(name = "f14") float g,
+                                                @Local(name = "f17") float b) {
+        if (iicon.getIconName().equals("grass_top")) {
+            tessellator.setColorOpaque_F(r * red, g * green, b * blue);
+        }
+    }
+
+    @Inject(
+        method = "renderStandardBlockWithColorMultiplier",
+        at = {
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", ordinal = 0),
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", ordinal = 0),
+        }
+    )
+    private void fixBetterGrassColorMultiplierX(Block block, int x, int y, int z, float red, float green, float blue,
+                                                CallbackInfoReturnable<Boolean> cir,
+                                                @Local(name = "tessellator") Tessellator tessellator,
+                                                @Local(name = "iicon") IIcon iicon,
+                                                @Local(name = "f12") float r,
+                                                @Local(name = "f15") float g,
+                                                @Local(name = "f18") float b) {
+        if (iicon.getIconName().equals("grass_top")) {
+            tessellator.setColorOpaque_F(r * red, g * green, b * blue);
+        }
     }
 
     @Redirect(
@@ -948,7 +974,7 @@ public abstract class MixinRenderBlocks {
             target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
     private IIcon modifyRenderBlockHopperMetadata(RenderBlocks instance, Block block, int side, int meta,
         BlockHopper specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(
@@ -999,7 +1025,7 @@ public abstract class MixinRenderBlocks {
             ordinal = 1))
     private IIcon mcpatcherforge$redirectToGetBlockIcon(RenderBlocks instance, Block block, int side, int meta,
         Block specializedBlock, int x, int y, int z) {
-        return getBlockIcon(block, blockAccess, x, y, z, side);
+        return CTMUtils.getBlockIcon(getIconSafe(block.getIcon(side, meta)), block, side, meta);
     }
 
     @Redirect(

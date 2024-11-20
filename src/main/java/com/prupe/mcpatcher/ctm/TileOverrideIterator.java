@@ -15,8 +15,6 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 abstract public class TileOverrideIterator implements Iterator<TileOverride> {
 
-    private static final int MAX_RECURSION = MCPatcherForgeConfig.ConnectedTextures.maxRecursion;
-
     private final Map<Block, List<BlockStateMatcher>> allBlockOverrides;
     private final Map<String, List<TileOverride>> allTileOverrides;
 
@@ -118,7 +116,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         lastMatchedOverride = null;
         skipOverrides.clear();
 
-        pass: for (int pass = 0; pass < MAX_RECURSION; pass++) {
+        pass: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
             while (hasNext()) {
                 TileOverride override = next();
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
