@@ -34,28 +34,7 @@ public class F3Direction {
         GL11.glDepthMask(false);
         Tessellator tessellator = Tessellator.instance;
 
-        GL11.glLineWidth(2);
-        tessellator.startDrawing(GL11.GL_LINES);
-
-        //X
-        tessellator.setColorRGBA_F(255, 0, 0, 1);
-        tessellator.addVertex(0.0D, 0.0D, 0.0D);
-        tessellator.addVertex(10, 0.0D, 0.0D);
-
-        //Z
-        tessellator.setColorRGBA_F(0, 0, 255, 1);
-        tessellator.addVertex(0.0D, 0.0D, 0.0D);
-        tessellator.addVertex(0.0D, 0.0D, 10);
-
-        //Y
-        tessellator.setColorRGBA_F(0, 255, 0, 1);
-        tessellator.addVertex(0.0D, 0.0D, 0.0D);
-        tessellator.addVertex(0.0D, 10, 0.0D);
-
-        tessellator.draw();
-
-
-        GL11.glLineWidth(2);
+        GL11.glLineWidth(2.0F);
         tessellator.startDrawing(GL11.GL_LINES);
 
         //X
