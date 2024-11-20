@@ -79,3 +79,5 @@
 * Embeddedt and Ferri_Arnus for [glsl-transformation-lib](https://github.com/TauMC/glsl-transformation-lib)
   * Also for work on [Monocle](https://github.com/ferriarnus/Monocle) which was used as a reference for implementing glsl-transformation-lib
   * Code from both glsl-transformation-lib and Monocle taken under their respective LGPL 3.0 licenses
+* FalseTweaks
+  * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
