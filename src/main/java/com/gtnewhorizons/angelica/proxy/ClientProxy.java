@@ -323,6 +323,6 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void putFrametime(long time) {
-        graph.putFrameTime(time);
+        graph.putSample(time);
     }
 }
