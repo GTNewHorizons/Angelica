@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -7,6 +9,9 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.debug.FrametimeGraph;
+import com.gtnewhorizons.angelica.debug.TPSGraph;
+import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -26,6 +31,9 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
@@ -53,15 +61,11 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
 
-import java.lang.management.ManagementFactory;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
+    final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    final TPSGraph tpsGraph = new TPSGraph();
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -187,6 +191,7 @@ public class ClientProxy extends CommonProxy {
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
+
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
@@ -196,6 +201,7 @@ public class ClientProxy extends CommonProxy {
                 event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
+
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
             Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
@@ -203,6 +209,7 @@ public class ClientProxy extends CommonProxy {
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
+
         if (DynamicLights.isEnabled()) {
             var builder = new StringBuilder("Dynamic Light Sources: ");
             DynamicLights dl = DynamicLights.get();
@@ -210,6 +217,7 @@ public class ClientProxy extends CommonProxy {
 
             event.right.add(builder.toString());
         }
+
         if (AngelicaConfig.modernizeF3Screen) {
             boolean hasReplacedXYZ = false;
             for (int i = 0; i < event.left.size() - 3; i++) {
@@ -274,6 +282,14 @@ public class ClientProxy extends CommonProxy {
                 Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
                 fontrenderer.drawString(msg, strX, strY, fontColor);
             }
+
+            // Draw a frametime graph
+            if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
+                frametimeGraph.render();
+                if (Minecraft.getMinecraft().isSingleplayer()) {
+                    tpsGraph.render();
+                }
+            }
         }
     }
 
@@ -308,5 +324,15 @@ public class ClientProxy extends CommonProxy {
         if (!(boolean) Settings.DYNAMIC_FOV.option.getStore()) {
             event.newfov = 1.0F;
         }
+    }
+
+    @Override
+    public void putFrametime(long time) {
+        frametimeGraph.putSample(time);
+    }
+
+    @Override
+    public void putTicktime(long time) {
+        tpsGraph.putSample(time);
     }
 }
