@@ -11,7 +11,7 @@ import jss.notfine.config.MCPatcherForgeConfig;
 // Shared by both CTM and Custom Colors.
 public class RenderBlocksUtils {
 
-    public static final boolean enableBetterGrass = MCPatcherForgeConfig.instance().betterGrass;
+    public static final boolean enableBetterGrass = MCPatcherForgeConfig.ConnectedTextures.betterGrass;
 
     private static final int COLOR = 0;
     private static final int NONCOLOR = 1;

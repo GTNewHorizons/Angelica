@@ -32,8 +32,8 @@ public class MipmapHelper {
     static final int TEX_DATA_TYPE = GL12.GL_UNSIGNED_INT_8_8_8_8_REV;
 
     private static final boolean mipmapSupported;
-    static final boolean mipmapEnabled = MCPatcherForgeConfig.instance().mipmap;
-    static final int maxMipmapLevel = MCPatcherForgeConfig.instance().maxMipMapLevel;
+    static final boolean mipmapEnabled = MCPatcherForgeConfig.ExtendedHD.mipmap;
+    static final int maxMipmapLevel = MCPatcherForgeConfig.ExtendedHD.maxMipMapLevel;
     private static final boolean useMipmap;
 
     private static final boolean anisoSupported;
@@ -53,14 +53,14 @@ public class MipmapHelper {
         if (anisoSupported) {
             anisoMax = (int) GL11.glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
             checkGLError("glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)");
-            anisoLevel = Math.max(Math.min(MCPatcherForgeConfig.instance().anisotropicFiltering, anisoMax), 1);
+            anisoLevel = Math.max(Math.min(MCPatcherForgeConfig.ExtendedHD.anisotropicFiltering, anisoMax), 1);
         } else {
             anisoMax = anisoLevel = 1;
         }
 
         lodSupported = GLContext.getCapabilities().GL_EXT_texture_lod_bias;
         if (lodSupported) {
-            lodBias = MCPatcherForgeConfig.instance().lodBias;
+            lodBias = MCPatcherForgeConfig.ExtendedHD.lodBias;
         } else {
             lodBias = 0;
         }

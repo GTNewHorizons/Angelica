@@ -31,7 +31,7 @@ public class TileLoader {
 
     private static final List<TileLoader> loaders = new ArrayList<>();
 
-    private static final boolean debugTextures = MCPatcherForgeConfig.instance().debugTextures;
+    private static final boolean debugTextures = MCPatcherForgeConfig.ConnectedTextures.debugTextures;
     private static final Map<String, String> specialTextures = new HashMap<>();
 
     private static final TexturePackChangeHandler changeHandler;

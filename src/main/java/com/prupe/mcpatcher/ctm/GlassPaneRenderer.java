@@ -12,7 +12,7 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 public class GlassPaneRenderer {
 
-    private static final boolean enable = MCPatcherForgeConfig.instance().ctmGlassPane;
+    private static final boolean enable = MCPatcherForgeConfig.ConnectedTextures.glassPane;
 
     public static boolean skipPaneRendering;
     public static boolean skipTopEdgeRendering;

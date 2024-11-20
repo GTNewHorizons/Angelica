@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.block.Block;
-import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
@@ -32,8 +31,8 @@ public class CTMUtils {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private static final boolean enableStandard = MCPatcherForgeConfig.instance().ctmStandard;
-    private static final boolean enableNonStandard = MCPatcherForgeConfig.instance().ctmNonStandard;
+    private static final boolean enableStandard = MCPatcherForgeConfig.ConnectedTextures.standard;
+    private static final boolean enableNonStandard = MCPatcherForgeConfig.ConnectedTextures.nonStandard;
 
     private static final List<TileOverride> allOverrides = new ArrayList<>();
     private static final Map<Block, List<BlockStateMatcher>> blockOverrides = new IdentityHashMap<>();
