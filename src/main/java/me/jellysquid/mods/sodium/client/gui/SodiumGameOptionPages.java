@@ -373,6 +373,17 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
+            .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                .setName(I18n.format("options.angelica.itemdisplaylistcount"))
+                .setTooltip(I18n.format("options.angelica.itemdisplaylistcount.tooltip"))
+                .setControl(o -> new SliderControl(o, 0, 1024, 1, ControlValueFormatter.number()))
+                .setImpact(OptionImpact.MEDIUM)
+                .setBinding((opts, value) -> AngelicaConfig.itemRendererDisplayListCacheSize = value, options -> AngelicaConfig.itemRendererDisplayListCacheSize)
+                .build()
+            )
+            .build());
+
+        groups.add(OptionGroup.createBuilder()
                 .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(Settings.GUI_BACKGROUND.option)
             .build());
