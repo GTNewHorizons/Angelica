@@ -286,7 +286,9 @@ public class ClientProxy extends CommonProxy {
             // Draw a frametime graph
             if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
                 frametimeGraph.render();
-                tpsGraph.render();
+                if (Minecraft.getMinecraft().isSingleplayer()) {
+                    tpsGraph.render();
+                }
             }
         }
     }
