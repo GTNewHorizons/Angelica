@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.debug;
 
 import static org.lwjgl.opengl.GL11.GL_ALPHA_TEST;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
@@ -213,7 +214,12 @@ public abstract class F3Graph {
         glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
         glEnableClientState(GL_VERTEX_ARRAY);
 
+        // Left side graphs are inverted, so temporarily disable culling
+        if (!left) glDisable(GL_CULL_FACE);
+
         glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
+
+        if (!left) glEnable(GL_CULL_FACE);
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableVertexAttribArray(aPos);
@@ -249,8 +255,16 @@ public abstract class F3Graph {
         String maxStr = String.format("%.1f ms max", max / 1_000_000D);
         final FontRenderer fr = mc.fontRenderer;
         final int top = sr.getScaledHeight() - HEIGHT - BORDER * 2 - fr.FONT_HEIGHT;
-        fr.drawString(minStr, BORDER * 2, top, FONT_COLOR, true);
-        fr.drawString(avgStr, BORDER + WIDTH / 2 - fr.getStringWidth(avgStr) / 2, top, FONT_COLOR, true);
-        fr.drawString(maxStr, BORDER * 2 + WIDTH - fr.getStringWidth(maxStr), top, FONT_COLOR, true);
+        final int scaledWidth = sr.getScaledWidth();
+
+        if (left) {
+            fr.drawString(minStr, BORDER * 2, top, FONT_COLOR, true);
+            fr.drawString(avgStr, BORDER + WIDTH / 2 - fr.getStringWidth(avgStr) / 2, top, FONT_COLOR, true);
+            fr.drawString(maxStr, BORDER * 2 + WIDTH - fr.getStringWidth(maxStr), top, FONT_COLOR, true);
+        } else {
+            fr.drawString(minStr, scaledWidth - (BORDER * 2 + WIDTH), top, FONT_COLOR, true);
+            fr.drawString(avgStr, scaledWidth - (BORDER + WIDTH / 2 + fr.getStringWidth(avgStr) / 2), top, FONT_COLOR, true);
+            fr.drawString(maxStr, scaledWidth - (BORDER * 2 + fr.getStringWidth(maxStr)), top, FONT_COLOR, true);
+        }
     }
 }

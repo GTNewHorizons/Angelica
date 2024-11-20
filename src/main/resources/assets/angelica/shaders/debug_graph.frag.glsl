@@ -10,7 +10,7 @@ uniform float fbWidth;
 void main() {
     // Get position - gl_FragCoord starts from the lower left and returns the position of the center of the pixel
     // i.e. the lower-left-most pixel is (0.5, 0.5). Shift if we're on the right side of the screen.
-    int dx = int((left ? gl_FragCoord.x : fbWidth - gl_FragCoord.x) / scaleFactor) - 1;
+    int dx = int((left ? gl_FragCoord.x : gl_FragCoord.x - fbWidth) / scaleFactor) - 1;
     int dy = int(gl_FragCoord.y / scaleFactor);
 
     // Get the time for this frag. Last at the left edge, first at the right, shifting as needed when the head moves.

@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
+import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -63,7 +64,8 @@ import org.lwjgl.input.Keyboard;
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
-    final FrametimeGraph graph = new FrametimeGraph();
+    final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    final TPSGraph tpsGraph = new TPSGraph();
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -283,7 +285,8 @@ public class ClientProxy extends CommonProxy {
 
             // Draw a frametime graph
             if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
-                graph.render();
+                frametimeGraph.render();
+                tpsGraph.render();
             }
         }
     }
@@ -323,6 +326,11 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void putFrametime(long time) {
-        graph.putSample(time);
+        frametimeGraph.putSample(time);
+    }
+
+    @Override
+    public void putTicktime(long time) {
+        tpsGraph.putSample(time);
     }
 }

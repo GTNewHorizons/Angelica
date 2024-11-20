@@ -22,4 +22,6 @@ public class CommonProxy {
 
     // Only present on the client!
     public void putFrametime(long time) { throw new UnsupportedOperationException(); }
+
+    public void putTicktime(long time) { throw new UnsupportedOperationException(); }
 }

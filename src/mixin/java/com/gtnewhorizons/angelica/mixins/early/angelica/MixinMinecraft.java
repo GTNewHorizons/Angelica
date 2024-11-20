@@ -36,6 +36,8 @@ public class MixinMinecraft {
     private void angelica$trackFrametimes(CallbackInfo ci) {
         long time = System.nanoTime();
         AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
+        // testing
+        AngelicaMod.proxy.putTicktime(time - angelica$lastFrameTime);
         angelica$lastFrameTime = time;
     }
 
