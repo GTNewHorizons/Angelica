@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
@@ -184,6 +185,15 @@ public class ClientProxy extends CommonProxy {
                 long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
                 lastIntegratedTickTime = lastIntegratedTickTime * 0.8F + (float) currentTickTime / 1000000.0F * 0.2F;
             } else lastIntegratedTickTime = 0;
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRenderOverlay(RenderGameOverlayEvent.Pre event) {
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo) return;
+        if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
+            F3Direction.renderWorldDirectionsEvent(mc, event);
+            event.setCanceled(true);
         }
     }
 
