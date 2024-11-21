@@ -78,6 +78,11 @@ public enum Mixins {
         .setApplyIf(() -> AngelicaConfig.dynamicItemRenderDistance)
         .addTargetedMod(TargetedMod.VANILLA)),
 
+    ANGELICA_ITEM_DISPLAY_LIST_OPTIMIZATION(new Builder("Optimized item rendering by wrapping them with display lists")
+        .setPhase(Phase.EARLY).addMixinClasses("angelica.itemrenderer.MixinItemRenderer").setSide(Side.CLIENT)
+        .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)
+        .addTargetedMod(TargetedMod.VANILLA)),
+
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(

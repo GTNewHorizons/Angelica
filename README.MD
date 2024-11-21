@@ -5,8 +5,9 @@
 * The little Angle [sic] that supports shaders while saving your fps from a certain death -boubou
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
+* It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons**
+## **Beta Quality - Here there be Dragons** 
 * Shaders sneak preview - Please don't report issues yet, but please do submit fixes
    * Complementary & BSL mostly function, but have some bugs
    * Sildurs, Seus, and any other shader probably doesn't work
@@ -79,3 +80,5 @@
 * Embeddedt and Ferri_Arnus for [glsl-transformation-lib](https://github.com/TauMC/glsl-transformation-lib)
   * Also for work on [Monocle](https://github.com/ferriarnus/Monocle) which was used as a reference for implementing glsl-transformation-lib
   * Code from both glsl-transformation-lib and Monocle taken under their respective LGPL 3.0 licenses
+* FalseTweaks
+  * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
