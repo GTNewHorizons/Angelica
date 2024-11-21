@@ -8,6 +8,8 @@ import java.util.logging.*;
 
 public class MCLogger {
 
+    private static final org.apache.logging.log4j.Logger MAIN_LOGGER = org.apache.logging.log4j.LogManager.getLogger("MCPatcherForge");
+
     private static final Map<String, MCLogger> allLoggers = new HashMap<>();
 
     public static final Level ERROR = new ErrorLevel();
@@ -67,14 +69,14 @@ public class MCLogger {
                             prefix.append("\n");
                             message = message.substring(1);
                         }
-                        return prefix + "[" + MCLogger.this.logPrefix + "] " + level.toString() + ": " + message;
+                        return prefix + "[" + MCLogger.this.logPrefix + "/" + level.toString() + "]: " + message;
                     }
                 }
             };
 
             @Override
             public void publish(LogRecord record) {
-                System.out.println(formatter.format(record));
+                MAIN_LOGGER.info(formatter.format(record));
             }
 
             @Override
