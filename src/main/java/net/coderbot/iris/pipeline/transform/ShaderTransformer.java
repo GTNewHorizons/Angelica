@@ -33,6 +33,7 @@ public class ShaderTransformer {
     static String tab = "";
 
     private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
+    private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^\\s*(in|out)(\\s+)");
 
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -152,6 +153,7 @@ public class ShaderTransformer {
         EnumMap<PatchShaderType, GLSLParser.Translation_unitContext> types = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, String> prepatched = new EnumMap<>(PatchShaderType.class);
         List<GLSLParser.Translation_unitContext> textureLodExtensionPatches = new ArrayList<>();
+        List<GLSLParser.Translation_unitContext> hacky120Patches = new ArrayList<>();
 
         Stopwatch watch = Stopwatch.createStarted();
 
@@ -216,24 +218,45 @@ public class ShaderTransformer {
             }
 
             // Check if we need to patch in texture LOD extension enabling
-            if (versionInt <= 120 && (Util.containsCall(translationUnit, "texture2DLod") || Util.containsCall(translationUnit, "texture3DLod"))) {
+            if (versionInt <= 120 && (Util.containsCall(translationUnit, "texture2DLod") || Util.containsCall(translationUnit, "texture3DLod") || Util.containsCall(translationUnit, "texture2DGradARB"))) {
                 textureLodExtensionPatches.add(translationUnit);
             }
+
+            // Check if we need to patch in some hacky GLSL 120 compat
+            if (versionInt <= 120) {
+                hacky120Patches.add(translationUnit);
+            }
+
             types.put(type, translationUnit);
             prepatched.put(type, profileString);
         }
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
-            // This is a hack to inject an extension declaration when the GLSL version is less than 120
-            // Doing this as a string manipulation on the final shader output since it needs to put this
-            // before variables, didn't see an easy way to do that with glsl-transformation-lib
-            // Eventually this can probably be moved to use glsl-transformation-lib
             String formattedShader = getFormattedShader(entry.getValue(), prepatched.get(entry.getKey()));
+
+            // Please don't mind the entire rest of this loop basically, we're doing awful fragile regex on the transformed
+            // shader output to do things that I can't figure out with AST because I'm bad at it
+
             if (textureLodExtensionPatches.contains(entry.getValue())) {
                 String[] parts = formattedShader.split("\n", 2);
                 parts[1] = "#extension GL_ARB_shader_texture_lod : require\n" + parts[1];
                 formattedShader = parts[0] + "\n" + parts[1];
             }
+
+            if (hacky120Patches.contains(entry.getValue())) {
+                // Forcibly enable GL_EXT_gpu_shader4, it has a lot of compatibility backports with GLSL 130+
+                // and seems more or less universally supported by hardware/drivers
+                String[] parts = formattedShader.split("\n", 2);
+                parts[1] = "#extension GL_EXT_gpu_shader4 : require\n" + parts[1];
+                formattedShader = parts[0] + "\n" + parts[1];
+
+                // Kind of GLSL 120 supports in/out specifiers, but also kind of not, and is driver dependent
+                // and also depends on the types of the variables, doesn't work with integers for example(at least on Nvidia)
+                // So we are replacing all in/out usage with varying.
+                Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
+                formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+            }
+
             result.put(entry.getKey(), formattedShader);
         }
         watch.stop();
