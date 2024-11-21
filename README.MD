@@ -7,7 +7,7 @@
 * It's a cute angle -mitchej123
 * It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons**
+## **Beta Quality - Here there be Dragons** 
 * Shaders sneak preview - Please don't report issues yet, but please do submit fixes
    * Complementary & BSL mostly function, but have some bugs
    * Sildurs, Seus, and any other shader probably doesn't work
