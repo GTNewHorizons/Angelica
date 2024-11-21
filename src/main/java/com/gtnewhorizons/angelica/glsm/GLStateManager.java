@@ -172,6 +172,7 @@ public class GLStateManager {
     @Setter @Getter private static boolean runningSplash = true;
 
     private static int glListMode = 0;
+    private static int glListNesting = 0;
     private static int glListId = -1;
     private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
@@ -1187,7 +1188,8 @@ public class GLStateManager {
 
     public static void glNewList(int list, int mode) {
         if(glListMode > 0) {
-            throw new RuntimeException("glNewList called inside of a display list!");
+            glListNesting += 1;
+            return;
         }
         glListId = list;
         glListMode = mode;
@@ -1202,6 +1204,11 @@ public class GLStateManager {
     }
 
     public static void glEndList() {
+        if (glListNesting > 0) {
+            glListNesting -= 1;
+            return;
+        }
+
         if(glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
