@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import java.util.concurrent.locks.LockSupport;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import org.lwjgl.input.Keyboard;
@@ -47,9 +46,8 @@ public abstract class MixinMinecraft {
         if (!AngelicaConfig.sleepBeforeSwap) return;
         if (isFramerateLimitBelowMax()) {
             final long target = angelica$lastFrameTime + (long) (1.0 / getLimitFramerate() * 1_000_000) * 1_000;
-            long sleepNanos;
-            while ((sleepNanos = target - System.nanoTime()) > 100) {
-                LockSupport.parkNanos(sleepNanos);
+            while (target - System.nanoTime() > 100) {
+                Thread.yield();
             }
         }
     }
