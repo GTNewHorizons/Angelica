@@ -137,4 +137,15 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableZoom;
+
+    @Config.Comment("Optimizes in-world item rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeInWorldItemRendering;
+
+    @Config.Comment("Max amount of display lists to cache for optimized item rendering. Higher number will use more VRAM")
+    @Config.DefaultInt(256)
+    @Config.RangeInt(min = 64, max = 1024)
+    public static int itemRendererDisplayListCacheSize;
+
 }
