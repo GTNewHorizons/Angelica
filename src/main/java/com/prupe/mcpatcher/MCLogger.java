@@ -4,7 +4,11 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.*;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 public class MCLogger {
 
