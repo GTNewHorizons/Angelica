@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.compat.lwjgl;
 
+import static com.gtnewhorizons.angelica.compat.lwjgl.Pointer.BITS64;
+import static org.lwjgl.MemoryUtil.getAddress;
+
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -7,6 +10,8 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 public class CompatMemoryUtil {
+    public static final long NULL = 0;
+
     public static ByteBuffer memReallocDirect(ByteBuffer old, int capacity) {
         ByteBuffer newBuf = BufferUtils.createByteBuffer(capacity);
         int oldPos = old.position();
@@ -99,4 +104,81 @@ public class CompatMemoryUtil {
     public static float memGetFloat(long ptr)     { return UNSAFE.getFloat(null, ptr); }
     public static double memGetDouble(long ptr)   { return UNSAFE.getDouble(null, ptr); }
 
+    /**
+     * Sets all bytes in a specified block of memory to a fixed value (usually zero).
+     *
+     * @param ptr   the starting memory address
+     * @param value the value to set (memSet will convert it to unsigned byte)
+     */
+    public static void memSet(ByteBuffer ptr, int value) { memSet(getAddress(ptr), value, ptr.remaining()); }
+
+
+    private static final int  FILL_PATTERN_32 = Integer.divideUnsigned(-1, 255);
+    private static final long FILL_PATTERN_64 = Long.divideUnsigned(-1L, 255L);
+
+    /**
+     * Sets all bytes in a specified block of memory to a fixed value (usually zero).
+     *
+     * @param ptr   the starting memory address
+     * @param value the value to set (memSet will convert it to unsigned byte)
+     * @param bytes the number of bytes to set
+     */
+    public static void memSet(long ptr, int value, long bytes) {
+        if (/*DEBUG*/ false && (ptr == NULL || bytes < 0)) {
+            throw new IllegalArgumentException();
+        }
+
+        /*
+        - Unsafe.setMemory is very slow.
+        - A custom Java loop is fastest at small sizes, approximately up to 256 bytes.
+        - The native memset becomes fastest at bigger sizes, when the JNI overhead becomes negligible.
+         */
+
+        //UNSAFE.setMemory(ptr, bytes, (byte)(value & 0xFF));
+        //if (bytes < 256L) {
+            int p = (int)ptr;
+            if (BITS64) {
+                if ((p & 7) == 0) {
+                    memSet64(ptr, value, (int)bytes & 0xFF);
+                    return;
+                }
+            } else {
+                if ((p & 3) == 0) {
+                    memSet32(p, value, (int)bytes & 0xFF);
+                    return;
+                }
+            }
+        //}
+        //nmemset(ptr, value, bytes);
+    }
+    private static void memSet64(long ptr, int value, int bytes) {
+        int aligned = bytes & ~7;
+
+        // Aligned body
+        long valuel = (value & 0xFF) * FILL_PATTERN_64;
+        for (int i = 0; i < aligned; i += 8) {
+            UNSAFE.putLong(null, ptr + i, valuel);
+        }
+
+        // Unaligned tail
+        byte valueb = (byte)(value & 0xFF);
+        for (int i = aligned; i < bytes; i++) {
+            UNSAFE.putByte(null, ptr + i, valueb);
+        }
+    }
+    private static void memSet32(int ptr, int value, int bytes) {
+        int aligned = bytes & ~3;
+
+        // Aligned body
+        int vi = (value & 0xFF) * FILL_PATTERN_32;
+        for (int i = 0; i < aligned; i += 4) {
+            UNSAFE.putInt(null, (ptr + i) & 0xFFFF_FFFFL, vi);
+        }
+
+        // Unaligned tail
+        byte vb = (byte)(value & 0xFF);
+        for (int i = aligned; i < bytes; i++) {
+            UNSAFE.putByte(null, (ptr + i) & 0xFFFF_FFFFL, vb);
+        }
+    }
 }
