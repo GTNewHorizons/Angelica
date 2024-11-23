@@ -1,4 +1,3 @@
-import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
@@ -21,14 +20,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class GLParser {
-    final static String glPath = "util/gl";
-    final static String glsmPath = "src/main/java/com/gtnewhorizons/angelica/glsm/GLStateManager.java";
+/**
+ * Used to generate gl_functions.csv. Which contains a mapping of OpenGL functions provided by LWJGL
+ * corresponding to the earliest GL version they appear in.
+ */
+public class GLFunctionParser {
+    final static String glPath = "util/gl"; // Path to LWJGL OpenGL bindings source code
 
     public static void main(String[] args) throws FileNotFoundException {
-        StaticJavaParser.getConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_14); // GLSM will fail to parse without this
         HashMap<String, Set<String>> byFunction = new HashMap<>();
-        Set<String> glsmFunctions = new HashSet<>();
         File dir = new File(glPath);
         for (File file : dir.listFiles()) {
             final String filename = file.getName();
@@ -36,7 +36,6 @@ public class GLParser {
                 Path p = Paths.get(filename);
 
                 String parsedFile = removeFileExtension(p.getFileName().toString());
-                int versionInt = Integer.parseInt(parsedFile.substring(2, 4));
 
                 CompilationUnit cu = StaticJavaParser.parse(file);
                 cu.accept(new VoidVisitorWithDefaults<>() {
@@ -53,10 +52,8 @@ public class GLParser {
                                     methodName = methodName + ")";
                                     if(methodName.startsWith("n")) continue;
 
-                                    if (versionInt < 30) {
-                                        Set<String> functionSet = byFunction.computeIfAbsent(methodName, k -> new HashSet<>());
-                                        functionSet.add(parsedFile);
-                                    }
+                                    Set<String> functionSet = byFunction.computeIfAbsent(methodName, k -> new HashSet<>());
+                                    functionSet.add(parsedFile);
                                 }
                             }
                         }
@@ -66,29 +63,7 @@ public class GLParser {
             }
         }
 
-        File glsmFile = new File(glsmPath);
-        CompilationUnit cu = StaticJavaParser.parse(glsmFile);
-        cu.accept(new VoidVisitorWithDefaults<>() {
-
-            @Override
-            public void defaultAction(Node n, Object arg) {
-                for (Node child : n.getChildNodes()) {
-                    if (child instanceof ClassOrInterfaceDeclaration cd) {
-                        for (MethodDeclaration md : cd.getMethods()) {
-                            String methodName = md.getNameAsString() + "(";
-                            for (Parameter p : md.getParameters()) {
-                                methodName = methodName + p.getTypeAsString();
-                            }
-                            methodName = methodName + ")";
-                            glsmFunctions.add(methodName);
-                        }
-                    }
-                }
-            }
-        }, null);
-
         Map<String, String> functionVersionMap = new HashMap<>();
-        Map<String, String> functionGLSMMap = new HashMap<>();
 
         for(String function : byFunction.keySet()) {
 
@@ -103,28 +78,22 @@ public class GLParser {
                 }
             }
             functionVersionMap.put(function, lowestString);
-
-            if (glsmFunctions.contains(function)) {
-                functionGLSMMap.put(function, "true");
-            } else {
-                functionGLSMMap.put(function, "false");
-            }
         }
 
         List<String[]> outputLines = new ArrayList<>();
 
         for (Map.Entry<String, String> entry : functionVersionMap.entrySet()) {
-            outputLines.add(new String[] {entry.getKey(), entry.getValue(), functionGLSMMap.get(entry.getKey())});
+            outputLines.add(new String[] {entry.getKey(), entry.getValue()});
         }
 
         File output = new File("output.csv");
         try (PrintWriter writer = new PrintWriter(output)) {
-            outputLines.stream().map(GLParser::convertToCSV).forEach(writer::println);
+            outputLines.stream().map(GLSMFunctionComparison::convertToCSV).forEach(writer::println);
         }
     }
 
     public static String convertToCSV(String[] data) {
-        return Stream.of(data).map(GLParser::escapeSpecialCharacters).collect(Collectors.joining(","));
+        return Stream.of(data).map(GLSMFunctionComparison::escapeSpecialCharacters).collect(Collectors.joining(","));
     }
 
     public static String escapeSpecialCharacters(String data) {
