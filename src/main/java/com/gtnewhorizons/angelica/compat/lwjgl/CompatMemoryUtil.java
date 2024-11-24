@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.compat.lwjgl;
 import static com.gtnewhorizons.angelica.compat.lwjgl.Pointer.BITS64;
 import static org.lwjgl.MemoryUtil.getAddress;
 
+import java.nio.ByteOrder;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -11,6 +12,11 @@ import java.nio.IntBuffer;
 
 public class CompatMemoryUtil {
     public static final long NULL = 0;
+    static final Class<? extends ByteBuffer> BUFFER_BYTE;
+    static {
+        ByteBuffer bb = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
+        BUFFER_BYTE = bb.getClass();
+    }
 
     public static ByteBuffer memReallocDirect(ByteBuffer old, int capacity) {
         ByteBuffer newBuf = BufferUtils.createByteBuffer(capacity);
@@ -132,6 +138,7 @@ public class CompatMemoryUtil {
         - Unsafe.setMemory is very slow.
         - A custom Java loop is fastest at small sizes, approximately up to 256 bytes.
         - The native memset becomes fastest at bigger sizes, when the JNI overhead becomes negligible.
+        TODO: verify this
          */
 
         //UNSAFE.setMemory(ptr, bytes, (byte)(value & 0xFF));
