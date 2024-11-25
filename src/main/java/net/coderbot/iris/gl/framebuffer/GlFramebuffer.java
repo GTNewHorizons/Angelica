@@ -1,18 +1,17 @@
 package net.coderbot.iris.gl.framebuffer;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import java.nio.IntBuffer;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.minecraft.client.renderer.OpenGlHelper;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
-
-import java.nio.IntBuffer;
 
 public class GlFramebuffer extends GlResource {
 	private final Int2IntMap attachments;
@@ -52,25 +51,29 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void noDrawBuffers() {
-        final IntBuffer buffer = BufferUtils.createIntBuffer(1);
-        buffer.put(GL11.GL_NONE);
-		RenderSystem.drawBuffers(getGlId(), buffer);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer buffer = stack.mallocInt(1);
+            buffer.put(GL11.GL_NONE);
+            RenderSystem.drawBuffers(getGlId(), buffer);
+        }
 	}
 
 	public void drawBuffers(int[] buffers) {
-        final IntBuffer glBuffers = BufferUtils.createIntBuffer(buffers.length);
-        int index = 0;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer glBuffers = stack.mallocInt(buffers.length);
+            int index = 0;
 
-		if (buffers.length > maxDrawBuffers) {
-			throw new IllegalArgumentException("Cannot write to more than " + maxDrawBuffers + " draw buffers on this GPU");
-		}
-		for (int buffer : buffers) {
-			if (buffer >= maxColorAttachments) {
-				throw new IllegalArgumentException("Only " + maxColorAttachments + " color attachments are supported on this GPU, but an attempt was made to write to a color attachment with index " + buffer);
-			}
-            glBuffers.put(index++, GL30.GL_COLOR_ATTACHMENT0 + buffer);
-		}
-		RenderSystem.drawBuffers(getGlId(), glBuffers);
+            if (buffers.length > maxDrawBuffers) {
+                throw new IllegalArgumentException("Cannot write to more than " + maxDrawBuffers + " draw buffers on this GPU");
+            }
+            for (int buffer : buffers) {
+                if (buffer >= maxColorAttachments) {
+                    throw new IllegalArgumentException("Only " + maxColorAttachments + " color attachments are supported on this GPU, but an attempt was made to write to a color attachment with index " + buffer);
+                }
+                glBuffers.put(index++, GL30.GL_COLOR_ATTACHMENT0 + buffer);
+            }
+            RenderSystem.drawBuffers(getGlId(), glBuffers);
+        }
 	}
 
 	public void readBuffer(int buffer) {
