@@ -11,10 +11,12 @@ import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.memPutInt
 import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.memPutLong;
 import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.memPutShort;
 import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.memSet;
+import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.wrapBufferFloat;
 import static com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil.wrapBufferInt;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 import org.jetbrains.annotations.Nullable;
@@ -320,6 +322,9 @@ public class MemoryStack extends Pointer.Default implements AutoCloseable {
     }
 
     // -------------------------------------------------
+
+    /** Float version of {@link #malloc(int)}. */
+    public FloatBuffer mallocFloat(int size) { return wrapBufferFloat(nmalloc(4, size << 2), size); }
 
     /** Unsafe version of {@link #floats(float)}. */
     public long nfloat(float value) {

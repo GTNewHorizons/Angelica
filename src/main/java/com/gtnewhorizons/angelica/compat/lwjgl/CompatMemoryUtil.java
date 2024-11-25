@@ -16,6 +16,7 @@ public class CompatMemoryUtil {
     public static final long NULL = 0;
     private static final Class<? extends ByteBuffer> BUFFER_BYTE;
     private static final Class<? extends IntBuffer> BUFFER_INT;
+    private static final Class<? extends FloatBuffer> BUFFER_FLOAT;
 
     private static final long MARK;
     private static final long POSITION;
@@ -28,6 +29,7 @@ public class CompatMemoryUtil {
         ByteBuffer bb = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
         BUFFER_BYTE = bb.getClass();
         BUFFER_INT = bb.asIntBuffer().getClass();
+        BUFFER_FLOAT = bb.asFloatBuffer().getClass();
 
         MARK = getMarkOffset();
         POSITION = getPositionOffset();
@@ -298,6 +300,22 @@ public class CompatMemoryUtil {
         IntBuffer buffer;
         try {
             buffer = (IntBuffer)UNSAFE.allocateInstance(BUFFER_INT);
+        } catch (InstantiationException e) {
+            throw new UnsupportedOperationException(e);
+        }
+
+        UNSAFE.putLong(buffer, ADDRESS, address);
+        UNSAFE.putInt(buffer, MARK, -1);
+        UNSAFE.putInt(buffer, LIMIT, capacity);
+        UNSAFE.putInt(buffer, CAPACITY, capacity);
+
+        return buffer;
+    }
+
+    static FloatBuffer wrapBufferFloat(long address, int capacity) {
+        FloatBuffer buffer;
+        try {
+            buffer = (FloatBuffer)UNSAFE.allocateInstance(BUFFER_FLOAT);
         } catch (InstantiationException e) {
             throw new UnsupportedOperationException(e);
         }
