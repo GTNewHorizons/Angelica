@@ -30,6 +30,7 @@ import static org.lwjgl.opengl.GL20.glUniform1i;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
 import java.nio.FloatBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -49,7 +50,7 @@ public abstract class F3Graph {
     private static final int FONT_COLOR = 0xFFE0E0E0;
     // Due to GLSL 120 limitations, it's just easier to use floats
     private final FloatBuffer sampleBuf = BufferUtils.createFloatBuffer(NUM_SAMPLES);
-    private final long[] samples = new long[NUM_SAMPLES]; // CPU-side copy for reads
+    private final long[] samples = new long[NUM_SAMPLES]; // long version for calculations
     // Circular buffer holding the last 240 samples, in nanoseconds
     private int samplesHead = 0; // one ahead of the position of the last sample
     private boolean initialized = false;
@@ -130,18 +131,20 @@ public abstract class F3Graph {
         // Load vertex buffer
         vertBuf = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
-        final FloatBuffer vertices = BufferUtils.createFloatBuffer(VERT_COUNT * VERT_FLOATS);
-        // Since we use a triangle strip, we only need 4 vertices. The quad extends to the top of the screen so spikes
-        // don't get truncated. The max height is replaced in the vert shader, no need to be precise.
-        vertices.put(new float[]{
-            BORDER,         BORDER,
-            WIDTH + BORDER, BORDER,
-            BORDER,         Float.MAX_VALUE,
-            WIDTH + BORDER, Float.MAX_VALUE
-        });
-        vertices.rewind();
+        try (final MemoryStack stack = MemoryStack.stackPush()) {
+            final FloatBuffer vertices = stack.mallocFloat(VERT_COUNT * VERT_FLOATS);
+            // Since we use a triangle strip, we only need 4 vertices. The quad extends to the top of the screen so spikes
+            // don't get truncated. The max height is replaced in the vert shader, no need to be precise.
+            vertices.put(new float[]{
+                BORDER,         BORDER,
+                WIDTH + BORDER, BORDER,
+                BORDER,         Float.MAX_VALUE,
+                WIDTH + BORDER, Float.MAX_VALUE
+            });
+            vertices.rewind();
 
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+        }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         final Minecraft mc = Minecraft.getMinecraft();

@@ -1,7 +1,9 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
+import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.nio.FloatBuffer;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkProgram;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogComponent;
@@ -11,9 +13,6 @@ import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
-import org.lwjgl.BufferUtils;
-
-import java.nio.FloatBuffer;
 
 public class IrisChunkProgram extends ChunkProgram {
 	// Uniform variable binding indexes
@@ -87,10 +86,12 @@ public class IrisChunkProgram extends ChunkProgram {
 			return;
 		}
 
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            FloatBuffer buffer = stack.mallocFloat(16);
 
-        matrix.get(buffer);
+            matrix.get(buffer);
 
-        RenderSystem.uniformMatrix4fv(location, false, buffer);
+            RenderSystem.uniformMatrix4fv(location, false, buffer);
+        }
 	}
 }
