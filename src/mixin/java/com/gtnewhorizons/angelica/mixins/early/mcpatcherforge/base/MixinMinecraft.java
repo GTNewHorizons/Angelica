@@ -61,17 +61,16 @@ public abstract class MixinMinecraft {
     private void modifyStartGame1(CallbackInfo ci) {
         TileLoader.init();
         CTMUtils.reset();
-        MCPatcherForgeConfig config = MCPatcherForgeConfig.instance();
-        if (config.customItemTexturesEnabled) {
+        if (MCPatcherForgeConfig.CustomItemTextures.enabled) {
             CITUtils.init();
         }
-        if (config.extendedHDEnabled) {
+        if (MCPatcherForgeConfig.ExtendedHD.enabled) {
             FontUtils.init();
         }
-        if (config.randomMobsEnabled) {
+        if (MCPatcherForgeConfig.RandomMobs.enabled) {
             MobRandomizer.init();
         }
-        if (config.customColorsEnabled) {
+        if (MCPatcherForgeConfig.CustomColors.enabled) {
             Colorizer.init();
         }
     }

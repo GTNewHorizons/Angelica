@@ -1,5 +1,7 @@
 package com.prupe.mcpatcher;
 
+import jss.notfine.config.MCPatcherForgeConfig;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Formatter;
@@ -8,9 +10,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import jss.notfine.config.MCPatcherForgeConfig;
-
 public class MCLogger {
+
+    private static final org.apache.logging.log4j.Logger MAIN_LOGGER = org.apache.logging.log4j.LogManager.getLogger("MCPatcherForge");
 
     private static final Map<String, MCLogger> allLoggers = new HashMap<>();
 
@@ -44,16 +46,15 @@ public class MCLogger {
     private MCLogger(Category category, String logPrefix) {
         this.logPrefix = logPrefix;
         logger = Logger.getLogger(category.name);
-        MCPatcherForgeConfig config = MCPatcherForgeConfig.instance();
-        logger.setLevel(Level.parse(switch (category) {
-            case CUSTOM_COLORS -> config.customColorsLoggingLevel;
-            case CUSTOM_ITEM_TEXTURES -> config.customItemTexturesLoggingLevel;
-            case CONNECTED_TEXTURES -> config.connectedTexturesLoggingLevel;
-            case EXTENDED_HD -> config.extendedHDLoggingLevel;
-            case RANDOM_MOBS -> config.randomMobsLoggingLevel;
-            case BETTER_SKIES -> config.betterSkiesLoggingLevel;
-            default -> Level.INFO.getName();
-        }));
+        logger.setLevel(switch (category) {
+            case CUSTOM_COLORS -> MCPatcherForgeConfig.CustomColors.logging.level;
+            case CUSTOM_ITEM_TEXTURES -> MCPatcherForgeConfig.CustomItemTextures.logging.level;
+            case CONNECTED_TEXTURES -> MCPatcherForgeConfig.ConnectedTextures.logging.level;
+            case EXTENDED_HD -> MCPatcherForgeConfig.ExtendedHD.logging.level;
+            case RANDOM_MOBS -> MCPatcherForgeConfig.RandomMobs.logging.level;
+            case BETTER_SKIES -> MCPatcherForgeConfig.BetterSkies.logging.level;
+            default -> Level.INFO;
+        });
 
         logger.setUseParentHandlers(false);
         logger.addHandler(new Handler() {
@@ -72,14 +73,14 @@ public class MCLogger {
                             prefix.append("\n");
                             message = message.substring(1);
                         }
-                        return prefix + "[" + MCLogger.this.logPrefix + "] " + level.toString() + ": " + message;
+                        return prefix + "[" + MCLogger.this.logPrefix + "/" + level.toString() + "]: " + message;
                     }
                 }
             };
 
             @Override
             public void publish(LogRecord record) {
-                System.out.println(formatter.format(record));
+                MAIN_LOGGER.info(formatter.format(record));
             }
 
             @Override

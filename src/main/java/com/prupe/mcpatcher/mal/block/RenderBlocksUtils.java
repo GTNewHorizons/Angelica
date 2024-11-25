@@ -11,8 +11,6 @@ import jss.notfine.config.MCPatcherForgeConfig;
 // Shared by both CTM and Custom Colors.
 public class RenderBlocksUtils {
 
-    public static final boolean enableBetterGrass = MCPatcherForgeConfig.instance().betterGrass;
-
     private static final int COLOR = 0;
     private static final int NONCOLOR = 1;
     private static final int COLOR_AND_NONCOLOR = 2;
@@ -35,7 +33,7 @@ public class RenderBlocksUtils {
             colorMultiplierType[5] = COLOR;
         } else if (block == Blocks.grass) {
             colorMultiplierType[0] = NONCOLOR;
-            if (enableBetterGrass) {
+            if (MCPatcherForgeConfig.ConnectedTextures.betterGrass) {
                 if (isSnowCovered(blockAccess, x, y, z)) {
                     colorMultiplierType[2] = NONCOLOR;
                     colorMultiplierType[3] = NONCOLOR;
@@ -135,7 +133,7 @@ public class RenderBlocksUtils {
 
     public static IIcon getGrassTexture(Block block, IBlockAccess blockAccess, int x, int y, int z, int face,
         IIcon topIcon) {
-        if (!enableBetterGrass || face < 2) {
+        if (!MCPatcherForgeConfig.ConnectedTextures.betterGrass || face < 2) {
             return null;
         }
         boolean isSnow = isSnowCovered(blockAccess, x, y, z);

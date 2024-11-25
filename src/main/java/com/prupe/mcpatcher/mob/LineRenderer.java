@@ -20,7 +20,7 @@ public class LineRenderer {
     private static final double D_WIDTH = 1.0 / 1024.0;
     private static final double D_POS = 1.0 / 256.0;
 
-    private static final boolean enable = MCPatcherForgeConfig.instance().leashLine;
+    private static final boolean enable = MCPatcherForgeConfig.RandomMobs.leashLine;
     private static final LineRenderer[] renderers = new LineRenderer[2];
 
     private final ResourceLocation texture;
