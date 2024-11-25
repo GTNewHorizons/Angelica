@@ -3,19 +3,38 @@ package com.gtnewhorizons.angelica.compat.lwjgl;
 import static com.gtnewhorizons.angelica.compat.lwjgl.Pointer.BITS64;
 import static org.lwjgl.MemoryUtil.getAddress;
 
-import java.nio.ByteOrder;
-import org.lwjgl.BufferUtils;
-
+import it.unimi.dsi.fastutil.longs.LongPredicate;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import org.lwjgl.BufferUtils;
 
 public class CompatMemoryUtil {
     public static final long NULL = 0;
-    static final Class<? extends ByteBuffer> BUFFER_BYTE;
+    private static final Class<? extends ByteBuffer> BUFFER_BYTE;
+    private static final Class<? extends IntBuffer> BUFFER_INT;
+
+    private static final long MARK;
+    private static final long POSITION;
+    private static final long LIMIT;
+    private static final long CAPACITY;
+
+    private static final long ADDRESS;
+
     static {
         ByteBuffer bb = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
         BUFFER_BYTE = bb.getClass();
+        BUFFER_INT = bb.asIntBuffer().getClass();
+
+        MARK = getMarkOffset();
+        POSITION = getPositionOffset();
+        LIMIT = getLimitOffset();
+        CAPACITY = getCapacityOffset();
+
+        ADDRESS = getAddressOffset();
     }
 
     public static ByteBuffer memReallocDirect(ByteBuffer old, int capacity) {
@@ -187,5 +206,107 @@ public class CompatMemoryUtil {
         for (int i = aligned; i < bytes; i++) {
             UNSAFE.putByte(null, (ptr + i) & 0xFFFF_FFFFL, vb);
         }
+    }
+
+    /**
+     * Recursively searches an object and its superclasses for a field with the same name and type. If the field isn't
+     * public, it may not be stable across library/JVM versions, and these calls are likely not portable. You have been
+     * warned!
+     */
+    private static long getFieldOffset(Class<?> containerType, Class<?> fieldType, String name) {
+        Class<?> c = containerType;
+        while (c != Object.class) {
+            Field[] fields = c.getDeclaredFields();
+            for (Field field : fields) {
+                if (!field.getType().isAssignableFrom(fieldType) || Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+                    continue;
+                }
+
+                long offset = UNSAFE.objectFieldOffset(field);
+                if (field.getName().equals(name)) {
+                    return offset;
+                }
+            }
+            c = c.getSuperclass();
+        }
+        throw new UnsupportedOperationException("Failed to find field offset in class.");
+    }
+
+    private static long getFieldOffset(Class<?> containerType, Class<?> fieldType, LongPredicate predicate) {
+        Class<?> c = containerType;
+        while (c != Object.class) {
+            Field[] fields = c.getDeclaredFields();
+            for (Field field : fields) {
+                if (!field.getType().isAssignableFrom(fieldType) || Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+                    continue;
+                }
+
+                long offset = UNSAFE.objectFieldOffset(field);
+                if (predicate.test(offset)) {
+                    return offset;
+                }
+            }
+            c = c.getSuperclass();
+        }
+        throw new UnsupportedOperationException("Failed to find field offset in class.");
+    }
+
+    private static long getFieldOffsetInt(Object container, int value) {
+        return getFieldOffset(container.getClass(), int.class, offset -> UNSAFE.getInt(container, offset) == value);
+    }
+
+    private static long getAddressOffset() {
+        final ByteBuffer bb = ByteBuffer.allocateDirect(0);
+        return getFieldOffset(bb.getClass(), long.class, "address");
+
+        // TODO: do this portably
+        // long MAGIC_ADDRESS = 0xDEADBEEF8BADF00DL & (BITS32 ? 0xFFFF_FFFFL : 0xFFFF_FFFF_FFFF_FFFFL);
+        // ByteBuffer bb = Objects.requireNonNull(NewDirectByteBuffer(MAGIC_ADDRESS, 0));
+        //return getFieldOffset(bb.getClass(), long.class, offset -> UNSAFE.getLong(bb, offset) == MAGIC_ADDRESS);
+    }
+
+    private static final int MAGIC_CAPACITY = 0x0D15EA5E;
+    private static final int MAGIC_POSITION = 0x00FACADE;
+
+    private static long getMarkOffset() {
+        // TODO: is this actually reliable without NewDirectByteBuffer?
+        ByteBuffer bb = ByteBuffer.allocateDirect(0);
+        return getFieldOffsetInt(bb, -1);
+        // ByteBuffer bb = Objects.requireNonNull(NewDirectByteBuffer(1L, 0));
+        // return getFieldOffsetInt(bb, -1);
+    }
+
+    private static long getPositionOffset() {
+        ByteBuffer bb = ByteBuffer.allocateDirect(MAGIC_CAPACITY);
+        bb.position(MAGIC_POSITION);
+        return getFieldOffsetInt(bb, MAGIC_POSITION);
+    }
+
+    private static long getLimitOffset() {
+        ByteBuffer bb = ByteBuffer.allocateDirect(MAGIC_CAPACITY);
+        bb.limit(MAGIC_POSITION);
+        return getFieldOffsetInt(bb, MAGIC_POSITION);
+    }
+
+    private static long getCapacityOffset() {
+        ByteBuffer bb = ByteBuffer.allocateDirect(MAGIC_CAPACITY);
+        bb.limit(0);
+        return getFieldOffsetInt(bb, MAGIC_CAPACITY);
+    }
+
+    static IntBuffer wrapBufferInt(long address, int capacity) {
+        IntBuffer buffer;
+        try {
+            buffer = (IntBuffer)UNSAFE.allocateInstance(BUFFER_INT);
+        } catch (InstantiationException e) {
+            throw new UnsupportedOperationException(e);
+        }
+
+        UNSAFE.putLong(buffer, ADDRESS, address);
+        UNSAFE.putInt(buffer, MARK, -1);
+        UNSAFE.putInt(buffer, LIMIT, capacity);
+        UNSAFE.putInt(buffer, CAPACITY, capacity);
+
+        return buffer;
     }
 }
