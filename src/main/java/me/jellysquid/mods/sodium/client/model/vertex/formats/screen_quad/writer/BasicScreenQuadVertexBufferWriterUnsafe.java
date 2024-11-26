@@ -1,6 +1,8 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.screen_quad.writer;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memPutInt;
+
 import me.jellysquid.mods.sodium.client.model.vertex.VanillaVertexTypes;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
@@ -15,10 +17,10 @@ public class BasicScreenQuadVertexBufferWriterUnsafe extends VertexBufferWriterU
     public void writeQuad(float x, float y, float z, int color) {
         long i = this.writePointer;
 
-        CompatMemoryUtil.memPutFloat(i, x);
-        CompatMemoryUtil.memPutFloat(i + 4, y);
-        CompatMemoryUtil.memPutFloat(i + 8, z);
-        CompatMemoryUtil.memPutInt(i + 12, color);
+        memPutFloat(i, x);
+        memPutFloat(i + 4, y);
+        memPutFloat(i + 8, z);
+        memPutInt(i + 12, color);
 
         this.advance();
     }

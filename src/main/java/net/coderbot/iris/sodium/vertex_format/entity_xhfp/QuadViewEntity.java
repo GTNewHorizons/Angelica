@@ -1,6 +1,7 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memGetFloat;
+
 import net.coderbot.iris.vertices.IrisQuadView;
 
 import java.nio.ByteBuffer;
@@ -44,7 +45,7 @@ public abstract class QuadViewEntity implements IrisQuadView {
 
 		@Override
 		float getFloat(long writePointer) {
-			return CompatMemoryUtil.memGetFloat(writePointer);
+			return memGetFloat(writePointer);
 		}
 	}
 

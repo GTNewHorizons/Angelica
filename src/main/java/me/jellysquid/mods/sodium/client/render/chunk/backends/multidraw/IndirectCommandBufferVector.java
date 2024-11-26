@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memReallocDirect;
 
 public class IndirectCommandBufferVector extends StructBuffer {
     protected IndirectCommandBufferVector(int capacity) {
@@ -32,6 +33,6 @@ public class IndirectCommandBufferVector extends StructBuffer {
     }
 
     protected void growBuffer(int n) {
-        this.buffer = CompatMemoryUtil.memReallocDirect(this.buffer, Math.max(this.buffer.capacity() * 2, this.buffer.capacity() + n));
+        this.buffer = memReallocDirect(this.buffer, Math.max(this.buffer.capacity() * 2, this.buffer.capacity() + n));
     }
 }

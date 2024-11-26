@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack.stackPush;
+
+import com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -58,7 +60,7 @@ public class NativeImage extends BufferedImage {
 
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
-        try (final MemoryStack stack = MemoryStack.stackPush()) {
+        try (final MemoryStack stack = stackPush()) {
             final IntBuffer buffer = stack.mallocInt(size);
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
