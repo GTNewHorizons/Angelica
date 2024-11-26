@@ -34,6 +34,8 @@ public class MixinMinecraft {
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;update()V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$trackFrametimes(CallbackInfo ci) {
+        if (AngelicaMod.proxy == null) return;
+
         long time = System.nanoTime();
         AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
         angelica$lastFrameTime = time;
