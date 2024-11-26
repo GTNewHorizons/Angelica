@@ -7,6 +7,7 @@ import cpw.mods.fml.common.Mod;
     version = "1.0.0-alpha",
     name = "MCPatcherForge",
     acceptedMinecraftVersions = "[1.7.10]",
-    acceptableRemoteVersions = "*")
+    acceptableRemoteVersions = "*",
+    guiFactory = "jss.notfine.config.MCPatcherForgeGuiConfigFactory")
 public class McPatcherForge {
 }

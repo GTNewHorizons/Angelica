@@ -19,7 +19,7 @@ public final class ComputeProgram extends GlResource {
 	private Vector3i absoluteWorkGroups;
 	private Vector2f relativeWorkGroups;
 //	private int[] localSize;
-    private IntBuffer localSizeBuffer;
+    private final IntBuffer localSizeBuffer;
 	private float cachedWidth;
 	private float cachedHeight;
 	private Vector3i cachedWorkGroups;

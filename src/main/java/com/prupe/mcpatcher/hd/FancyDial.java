@@ -48,10 +48,10 @@ public class FancyDial {
 
     private static final boolean fboSupported = GLContext.getCapabilities().GL_EXT_framebuffer_object;
     private static final boolean gl13Supported = GLContext.getCapabilities().OpenGL13;
-    private static final boolean enableCompass = MCPatcherForgeConfig.instance().fancyCompass;
-    private static final boolean enableClock = MCPatcherForgeConfig.instance().fancyClock;
-    private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.instance().useGL13;
-    private static final boolean useScratchTexture = MCPatcherForgeConfig.instance().useScratchTexture;
+    private static final boolean enableCompass = MCPatcherForgeConfig.ExtendedHD.fancyCompass;
+    private static final boolean enableClock = MCPatcherForgeConfig.ExtendedHD.fancyClock;
+    private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.ExtendedHD.useGL13;
+    private static final boolean useScratchTexture = MCPatcherForgeConfig.ExtendedHD.useScratchTexture;
     private static final int glAttributes;
     private static boolean initialized;
     private static boolean active;

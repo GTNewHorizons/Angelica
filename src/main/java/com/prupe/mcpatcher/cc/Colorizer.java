@@ -20,15 +20,15 @@ public class Colorizer {
     static final ResourceLocation COLOR_PROPERTIES = TexturePackAPI.newMCPatcherResourceLocation("color.properties");
     private static PropertiesFile properties;
 
-    static final boolean usePotionColors = MCPatcherForgeConfig.instance().ccPotion;
-    static final boolean useParticleColors = MCPatcherForgeConfig.instance().ccParticle;
-    static final boolean useFogColors = MCPatcherForgeConfig.instance().ccFog;
-    static final boolean useCloudType = MCPatcherForgeConfig.instance().ccClouds;
-    static final boolean useMapColors = MCPatcherForgeConfig.instance().ccMap;
-    static final boolean useDyeColors = MCPatcherForgeConfig.instance().ccDye;
-    static final boolean useTextColors = MCPatcherForgeConfig.instance().ccText;
-    static final boolean useXPOrbColors = MCPatcherForgeConfig.instance().ccXPOrb;
-    static final boolean useEggColors = MCPatcherForgeConfig.instance().ccEgg;
+    static final boolean usePotionColors = MCPatcherForgeConfig.CustomColors.potion;
+    static final boolean useParticleColors = MCPatcherForgeConfig.CustomColors.particle;
+    static final boolean useFogColors = MCPatcherForgeConfig.CustomColors.fog;
+    static final boolean useCloudType = MCPatcherForgeConfig.CustomColors.clouds;
+    static final boolean useMapColors = MCPatcherForgeConfig.CustomColors.map;
+    static final boolean useDyeColors = MCPatcherForgeConfig.CustomColors.dye;
+    static final boolean useTextColors = MCPatcherForgeConfig.CustomColors.text;
+    static final boolean useXPOrbColors = MCPatcherForgeConfig.CustomColors.xporb;
+    static final boolean useEggColors = MCPatcherForgeConfig.CustomColors.egg;
 
     public static final float[] setColor = new float[3];
 

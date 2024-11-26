@@ -34,14 +34,14 @@ public class ColorizeBlock {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);
 
-    private static final boolean useWaterColors = MCPatcherForgeConfig.instance().ccWater;
-    private static final boolean useTreeColors = MCPatcherForgeConfig.instance().ccTree;
-    private static final boolean useRedstoneColors = MCPatcherForgeConfig.instance().ccRedstone;
-    private static final boolean useStemColors = MCPatcherForgeConfig.instance().ccStem;
-    private static final boolean useBlockColors = MCPatcherForgeConfig.instance().ccOtherBlocks;
+    private static final boolean useWaterColors = MCPatcherForgeConfig.CustomColors.water;
+    private static final boolean useTreeColors = MCPatcherForgeConfig.CustomColors.tree;
+    private static final boolean useRedstoneColors = MCPatcherForgeConfig.CustomColors.redstone;
+    private static final boolean useStemColors = MCPatcherForgeConfig.CustomColors.stem;
+    private static final boolean useBlockColors = MCPatcherForgeConfig.CustomColors.otherBlocks;
 
-    private static final boolean enableSmoothBiomes = MCPatcherForgeConfig.instance().smoothBiomes;
-    private static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.instance().testColorSmoothing;
+    private static final boolean enableSmoothBiomes = MCPatcherForgeConfig.CustomColors.smoothBiomes;
+    private static final boolean enableTestColorSmoothing = MCPatcherForgeConfig.CustomColors.testColorSmoothing;
 
     private static final ResourceLocation REDSTONE_COLORS = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/redstone.png");
@@ -73,7 +73,7 @@ public class ColorizeBlock {
     private static IColorMap waterColorMap;
     private static float[][] redstoneColor; // colormap/redstone.png
 
-    private static final int blockBlendRadius = MCPatcherForgeConfig.instance().blockBlendRadius;
+    private static final int blockBlendRadius = MCPatcherForgeConfig.CustomColors.blockBlendRadius;
 
     public static int blockColor;
     public static boolean isSmooth;

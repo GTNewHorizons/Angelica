@@ -24,7 +24,7 @@ public final class Lightmap {
     private static final int HEIGHT_WITHOUT_NIGHTVISION = 2 * LIGHTMAP_SIZE;
     private static final int HEIGHT_WITH_NIGHTVISION = 4 * LIGHTMAP_SIZE;
 
-    private static final boolean useLightmaps = MCPatcherForgeConfig.instance().ccLightmaps;
+    private static final boolean useLightmaps = MCPatcherForgeConfig.CustomColors.lightmaps;
 
     private static final Map<Integer, Lightmap> lightmaps = new HashMap<>();
 

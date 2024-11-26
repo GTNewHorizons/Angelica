@@ -18,7 +18,7 @@ import jss.notfine.config.NotFineConfig;
 public enum AsmTransformers {
 
     RENDERBLOCKS("RenderBlocks transformer", () -> AngelicaConfig.enableMCPatcherForgeFeatures
-        && MCPatcherForgeConfig.instance().customColorsEnabled,
+        && MCPatcherForgeConfig.CustomColors.enabled,
         Side.CLIENT, "jss.notfine.asm.RenderBlocksTransformer"),
     WORLDRENDERER("WorldRenderer transformer", () -> NotFineConfig.renderPass, Side.CLIENT,
                   "jss.notfine.asm.WorldRendererTransformer");

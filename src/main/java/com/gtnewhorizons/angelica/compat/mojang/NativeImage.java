@@ -1,18 +1,17 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import lombok.Getter;
-import net.coderbot.iris.Iris;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
-import javax.imageio.ImageIO;
+import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import javax.imageio.ImageIO;
+import lombok.Getter;
+import net.coderbot.iris.Iris;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 // TBD
 public class NativeImage extends BufferedImage {
@@ -59,12 +58,14 @@ public class NativeImage extends BufferedImage {
 
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
-        IntBuffer buffer = BufferUtils.createIntBuffer(size);
-        int[] data = new int[size];
+        try (final MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer buffer = stack.mallocInt(size);
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-        buffer.get(data);
-        setRGB(0, 0, width, height, data, 0, width);
+            int[] data = new int[size];
+            buffer.get(data);
+            setRGB(0, 0, width, height, data, 0, width);
+        }
     }
     public void writeToFile(File file) throws IOException{
         try {
