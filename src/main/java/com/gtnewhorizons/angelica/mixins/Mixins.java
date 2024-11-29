@@ -137,6 +137,7 @@ public enum Mixins {
             ,"sodium.MixinRenderGlobal"
             ,"sodium.MixinWorldClient"
             ,"sodium.MixinTileEntity"
+            ,"sodium.MixinTileEntityMobSpawner"
             ,"sodium.MixinEffectRenderer"
             ,"sodium.MixinTileEntityRendererDispatcher"
             ,"sodium.MixinLongHashMap"
