@@ -1240,6 +1240,9 @@ public class GLStateManager {
         if(list < 0) {
             VBOManager.get(list).render();
         } else {
+            if (AngelicaConfig.enableIris) {
+                Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
+            }
             GL11.glCallList(list);
             if(glListChanges.containsKey(list)) {
                 for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
