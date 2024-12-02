@@ -69,6 +69,7 @@ import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Set;
@@ -960,30 +961,50 @@ public class GLStateManager {
         glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
     }
 
-    public static void glDrawArrays(int mode, int first, int count) {
-        // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-        if(AngelicaConfig.enableIris) {
-            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
-        }
-        GL11.glDrawArrays(mode, first, count);
-    }
-
-    public static void glDrawBuffer(int mode) {
-        GL11.glDrawBuffer(mode);
-    }
-
-    public static void glDrawElements(int mode, IntBuffer indices) {
-        if(AngelicaConfig.enableIris) {
-            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
-        }
-        GL11.glDrawElements(mode, indices);
-    }
-
-    public static void glBegin(int mode) {
+    public static void trySyncProgram() {
         if (AngelicaConfig.enableIris) {
             Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         }
+    }
+
+    public static void glBegin(int mode) {
+        trySyncProgram();
         GL11.glBegin(mode);
+    }
+
+    public static void glDrawElements(int mode, ByteBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, IntBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, ShortBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
+    }
+
+    public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, count, type, indices);
+    }
+
+    public static void glDrawBuffer(int mode) {
+        trySyncProgram();
+        GL11.glDrawBuffer(mode);
+    }
+
+    public static void glDrawArrays(int mode, int first, int count) {
+        trySyncProgram();
+        GL11.glDrawArrays(mode, first, count);
     }
 
     public static void glLogicOp(int opcode) {
@@ -1240,9 +1261,7 @@ public class GLStateManager {
         if(list < 0) {
             VBOManager.get(list).render();
         } else {
-            if (AngelicaConfig.enableIris) {
-                Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
-            }
+            trySyncProgram();
             GL11.glCallList(list);
             if(glListChanges.containsKey(list)) {
                 for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
