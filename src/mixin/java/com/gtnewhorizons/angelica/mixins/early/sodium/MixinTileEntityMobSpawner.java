@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityMobSpawner;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,7 +10,8 @@ public class MixinTileEntityMobSpawner extends TileEntity {
 
     @Override
     public double getMaxRenderDistanceSquared() {
-        return 256d; // 16 blocks
+        final double d = AngelicaConfig.mobSpawnerRenderDistance;
+        return d * d;
     }
 
 }
