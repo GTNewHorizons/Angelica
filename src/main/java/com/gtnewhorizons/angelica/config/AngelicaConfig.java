@@ -148,4 +148,9 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 64, max = 1024)
     public static int itemRendererDisplayListCacheSize;
 
+    @Config.Comment("Render distance for the spinning mob inside mod spawners")
+    @Config.DefaultDouble(16D)
+    @Config.RangeDouble(min = 16D, max = 64D)
+    public static double mobSpawnerRenderDistance;
+
 }
