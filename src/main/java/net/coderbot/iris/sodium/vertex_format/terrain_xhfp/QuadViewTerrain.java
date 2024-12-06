@@ -1,9 +1,9 @@
 package net.coderbot.iris.sodium.vertex_format.terrain_xhfp;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
-import net.coderbot.iris.vertices.IrisQuadView;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memGetShort;
 
 import java.nio.ByteBuffer;
+import net.coderbot.iris.vertices.IrisQuadView;
 
 public abstract class QuadViewTerrain implements IrisQuadView {
 	long writePointer;
@@ -52,7 +52,7 @@ public abstract class QuadViewTerrain implements IrisQuadView {
 
 		@Override
 		short getShort(long writePointer) {
-			return CompatMemoryUtil.memGetShort(writePointer);
+			return memGetShort(writePointer);
 		}
 	}
 
