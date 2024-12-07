@@ -136,6 +136,11 @@ public class HUDCaching {
         		guiForge.callRenderPortal(width, height, partialTicks);
         	}
         	if (renderCrosshairsCaptured) {
+                if (ModStatus.isXaerosMinimapLoaded){
+                    // this fixes the crosshair going invisible when no lines are being drawn under the minimap
+                    // nothing is actually renderer due to font batching and an empty string being passed
+                    Minecraft.getMinecraft().fontRenderer.drawString("", 0, 0, 0);
+                }
         		guiForge.callRenderCrosshairs(width, height);
         	}
             if (ModStatus.isThaumcraftLoaded || ModStatus.isThaumicHorizonsLoaded){
