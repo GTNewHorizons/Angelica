@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
@@ -131,7 +132,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         cache.init(this.context);
 
         final WorldSlice slice = cache.getWorldSlice();
-        final RenderBlocks renderBlocks = new RenderBlocks(slice);
+        final RenderBlocks renderBlocks = new RenderBlocks(slice.getSubChunkRelativeAccess());
         if(renderBlocks instanceof ITexturesCache) ((ITexturesCache)renderBlocks).enableTextureTracking();
 
         final int baseX = this.render.getOriginX();
@@ -262,7 +263,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
         final BlockPos renderOffset = this.offset;
-        final RenderBlocks rb = new RenderBlocks(slice.getWorld());
+        final RenderBlocks rb = new RenderBlocks(new WorldSlice.SubchunkRelative(slice.getWorld(), this.render.getChunkPos()));
         if(rb instanceof ITexturesCache) ((ITexturesCache)rb).enableTextureTracking();
         while(!mainThreadBlocks.isEmpty()) {
             final long longPos = mainThreadBlocks.dequeueLong();
@@ -294,7 +295,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                     if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
-                    if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
+                    if (cache.getBlockRenderer().renderModel(slice, rb, block, meta, pos, buffers.get(pass), true, seed)) {
                         bounds.addBlock(relX, relY, relZ);
                     }
                 }
