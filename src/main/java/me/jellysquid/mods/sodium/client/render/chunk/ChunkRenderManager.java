@@ -35,6 +35,7 @@ import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
+import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -47,7 +48,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 
-public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener {
+public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener, SwappableChunkRenderManager {
     /**
      * The maximum distance a chunk can be from the player's camera in order to be eligible for blocking updates.
      */
@@ -249,7 +250,11 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addChunk(ChunkRenderContainer<T> render) {
-        final boolean canRebuild = AngelicaConfig.enableIris ? !ShadowRenderingState.areShadowsCurrentlyBeingRendered() : render.canRebuild();
+        boolean canRebuild = render.canRebuild();
+
+        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            canRebuild = false;
+        }
 
         if (render.needsRebuild() && canRebuild) {
             if (!this.alwaysDeferChunkUpdates && render.needsImportantRebuild()) {
