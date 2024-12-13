@@ -250,7 +250,11 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addChunk(ChunkRenderContainer<T> render) {
-        final boolean canRebuild = AngelicaConfig.enableIris ? !ShadowRenderingState.areShadowsCurrentlyBeingRendered() : render.canRebuild();
+        boolean canRebuild = render.canRebuild();
+
+        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            canRebuild = false;
+        }
 
         if (render.needsRebuild() && canRebuild) {
             if (!this.alwaysDeferChunkUpdates && render.needsImportantRebuild()) {
