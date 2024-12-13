@@ -91,6 +91,9 @@ public class WorldSlice implements IBlockAccess {
 
     StructureBoundingBox volume;
 
+    @Getter
+    private SubchunkRelative subChunkRelativeAccess;
+
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
         final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
@@ -181,6 +184,8 @@ public class WorldSlice implements IBlockAccess {
                 }
             }
         }
+
+        this.subChunkRelativeAccess = new SubchunkRelative(this, this.origin);
     }
 
     @Override
@@ -416,5 +421,103 @@ public class WorldSlice implements IBlockAccess {
             y <= box.maxY &&
             z >= box.minZ &&
             z <= box.maxZ;
+    }
+
+    /**
+     * Wraps an {@link IBlockAccess} so that it can be given to RenderBlocks with subchunk-relative coordinates.
+     */
+    public static final class SubchunkRelative implements IBlockAccess {
+        private final IBlockAccess delegate;
+        private final ChunkSectionPos origin;
+
+        public SubchunkRelative(IBlockAccess delegate, ChunkSectionPos origin) {
+            this.delegate = delegate;
+            this.origin = origin;
+        }
+
+        @Override
+        public Block getBlock(int x, int y, int z) {
+            return delegate.getBlock(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ()
+            );
+        }
+
+        @Override
+        public TileEntity getTileEntity(int x, int y, int z) {
+            return delegate.getTileEntity(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ()
+            );
+        }
+
+        @Override
+        public int getLightBrightnessForSkyBlocks(int x, int y, int z, int p_72802_4_) {
+            return delegate.getLightBrightnessForSkyBlocks(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ(),
+                p_72802_4_
+            );
+        }
+
+        @Override
+        public int getBlockMetadata(int x, int y, int z) {
+            return delegate.getBlockMetadata(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ()
+            );
+        }
+
+        @Override
+        public int isBlockProvidingPowerTo(int x, int y, int z, int directionIn) {
+            return delegate.isBlockProvidingPowerTo(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ(),
+                directionIn
+            );
+        }
+
+        @Override
+        public boolean isAirBlock(int x, int y, int z) {
+            return delegate.isAirBlock(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ()
+            );
+        }
+
+        @Override
+        public BiomeGenBase getBiomeGenForCoords(int x, int z) {
+            return delegate.getBiomeGenForCoords(
+                x + this.origin.getMinX(),
+                z + this.origin.getMinZ()
+            );
+        }
+
+        @Override
+        public int getHeight() {
+            return delegate.getHeight();
+        }
+
+        @Override
+        public boolean extendedLevelsInChunkCache() {
+            return delegate.extendedLevelsInChunkCache();
+        }
+
+        @Override
+        public boolean isSideSolid(int x, int y, int z, ForgeDirection side, boolean _default) {
+            return delegate.isSideSolid(
+                x + this.origin.getMinX(),
+                y + this.origin.getMinY(),
+                z + this.origin.getMinZ(),
+                side,
+                _default
+            );
+        }
     }
 }
