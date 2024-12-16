@@ -142,6 +142,8 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
 
         if (sortTranslucent && pass.isTranslucent()) {
             ChunkBufferSorter.sortStandardFormat(vertexType, buffer, bufferLen, x, y, z);
+            meshData.clearSlices();
+            meshData.setModelSlice(ModelQuadFacing.UNASSIGNED, new BufferSlice(0, bufferLen));
         }
 
         meshData.setVertexData(new VertexData(buffer, this.vertexType.getCustomVertexFormat()));
