@@ -17,6 +17,10 @@ public class ChunkMeshData {
         this.vertexData = vertexData;
     }
 
+    public void clearSlices() {
+        this.parts.clear();
+    }
+
     public void setModelSlice(ModelQuadFacing facing, BufferSlice slice) {
         this.parts.put(facing, slice);
     }
