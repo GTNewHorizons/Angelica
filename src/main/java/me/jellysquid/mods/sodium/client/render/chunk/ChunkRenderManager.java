@@ -371,9 +371,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private void reset() {
         if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.rebuildQueue.clear();
         if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.importantRebuildQueue.clear();
-
-
-        this.sortQueue.clear();
+        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.sortQueue.clear();
 
         this.visibleTileEntities.clear();
 
