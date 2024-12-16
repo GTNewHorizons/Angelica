@@ -25,7 +25,6 @@ import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
-import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -52,7 +51,6 @@ public class BlockRenderer {
 
     private Object Quad;
     private final ObjectPooler<QuadView> quadPool = new ObjectPooler<>(Quad::new);
-    private final BlockPos subChunkRelativePos = new BlockPos();
     // TODO: Use modern model API, and store them here
 
 
@@ -64,7 +62,7 @@ public class BlockRenderer {
         this.occlusionCache = new BlockOcclusionCache();
     }
 
-    public boolean renderModel(WorldSlice world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
+    public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
@@ -99,13 +97,10 @@ public class BlockRenderer {
                 TessellatorManager.startCapturing();
                 final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
                 tess.startDrawingQuads();
+                // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
 
-                var worldOrigin = world.getOrigin();
-                var subChunkRelativePos = this.subChunkRelativePos;
-                subChunkRelativePos.set(pos.x - worldOrigin.getMinX(), pos.y - worldOrigin.getMinY(), pos.z - worldOrigin.getMinZ());
-                tess.setOffset(subChunkRelativePos);
-                // RenderBlocks is expecting to get subchunk-relative coordinates, cancel the offset out here
-                renderBlocks.renderBlockByRenderType(block, subChunkRelativePos.x, subChunkRelativePos.y, subChunkRelativePos.z);
+                tess.setOffset(pos);
+                renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
                 final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
                 tess.resetOffset();
 
