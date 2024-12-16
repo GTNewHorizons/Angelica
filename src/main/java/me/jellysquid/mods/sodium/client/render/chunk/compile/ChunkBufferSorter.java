@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntArrays;
 import me.jellysquid.mods.sodium.client.model.vertex.type.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.hfp.HFPModelVertexType;
 import me.jellysquid.mods.sodium.client.render.chunk.format.sfp.SFPModelVertexType;
+import net.coderbot.iris.sodium.vertex_format.terrain_xhfp.XHFPModelVertexType;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -14,22 +15,10 @@ import java.util.BitSet;
 
 public class ChunkBufferSorter {
 
-    private static final Class<?> OCULUS_VERTEX_TYPE;
-
-    static {
-        Class<?> clz;
-        try {
-            clz = Class.forName("net.coderbot.iris.compat.sodium.impl.vertex_format.terrain_xhfp.XHFPModelVertexType");
-        } catch(Throwable e) {
-            clz = null;
-        }
-        OCULUS_VERTEX_TYPE = clz;
-    }
-
     public static void sortStandardFormat(ChunkVertexType vertexType, ByteBuffer buffer, int bufferLen, float x, float y, float z) {
         boolean isCompact;
 
-        if(vertexType.getClass() == HFPModelVertexType.class || vertexType.getClass() == OCULUS_VERTEX_TYPE) {
+        if(vertexType.getClass() == HFPModelVertexType.class || vertexType.getClass() == XHFPModelVertexType.class) {
             isCompact = true;
         } else if(vertexType.getClass() == SFPModelVertexType.class) {
             isCompact = false;
