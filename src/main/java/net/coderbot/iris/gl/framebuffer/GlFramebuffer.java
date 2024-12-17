@@ -1,6 +1,8 @@
 package net.coderbot.iris.gl.framebuffer;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack.stackPush;
+
+import com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
@@ -51,7 +53,7 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void noDrawBuffers() {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             final IntBuffer buffer = stack.mallocInt(1);
             buffer.put(GL11.GL_NONE);
             RenderSystem.drawBuffers(getGlId(), buffer);
@@ -59,7 +61,7 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void drawBuffers(int[] buffers) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             final IntBuffer glBuffers = stack.mallocInt(buffers.length);
             int index = 0;
 
