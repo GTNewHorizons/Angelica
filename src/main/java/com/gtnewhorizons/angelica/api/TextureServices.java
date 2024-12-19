@@ -9,7 +9,7 @@ import net.minecraft.world.IBlockAccess;
  */
 public class TextureServices {
     public static void updateBlockTextureAnimation(IIcon icon, IBlockAccess blockAccess){
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon);
+        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
     }
     public static void updateTextureAnimation(IIcon icon){
         AnimationsRenderUtils.markBlockTextureForUpdate(icon);
