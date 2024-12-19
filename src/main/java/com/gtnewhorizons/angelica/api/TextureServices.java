@@ -1,17 +1,27 @@
 package com.gtnewhorizons.angelica.api;
 
-import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
+import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
+import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
 
 /**
  * Exposes a method to the API that allow mods to add texture update compat
  */
+@SuppressWarnings("unused")
 public class TextureServices {
-    public static void updateBlockTextureAnimation(IIcon icon, IBlockAccess blockAccess){
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
+
+    @SuppressWarnings("unused")
+    public static void updateBlockTextureAnimation(IIcon icon, RenderBlocks renderBlocks) {
+        if (renderBlocks instanceof ITexturesCache texturesCache) {
+            texturesCache.getRenderedTextures().add(icon);
+        }
     }
-    public static void updateTextureAnimation(IIcon icon){
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon);
+
+    @SuppressWarnings("unused")
+    public static void updateTextureAnimation(IIcon icon) {
+        if(icon instanceof IPatchedTextureAtlasSprite patchedSprite) {
+            patchedSprite.markNeedsAnimationUpdate();
+        }
     }
 }
