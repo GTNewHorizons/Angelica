@@ -80,7 +80,7 @@ public enum Mixins {
 
     ANGELICA_ITEM_DISPLAY_LIST_OPTIMIZATION(new Builder("Optimized item rendering by wrapping them with display lists")
         .setPhase(Phase.EARLY).addMixinClasses("angelica.itemrenderer.MixinItemRenderer").setSide(Side.CLIENT)
-        .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)
+        .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering_WIP)
         .addTargetedMod(TargetedMod.VANILLA)),
 
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
