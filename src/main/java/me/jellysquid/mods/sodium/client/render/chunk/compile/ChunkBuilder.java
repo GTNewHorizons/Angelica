@@ -10,7 +10,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderBackend;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
 import me.jellysquid.mods.sodium.client.render.chunk.tasks.ChunkRenderBuildTask;
-import me.jellysquid.mods.sodium.client.render.chunk.tasks.ChunkRenderEmptyBuildTask;
 import me.jellysquid.mods.sodium.client.render.chunk.tasks.ChunkRenderRebuildTask;
 import me.jellysquid.mods.sodium.client.render.chunk.tasks.ChunkRenderTranslucencySortTask;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheLocal;
@@ -26,6 +25,7 @@ import net.minecraft.util.ReportedException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3d;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -294,7 +294,10 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         return Runtime.getRuntime().availableProcessors();
     }
 
-    private void handleCompletion(CompletableFuture<ChunkBuildResult<T>> future) {
+    /**
+     * Add a completion handler to the given future task so that the result will be processed on the main thread.
+     */
+    public void handleCompletion(CompletableFuture<ChunkBuildResult<T>> future) {
         future.whenComplete((res, ex) -> {
             if (ex != null) {
                 this.failureQueue.add(ex);
@@ -302,16 +305,6 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
                 this.enqueueUpload(res);
             }
         });
-    }
-
-    /**
-     * Creates a rebuild task and defers it to the work queue. When the task is completed, it will be moved onto the
-     * completed uploads queued which will then be drained during the next available synchronization point with the
-     * main thread.
-     * @param render The render to rebuild
-     */
-    public void deferRebuild(ChunkRenderContainer<T> render) {
-        handleCompletion(this.scheduleRebuildTaskAsync(render));
     }
 
     /**
@@ -330,16 +323,24 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * synchronization point on the main thread.
      * @param result The build task's result
      */
-    private void enqueueUpload(ChunkBuildResult<T> result) {
+    public void enqueueUpload(ChunkBuildResult<T> result) {
         this.uploadQueue.add(result);
     }
 
     /**
      * Schedules the rebuild task asynchronously on the worker pool, returning a future wrapping the task.
      * @param render The render to rebuild
+     * @return a future representing the rebuild task, or null if the chunk section is empty
      */
+    @Nullable
     public CompletableFuture<ChunkBuildResult<T>> scheduleRebuildTaskAsync(ChunkRenderContainer<T> render) {
-        return this.schedule(this.createRebuildTask(render));
+        ChunkRenderBuildTask<T> task = this.createRebuildTask(render);
+
+        if(task != null) {
+            return this.schedule(task);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -360,7 +361,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         ChunkRenderContext context = WorldSlice.prepare(this.world, render.getChunkPos(), this.sectionCache);
 
         if (context == null) {
-            return new ChunkRenderEmptyBuildTask<>(render);
+            return null;
         } else {
             return new ChunkRenderRebuildTask<>(render, context, render.getRenderOrigin()).withCameraPosition(this.cameraPosition);
         }
