@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;

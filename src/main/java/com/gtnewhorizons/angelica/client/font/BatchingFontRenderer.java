@@ -1,10 +1,17 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.CompatMemoryUtil.memReallocDirect;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Objects;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -12,13 +19,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
-
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -109,12 +109,12 @@ public class BatchingFontRenderer {
         final int oldCap = batchVtxPositions.capacity() / 2;
         if (vtxWriterIndex >= oldCap) {
             final int newCap = oldCap * 2;
-            batchVtxPositions = CompatMemoryUtil.memReallocDirect(batchVtxPositions, newCap * 2);
-            batchVtxColors = CompatMemoryUtil.memReallocDirect(batchVtxColors, newCap * 4);
-            batchVtxTexCoords = CompatMemoryUtil.memReallocDirect(batchVtxTexCoords, newCap * 2);
+            batchVtxPositions = memReallocDirect(batchVtxPositions, newCap * 2);
+            batchVtxColors = memReallocDirect(batchVtxColors, newCap * 4);
+            batchVtxTexCoords = memReallocDirect(batchVtxTexCoords, newCap * 2);
             final int oldIdxCap = batchIndices.capacity();
             final int newIdxCap = oldIdxCap * 2;
-            batchIndices = CompatMemoryUtil.memReallocDirect(batchIndices, newIdxCap);
+            batchIndices = memReallocDirect(batchIndices, newIdxCap);
         }
         final int idx = vtxWriterIndex;
         final int idx2 = idx * 2;

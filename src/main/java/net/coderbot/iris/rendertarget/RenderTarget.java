@@ -1,8 +1,12 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack.stackPush;
+
+import com.gtnewhorizon.gtnhlib.client.lwjgl3.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import lombok.Getter;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelFormat;
@@ -11,9 +15,6 @@ import org.joml.Vector2i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 
 public class RenderTarget {
 	@Getter
@@ -41,7 +42,7 @@ public class RenderTarget {
 		this.width = builder.width;
 		this.height = builder.height;
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             IntBuffer textures = stack.mallocInt(2);
             GL11.glGenTextures(textures);
 
