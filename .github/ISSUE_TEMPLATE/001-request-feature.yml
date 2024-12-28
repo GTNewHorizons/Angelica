@@ -31,3 +31,6 @@ body:
           required: true
         - label: "This issue is not related to a feature that is disabed by default - MCPF, etc.  [They'll be enabled when they're ready for testing]"
           required: true
+        - label: "I am not inquiring about others porting Angelica to other versions of MC other than 1.7.10, and I fully accept Angelica will forever be 1.7.10 exclusive."
+          required: true
+
