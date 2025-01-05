@@ -437,8 +437,6 @@ public class BatchingFontRenderer {
                     chr = MCFONT_CHARS.charAt(lutIndex);
                 }
 
-                final float shadowOffset = unicodeFlag ? 0.5F : 1.0F;
-
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
                     curX += 4;
@@ -452,6 +450,7 @@ public class BatchingFontRenderer {
                 final float uSz;
                 final float vSz;
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
+                final float shadowOffset;
                 final ResourceLocation texture;
 
                 if (lutIndex == -1 || unicodeFlag) {
@@ -459,6 +458,7 @@ public class BatchingFontRenderer {
                         continue;
                     }
                     // Draw unicode char
+                    shadowOffset = 0.5F;
                     final int uniPage = chr / 256;
                     texture = getUnicodePageLocation(uniPage);
                     final int startColumn = this.glyphWidth[chr] >>> 4;
@@ -475,6 +475,7 @@ public class BatchingFontRenderer {
 
                 } else {
                     // Draw "ASCII" char
+                    shadowOffset = 1.0F;
                     uStart = ((lutIndex % 16) * 8) / 128.0F;
                     vStart = (float) ((lutIndex / 16) * 8) / 128.0F;
                     xAdvance = this.charWidth[lutIndex];
