@@ -157,4 +157,8 @@ public class AngelicaConfig {
         "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
     @Config.DefaultBoolean(false)
     public static boolean sleepBeforeSwap;
+
+    @Config.Comment("Allows unicode languages to use an odd gui scale")
+    @Config.DefaultBoolean(true)
+    public static boolean removeUnicodeEvenScaling;
 }
