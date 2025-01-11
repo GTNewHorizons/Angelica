@@ -22,10 +22,10 @@ public class BlockTest extends Block implements ModeledBlock {
     private QuadProvider model;
 
     public BlockTest() {
-
-        super(Material.rock);
-        this.setBlockTextureName("missingno");
-        this.setModel((world, x, y, z, block, meta, dir, random, color, quadPool) -> {
+        super(Material.wood);
+        setHardness(0.7f);
+        setBlockTextureName("missingno");
+        setModel((world, x, y, z, block, meta, dir, random, color, quadPool) -> {
             if (meta < 2 || meta > 5) meta = 2;
             return LECTERN.models[meta - 2].getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         });
