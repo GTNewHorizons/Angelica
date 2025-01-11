@@ -25,9 +25,9 @@ public class BlockTest extends Block implements ModeledBlock {
 
         super(Material.rock);
         this.setBlockTextureName("missingno");
-        this.setModel((world, pos, block, meta, dir, random, color, quadPool) -> {
+        this.setModel((world, x, y, z, block, meta, dir, random, color, quadPool) -> {
             if (meta < 2 || meta > 5) meta = 2;
-            return LECTERN.models[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            return LECTERN.models[meta - 2].getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         });
     }
 

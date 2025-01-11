@@ -115,7 +115,7 @@ public class BlockRenderer {
 
         if (model != null) {
 
-            final int color = model.getColor(world, pos, block, meta, random);
+            final int color = model.getColor(world, pos.x, pos.y, pos.z, block, meta, random);
 
             for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
 
@@ -123,7 +123,7 @@ public class BlockRenderer {
                 List<QuadView> quads;
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-                    quads = model.getQuads(world, pos, block, meta, dir, random, color, this.quadPool::getInstance);
+                    quads = model.getQuads(world, pos.x, pos.y, pos.z, block, meta, dir, random, color, this.quadPool::getInstance);
                     if (quads.isEmpty()) continue;
 
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
