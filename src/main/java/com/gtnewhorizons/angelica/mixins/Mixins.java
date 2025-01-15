@@ -219,6 +219,11 @@ public enum Mixins {
             "angelica.animation.MixinWorldRenderer",
             "angelica.animation.MixinRenderItem")),
 
+    SCALED_RESOUTION_UNICODE_FIX(new Builder("Removes unicode languages gui scaling being forced to even values").setPhase(Phase.EARLY)
+        .setSide(Side.CLIENT).addTargetedMod(TargetedMod.VANILLA)
+        .setApplyIf(() -> AngelicaConfig.removeUnicodeEvenScaling)
+        .addMixinClasses("angelica.bugfixes.MixinScaledResolution_UnicodeFix")),
+
     EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities").setPhase(Phase.LATE)
         .addTargetedMod(TargetedMod.EXTRAUTILS).setSide(Side.CLIENT)
         .setApplyIf(() -> CompatConfig.fixExtraUtils)
