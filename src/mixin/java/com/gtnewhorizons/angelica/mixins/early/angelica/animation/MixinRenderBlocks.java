@@ -62,19 +62,11 @@ public class MixinRenderBlocks implements ITexturesCache {
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
 
-    @ModifyVariable(method = "renderBlockLiquid", at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
-    public IIcon angelica$markFluidAnimationForUpdate(IIcon icon) {
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
+    @Inject(method = "getBlockIconFromSideAndMetadata", at = @At("RETURN"))
+    public void angelica$markBlockSideAnimationForUpdate(Block p_147787_1_, int p_147787_2_, int p_147787_3_,
+            CallbackInfoReturnable<IIcon> cir) {
+        IIcon icon = cir.getReturnValue();
 
-        if(this.enableSpriteTracking)
-            this.renderedSprites.add(icon);
-
-        return icon;
-    }
-
-    @Inject(method = "drawCrossedSquares", at = @At("HEAD"))
-    public void angelica$markCrossedSquaresAnimationForUpdate(IIcon icon, double p_147765_2_, double p_147765_4_, double p_147765_6_, float p_147765_8_,
-            CallbackInfo ci) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
         if(this.enableSpriteTracking)
