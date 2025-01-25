@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFire;
@@ -12,7 +13,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -62,15 +62,14 @@ public class MixinRenderBlocks implements ITexturesCache {
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
 
-    @Inject(method = "getBlockIconFromSideAndMetadata", at = @At("RETURN"))
-    public void angelica$markBlockSideAnimationForUpdate(Block p_147787_1_, int p_147787_2_, int p_147787_3_,
-            CallbackInfoReturnable<IIcon> cir) {
-        IIcon icon = cir.getReturnValue();
-
+    @ModifyReturnValue(method = "getBlockIconFromSideAndMetadata", at = @At("RETURN"))
+    public IIcon angelica$markBlockSideAnimationForUpdate(IIcon icon, Block p_147787_1_, int p_147787_2_, int p_147787_3_) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
         if(this.enableSpriteTracking)
             this.renderedSprites.add(icon);
+
+        return icon;
     }
 
     @Override
