@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFire;
@@ -12,7 +13,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -62,23 +62,14 @@ public class MixinRenderBlocks implements ITexturesCache {
         AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
 
-    @ModifyVariable(method = "renderBlockLiquid", at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;"))
-    public IIcon angelica$markFluidAnimationForUpdate(IIcon icon) {
+    @ModifyReturnValue(method = "getBlockIconFromSideAndMetadata", at = @At("RETURN"))
+    public IIcon angelica$markBlockSideAnimationForUpdate(IIcon icon, Block p_147787_1_, int p_147787_2_, int p_147787_3_) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
         if(this.enableSpriteTracking)
             this.renderedSprites.add(icon);
 
         return icon;
-    }
-
-    @Inject(method = "drawCrossedSquares", at = @At("HEAD"))
-    public void angelica$markCrossedSquaresAnimationForUpdate(IIcon icon, double p_147765_2_, double p_147765_4_, double p_147765_6_, float p_147765_8_,
-            CallbackInfo ci) {
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
-
-        if(this.enableSpriteTracking)
-            this.renderedSprites.add(icon);
     }
 
     @Override
