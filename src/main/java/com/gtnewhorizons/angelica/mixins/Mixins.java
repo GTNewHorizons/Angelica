@@ -525,7 +525,7 @@ public enum Mixins {
             && !MCPatcherForgeConfig.ConnectedTextures.enabled
             && MCPatcherForgeConfig.CustomColors.enabled)
         .addTargetedMod(TargetedMod.VANILLA)
-        .addMixinClasses("mcpatcherforge.cc_ctm.MixinRenderBlocksNoCTM")
+        .addMixinClasses("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")
     ),
     MCPATCHER_FORGE_CTM_NO_CC(new Builder("MCP:F Connected Textures, no Custom Colours")
         .setSide(Side.CLIENT).setPhase(Phase.EARLY)
