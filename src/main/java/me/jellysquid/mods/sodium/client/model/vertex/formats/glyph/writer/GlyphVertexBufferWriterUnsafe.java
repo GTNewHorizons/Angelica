@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.writer;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import me.jellysquid.mods.sodium.client.model.vertex.VanillaVertexTypes;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
@@ -15,13 +16,13 @@ public class GlyphVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe impl
     public void writeGlyph(float x, float y, float z, int color, float u, float v, int light) {
         long i = this.writePointer;
 
-        CompatMemoryUtil.memPutFloat(i, x);
-        CompatMemoryUtil.memPutFloat(i + 4, y);
-        CompatMemoryUtil.memPutFloat(i + 8, z);
-        CompatMemoryUtil.memPutInt(i + 12, color);
-        CompatMemoryUtil.memPutFloat(i + 16, u);
-        CompatMemoryUtil.memPutFloat(i + 20, v);
-        CompatMemoryUtil.memPutInt(i + 24, light);
+        memPutFloat(i, x);
+        memPutFloat(i + 4, y);
+        memPutFloat(i + 8, z);
+        memPutInt(i + 12, color);
+        memPutFloat(i + 16, u);
+        memPutFloat(i + 20, v);
+        memPutInt(i + 24, light);
 
         this.advance();
 
