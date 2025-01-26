@@ -1,6 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
@@ -49,7 +51,7 @@ public class ChunkProgram extends GlProgram {
         this.fogShader.setup();
 
         if (this.uModelViewProjectionMatrix == -1) return;
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             GL20.glUniformMatrix4(
                 this.uModelViewProjectionMatrix,
                 false,

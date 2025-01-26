@@ -1,6 +1,8 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.FloatBuffer;
@@ -86,7 +88,7 @@ public class IrisChunkProgram extends ChunkProgram {
 			return;
 		}
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             FloatBuffer buffer = stack.mallocFloat(16);
 
             matrix.get(buffer);

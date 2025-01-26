@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
@@ -10,7 +11,6 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -97,10 +97,10 @@ public class BatchingFontRenderer {
     private static final int INITIAL_BATCH_SIZE = 256;
     private static final ResourceLocation DUMMY_RESOURCE_LOCATION = new ResourceLocation("angelica$dummy",
         "this is invalid!");
-    private FloatBuffer batchVtxPositions = BufferUtils.createFloatBuffer(INITIAL_BATCH_SIZE * 2);
-    private ByteBuffer batchVtxColors = BufferUtils.createByteBuffer(INITIAL_BATCH_SIZE * 4);
-    private FloatBuffer batchVtxTexCoords = BufferUtils.createFloatBuffer(INITIAL_BATCH_SIZE * 2);
-    private IntBuffer batchIndices = BufferUtils.createIntBuffer(INITIAL_BATCH_SIZE / 2 * 3);
+    private FloatBuffer batchVtxPositions = memAllocFloat(INITIAL_BATCH_SIZE * 2);
+    private ByteBuffer batchVtxColors = memAlloc(INITIAL_BATCH_SIZE * 4);
+    private FloatBuffer batchVtxTexCoords = memAllocFloat(INITIAL_BATCH_SIZE * 2);
+    private IntBuffer batchIndices = memAllocInt(INITIAL_BATCH_SIZE / 2 * 3);
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
@@ -109,12 +109,12 @@ public class BatchingFontRenderer {
         final int oldCap = batchVtxPositions.capacity() / 2;
         if (vtxWriterIndex >= oldCap) {
             final int newCap = oldCap * 2;
-            batchVtxPositions = CompatMemoryUtil.memReallocDirect(batchVtxPositions, newCap * 2);
-            batchVtxColors = CompatMemoryUtil.memReallocDirect(batchVtxColors, newCap * 4);
-            batchVtxTexCoords = CompatMemoryUtil.memReallocDirect(batchVtxTexCoords, newCap * 2);
+            batchVtxPositions = memRealloc(batchVtxPositions, newCap * 2);
+            batchVtxColors = memRealloc(batchVtxColors, newCap * 4);
+            batchVtxTexCoords = memRealloc(batchVtxTexCoords, newCap * 2);
             final int oldIdxCap = batchIndices.capacity();
             final int newIdxCap = oldIdxCap * 2;
-            batchIndices = CompatMemoryUtil.memReallocDirect(batchIndices, newIdxCap);
+            batchIndices = memRealloc(batchIndices, newIdxCap);
         }
         final int idx = vtxWriterIndex;
         final int idx2 = idx * 2;
