@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
@@ -284,8 +285,8 @@ public class ShadowRenderer {
 
 			if (renderMultiplier < 0) {
                 // TODO: GUI
-//				distance = IrisVideoSettings.shadowDistance * 16;
-				distance = 32 * 16;
+				distance = IrisVideoSettings.shadowDistance * 16; // can be zero :(
+				//distance = 32 * 16;
 				setter = "(set by user)";
 			}
 
