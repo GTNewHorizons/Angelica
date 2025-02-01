@@ -537,7 +537,7 @@ public class Iris {
         if (level != null) {
             if (level.provider == null) return DimensionId.OVERWORLD;
 
-            if ((level.provider.isHellWorld || level.provider.hasNoSky) || level.provider.dimensionId == -1) {
+            if (level.provider.isHellWorld || level.provider.dimensionId == -1) {
                 return DimensionId.NETHER;
             } else if (level.provider.dimensionId == 1) {
                 return DimensionId.END;
