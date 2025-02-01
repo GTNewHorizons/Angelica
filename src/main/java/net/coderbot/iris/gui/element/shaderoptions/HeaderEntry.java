@@ -108,6 +108,11 @@ public class HeaderEntry extends BaseEntry {
         return backButtonResult || utilButtonResult;
     }
 
+    @Override
+    public boolean mouseReleased(int mouseX, int mouseY, int button) {
+        return false;
+    }
+
     private boolean backButtonClicked(IrisElementRow.TextButtonElement button) {
         this.navigation.back();
         GuiUtil.playButtonClickSound();
