@@ -2,9 +2,27 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    testing {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+}
+
 minecraft {
+    javaCompatibilityVersion = 21
+
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
 }
+
+tasks.runClient { enabled = false }
+tasks.runServer { enabled = false }
+tasks.runClient17 { enabled = false }
+tasks.runServer17 { enabled = false }
 
 tasks.test {
     useJUnitPlatform()
