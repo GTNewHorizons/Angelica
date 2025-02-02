@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
 import jss.util.RandomXoshiro256StarStar;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.MathHelper;

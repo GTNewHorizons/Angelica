@@ -3,6 +3,7 @@ package com.prupe.mcpatcher.mal.resource;
 import java.util.HashSet;
 import java.util.Set;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
