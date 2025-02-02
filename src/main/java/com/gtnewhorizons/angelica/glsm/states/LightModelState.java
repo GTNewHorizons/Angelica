@@ -1,15 +1,14 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import org.joml.Vector4f;
 import org.joml.Vector4i;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
 
 public class LightModelState implements ISettableState<LightModelState> {
 
@@ -32,7 +31,7 @@ public class LightModelState implements ISettableState<LightModelState> {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
+            GL11.glLightModelfv(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
         }
     }
 
@@ -41,7 +40,7 @@ public class LightModelState implements ISettableState<LightModelState> {
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
+            GL11.glLightModeliv(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
         }
     }
 

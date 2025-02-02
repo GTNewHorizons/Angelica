@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.debug;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 import static org.lwjgl.opengl.GL11.GL_ALPHA_TEST;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
@@ -24,11 +25,10 @@ import static org.lwjgl.opengl.GL15.glBufferData;
 import static org.lwjgl.opengl.GL15.glGenBuffers;
 import static org.lwjgl.opengl.GL20.glDisableVertexAttribArray;
 import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glUniform1;
 import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glUniform1i;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+import static org.lwjgl.opengl.GL20C.glUniform1fv;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
@@ -156,7 +156,7 @@ public abstract class F3Graph {
         glUniform1f(uFBHeight, mc.displayHeight);
         glUniform1f(uScaleFactor, sr.getScaleFactor());
         glUniform1i(uHeadIdx, samplesHead);
-        glUniform1(uSamples, sampleBuf);
+        glUniform1fv(uSamples, sampleBuf);
         glUniform1f(uPxPerNs, pxPerNs);
         glUniform1i(uLeft, left ? 1 : 0); // this is how you load bool uniforms
 
@@ -211,7 +211,7 @@ public abstract class F3Graph {
         glUniform1f(uFBHeight, mc.displayHeight);
         glUniform1f(uScaleFactor, sr.getScaleFactor());
         glUniform1i(uHeadIdx, samplesHead);
-        glUniform1(uSamples, sampleBuf);
+        glUniform1fv(uSamples, sampleBuf);
 
         glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
         glEnableVertexAttribArray(aPos);
