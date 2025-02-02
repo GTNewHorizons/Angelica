@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
@@ -8,6 +9,7 @@ import org.lwjgl.opengl.GL11;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @ExtendWith(AngelicaExtension.class)
+@Lwjgl3Aware
 class GLSM_DisplayList_UnitTest {
 
     @Test

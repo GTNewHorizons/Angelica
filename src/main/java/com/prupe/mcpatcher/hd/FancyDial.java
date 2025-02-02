@@ -13,6 +13,7 @@ import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureClock;
@@ -39,6 +40,7 @@ import com.prupe.mcpatcher.mal.util.InputHandler;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class FancyDial {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");

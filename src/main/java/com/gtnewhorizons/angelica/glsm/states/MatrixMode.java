@@ -2,9 +2,11 @@ package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11;
 
 @Getter
+@Lwjgl3Aware
 public class MatrixMode implements ISettableState<MatrixMode> {
     protected int mode = GL11.GL_MODELVIEW;
 

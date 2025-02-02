@@ -4,6 +4,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;
@@ -17,6 +18,7 @@ import java.util.function.Function;
 /**
  * A forward-rendering shader program for chunks.
  */
+@Lwjgl3Aware
 public class ChunkProgram extends GlProgram {
     // Uniform variable binding indexes
     private final int uModelViewProjectionMatrix;

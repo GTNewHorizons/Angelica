@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.compat.mojang.ParentElement;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
@@ -16,6 +17,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+@Lwjgl3Aware
 public abstract class AbstractFrame extends AbstractWidget implements ParentElement {
     protected final Dim2i dim;
     protected final List<AbstractWidget> children = new ArrayList<>();

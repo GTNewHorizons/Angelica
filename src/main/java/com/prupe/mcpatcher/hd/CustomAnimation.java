@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
@@ -24,6 +25,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class CustomAnimation implements Comparable<CustomAnimation> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");

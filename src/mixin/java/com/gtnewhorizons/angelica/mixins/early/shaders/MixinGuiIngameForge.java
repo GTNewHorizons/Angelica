@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import net.minecraftforge.client.GuiIngameForge;
-import org.lwjgl.opengl.GL11;
+import org.lwjglx.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

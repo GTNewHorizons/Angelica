@@ -15,6 +15,7 @@ import org.lwjglx.opengl.Display;
 import org.lwjglx.opengl.DisplayMode;
 import org.lwjglx.opengl.PixelFormat;
 
+@Lwjgl3Aware
 public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
 
     private static boolean started = false;

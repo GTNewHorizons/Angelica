@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.init.Blocks;
@@ -30,6 +31,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class ColorizeBlock {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);

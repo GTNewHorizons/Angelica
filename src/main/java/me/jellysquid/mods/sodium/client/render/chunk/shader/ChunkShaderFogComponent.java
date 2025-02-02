@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import org.lwjgl.opengl.GL20;
 
@@ -13,6 +14,7 @@ import org.lwjgl.opengl.GL20;
  * but as the name implies, this only works on graphics cards produced by NVIDIA. The shader implementation however does
  * not depend on any vendor-specific extensions and is written using very simple GLSL code.
  */
+@Lwjgl3Aware
 public abstract class ChunkShaderFogComponent {
     public abstract void setup();
 

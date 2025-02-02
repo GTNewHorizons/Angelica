@@ -5,12 +5,14 @@ import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.joml.Vector4i;
 import org.lwjgl.opengl.GL11;
 
+@Lwjgl3Aware
 public class MaterialState implements ISettableState<MaterialState> {
 
     private static final Vector4f vector4f = new Vector4f();

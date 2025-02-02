@@ -12,11 +12,13 @@ import javax.imageio.ImageIO;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import lombok.Getter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 // TBD
+@Lwjgl3Aware
 public class NativeImage extends BufferedImage {
     @Getter
     private final Format format;

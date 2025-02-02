@@ -2,10 +2,12 @@ package com.gtnewhorizons.angelica.glsm.states;
 
 import lombok.Getter;
 import lombok.Setter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11;
 
 
 @Getter @Setter
+@Lwjgl3Aware
 public class BlendState implements ISettableState<BlendState> {
     protected int srcRgb = GL11.GL_ONE;
     protected int dstRgb = GL11.GL_ZERO;

@@ -5,6 +5,7 @@ import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
@@ -21,6 +22,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class MipmapHelper {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD);

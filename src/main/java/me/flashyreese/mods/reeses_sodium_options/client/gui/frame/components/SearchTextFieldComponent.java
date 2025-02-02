@@ -2,6 +2,7 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components;
 
 import lombok.Getter;
 import lombok.Setter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.OptionExtended;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.flashyreese.mods.reeses_sodium_options.util.StringUtils;
@@ -23,6 +24,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+@Lwjgl3Aware
 public class SearchTextFieldComponent extends AbstractWidget {
     protected final Dim2i dim;
     protected final List<OptionPage> pages;

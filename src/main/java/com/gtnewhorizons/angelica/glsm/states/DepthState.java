@@ -2,9 +2,11 @@ package com.gtnewhorizons.angelica.glsm.states;
 
 import lombok.Getter;
 import lombok.Setter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11;
 
 @Getter @Setter
+@Lwjgl3Aware
 public class DepthState implements ISettableState<DepthState> {
     protected boolean enabled = true;
     protected int func = GL11.GL_LESS;

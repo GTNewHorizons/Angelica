@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
@@ -24,6 +25,7 @@ import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class SkyRenderer {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_SKIES);

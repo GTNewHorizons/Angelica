@@ -3,11 +3,13 @@ package com.gtnewhorizons.angelica.glsm.texture;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.IntBuffer;
 
+@Lwjgl3Aware
 public class TextureInfoCache {
     /**
      * Adapted from Iris for use in GLSM

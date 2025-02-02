@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyMaterialState;
 
 @ExtendWith(AngelicaExtension.class)
+@Lwjgl3Aware
 public class GLSM_Lighting_UnitTest {
 
     static final FloatBuffer f4b = ByteBuffer.allocateDirect(4 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();

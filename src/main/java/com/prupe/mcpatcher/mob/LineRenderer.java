@@ -1,5 +1,6 @@
 package com.prupe.mcpatcher.mob;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 
@@ -13,6 +14,7 @@ import com.prupe.mcpatcher.mal.util.InputHandler;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
+@Lwjgl3Aware
 public class LineRenderer {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.RANDOM_MOBS);

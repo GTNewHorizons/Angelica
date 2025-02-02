@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.prupe.mcpatcher.MCPatcherUtils;
 
+@Lwjgl3Aware
 public class BlendMethod {
 
     private static final Set<ResourceLocation> blankResources = new HashSet<>();

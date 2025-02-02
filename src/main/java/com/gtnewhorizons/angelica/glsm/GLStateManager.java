@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import lombok.Getter;
 import lombok.Setter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
@@ -65,7 +66,7 @@ import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
-import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjglx.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
@@ -73,10 +74,11 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GLContext;
+import org.lwjglx.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
 @SuppressWarnings("unused") // Used in ASM
+@Lwjgl3Aware
 public class GLStateManager {
     public static ContextCapabilities capabilities;
 

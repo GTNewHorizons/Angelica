@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.util.GLBit;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
@@ -21,6 +22,7 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 
 @ExtendWith(AngelicaExtension.class)
+@Lwjgl3Aware
 class GLSM_PushPop_UnitTest {
 
     public static final boolean[] BOOLEAN_ARRAY_4_TRUE = { true, true, true, true };

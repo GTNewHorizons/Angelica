@@ -2,6 +2,7 @@ package com.prupe.mcpatcher.cit;
 
 import java.awt.image.BufferedImage;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
@@ -13,6 +14,7 @@ import com.prupe.mcpatcher.mal.resource.BlendMethod;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 
+@Lwjgl3Aware
 final class Enchantment extends OverrideBase {
 
     private static final float ITEM_2D_THICKNESS = 0.0625f;

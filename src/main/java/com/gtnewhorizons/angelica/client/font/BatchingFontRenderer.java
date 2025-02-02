@@ -28,6 +28,7 @@ import org.lwjgl.opengl.GL11;
  *
  * @author eigenraven
  */
+@Lwjgl3Aware
 public class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */

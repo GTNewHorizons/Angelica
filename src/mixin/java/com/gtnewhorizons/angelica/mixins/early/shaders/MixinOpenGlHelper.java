@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import net.minecraft.client.renderer.OpenGlHelper;
-import org.lwjgl.opengl.GL30;
+import org.lwjglx.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

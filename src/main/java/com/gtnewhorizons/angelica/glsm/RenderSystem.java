@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,7 @@ import java.nio.IntBuffer;
 /**
  * This class is responsible for abstracting calls to OpenGL and asserting that calls are run on the render thread.
  */
+@Lwjgl3Aware
 public class RenderSystem {
     private static final Logger LOGGER = LogManager.getLogger("RenderSystem");
 	private static DSAAccess dsaState;

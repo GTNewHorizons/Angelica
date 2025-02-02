@@ -9,9 +9,11 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.stream.IntStream;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
+@Lwjgl3Aware
 public class GLSMUtil {
 
     public static void verifyIsEnabled(int glCap, boolean expected) {

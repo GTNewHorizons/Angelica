@@ -9,7 +9,7 @@ import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.client.SplashProgress;
 import net.minecraft.client.gui.FontRenderer;
 import org.apache.commons.lang3.StringUtils;
-import org.lwjgl.opengl.Display;
+import org.lwjglx.opengl.Display;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
