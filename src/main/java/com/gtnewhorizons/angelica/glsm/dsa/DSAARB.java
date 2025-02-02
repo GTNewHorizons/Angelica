@@ -30,7 +30,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-        ARBDirectStateAccess.glTextureParameter(texture, pname, params);
+        ARBDirectStateAccess.glTextureParameteriv(texture, pname, params);
     }
 
     @Override

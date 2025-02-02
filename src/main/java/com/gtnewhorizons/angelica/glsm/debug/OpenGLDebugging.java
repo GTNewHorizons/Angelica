@@ -61,7 +61,7 @@ public class OpenGLDebugging {
                         if(glsm) {
                             GLStateManager.glGetBoolean(gLConstant, byteBuffer);
                         } else {
-                            GL11.glGetBoolean(gLConstant, byteBuffer);
+                            GL11.glGetBooleanv(gLConstant, byteBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < byteBuffer.capacity(); ++i) {
@@ -78,7 +78,7 @@ public class OpenGLDebugging {
                         if(glsm) {
                             GLStateManager.glGetInteger(gLConstant, intBuffer);
                         } else {
-                            GL11.glGetInteger(gLConstant, intBuffer);
+                            GL11.glGetIntegerv(gLConstant, intBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < intBuffer.remaining(); ++i) {
@@ -95,7 +95,7 @@ public class OpenGLDebugging {
                         if(glsm) {
                             GLStateManager.glGetFloat(gLConstant, floatBuffer);
                         } else {
-                            GL11.glGetFloat(gLConstant, floatBuffer);
+                            GL11.glGetFloatv(gLConstant, floatBuffer);
                         }
                         final StringBuilder out = new StringBuilder();
                         for (int i = 0; i < floatBuffer.remaining(); ++i) {
@@ -121,7 +121,7 @@ public class OpenGLDebugging {
                 GLStateManager.glGetFloat(gLConstant, floatBuffer);
                 return cachedMatrix.set(0, floatBuffer);
             } else {
-                GL11.glGetFloat(gLConstant, floatBuffer);
+                GL11.glGetFloatv(gLConstant, floatBuffer);
                 return uncachedMatrix.set(0, floatBuffer);
             }
         }

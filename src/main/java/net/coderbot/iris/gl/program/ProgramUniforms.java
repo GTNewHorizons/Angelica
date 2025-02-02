@@ -1,6 +1,7 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.IntBuffer;
@@ -20,7 +21,6 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -191,18 +191,24 @@ public class ProgramUniforms {
 		public ProgramUniforms buildUniforms() {
 			// Check for any unsupported uniforms and warn about them so that we can easily figure out what uniforms we need to add.
 			final int activeUniforms = GL20.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORMS);
-			IntBuffer sizeType = BufferUtils.createIntBuffer(2);
 
 			for (int index = 0; index < activeUniforms; index++) {
-				final String name = RenderSystem.getActiveUniform(program, index, 128, sizeType);
+                final int size;
+                final int type;
 
-				if (name.isEmpty()) {
-					// No further information available.
-					continue;
-				}
+                try (MemoryStack stack = MemoryStack.stackPush()) {
+                    final IntBuffer sizeBuf = stack.mallocInt(1);
+                    final IntBuffer typeBuf = stack.mallocInt(1);
+                    final String name = RenderSystem.getActiveUniform(program, index, 128, sizeBuf, typeBuf);
 
-				final int size = sizeType.get(0);
-				final int type = sizeType.get(1);
+                    if (name.isEmpty()) {
+                        // No further information available.
+                        continue;
+                    }
+
+                    size = sizeBuf.get(0);
+                    type = typeBuf.get(0);
+                }
 
 				UniformType provided = uniformNames.get(name);
                 final UniformType expected = getExpectedType(type);

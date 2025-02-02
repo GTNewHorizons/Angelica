@@ -76,7 +76,7 @@ public class RenderSystem {
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
-        GL20.glUniformMatrix4(location, transpose, matrix);
+        GL20.glUniformMatrix4fv(location, transpose, matrix);
 	}
 
 	public static void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
@@ -151,8 +151,8 @@ public class RenderSystem {
 		dsaState.readBuffer(framebuffer, buffer);
 	}
 
-	public static String getActiveUniform(int program, int index, int maxLength, IntBuffer sizeType) {
-        return GL20.glGetActiveUniform(program, index, maxLength, sizeType);
+	public static String getActiveUniform(int program, int index, int maxLength, IntBuffer size, IntBuffer type) {
+        return GL20.glGetActiveUniform(program, index, maxLength, size, type);
 	}
 
 	public static void readPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) {
@@ -201,11 +201,7 @@ public class RenderSystem {
 		}
 	}
 
-	public static void getProgramiv(int program, int value, IntBuffer storage) {
-        GL20.glGetProgram(program, value, storage);
-	}
-
-	public static void dispatchCompute(int workX, int workY, int workZ) {
+    public static void dispatchCompute(int workX, int workY, int workZ) {
 		GL43.glDispatchCompute(workX, workY, workZ);
 	}
 
@@ -244,7 +240,7 @@ public class RenderSystem {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();
         matrix.get(0, PROJECTION_MATRIX_BUFFER);
-        GL11.glLoadMatrix(PROJECTION_MATRIX_BUFFER);
+        GL11.glLoadMatrixf(PROJECTION_MATRIX_BUFFER);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
 

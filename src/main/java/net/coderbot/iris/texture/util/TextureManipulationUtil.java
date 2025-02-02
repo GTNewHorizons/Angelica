@@ -1,17 +1,15 @@
 package net.coderbot.iris.texture.util;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.OpenGlHelper;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
-
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OpenGlHelper;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 public class TextureManipulationUtil {
 	private static int colorFillFBO = -1;
@@ -24,10 +22,10 @@ public class TextureManipulationUtil {
 
             final int previousFramebufferId = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
             final FloatBuffer previousClearColorBuffer = stack.mallocFloat(4);
-            GL11.glGetFloat(GL11.GL_COLOR_CLEAR_VALUE, previousClearColorBuffer);
+            GL11.glGetFloatv(GL11.GL_COLOR_CLEAR_VALUE, previousClearColorBuffer);
             final int previousTextureId = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             final IntBuffer previousViewportBuffer = stack.mallocInt(4);
-            GL11.glGetInteger(GL11.GL_VIEWPORT, previousViewportBuffer);
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewportBuffer);
 
             OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, colorFillFBO);
             GL11.glClearColor(

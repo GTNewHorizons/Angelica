@@ -379,7 +379,7 @@ public class ShadowRenderer {
         GL11.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+        GL11.glLoadMatrixf(MODELVIEW_BUFFER);
 		for (Entity entity : renderedEntities) {
 			RenderManager.instance.renderEntitySimple(entity, tickDelta);
 			shadowEntities++;
@@ -408,7 +408,7 @@ public class ShadowRenderer {
         GL11.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+        GL11.glLoadMatrixf(MODELVIEW_BUFFER);
 
         if (player.riddenByEntity != null) {
             RenderManager.instance.renderEntitySimple(player.riddenByEntity, tickDelta);
@@ -459,7 +459,7 @@ public class ShadowRenderer {
         GL11.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+        GL11.glLoadMatrixf(MODELVIEW_BUFFER);
 		for (TileEntity tileEntity : visibleTileEntities) {
 			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
                 continue;

@@ -28,8 +28,8 @@ public final class ComputeProgram extends GlResource {
 		super(program);
 
         localSizeBuffer = BufferUtils.createIntBuffer(3);
-		RenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
-		this.uniforms = uniforms;
+        GL20.glGetProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
+        this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
 	}

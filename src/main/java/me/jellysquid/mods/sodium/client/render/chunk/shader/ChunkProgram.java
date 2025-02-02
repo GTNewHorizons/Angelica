@@ -52,7 +52,7 @@ public class ChunkProgram extends GlProgram {
 
         if (this.uModelViewProjectionMatrix == -1) return;
         try (MemoryStack stack = stackPush()) {
-            GL20.glUniformMatrix4(
+            GL20.glUniformMatrix4fv(
                 this.uModelViewProjectionMatrix,
                 false,
                 GameRendererContext.getModelViewProjectionMatrix(matrixStack.peek(), stack));

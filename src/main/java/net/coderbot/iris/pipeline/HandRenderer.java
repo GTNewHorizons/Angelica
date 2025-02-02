@@ -170,7 +170,7 @@ public class HandRenderer {
     private void resetProjectionMatrix() {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glLoadIdentity();
-        GL11.glMultMatrix(RenderingState.INSTANCE.getProjectionBuffer());
+        GL11.glMultMatrixf(RenderingState.INSTANCE.getProjectionBuffer());
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
