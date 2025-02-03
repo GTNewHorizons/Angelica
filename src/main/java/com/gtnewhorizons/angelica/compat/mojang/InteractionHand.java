@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.mojang;
 
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import xonin.backhand.api.core.BackhandUtils;
@@ -16,10 +15,10 @@ public enum InteractionHand {
 
     public ItemStack getItemInHand(EntityPlayer player){
         if (ModStatus.isBackhandLoaded && this == InteractionHand.OFF_HAND){ // off hand (requires backhand)
-            return BackhandUtils.getOffhandItem(Minecraft.getMinecraft().thePlayer);
+            return BackhandUtils.getOffhandItem(player);
         }
         else { // main hand
-            return Minecraft.getMinecraft().thePlayer.getHeldItem();
+            return player.getHeldItem();
         }
     }
 }
