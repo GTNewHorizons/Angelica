@@ -151,6 +151,7 @@ public class BlockRenderer {
 
         final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 
+        int shaderBlockId = quad.getShaderBlockId();
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
 
@@ -174,7 +175,7 @@ public class BlockRenderer {
             final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]) :
                 (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
-            sink.writeQuad(x, y, z, color, u, v, lm);
+            sink.writeQuad(x, y, z, color, u, v, lm, shaderBlockId);
         }
 
         final TextureAtlasSprite sprite = quad.rubidium$getSprite();
