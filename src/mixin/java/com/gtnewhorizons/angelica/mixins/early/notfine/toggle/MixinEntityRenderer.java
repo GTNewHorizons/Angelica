@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.toggle;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import jss.notfine.core.Settings;
@@ -57,7 +58,7 @@ abstract public class MixinEntityRenderer {
         )
     )
     private void notFine$nearFogDistance(int mode, float value) {
-        GL11.glFogf(mode, farPlaneDistance * (int)Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F);
+        GLStateManager.glFogf(mode, farPlaneDistance * (int)Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F);
     }
 
     @Redirect(

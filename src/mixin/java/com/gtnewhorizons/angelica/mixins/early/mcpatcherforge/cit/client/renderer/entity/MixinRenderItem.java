@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cit.client.renderer.entity;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -52,7 +53,7 @@ public abstract class MixinRenderItem extends Render {
         remap = false)
     private void modifyRenderItemIntoGUI1(FontRenderer fontRenderer, TextureManager manager, ItemStack itemStack, int x,
         int y, boolean renderEffect, CallbackInfo ci) {
-        GL11.glDepthMask(false);
+        GLStateManager.glDepthMask(false);
     }
 
     @Inject(
@@ -61,7 +62,7 @@ public abstract class MixinRenderItem extends Render {
         remap = false)
     private void modifyRenderItemIntoGUI2(FontRenderer fontRenderer, TextureManager manager, ItemStack itemStack, int x,
         int y, boolean renderEffect, CallbackInfo ci) {
-        GL11.glDepthMask(true);
+        GLStateManager.glDepthMask(true);
     }
 
     @Redirect(
@@ -104,7 +105,7 @@ public abstract class MixinRenderItem extends Render {
         ItemStack itemStack, int x, int y, CallbackInfo ci) {
         // Moved to before call, will not trigger with forge event
         GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
+        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.01f);
     }
 
     /**
@@ -118,18 +119,18 @@ public abstract class MixinRenderItem extends Render {
     private void modifyRenderItemAndEffectIntoGUI2(FontRenderer fontRenderer, TextureManager manager,
         ItemStack itemStack, int x, int y, CallbackInfo ci) {
         if (!CITUtils.renderEnchantmentGUI(itemStack, x, y, this.zLevel) && itemStack.hasEffect(0)) {
-            GL11.glDepthFunc(GL11.GL_EQUAL);
+            GLStateManager.glDepthFunc(GL11.GL_EQUAL);
             GL11.glDisable(GL11.GL_LIGHTING);
-            GL11.glDepthMask(false);
+            GLStateManager.glDepthMask(false);
             manager.bindTexture(RES_ITEM_GLINT);
             GL11.glEnable(GL11.GL_ALPHA_TEST);
             GL11.glEnable(GL11.GL_BLEND);
-            GL11.glColor4f(0.5F, 0.25F, 0.8F, 1.0F);
+            GLStateManager.glColor4f(0.5F, 0.25F, 0.8F, 1.0F);
             this.renderGlint(x * 431278612 + y * 32178161, x - 2, y - 2, 20, 20);
             OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthMask(true);
             GL11.glEnable(GL11.GL_LIGHTING);
-            GL11.glDepthFunc(GL11.GL_LEQUAL);
+            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         }
     }
 }

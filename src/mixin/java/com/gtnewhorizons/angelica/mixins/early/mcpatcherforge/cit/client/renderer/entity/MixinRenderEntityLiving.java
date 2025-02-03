@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cit.client.renderer.entity;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -86,7 +87,7 @@ public abstract class MixinRenderEntityLiving extends Render {
     public void doRender(EntityLivingBase entity, double x, double y, double z, float p_76986_8_, float p_76986_9_) {
         if (MinecraftForge.EVENT_BUS
             .post(new RenderLivingEvent.Pre(entity, (RendererLivingEntity) (Object) this, x, y, z))) return;
-        GL11.glPushMatrix();
+        GLStateManager.glPushMatrix();
         GL11.glDisable(GL11.GL_CULL_FACE);
         this.mainModel.onGround = this.renderSwingProgress(entity, p_76986_9_);
 
@@ -139,9 +140,9 @@ public abstract class MixinRenderEntityLiving extends Render {
             this.rotateCorpse(entity, f4, f2, p_76986_9_);
             float f5 = 0.0625F;
             GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-            GL11.glScalef(-1.0F, -1.0F, 1.0F);
+            GLStateManager.glScalef(-1.0F, -1.0F, 1.0F);
             this.preRenderCallback(entity, p_76986_9_);
-            GL11.glTranslatef(0.0F, -24.0F * f5 - 0.0078125F, 0.0F);
+            GLStateManager.glTranslatef(0.0F, -24.0F * f5 - 0.0078125F, 0.0F);
             float f6 = entity.prevLimbSwingAmount + (entity.limbSwingAmount - entity.prevLimbSwingAmount) * p_76986_9_;
             float f7 = entity.limbSwing - entity.limbSwingAmount * (1.0F - p_76986_9_);
 
@@ -185,34 +186,34 @@ public abstract class MixinRenderEntityLiving extends Render {
                         this.bindTexture(RES_ITEM_GLINT);
                         GL11.glEnable(GL11.GL_BLEND);
                         f9 = 0.5F;
-                        GL11.glColor4f(f9, f9, f9, 1.0F);
-                        GL11.glDepthFunc(GL11.GL_EQUAL);
-                        GL11.glDepthMask(false);
+                        GLStateManager.glColor4f(f9, f9, f9, 1.0F);
+                        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
+                        GLStateManager.glDepthMask(false);
 
                         for (int k = 0; k < 2; ++k) {
                             GL11.glDisable(GL11.GL_LIGHTING);
                             f10 = 0.76F;
-                            GL11.glColor4f(0.5F * f10, 0.25F * f10, 0.8F * f10, 1.0F);
-                            GL11.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
-                            GL11.glMatrixMode(GL11.GL_TEXTURE);
-                            GL11.glLoadIdentity();
+                            GLStateManager.glColor4f(0.5F * f10, 0.25F * f10, 0.8F * f10, 1.0F);
+                            GLStateManager.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
+                            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
+                            GLStateManager.glLoadIdentity();
                             float f11 = f8 * (0.001F + (float) k * 0.003F) * 20.0F;
                             float f12 = 0.33333334F;
-                            GL11.glScalef(f12, f12, f12);
-                            GL11.glRotatef(30.0F - (float) k * 60.0F, 0.0F, 0.0F, 1.0F);
-                            GL11.glTranslatef(0.0F, f11, 0.0F);
-                            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+                            GLStateManager.glScalef(f12, f12, f12);
+                            GLStateManager.glRotatef(30.0F - (float) k * 60.0F, 0.0F, 0.0F, 1.0F);
+                            GLStateManager.glTranslatef(0.0F, f11, 0.0F);
+                            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
                             this.renderPassModel.render(entity, f7, f6, f4, f3 - f2, f13, f5);
                         }
 
-                        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-                        GL11.glMatrixMode(GL11.GL_TEXTURE);
-                        GL11.glDepthMask(true);
-                        GL11.glLoadIdentity();
-                        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+                        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+                        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
+                        GLStateManager.glDepthMask(true);
+                        GLStateManager.glLoadIdentity();
+                        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
                         GL11.glEnable(GL11.GL_LIGHTING);
                         GL11.glDisable(GL11.GL_BLEND);
-                        GL11.glDepthFunc(GL11.GL_LEQUAL);
+                        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
                     }
 
                     GL11.glDisable(GL11.GL_BLEND);
@@ -220,7 +221,7 @@ public abstract class MixinRenderEntityLiving extends Render {
                 }
             }
 
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthMask(true);
             this.renderEquippedItems(entity, p_76986_9_);
             float f14 = entity.getBrightness(p_76986_9_);
             j = this.getColorMultiplier(entity, f14, p_76986_9_);
@@ -232,16 +233,16 @@ public abstract class MixinRenderEntityLiving extends Render {
                 GL11.glDisable(GL11.GL_TEXTURE_2D);
                 GL11.glDisable(GL11.GL_ALPHA_TEST);
                 GL11.glEnable(GL11.GL_BLEND);
-                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                GL11.glDepthFunc(GL11.GL_EQUAL);
+                GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                GLStateManager.glDepthFunc(GL11.GL_EQUAL);
 
                 if (entity.hurtTime > 0 || entity.deathTime > 0) {
-                    GL11.glColor4f(f14, 0.0F, 0.0F, 0.4F);
+                    GLStateManager.glColor4f(f14, 0.0F, 0.0F, 0.4F);
                     this.mainModel.render(entity, f7, f6, f4, f3 - f2, f13, f5);
 
                     for (int l = 0; l < 4; ++l) {
                         if (this.inheritRenderPass(entity, l, p_76986_9_) >= 0) {
-                            GL11.glColor4f(f14, 0.0F, 0.0F, 0.4F);
+                            GLStateManager.glColor4f(f14, 0.0F, 0.0F, 0.4F);
                             this.renderPassModel.render(entity, f7, f6, f4, f3 - f2, f13, f5);
                         }
                     }
@@ -252,18 +253,18 @@ public abstract class MixinRenderEntityLiving extends Render {
                     f9 = (float) (j >> 8 & 255) / 255.0F;
                     float f15 = (float) (j & 255) / 255.0F;
                     f10 = (float) (j >> 24 & 255) / 255.0F;
-                    GL11.glColor4f(f8, f9, f15, f10);
+                    GLStateManager.glColor4f(f8, f9, f15, f10);
                     this.mainModel.render(entity, f7, f6, f4, f3 - f2, f13, f5);
 
                     for (int i1 = 0; i1 < 4; ++i1) {
                         if (this.inheritRenderPass(entity, i1, p_76986_9_) >= 0) {
-                            GL11.glColor4f(f8, f9, f15, f10);
+                            GLStateManager.glColor4f(f8, f9, f15, f10);
                             this.renderPassModel.render(entity, f7, f6, f4, f3 - f2, f13, f5);
                         }
                     }
                 }
 
-                GL11.glDepthFunc(GL11.GL_LEQUAL);
+                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
                 GL11.glDisable(GL11.GL_BLEND);
                 GL11.glEnable(GL11.GL_ALPHA_TEST);
                 GL11.glEnable(GL11.GL_TEXTURE_2D);
@@ -278,7 +279,7 @@ public abstract class MixinRenderEntityLiving extends Render {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
         GL11.glEnable(GL11.GL_CULL_FACE);
-        GL11.glPopMatrix();
+        GLStateManager.glPopMatrix();
         this.passSpecialRender(entity, x, y, z);
         MinecraftForge.EVENT_BUS
             .post(new RenderLivingEvent.Post(entity, (RendererLivingEntity) (Object) this, x, y, z));

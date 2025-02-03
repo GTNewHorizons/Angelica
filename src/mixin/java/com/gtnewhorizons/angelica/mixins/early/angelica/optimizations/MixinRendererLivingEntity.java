@@ -33,7 +33,7 @@ public abstract class MixinRendererLivingEntity {
                 f3 = 1.0F;
             }
 
-            GL11.glRotatef(f3 * this.getDeathMaxRotation(entity), 0.0F, 0.0F, 1.0F);
+            GLStateManager.glRotatef(f3 * this.getDeathMaxRotation(entity), 0.0F, 0.0F, 1.0F);
         }
         else if ((entity instanceof EntityLiving entityLiving) && entityLiving.hasCustomNameTag() || (entity instanceof EntityPlayer entityPlayer) && !entityPlayer.getHideCape()) {
 

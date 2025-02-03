@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
@@ -100,7 +101,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private void iris$beginWeatherAndwriteRainAndSnowToDepthBuffer(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.RAIN_SNOW);
         if (pipeline.get().shouldWriteRainAndSnowToDepthBuffer()) {
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthMask(true);
         }
     }
 

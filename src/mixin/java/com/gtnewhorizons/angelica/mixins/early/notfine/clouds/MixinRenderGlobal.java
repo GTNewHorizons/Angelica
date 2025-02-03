@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
@@ -89,19 +90,19 @@ public abstract class MixinRenderGlobal {
         float cloudWidth = 8f;
         int renderRadius = (int)((int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore() / (cloudScale * 2f));
         float edgeOverlap = 0.0001f;//0.001F;
-        GL11.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
+        GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
         for (int loop = 0; loop < 2; ++loop) {
             if (loop == 0) {
-                GL11.glColorMask(false, false, false, false);
+                GLStateManager.glColorMask(false, false, false, false);
             } else if (mc.gameSettings.anaglyph) {
                 if (EntityRenderer.anaglyphField == 0) {
-                    GL11.glColorMask(false, true, true, true);
+                    GLStateManager.glColorMask(false, true, true, true);
                 } else {
-                    GL11.glColorMask(true, false, false, true);
+                    GLStateManager.glColorMask(true, false, false, true);
                 }
             } else {
-                GL11.glColorMask(true, true, true, true);
+                GLStateManager.glColorMask(true, true, true, true);
             }
 
             for(int chunkX = -renderRadius + 1; chunkX <= renderRadius; ++chunkX) {
@@ -184,7 +185,7 @@ public abstract class MixinRenderGlobal {
             }
         }
 
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glEnable(GL11.GL_CULL_FACE);
     }
@@ -238,7 +239,7 @@ public abstract class MixinRenderGlobal {
         tessellator.addVertexWithUV(neg, cameraRelativeY, neg, startXUv, startZUv);
         tessellator.draw();
 
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glEnable(GL11.GL_CULL_FACE);
     }

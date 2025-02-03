@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.mob;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
@@ -25,10 +26,10 @@ public abstract class MixinRenderFish extends Render {
     @SuppressWarnings({ "DuplicatedCode", "ExtractMethodRecommender" })
     @Overwrite
     public void doRender(EntityFishHook entity, double x, double y, double z, float p_76986_8_, float p_76986_9_) {
-        GL11.glPushMatrix();
-        GL11.glTranslatef((float) x, (float) y, (float) z);
+        GLStateManager.glPushMatrix();
+        GLStateManager.glTranslatef((float) x, (float) y, (float) z);
         GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-        GL11.glScalef(0.5F, 0.5F, 0.5F);
+        GLStateManager.glScalef(0.5F, 0.5F, 0.5F);
         this.bindEntityTexture(entity);
         Tessellator tessellator = Tessellator.instance;
         byte b0 = 1;
@@ -40,8 +41,8 @@ public abstract class MixinRenderFish extends Render {
         float f6 = 1.0F;
         float f7 = 0.5F;
         float f8 = 0.5F;
-        GL11.glRotatef(180.0F - this.renderManager.playerViewY, 0.0F, 1.0F, 0.0F);
-        GL11.glRotatef(-this.renderManager.playerViewX, 1.0F, 0.0F, 0.0F);
+        GLStateManager.glRotatef(180.0F - this.renderManager.playerViewY, 0.0F, 1.0F, 0.0F);
+        GLStateManager.glRotatef(-this.renderManager.playerViewX, 1.0F, 0.0F, 0.0F);
         tessellator.startDrawingQuads();
         tessellator.setNormal(0.0F, 1.0F, 0.0F);
         tessellator.addVertexWithUV(0.0F - f7, 0.0F - f8, 0.0D, f2, f5);
@@ -50,7 +51,7 @@ public abstract class MixinRenderFish extends Render {
         tessellator.addVertexWithUV(0.0F - f7, 1.0F - f8, 0.0D, f2, f4);
         tessellator.draw();
         GL11.glDisable(GL12.GL_RESCALE_NORMAL);
-        GL11.glPopMatrix();
+        GLStateManager.glPopMatrix();
 
         if (entity.field_146042_b != null) {
             float f9 = entity.field_146042_b.getSwingProgress(p_76986_9_);

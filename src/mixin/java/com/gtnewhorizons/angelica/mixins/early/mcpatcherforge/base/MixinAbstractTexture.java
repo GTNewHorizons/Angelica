@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.base;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 
 import org.lwjglx.opengl.GL11;
@@ -16,7 +17,7 @@ public abstract class MixinAbstractTexture implements AbstractTextureExpansion {
 
     public void unloadGLTexture() {
         if (this.glTextureId >= 0) {
-            GL11.glDeleteTextures(this.glTextureId);
+            GLStateManager.glDeleteTextures(this.glTextureId);
             this.glTextureId = -1;
         }
     }
