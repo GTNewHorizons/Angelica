@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
@@ -15,6 +16,7 @@ import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
+import xonin.backhand.api.core.BackhandUtils;
 
 import java.util.Map;
 
@@ -78,9 +80,10 @@ public class HandRenderer {
     }
 
     public boolean isHandTranslucent(InteractionHand hand) {
-        // TODO: Offhand
-//        Item item = Minecraft.getMinecraft().thePlayer.getItemBySlot(hand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND).getItem();
-        ItemStack heldItem = Minecraft.getMinecraft().thePlayer.getHeldItem();
+        ItemStack heldItem;
+        
+        heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
+
         if (heldItem == null) {
             return false;
         }

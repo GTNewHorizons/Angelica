@@ -62,7 +62,7 @@ public class ModStatus {
         }
 
         if (isBackhandLoaded){
-            isBackhandLoaded = new DefaultArtifactVersion("1.4.1")
+            isBackhandLoaded = new DefaultArtifactVersion("1.6.9")
                 .compareTo(
                     LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()
                 ) <= 0;

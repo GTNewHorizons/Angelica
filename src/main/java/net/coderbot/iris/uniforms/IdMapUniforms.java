@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -14,6 +15,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
+import xonin.backhand.api.core.BackhandUtils;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
@@ -76,9 +78,8 @@ public final class IdMapUniforms {
 				invalidate();
 				return;
 			}
-//			ItemStack heldStack = player.getItemInHand(hand);
-            // TODO: Offhand
-			ItemStack heldStack = player.getHeldItem();
+
+            ItemStack heldStack = hand.getItemInHand(player);
 
 			if (heldStack == null) {
 				invalidate();
@@ -106,9 +107,7 @@ public final class IdMapUniforms {
 		}
 
 		private IrisItemLightProvider applyOldHandLighting(@NotNull EntityPlayer player, IrisItemLightProvider existing) {
-            // TODO: Offhand
-//			ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
-			ItemStack offHandStack = null;
+            ItemStack offHandStack = InteractionHand.OFF_HAND.getItemInHand(player);
 
 			if (offHandStack == null) {
 				return existing;
