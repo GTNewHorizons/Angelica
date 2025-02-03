@@ -1,13 +1,18 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -24,7 +29,9 @@ import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
+import net.coderbot.iris.sodium.block_context.BlockContextHolder;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -638,5 +645,37 @@ public class Iris {
         ClientRegistry.registerKeyBinding(reloadKeybind);
         ClientRegistry.registerKeyBinding(toggleShadersKeybind);
         ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
+    }
+
+    static BlockContextHolder contextHolder;
+
+    private static int getShaderMaterialOverrideId(Block block, int meta) {
+        if (contextHolder == null) {
+            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            if (blockMatches == null) {
+                return -1;
+            }
+            contextHolder = new BlockContextHolder(blockMatches);
+
+        }
+        contextHolder.set(block, (short) block.getRenderType());
+        return contextHolder.blockId;
+    }
+
+    public static void setShaderMaterialOverride(Block block, int meta) {
+        if (!AngelicaConfig.enableIris)
+            return;
+
+        int blockId = getShaderMaterialOverrideId(block, meta);
+
+        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+        tess.setShaderBlockId(blockId);
+    }
+
+    public static void resetShaderMaterialOverride() {
+        if (!AngelicaConfig.enableIris)
+            return;
+        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+        tess.setShaderBlockId(-1);
     }
 }

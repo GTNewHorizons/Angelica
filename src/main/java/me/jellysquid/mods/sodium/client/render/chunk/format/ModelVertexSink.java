@@ -12,6 +12,7 @@ public interface ModelVertexSink extends VertexSink {
      * @param u The u-texture of the vertex
      * @param v The y-texture of the vertex
      * @param light The packed light-map coordinates of the vertex
+     * @param shaderBlockId The blockId to be passed to the shader
      */
-    void writeQuad(float x, float y, float z, int color, float u, float v, int light);
+    void writeQuad(float x, float y, float z, int color, float u, float v, int light, int shaderBlockId);
 }
