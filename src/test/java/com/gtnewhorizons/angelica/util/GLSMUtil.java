@@ -65,8 +65,10 @@ public class GLSMUtil {
     static final IntBuffer glsmIntBuffer = BufferUtils.createIntBuffer(16);
 
     public static void verifyState(int glCap, int[] expected, String message) {
-        GL11.glGetIntegerv(glCap, glIntBuffer.clear());
-        GLStateManager.glGetInteger(glCap, (IntBuffer) glsmIntBuffer.clear());
+        glIntBuffer.clear();
+        GL11.glGetIntegerv(glCap, glIntBuffer);
+        glsmIntBuffer.clear();
+        GLStateManager.glGetInteger(glCap, glsmIntBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glIntBuffer.get(i), "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmIntBuffer.get(i), "GLSM State Mismatch: " + i)
@@ -82,8 +84,10 @@ public class GLSMUtil {
     static final FloatBuffer glsmFloatBuffer = BufferUtils.createFloatBuffer(16);
 
     public static void verifyState(int glCap, float[] expected, String message) {
-        GL11.glGetFloatv(glCap, glFloatBuffer.clear());
-        GLStateManager.glGetFloat(glCap, glsmFloatBuffer.clear());
+        glFloatBuffer.clear();
+        GL11.glGetFloatv(glCap, glFloatBuffer);
+        glsmFloatBuffer.clear();
+        GLStateManager.glGetFloat(glCap, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
@@ -91,8 +95,10 @@ public class GLSMUtil {
     }
 
     public static void verifyNotDefaultState(int glCap, float[] expected, String message) {
-        GL11.glGetFloatv(glCap, glFloatBuffer.clear());
-        GLStateManager.glGetFloat(glCap, glsmFloatBuffer.clear());
+        glFloatBuffer.clear();
+        GL11.glGetFloatv(glCap, glFloatBuffer);
+        glsmFloatBuffer.clear();
+        GLStateManager.glGetFloat(glCap, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertNotEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertNotEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
@@ -107,9 +113,10 @@ public class GLSMUtil {
     static final ByteBuffer glsmByteBuffer = BufferUtils.createByteBuffer(16);
 
     public static void verifyState(int glCap, boolean[] expected, String message) {
-
-        GL11.glGetBooleanv(glCap, glByteBuffer.clear());
-        GLStateManager.glGetBoolean(glCap, (ByteBuffer) glsmByteBuffer.clear());
+        glByteBuffer.clear();
+        GL11.glGetBooleanv(glCap, glByteBuffer);
+        glsmByteBuffer.clear();
+        GLStateManager.glGetBoolean(glCap, glsmByteBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch: " + i),
             () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), "GLSM State Mismatch: " + i)
@@ -118,8 +125,10 @@ public class GLSMUtil {
 
 
     public static void verifyLightState(int glLight, int pname, float[] expected, String message) {
-        GL11.glGetLightfv(glLight, pname, glFloatBuffer.clear());
-        GLStateManager.glGetLight(glLight, pname, glsmFloatBuffer.clear());
+        glFloatBuffer.clear();
+        GL11.glGetLightfv(glLight, pname, glFloatBuffer);
+        glsmFloatBuffer.clear();
+        GLStateManager.glGetLight(glLight, pname, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
@@ -127,8 +136,10 @@ public class GLSMUtil {
     }
 
     public static void verifyMaterialState(int face, int pname, float[] expected, String message) {
-        GL11.glGetMaterialfv(face, pname, glFloatBuffer.clear());
-        GLStateManager.glGetMaterial(face, pname, glsmFloatBuffer.clear());
+        glFloatBuffer.clear();
+        GL11.glGetMaterialfv(face, pname, glFloatBuffer);
+        glsmFloatBuffer.clear();
+        GLStateManager.glGetMaterial(face, pname, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
