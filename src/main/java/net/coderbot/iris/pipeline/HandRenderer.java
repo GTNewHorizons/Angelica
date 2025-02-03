@@ -80,9 +80,7 @@ public class HandRenderer {
     }
 
     public boolean isHandTranslucent(InteractionHand hand) {
-        ItemStack heldItem;
-        
-        heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
+        ItemStack heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
 
         if (heldItem == null) {
             return false;
