@@ -53,7 +53,7 @@ public abstract class MixinRenderGlobal {
         Tessellator tessellator = Tessellator.instance;
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
@@ -194,7 +194,7 @@ public abstract class MixinRenderGlobal {
         Tessellator tessellator = Tessellator.instance;
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
         Vec3 color = theWorld.getCloudColour(partialTicks);

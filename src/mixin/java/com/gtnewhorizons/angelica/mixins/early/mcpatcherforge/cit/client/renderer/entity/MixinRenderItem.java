@@ -127,7 +127,7 @@ public abstract class MixinRenderItem extends Render {
             GL11.glEnable(GL11.GL_BLEND);
             GLStateManager.glColor4f(0.5F, 0.25F, 0.8F, 1.0F);
             this.renderGlint(x * 431278612 + y * 32178161, x - 2, y - 2, 20, 20);
-            OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+            GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
             GLStateManager.glDepthMask(true);
             GL11.glEnable(GL11.GL_LIGHTING);
             GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
