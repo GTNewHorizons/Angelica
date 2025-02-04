@@ -1,6 +1,5 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.compat.ModStatus;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -15,7 +14,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
-import xonin.backhand.api.core.BackhandUtils;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
