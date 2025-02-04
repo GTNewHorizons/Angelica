@@ -76,9 +76,8 @@ public final class IdMapUniforms {
 				invalidate();
 				return;
 			}
-//			ItemStack heldStack = player.getItemInHand(hand);
-            // TODO: Offhand
-			ItemStack heldStack = player.getHeldItem();
+
+            ItemStack heldStack = hand.getItemInHand(player);
 
 			if (heldStack == null) {
 				invalidate();
@@ -106,9 +105,7 @@ public final class IdMapUniforms {
 		}
 
 		private IrisItemLightProvider applyOldHandLighting(@NotNull EntityPlayer player, IrisItemLightProvider existing) {
-            // TODO: Offhand
-//			ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
-			ItemStack offHandStack = null;
+            ItemStack offHandStack = InteractionHand.OFF_HAND.getItemInHand(player);
 
 			if (offHandStack == null) {
 				return existing;
