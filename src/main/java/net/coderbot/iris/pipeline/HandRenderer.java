@@ -1,6 +1,5 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
@@ -16,7 +15,6 @@ import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
-import xonin.backhand.api.core.BackhandUtils;
 
 import java.util.Map;
 

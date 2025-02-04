@@ -152,13 +152,25 @@ public enum Mixins {
             ,"shaders.MixinGuiIngameForge"
             ,"shaders.MixinFramebuffer"
             ,"shaders.MixinItem"
-            ,"shaders.MixinItemRenderer"
             ,"shaders.MixinLocale"
             ,"shaders.MixinOpenGlHelper"
             ,"shaders.MixinRender"
             ,"shaders.MixinRendererLivingEntity"
             ,"shaders.MixinRenderGlobal"
             ,"shaders.MixinTileEntityBeaconRenderer"
+        )
+    ),
+
+    IRIS_RENDERING_NOBACKHAND(new Builder("Iris Hand Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addExcludedMod(TargetedMod.BACKHAND).addMixinClasses(
+            "shaders.MixinItemRenderer"
+        )
+    ),
+
+    IRIS_RENDERING_BACKHAND(new Builder("Iris Hand Shaders (Backhand)").addTargetedMod(TargetedMod.VANILLA)
+        .addTargetedMod(TargetedMod.BACKHAND).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
+            "shaders.MixinItemRendererBackhand"
         )
     ),
 
