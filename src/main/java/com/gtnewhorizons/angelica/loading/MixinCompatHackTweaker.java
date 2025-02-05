@@ -42,7 +42,7 @@ public class MixinCompatHackTweaker implements ITweaker {
     }
 
     private void verifyDependencies() {
-        if(MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
+        if (MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
             throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
         }
     }
@@ -168,16 +168,8 @@ public class MixinCompatHackTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        if (FMLLaunchHandler.side().isClient()) {
-            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
-
-            if (!rfbLoaded) {
-                // Run after Mixins, but before LWJGl3ify
-                Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
-            }
-            if(AngelicaConfig.enableSodium) {
-                Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
-            }
+        if (FMLLaunchHandler.side().isClient() && AngelicaConfig.enableSodium) {
+            Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
         }
 
         return new String[0];
