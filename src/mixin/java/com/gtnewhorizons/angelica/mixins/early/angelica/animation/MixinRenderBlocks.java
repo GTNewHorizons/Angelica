@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
@@ -38,7 +39,14 @@ public class MixinRenderBlocks implements ITexturesCache {
      *         apply Occlusion Querry (Basically that means that we will only mark those textures for update that are
      *         visible (on the viewport) at the moment)
      */
-    @Inject(method = "*(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V", at = @At("HEAD"))
+    @Inject(method = {
+        "renderFaceYNeg",
+        "renderFaceYPos",
+        "renderFaceZNeg",
+        "renderFaceZPos",
+        "renderFaceXNeg",
+        "renderFaceXPos"
+    }, at = @At("HEAD"))
     public void angelica$beforeRenderFace(Block p_147761_1_, double p_147761_2_, double p_147761_4_,
             double p_147761_6_, IIcon icon, CallbackInfo ci) {
         if (overrideBlockTexture != null) {
@@ -47,27 +55,18 @@ public class MixinRenderBlocks implements ITexturesCache {
 
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        if(this.enableSpriteTracking)
-            this.renderedSprites.add(icon);
-    }
-
-    @Inject(method = "renderBlockFire", at = @At("HEAD"))
-    public void angelica$markFireBlockAnimationForUpdate(BlockFire instance, int x, int y, int z,
-            CallbackInfoReturnable<Boolean> cir) {
         if(this.enableSpriteTracking) {
-            this.renderedSprites.add(instance.getFireIcon(0));
-            this.renderedSprites.add(instance.getFireIcon(1));
+            this.renderedSprites.add(icon);
         }
-        AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(0), blockAccess);
-        AnimationsRenderUtils.markBlockTextureForUpdate(instance.getFireIcon(1), blockAccess);
     }
 
-    @ModifyReturnValue(method = "getBlockIconFromSideAndMetadata", at = @At("RETURN"))
-    public IIcon angelica$markBlockSideAnimationForUpdate(IIcon icon, Block p_147787_1_, int p_147787_2_, int p_147787_3_) {
+    @ModifyReturnValue(method = "getIconSafe", at = @At("RETURN"))
+    public IIcon angelica$markBlockSideAnimationForUpdate(IIcon icon) {
         AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        if(this.enableSpriteTracking)
+        if(this.enableSpriteTracking) {
             this.renderedSprites.add(icon);
+        }
 
         return icon;
     }
@@ -80,5 +79,12 @@ public class MixinRenderBlocks implements ITexturesCache {
     @Override
     public void enableTextureTracking() {
         enableSpriteTracking = true;
+    }
+
+    @Override
+    public void track(IPatchedTextureAtlasSprite sprite) {
+        if(this.enableSpriteTracking) {
+            renderedSprites.add((IIcon) sprite);
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.utils;
 
+import java.util.Stack;
+
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import net.minecraft.client.Minecraft;
@@ -27,5 +29,25 @@ public class AnimationsRenderUtils {
                 patchedSprite.markNeedsAnimationUpdate();
             }
         }
+    }
+
+    private final static ThreadLocal<Stack<ITexturesCache>> TEXTURE_CACHE_STACK = ThreadLocal.withInitial(Stack::new);
+
+    public static void onSpriteUsed(IPatchedTextureAtlasSprite sprite) {
+        Stack<ITexturesCache> stack = TEXTURE_CACHE_STACK.get();
+
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        stack.peek().track(sprite);
+    }
+
+    public static void pushCache(ITexturesCache cache) {
+        TEXTURE_CACHE_STACK.get().push(cache);
+    }
+
+    public static void popCache() {
+        TEXTURE_CACHE_STACK.get().pop();
     }
 }
