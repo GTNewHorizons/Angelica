@@ -53,10 +53,12 @@ public class MixinRenderBlocks implements ITexturesCache {
             icon = overrideBlockTexture;
         }
 
-        AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
+        if (icon != null) {
+            AnimationsRenderUtils.markBlockTextureForUpdate(icon, blockAccess);
 
-        if(this.enableSpriteTracking) {
-            this.renderedSprites.add(icon);
+            if(this.enableSpriteTracking) {
+                this.renderedSprites.add(icon);
+            }
         }
     }
 
