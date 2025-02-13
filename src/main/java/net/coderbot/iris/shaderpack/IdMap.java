@@ -1,18 +1,29 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.LoaderState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import it.unimi.dsi.fastutil.ints.Int2ShortFunction;
+import it.unimi.dsi.fastutil.ints.Int2ShortMap;
+import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.block_rendering.MaterialIdLookup;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
+
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
@@ -39,22 +50,30 @@ public class IdMap {
 	/**
 	 * Maps a given item ID to an integer ID
 	 */
-	private final Object2IntMap<NamespacedId> itemIdMap;
+	@Getter
+    private final Object2IntMap<NamespacedId> itemIdMap;
 
 	/**
 	 * Maps a given entity ID to an integer ID
 	 */
-	private final Object2IntMap<NamespacedId> entityIdMap;
+	@lombok.Getter
+    private final Object2IntMap<NamespacedId> entityIdMap;
 
 	/**
 	 * Maps block states to block ids defined in block.properties
 	 */
-	private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
+	@Getter
+    private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
+
+    private final Object2ObjectMap<Block, Int2ShortFunction> blockPropertiesLookup = new Object2ObjectOpenHashMap<>();
 
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
 	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+
+    private boolean needsBlockLoad = true;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
@@ -74,10 +93,56 @@ public class IdMap {
 			LegacyIdMap.addLegacyValues(blockPropertiesMap);
 		}
 
-		if (blockRenderTypeMap == null) {
+        // if the game is already loaded, just load the blocks now
+        // otherwise we have to lazy load them
+        if (Loader.instance().hasReachedState(LoaderState.POSTINITIALIZATION)) {
+            loadBlockIdLookup();
+        }
+
+        if (blockRenderTypeMap == null) {
 			blockRenderTypeMap = Collections.emptyMap();
 		}
 	}
+
+    public synchronized void loadBlockIdLookup() {
+        if (!needsBlockLoad) return;
+        needsBlockLoad = false;
+
+        blockPropertiesMap.forEach((materialId, blockEntries) -> {
+            for (BlockEntry entry : blockEntries) {
+                Block block = entry.getId().getBlock();
+
+                if (block == null) {
+                    if (AngelicaConfig.enableDebugLogging) {
+                        Iris.logger.warn("Not adding shader material id for missing block " + entry.getId().describe());
+                    }
+                    continue;
+                }
+
+                short matId = materialId.shortValue();
+
+                Int2ShortMap metaMap = ((Int2ShortMap) blockPropertiesLookup.computeIfAbsent(block, ignored -> {
+                    Int2ShortMap map = new Int2ShortOpenHashMap();
+                    map.defaultReturnValue((short) -1);
+                    return map;
+                }));
+
+                if (entry.getMetas().isEmpty()) {
+                    if (metaMap.defaultReturnValue() != matId) {
+                        if (metaMap.defaultReturnValue() != -1) {
+                            Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), materialId, entry.getId().describe());
+                        } else {
+                            metaMap.defaultReturnValue(matId);
+                        }
+                    }
+                } else {
+                    for (int meta : entry.getMetas()) {
+                        metaMap.put(meta, materialId.shortValue());
+                    }
+                }
+            }
+        });
+    }
 
 	/**
 	 * Loads properties from a properties file in a shaderpack path
@@ -264,23 +329,19 @@ public class IdMap {
 		return overrides;
 	}
 
-	public Int2ObjectMap<List<BlockEntry>> getBlockProperties() {
-		return blockPropertiesMap;
-	}
+    public MaterialIdLookup getBlockIdLookup() {
+        return (block, meta) -> {
+            if (needsBlockLoad) loadBlockIdLookup();
 
-	public Object2IntFunction<NamespacedId> getItemIdMap() {
-		return itemIdMap;
-	}
+            Int2ShortFunction fn = blockPropertiesLookup.get(block);
 
-	public Object2IntFunction<NamespacedId> getEntityIdMap() {
-		return entityIdMap;
-	}
+            if (fn == null) return (short) 0;
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
+            return fn.get(meta);
+        };
+    }
 
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;

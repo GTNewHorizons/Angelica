@@ -1,11 +1,16 @@
 package net.coderbot.iris.client;
 
+import com.gtnewhorizon.gtnhlib.util.data.BlockMeta;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
 import java.lang.management.BufferPoolMXBean;
@@ -45,6 +50,19 @@ public class IrisDebugScreenHandler {
             if (Iris.getIrisConfig().areShadersEnabled()) {
                 event.right.add("[" + Iris.MODNAME + "] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
                 Iris.getCurrentPack().ifPresent(pack -> event.right.add("[" + Iris.MODNAME + "] " + pack.getProfileInfo()));
+
+                if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+                    Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+                    int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+
+                    if (BlockRenderingSettings.INSTANCE.getLookup() != null) {
+                        event.left.add("[" + Iris.MODNAME + "] Shader Block Id: " + BlockRenderingSettings.INSTANCE.getLookup().get(block, meta));
+                    } else {
+                        event.left.add("[" + Iris.MODNAME + "] Shader Block Id: Missing Shader Block Id Lookup");
+                    }
+                } else {
+                    event.left.add("[" + Iris.MODNAME + "] Shader Block Id: None");
+                }
             } else {
                 event.right.add("[" + Iris.MODNAME + "] Shaders are disabled");
             }

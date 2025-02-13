@@ -70,18 +70,6 @@ public class BlockMaterialMapping {
 		}
 
         idMap.put(block, intId);
-
-//        Set<Integer> metas = entry.getMetas();
-//        // All metas match
-//		if (metas.isEmpty()) {
-//            idMap.putIfAbsent(new BlockMatch(block, null), intId);
-//			return;
-//		}
-//
-//        // A subset of metas match
-//        for(int meta : metas) {
-//            idMap.putIfAbsent(new BlockMatch(block, meta), intId);
-//        }
 	}
 
 	// We ignore generics here, the actual types don't matter because we just convert
