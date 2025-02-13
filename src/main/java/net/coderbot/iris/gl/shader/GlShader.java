@@ -2,6 +2,7 @@
 
 package net.coderbot.iris.gl.shader;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
@@ -39,11 +40,11 @@ public class GlShader extends GlResource {
 
 		String log = RenderSystem.getShaderInfoLog(handle);
 
-		if (!log.isEmpty()) {
-			LOGGER.warn("Shader compilation log for " + name + ": " + log);
-		}
-
 		int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
+
+        if ((AngelicaConfig.enableDebugLogging || result != GL11.GL_TRUE) && !log.isEmpty()) {
+            LOGGER.warn("Shader compilation log for " + name + ": " + log);
+        }
 
 		if (result != GL11.GL_TRUE) {
 			throw new RuntimeException("Shader compilation failed, see log for details");

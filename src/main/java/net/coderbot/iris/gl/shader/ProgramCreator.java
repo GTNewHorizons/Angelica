@@ -2,6 +2,7 @@
 
 package net.coderbot.iris.gl.shader;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.apache.logging.log4j.LogManager;
@@ -37,7 +38,7 @@ public class ProgramCreator {
 
 		String log = RenderSystem.getProgramInfoLog(program);
 
-		if (!log.isEmpty()) {
+		if (AngelicaConfig.enableDebugLogging && !log.isEmpty()) {
 			LOGGER.warn("Program link log for " + name + ": " + log);
 		}
 

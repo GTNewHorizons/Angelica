@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -93,11 +94,11 @@ public abstract class GlProgram extends GlObject {
 
             final String log = GL20.glGetProgramInfoLog(this.program, GL20.GL_INFO_LOG_LENGTH);
 
-            if (!log.isEmpty()) {
+            final int result = GL20.glGetProgrami(this.program, GL20.GL_LINK_STATUS);
+
+            if ((AngelicaConfig.enableDebugLogging || result != GL11.GL_TRUE) && !log.isEmpty()) {
                 LOGGER.warn("Program link log for " + this.name + ": " + log);
             }
-
-            final int result = GL20.glGetProgrami(this.program, GL20.GL_LINK_STATUS);
 
             if (result != GL11.GL_TRUE) {
                 throw new RuntimeException("Shader program linking failed, see log for details");
