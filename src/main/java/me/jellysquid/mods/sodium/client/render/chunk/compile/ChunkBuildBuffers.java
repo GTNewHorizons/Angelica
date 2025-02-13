@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
@@ -17,6 +16,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ChunkModelOffset;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
+import net.coderbot.iris.block_rendering.MaterialIdLookup;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.sodium.block_context.BlockContextHolder;
 import net.coderbot.iris.sodium.block_context.ChunkBuildBuffersExt;
@@ -61,10 +61,10 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         }
 
         if(AngelicaConfig.enableIris) {
-            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            final MaterialIdLookup lookup = BlockRenderingSettings.INSTANCE.getLookup();
 
-            if (blockMatches != null) {
-                this.iris$contextHolder = new BlockContextHolder(blockMatches);
+            if (lookup != null) {
+                this.iris$contextHolder = new BlockContextHolder(lookup);
             } else {
                 this.iris$contextHolder = new BlockContextHolder();
             }
@@ -161,9 +161,14 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         this.iris$contextHolder.setLocalPos(localPosX, localPosY, localPosZ);
     }
 
-    public void iris$setMaterialId(Block block, short renderType) {
+    public void iris$setMaterialId(Block block, int meta) {
         if(!AngelicaConfig.enableIris) return;
-        this.iris$contextHolder.set(block, renderType);
+        this.iris$contextHolder.set(block, meta, this.iris$contextHolder.renderType);
+    }
+
+    public void iris$setMaterialId(Block block, int meta, short renderType) {
+        if(!AngelicaConfig.enableIris) return;
+        this.iris$contextHolder.set(block, meta, renderType);
     }
 
     public void iris$resetBlockContext() {
