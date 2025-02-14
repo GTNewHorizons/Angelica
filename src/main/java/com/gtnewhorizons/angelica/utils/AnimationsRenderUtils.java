@@ -37,6 +37,8 @@ public class AnimationsRenderUtils {
         Stack<ITexturesCache> stack = TEXTURE_CACHE_STACK.get();
 
         if (stack == null || stack.isEmpty()) {
+            // icon was used outside of chunk building, it's probably an item in an inventory or something
+            sprite.markNeedsAnimationUpdate();
             return;
         }
 
