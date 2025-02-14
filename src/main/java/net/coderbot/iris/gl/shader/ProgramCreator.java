@@ -38,11 +38,11 @@ public class ProgramCreator {
 
 		String log = RenderSystem.getProgramInfoLog(program);
 
-		if (AngelicaConfig.enableDebugLogging && !log.isEmpty()) {
+		int result = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
+
+		if ((AngelicaConfig.enableDebugLogging || result != GL11.GL_TRUE) && !log.isEmpty()) {
 			LOGGER.warn("Program link log for " + name + ": " + log);
 		}
-
-		int result = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
 
 		if (result != GL11.GL_TRUE) {
 			throw new RuntimeException("Shader program linking failed, see log for details");
