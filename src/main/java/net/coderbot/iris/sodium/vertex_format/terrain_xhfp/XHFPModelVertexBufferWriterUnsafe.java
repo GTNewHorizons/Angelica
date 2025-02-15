@@ -30,7 +30,7 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 	}
 
 	@Override
-	public void writeQuad(float x, float y, float z, int color, float u, float v, int light) {
+	public void writeQuad(float x, float y, float z, int color, float u, float v, int light, int shaderBlockId) {
 		uSum += u;
 		vSum += v;
 
@@ -42,7 +42,7 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(u),
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(v),
 				light,
-                contextHolder.blockId,
+				shaderBlockId != -1 ? (short)shaderBlockId : contextHolder.blockId,
 				contextHolder.renderType,
 				ExtendedDataHelper.computeMidBlock(x, y, z, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ)
 		);
