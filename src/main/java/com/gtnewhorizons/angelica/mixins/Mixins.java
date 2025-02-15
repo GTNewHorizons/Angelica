@@ -158,7 +158,6 @@ public enum Mixins {
             ,"shaders.MixinRendererLivingEntity"
             ,"shaders.MixinRenderGlobal"
             ,"shaders.MixinTileEntityBeaconRenderer"
-            ,"shaders.MixinRenderBlocks"
         )
     ),
 

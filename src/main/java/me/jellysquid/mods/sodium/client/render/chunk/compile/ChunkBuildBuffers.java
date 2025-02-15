@@ -156,21 +156,20 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
     }
 
     // Iris Compat
+
+    @Override
     public void iris$setLocalPos(int localPosX, int localPosY, int localPosZ) {
         if(!AngelicaConfig.enableIris) return;
         this.iris$contextHolder.setLocalPos(localPosX, localPosY, localPosZ);
     }
 
-    public void iris$setMaterialId(Block block, int meta) {
-        if(!AngelicaConfig.enableIris) return;
-        this.iris$contextHolder.set(block, meta, this.iris$contextHolder.renderType);
-    }
-
+    @Override
     public void iris$setMaterialId(Block block, int meta, short renderType) {
         if(!AngelicaConfig.enableIris) return;
         this.iris$contextHolder.set(block, meta, renderType);
     }
 
+    @Override
     public void iris$resetBlockContext() {
         if(!AngelicaConfig.enableIris) return;
         this.iris$contextHolder.reset();

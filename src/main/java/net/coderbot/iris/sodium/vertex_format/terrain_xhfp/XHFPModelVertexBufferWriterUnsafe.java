@@ -42,7 +42,7 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(u),
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(v),
 				light,
-				contextHolder.materialId,
+                contextHolder.blockId,
 				contextHolder.renderType,
 				ExtendedDataHelper.computeMidBlock(x, y, z, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ)
 		);

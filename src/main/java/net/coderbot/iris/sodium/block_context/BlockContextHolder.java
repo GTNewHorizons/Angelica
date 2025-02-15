@@ -11,18 +11,18 @@ public class BlockContextHolder {
 	public int localPosY;
 	public int localPosZ;
 
-	public short materialId;
+	public short blockId;
 	public short renderType;
 
 	public BlockContextHolder() {
 		this.lookup = (a, b) -> (short) -1;
-		this.materialId = -1;
+		this.blockId = -1;
 		this.renderType = -1;
 	}
 
 	public BlockContextHolder(MaterialIdLookup lookup) {
 		this.lookup = lookup;
-		this.materialId = -1;
+		this.blockId = -1;
 		this.renderType = -1;
 	}
 
@@ -33,12 +33,12 @@ public class BlockContextHolder {
 	}
 
 	public void set(Block block, int meta, short renderType) {
-		this.materialId = this.lookup.get(block, meta);
+		this.blockId = this.lookup.get(block, meta);
 		this.renderType = renderType;
 	}
 
 	public void reset() {
-		this.materialId = -1;
+		this.blockId = -1;
 		this.renderType = -1;
 		this.localPosX = 0;
 		this.localPosY = 0;

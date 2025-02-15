@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 /**
  * A utility class for parsing entries in item.properties, block.properties, and entities.properties files in shaderpacks
@@ -73,8 +74,6 @@ public class IdMap {
 	@Getter
     private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
-    private boolean needsBlockLoad = true;
-
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
 
@@ -93,10 +92,10 @@ public class IdMap {
 			LegacyIdMap.addLegacyValues(blockPropertiesMap);
 		}
 
-        // if the game is already loaded, just load the blocks now
-        // otherwise we have to lazy load them
+        // if blocks aren't loaded, don't load the material lookup
+        // resources will be reloaded after postinit, so this will be re-ran later
         if (Loader.instance().hasReachedState(LoaderState.POSTINITIALIZATION)) {
-            loadBlockIdLookup();
+            loadMaterialIdLookup();
         }
 
         if (blockRenderTypeMap == null) {
@@ -104,10 +103,7 @@ public class IdMap {
 		}
 	}
 
-    public synchronized void loadBlockIdLookup() {
-        if (!needsBlockLoad) return;
-        needsBlockLoad = false;
-
+    private void loadMaterialIdLookup() {
         blockPropertiesMap.forEach((materialId, blockEntries) -> {
             for (BlockEntry entry : blockEntries) {
                 Block block = entry.getId().getBlock();
@@ -239,6 +235,8 @@ public class IdMap {
 		return Object2IntMaps.unmodifiable(idMap);
 	}
 
+    private static final Pattern PAT = Pattern.compile("((?<modid>\\w+):)?(?<blockid>\\w+)(:(?<cond>(((?<key>\\w+)=(?<value>\\w+)|(?<meta>\\d+)),?)+))?");
+
 	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
 		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
 
@@ -251,10 +249,10 @@ public class IdMap {
 				return;
 			}
 
-			final int intId;
+			final int matId;
 
 			try {
-				intId = Integer.parseInt(key.substring(keyPrefix.length()));
+				matId = Integer.parseInt(key.substring(keyPrefix.length()));
 			} catch (NumberFormatException e) {
 				// Not a valid property line
 				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
@@ -286,7 +284,7 @@ public class IdMap {
 				}
 			}
 
-			entriesById.put(intId, Collections.unmodifiableList(entries));
+			entriesById.put(matId, Collections.unmodifiableList(entries));
 		});
 
 		return Int2ObjectMaps.unmodifiable(entriesById);
@@ -331,8 +329,6 @@ public class IdMap {
 
     public MaterialIdLookup getBlockIdLookup() {
         return (block, meta) -> {
-            if (needsBlockLoad) loadBlockIdLookup();
-
             Int2ShortFunction fn = blockPropertiesLookup.get(block);
 
             if (fn == null) return (short) 0;

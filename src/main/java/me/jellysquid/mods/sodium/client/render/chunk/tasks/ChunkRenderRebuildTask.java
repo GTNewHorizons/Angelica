@@ -24,8 +24,6 @@ import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
-import net.coderbot.iris.api.IIrisAware;
-import net.coderbot.iris.api.IIrisRenderBlocks;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
@@ -136,8 +134,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final RenderBlocks renderBlocks = new RenderBlocks(slice);
         if(renderBlocks instanceof ITexturesCache) ((ITexturesCache)renderBlocks).enableTextureTracking();
 
-        ((IIrisRenderBlocks)renderBlocks).setBuffers(buffers);
-
         final int baseX = this.render.getOriginX();
         final int baseY = this.render.getOriginY();
         final int baseZ = this.render.getOriginZ();
@@ -171,23 +167,18 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
 
                     if (rendersOffThread(block)) {
-                        int subpasses = block instanceof IIrisAware aw ? aw.getSubpassCount(meta) : 1;
-
                         // Do regular block rendering
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
                                 final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
 
-                                for (int subpass = 0; subpass < subpasses; subpass++) {
-                                    if(AngelicaConfig.enableIris) {
-                                        ((IIrisRenderBlocks)renderBlocks).setCurrentSubpass(subpass);
-                                        buffers.iris$setMaterialId(block, meta, ExtendedDataHelper.BLOCK_RENDER_TYPE);
-                                    }
+                                if(AngelicaConfig.enableIris) {
+                                    buffers.iris$setMaterialId(block, meta, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+                                }
 
-                                    if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
-                                        bounds.addBlock(relX, relY, relZ);
-                                    }
+                                if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
+                                    bounds.addBlock(relX, relY, relZ);
                                 }
                             }
                         }
