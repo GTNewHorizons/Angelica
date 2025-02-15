@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
@@ -132,7 +133,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         final WorldSlice slice = cache.getWorldSlice();
         final RenderBlocks renderBlocks = new RenderBlocks(slice);
-        if(renderBlocks instanceof ITexturesCache) ((ITexturesCache)renderBlocks).enableTextureTracking();
+        if(renderBlocks instanceof ITexturesCache textureCache) {
+            textureCache.enableTextureTracking();
+            AnimationsRenderUtils.pushCache(textureCache);
+        }
 
         final int baseX = this.render.getOriginX();
         final int baseY = this.render.getOriginY();
@@ -222,6 +226,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             }
         }
 
+        if(renderBlocks instanceof ITexturesCache) {
+            AnimationsRenderUtils.popCache();
+        }
+
         handleRenderBlocksTextures(renderBlocks, renderData);
 
         if(hasMainThreadBlocks) {
@@ -268,7 +276,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final int baseZ = this.render.getOriginZ();
         final BlockPos renderOffset = this.offset;
         final RenderBlocks rb = new RenderBlocks(slice.getWorld());
-        if(rb instanceof ITexturesCache) ((ITexturesCache)rb).enableTextureTracking();
+        if(rb instanceof ITexturesCache textureCache) {
+            textureCache.enableTextureTracking();
+            AnimationsRenderUtils.pushCache(textureCache);
+        }
         while(!mainThreadBlocks.isEmpty()) {
             final long longPos = mainThreadBlocks.dequeueLong();
             if (cancellationSource.isCancelled()) {
@@ -308,6 +319,10 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             }
 
             if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
+        }
+
+        if(rb instanceof ITexturesCache) {
+            AnimationsRenderUtils.popCache();
         }
 
         handleRenderBlocksTextures(rb, renderData);
