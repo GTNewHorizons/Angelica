@@ -1,8 +1,7 @@
 package net.coderbot.iris.shaderpack;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.LoaderState;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -92,9 +91,8 @@ public class IdMap {
 			LegacyIdMap.addLegacyValues(blockPropertiesMap);
 		}
 
-        // if blocks aren't loaded, don't load the material lookup
-        // resources will be reloaded after postinit, so this will be re-ran later
-        if (Loader.instance().hasReachedState(LoaderState.POSTINITIALIZATION)) {
+        // if blocks aren't loaded, don't load the material lookup immediately
+        if (ClientProxy.hitPostInit) {
             loadMaterialIdLookup();
         }
 
@@ -103,7 +101,7 @@ public class IdMap {
 		}
 	}
 
-    private void loadMaterialIdLookup() {
+    public void loadMaterialIdLookup() {
         blockPropertiesMap.forEach((materialId, blockEntries) -> {
             for (BlockEntry entry : blockEntries) {
                 Block block = entry.getId().getBlock();
@@ -331,7 +329,7 @@ public class IdMap {
         return (block, meta) -> {
             Int2ShortFunction fn = blockPropertiesLookup.get(block);
 
-            if (fn == null) return (short) 0;
+            if (fn == null) return (short) -1;
 
             return fn.get(meta);
         };

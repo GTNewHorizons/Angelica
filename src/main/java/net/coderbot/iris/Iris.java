@@ -650,14 +650,14 @@ public class Iris {
 
     private static int getShaderMaterialOverrideId(Block block, int meta) {
         if (contextHolder == null) {
-            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            final MaterialIdLookup blockMatches = BlockRenderingSettings.INSTANCE.getLookup();
             if (blockMatches == null) {
                 return -1;
             }
             contextHolder = new BlockContextHolder(blockMatches);
-
         }
-        contextHolder.set(block, (short) block.getRenderType());
+
+        contextHolder.set(block, meta, (short) block.getRenderType());
         return contextHolder.blockId;
     }
 
