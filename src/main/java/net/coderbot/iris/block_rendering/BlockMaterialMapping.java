@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
-import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.BlockMetaEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
@@ -16,17 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 public class BlockMaterialMapping {
-	public static Object2IntMap<Block> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
-		Object2IntMap<Block> blockMatches = new Object2IntOpenHashMap<>();
-
-		blockPropertiesMap.forEach((intId, entries) -> {
-			for (BlockEntry entry : entries) {
-				addBlock(entry, blockMatches, intId);
-			}
-		});
-
-		return blockMatches;
-	}
 
 	public static Map<Block, RenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
 		Map<Block, RenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
@@ -57,7 +46,7 @@ public class BlockMaterialMapping {
         };
 	}
 
-	private static void addBlock(BlockEntry entry, Object2IntMap<Block> idMap, int intId) {
+	private static void addBlock(BlockMetaEntry entry, Object2IntMap<Block> idMap, int intId) {
 		final NamespacedId id = entry.getId();
 		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
 

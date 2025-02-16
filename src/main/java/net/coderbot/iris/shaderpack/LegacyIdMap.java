@@ -3,8 +3,7 @@ package net.coderbot.iris.shaderpack;
 import com.google.common.collect.ImmutableList;
 import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.BlockMetaEntry;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 
 import java.util.ArrayList;
@@ -20,7 +19,7 @@ public class LegacyIdMap {
 	private static final ImmutableList<String> WOOD_TYPES =
 			ImmutableList.of("oak", "birch", "jungle", "spruce", "acacia", "dark_oak");
 
-	public static void addLegacyValues(Int2ObjectMap<List<BlockEntry>> blockIdMap) {
+	public static void addLegacyValues(Int2ObjectMap<List<BlockMetaEntry>> blockIdMap) {
 		add(blockIdMap, 1, block("stone"), block("granite"), block("diorite"), block("andesite"));
 		add(blockIdMap, 2, block("grass_block"));
 		add(blockIdMap, 4, block("cobblestone"));
@@ -79,12 +78,12 @@ public class LegacyIdMap {
 		// TODO: 76 -> redstone_torch (on)
 	}
 
-	private static BlockEntry block(String name) {
-		return new BlockEntry(new NamespacedId("minecraft", name));
+	private static BlockMetaEntry block(String name) {
+		return new BlockMetaEntry(new NamespacedId("minecraft", name), Collections.emptyMap());
 	}
 
-	private static void addMany(Int2ObjectMap<List<BlockEntry>> blockIdMap, int id, List<String> prefixes, Function<String, BlockEntry> toId) {
-		List<BlockEntry> entries = new ArrayList<>();
+	private static void addMany(Int2ObjectMap<List<BlockMetaEntry>> blockIdMap, int id, List<String> prefixes, Function<String, BlockMetaEntry> toId) {
+		List<BlockMetaEntry> entries = new ArrayList<>();
 
 		for (String prefix : prefixes) {
 			entries.add(toId.apply(prefix));
@@ -93,7 +92,7 @@ public class LegacyIdMap {
 		blockIdMap.put(id, entries);
 	}
 
-	private static void add(Int2ObjectMap<List<BlockEntry>> blockIdMap, int id, BlockEntry... entries) {
+	private static void add(Int2ObjectMap<List<BlockMetaEntry>> blockIdMap, int id, BlockMetaEntry... entries) {
 		blockIdMap.put(id, Arrays.asList(entries));
 	}
 }
