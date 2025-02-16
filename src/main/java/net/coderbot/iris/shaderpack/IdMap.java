@@ -117,7 +117,14 @@ public class IdMap {
 
                 Int2ShortMap metaMap = ((Int2ShortMap) blockPropertiesLookup.computeIfAbsent(block, ignored -> {
                     Int2ShortMap map = new Int2ShortOpenHashMap();
-                    map.defaultReturnValue((short) -1);
+                    if (entry.getMetas().isEmpty()) {
+                        // spec has no meta, meaning that it should be applied to all variants of the block
+                        map.defaultReturnValue(matId);
+                    } else {
+                        // spec has meta, it should only be applied to specific variants of the block
+                        // note that -1 can be overridden by a meta-less spec in the future, this isn't permanent
+                        map.defaultReturnValue((short) -1);
+                    }
                     return map;
                 }));
 
