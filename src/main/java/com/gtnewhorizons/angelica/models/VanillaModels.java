@@ -1,9 +1,7 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
-import com.gtnewhorizon.gtnhlib.client.model.Variant;
+import com.gtnewhorizon.gtnhlib.client.model.ModelVariant;
 import com.gtnewhorizon.gtnhlib.client.model.json.ModelLocation;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockColoredCube;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockStaticCube;
@@ -12,13 +10,12 @@ import com.gtnewhorizon.gtnhlib.client.model.template.Model4Rot;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import net.minecraft.block.Block;
-import net.minecraft.world.IBlockAccess;
-import net.minecraftforge.common.util.ForgeDirection;
-
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
+import net.minecraft.block.Block;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class VanillaModels {
 
@@ -33,19 +30,19 @@ public class VanillaModels {
     public static BlockColoredCube JUNGLE_LEAVES;
     public static QuadProvider OLD_LEAF = new QuadProvider() {
         @Override
-        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, pos, block);
+        public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
+            return QuadProvider.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 4) {
                 case 0 -> OAK_LEAVES;
                 case 1 -> SPRUCE_LEAVES;
                 case 2 -> BIRCH_LEAVES;
                 case 3 -> JUNGLE_LEAVES;
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
@@ -53,17 +50,17 @@ public class VanillaModels {
     public static BlockColoredCube DARK_OAK_LEAVES;
     public static QuadProvider NEW_LEAF = new QuadProvider() {
         @Override
-        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, pos, block);
+        public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
+            return QuadProvider.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 2) {
                 case 0 -> ACACIA_LEAVES;
                 case 1 -> DARK_OAK_LEAVES;
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
@@ -77,7 +74,7 @@ public class VanillaModels {
     public static BlockStaticCube JUNGLE_WOOD;
     public static QuadProvider OLD_LOG = new QuadProvider() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {
@@ -86,7 +83,7 @@ public class VanillaModels {
                     case 14 -> BIRCH_WOOD;
                     case 15 -> JUNGLE_WOOD;
                     default -> throw new IllegalStateException("Unexpected value: " + meta);
-                }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+                }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
             }
 
             Column3Rot ret = switch (meta % 4) {
@@ -102,7 +99,7 @@ public class VanillaModels {
                 case 1 -> ret.eastwest();
                 case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
@@ -112,14 +109,14 @@ public class VanillaModels {
     public static BlockStaticCube DARK_OAK_WOOD;
     public static QuadProvider NEW_LOG = new QuadProvider() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {
                     case 12 -> ACACIA_WOOD;
                     case 13 -> DARK_OAK_WOOD;
                     default -> throw new IllegalStateException("Unexpected value: " + meta);
-                }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+                }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
             }
 
             Column3Rot ret = switch (meta % 4) {
@@ -133,11 +130,11 @@ public class VanillaModels {
                 case 1 -> ret.eastwest();
                 case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
-    public static final Variant workbench = new Variant(
+    public static final ModelVariant workbench = new ModelVariant(
         new ModelLocation("block/crafting_table"),
         0,
         0,
