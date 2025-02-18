@@ -2,6 +2,8 @@ package net.coderbot.iris.texture.util;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import net.coderbot.iris.Iris;
+
 import net.minecraft.client.Minecraft;
 import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.opengl.GL11;
@@ -28,6 +30,8 @@ public class TextureExporter {
 
         try {
             nativeImage.writeToFile(file);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            Iris.logger.error("Could not export texture", e);
+        }
 	}
 }
