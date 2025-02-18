@@ -64,7 +64,7 @@ public abstract class MixinMinecraft {
         angelica$lastFrameTime = time;
     }
 
-    @WrapOperation(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V"))
+    @WrapOperation(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
     private void angelica$noopFPSLimiter(int fps, Operation<Void> original) {
         if (AngelicaConfig.sleepBeforeSwap) return;
         original.call(fps);
