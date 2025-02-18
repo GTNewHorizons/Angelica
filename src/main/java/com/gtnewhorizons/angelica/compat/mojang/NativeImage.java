@@ -11,6 +11,7 @@ import java.nio.IntBuffer;
 import javax.imageio.ImageIO;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.GL11;
@@ -61,15 +62,20 @@ public class NativeImage extends BufferedImage {
 
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
-        try (final MemoryStack stack = stackPush()) {
-            final IntBuffer buffer = stack.mallocInt(size);
+
+        final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
+
+        try {
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
             int[] data = new int[size];
             buffer.get(data);
             setRGB(0, 0, width, height, data, 0, width);
+        } finally {
+            MemoryUtilities.memFree(buffer);
         }
     }
+
     public void writeToFile(File file) throws IOException{
         try {
             ImageIO.write(this, "png", file);
