@@ -3,6 +3,7 @@ package net.coderbot.iris.shaderpack;
 import com.google.common.collect.ImmutableList;
 import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 
@@ -79,7 +80,7 @@ public class LegacyIdMap {
 	}
 
 	private static BlockEntry block(String name) {
-		return new BlockEntry(new NamespacedId("minecraft", name), Collections.emptySet());
+		return new BlockEntry(new NamespacedId("minecraft", name));
 	}
 
 	private static void addMany(Int2ObjectMap<List<BlockEntry>> blockIdMap, int id, List<String> prefixes, Function<String, BlockEntry> toId) {

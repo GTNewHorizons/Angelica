@@ -1,11 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
+import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+
+import net.minecraft.block.BlockPortal;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
 
 import java.util.List;
 
@@ -53,5 +59,14 @@ public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSpr
             this.frameCounter = (this.frameCounter + 1) % j;
             this.tickCounter = 0;
         }
+    }
+
+    @ModifyReturnValue(method = "getMinU", at = @At("RETURN"))
+    private float angelica$onUVAccessed(float value) {
+        if (((ISpriteExt)this).isAnimation()) {
+            AnimationsRenderUtils.onSpriteUsed(this);
+            needsAnimationUpdate = true;
+        }
+        return value;
     }
 }

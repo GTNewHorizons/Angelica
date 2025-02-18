@@ -1,5 +1,7 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.apache.commons.lang3.StringUtils;
@@ -13,9 +15,13 @@ import java.util.Set;
 @Getter
 public class BlockEntry {
 	private final NamespacedId id;
-	private final Set<Integer> metas;
+	private final IntSet metas;
 
-	public BlockEntry(NamespacedId id,  Set<Integer> metas) {
+    public BlockEntry(NamespacedId id) {
+        this(id, new IntOpenHashSet());
+    }
+
+	public BlockEntry(NamespacedId id, IntSet metas) {
 		this.id = id;
 		this.metas = metas;
 	}
@@ -36,7 +42,7 @@ public class BlockEntry {
 
 		// Trivial case: no states, no namespace
 		if (splitStates.length == 1) {
-			return new BlockEntry(new NamespacedId("minecraft", entry), Collections.emptySet());
+			return new BlockEntry(new NamespacedId("minecraft", entry));
 		}
 
         // Examples of what we'll accept
@@ -59,7 +65,7 @@ public class BlockEntry {
 		// The first term MUST be a valid ResourceLocation component
 		// The second term, if it is not numeric, must be a valid ResourceLocation component.
 		if (splitStates.length == 2 && !StringUtils.isNumeric(splitStates[1].substring(0, 1))) {
-			return new BlockEntry(new NamespacedId(splitStates[0], splitStates[1]), Collections.emptySet());
+			return new BlockEntry(new NamespacedId(splitStates[0], splitStates[1]));
 		}
 
 		// Complex case: One or more states involved...
@@ -76,11 +82,11 @@ public class BlockEntry {
 			id = new NamespacedId(splitStates[0], splitStates[1]);
 		}
 
-        final Set<Integer> metas = new HashSet<>();
+        final IntSet metas = new IntOpenHashSet();
 
 		for (int index = statesStart; index < splitStates.length; index++) {
 			// Parse out one or more metadata ids
-			final String[] metaParts = splitStates[index].split(", ");
+			final String[] metaParts = splitStates[index].split(",");
 
             for (String metaPart : metaParts) {
                 try {
