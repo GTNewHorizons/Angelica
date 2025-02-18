@@ -41,9 +41,9 @@ public class BlockMetaEntry implements Entry {
             String[] splitStates = entry.split(":");
 
             if (splitStates.length == 1) {
-                return new TagEntry(new NamespacedId("minecraft", entry), Map.of());
+                return new TagEntry(new NamespacedId("minecraft", entry), Collections.emptyMap());
             } else if (splitStates.length == 2 && !splitStates[1].contains("=")) {
-                return new TagEntry(new NamespacedId(splitStates[0], splitStates[1]), Map.of());
+                return new TagEntry(new NamespacedId(splitStates[0], splitStates[1]), Collections.emptyMap());
             } else {
                 // Complex case: One or more states involved...
                 int statesStart;
@@ -84,15 +84,15 @@ public class BlockMetaEntry implements Entry {
 
         // Trivial case: no states, no namespace
         if (splitStates.length == 1) {
-            return new BlockPropEntry(new NamespacedId("minecraft", entry), Collections.emptyMap());
+            return new BlockMetaEntry(new NamespacedId("minecraft", entry), new IntOpenHashSet());
         }
 
         // Less trivial case: no states involved, just a namespace
         //
         // The first term MUST be a valid ResourceLocation component without an equals sign
         // The second term, if it does not contain an equals sign, must be a valid ResourceLocation component.
-        if (splitStates.length == 2 && !splitStates[1].contains("=")) {
-            return new BlockPropEntry(new NamespacedId(splitStates[0], splitStates[1]), Collections.emptyMap());
+        if (splitStates.length == 2 && !splitStates[1].contains("=") && !splitStates[1].contains(",")) {
+            return new BlockMetaEntry(new NamespacedId(splitStates[0], splitStates[1]), new IntOpenHashSet());
         }
 
         // Complex case: One or more states involved...
@@ -108,6 +108,10 @@ public class BlockMetaEntry implements Entry {
         } else if (META_LIST.matcher(splitStates[1]).matches()) {
             statesStart = 1;
             id = new NamespacedId("minecraft", splitStates[0]);
+            isMeta = true;
+        } else if (splitStates.length > 2 && META_LIST.matcher(splitStates[2]).matches()) {
+            statesStart = 2;
+            id = new NamespacedId(splitStates[0], splitStates[1]);
             isMeta = true;
         } else {
             // We have an entry of the form "minecraft:tall_grass:half=upper"

@@ -1,5 +1,6 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizon.gtnhlib.tags.BlockTags;
 import com.gtnewhorizon.gtnhlib.util.data.ImmutableBlockMeta;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -15,9 +16,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ShortOpenHashMap;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.block_rendering.MaterialIdLookup;
 import net.coderbot.iris.shaderpack.materialmap.BlockMetaEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
@@ -68,7 +72,7 @@ public class IdMap {
     /**
      * Maps tags to block ids defined in block.properties
      */
-    private Int2ObjectMap<List<TagEntry>> blockTagMap;
+    private final Int2ObjectLinkedOpenHashMap<List<TagEntry>> blockTagMap;
 
 	/**
 	 * Maps block states to block ids defined in block.properties
@@ -76,7 +80,7 @@ public class IdMap {
     private Int2ObjectMap<List<BlockMetaEntry>> blockPropertiesMap;
 
     @EqualsAndHashCode.Exclude
-    private final Object2ObjectMap<Block, Int2ShortFunction> blockPropertiesLookup = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<Block, Int2ShortMap> blockPropertiesLookup = new Object2ObjectOpenHashMap<>();
 
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
@@ -112,12 +116,17 @@ public class IdMap {
         if (blockRenderTypeMap == null) {
 			blockRenderTypeMap = Collections.emptyMap();
 		}
+
+        BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(getBlockRenderTypeMap()));
+        BlockRenderingSettings.INSTANCE.setEntityIds(getEntityIdMap());
 	}
 
     public void loadMaterialIdLookup() {
         blockPropertiesLookup.clear();
 
         blockPropertiesMap.forEach((materialId, blockEntries) -> {
+            short matId = materialId.shortValue();
+
             for (BlockMetaEntry entry : blockEntries) {
                 Block block = entry.getId().getBlock();
 
@@ -128,9 +137,7 @@ public class IdMap {
                     continue;
                 }
 
-                short matId = materialId.shortValue();
-
-                Int2ShortMap metaMap = ((Int2ShortMap) blockPropertiesLookup.computeIfAbsent(block, ignored -> {
+                Int2ShortMap metaMap = blockPropertiesLookup.computeIfAbsent(block, ignored -> {
                     Int2ShortMap map = new Int2ShortOpenHashMap();
                     if (entry.getMetas().isEmpty()) {
                         // spec has no meta, meaning that it should be applied to all variants of the block
@@ -141,23 +148,69 @@ public class IdMap {
                         map.defaultReturnValue((short) -1);
                     }
                     return map;
-                }));
+                });
 
                 if (entry.getMetas().isEmpty()) {
                     if (metaMap.defaultReturnValue() != matId) {
                         if (metaMap.defaultReturnValue() != -1) {
-                            Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), materialId, entry.getId().describe());
+                            Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), matId, entry.getId().describe());
                         } else {
                             metaMap.defaultReturnValue(matId);
                         }
                     }
                 } else {
                     for (int meta : entry.getMetas()) {
-                        metaMap.put(meta, materialId.shortValue());
+                        metaMap.put(meta, matId);
                     }
                 }
             }
         });
+
+        Object2ShortOpenHashMap<String> tagMats = new Object2ShortOpenHashMap<>();
+        tagMats.defaultReturnValue((short) -1);
+
+        blockTagMap.forEach((materialId, tagEntries) -> {
+            short matId = materialId.shortValue();
+
+            for (TagEntry entry : tagEntries) {
+                tagMats.put(entry.getId().describe(), matId);
+
+                Set<ImmutableBlockMeta> blocks = BlockTags.getBlocksInTag(entry.getId().describe());
+
+                if (AngelicaConfig.enableDebugLogging && blocks.isEmpty()) {
+                    Iris.logger.warn("Tag contained no blocks: " + entry.getId().describe());
+                }
+
+                for (ImmutableBlockMeta bm : blocks) {
+                    Int2ShortMap metaMap = blockPropertiesLookup.computeIfAbsent(bm.getBlock(), ignored -> {
+                        Int2ShortMap map = new Int2ShortOpenHashMap();
+                        if (bm.getBlockMeta() == OreDictionary.WILDCARD_VALUE) {
+                            // b/m is wildcard, meaning that it should be applied to all variants of the block
+                            map.defaultReturnValue(matId);
+                        } else {
+                            // b/m isn't wildcard, and it should only be applied to specific variants of the block
+                            // note that -1 can be overridden by a meta-less spec in the future, this isn't permanent
+                            map.defaultReturnValue((short) -1);
+                        }
+                        return map;
+                    });
+
+                    if (bm.getBlockMeta() == OreDictionary.WILDCARD_VALUE) {
+                        if (metaMap.defaultReturnValue() != matId) {
+                            if (metaMap.defaultReturnValue() != -1) {
+                                Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), matId, entry.getId().describe());
+                            } else {
+                                metaMap.defaultReturnValue(matId);
+                            }
+                        }
+                    } else {
+                        metaMap.put(bm.getBlockMeta(), matId);
+                    }
+                }
+            }
+        });
+
+        BlockRenderingSettings.INSTANCE.setLookup(getMaterialIdLookup());
     }
 
 	/**
@@ -316,8 +369,13 @@ public class IdMap {
 				}
 			}
 
-            blockEntriesById.put(matId, Collections.unmodifiableList(blockEntries));
-            tagEntriesById.put(matId, Collections.unmodifiableList(tagEntries));
+            if (!blockEntries.isEmpty()) {
+                blockEntriesById.put(matId, Collections.unmodifiableList(blockEntries));
+            }
+
+            if (!tagEntries.isEmpty()) {
+                tagEntriesById.put(matId, Collections.unmodifiableList(tagEntries));
+            }
 		});
 
         blockTagMap.putAll(tagEntriesById);
@@ -362,13 +420,15 @@ public class IdMap {
 		return overrides;
 	}
 
-    public MaterialIdLookup getBlockIdLookup() {
-        return (block, meta) -> {
-            Int2ShortFunction fn = blockPropertiesLookup.get(block);
+    public short getMaterialId(Block block, int meta) {
+        Int2ShortFunction fn = blockPropertiesLookup.get(block);
 
-            if (fn == null) return (short) -1;
+        if (fn == null) return (short) -1;
 
-            return fn.get(meta);
-        };
+        return fn.get(meta);
+    }
+
+    public MaterialIdLookup getMaterialIdLookup() {
+        return this::getMaterialId;
     }
 }
