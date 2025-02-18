@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -98,6 +99,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			upload(atlasWidth, atlasHeight, mipLevel, anisotropicFiltering);
 			return true;
 		} catch (Throwable t) {
+            Iris.logger.error("Could not upload PBR texture", t);
 			return false;
 		}
 	}
