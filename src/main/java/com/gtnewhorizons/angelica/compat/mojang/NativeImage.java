@@ -64,11 +64,16 @@ public class NativeImage extends BufferedImage {
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
 
         final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
-        int[] data = new int[size];
-        buffer.get(data);
-        setRGB(0, 0, width, height, data, 0, width);
+        try {
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+
+            int[] data = new int[size];
+            buffer.get(data);
+            setRGB(0, 0, width, height, data, 0, width);
+        } finally {
+            MemoryUtilities.memFree(buffer);
+        }
     }
 
     public void writeToFile(File file) throws IOException{
