@@ -348,7 +348,11 @@ public class SodiumWorldRenderer {
     }
 
     private boolean checkBEVisibility(TileEntity entity) {
-        return frustum.isBoundingBoxInFrustum(entity.getRenderBoundingBox());
+        var aabb = entity.getRenderBoundingBox();
+        if (aabb == TileEntity.INFINITE_EXTENT_AABB) {
+            return true;
+        }
+        return frustum.isBoundingBoxInFrustum(aabb);
     }
 
     private void renderTE(TileEntity tileEntity, int pass, float partialTicks) {
