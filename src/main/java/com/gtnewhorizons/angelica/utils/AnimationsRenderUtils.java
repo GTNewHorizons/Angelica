@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.utils;
 
-import java.util.Stack;
+import java.util.ArrayDeque;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
@@ -31,10 +31,10 @@ public class AnimationsRenderUtils {
         }
     }
 
-    private final static ThreadLocal<Stack<ITexturesCache>> TEXTURE_CACHE_STACK = ThreadLocal.withInitial(Stack::new);
+    private final static ThreadLocal<ArrayDeque<ITexturesCache>> TEXTURE_CACHE_STACK = ThreadLocal.withInitial(ArrayDeque::new);
 
     public static void onSpriteUsed(IPatchedTextureAtlasSprite sprite) {
-        Stack<ITexturesCache> stack = TEXTURE_CACHE_STACK.get();
+        ArrayDeque<ITexturesCache> stack = TEXTURE_CACHE_STACK.get();
 
         if (stack == null || stack.isEmpty()) {
             // icon was used outside of chunk building, it's probably an item in an inventory or something
