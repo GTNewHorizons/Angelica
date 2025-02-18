@@ -115,4 +115,8 @@ dependencies {
     testImplementation('org.junit.jupiter:junit-jupiter')
     testImplementation("org.mockito:mockito-core:3.+")
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
+
+    devOnlyNonPublishable("com.github.javaparser:javaparser-symbol-solver-core:3.26.2") {
+        exclude module: "guava"
+    }
 }
