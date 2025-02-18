@@ -7,8 +7,10 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 import java.util.Map;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
+
 @Mixin(TextureMap.class)
-public abstract class MixinTextureMap {
+public abstract class MixinTextureMap implements TextureMapAccessor {
 
     @Accessor("mapUploadedSprites")
     public abstract Map getMapUploadedSprites();

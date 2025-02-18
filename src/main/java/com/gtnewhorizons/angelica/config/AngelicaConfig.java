@@ -133,6 +133,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableDebugLogging;
 
+    @Config.Comment("Enables PBR atlas dumping")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable PBR Debug")
+    public static boolean enablePBRDebug;
+
     @Config.Comment("Enable Zoom")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

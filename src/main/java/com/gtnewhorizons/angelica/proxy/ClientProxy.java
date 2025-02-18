@@ -47,6 +47,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -152,7 +153,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onKeypress(TickEvent.ClientTickEvent event) {
-        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode());
+        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && GameSettings.isKeyDown(glsmKeyBinding);
         if (isPressed && !wasGLSMKeyPressed) {
             OpenGLDebugging.checkGLSM();
         }
