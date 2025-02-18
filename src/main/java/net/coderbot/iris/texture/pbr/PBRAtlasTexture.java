@@ -1,6 +1,7 @@
 package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
 import lombok.Getter;
@@ -89,7 +90,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			}
 		}
 
-		if (PBRTextureManager.DEBUG) {
+		if (AngelicaConfig.enablePBRDebug) {
 			TextureExporter.exportTextures("pbr_debug/atlas", id.getResourceDomain() + "_" + id.getResourcePath().replaceAll("/", "_"), glId, mipLevel, atlasWidth, atlasHeight);
 		}
 	}

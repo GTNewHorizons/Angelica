@@ -18,8 +18,6 @@ import org.lwjgl.opengl.GL11;
 public class PBRTextureManager {
 	public static final PBRTextureManager INSTANCE = new PBRTextureManager();
 
-	public static final boolean DEBUG = System.getProperty("iris.pbr.debug") != null;
-
 	// TODO: Figure out how to merge these two.
 	private static Runnable normalTextureChangeListener;
 	private static Runnable specularTextureChangeListener;
