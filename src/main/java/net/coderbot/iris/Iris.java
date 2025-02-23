@@ -10,9 +10,9 @@ import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.MaterialIdLookup;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -662,19 +662,24 @@ public class Iris {
     }
 
     public static void setShaderMaterialOverride(Block block, int meta) {
-        if (!AngelicaConfig.enableIris)
+        if (!AngelicaConfig.enableIris) {
             return;
+        }
 
         int blockId = getShaderMaterialOverrideId(block, meta);
 
-        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-        tess.setShaderBlockId(blockId);
+        if (TessellatorManager.get() instanceof CapturingTessellator tess) {
+            tess.setShaderBlockId(blockId);
+        }
     }
 
     public static void resetShaderMaterialOverride() {
-        if (!AngelicaConfig.enableIris)
+        if (!AngelicaConfig.enableIris) {
             return;
-        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-        tess.setShaderBlockId(-1);
+        }
+
+        if (TessellatorManager.get() instanceof CapturingTessellator tess) {
+            tess.setShaderBlockId(-1);
+        }
     }
 }
