@@ -30,7 +30,6 @@ public class FullScreenQuadRenderer {
 		end();
 	}
 
-	@SuppressWarnings("deprecation")
 	public void begin() {
         GLStateManager.disableDepthTest();
 
@@ -55,7 +54,6 @@ public class FullScreenQuadRenderer {
         GLStateManager.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	@SuppressWarnings("deprecation")
 	public static void end() {
 		DefaultVertexFormat.POSITION_TEXTURE.clearBufferState();
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
