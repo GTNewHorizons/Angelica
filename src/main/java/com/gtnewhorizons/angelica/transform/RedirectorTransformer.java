@@ -420,6 +420,9 @@ public class RedirectorTransformer implements IClassTransformer {
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {
+
+        private static final long serialVersionUID = 1712218575345511543L;
+
         public static RedirectMap<String> newMap() {
             return new RedirectMap<>();
         }
