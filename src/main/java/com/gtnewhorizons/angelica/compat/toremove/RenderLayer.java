@@ -95,14 +95,17 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             return this.affectedOutline;
         }
 
+        @Override
         public boolean equals(@Nullable Object object) {
             return this == object;
         }
 
+        @Override
         public int hashCode() {
             return this.hash;
         }
 
+        @Override
         public String toString() {
             return "RenderType[" + this.phases + ']';
         }
@@ -166,6 +169,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState);
         }
 
+        @Override
         public boolean equals(Object object) {
             if (this == object) {
                 return true;
@@ -177,10 +181,12 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             }
         }
 
+        @Override
         public int hashCode() {
             return Objects.hash(new Object[]{this.phases, this.outlineMode});
         }
 
+        @Override
         public String toString() {
             return "CompositeState[" + this.phases + ", outlineProperty=" + this.outlineMode + ']';
         }
@@ -291,6 +297,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.name = name;
         }
 
+        @Override
         public String toString() {
             return this.name;
         }

@@ -153,7 +153,7 @@ public class IrisElementRow {
 			this.onClick = onClick;
 		}
 
-		@Override
+        @Override
 		public boolean mouseClicked(double mx, double my, int button) {
 			if (this.disabled) {
 				return false;

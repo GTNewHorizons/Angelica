@@ -22,6 +22,7 @@ public abstract class MixinRenderBlockConnectedTexturesEthereal extends RenderBl
      *          works for this system means overwriting this function to use our new non-static
      *          FakeRenderEtherealBlocks field is about the only way to do it.
      */
+    @Override
     @Overwrite(remap = false)
     public boolean renderWorldBlock(IBlockAccess world, int x, int y, int z, Block block, int modelId, RenderBlocks renderer) {
         if (renderer.hasOverrideBlockTexture())

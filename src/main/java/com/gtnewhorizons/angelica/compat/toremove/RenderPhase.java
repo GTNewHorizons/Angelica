@@ -97,6 +97,7 @@ public abstract class RenderPhase {
         this.endAction.run();
     }
 
+    @Override
     public boolean equals(@Nullable Object object) {
         if (this == object) {
             return true;
@@ -108,10 +109,12 @@ public abstract class RenderPhase {
         }
     }
 
+    @Override
     public int hashCode() {
         return this.name.hashCode();
     }
 
+    @Override
     public String toString() {
         return this.name;
     }
