@@ -31,7 +31,7 @@ import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
-// See LICENSE+HUDCaching.md for license information.
+// See LICENSE-HUDCaching.md for license information.
 
 public class HUDCaching {
 
