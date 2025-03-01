@@ -11,15 +11,12 @@ import java.util.List;
 public class ElementRowEntry extends BaseEntry {
 
     private final List<AbstractElementWidget<?>> widgets;
-    private final ShaderPackScreen screen;
 
     private int cachedWidth;
     private int cachedPosX;
 
-    public ElementRowEntry(ShaderPackScreen screen, NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
+    public ElementRowEntry(NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
         super(navigation);
-
-        this.screen = screen;
         this.widgets = widgets;
     }
 

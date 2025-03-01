@@ -6,7 +6,6 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 

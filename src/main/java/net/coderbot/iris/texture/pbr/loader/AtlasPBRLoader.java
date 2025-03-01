@@ -151,7 +151,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             }
 
             final ResourceLocation pbrSpriteName = new ResourceLocation(spriteName.getResourceDomain(), spriteName.getResourcePath() + pbrType.getSuffix());
-            final TextureAtlasSpriteInfo pbrSpriteInfo = new PBRTextureAtlasSpriteInfo(pbrSpriteName, frameWidth, frameHeight, animationMetadata, pbrType);
+            final TextureAtlasSpriteInfo pbrSpriteInfo = new PBRTextureAtlasSpriteInfo(pbrSpriteName, frameWidth, frameHeight, pbrType);
 
             final int x = sprite.getOriginX();
             final int y = sprite.getOriginY();
@@ -210,8 +210,8 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
 	protected static class PBRTextureAtlasSpriteInfo extends TextureAtlasSpriteInfo {
 		protected final PBRType pbrType;
 
-		public PBRTextureAtlasSpriteInfo(ResourceLocation name, int width, int height, AnimationMetadataSection metadata, PBRType pbrType) {
-			super(name, width, height, metadata);
+		public PBRTextureAtlasSpriteInfo(ResourceLocation name, int width, int height, PBRType pbrType) {
+			super(name, width, height);
 			this.pbrType = pbrType;
 		}
 	}

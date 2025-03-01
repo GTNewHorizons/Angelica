@@ -123,8 +123,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean dirtySwap;
 
-    private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
-
     private static final ThreadLocal<BlockRenderPass> threadLocalRenderPass = ThreadLocal.withInitial(() -> BlockRenderPass.CUTOUT_MIPPED);
     public static int getWorldRenderPass() {
         return threadLocalRenderPass.get().ordinal();

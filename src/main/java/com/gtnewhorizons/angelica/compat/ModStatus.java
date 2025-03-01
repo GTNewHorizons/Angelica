@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat;
 
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.versioning.ArtifactVersion;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
 import net.dries007.holoInventory.HoloInventory;

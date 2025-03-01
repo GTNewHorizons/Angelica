@@ -15,12 +15,11 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClonedChunkSection {
-    private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
+
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
 
     private final AtomicInteger referenceCount = new AtomicInteger(0);
@@ -67,8 +66,6 @@ public class ClonedChunkSection {
             bArrLength = chunk.getBiomeArray().length;
         }
         this.biomeData = new BiomeGenBase[bArrLength];
-
-        StructureBoundingBox box = new StructureBoundingBox(pos.getMinX(), pos.getMinY(), pos.getMinZ(), pos.getMaxX(), pos.getMaxY(), pos.getMaxZ());
 
         this.tileEntities.clear();
 

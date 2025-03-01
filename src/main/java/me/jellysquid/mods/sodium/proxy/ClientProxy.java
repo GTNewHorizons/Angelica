@@ -8,7 +8,6 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;

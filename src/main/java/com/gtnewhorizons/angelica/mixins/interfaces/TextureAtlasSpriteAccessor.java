@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.interfaces;
 
 import net.minecraft.client.resources.data.AnimationMetadataSection;
-import org.spongepowered.asm.mixin.gen.Accessor;
 
 import java.util.List;
 

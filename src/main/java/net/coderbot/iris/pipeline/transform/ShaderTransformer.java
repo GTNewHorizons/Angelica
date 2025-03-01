@@ -70,18 +70,6 @@ public class ShaderTransformer {
             this.params = params;
         }
 
-        public Patch patchType() {
-            return patchType;
-        }
-
-        public EnumMap<PatchShaderType, String> inputs() {
-            return inputs;
-        }
-
-        public P params() {
-            return params;
-        }
-
         @Override
         public boolean equals(Object obj) {
             if (obj == this) return true;

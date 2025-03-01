@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.late.client.extrautils;
 
-import com.rwtema.extrautils.block.render.FakeRenderBlocks;
 import com.rwtema.extrautils.block.render.FakeRenderEtherealBlocks;
 import com.rwtema.extrautils.block.render.RenderBlockConnectedTextures;
 import com.rwtema.extrautils.block.render.RenderBlockConnectedTexturesEthereal;

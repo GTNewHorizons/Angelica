@@ -72,7 +72,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         private final MultiPhaseParameters phases;
         private final int hash;
         private final Optional<RenderLayer> affectedOutline;
-        private final boolean outline;
 
         private MultiPhase(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, MultiPhaseParameters phases) {
             super(name, vertexFormat, drawMode, expectedBufferSize, () -> {
@@ -84,7 +83,6 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.affectedOutline = phases.outlineMode == RenderLayer.OutlineMode.AFFECTS_OUTLINE ? phases.texture.getId().map((arg2) -> {
                 return getOutline(arg2, phases.cull);
             }) : Optional.empty();
-            this.outline = phases.outlineMode == RenderLayer.OutlineMode.IS_OUTLINE;
             this.hash = Objects.hash(new Object[]{super.hashCode(), phases});
         }
 
