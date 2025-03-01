@@ -131,6 +131,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         threadLocalRenderPass.set(pass);
     }
 
+    @SuppressWarnings("unchecked")
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
@@ -210,6 +211,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
                 for(Object o : this.renders.getElements()) {
                     if(o == null)
                         continue;
+                    @SuppressWarnings("unchecked")
                     ChunkRenderContainer<T> render = (ChunkRenderContainer<T>)o;
                     if(render.getData().isEmpty())
                         continue;

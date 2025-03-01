@@ -153,6 +153,7 @@ public class IrisElementRow {
 			this.onClick = onClick;
 		}
 
+		@SuppressWarnings("unchecked")
         @Override
 		public boolean mouseClicked(double mx, double my, int button) {
 			if (this.disabled) {

@@ -19,6 +19,7 @@ import cpw.mods.fml.common.registry.GameData;
 
 public class BlockAPI {
 
+    @SuppressWarnings("unchecked")
     BlockAPI(FMLControlledNamespacedRegistry<Block> registry) {
         File outputFile = new File("blocks17.txt");
         if (outputFile.isFile()) {

@@ -111,7 +111,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         }
 
         static {
-            CACHE = new ObjectOpenCustomHashSet(RenderLayer.MultiPhase.HashStrategy.INSTANCE);
+            CACHE = new ObjectOpenCustomHashSet<>(RenderLayer.MultiPhase.HashStrategy.INSTANCE);
         }
 
         static enum HashStrategy implements Hash.Strategy<MultiPhase> {

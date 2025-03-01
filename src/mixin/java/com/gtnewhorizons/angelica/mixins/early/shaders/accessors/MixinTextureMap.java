@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.accessors;
 
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,7 +14,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
 public abstract class MixinTextureMap implements TextureMapAccessor {
 
     @Accessor("mapUploadedSprites")
-    public abstract Map getMapUploadedSprites();
+    public abstract Map<String, TextureAtlasSprite> getMapUploadedSprites();
 
     @Accessor("anisotropicFiltering")
     public abstract int getAnisotropicFiltering();
