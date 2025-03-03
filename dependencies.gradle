@@ -122,4 +122,11 @@ dependencies {
     testImplementation(platform('org.junit:junit-bom:5.11.4'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testImplementation("org.mockito:mockito-core:3.+")
+
+    implementation("com.electronwill.night-config:toml:3.6.6")
+    implementation("com.electronwill.night-config:json:3.6.6")
+    implementation("org.lz4:lz4-java:1.8.0")
+    implementation("org.tukaani:xz:1.9")
+    implementation("org.xerial:sqlite-jdbc:3.47.2.0")
+    implementation("org.lwjgl:lwjgl-jawt:3.3.3")
 }
