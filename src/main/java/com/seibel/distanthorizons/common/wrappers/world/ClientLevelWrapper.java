@@ -20,12 +20,8 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapp
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IDimensionTypeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkSource;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,51 +31,41 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
-#if MC_VER <= MC_1_20_4
-import net.minecraft.world.level.chunk.ChunkStatus;
-#else
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-#endif
-
-#if MC_VER < MC_1_21_3
-#else
-import com.seibel.distanthorizons.core.util.ColorUtil;
-#endif
 
 public class ClientLevelWrapper implements IClientLevelWrapper
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger(ClientLevelWrapper.class.getSimpleName());
-	private static final ConcurrentHashMap<ClientLevel, ClientLevelWrapper> LEVEL_WRAPPER_BY_CLIENT_LEVEL = new ConcurrentHashMap<>(); // TODO can leak
+	private static final ConcurrentHashMap<WorldClient, ClientLevelWrapper> LEVEL_WRAPPER_BY_CLIENT_LEVEL = new ConcurrentHashMap<>(); // TODO can leak
 	private static final IKeyedClientLevelManager KEYED_CLIENT_LEVEL_MANAGER = SingletonInjector.INSTANCE.get(IKeyedClientLevelManager.class);
-	
-	private static final Minecraft MINECRAFT = Minecraft.getInstance();
-	
-	private final ClientLevel level;
+
+	private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
+
+	private final WorldClient level;
 	private final ConcurrentHashMap<BlockState, ClientBlockStateColorCache> blockCache = new ConcurrentHashMap<>();
-	
+
 	private BlockStateWrapper dirtBlockWrapper;
 	private BiomeWrapper plainsBiomeWrapper;
 	@Deprecated // TODO circular references are bad
 	private IDhLevel parentDhLevel;
-	
-	
-	
+
+
+
 	//=============//
 	// constructor //
 	//=============//
-	
-	protected ClientLevelWrapper(ClientLevel level) { this.level = level; }
-	
-	
-	
+
+	protected ClientLevelWrapper(WorldClient level) { this.level = level; }
+
+
+
 	//===============//
 	// wrapper logic //
 	//===============//
-	
-	public static IClientLevelWrapper getWrapper(@NotNull ClientLevel level) { return getWrapper(level, false); }
-	
+
+	public static IClientLevelWrapper getWrapper(@NotNull WorldClient level) { return getWrapper(level, false); }
+
 	@Nullable
-	public static IClientLevelWrapper getWrapper(@Nullable ClientLevel level, boolean bypassLevelKeyManager)
+	public static IClientLevelWrapper getWrapper(@Nullable WorldClient level, boolean bypassLevelKeyManager)
 	{
 		if (!bypassLevelKeyManager)
 		{
@@ -87,7 +73,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 			{
 				return null;
 			}
-			
+
 			// used if the client is connected to a server that defines the currently loaded level
 			IServerKeyedClientLevel overrideLevel = KEYED_CLIENT_LEVEL_MANAGER.getServerKeyedLevel();
 			if (overrideLevel != null)
@@ -95,24 +81,24 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 				return overrideLevel;
 			}
 		}
-		
+
 		return LEVEL_WRAPPER_BY_CLIENT_LEVEL.computeIfAbsent(level, ClientLevelWrapper::new);
 	}
-	
+
 	@Nullable
 	@Override
 	public IServerLevelWrapper tryGetServerSideWrapper()
 	{
 		try
 		{
-			Iterable<ServerLevel> serverLevels = MINECRAFT.getSingleplayerServer().getAllLevels();
-			
+			WorldServer[] serverLevels = MINECRAFT.getIntegratedServer().worldServers;
+
 			// attempt to find the server level with the same dimension type
 			// TODO this assumes only one level per dimension type, the SubDimensionLevelMatcher will need to be added for supporting multiple levels per dimension
 			ServerLevelWrapper foundLevelWrapper = null;
-			
+
 			// TODO: Surely there is a more efficient way to write this code
-			for (ServerLevel serverLevel : serverLevels)
+			for (WorldServer serverLevel : serverLevels)
 			{
 				if (serverLevel.dimension() == this.level.dimension())
 				{
@@ -120,7 +106,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 					break;
 				}
 			}
-			
+
 			return foundLevelWrapper;
 		}
 		catch (Exception e)
@@ -129,23 +115,23 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 			return null;
 		}
 	}
-	
-	
-	
+
+
+
 	//====================//
 	// base level methods //
 	//====================//
-	
+
 	@Override
 	public int getBlockColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper blockWrapper)
 	{
 		ClientBlockStateColorCache blockColorCache = this.blockCache.computeIfAbsent(
 				((BlockStateWrapper) blockWrapper).blockState,
 				(block) -> new ClientBlockStateColorCache(block, this));
-		
+
 		return blockColorCache.getColor((BiomeWrapper) biome, pos);
 	}
-	
+
 	@Override
 	public int getDirtBlockColor()
 	{
@@ -162,13 +148,13 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 				return -1;
 			}
 		}
-		
+
 		return this.getBlockColor(DhBlockPos.ZERO,BiomeWrapper.EMPTY_WRAPPER, this.dirtBlockWrapper);
 	}
-	
-	@Override 
+
+	@Override
 	public void clearBlockColorCache() { this.blockCache.clear(); }
-	
+
 	@Override
 	public IBiomeWrapper getPlainsBiomeWrapper()
 	{
@@ -185,37 +171,37 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 				return null;
 			}
 		}
-		
+
 		return this.plainsBiomeWrapper;
 	}
-	
+
 	@Override
 	public IDimensionTypeWrapper getDimensionType() { return DimensionTypeWrapper.getDimensionTypeWrapper(this.level.dimensionType()); }
-	
-	
+
+
 	@Override
 	public String getDimensionName() { return this.level.dimension().location().toString(); }
-	
+
 	@Override
 	public long getHashedSeed() { return this.level.getBiomeManager().biomeZoomSeed; }
-	
+
 	@Override
 	public String getDhIdentifier() { return this.getHashedSeedEncoded() + "@" + this.getDimensionName(); }
-	
+
 	@Override
 	public EDhApiLevelType getLevelType() { return EDhApiLevelType.CLIENT_LEVEL; }
-	
+
 	public ClientLevel getLevel() { return this.level; }
-	
+
 	@Override
 	public boolean hasCeiling() { return this.level.dimensionType().hasCeiling(); }
-	
+
 	@Override
 	public boolean hasSkyLight() { return this.level.dimensionType().hasSkyLight(); }
-	
+
 	@Override
 	public int getMaxHeight() { return this.level.getHeight(); }
-	
+
 	@Override
 	public int getMinHeight()
 	{
@@ -227,7 +213,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		return this.level.getMinY();
         #endif
 	}
-	
+
 	@Override
 	public IChunkWrapper tryGetChunk(DhChunkPos pos)
 	{
@@ -235,40 +221,40 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		{
 			return null;
 		}
-		
+
 		ChunkAccess chunk = this.level.getChunk(pos.getX(), pos.getZ(), ChunkStatus.EMPTY, false);
 		if (chunk == null)
 		{
 			return null;
 		}
-		
+
 		return new ChunkWrapper(chunk, this);
 	}
-	
+
 	@Override
 	public boolean hasChunkLoaded(int chunkX, int chunkZ)
 	{
 		ChunkSource source = this.level.getChunkSource();
 		return source.hasChunk(chunkX, chunkZ);
 	}
-	
+
 	@Override
 	public IBlockStateWrapper getBlockState(DhBlockPos pos)
 	{ return BlockStateWrapper.fromBlockState(this.level.getBlockState(McObjectConverter.Convert(pos)), this); }
-	
+
 	@Override
 	public IBiomeWrapper getBiome(DhBlockPos pos) { return BiomeWrapper.getBiomeWrapper(this.level.getBiome(McObjectConverter.Convert(pos)), this); }
-	
+
 	@Override
 	public ClientLevel getWrappedMcObject() { return this.level; }
-	
+
 	@Override
-	public void onUnload() 
-	{ 
+	public void onUnload()
+	{
 		LEVEL_WRAPPER_BY_CLIENT_LEVEL.remove(this.level);
 		this.parentDhLevel = null;
 	}
-	
+
 	@Override
 	public File getDhSaveFolder()
 	{
@@ -276,31 +262,31 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		{
 			return null;
 		}
-		
+
 		return this.parentDhLevel.getSaveStructure().getSaveFolder(this);
 	}
-	
-	
-	
-	
+
+
+
+
 	//===================//
 	// generic rendering //
 	//===================//
-	
+
 	@Override
 	public void setParentLevel(IDhLevel parentLevel) { this.parentDhLevel = parentLevel; }
-	
-	@Override 
+
+	@Override
 	public IDhApiCustomRenderRegister getRenderRegister()
 	{
 		if (this.parentDhLevel == null)
 		{
 			return null;
 		}
-		
+
 		return this.parentDhLevel.getGenericRenderer();
 	}
-	
+
 	@Override
 	public Color getCloudColor(float tickDelta)
 	{
@@ -312,13 +298,13 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		return ColorUtil.toColorObjARGB(argbColor);
 		#endif
 	}
-	
-	
-	
+
+
+
 	//================//
 	// base overrides //
 	//================//
-	
+
 	@Override
 	public String toString()
 	{
@@ -326,8 +312,8 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		{
 			return "Wrapped{null}";
 		}
-		
+
 		return "Wrapped{" + this.level.toString() + "@" + this.getDhIdentifier() + "}";
 	}
-	
+
 }

@@ -39,8 +39,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 #endif
 
 #if MC_VER < MC_1_19_4
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
 #else
 #endif
 #if MC_VER >= MC_1_20_2
@@ -83,34 +81,34 @@ import org.joml.Vector4f;
 public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 {
 	public static final MinecraftRenderWrapper INSTANCE = new MinecraftRenderWrapper();
-	
+
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	private static final Minecraft MC = Minecraft.getInstance();
 	private static final IWrapperFactory FACTORY = WrapperFactory.INSTANCE;
-	
+
 	private static final IOptifineAccessor OPTIFINE_ACCESSOR = ModAccessorInjector.INSTANCE.get(IOptifineAccessor.class);
-	
-	/** 
-	 * In the case of immersive portals multiple levels may be active at once, causing conflicting lightmaps. <br> 
+
+	/**
+	 * In the case of immersive portals multiple levels may be active at once, causing conflicting lightmaps. <br>
 	 * Requiring the use of multiple {@link LightMapWrapper}.
 	 */
 	public ConcurrentHashMap<IDimensionTypeWrapper, LightMapWrapper> lightmapByDimensionType = new ConcurrentHashMap<>();
-	
-	/** 
+
+	/**
 	 * Holds the render buffer that should be used when displaying levels to the screen.
 	 * This is used for Optifine shader support so we can render directly to Optifine's level frame buffer.
 	 */
 	public int finalLevelFrameBufferId = -1;
-	
-	
-	
+
+
+
 	@Override
 	public Vec3f getLookAtVector()
 	{
 		Camera camera = MC.gameRenderer.getMainCamera();
 		return new Vec3f(camera.getLookVector().x(), camera.getLookVector().y(), camera.getLookVector().z());
 	}
-	
+
 	@Override
 	/** Unless you really need to know if the player is blind, use {@link MinecraftRenderWrapper#isFogStateSpecial()}/{@link IMinecraftRenderWrapper#isFogStateSpecial()} instead */
 	public boolean playerHasBlindingEffect()
@@ -121,16 +119,16 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 				#endif
 				;
 	}
-	
+
 	@Override
 	public Vec3d getCameraExactPosition()
 	{
 		Camera camera = MC.gameRenderer.getMainCamera();
 		Vec3 projectedView = camera.getPosition();
-		
+
 		return new Vec3d(projectedView.x, projectedView.y, projectedView.z);
 	}
-	
+
 	@Override
 	public Color getFogColor(float partialTicks)
 	{
@@ -163,7 +161,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		#endif
 	}
 	// getSpecialFogColor() is the same as getFogColor()
-	
+
 	@Override
 	public Color getSkyColor()
 	{
@@ -177,7 +175,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 			#else
 			frameTime = MC.deltaTracker.getGameTimeDeltaTicks();
 			#endif
-			
+
 			#if MC_VER < MC_1_17_1
 			Vec3 colorValues = MC.level.getSkyColor(MC.gameRenderer.getMainCamera().getBlockPosition(), frameTime);
 			return new Color((float) colorValues.x, (float) colorValues.y, (float) colorValues.z);
@@ -194,13 +192,13 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 			return new Color(0, 0, 0);
 		}
 	}
-	
+
 	@Override
 	public double getFov(float partialTicks)
 	{
 		return MC.gameRenderer.getFov(MC.gameRenderer.getMainCamera(), partialTicks, true);
 	}
-	
+
 	/** Measured in chunks */
 	@Override
 	public int getRenderDistance()
@@ -212,7 +210,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		return MC.options.getEffectiveRenderDistance();
 		#endif
 	}
-	
+
 	@Override
 	public int getScreenWidth()
 	{
@@ -221,13 +219,13 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		// TODO: test these once we can run with Optifine again
 //		int[] heightArray = new int[1];
 //		int[] widthArray = new int[1];
-//		
+//
 //		long window = GLProxy.getInstance().minecraftGlContext;
 //		GLFW.glfwGetWindowSize(window, widthArray, heightArray); // option 1
 //		GLFW.glfwGetFramebufferSize(window, widthArray, heightArray); // option 2
-		
-		
-		
+
+
+
 		int width = MC.getWindow().getWidth();
 		if (OPTIFINE_ACCESSOR != null)
 		{
@@ -247,9 +245,9 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		}
 		return height;
 	}
-	
+
 	private RenderTarget getRenderTarget() { return MC.getMainRenderTarget(); }
-	
+
 	@Override
 	public int getTargetFrameBuffer()
 	{
@@ -258,33 +256,33 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		{
 			return this.finalLevelFrameBufferId;
 		}
-		
+
 		return this.getRenderTarget().frameBufferId;
 	}
-	
+
 	@Override
 	public void clearTargetFrameBuffer() { this.finalLevelFrameBufferId = -1; }
-	
+
 	@Override
 	public int getDepthTextureId() { return this.getRenderTarget().getDepthTextureId(); }
 	@Override
 	public int getColorTextureId() { return this.getRenderTarget().getColorTextureId(); }
-	
+
 	@Override
 	public int getTargetFrameBufferViewportWidth()
 	{
 		return getRenderTarget().viewWidth;
 	}
-	
+
 	@Override
 	public int getTargetFrameBufferViewportHeight()
 	{
 		return getRenderTarget().viewHeight;
 	}
-	
+
 	@Override
 	public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return this.lightmapByDimensionType.get(level.getDimensionType()); }
-	
+
 	@Override
 	public boolean isFogStateSpecial()
 	{
@@ -301,22 +299,8 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		return MC.gameRenderer.getMainCamera().getFluidInCamera() != FogType.NONE || isBlind;
 		#endif
 	}
-	
-	/** 
-	 * It's better to use {@link MinecraftRenderWrapper#setLightmapId(int, IClientLevelWrapper)} if possible,
-	 * however old MC versions don't support it.
-	 */
-	public void updateLightmap(NativeImage lightPixels, IClientLevelWrapper level)
-	{
-		// Using ClientLevelWrapper as the key would be better, but we don't have a consistent way to create the same
-		// object for the same MC level and/or the same hash,
-		// so this will have to do for now
-		IDimensionTypeWrapper dimensionType = level.getDimensionType();
-		
-		LightMapWrapper wrapper = this.lightmapByDimensionType.computeIfAbsent(dimensionType, (dimType) -> new LightMapWrapper());
-		wrapper.uploadLightmap(lightPixels);
-	}
-	public void setLightmapId(int tetxureId, IClientLevelWrapper level)
+
+    public void setLightmapId(int tetxureId, IClientLevelWrapper level)
 	{
 		// Using ClientLevelWrapper as the key would be better, but we don't have a consistent way to create the same
 		// object for the same MC level and/or the same hash,
@@ -326,5 +310,5 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		LightMapWrapper wrapper = this.lightmapByDimensionType.computeIfAbsent(dimensionType, (dimType) -> new LightMapWrapper());
 		wrapper.setLightmapId(tetxureId);
 	}
-	
+
 }
