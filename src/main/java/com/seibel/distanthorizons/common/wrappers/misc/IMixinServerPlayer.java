@@ -1,15 +1,13 @@
 package com.seibel.distanthorizons.common.wrappers.misc;
 
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.WorldServer;
 import org.jetbrains.annotations.Nullable;
 
 public interface IMixinServerPlayer
 {
 	@Nullable
-	ServerLevel distantHorizons$getDimensionChangeDestination();
-	
-	#if MC_VER == MC_1_16_5
-	void distantHorizons$setDimensionChangeDestination(ServerLevel dimensionChangeDestination);
-	#endif
-	
+    WorldServer distantHorizons$getDimensionChangeDestination();
+
+	void distantHorizons$setDimensionChangeDestination(WorldServer dimensionChangeDestination);
+
 }

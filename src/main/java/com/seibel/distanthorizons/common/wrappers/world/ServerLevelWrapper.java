@@ -37,107 +37,80 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkSource;
+import net.minecraft.world.WorldServer;
 
-#if MC_VER <= MC_1_20_4
-import net.minecraft.world.level.chunk.ChunkStatus;
-#else
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-#endif
-
-#if MC_VER < MC_1_21_3
-#else
-import java.nio.file.Path;
-#endif
 
 import org.apache.logging.log4j.Logger;
 
 public class ServerLevelWrapper implements IServerLevelWrapper
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	private static final ConcurrentHashMap<ServerLevel, ServerLevelWrapper> LEVEL_WRAPPER_BY_SERVER_LEVEL = new ConcurrentHashMap<>();
-	
-	private final ServerLevel level;
+	private static final ConcurrentHashMap<WorldServer, ServerLevelWrapper> LEVEL_WRAPPER_BY_SERVER_LEVEL = new ConcurrentHashMap<>();
+
+	private final WorldServer level;
 	@Deprecated // TODO circular references are bad
 	private IDhLevel parentDhLevel;
-	
-	
-	
+
+
+
 	//==============//
 	// constructors //
 	//==============//
-	
-	public static ServerLevelWrapper getWrapper(ServerLevel level) 
+
+	public static ServerLevelWrapper getWrapper(WorldServer level)
 	{ return LEVEL_WRAPPER_BY_SERVER_LEVEL.computeIfAbsent(level, ServerLevelWrapper::new); }
-	
-	public ServerLevelWrapper(ServerLevel level) { this.level = level; }
-	
-	
-	
+
+	public ServerLevelWrapper(WorldServer level) { this.level = level; }
+
+
+
 	//=========//
 	// methods //
 	//=========//
-	
+
 	@Override
-	public File getMcSaveFolder() 
-	{ 
-		#if MC_VER < MC_1_21_3
-		return this.level.getChunkSource().getDataStorage().dataFolder;
-		#else
-		return this.level.getChunkSource().getDataStorage().dataFolder.toFile();
-		#endif
-	}
-	
+	public File getMcSaveFolder() {
+        return this.level.getSaveHandler().getWorldDirectory();
+    }
+
 	@Override
 	public String getWorldFolderName()
 	{
-		#if MC_VER >= MC_1_17_1
-		return this.level.getServer().getWorldScreenshotFile().get().getParent().getFileName().toString();
-		#else // <= 1.16.5
-		return this.level.getServer().getWorldScreenshotFile().getParentFile().getName();
-		#endif
+        return this.level.getSaveHandler().getWorldDirectoryName();
 	}
-	
+
 	@Override
 	public DimensionTypeWrapper getDimensionType() { return DimensionTypeWrapper.getDimensionTypeWrapper(this.level.dimensionType()); }
 
 	@Override
-	public String getDimensionName() { return this.level.dimension().location().toString(); }
-	
+	public String getDimensionName() { return this.level.provider.getDimensionName(); }
+
 	@Override
 	public long getHashedSeed() { return this.level.getBiomeManager().biomeZoomSeed; }
-	
+
 	@Override
 	public String getDhIdentifier() { return this.getDimensionName(); }
-	
+
 	@Override
 	public EDhApiLevelType getLevelType() { return EDhApiLevelType.SERVER_LEVEL; }
-	
-	public ServerLevel getLevel() { return this.level; }
-	
+
+	public WorldServer getLevel() { return this.level; }
+
 	@Override
 	public boolean hasCeiling() { return this.level.dimensionType().hasCeiling(); }
-	
+
 	@Override
 	public boolean hasSkyLight() { return this.level.dimensionType().hasSkyLight(); }
-	
+
 	@Override
 	public int getMaxHeight() { return this.level.getHeight(); }
-	
+
 	@Override
 	public int getMinHeight()
 	{
-        #if MC_VER < MC_1_17_1
         return 0;
-        #elif MC_VER < MC_1_21_3
-		return this.level.getMinBuildHeight();
-        #else
-		return this.level.getMinY();
-        #endif
 	}
-	
+
 	@Override
 	public IChunkWrapper tryGetChunk(DhChunkPos pos)
 	{
@@ -145,16 +118,16 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 		{
 			return null;
 		}
-		
+
 		ChunkAccess chunk = this.level.getChunk(pos.getX(), pos.getZ(), ChunkStatus.FULL, false);
 		if (chunk == null)
 		{
 			return null;
 		}
-		
+
 		return new ChunkWrapper(chunk, this);
 	}
-	
+
 	@Override
 	public boolean hasChunkLoaded(int chunkX, int chunkZ)
 	{
@@ -162,29 +135,29 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 		ChunkSource source = this.level.getChunkSource();
 		return source.hasChunk(chunkX, chunkZ);
 	}
-	
+
 	@Override
 	public IBlockStateWrapper getBlockState(DhBlockPos pos)
 	{
 		return BlockStateWrapper.fromBlockState(this.level.getBlockState(McObjectConverter.Convert(pos)), this);
 	}
-	
+
 	@Override
 	public IBiomeWrapper getBiome(DhBlockPos pos)
 	{
-		return BiomeWrapper.getBiomeWrapper(this.level.getBiome(McObjectConverter.Convert(pos)), this);
+		return BiomeWrapper.getBiomeWrapper(this.level.getBiomeGenForCoords(pos.getX(), pos.getZ()), this);
 	}
-	
+
 	@Override
-	public ServerLevel getWrappedMcObject() { return this.level; }
-	
+	public WorldServer getWrappedMcObject() { return this.level; }
+
 	@Override
 	public void onUnload() { LEVEL_WRAPPER_BY_SERVER_LEVEL.remove(this.level); }
-	
-	
+
+
 	@Override
 	public void setParentLevel(IDhLevel parentLevel) { this.parentDhLevel = parentLevel; }
-	
+
 	@Override
 	public IDhApiCustomRenderRegister getRenderRegister()
 	{
@@ -192,10 +165,10 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 		{
 			return null;
 		}
-		
+
 		return this.parentDhLevel.getGenericRenderer();
 	}
-	
+
 	@Override
 	public File getDhSaveFolder()
 	{
@@ -203,18 +176,18 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 		{
 			return null;
 		}
-		
+
 		return this.parentDhLevel.getSaveStructure().getSaveFolder(this);
 	}
-	
-	
-	
-	
+
+
+
+
 	//================//
 	// base overrides //
 	//================//
-	
+
 	@Override
 	public String toString() { return "Wrapped{" + this.level.toString() + "@" + this.getDhIdentifier() + "}"; }
-	
+
 }
