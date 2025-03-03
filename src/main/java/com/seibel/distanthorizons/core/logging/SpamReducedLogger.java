@@ -70,7 +70,7 @@ public class SpamReducedLogger
 	{
 		if (logTries.get() >= maxLogCount)
 			return;
-		LOGGER.log(level.isLessSpecificThan(Level.INFO) ? Level.INFO : level, str, param);
+		LOGGER.log(Level.INFO.isAtLeastAsSpecificAs(level) ? Level.INFO : level, str, param);
 	}
 	
 	public void error(String str, Object... param)
@@ -107,7 +107,7 @@ public class SpamReducedLogger
 	{
 		if (logTries.getAndIncrement() >= maxLogCount)
 			return;
-		LOGGER.log(level.isLessSpecificThan(Level.INFO) ? Level.INFO : level, str, param);
+		LOGGER.log(Level.INFO.isAtLeastAsSpecificAs(level) ? Level.INFO : level, str, param);
 	}
 	
 	public void errorInc(String str, Object... param)
