@@ -91,8 +91,8 @@ public enum Mixins {
         )
     ),
 
-    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).addMixinClasses(
+    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).addExcludedMod(TargetedMod.ARCHAICFIX)
+        .setSide(Side.CLIENT).setPhase(Phase.EARLY).addMixinClasses(
              "angelica.archaic.MixinBlockFence"
             ,"angelica.archaic.MixinFMLClientHandler"
             ,"angelica.archaic.MixinGuiIngameForge"
