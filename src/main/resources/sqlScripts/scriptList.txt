@@ -1,0 +1,10 @@
+
+0010-sqlite-createInitialDataTables.sql
+0020-sqlite-createFullDataSourceV2Tables.sql
+0030-sqlite-changeTableJournaling.sql
+0031-sqlite-useSqliteWalJournaling.sql
+0040-sqlite-removeRenderCache.sql
+0050-sqlite-addApplyToParentIndex.sql
+0060-sqlite-createChunkHashTable.sql
+0070-sqlite-createBeaconBeamTable.sql
+0080-sqlite-addApplyToChildrenColumn.sql
