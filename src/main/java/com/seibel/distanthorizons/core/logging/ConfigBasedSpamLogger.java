@@ -105,15 +105,15 @@ public class ConfigBasedSpamLogger
 		
 		Message msg = logger.getMessageFactory().newMessage(str, param);
 		String msgStr = msg.getFormattedMessage();
-		if (mode.levelForFile.isLessSpecificThan(level))
+		if (level.isAtLeastAsSpecificAs(mode.levelForFile))
 		{
-			Level logLevel = level.isLessSpecificThan(Level.INFO) ? Level.INFO : level;
+			Level logLevel = Level.INFO.isAtLeastAsSpecificAs(level) ? Level.INFO : level;
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				logger.log(logLevel, msgStr, (Throwable) param[param.length - 1]);
 			else
 				logger.log(logLevel, msgStr);
 		}
-		if (mode.levelForChat.isLessSpecificThan(level))
+		if (level.isAtLeastAsSpecificAs(mode.levelForChat))
 		{
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				MC.logToChat(level, msgStr + "\n" +
@@ -160,15 +160,15 @@ public class ConfigBasedSpamLogger
 		
 		Message msg = logger.getMessageFactory().newMessage(str, param);
 		String msgStr = msg.getFormattedMessage();
-		if (mode.levelForFile.isLessSpecificThan(level))
+		if (level.isAtLeastAsSpecificAs(mode.levelForFile))
 		{
-			Level logLevel = level.isLessSpecificThan(Level.INFO) ? Level.INFO : level;
+			Level logLevel = Level.INFO.isAtLeastAsSpecificAs(level) ? Level.INFO : level;
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				logger.log(logLevel, msgStr, (Throwable) param[param.length - 1]);
 			else
 				logger.log(logLevel, msgStr);
 		}
-		if (mode.levelForChat.isLessSpecificThan(level))
+		if (level.isAtLeastAsSpecificAs(mode.levelForChat))
 		{
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				MC.logToChat(level, msgStr + "\n" +

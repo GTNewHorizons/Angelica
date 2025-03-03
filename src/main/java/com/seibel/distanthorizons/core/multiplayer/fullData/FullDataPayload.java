@@ -10,6 +10,7 @@ import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -47,7 +48,8 @@ public class FullDataPayload implements INetworkObject, AutoCloseable
 			EDhApiDataCompressionMode compressionMode = Config.Common.LodBuilding.dataCompression.get();
 			try (FullDataSourceV2DTO dataSourceDto = FullDataSourceV2DTO.CreateFromDataSource(fullDataSource, compressionMode))
 			{
-				this.dtoBuffer = ByteBufAllocator.DEFAULT.buffer();
+				// TODO this.dtoBuffer = ByteBufAllocator.DEFAULT.buffer();
+                this.dtoBuffer = UnpooledByteBufAllocator.DEFAULT.buffer();
 				dataSourceDto.encode(this.dtoBuffer);
 			}
 		}
