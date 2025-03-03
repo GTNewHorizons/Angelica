@@ -526,7 +526,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				//  to test if the memoization is actually needed.
 				this.missingGenerationPosFunc = Suppliers.memoizeWithExpiration(
 						() -> this.fullDataSourceProvider.getPositionsToRetrieve(this.pos),
-						10, TimeUnit.MINUTES);
+						10, TimeUnit.MINUTES)::get;
 			}
 			
 			LongArrayList missingGenerationPos = this.getMissingGenerationPos();
