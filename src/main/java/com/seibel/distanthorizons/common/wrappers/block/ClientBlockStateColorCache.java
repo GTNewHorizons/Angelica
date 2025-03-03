@@ -24,21 +24,12 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockFlower;
+import net.minecraft.block.BlockLeaves;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.core.Direction;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.FlowerBlock;
-import net.minecraft.world.level.block.LeavesBlock;
-import net.minecraft.world.level.block.RotatedPillarBlock;
-#if MC_VER >= MC_1_19_2
-import net.minecraft.util.RandomSource;
-#else
 import java.util.Random;
-#endif
-import net.minecraft.world.level.block.state.BlockState;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashSet;
@@ -47,19 +38,19 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This stores and calculates the colors
- * the given {@link BlockState} should have based
+ * the given should have based
  * on the given {@link IClientLevelWrapper}.
- * 
+ *
  * @see ColorUtil
  */
 public class ClientBlockStateColorCache
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	
+
 	private static final HashSet<BlockState> BLOCK_STATES_THAT_NEED_LEVEL = new HashSet<>();
 	private static final HashSet<BlockState> BROKEN_BLOCK_STATES = new HashSet<>();
-	
-	/** 
+
+	/**
 	 * Methods using MC's "RandomSource" object aren't thread safe <br>
 	 * so we need to put locks around that logic. <br>
 	 * specifically:
@@ -68,44 +59,39 @@ public class ClientBlockStateColorCache
 	 * </code>
 	 */
 	private static final ReentrantLock RESOLVE_LOCK = new ReentrantLock();
-	
-	
+
+
 	/** This is the order each direction on a block is processed when attempting to get the texture/color */
 	private static final Direction[] COLOR_RESOLUTION_DIRECTION_ORDER = { Direction.UP, Direction.NORTH, Direction.EAST, Direction.WEST, Direction.SOUTH, Direction.DOWN };
-	
+
 	private static final int FLOWER_COLOR_SCALE = 5;
-	
-	
-	
-	#if MC_VER < MC_1_19_2
+
+
+
 	private static final Random RANDOM = new Random(0);
-	#else
-	/** Note: this object isn't thread safe and must be put in a lock */
-	private static final RandomSource RANDOM = RandomSource.create();
-	#endif
-	
+
 	private final IClientLevelWrapper levelWrapper;
 	private final BlockState blockState;
 	private final LevelReader level;
-	
+
 	private boolean isColorResolved = false;
 	private int baseColor = 0;
 	private boolean needShade = true;
 	private boolean needPostTinting = false;
 	private int tintIndex = 0;
-	
-	
-	
+
+
+
 	//===========//
 	// constants //
 	//===========//
-	
+
 	private static final int MIN_SRGB_BITS = 0x39000000; // 2^(-13)
 	private static final int MAX_SRGB_BITS = 0x3f7fffff; // 1.0 - f32::EPSILON
 	private static final float MIN_SRGB_BOUND = Float.intBitsToFloat(MIN_SRGB_BITS);
 	private static final float MAX_SRGB_BOUND = Float.intBitsToFloat(MAX_SRGB_BITS);
-	
-	private static final int[] linearToSrgbTable = new int[] 
+
+	private static final int[] linearToSrgbTable = new int[]
 		{
 			0x0073000d, 0x007a000d, 0x0080000d, 0x0087000d, 0x008d000d, 0x0094000d, 0x009a000d, 0x00a1000d,
 			0x00a7001a, 0x00b4001a, 0x00c1001a, 0x00ce001a, 0x00da001a, 0x00e7001a, 0x00f4001a, 0x0101001a,
@@ -121,8 +107,8 @@ public class ClientBlockStateColorCache
 			0x44c20798, 0x488e071e, 0x4c1c06b6, 0x4f76065d, 0x52a50610, 0x55ac05cc, 0x5892058f, 0x5b590559,
 			0x5e0c0a23, 0x631c0980, 0x67db08f6, 0x6c55087f, 0x70940818, 0x74a007bd, 0x787d076c, 0x7c330723,
 		};
-	
-	private static final float[] srgbToLinearTable = new float[] 
+
+	private static final float[] srgbToLinearTable = new float[]
 		{
 			0.0f, 0.000303527f, 0.000607054f, 0.00091058103f, 0.001214108f, 0.001517635f, 0.0018211621f, 0.002124689f,
 			0.002428216f, 0.002731743f, 0.00303527f, 0.0033465356f, 0.003676507f, 0.004024717f, 0.004391442f,
@@ -157,13 +143,13 @@ public class ClientBlockStateColorCache
 			0.8549928f, 0.8631574f, 0.87136734f, 0.8796226f, 0.8879232f, 0.89626956f, 0.90466136f, 0.913099f, 0.92158204f,
 			0.93011117f, 0.9386859f, 0.9473069f, 0.9559735f, 0.9646866f, 0.9734455f, 0.98225087f, 0.9911022f, 1.0f
 		};
-	
-	
-	
+
+
+
 	//=============//
 	// constructor //
 	//=============//
-	
+
 	public ClientBlockStateColorCache(BlockState blockState, IClientLevelWrapper samplingLevel)
 	{
 		this.blockState = blockState;
@@ -171,25 +157,25 @@ public class ClientBlockStateColorCache
 		this.level = (LevelReader) samplingLevel.getWrappedMcObject();
 		this.resolveColors();
 	}
-	
-	
-	
+
+
+
 	//===================//
 	// color calculation //
 	//===================//
-	
+
 	private void resolveColors()
 	{
 		if (this.isColorResolved)
 		{
 			return;
 		}
-		
+
 		try
 		{
 			// getQuads() isn't thread safe so we need to put this logic in a lock
 			RESOLVE_LOCK.lock();
-			
+
 			if (this.blockState.getFluidState().isEmpty())
 			{
 				// look for the first non-empty direction
@@ -198,7 +184,7 @@ public class ClientBlockStateColorCache
 				{
 					quads = Minecraft.getInstance().getModelManager().getBlockModelShaper().
 							getBlockModel(this.blockState).getQuads(this.blockState, direction, RANDOM);
-					
+
 					if (quads != null && !quads.isEmpty()
 						&& !(
 							this.blockState.getBlock() instanceof RotatedPillarBlock
@@ -209,13 +195,13 @@ public class ClientBlockStateColorCache
 						break;
 					}
 				}
-				
+
 				if (quads == null || quads.isEmpty())
 				{
 					quads = Minecraft.getInstance().getModelManager().getBlockModelShaper().
 							getBlockModel(this.blockState).getQuads(this.blockState, null, RANDOM);
 				}
-				
+
 				if (quads != null && !quads.isEmpty())
 				{
 					this.needPostTinting = quads.get(0).isTinted();
@@ -245,7 +231,7 @@ public class ClientBlockStateColorCache
 				this.baseColor = calculateColorFromTexture(Minecraft.getInstance().getModelManager().getBlockModelShaper().getParticleIcon(this.blockState),
 						ColorMode.getColorMode(this.blockState.getBlock()));
 			}
-			
+
 			this.isColorResolved = true;
 		}
 		finally
@@ -262,7 +248,7 @@ public class ClientBlockStateColorCache
 		double green = 0;
 		double blue = 0;
 		int tempColor;
-		
+
 		// don't render Chiseled blocks.
 		// Since ColorMode is set per block, you only need to check this once.
 		if (colorMode != ColorMode.Chisel)
@@ -277,7 +263,7 @@ public class ClientBlockStateColorCache
 					//OpenGL RGBA format native order: 0xRR GG BB AA
 					//_ OpenGL RGBA format Java Order: 0xAA BB GG RR
 					tempColor = TextureAtlasSpriteWrapper.getPixelRGBA(texture, 0, u, v);
-					
+
 					int r = (tempColor & 0x000000FF);
 					int g = (tempColor & 0x0000FF00) >>> 8;
 					int b = (tempColor & 0x00FF0000) >>> 16;
@@ -296,11 +282,11 @@ public class ClientBlockStateColorCache
 							else
 							{
 								a = 255; //just in case there are semi transparent pixels
-							}					
+							}
 						//		break;
 						//	case TRANSPARENT:
 						//		break; //do nothing, let it count towards transparency
-						
+
 					}
 					else if (a == 0 && colorMode != ColorMode.Glass)
 					{
@@ -320,7 +306,7 @@ public class ClientBlockStateColorCache
 				}
 			}
 		}
-		
+
 		if (count == 0)
 		{
 			// this block is entirely transparent
@@ -335,7 +321,7 @@ public class ClientBlockStateColorCache
 					linearToSrgb((float) (green / (double) alpha)),
 					linearToSrgb((float) (blue / (double) alpha)));
 		}
-		
+
 		//check if not missing texture
 		if (tempColor == ColorUtil.argbToInt(255, 182, 0, 182))
 		{
@@ -346,22 +332,14 @@ public class ClientBlockStateColorCache
 	}
 	private static int getTextureWidth(TextureAtlasSprite texture)
 	{
-        #if MC_VER < MC_1_19_4
-		return texture.getWidth();
-        #else
-		return texture.contents().width();
-        #endif
+       return texture.getIconWidth();
 	}
 	private static int getTextureHeight(TextureAtlasSprite texture)
 	{
-        #if MC_VER < MC_1_19_4
-		return texture.getHeight();
-        #else
-		return texture.contents().height();
-        #endif
+       return texture.getIconHeight();
 	}
 	/**
-	 * This method was suggested by IMS from the Iris/Sodium team. 
+	 * This method was suggested by IMS from the Iris/Sodium team.
 	 * That's where the numbers and code are based.
 	 */
 	private static int linearToSrgb(float c)
@@ -369,26 +347,26 @@ public class ClientBlockStateColorCache
 		if (!(c > MIN_SRGB_BOUND)) {
 			c = MIN_SRGB_BOUND;
 		}
-		
+
 		if (c > MAX_SRGB_BOUND) {
 			c = MAX_SRGB_BOUND;
 		}
 		int inputBits = Float.floatToRawIntBits(c);
 		int entry = linearToSrgbTable[((inputBits - MIN_SRGB_BITS) >> 20)];
-		
+
 		int bias = (entry >>> 16) << 9;
 		int scale = entry & 0xffff;
 		int t = (inputBits >>> 12) & 0xff;
-		
+
 		return (bias + (scale * t)) >>> 16;
 	}
-	
-	
-	
+
+
+
 	//===============//
 	// public getter //
 	//===============//
-	
+
 	public int getColor(BiomeWrapper biome, DhBlockPos pos)
 	{
 		// only get the tint if the block needs to be tinted
@@ -396,14 +374,14 @@ public class ClientBlockStateColorCache
 		{
 			return this.baseColor;
 		}
-		
+
 		// don't try tinting blocks that don't support our method of tint getting
 		if (BROKEN_BLOCK_STATES.contains(this.blockState))
 		{
 			return this.baseColor;
 		}
-		
-		
+
+
 		// attempt to get the tint
 		int tintColor = -1;
 		try
@@ -423,7 +401,7 @@ public class ClientBlockStateColorCache
 					BLOCK_STATES_THAT_NEED_LEVEL.add(this.blockState);
 				}
 			}
-			
+
 			// use the level logic only if requested
 			if (BLOCK_STATES_THAT_NEED_LEVEL.contains(this.blockState))
 			{
@@ -442,9 +420,9 @@ public class ClientBlockStateColorCache
 				BROKEN_BLOCK_STATES.add(this.blockState);
 			}
 		}
-		
-		
-		
+
+
+
 		if (tintColor != -1)
 		{
 			return ColorUtil.multiplyARGBwithRGB(this.baseColor, tintColor);
@@ -455,13 +433,13 @@ public class ClientBlockStateColorCache
 			return this.baseColor;
 		}
 	}
-	
-	
-	
+
+
+
 	//================//
 	// helper classes //
 	//================//
-	
+
 	enum ColorMode
 	{
 		Default,
@@ -469,17 +447,17 @@ public class ClientBlockStateColorCache
 		Leaves,
 		Chisel,
 		Glass;
-		
+
 		static ColorMode getColorMode(Block block)
 		{
-			if (block instanceof LeavesBlock) return Leaves;
-			if (block instanceof FlowerBlock) return Flower;
+			if (block instanceof BlockLeaves) return Leaves;
+			if (block instanceof BlockFlower) return Flower;
 			if (block.toString().contains("glass")) return Glass;
 			if (block.toString().equals("Block{chiselsandbits:chiseled}")) return Chisel;
 			return Default;
 		}
 	}
-	
-	
-	
+
+
+
 }
