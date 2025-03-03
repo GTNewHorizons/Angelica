@@ -337,91 +337,6 @@ public class ChunkWrapper implements IChunkWrapper
 		return BlockStateWrapper.fromBlockState(this.chunk.getBlockState(pos), this.wrappedLevel, guess);
 	}
 
-	/**
-
-	 // Commented out experimental LevelChunkSection cloning logic to fix extremely rare concurrency modification issue
-	 // James has only ever seen a report relating to LevelSection concurrent modification once,
-	 // the issue can cause DH lighting/LOD building to fail due to the chunk being modified on the server.
-	 // James has only heard of this issue once, so it isn't a high priority issue.
-	 // And from James' quick look at a few different MC versions it appears the LevelChunkSection object changes quite drastically between MC versions,
-	 // meaning any cloning logic would have to either be a new wrapper or very MC version dependent, either way a lot of additional work.
-	 // Due to the large time cost and extremely rare nature of the issue, this logic is commented out unless this issue pops up again in the future.
-
-	 // instance variable to hold the cloned sections
-	private final LevelChunkSection[] levelChunkSections;
-
-	 // new constructor logic to clone the sections
-	public constructor(...)
-	{
-		// other constructor logic //
-
-		LevelChunkSection[] sections = this.chunk.getSections();
-		this.levelChunkSections = new LevelChunkSection[sections.length];
-		for (int i = 0; i < sections.length; i++)
-		{
-			LevelChunkSection section = sections[i];
-			if (section != null)
-			{
-	            // TODO implement section cloning for older MC versions, only 1.21.4 MC (and maybe other semi recent versions) have a clean way to handle this
-	            // TODO we probably want a wrapper object instead
-				#if MC_VER < MC_1_21_4
-				this.levelChunkSections[i] = section;
-				#else
-				this.levelChunkSections[i] = section.copy();
-				#endif
-			}
-		}
-	}
-
-	 // replacement getters
-	@Override
-	public IBlockStateWrapper getBlockState(int relX, int relY, int relZ)
-	{
-		this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
-		return this.getBlockStateInternal(relX, relY, relZ, null);
-	}
-
-	@Override
-	public IBlockStateWrapper getBlockState(int relX, int relY, int relZ, IMutableBlockPosWrapper mcBlockPos, IBlockStateWrapper guess)
-	{
-		this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
-		return this.getBlockStateInternal(relX, relY, relZ, guess);
-	}
-
-	// internal getter logic
-	private IBlockStateWrapper getBlockStateInternal(int relX, int y, int relZ, @Nullable IBlockStateWrapper guess)
-	{
-		try
-		{
-			// attempt to get the section for this position
-			int i = (y - this.getInclusiveMinBuildHeight()) / 16;
-			if (i >= 0 && i < this.levelChunkSections.length)
-			{
-				LevelChunkSection section = this.levelChunkSections[i];
-				if (!section.hasOnlyAir())
-				{
-					if (guess != null)
-					{
-						return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15), this.wrappedLevel, guess);
-					}
-					else
-					{
-						return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15), this.wrappedLevel);
-					}
-				}
-			}
-
-			return BlockStateWrapper.AIR;
-		}
-		catch (Exception e)
-		{
-			return BlockStateWrapper.AIR;
-		}
-	}
-	 */
-
-
-
 	@Override
 	public IMutableBlockPosWrapper getMutableBlockPosWrapper() { return MUTABLE_BLOCK_POS_WRAPPER_REF.get(); }
 
@@ -583,7 +498,7 @@ public class ChunkWrapper implements IChunkWrapper
 	//================//
 
 	@Override
-	public String toString() { return this.chunk.getClass().getSimpleName() + this.chunk.getPos(); }
+	public String toString() { return this.chunk.getClass().getSimpleName() + this.chunk.xPosition + "," + this.chunk.zPosition; }
 
 	//@Override
 	//public int hashCode()
