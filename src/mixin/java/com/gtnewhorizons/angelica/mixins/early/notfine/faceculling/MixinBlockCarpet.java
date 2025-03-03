@@ -15,6 +15,7 @@ public abstract class MixinBlockCarpet extends Block implements IFaceObstruction
      * @author jss2a98aj
      * @reason More accurate face culling.
      */
+    @Override
     @Overwrite()
     public boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
         //If this is the top

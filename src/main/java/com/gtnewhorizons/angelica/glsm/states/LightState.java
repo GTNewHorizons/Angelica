@@ -18,7 +18,6 @@ public class LightState implements ISettableState<LightState> {
     private static final Vector4i vector4i = new Vector4i();
     private static final Vector4f vector4f = new Vector4f();
     private static final Vector3i vector3i = new Vector3i();
-    private static final Vector3f vector3f = new Vector3f();
     private static final Matrix3f matrix3f = new Matrix3f();
 
     public int light;

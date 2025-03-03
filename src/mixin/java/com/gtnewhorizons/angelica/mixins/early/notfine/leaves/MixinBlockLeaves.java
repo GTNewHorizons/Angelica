@@ -21,11 +21,13 @@ public abstract class MixinBlockLeaves extends BlockLeavesBase {
      * @author jss2a98aj
      * @reason Control leaf opacity.
      */
+    @Override
     @Overwrite
     public boolean isOpaqueCube() {
         return SettingsManager.leavesOpaque;
     }
 
+    @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
         if(field_150129_M[0] == null) {
             //A mod dev had no idea what they were doing.

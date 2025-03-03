@@ -14,6 +14,7 @@ public abstract class MixinBlockEnchantmentTable extends Block implements IFaceO
      * @author jss2a98aj
      * @reason More accurate face culling.
      */
+    @Override
     public boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
         //If this is the top
         if(side == 1) {

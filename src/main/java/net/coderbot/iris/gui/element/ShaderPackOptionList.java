@@ -67,7 +67,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 			row.add(element);
 
 			if (row.size() >= columns) {
-				this.addEntry(new ElementRowEntry(screen, this.navigation, row));
+				this.addEntry(new ElementRowEntry(this.navigation, row));
 				row = new ArrayList<>(); // Clearing the list would affect the row entry created above
 			}
 		}
@@ -77,7 +77,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 				row.add(AbstractElementWidget.EMPTY);
 			}
 
-			this.addEntry(new ElementRowEntry(screen, this.navigation, row));
+			this.addEntry(new ElementRowEntry(this.navigation, row));
 		}
 	}
 

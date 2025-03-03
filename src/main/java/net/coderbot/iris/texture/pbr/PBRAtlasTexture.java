@@ -2,8 +2,6 @@ package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
-import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.util.TextureExporter;
@@ -36,7 +34,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public PBRAtlasTexture(TextureMap textureMap, PBRType type) {
 		this.texMap = textureMap;
 		this.type = type;
-		id = type.appendToFileLocation(((TextureMapAccessor)textureMap).getLocationBlocksTexture());
+		id = type.appendToFileLocation(TextureMap.locationBlocksTexture);
 
 	}
 
@@ -112,11 +110,10 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
 
-        final TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
-		if (accessor.getMetadata().getFrameCount() > 1) {
-			final AnimationMetadataSection metadata = accessor.getMetadata();
+		if (sprite.animationMetadata.getFrameCount() > 1) {
+			final AnimationMetadataSection metadata = sprite.animationMetadata;
 			final int frameCount = sprite.getFrameCount();
-			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
+			for (int frame = sprite.frameCounter; frame >= 0; frame--) {
 				final int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
                     TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);

@@ -11,7 +11,6 @@ import org.lwjgl.opengl.GL11;
 import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalDouble;
 
 
 public abstract class RenderPhase {
@@ -98,6 +97,7 @@ public abstract class RenderPhase {
         this.endAction.run();
     }
 
+    @Override
     public boolean equals(@Nullable Object object) {
         if (this == object) {
             return true;
@@ -109,10 +109,12 @@ public abstract class RenderPhase {
         }
     }
 
+    @Override
     public int hashCode() {
         return this.name.hashCode();
     }
 
+    @Override
     public String toString() {
         return this.name;
     }

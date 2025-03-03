@@ -201,10 +201,6 @@ public class HardcodedCustomUniforms {
 		return blindFactorSqrt * blindFactorSqrt;
 	}
 
-	private static float frac(float value) {
-		return java.lang.Math.abs(value % 1);
-	}
-
 	private static float getAdjTime() {
 		return Math.abs(((((WorldTimeUniforms.getWorldDayTime()) / 1000.0f) + 6.0f) % 24.0f) - 12.0f);
 	}

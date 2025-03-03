@@ -102,7 +102,8 @@ public class GlFramebuffer extends GlResource {
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
 	}
 
-	protected void destroyInternal() {
+	@Override
+    protected void destroyInternal() {
 		OpenGlHelper.func_153184_g/*glDeleteFramebuffers*/(getGlId());
 	}
 

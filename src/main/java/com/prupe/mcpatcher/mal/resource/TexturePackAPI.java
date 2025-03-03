@@ -51,6 +51,7 @@ public class TexturePackAPI {
         List<IResourcePack> resourcePacks = new ArrayList<>();
         IResourceManager resourceManager = Minecraft.getMinecraft().getResourceManager();
         if (resourceManager instanceof SimpleReloadableResourceManager) {
+            @SuppressWarnings("unchecked")
             Set<Map.Entry<String, FallbackResourceManager>> entrySet = ((SimpleReloadableResourceManager) resourceManager).domainResourceManagers
                 .entrySet();
             for (Map.Entry<String, FallbackResourceManager> entry : entrySet) {
@@ -66,6 +67,7 @@ public class TexturePackAPI {
         return resourcePacks;
     }
 
+    @SuppressWarnings("unchecked")
     public static Set<String> getNamespaces() {
         Set<String> namespaces = new HashSet<>();
         namespaces.add(DEFAULT_NAMESPACE);
@@ -310,6 +312,7 @@ public class TexturePackAPI {
         TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
         if (textureManager != null) {
             Set<ResourceLocation> texturesToUnload = new HashSet<>();
+            @SuppressWarnings("unchecked")
             Set<Map.Entry<ResourceLocation, ITextureObject>> entrySet = textureManager.mapTextureObjects.entrySet();
             for (Map.Entry<ResourceLocation, ITextureObject> entry : entrySet) {
                 ResourceLocation resource = entry.getKey();

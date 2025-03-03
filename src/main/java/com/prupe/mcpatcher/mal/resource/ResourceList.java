@@ -110,6 +110,7 @@ public class ResourceList {
                 MCPatcherUtils.close(zipFile);
             }
         }
+        @SuppressWarnings("unchecked")
         Map<String, File> map = resourcePack.field_152781_b; // map
         if (map != null) {
             for (Map.Entry<String, File> entry : map.entrySet()) {

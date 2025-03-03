@@ -49,7 +49,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.23")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.27")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
@@ -61,7 +61,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.6.8:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
@@ -70,21 +70,21 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
-    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.7.27-GTNH:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.7.29-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.1:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
-    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.4:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.5:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.8-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.9-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.8.2:dev")
 
     compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.1:dev")
 
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.2:dev") { transitive = false }
-    compileOnly('com.github.GTNewHorizons:Backhand:1.6.9') { transitive = false }
+    compileOnly('com.github.GTNewHorizons:Backhand:1.6.11') { transitive = false }
 
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.1:api") { transitive = false }
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0003:dev") { transitive = false }

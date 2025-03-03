@@ -11,7 +11,9 @@ import java.util.function.BiConsumer;
  * Properties backed by a {@link java.util.LinkedHashMap}, in order to preserve iteration order
  */
 public class OrderBackedProperties extends Properties {
-	private transient final Map<Object, Object> backing = Object2ObjectMaps.synchronize(new Object2ObjectLinkedOpenHashMap<>());
+
+	private static final long serialVersionUID = 1555967254721760731L;
+    private transient final Map<Object, Object> backing = Object2ObjectMaps.synchronize(new Object2ObjectLinkedOpenHashMap<>());
 
 	@Override
 	public synchronized Object put(Object key, Object value) {

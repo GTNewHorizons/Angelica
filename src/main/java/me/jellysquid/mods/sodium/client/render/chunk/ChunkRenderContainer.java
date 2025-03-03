@@ -48,6 +48,7 @@ public class ChunkRenderContainer<T extends ChunkGraphicsState> {
 
     private boolean rebuildableForTranslucents;
 
+    @SuppressWarnings("unchecked")
     public ChunkRenderContainer(ChunkRenderBackend<T> backend, SodiumWorldRenderer worldRenderer, int chunkX, int chunkY, int chunkZ, ChunkRenderColumn<T> column) {
         this.worldRenderer = worldRenderer;
 

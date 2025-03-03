@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat.handlers;
 
 import com.gtnewhorizons.angelica.config.CompatConfig;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;

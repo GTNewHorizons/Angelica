@@ -30,7 +30,6 @@ import java.nio.IntBuffer;
 public class RenderSystem {
     private static final Logger LOGGER = LogManager.getLogger("RenderSystem");
 	private static DSAAccess dsaState;
-	private static boolean hasMultibind;
 	private static boolean supportsCompute;
 
     private RenderSystem() {}
@@ -41,7 +40,6 @@ public class RenderSystem {
                 dsaState = new DSACore();
                 LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
-            hasMultibind = GLStateManager.capabilities.OpenGL45;
 
         } catch (NoSuchFieldError ignored) {}
         try {
@@ -54,10 +52,6 @@ public class RenderSystem {
             dsaState = new DSAUnsupported();
             LOGGER.info("No DSA support detected, falling back to legacy OpenGL.");
         }
-
-        try {
-            hasMultibind |= GLStateManager.capabilities.GL_ARB_multi_bind;
-        } catch (NoSuchFieldError ignored) {}
 
 		supportsCompute = supportsCompute();
 	}

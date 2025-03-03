@@ -10,13 +10,11 @@ import net.minecraft.util.EnumChatFormatting;
 public class ShaderPackEntry extends BaseEntry {
     @Getter private final String packName;
     private final ShaderPackSelectionList shaderPackSelectionList;
-    private final int index;
 
-    public ShaderPackEntry(int index, ShaderPackSelectionList list, String packName) {
+    public ShaderPackEntry(ShaderPackSelectionList list, String packName) {
         super(list);
         this.packName = packName;
         this.shaderPackSelectionList = list;
-        this.index = index;
     }
 
     public boolean isApplied() {

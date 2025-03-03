@@ -45,6 +45,7 @@ public abstract class MixinOreberryBush extends Block implements IFaceObstructio
      * @author jss2a98aj
      * @reason  Support new leaf rendering modes on Tinker's Construct leaves.
      */
+    @Override
     @Overwrite
     public boolean shouldSideBeRendered(IBlockAccess world, int x, int y, int z, int side) {
         if (side != 0 && maxY < 1f) {

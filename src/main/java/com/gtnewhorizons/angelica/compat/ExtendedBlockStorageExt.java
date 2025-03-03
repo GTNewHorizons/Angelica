@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.falsepattern.chunk.api.DataRegistry;
-import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedBlockStorageAccessor;
-import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
 
 import net.minecraft.world.chunk.Chunk;
@@ -19,7 +17,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     }
 
     public ExtendedBlockStorageExt(Chunk chunk, ExtendedBlockStorage storage) {
-        super(((ExtendedBlockStorageAccessor) storage).getYBase(), storage.getSkylightArray() != null);
+        super(storage.yBase, storage.getSkylightArray() != null);
 
         if (ModStatus.isChunkAPILoaded) {
             if (storage.getSkylightArray() != null) {
@@ -33,7 +31,7 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                 System.arraycopy(((IExtendedBlockStorageMixin)(Object)storage).getBlock16BArray(), 0, block16BArray, 0, block16BArray.length);
                 if(storage.getBlockMSBArray() != null) {
                     this.setBlockMSBArray(new NibbleArray(block16BArray.length, 4));
-                    copyNibbleArray((ExtendedNibbleArray) storage.getBlockMSBArray(), (ExtendedNibbleArray) this.getBlockMSBArray());
+                    copyNibbleArray(storage.getBlockMSBArray(), this.getBlockMSBArray());
                 }
                 arrayLen = block16BArray.length;
                 if (ModStatus.isNEIDMetadataExtended) {
@@ -52,31 +50,31 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                 System.arraycopy(storage.getBlockLSBArray(), 0, blockLSBArray, 0, blockLSBArray.length);
                 if(storage.getBlockMSBArray() != null) {
                     this.setBlockMSBArray(new NibbleArray(blockLSBArray.length, 4));
-                    copyNibbleArray((ExtendedNibbleArray) storage.getBlockMSBArray(), (ExtendedNibbleArray) this.getBlockMSBArray());
+                    copyNibbleArray(storage.getBlockMSBArray(), this.getBlockMSBArray());
                 }
                 arrayLen = blockLSBArray.length;
             }
 
 
-            if (!ModStatus.isNEIDMetadataExtended) copyNibbleArray((ExtendedNibbleArray) storage.getMetadataArray(), (ExtendedNibbleArray)this.getMetadataArray());
-            copyNibbleArray((ExtendedNibbleArray) storage.getBlocklightArray(), (ExtendedNibbleArray)this.getBlocklightArray());
+            if (!ModStatus.isNEIDMetadataExtended) copyNibbleArray(storage.getMetadataArray(), this.getMetadataArray());
+            copyNibbleArray(storage.getBlocklightArray(), this.getBlocklightArray());
             if(storage.getSkylightArray() != null) {
                 hasSky = true;
                 if(this.getSkylightArray() == null) {
                     this.setSkylightArray(new NibbleArray(arrayLen, 4));
                 }
-                copyNibbleArray((ExtendedNibbleArray) storage.getSkylightArray(), (ExtendedNibbleArray) this.getSkylightArray());
+                copyNibbleArray(storage.getSkylightArray(), this.getSkylightArray());
             }
         }
-        ((ExtendedBlockStorageAccessor) this).setBlockRefCount(((ExtendedBlockStorageAccessor) storage).getBlockRefCount());
+        this.blockRefCount = storage.blockRefCount;
     }
 
 
-    private static void copyNibbleArray(ExtendedNibbleArray srcArray, ExtendedNibbleArray dstArray) {
+    private static void copyNibbleArray(NibbleArray srcArray, NibbleArray dstArray) {
         if (srcArray == null || dstArray == null) {
             throw new RuntimeException("NibbleArray is null src: " + (srcArray == null) + " dst: " + (dstArray == null));
         }
-        final byte[] data = srcArray.getData();
-        System.arraycopy(data, 0, dstArray.getData(), 0, data.length);
+        final byte[] data = srcArray.data;
+        System.arraycopy(data, 0, dstArray.data, 0, data.length);
     }
 }

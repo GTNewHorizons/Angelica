@@ -10,7 +10,6 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -118,7 +117,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
-        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, unicodePageLocations, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture, this.renderEngine);
+        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, unicodePageLocations, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture);
     }
 
     @Unique

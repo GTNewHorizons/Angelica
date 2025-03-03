@@ -25,8 +25,8 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform1b(UniformUpdateFrequency.PER_FRAME, "firstPersonCamera", IrisExclusiveUniforms::isFirstPersonCamera);
 		uniforms.uniform1b(UniformUpdateFrequency.PER_TICK, "isSpectator", IrisExclusiveUniforms::isSpectator);
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "eyePosition", IrisExclusiveUniforms::getEyePosition);
-		Vector4f zero = new Vector4f(0, 0, 0, 0);
         // TODO: Iris Shaders
+//		Vector4f zero = new Vector4f(0, 0, 0, 0);
 //		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", () -> {
 //			if (Minecraft.getMinecraft().theWorld != null) {
 //				return StreamSupport.stream(Minecraft.getMinecraft().theWorld.entitiesForRendering().spliterator(), false).filter(bolt -> bolt instanceof LightningBolt).findAny().map(bolt -> {

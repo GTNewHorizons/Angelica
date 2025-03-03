@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.model.vertex.buffer;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 import me.jellysquid.mods.sodium.client.gl.attribute.BufferVertexFormat;
-import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
 

@@ -1,8 +1,5 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -34,7 +31,7 @@ import xaero.common.core.XaeroMinimapCore;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
-// See LICENSE+HUDCaching.md for license information.
+// See LICENSE-HUDCaching.md for license information.
 
 public class HUDCaching {
 
