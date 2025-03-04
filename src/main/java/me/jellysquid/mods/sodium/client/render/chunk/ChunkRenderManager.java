@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.MinecraftAccessor;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
@@ -515,28 +516,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         return render;
     }
 
-    static {
-        try {
-
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static float getRenderPartialTicks() {
-        try {
-            Field timerField = Minecraft.class.getDeclaredField("timer");
-            timerField.setAccessible(true);
-
-            Timer timer = (Timer) timerField.get(Minecraft.getMinecraft());
-            return timer.renderPartialTicks;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void renderLayer(MatrixStack matrixStack, BlockRenderPass pass, double x, double y, double z) {
         final ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
         final ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
@@ -563,7 +542,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
 
 
-        float frameTime = getRenderPartialTicks();
+        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
 
 
         // only render before solid blocks
