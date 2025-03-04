@@ -17,6 +17,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -133,7 +134,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 
 	private static IServerPlayerWrapper getServerPlayerWrapper(PlayerEvent event) {
 		return ServerPlayerWrapper.getWrapper(
-				event.player
+            (EntityPlayerMP) event.player
 		);
 	}
 
