@@ -1,9 +1,11 @@
 package com.seibel.distanthorizons.core.render.glObject.texture;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL43C;
 
+@Lwjgl3Aware
 public enum EDhDepthBufferFormat
 {
 	DEPTH(false),
@@ -14,15 +16,15 @@ public enum EDhDepthBufferFormat
 	DEPTH_STENCIL(true),
 	DEPTH24_STENCIL8(true),
 	DEPTH32F_STENCIL8(true);
-	
-	
-	
+
+
+
 	private final boolean combinedStencil;
-	
+
 	EDhDepthBufferFormat(boolean combinedStencil) { this.combinedStencil = combinedStencil; }
-	
-	
-	
+
+
+
 	@Nullable
 	public static EDhDepthBufferFormat fromGlEnum(int glenum)
 	{
@@ -48,7 +50,7 @@ public enum EDhDepthBufferFormat
 				return null;
 		}
 	}
-	
+
 	public static EDhDepthBufferFormat fromGlEnumOrDefault(int glenum)
 	{
 		EDhDepthBufferFormat format = fromGlEnum(glenum);
@@ -59,7 +61,7 @@ public enum EDhDepthBufferFormat
 		}
 		return format;
 	}
-	
+
 	public int getGlInternalFormat()
 	{
 		switch (this)
@@ -81,12 +83,12 @@ public enum EDhDepthBufferFormat
 			case DEPTH32F_STENCIL8:
 				return GL30C.GL_DEPTH32F_STENCIL8;
 		}
-		
+
 		throw new AssertionError("unreachable");
 	}
-	
+
 	public int getGlType() { return isCombinedStencil() ? GL30C.GL_DEPTH_STENCIL : GL30C.GL_DEPTH_COMPONENT; }
-	
+
 	public int getGlFormat()
 	{
 		switch (this)
@@ -105,10 +107,10 @@ public enum EDhDepthBufferFormat
 			case DEPTH32F_STENCIL8:
 				return GL30C.GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
 		}
-		
+
 		throw new AssertionError("unreachable");
 	}
-	
+
 	public boolean isCombinedStencil() { return combinedStencil; }
-	
+
 }

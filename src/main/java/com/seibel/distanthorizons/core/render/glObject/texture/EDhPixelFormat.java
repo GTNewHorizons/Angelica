@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.core.render.glObject.texture;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL30C;
@@ -7,6 +8,7 @@ import org.lwjgl.opengl.GL30C;
 import java.util.Locale;
 import java.util.Optional;
 
+@Lwjgl3Aware
 public enum EDhPixelFormat
 {
 	RED(GL11C.GL_RED, EGlVersion.GL_11, false),
@@ -21,24 +23,24 @@ public enum EDhPixelFormat
 	BGR_INTEGER(GL30C.GL_BGR_INTEGER, EGlVersion.GL_30, true),
 	RGBA_INTEGER(GL30C.GL_RGBA_INTEGER, EGlVersion.GL_30, true),
 	BGRA_INTEGER(GL30C.GL_BGRA_INTEGER, EGlVersion.GL_30, true);
-	
-	
-	
+
+
+
 	private final int glFormat;
 	private final EGlVersion minimumGlVersion;
 	private final boolean isInteger;
-	
-	
-	
+
+
+
 	EDhPixelFormat(int glFormat, EGlVersion minimumGlVersion, boolean isInteger)
 	{
 		this.glFormat = glFormat;
 		this.minimumGlVersion = minimumGlVersion;
 		this.isInteger = isInteger;
 	}
-	
-	
-	
+
+
+
 	public static Optional<EDhPixelFormat> fromString(String name)
 	{
 		try
@@ -50,11 +52,11 @@ public enum EDhPixelFormat
 			return Optional.empty();
 		}
 	}
-	
+
 	public int getGlFormat() { return glFormat; }
-	
+
 	public EGlVersion getMinimumGlVersion() { return minimumGlVersion; }
-	
+
 	public boolean isInteger() { return isInteger; }
-	
+
 }

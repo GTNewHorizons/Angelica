@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.common.wrappers.minecraft;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL32;
 
@@ -44,6 +45,7 @@ import org.lwjgl.opengl.GL32;
  * This may slow down some low end GPUs that are driver limited,
  * however James would rather have slow correct rendering vs fast broken rendering.
  */
+@Lwjgl3Aware
 public class MinecraftGLWrapper implements IMinecraftGLWrapper
 {
     public static final MinecraftGLWrapper INSTANCE = new MinecraftGLWrapper();

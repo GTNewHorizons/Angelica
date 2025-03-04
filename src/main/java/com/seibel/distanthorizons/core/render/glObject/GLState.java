@@ -21,16 +21,18 @@ package com.seibel.distanthorizons.core.render.glObject;
 
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 
 // TODO make this Closable or AutoClosable so it can be used with try-resource blocks
+@Lwjgl3Aware
 public class GLState
 {
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
-	
-	
+
+
 	private static final int FBO_MAX = 4;
-	
+
 	public int program;
 	public int vao;
 	public int vbo;
@@ -65,46 +67,46 @@ public class GLState
 	public boolean cull;
 	public int cullMode;
 	public int polyMode;
-	
-	
-	
-	public GLState() 
+
+
+
+	public GLState()
 	{
 		this.fbo = new int[FBO_MAX];
-		
+
 		this.saveState();
 	}
-	
+
 	public void saveState()
 	{
 		this.program = GL32.glGetInteger(GL32.GL_CURRENT_PROGRAM);
 		this.vao = GL32.glGetInteger(GL32.GL_VERTEX_ARRAY_BINDING);
 		this.vbo = GL32.glGetInteger(GL32.GL_ARRAY_BUFFER_BINDING);
 		this.ebo = GL32.glGetInteger(GL32.GL_ELEMENT_ARRAY_BUFFER_BINDING);
-		
+
 		GL32.glGetIntegerv(GL32.GL_FRAMEBUFFER_BINDING, this.fbo);
-		
+
 		this.texture2D = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
 		this.activeTextureNumber = GL32.glGetInteger(GL32.GL_ACTIVE_TEXTURE);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
 		this.texture0 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
 		this.texture1 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE2); // problem with Iris
 		this.texture2 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE3);
 		this.texture3 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
-		
+
 		GLMC.glActiveTexture(this.activeTextureNumber);
-		
+
 		this.frameBufferTexture0 = GL32.glGetFramebufferAttachmentParameteri(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
 		this.frameBufferTexture1 = GL32.glGetFramebufferAttachmentParameteri(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT1, GL32.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
 		this.frameBufferDepthTexture = GL32.glGetFramebufferAttachmentParameteri(GL32.GL_FRAMEBUFFER, GL32.GL_DEPTH_ATTACHMENT, GL32.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
-		
+
 		this.blend = GL32.glIsEnabled(GL32.GL_BLEND);
 		this.scissor = GL32.glIsEnabled(GL32.GL_SCISSOR_TEST);
 		this.blendEqRGB = GL32.glGetInteger(GL32.GL_BLEND_EQUATION_RGB);
@@ -126,7 +128,7 @@ public class GLState
 		this.cullMode = GL32.glGetInteger(GL32.GL_CULL_FACE_MODE);
 		this.polyMode = GL32.glGetInteger(GL32.GL_POLYGON_MODE);
 	}
-	
+
 	@Override
 	public String toString()
 	{
@@ -145,25 +147,25 @@ public class GLState
 				+ GLEnums.getString(this.cullMode) + ", polyMode=" + GLEnums.getString(this.polyMode) +
 				'}';
 	}
-	
+
 	public void RestoreFrameBuffer()
 	{
 		// explicitly unbinding the frame buffer is necessary to prevent GL_CLEAR calls from hitting the wrong buffer
 		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, 0);
-		
+
 		for (int i = 0; i < FBO_MAX; i++)
 		{
 			int buffer = this.fbo[i];
 			if (i > 0 && buffer == 0) break;
-			
+
 			GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, GL32.glIsFramebuffer(buffer) ? buffer : 0);
 		}
 	}
-	
+
 	public void restore()
 	{
 		this.RestoreFrameBuffer();
-		
+
 		if (this.blend)
 		{
 			GLMC.enableBlend();
@@ -172,7 +174,7 @@ public class GLState
 		{
 			GLMC.disableBlend();
 		}
-		
+
 		if (this.scissor)
 		{
 			GLMC.enableScissorTest();
@@ -181,31 +183,31 @@ public class GLState
 		{
 			GLMC.disableScissorTest();
 		}
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
 		GLMC.glBindTexture(GL32.glIsTexture(this.texture0) ? this.texture0 : 0);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
 		GLMC.glBindTexture(GL32.glIsTexture(this.texture1) ? this.texture1 : 0);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE2);
 		GLMC.glBindTexture(GL32.glIsTexture(this.texture2) ? this.texture2 : 0);
-		
+
 		GLMC.glActiveTexture(GL32.GL_TEXTURE3);
 		GLMC.glBindTexture(GL32.glIsTexture(this.texture3) ? this.texture3 : 0);
-		
+
 		GLMC.glActiveTexture(this.activeTextureNumber);
 		GLMC.glBindTexture(GL32.glIsTexture(this.texture2D) ? this.texture2D : 0);
-		
+
 		GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_TEXTURE_2D, this.frameBufferTexture0, 0);
 		GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT1, GL32.GL_TEXTURE_2D, this.frameBufferTexture1, 0);
 		GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_DEPTH_ATTACHMENT, GL32.GL_TEXTURE_2D, this.frameBufferDepthTexture, 0);
-		
+
 		GL32.glBindVertexArray(GL32.glIsVertexArray(this.vao) ? this.vao : 0);
 		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, GL32.glIsBuffer(this.vbo) ? this.vbo : 0);
 		GL32.glBindBuffer(GL32.GL_ELEMENT_ARRAY_BUFFER, GL32.glIsBuffer(this.ebo) ? this.ebo: 0);
 		GL32.glUseProgram(GL32.glIsProgram(this.program) ? this.program : 0);
-		
+
 		if (this.writeToDepthBuffer)
 		{
 			GLMC.enableDepthMask();
@@ -214,11 +216,11 @@ public class GLState
 		{
 			GLMC.disableDepthMask();
 		}
-		
+
 		GLMC.glBlendFunc(this.blendSrcColor, this.blendDstColor);
 		GL32.glBlendEquationSeparate(this.blendEqRGB, this.blendEqAlpha);
 		GLMC.glBlendFuncSeparate(this.blendSrcColor, this.blendDstColor, this.blendSrcAlpha, this.blendDstAlpha);
-		
+
 		if (this.depth)
 		{
 			GLMC.enableDepthTest();
@@ -228,7 +230,7 @@ public class GLState
 			GLMC.disableDepthTest();
 		}
 		GLMC.glDepthFunc(this.depthFunc);
-		
+
 		//if (this.stencil)
 		//{
 		//	GL32.glEnable(GL32.GL_STENCIL_TEST);
@@ -238,7 +240,7 @@ public class GLState
 		//	GL32.glDisable(GL32.GL_STENCIL_TEST);
 		//}
 		//GL32.glStencilFunc(this.stencilFunc, this.stencilRef, this.stencilMask);
-		
+
 		GL32.glViewport(this.view[0], this.view[1], this.view[2], this.view[3]);
 		if (this.cull)
 		{

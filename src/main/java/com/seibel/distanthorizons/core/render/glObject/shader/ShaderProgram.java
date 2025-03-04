@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3i;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.MemoryStack;
 
@@ -44,13 +45,14 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
  * @author James Seibel
  * @version 11-26-2021
  */
+@Lwjgl3Aware
 public class ShaderProgram
 {
 	/** Stores the handle of the program. */
 	public final int id;
-	
-	
-	
+
+
+
 	// TODO: A better way to set the fragData output name
 	/**
 	 * Creates a shader program.
@@ -64,7 +66,7 @@ public class ShaderProgram
 				fragDataOutputName, attributes
 		);
 	}
-	
+
 	public ShaderProgram(Supplier<String> vert, Supplier<String> frag, String fragDataOutputName, String[] attributes)
 	{
 		this(
@@ -73,32 +75,32 @@ public class ShaderProgram
 				attributes
 		);
 	}
-	
-	
+
+
 	public ShaderProgram(List<Supplier<String>> vertSupplierList, List<Supplier<String>> fragSupplierList, String[] attributes)
 	{
 		this.id = GL32.glCreateProgram();
-		
+
 		for (Supplier<String> vertSupplier : vertSupplierList)
 		{
 			Shader vertShader = new Shader(GL32.GL_VERTEX_SHADER, vertSupplier.get());
 			GL32.glAttachShader(this.id, vertShader.id);
 			vertShader.free(); // important!
 		}
-		
+
 		for (Supplier<String> fragSupplier : fragSupplierList)
 		{
 			Shader fragShader = new Shader(GL32.GL_FRAGMENT_SHADER, fragSupplier.get());
 			GL32.glAttachShader(this.id, fragShader.id);
 			fragShader.free(); // important!
 		}
-		
+
 		for (int i = 0; i < attributes.length; i++)
 		{
 			GL32.glBindAttribLocation(id, i, attributes[i]);
 		}
 		GL32.glLinkProgram(this.id);
-		
+
 		int status = GL32.glGetProgrami(this.id, GL32.GL_LINK_STATUS);
 		if (status != GL32.GL_TRUE)
 		{
@@ -108,18 +110,18 @@ public class ShaderProgram
 		}
 		GL32.glUseProgram(this.id); // This HAVE to be a direct call to prevent calling the overloaded version
 	}
-	
-	
-	
-	
+
+
+
+
 	public void bind() { GL32.glUseProgram(this.id); }
 	public void unbind() { GL32.glUseProgram(0); }
-	
+
 	public void free() { GL32.glDeleteProgram(this.id); }
-	
-	
-	
-	
+
+
+
+
 	/**
 	 * WARNING: Slow native call! Cache it if possible!
 	 * Gets the location of an attribute variable with specified name.
@@ -141,7 +143,7 @@ public class ShaderProgram
 	 */
 	public int tryGetAttributeLocation(CharSequence name)
 	{ return GL32.glGetAttribLocation(this.id, name); }
-	
+
 	/**
 	 * WARNING: Slow native call! Cache it if possible!
 	 * Gets the location of a uniform variable with specified name.
@@ -160,37 +162,37 @@ public class ShaderProgram
 		}
 		return i;
 	}
-	
+
 	// Same as above but without throwing errors.
 	// Return -1 if uniform doesn't exist or has been optimized out
 	public int tryGetUniformLocation(CharSequence name)
 	{ return GL32.glGetUniformLocation(this.id, name); }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, boolean value) { GL32.glUniform1i(location, value ? 1 : 0); }
 	/** @see ShaderProgram#setUniform(int, boolean) */
 	public void trySetUniform(int location, boolean value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, int value) { GL32.glUniform1i(location, value); }
 	/** @see ShaderProgram#setUniform(int, int) */
 	public void trySetUniform(int location, int value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, float value) { GL32.glUniform1f(location, value); }
 	/** @see ShaderProgram#setUniform(int, float) */
 	public void trySetUniform(int location, float value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, Vec3f value) { GL32.glUniform3f(location, value.x, value.y, value.z); }
 	/** @see ShaderProgram#setUniform(int, Vec3f) */
 	public void trySetUniform(int location, Vec3f value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, DhApiVec3i value) { GL32.glUniform3i(location, value.x, value.y, value.z); }
 	/** @see ShaderProgram#setUniform(int, Mat4f) */
 	public void trySetUniform(int location, DhApiVec3i value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/** Requires a bound ShaderProgram. */
 	public void setUniform(int location, Mat4f value)
 	{
@@ -203,20 +205,20 @@ public class ShaderProgram
 	}
 	/** @see ShaderProgram#setUniform(int, Mat4f) */
 	public void trySetUniform(int location, Mat4f value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 	/**
 	 * Converts the color's RGBA values into values between 0 and 1. <br>
 	 * Requires a bound ShaderProgram.
 	 */
 	public void setUniform(int location, Color value)
 	{
-		GL32.glUniform4f(location, 
-				value.getRed()   / 256.0f, 
-				value.getGreen() / 256.0f, 
-				value.getBlue()  / 256.0f, 
+		GL32.glUniform4f(location,
+				value.getRed()   / 256.0f,
+				value.getGreen() / 256.0f,
+				value.getBlue()  / 256.0f,
 				value.getAlpha() / 256.0f);
 	}
 	/** @see ShaderProgram#setUniform(int, Color) */
 	public void trySetUniform(int location, Color value) { if (location != -1) { this.setUniform(location, value); } }
-	
+
 }

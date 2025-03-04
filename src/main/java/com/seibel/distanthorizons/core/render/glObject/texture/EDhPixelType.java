@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.core.render.glObject.texture;
 
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL30C;
@@ -7,6 +8,7 @@ import org.lwjgl.opengl.GL30C;
 import java.util.Locale;
 import java.util.Optional;
 
+@Lwjgl3Aware
 public enum EDhPixelType
 {
 	BYTE(GL11C.GL_BYTE, EGlVersion.GL_11),
@@ -29,22 +31,22 @@ public enum EDhPixelType
 	UNSIGNED_INT_8_8_8_8_REV(GL12C.GL_UNSIGNED_INT_8_8_8_8_REV, EGlVersion.GL_12),
 	UNSIGNED_INT_10_10_10_2(GL12C.GL_UNSIGNED_INT_10_10_10_2, EGlVersion.GL_12),
 	UNSIGNED_INT_2_10_10_10_REV(GL12C.GL_UNSIGNED_INT_2_10_10_10_REV, EGlVersion.GL_12);
-	
-	
-	
+
+
+
 	private final int glFormat;
 	private final EGlVersion minimumGlVersion;
-	
-	
-	
+
+
+
 	EDhPixelType(int glFormat, EGlVersion minimumGlVersion)
 	{
 		this.glFormat = glFormat;
 		this.minimumGlVersion = minimumGlVersion;
 	}
-	
-	
-	
+
+
+
 	public static Optional<EDhPixelType> fromString(String name)
 	{
 		try
@@ -56,9 +58,9 @@ public enum EDhPixelType
 			return Optional.empty();
 		}
 	}
-	
+
 	public int getGlFormat() { return glFormat; }
-	
+
 	public EGlVersion getMinimumGlVersion() { return minimumGlVersion; }
-	
+
 }
