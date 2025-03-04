@@ -306,7 +306,7 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
     }
 
     @Override
-    public Object getOptionsObject() { return null; /* TODO */ }
+    public Object getOptionsObject() { return new Object(); }
 
     @Override
     public boolean isDedicatedServer() { return false; }

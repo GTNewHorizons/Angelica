@@ -201,7 +201,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     }
 
     @Override
-    public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return null; /* TODO */ }
+    public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return new LightMapWrapper(); }
 
     @Override
     public boolean isFogStateSpecial()
