@@ -445,7 +445,7 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.EXTREME)
-                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
+                        .setBinding((opts, value) -> {}, opts -> !GLStateManager.BYPASS_CACHE)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
 
