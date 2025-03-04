@@ -30,7 +30,11 @@ public class BlockStateWrapper implements IBlockStateWrapper {
         return null;
     }
 
-    public static IDhApiBlockStateWrapper fromBlockState(Block block, int meta, ILevelWrapper coreLevelWrapper) {
+    public static IBlockStateWrapper fromBlockState(Block block, int meta, ILevelWrapper coreLevelWrapper) {
+        return null;
+    }
+
+    public static IBlockStateWrapper fromBlockState(Block block, int meta, ILevelWrapper coreLevelWrapper, IBlockStateWrapper guess) {
         return null;
     }
 
