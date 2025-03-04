@@ -33,6 +33,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -76,8 +77,9 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	@Override
 	public void registerEvents()
 	{
-		MinecraftForge.EVENT_BUS.register(this);
-		ForgePluginPacketSender.setPacketHandler(ClientApi.INSTANCE::pluginMessageReceived);
+        MinecraftForge.EVENT_BUS.register(this);
+        FMLCommonHandler.instance().bus().register(this);
+        ForgePluginPacketSender.setPacketHandler(ClientApi.INSTANCE::pluginMessageReceived);
 	}
 
 
