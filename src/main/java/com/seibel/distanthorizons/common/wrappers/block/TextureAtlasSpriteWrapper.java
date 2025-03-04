@@ -19,7 +19,10 @@
 
 package com.seibel.distanthorizons.common.wrappers.block;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureMap;
 
 /**
  * For wrapping/utilizing around TextureAtlasSprite
@@ -30,8 +33,8 @@ public class TextureAtlasSpriteWrapper
 {
 	public static int getPixelRGBA(TextureAtlasSprite sprite, int frameIndex, int x, int y)
 	{
-       int[][] data = sprite.getFrameTextureData(frameIndex);
-       return data[y][x]; // TODO?
+        // TODO
+        return (255) + (255<<16) +(255 << 24);
 	}
 
 }
