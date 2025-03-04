@@ -537,13 +537,12 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
 
         // get the matrices directly from MC
-        Mat4f mcModelViewMatrix = McObjectConverter.Convert(matrixStack.peek().getModel());
+        Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
         Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
 
 
 
         float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-
 
         // only render before solid blocks
         if (pass == BlockRenderPass.CUTOUT_MIPPED)

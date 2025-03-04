@@ -29,6 +29,7 @@ import com.seibel.distanthorizons.core.util.objects.GLMessage;
 import com.seibel.distanthorizons.core.util.objects.GLMessageOutputStream;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -55,6 +56,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * https://gamedev.stackexchange.com/questions/91995/edit-vbo-data-or-create-a-new-one <br>
  * https://stackoverflow.com/questions/63509735/massive-performance-loss-with-glmapbuffer <br><br>
  */
+@Lwjgl3Aware
 public class GLProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);

@@ -42,7 +42,7 @@ import java.util.function.Consumer;
  * If you are looking for the real start of the mod
  * check out the ClientProxy.
  */
-@Mod(modid = "DistantHorizons", name = "DistantHorizons")
+@Mod(modid = "distanthorizons", name = "DistantHorizons")
 public class ForgeMain extends AbstractModInitializer
 {
 

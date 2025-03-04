@@ -59,3 +59,11 @@ tasks.register<Copy>("copyDependencies") {
     from(configurations.default)
     into("testDependencies")
 }
+
+for (jarTask in listOf(tasks.jar, tasks.shadowJar, tasks.sourcesJar)) {
+    jarTask.configure {
+        manifest {
+            //attributes("Lwjgl3ify-Aware" to true)
+        }
+    }
+}
