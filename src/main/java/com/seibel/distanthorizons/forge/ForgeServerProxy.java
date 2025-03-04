@@ -10,6 +10,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
+import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -65,20 +66,6 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 		{
 			this.serverApi.serverTickEvent();
 		}
-	}
-
-	// ServerWorldLoadEvent
-	@SubscribeEvent
-	public void dedicatedWorldLoadEvent(FMLServerAboutToStartEvent event)
-	{
-		this.serverApi.serverLoadEvent(this.isDedicated);
-	}
-
-	// ServerWorldUnloadEvent
-	@SubscribeEvent
-	public void serverWorldUnloadEvent(FMLServerStoppingEvent event)
-	{
-		this.serverApi.serverUnloadEvent();
 	}
 
 	// ServerLevelLoadEvent
