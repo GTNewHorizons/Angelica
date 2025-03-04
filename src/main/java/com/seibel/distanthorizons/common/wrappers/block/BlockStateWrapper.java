@@ -499,7 +499,11 @@ public class BlockStateWrapper implements IBlockStateWrapper
             try
             {
                 Block block = GameData.getBlockRegistry().getObject(resourceStateString);
-                int meta = Integer.parseInt(blockStatePropertiesString);
+                int meta = 0;
+                if (blockStatePropertiesString != null)
+                {
+                    meta = Integer.parseInt(blockStatePropertiesString);
+                }
 
 
                 foundWrapper = new BlockStateWrapper(new FakeBlockState(block, meta), levelWrapper);
