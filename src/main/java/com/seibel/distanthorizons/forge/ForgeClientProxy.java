@@ -37,6 +37,7 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
 
@@ -65,6 +66,7 @@ import java.util.concurrent.AbstractExecutorService;
  * @author James_Seibel
  * @version 2023-7-27
  */
+@Lwjgl3Aware
 public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
