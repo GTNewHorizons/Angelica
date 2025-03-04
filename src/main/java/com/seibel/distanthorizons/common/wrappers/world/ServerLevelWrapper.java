@@ -79,7 +79,10 @@ public class ServerLevelWrapper implements IServerLevelWrapper
     @Override
     public String getWorldFolderName()
     {
-		return this.level.provider.getSaveFolder();
+        String ret =  this.level.provider.getSaveFolder();
+        if (ret == null)
+            ret = "";
+		return ret;
     }
 
     @Override
