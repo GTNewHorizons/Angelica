@@ -173,7 +173,6 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
         return height;
     }
 
-    private RenderTarget getRenderTarget() { return null; /* MC.getMainRenderTarget(); TODO */ }
 
     @Override
     public int getTargetFrameBuffer()
