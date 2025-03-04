@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.interfaces.factories.IDhApiWrapperFactory;
 import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
+import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
@@ -279,7 +280,7 @@ public class WrapperFactory implements IWrapperFactory
 
         Block block = (Block) objectArray[0];
         Integer meta = (Integer) objectArray[1];
-		return BlockStateWrapper.fromBlockState(block, meta, coreLevelWrapper);
+		return BlockStateWrapper.fromBlockState(new FakeBlockState(block, meta), coreLevelWrapper);
 		//#endif
 	}
 	/**
