@@ -37,6 +37,7 @@ import com.seibel.distanthorizons.core.util.objects.UncheckedInterruptedExceptio
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -47,18 +48,19 @@ import java.util.concurrent.CompletableFuture;
  *
  * @see ColumnRenderSource
  */
+@Lwjgl3Aware
 public class ColumnRenderBufferBuilder
 {
 	public static final ConfigBasedLogger EVENT_LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
 			() -> Config.Common.Logging.logRendererBufferEvent.get());
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	
-	
-	
+
+
+
 	//==============//
 	// vbo building //
 	//==============//
-	
+
 	/** @link adjData should be null for adjacent sections that cross detail level boundaries */
 	public static CompletableFuture<ColumnRenderBuffer> uploadBuffersAsync(
 			IDhClientLevel clientLevel,
@@ -68,7 +70,7 @@ public class ColumnRenderBufferBuilder
 	{
 		ColumnRenderBuffer buffer = new ColumnRenderBuffer(new DhBlockPos(DhSectionPos.getMinCornerBlockX(pos), clientLevel.getMinY(), DhSectionPos.getMinCornerBlockZ(pos)));
 		CompletableFuture<ColumnRenderBuffer> uploadFuture = buffer.makeAndUploadBuffersAsync(quadBuilder, GLProxy.getInstance().getGpuUploadMethod());
-		uploadFuture.whenComplete((uploadedBuffer, exception) -> 
+		uploadFuture.whenComplete((uploadedBuffer, exception) ->
 		{
 			// clean up if not uploaded
 			if (uploadedBuffer != null && !uploadedBuffer.buffersUploaded)
@@ -85,7 +87,7 @@ public class ColumnRenderBufferBuilder
 		//=============//
 		// debug check //
 		//=============//
-		
+
 		// can be used to limit which section positions are build and thus, rendered
 		// useful when debugging a specific section
 		boolean columnBuilderDebugEnabled = Config.Client.Advanced.Debugging.ColumnBuilderDebugging.columnBuilderDebugEnable.get();
@@ -102,13 +104,13 @@ public class ColumnRenderBufferBuilder
 				return;
 			}
 		}
-		
-		
-		
+
+
+
 		//===================//
 		// build each column //
 		//===================//
-		
+
 		byte thisDetailLevel = renderSource.getDataDetailLevel();
 		for (int relX = 0; relX < ColumnRenderSource.SECTION_SIZE; relX++)
 		{
@@ -116,7 +118,7 @@ public class ColumnRenderBufferBuilder
 			{
 				// stop the builder if requested
 				UncheckedInterruptedException.throwIfInterrupted();
-				
+
 				// ignore empty/null columns
 				ColumnArrayView columnRenderData = renderSource.getVerticalDataPointView(relX, relZ);
 				if (columnRenderData.size() == 0
@@ -125,13 +127,13 @@ public class ColumnRenderBufferBuilder
 				{
 					continue;
 				}
-				
-				
-				
+
+
+
 				//=============//
 				// debug limit //
 				//=============//
-				
+
 				// can be used to limit the buffer building to a specific relative position.
 				// useful for debugging a single column
 				if (columnBuilderDebugEnabled)
@@ -147,13 +149,13 @@ public class ColumnRenderBufferBuilder
 						continue;
 					}
 				}
-				
-				
-				
+
+
+
 				//==================================//
 				// get adjacent render data columns //
 				//==================================//
-				
+
 				ColumnArrayView[] adjColumnViews = new ColumnArrayView[EDhDirection.ADJ_DIRECTIONS.length];
 				for (EDhDirection lodDirection : EDhDirection.ADJ_DIRECTIONS)
 				{
@@ -164,17 +166,17 @@ public class ColumnRenderBufferBuilder
 						boolean isCrossRenderSourceBoundary =
 								(xAdj < 0 || xAdj >= ColumnRenderSource.SECTION_SIZE) ||
 								(zAdj < 0 || zAdj >= ColumnRenderSource.SECTION_SIZE);
-						
+
 						ColumnRenderSource adjRenderSource;
 						byte adjDetailLevel;
-						
-						
-						
+
+
+
 						//=========================//
 						// get the adjacent render //
 						// source if present       //
 						//=========================//
-						
+
 						if (!isCrossRenderSourceBoundary)
 						{
 							// the adjacent position is inside this same render source
@@ -184,20 +186,20 @@ public class ColumnRenderBufferBuilder
 						else
 						{
 							// the adjacent position is outside this render source
-							
+
 							// skip empty sections
 							adjRenderSource = adjRegions[lodDirection.ordinal() - 2];
 							if (adjRenderSource == null)
 							{
 								continue;
 							}
-							
+
 							adjDetailLevel = adjRenderSource.getDataDetailLevel();
 							if (adjDetailLevel == thisDetailLevel)
 							{
 								// if the adjacent position is outside this render source,
 								// wrap the position around so it's inside the adjacent source
-								
+
 								if (xAdj < 0)
 								{
 									xAdj += ColumnRenderSource.SECTION_SIZE;
@@ -206,7 +208,7 @@ public class ColumnRenderBufferBuilder
 								{
 									xAdj -= ColumnRenderSource.SECTION_SIZE;
 								}
-								
+
 								if (zAdj < 0)
 								{
 									zAdj += ColumnRenderSource.SECTION_SIZE;
@@ -217,21 +219,21 @@ public class ColumnRenderBufferBuilder
 								}
 							}
 						}
-						
-						
-						
+
+
+
 						//========================//
 						// get the adjacent views //
 						//========================//
-						
+
 						// the old logic handled additional cases, but they never appeared to fire,
 						// so just these two cases should be fine
 						boolean expectedDetailLevels = (adjDetailLevel == thisDetailLevel) || (adjDetailLevel > thisDetailLevel);
 						if (!expectedDetailLevels)
 						{
-							LodUtil.assertNotReach("Mismatch between adjacent detail level ["+adjDetailLevel+"] and this render source's detail level ["+thisDetailLevel+"]. Detail levels should be adj >= this.");	
+							LodUtil.assertNotReach("Mismatch between adjacent detail level ["+adjDetailLevel+"] and this render source's detail level ["+thisDetailLevel+"]. Detail levels should be adj >= this.");
 						}
-						
+
 						adjColumnViews[lodDirection.ordinal() - 2] = adjRenderSource.getVerticalDataPointView(xAdj, zAdj);
 					}
 					catch (RuntimeException e)
@@ -239,15 +241,15 @@ public class ColumnRenderBufferBuilder
 						EVENT_LOGGER.warn("Failed to get adj data for relative pos: [" + thisDetailLevel + ":" + relX + "," + relZ + "] at [" + lodDirection + "], Error: "+e.getMessage(), e);
 					}
 				} // for adjacent directions
-				
-				
-				
+
+
+
 				//==========================//
 				// build this render column //
 				//==========================//
-				
+
 				ColumnRenderSource.DebugSourceFlag debugSourceFlag = renderSource.debugGetFlag(relX, relZ);
-				
+
 				// We render every vertical lod present in this position
 				// We only stop when we find a block that is void or non-existing block
 				for (int i = 0; i < columnRenderData.size(); i++)
@@ -261,7 +263,7 @@ public class ColumnRenderBufferBuilder
 							continue;
 						}
 					}
-					
+
 					long data = columnRenderData.get(i);
 					// If the data is not render-able (Void or non-existing) we stop since there is
 					// no data left in this position
@@ -269,38 +271,38 @@ public class ColumnRenderBufferBuilder
 					{
 						break;
 					}
-					
+
 					long topDataPoint = (i - 1) >= 0 ? columnRenderData.get(i - 1) : RenderDataPointUtil.EMPTY_DATA;
 					long bottomDataPoint = (i + 1) < columnRenderData.size() ? columnRenderData.get(i + 1) : RenderDataPointUtil.EMPTY_DATA;
-					
+
 					addLodToBuffer(
 							clientLevel,
-							data, topDataPoint, bottomDataPoint, 
+							data, topDataPoint, bottomDataPoint,
 							adjColumnViews, isSameDetailLevel,
-							thisDetailLevel, relX, relZ, 
+							thisDetailLevel, relX, relZ,
 							quadBuilder, debugSourceFlag);
 				}
-				
+
 			}// for z
 		}// for x
-		
+
 		quadBuilder.finalizeData();
 	}
 	private static void addLodToBuffer(
 			IDhClientLevel clientLevel,
-			long data, long topData, long bottomData, 
+			long data, long topData, long bottomData,
 			ColumnArrayView[] adjColumnViews, boolean[] isSameDetailLevel,
-			byte detailLevel, int renderSourceOffsetPosX, int renderSourceOffsetPosZ, 
+			byte detailLevel, int renderSourceOffsetPosX, int renderSourceOffsetPosZ,
 			LodQuadBuilder quadBuilder, ColumnRenderSource.DebugSourceFlag debugSource)
 	{
 		long sectionPos = DhSectionPos.encode(detailLevel, renderSourceOffsetPosX, renderSourceOffsetPosZ);
-		
+
 		short width = (short) BitShiftUtil.powerOfTwo(detailLevel);
 		short xMin = (short) DhSectionPos.getMinCornerBlockX(sectionPos);
 		short yMin = RenderDataPointUtil.getYMin(data);
 		short zMin = (short) DhSectionPos.getMinCornerBlockZ(sectionPos);
 		short ySize = (short) (RenderDataPointUtil.getYMax(data) - yMin);
-		
+
 		if (ySize == 0)
 		{
 			return;
@@ -309,11 +311,11 @@ public class ColumnRenderBufferBuilder
 		{
 			throw new IllegalArgumentException("Negative y size for the data! Data: [" + RenderDataPointUtil.toString(data) + "].");
 		}
-		
+
 		byte blockMaterialId = RenderDataPointUtil.getBlockMaterialId(data);
-		
-		
-		
+
+
+
 		int color;
 		boolean fullBright = false;
 		EDhApiDebugRendering debugging = Config.Client.Advanced.Debugging.debugRendering.get();
@@ -342,14 +344,14 @@ public class ColumnRenderBufferBuilder
 			}
 			case SHOW_BLOCK_MATERIAL:
 			{
-				
+
 				switch (EDhApiBlockMaterial.getFromIndex(blockMaterialId))
 				{
 					case UNKNOWN:
 					case AIR: // shouldn't normally be rendered, but just in case
 						color = ColorUtil.HOT_PINK;
 						break;
-					
+
 					case LEAVES:
 						color = ColorUtil.DARK_GREEN;
 						break;
@@ -392,13 +394,13 @@ public class ColumnRenderBufferBuilder
 					case ILLUMINATED:
 						color = ColorUtil.YELLOW;
 						break;
-					
+
 					default:
 						// undefined color
 						color = ColorUtil.CYAN;
 						break;
 				}
-				
+
 				fullBright = true;
 				break;
 			}
@@ -417,7 +419,7 @@ public class ColumnRenderBufferBuilder
 			default:
 				throw new IllegalArgumentException("Unknown debug mode: " + debugging);
 		}
-		
+
 		ColumnBox.addBoxQuadsToBuilder(
 				quadBuilder, clientLevel,
 				width, ySize, width,
@@ -428,5 +430,5 @@ public class ColumnRenderBufferBuilder
 				fullBright ? 15 : RenderDataPointUtil.getLightBlock(data),
 				topData, bottomData, adjColumnViews, isSameDetailLevel);
 	}
-	
+
 }

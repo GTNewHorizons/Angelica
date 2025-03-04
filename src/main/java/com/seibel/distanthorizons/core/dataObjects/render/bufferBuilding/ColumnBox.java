@@ -30,38 +30,39 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftCli
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
-
+@Lwjgl3Aware
 public class ColumnBox
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	
-	/** 
-	 * if the skylight has this value that means 
-	 * no data is expected 
+
+	/**
+	 * if the skylight has this value that means
+	 * no data is expected
 	 */
 	private static final byte SKYLIGHT_EMPTY = -1;
-	/** 
+	/**
 	 * if the skylight has this value that means
 	 * that block position is covered/occuled by an adjacent block/column.
 	 */
 	private static final byte SKYLIGHT_COVERED = -2;
-	
+
 	private static final ThreadLocal<byte[]> THREAD_LOCAL_SKY_LIGHT_ARRAY = ThreadLocal.withInitial(() ->
 	{
 		byte[] array = new byte[RenderDataPointUtil.MAX_WORLD_Y_SIZE];
 		Arrays.fill(array, SKYLIGHT_EMPTY);
 		return array;
 	});
-	
-	
-	
+
+
+
 	//=========//
 	// builder //
 	//=========//
-	
+
 	public static void addBoxQuadsToBuilder(
 			LodQuadBuilder builder, IDhClientLevel clientLevel,
 			short xSize, short ySize, short zSize,
@@ -72,18 +73,18 @@ public class ColumnBox
 		//================//
 		// variable setup //
 		//================//
-		
+
 		short maxX = (short) (minX + xSize);
 		short maxY = (short) (minY + ySize);
 		short maxZ = (short) (minZ + zSize);
 		byte skyLightTop = skyLight;
 		byte skyLightBot = RenderDataPointUtil.doesDataPointExist(bottomData) ? RenderDataPointUtil.getLightSky(bottomData) : 0;
-		
+
 		boolean isTransparent = ColorUtil.getAlpha(color) < 255 && LodRenderer.transparencyEnabled;
 		boolean overVoid = !RenderDataPointUtil.doesDataPointExist(bottomData);
 		boolean isTopTransparent = RenderDataPointUtil.getAlpha(topData) < 255 && LodRenderer.transparencyEnabled;
 		boolean isBottomTransparent = RenderDataPointUtil.getAlpha(bottomData) < 255 && LodRenderer.transparencyEnabled;
-		
+
 		// defaulting to a value far below what we can normally render means we
 		// don't need to have an additional "is cave culling enabled" check
 		int caveCullingMaxY = Integer.MIN_VALUE;
@@ -91,17 +92,17 @@ public class ColumnBox
 		{
 			caveCullingMaxY = Config.Client.Advanced.Graphics.Culling.caveCullingHeight.get() - clientLevel.getMinY();
 		}
-		
-		
-		
+
+
+
 		// if there isn't any data below this LOD, make this LOD's color opaque to prevent seeing void through transparent blocks
 		// Note: this LOD should still be considered transparent for this method's checks, otherwise rendering bugs may occur
 		if (!RenderDataPointUtil.doesDataPointExist(bottomData))
 		{
 			color = ColorUtil.setAlpha(color, 255);
 		}
-		
-		
+
+
 		// fake ocean transparency
 		if (LodRenderer.transparencyEnabled && LodRenderer.fakeOceanFloor)
 		{
@@ -115,34 +116,34 @@ public class ColumnBox
 				minY = (short) (minY + ySize - 1);
 				ySize = 1;
 			}
-			
+
 			maxY = (short) (minY + ySize);
 		}
-		
-		
-		
+
+
+
 		//==========================//
 		// add top and bottom faces //
 		//==========================//
-		
+
 		boolean skipTop = RenderDataPointUtil.doesDataPointExist(topData) && (RenderDataPointUtil.getYMin(topData) == maxY) && !isTopTransparent;
 		if (!skipTop)
 		{
 			builder.addQuadUp(minX, maxY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.UP)), irisBlockMaterialId, skyLightTop, blockLight);
 		}
-		
+
 		boolean skipBottom = RenderDataPointUtil.doesDataPointExist(bottomData) && (RenderDataPointUtil.getYMax(bottomData) == minY) && !isBottomTransparent;
 		if (!skipBottom)
 		{
 			builder.addQuadDown(minX, minY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.DOWN)), irisBlockMaterialId, skyLightBot, blockLight);
 		}
-		
-		
-		
+
+
+
 		//========================================//
 		// add North, south, east, and west faces //
 		//========================================//
-		
+
 		// NORTH face
 		{
 			ColumnArrayView adjCol = adjData[EDhDirection.NORTH.ordinal() - 2]; // TODO can we use something other than ordinal-2?
@@ -162,7 +163,7 @@ public class ColumnBox
 						color, irisBlockMaterialId, blockLight);
 			}
 		}
-		
+
 		// SOUTH face
 		{
 			ColumnArrayView adjCol = adjData[EDhDirection.SOUTH.ordinal() - 2];
@@ -180,7 +181,7 @@ public class ColumnBox
 						color, irisBlockMaterialId, blockLight);
 			}
 		}
-		
+
 		// WEST face
 		{
 			ColumnArrayView adjCol = adjData[EDhDirection.WEST.ordinal() - 2];
@@ -198,7 +199,7 @@ public class ColumnBox
 						color, irisBlockMaterialId, blockLight);
 			}
 		}
-		
+
 		// EAST face
 		{
 			ColumnArrayView adjCol = adjData[EDhDirection.EAST.ordinal() - 2];
@@ -217,9 +218,9 @@ public class ColumnBox
 			}
 		}
 	}
-	
+
 	private static void makeAdjVerticalQuad(
-			LodQuadBuilder builder, @NotNull ColumnArrayView adjColumnView, boolean adjacentIsSameDetailLevel, int caveCullingMaxY, EDhDirection direction, 
+			LodQuadBuilder builder, @NotNull ColumnArrayView adjColumnView, boolean adjacentIsSameDetailLevel, int caveCullingMaxY, EDhDirection direction,
 			short x, short yMin, short z, short horizontalWidth, short ySize,
 			int color, byte irisBlockMaterialId, byte blockLight)
 	{
@@ -227,34 +228,34 @@ public class ColumnBox
 		// create face with //
 		// no adjacent data //
 		//==================//
-		
+
 		color = ColorUtil.applyShade(color, MC.getShade(direction));
-		
+
 		// if there isn't any data adjacent to this LOD,
 		// just add the full vertical quad
 		if (adjColumnView.size == 0 || RenderDataPointUtil.isVoid(adjColumnView.get(0)))
 		{
-			
+
 			builder.addQuadAdj(direction, x, yMin, z, horizontalWidth, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
 			return;
 		}
-		
-		
-		
+
+
+
 		//===========================//
 		// Determine face visibility //
 		// based on it's neighbors   //
 		//===========================//
-		
+
 		short yMax = (short) (yMin + ySize); // min is inclusive, max is exclusive
 		byte[] skyLightAtInputPos = THREAD_LOCAL_SKY_LIGHT_ARRAY.get();
-		
+
 		try
 		{
 			// set the initial sky-lights for this face,
 			// if nothing overlaps or overhangs the face should have max sky light
 			Arrays.fill(skyLightAtInputPos, yMin, yMax, LodUtil.MAX_MC_LIGHT);
-			
+
 			// iterate top down
 			int adjCount = adjColumnView.size();
 			for (int adjIndex = 0; adjIndex < adjCount; adjIndex++)
@@ -262,35 +263,35 @@ public class ColumnBox
 				long adjPoint = adjColumnView.get(adjIndex);
 				short adjMinY = RenderDataPointUtil.getYMin(adjPoint);
 				short adjMaxY = RenderDataPointUtil.getYMax(adjPoint);
-				
+
 				// skip empty adjacent datapoints
 				if (!RenderDataPointUtil.doesDataPointExist(adjPoint)
 						|| RenderDataPointUtil.isVoid(adjPoint))
 				{
 					continue;
 				}
-				
+
 				// skip this adjacent datapoint if it's above the input datapoint (since it can't affect the input data point)
 				if (yMax <= adjMinY)
 				{
 					continue;
 				}
-				
-				
+
+
 				long adjAbovePoint = (adjIndex != 0) ? adjColumnView.get(adjIndex - 1) : RenderDataPointUtil.EMPTY_DATA;
 				long adjBelowPoint = (adjIndex + 1 < adjCount) ? adjColumnView.get(adjIndex + 1) : RenderDataPointUtil.EMPTY_DATA;
-				
+
 				// if the adjacent data point is over the void
 				// don't consider it as transparent
 				boolean adjOverVoid = !RenderDataPointUtil.doesDataPointExist(adjBelowPoint);
 				boolean adjTransparent = !adjOverVoid && RenderDataPointUtil.getAlpha(adjPoint) < 255 && LodRenderer.transparencyEnabled;
-				
-				
-				
+
+
+
 				//=================================//
 				// set sky light based on adjacent //
 				//=================================//
-				
+
 				// set light based on overlapping adjacent
 				if (!adjTransparent)
 				{
@@ -300,16 +301,16 @@ public class ColumnBox
 					for (int i = adjMinY; i < adjMaxY; i++)
 					{
 						byte skyLightAtPos = skyLightAtInputPos[i];
-						
+
 						// if the adjacent is a different detail level, we want to render adjacent opaque
 						// faces to try and reduce the chance of holes on detail level borders
-						boolean adjacentCoversThis = 
+						boolean adjacentCoversThis =
 								// if the adjacent is the same detail level, no special handling is necessary
 								!adjacentIsSameDetailLevel
 								// if the adjacent face is underground we probably don't need it
 								&& RenderDataPointUtil.getYMax(adjPoint) >= caveCullingMaxY
 								// check if this face is on a border
-								&& 
+								&&
 								(
 									(x == 0 && direction == EDhDirection.WEST)
 									|| (z == 0 && direction == EDhDirection.NORTH)
@@ -317,7 +318,7 @@ public class ColumnBox
 									|| (x == 256 && direction == EDhDirection.EAST)
 									|| (z == 256 && direction == EDhDirection.SOUTH)
 								);
-						
+
 						byte newSkyLightAtPos = adjacentCoversThis ? adjSkyLight : SKYLIGHT_COVERED;
 						skyLightAtInputPos[i] = (byte) Math.min(newSkyLightAtPos, skyLightAtPos);
 					}
@@ -333,8 +334,8 @@ public class ColumnBox
 						skyLightAtInputPos[i] = (byte) Math.min(belowSkyLight, skyLightAtPos);
 					}
 				}
-				
-				
+
+
 				// fill in sky light up to the next DP,
 				// this is done to handle overhangs
 				byte adjSkyLight = RenderDataPointUtil.getLightSky(adjPoint);
@@ -345,18 +346,18 @@ public class ColumnBox
 					skyLightAtInputPos[i] = (byte) Math.min(adjSkyLight, skyLightAtPos);
 				}
 			}
-			
-			
-			
+
+
+
 			//=======================//
 			// create vertical faces //
 			//=======================//
-			
+
 			boolean inputTransparent = ColorUtil.getAlpha(color) < 255 && LodRenderer.transparencyEnabled;
 			byte lastSkyLight = skyLightAtInputPos[yMin];
 			int quadBottomY = yMin;
 			int quadTopY = -1;
-			
+
 			// walk up the sky lights and create a new face
 			// whenever the light changes to different valid value
 			for (int i = yMin; i < yMax; i++)
@@ -371,14 +372,14 @@ public class ColumnBox
 							color, irisBlockMaterialId, blockLight,
 							lastSkyLight, inputTransparent, quadTopY, quadBottomY
 					);
-					
+
 					lastSkyLight = skyLight;
 					quadBottomY = i;
 				}
-				
+
 				quadTopY = (i + 1);
 			}
-			
+
 			// add the in-progress face if present
 			if (quadTopY != -1)
 			{
@@ -422,7 +423,7 @@ public class ColumnBox
 			}
 		}
 	}
-	
-	
-	
+
+
+
 }
