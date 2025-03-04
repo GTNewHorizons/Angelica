@@ -26,6 +26,10 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker
 import com.seibel.distanthorizons.coreapi.ModInfo;
 
 import com.seibel.distanthorizons.forge.wrappers.modAccessor.ModChecker;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -36,17 +40,22 @@ import java.util.function.Consumer;
  * If you are looking for the real start of the mod
  * check out the ClientProxy.
  */
-@Mod(ModInfo.ID)
+@Mod(modid = "DistantHorizons", name = "DistantHorizons")
 public class ForgeMain extends AbstractModInitializer
 {
-	public ForgeMain()
-	{
-		// Register the mod initializer (Actual event registration is done in the different proxies)
-		FMLJavaModLoadingContext.get().getModEventBus().addListener((FMLClientSetupEvent e) -> this.onInitializeClient());
-		FMLJavaModLoadingContext.get().getModEventBus().addListener((FMLDedicatedServerSetupEvent e) -> this.onInitializeServer());
-	}
 
-	@Override
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+            this.onInitializeClient();
+        }
+        else
+        {
+            this.onInitializeServer();
+        }
+    }
+
+    @Override
 	protected void createInitialBindings()
 	{
 		SingletonInjector.INSTANCE.bind(IModChecker.class, ModChecker.INSTANCE);
@@ -74,13 +83,17 @@ public class ForgeMain extends AbstractModInitializer
 		// FIXME What event is this?
 	}
 
+    @Mod.EventHandler
+    public void onServerAboutToStart(FMLServerAboutToStartEvent event) {
+        eventHandlerStartServer.accept(event.getServer());
+    }
+
+    Consumer<MinecraftServer> eventHandlerStartServer;
+
 	@Override
 	protected void subscribeServerStartingEvent(Consumer<MinecraftServer> eventHandler)
 	{
-		MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, (FMLServerAboutToStartEvent e) ->
-		{
-			eventHandler.accept(e.getServer());
-		});
+        eventHandlerStartServer = eventHandler;
 	}
 
 	@Override

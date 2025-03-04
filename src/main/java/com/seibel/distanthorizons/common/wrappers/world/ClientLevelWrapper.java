@@ -16,6 +16,9 @@ import java.awt.*;
 import java.io.File;
 
 public class ClientLevelWrapper implements IClientLevelWrapper {
+    public ClientLevelWrapper(WorldClient level) {
+    }
+
     public static IClientLevelWrapper getWrapper(WorldClient clientLevel, boolean b) {
         return null;
     }
