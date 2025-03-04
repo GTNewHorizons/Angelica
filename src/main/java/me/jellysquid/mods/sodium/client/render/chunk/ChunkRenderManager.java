@@ -4,7 +4,12 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
+import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.core.util.math.Mat4f;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -36,13 +41,16 @@ import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.Timer;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Vector3d;
 
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
@@ -507,6 +515,28 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         return render;
     }
 
+    static {
+        try {
+
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static float getRenderPartialTicks() {
+        try {
+            Field timerField = Minecraft.class.getDeclaredField("timer");
+            timerField.setAccessible(true);
+
+            Timer timer = (Timer) timerField.get(Minecraft.getMinecraft());
+            return timer.renderPartialTicks;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void renderLayer(MatrixStack matrixStack, BlockRenderPass pass, double x, double y, double z) {
         final ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
         final ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
@@ -524,6 +554,33 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.backend.end(matrixStack);
 
         commandList.flush();
+
+
+
+        // get the matrices directly from MC
+        Mat4f mcModelViewMatrix = McObjectConverter.Convert(matrixStack.peek().getModel());
+        Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
+
+
+
+        float frameTime = getRenderPartialTicks();
+
+
+        // only render before solid blocks
+        if (pass == BlockRenderPass.CUTOUT_MIPPED)
+        {
+            ClientApi.INSTANCE.renderLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
+            ClientApi.INSTANCE.renderFadeOpaque(
+                mcModelViewMatrix,
+                mcProjectionMatrix,
+                frameTime,
+                ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld)
+            );
+        }
+        else
+        {
+            ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
+        }
     }
 
     public void tickVisibleRenders() {
