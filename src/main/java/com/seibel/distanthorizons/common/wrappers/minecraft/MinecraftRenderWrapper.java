@@ -40,6 +40,7 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.minecraft.client.Minecraft;
 import net.minecraft.potion.Potion;
@@ -58,6 +59,7 @@ import org.lwjgl.opengl.GL15;
  * @version 12-12-2021
  */
 //@Environment(EnvType.CLIENT)
+@Lwjgl3Aware
 public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 {
     public static final MinecraftRenderWrapper INSTANCE = new MinecraftRenderWrapper();

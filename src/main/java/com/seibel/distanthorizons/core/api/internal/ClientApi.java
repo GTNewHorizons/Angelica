@@ -75,70 +75,70 @@ import java.util.concurrent.TimeUnit;
 public class ClientApi
 {
 	private static final Logger LOGGER = LogManager.getLogger();
-	
+
 	public static boolean prefLoggerEnabled = false;
-	
+
 	public static final ClientApi INSTANCE = new ClientApi();
 	public static final TestRenderer TEST_RENDERER = new TestRenderer();
-	
+
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-	
+
 	public static final long SPAM_LOGGER_FLUSH_NS = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-	
+
 	/** this includes the is dev build message and low allocated memory warning */
 	private static final int MS_BETWEEN_STATIC_STARTUP_MESSAGES = 4_000;
-	
-	
-	
+
+
+
 	private boolean isDevBuildMessagePrinted = false;
 	private boolean lowMemoryWarningPrinted = false;
 	private boolean highVanillaRenderDistanceWarningPrinted = false;
-	
+
 	/** when the last static */
 	private long lastStaticWarningMessageSentMsTime = 0L;
-	
+
 	private final Queue<String> chatMessageQueueForNextFrame = new LinkedBlockingQueue<>();
 	private final Queue<String> overlayMessageQueueForNextFrame = new LinkedBlockingQueue<>();
-	
+
 	public boolean rendererDisabledBecauseOfExceptions = false;
-	
+
 	private long lastFlushNanoTime = 0;
-	
+
 	private final ClientPluginChannelApi pluginChannelApi = new ClientPluginChannelApi(this::clientLevelLoadEvent, this::clientLevelUnloadEvent);
-	
+
 	/** Delay loading the first level to give the server some time to respond with level to actually load */
 	private Timer firstLevelLoadTimer;
 	private static final long FIRST_LEVEL_LOAD_DELAY_IN_MS = 1_000;
-	
+
 	/** Holds any levels that were loaded before the {@link ClientApi#onClientOnlyConnected} was fired. */
 	public final HashSet<IClientLevelWrapper> waitingClientLevels = new HashSet<>();
 	/** Holds any chunks that were loaded before the {@link ClientApi#clientLevelLoadEvent(IClientLevelWrapper)} was fired. */
 	public final HashMap<Pair<IClientLevelWrapper, DhChunkPos>, IChunkWrapper> waitingChunkByClientLevelAndPos = new HashMap<>();
-	
+
 	/** re-set every frame during the opaque rendering stage */
 	private boolean renderingCancelledForThisFrame;
-	
-	
-	
+
+
+
 	//==============//
 	// constructors //
 	//==============//
-	
+
 	private ClientApi() { }
-	
-	
-	
+
+
+
 	//==============//
 	// world events //
 	//==============//
-	
+
 	/**
 	 * May be fired slightly before or after the associated
 	 * {@link ClientApi#clientLevelLoadEvent(IClientLevelWrapper)} event
 	 * depending on how the host mod loader functions. <br><br>
-	 * 
-	 * Synchronized shouldn't be necessary, but is present to match {@see onClientOnlyDisconnected} and prevent any unforeseen issues. 
+	 *
+	 * Synchronized shouldn't be necessary, but is present to match {@see onClientOnlyDisconnected} and prevent any unforeseen issues.
 	 */
 	public synchronized void onClientOnlyConnected()
 	{
@@ -154,7 +154,7 @@ public class ClientApi
 			else
 			{
 				LOGGER.info("Replay on ClientServer mode connecting.");
-				
+
 				if (Config.Common.Logging.Warning.showReplayWarningOnStartup.get())
 				{
 					MC_CLIENT.sendChatMessage("\u00A76" + "Distant Horizons: Replay detected." + "\u00A7r"); // gold color
@@ -165,25 +165,25 @@ public class ClientApi
 					MC_CLIENT.sendChatMessage("");
 				}
 			}
-			
+
 			// firing after clientLevelLoadEvent
 			// TODO if level has prepped to load it should fire level load event
 			DhClientWorld world = new DhClientWorld();
 			SharedApi.setDhWorld(world);
-			
+
 			this.pluginChannelApi.onJoinServer(world.networkState.getSession());
 			world.networkState.sendConfigMessage();
-			
+
 			LOGGER.info("Loading [" + this.waitingClientLevels.size() + "] waiting client level wrappers.");
 			for (IClientLevelWrapper level : this.waitingClientLevels)
 			{
 				this.clientLevelLoadEvent(level);
 			}
-			
+
 			this.waitingClientLevels.clear();
 		}
 	}
-	
+
 	/** Synchronized to prevent a rare issue where multiple disconnect events are triggered on top of each other. */
 	public synchronized void onClientOnlyDisconnected()
 	{
@@ -193,40 +193,40 @@ public class ClientApi
 			this.firstLevelLoadTimer.cancel();
 			this.firstLevelLoadTimer = null;
 		}
-		
+
 		AbstractDhWorld world = SharedApi.getAbstractDhWorld();
 		if (world != null)
 		{
 			LOGGER.info("Client on ClientOnly mode disconnecting.");
-			
+
 			world.close();
 			SharedApi.setDhWorld(null);
 		}
-		
+
 		this.pluginChannelApi.reset();
-		
+
 		// remove any waiting items
 		this.waitingChunkByClientLevelAndPos.clear();
 		this.waitingClientLevels.clear();
 	}
-	
-	
-	
+
+
+
 	//==============//
 	// level events //
 	//==============//
-	
+
 	public void clientLevelUnloadEvent(IClientLevelWrapper level)
 	{
 		try
 		{
 			LOGGER.info("Unloading client level [" + level.getClass().getSimpleName() + "]-[" + level.getDhIdentifier() + "].");
-			
+
 			if (level instanceof IServerKeyedClientLevel)
 			{
 				this.pluginChannelApi.onClientLevelUnload();
 			}
-			
+
 			AbstractDhWorld world = SharedApi.getAbstractDhWorld();
 			if (world != null)
 			{
@@ -245,7 +245,7 @@ public class ClientApi
 			LOGGER.error("Unexpected error in ClientApi.clientLevelUnloadEvent(), error: "+e.getMessage(), e);
 		}
 	}
-	
+
 	public void clientLevelLoadEvent(IClientLevelWrapper levelWrapper)
 	{
 		// wait a moment before loading the level to give the server a chance to handle the client's login request
@@ -263,28 +263,28 @@ public class ClientApi
 			}
 			this.firstLevelLoadTimer.cancel();
 		}
-		
-		
+
+
 		try
 		{
 			LOGGER.info("Loading client level [" + levelWrapper + "]-[" + levelWrapper.getDhIdentifier() + "].");
-			
+
 			AbstractDhWorld world = SharedApi.getAbstractDhWorld();
 			if (world != null)
 			{
 				if (!this.pluginChannelApi.allowLevelLoading(levelWrapper))
 				{
 					LOGGER.info("Levels in this connection are managed by the server, skipping auto-load.");
-					
+
 					// Instead of attempting to load themselves, send the config and wait for a server provided level key.
 					((DhClientWorld) world).networkState.sendConfigMessage();
 					return;
 				}
-				
-				
+
+
 				world.getOrLoadLevel(levelWrapper);
 				ApiEventInjector.INSTANCE.fireAllEvents(DhApiLevelLoadEvent.class, new DhApiLevelLoadEvent.EventParam(levelWrapper));
-				
+
 				this.loadWaitingChunksForLevel(levelWrapper);
 			}
 			else
@@ -313,24 +313,24 @@ public class ClientApi
 			}
 		}
 		LOGGER.info("Loaded [" + keysToRemove.size() + "] waiting chunk wrappers.");
-		
+
 		for (Pair<IClientLevelWrapper, DhChunkPos> keyToRemove : keysToRemove)
 		{
 			this.waitingChunkByClientLevelAndPos.remove(keyToRemove);
 		}
 	}
-	
-	
-	
+
+
+
 	//===============//
 	// render events //
 	//===============//
-	
+
 	public void clientTickEvent()
 	{
 		IProfilerWrapper profiler = MC_CLIENT.getProfiler();
 		profiler.push("DH-ClientTick");
-		
+
 		try
 		{
 			boolean doFlush = System.nanoTime() - this.lastFlushNanoTime >= SPAM_LOGGER_FLUSH_NS;
@@ -341,12 +341,12 @@ public class ClientApi
 			}
 			ConfigBasedLogger.updateAll();
 			ConfigBasedSpamLogger.updateAll(doFlush);
-			
+
 			IDhClientWorld clientWorld = SharedApi.getIDhClientWorld();
 			if (clientWorld != null)
 			{
 				clientWorld.clientTick();
-				
+
 				// Ignore local world gen, as it's managed by server ticking
 				if (!(clientWorld instanceof DhClientServerWorld))
 				{
@@ -359,16 +359,16 @@ public class ClientApi
 			// handle errors here to prevent blowing up a mixin or API up stream
 			LOGGER.error("Unexpected error in ClientApi.clientTickEvent(), error: "+e.getMessage(), e);
 		}
-		
+
 		profiler.pop();
 	}
-	
-	
-	
+
+
+
 	//============//
 	// networking //
 	//============//
-	
+
 	/**
 	 * Forwards a decoded message into the registered handlers.
 	 *
@@ -382,40 +382,38 @@ public class ClientApi
 			networkSession.tryHandleMessage(message);
 		}
 	}
-	
-	
-	
+
+
+
 	//===========//
 	// rendering //
 	//===========//
-	
+
 	/** Should be called before {@link ClientApi#renderDeferredLods} */
 	public void renderLods(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
 	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, false); }
-	
-	/** 
+
+	/**
 	 * Only necessary when Shaders are in use.
-	 * Should be called after {@link ClientApi#renderLods} 
+	 * Should be called after {@link ClientApi#renderLods}
 	 */
 	public void renderDeferredLods(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
 	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, true); }
-	
+
 	private void renderLodLayer(
 			IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks,
 			boolean renderingDeferredLayer)
 	{
 		// logging //
-		
+
 		this.sendQueuedChatMessages();
-		
+
 		IProfilerWrapper profiler = MC_CLIENT.getProfiler();
 		profiler.pop(); // get out of "terrain"
 		profiler.push("DH-RenderLevel");
-		
-		
-		
+
 		// render parameter setup //
-		
+
 		EDhApiRenderPass renderPass;
 		if (DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
 		{
@@ -432,7 +430,7 @@ public class ClientApi
 		{
 			renderPass = EDhApiRenderPass.OPAQUE_AND_TRANSPARENT;
 		}
-		
+
 		DhApiRenderParam renderEventParam =
 				new DhApiRenderParam(
 						renderPass,
@@ -442,11 +440,11 @@ public class ClientApi
 						RenderUtil.createLodProjectionMatrix(mcProjectionMatrix, partialTicks), RenderUtil.createLodModelViewMatrix(mcModelViewMatrix),
 						levelWrapper.getMinHeight()
 				);
-		
-		
-		
+
+
+
 		// render validation //
-		
+
 		try
 		{
 			// TODO write this message to the F3 menu so people can see when a different mod screws with the lightmap
@@ -455,20 +453,20 @@ public class ClientApi
 			{
 				return;
 			}
-			
+
 			IDhClientWorld dhClientWorld = SharedApi.getIDhClientWorld();
 			if (dhClientWorld == null)
 			{
 				return;
 			}
-			
+
 			IDhClientLevel level = (IDhClientLevel) dhClientWorld.getLevel(levelWrapper);
 			if (level == null)
 			{
 				return;
 			}
-			
-			
+
+
 			if (this.rendererDisabledBecauseOfExceptions)
 			{
 				// re-enable rendering if the user toggles DH rendering
@@ -478,14 +476,14 @@ public class ClientApi
 					this.rendererDisabledBecauseOfExceptions = false;
 					Config.Client.quickEnableRendering.set(true);
 				}
-				
+
 				return;
 			}
-			
-			
-			
+
+
+
 			// render pass //
-			
+
 			if (!renderingDeferredLayer)
 			{
 				if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
@@ -495,7 +493,7 @@ public class ClientApi
 					{
 						level.render(renderEventParam, profiler);
 					}
-					
+
 					if (!DhApi.Delayed.renderProxy.getDeferTransparentRendering())
 					{
 						ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
@@ -515,8 +513,8 @@ public class ClientApi
 				{
 					level.renderDeferred(renderEventParam, profiler);
 				}
-				
-				
+
+
 				if (DhApi.Delayed.renderProxy.getDeferTransparentRendering())
 				{
 					ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
@@ -527,7 +525,7 @@ public class ClientApi
 		{
 			this.rendererDisabledBecauseOfExceptions = true;
 			LOGGER.error("Unexpected Renderer error in render pass [" + renderPass + "]. Error: " + e.getMessage(), e);
-			
+
 			MC_CLIENT.sendChatMessage("\u00A74\u00A7l\u00A7uERROR: Distant Horizons renderer has encountered an exception!");
 			MC_CLIENT.sendChatMessage("\u00A74Renderer disabled to try preventing GL state corruption.");
 			MC_CLIENT.sendChatMessage("\u00A74Toggle DH rendering via the config UI to re-activate DH rendering.");
@@ -544,13 +542,13 @@ public class ClientApi
 			{
 				LOGGER.error("Unexpected issue running render thread tasks.", e);
 			}
-			
-			
+
+
 			profiler.pop(); // end LOD
 			profiler.push("terrain"); // go back into "terrain"
 		}
 	}
-	
+
 	/** should be called after DH and MC finish rendering so we can smooth the transition between the two */
 	public void renderFadeOpaque(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
 	{
@@ -576,14 +574,14 @@ public class ClientApi
 			}
 		}
 	}
-	
-	
-	
-	
+
+
+
+
 	//=================//
 	//    DEBUG USE    //
 	//=================//
-	
+
 	/** Trigger once on key press, with CLIENT PLAYER. */
 	public void keyPressedEvent(int glfwKey)
 	{
@@ -592,8 +590,8 @@ public class ClientApi
 			// keybindings are disabled
 			return;
 		}
-		
-		
+
+
 		if (glfwKey == GLFW.GLFW_KEY_F8)
 		{
 			Config.Client.Advanced.Debugging.debugRendering.set(EDhApiDebugRendering.next(Config.Client.Advanced.Debugging.debugRendering.get()));
@@ -610,21 +608,21 @@ public class ClientApi
 			MC_CLIENT.sendChatMessage("P: Debug Pref Logger is " + (prefLoggerEnabled ? "enabled" : "disabled"));
 		}
 	}
-	
+
 	private void sendQueuedChatMessages()
 	{
 		// this includes if the current build is a dev build
 		// and configuration warnings (IE Java memory amount and MC settings)
 		this.detectAndSendBootTimeWarnings();
-		
+
 		// Don't send any generic messages until the static ones have been sent.
 		// This makes sure the more critical messages are seen first.
 		if (this.staticStartupMessageSentRecently())
 		{
 			return;
 		}
-			
-		
+
+
 		// chat messages
 		while (!this.chatMessageQueueForNextFrame.isEmpty())
 		{
@@ -636,7 +634,7 @@ public class ClientApi
 			}
 			MC_CLIENT.sendChatMessage(message);
 		}
-		
+
 		// overlay messages
 		while (!this.overlayMessageQueueForNextFrame.isEmpty())
 		{
@@ -656,7 +654,7 @@ public class ClientApi
 		{
 			this.isDevBuildMessagePrinted = true;
 			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
-			
+
 			// remind the user that this is a development build
 			String message =
 					// green text
@@ -665,24 +663,24 @@ public class ClientApi
 							"Here be dragons!\n";
 			MC_CLIENT.sendChatMessage(message);
 		}
-		
-		
+
+
 		// memory
 		if (this.staticStartupMessageSentRecently()) return;
 		if (!this.lowMemoryWarningPrinted && Config.Common.Logging.Warning.showLowMemoryWarningOnStartup.get())
 		{
 			this.lowMemoryWarningPrinted = true;
 			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
-			
+
 			// 4 GB
 			long minimumRecommendedMemoryInBytes = 4L * 1_000_000_000L;
-			
+
 			// Java returned 17,171,480,576 for 16 GB so it might be slightly off what you'd expect
 			long maxMemoryInBytes = Runtime.getRuntime().maxMemory();
 			if (maxMemoryInBytes < minimumRecommendedMemoryInBytes)
 			{
 				String message =
-						// orange text		
+						// orange text
 						"\u00A76" + "Distant Horizons: Low memory detected." + "\u00A7r \n" +
 						"Stuttering or low FPS may occur. \n" +
 						"Please increase Minecraft's available memory to 4 GB or more. \n" +
@@ -690,18 +688,18 @@ public class ClientApi
 				MC_CLIENT.sendChatMessage(message);
 			}
 		}
-		
-		
+
+
 		// high vanilla render distance
 		if (this.staticStartupMessageSentRecently()) return;
 		if (!this.highVanillaRenderDistanceWarningPrinted && Config.Common.Logging.Warning.showHighVanillaRenderDistanceWarning.get())
 		{
-			// DH generally doesn't need a vanilla render distance above 12 
+			// DH generally doesn't need a vanilla render distance above 12
 			if (MC_RENDER.getRenderDistance() > 12)
 			{
 				this.highVanillaRenderDistanceWarningPrinted = true;
 				this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
-				
+
 				String message =
 						// yellow text
 						"\u00A7e" + "Distant Horizons: High vanilla render distance detected." + "\u00A7r \n" +
@@ -709,7 +707,7 @@ public class ClientApi
 						"and doesn't improve graphics much after about 12.\n" +
 						"Lowing your vanilla render distance will give you better FPS\n" +
 						"and reduce stuttering at a similar visual quality.\n" +
-						// gray text		
+						// gray text
 						"\u00A77" + "A vanilla render distance of 8 is recommended." + "\u00A7r \n" +
 						"This message can be disabled in DH's config under Advanced -> Logging.\n";
 				MC_CLIENT.sendChatMessage(message);
@@ -723,21 +721,21 @@ public class ClientApi
 		{
 			return true;
 		}
-		
-		long timeSinceLastMessage = System.currentTimeMillis() - this.lastStaticWarningMessageSentMsTime; 
+
+		long timeSinceLastMessage = System.currentTimeMillis() - this.lastStaticWarningMessageSentMsTime;
 		return timeSinceLastMessage <= MS_BETWEEN_STATIC_STARTUP_MESSAGES;
 	}
-	
-	
-	/** 
+
+
+	/**
 	 * Queues the given message to appear in chat the next valid frame.
-	 * Useful for queueing up messages that may be triggered before the user has loaded into the world. 
+	 * Useful for queueing up messages that may be triggered before the user has loaded into the world.
 	 */
 	public void showChatMessageNextFrame(String chatMessage) { this.chatMessageQueueForNextFrame.add(chatMessage); }
-	
+
 	/**
 	 * Similar to {@link ClientApi#showChatMessageNextFrame(String)} but appears above the toolbar.
 	 */
 	public void showOverlayMessageNextFrame(String message) { this.overlayMessageQueueForNextFrame.add(message); }
-	
+
 }

@@ -47,6 +47,7 @@ import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverri
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -61,44 +62,45 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * This object tells the {@link LodRenderer} what buffers to render
  * TODO rename this class, maybe RenderBufferOrganizer or something more specific?
  */
+@Lwjgl3Aware
 public class RenderBufferHandler implements AutoCloseable
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	
+
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
 
 	private static final IIrisAccessor IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
-	
+
 	/** contains all relevant data */
 	public final LodQuadTree lodQuadTree;
-	
+
 	// TODO: Make sorting go into the update loop instead of the render loop as it doesn't need to be done every frame
 	private SortedArraySet<LoadedRenderBuffer> loadedNearToFarBuffers = null;
-	
+
 	private final AtomicBoolean rebuildAllBuffers = new AtomicBoolean(false);
-	
+
 	private int visibleBufferCount;
 	private int culledBufferCount;
 	private int shadowVisibleBufferCount;
 	private int shadowCulledBufferCount;
-	
-	
-	
+
+
+
 	//=============//
 	// constructor //
 	//=============//
-	
-	public RenderBufferHandler(LodQuadTree lodQuadTree) 
-	{ 
+
+	public RenderBufferHandler(LodQuadTree lodQuadTree)
+	{
 		this.lodQuadTree = lodQuadTree;
-		
+
 		IDhApiCullingFrustum coreCameraFrustum = DhApi.overrides.get(IDhApiCullingFrustum.class, IOverrideInjector.CORE_PRIORITY);
 		if (coreCameraFrustum == null)
 		{
 			DhApi.overrides.bind(IDhApiCullingFrustum.class, new DhFrustumBounds());
 		}
-		
+
 		// by default the shadow pass shouldn't have any frustum culling
 		IDhApiShadowCullingFrustum coreShadowFrustum = DhApi.overrides.get(IDhApiShadowCullingFrustum.class, IOverrideInjector.CORE_PRIORITY);
 		if (coreShadowFrustum == null)
@@ -106,13 +108,13 @@ public class RenderBufferHandler implements AutoCloseable
 			DhApi.overrides.bind(IDhApiShadowCullingFrustum.class, new NeverCullFrustum());
 		}
 	}
-	
-	
-	
+
+
+
 	//=================//
 	// render building //
 	//=================//
-	
+
 	/**
 	 * The following buildRenderList sorting method is based on the following reddit post: <br>
 	 * <a href="https://www.reddit.com/r/VoxelGameDev/comments/a0l8zc/correct_depthordering_for_translucent_discrete/">correct_depth_ordering_for_translucent_discrete</a> <br><br>
@@ -123,7 +125,7 @@ public class RenderBufferHandler implements AutoCloseable
 	public void buildRenderListAndUpdateSections(IClientLevelWrapper clientLevelWrapper, DhApiRenderParam renderEventParam, Vec3f lookForwardVector)
 	{
 		EDhDirection[] axisDirections = new EDhDirection[3];
-		
+
 		// Do the axis that are the longest first (i.e. the largest absolute value of the lookForwardVector),
 		// with the sign being the opposite of the respective lookForwardVector component's sign
 		float absX = Math.abs(lookForwardVector.x);
@@ -132,7 +134,7 @@ public class RenderBufferHandler implements AutoCloseable
 		EDhDirection xDir = lookForwardVector.x < 0 ? EDhDirection.EAST : EDhDirection.WEST;
 		EDhDirection yDir = lookForwardVector.y < 0 ? EDhDirection.UP : EDhDirection.DOWN;
 		EDhDirection zDir = lookForwardVector.z < 0 ? EDhDirection.SOUTH : EDhDirection.NORTH;
-		
+
 		if (absX >= absY && absX >= absZ)
 		{
 			axisDirections[0] = xDir;
@@ -175,9 +177,9 @@ public class RenderBufferHandler implements AutoCloseable
 				axisDirections[2] = xDir;
 			}
 		}
-		
+
 		Pos2D cPos = this.lodQuadTree.getCenterBlockPos().toPos2D();
-		
+
 		// Now that we have the axis directions, we can sort the render list
 		Comparator<LoadedRenderBuffer> farToNearComparator = (loadedBufferA, loadedBufferB) ->
 		{
@@ -189,14 +191,14 @@ public class RenderBufferHandler implements AutoCloseable
 				int bManhattanDistance = bPos.manhattanDist(cPos);
 				return bManhattanDistance - aManhattanDistance;
 			}
-			
+
 			for (EDhDirection axisDirection : axisDirections)
 			{
 				if (axisDirection.getAxis().isVertical())
 				{
 					continue; // We only sort in the horizontal direction
 				}
-				
+
 				int abPosDifference;
 				if (axisDirection.getAxis().equals(EDhDirection.Axis.X))
 				{
@@ -206,29 +208,29 @@ public class RenderBufferHandler implements AutoCloseable
 				{
 					abPosDifference = aPos.getY() - bPos.getY();
 				}
-				
+
 				if (abPosDifference == 0)
 				{
 					continue;
 				}
-				
+
 				if (axisDirection.getAxisDirection().equals(EDhDirection.AxisDirection.NEGATIVE))
 				{
 					abPosDifference = -abPosDifference; // Reverse the sign
 				}
 				return abPosDifference;
 			}
-			
+
 			return DhSectionPos.getDetailLevel(loadedBufferA.pos) - DhSectionPos.getDetailLevel(loadedBufferB.pos); // If all else fails, sort by detail
 		};
 		this.loadedNearToFarBuffers = new SortedArraySet<>((a, b) -> -farToNearComparator.compare(a, b)); // TODO is the comparator named wrong?
-		
-		
-		
+
+
+
 		//====================================//
 		// get and update the culling frustum //
 		//====================================//
-		
+
 		// get the culling frustum
 		boolean enableFrustumCulling;
 		IDhApiCullingFrustum frustum;
@@ -243,33 +245,33 @@ public class RenderBufferHandler implements AutoCloseable
 			enableFrustumCulling = !Config.Client.Advanced.Graphics.Culling.disableFrustumCulling.get();
 			frustum = DhApi.overrides.get(IDhApiCullingFrustum.class);
 		}
-		
-		
+
+
 		// update the frustum if necessary
 		if (enableFrustumCulling)
 		{
 			int worldMinY = clientLevelWrapper.getMinHeight();
 			int worldHeight = clientLevelWrapper.getMaxHeight();
-			
+
 			Vec3d cameraPos = MC_RENDER.getCameraExactPosition();
-			
+
 			Matrix4fc matWorldView = new Matrix4f()
 					.setTransposed(renderEventParam.mcModelViewMatrix.getValuesAsArray())
 					.translate(-(float) cameraPos.x, -(float) cameraPos.y, -(float) cameraPos.z);
-			
+
 			Matrix4fc matWorldViewProjection = new Matrix4f()
 					.setTransposed(renderEventParam.dhProjectionMatrix.getValuesAsArray())
 					.mul(matWorldView);
-			
+
 			frustum.update(worldMinY, worldMinY + worldHeight, new Mat4f(matWorldViewProjection));
 		}
-		
-		
-		
+
+
+
 		//=========================//
 		// Update the section list //
 		//=========================//
-		
+
 		if (isShadowPass)
 		{
 			this.shadowCulledBufferCount = 0;
@@ -278,20 +280,20 @@ public class RenderBufferHandler implements AutoCloseable
 		{
 			this.culledBufferCount = 0;
 		}
-		
+
 		boolean rebuildAllBuffers = this.rebuildAllBuffers.getAndSet(false);
 		Iterator<QuadNode<LodRenderSection>> nodeIterator = this.lodQuadTree.nodeIterator();
 		while (nodeIterator.hasNext())
 		{
 			QuadNode<LodRenderSection> node = nodeIterator.next();
-			
+
 			long sectionPos = node.sectionPos;
 			LodRenderSection renderSection = node.value;
 			if (renderSection == null)
 			{
 				continue;
 			}
-			
+
 			try
 			{
 				if (enableFrustumCulling)
@@ -310,18 +312,18 @@ public class RenderBufferHandler implements AutoCloseable
 						{
 							this.culledBufferCount++;
 						}
-						
+
 						continue;
 					}
 				}
-				
+
 				ColumnRenderBuffer buffer = renderSection.renderBuffer;
 				if (buffer == null || !renderSection.getRenderingEnabled())
 				{
 					continue;
 				}
-				
-				
+
+
 				this.loadedNearToFarBuffers.add(new LoadedRenderBuffer(buffer, sectionPos));
 			}
 			catch (Exception e)
@@ -329,7 +331,7 @@ public class RenderBufferHandler implements AutoCloseable
 				LOGGER.error("Error updating QuadTree render source at " + renderSection.pos + ".", e);
 			}
 		}
-		
+
 		if (isShadowPass)
 		{
 			this.shadowVisibleBufferCount = this.loadedNearToFarBuffers.size();
@@ -339,26 +341,26 @@ public class RenderBufferHandler implements AutoCloseable
 			this.visibleBufferCount = this.loadedNearToFarBuffers.size();
 		}
 	}
-	
+
 	public void MarkAllBuffersDirty() { this.rebuildAllBuffers.set(true); }
-	
-	
-	
+
+
+
 	//================//
 	// render methods //
 	//================//
-	
+
 	public void renderOpaque(LodRenderer renderContext,DhApiRenderParam renderEventParam)
 	{ this.renderPass(renderContext, renderEventParam, true); }
 	public void renderTransparent(LodRenderer renderContext, DhApiRenderParam renderEventParam)
 	{ this.renderPass(renderContext, renderEventParam, false); }
-	
+
 	private void renderPass(LodRenderer renderContext, DhApiRenderParam renderEventParam, boolean opaquePass)
 	{
 		//=======================//
 		// debug wireframe setup //
 		//=======================//
-		
+
 		boolean renderWireframe = Config.Client.Advanced.Debugging.renderWireframe.get();
 		if (renderWireframe)
 		{
@@ -370,12 +372,12 @@ public class RenderBufferHandler implements AutoCloseable
 			GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
 			GLMC.enableFaceCulling();
 		}
-		
-		
+
+
 		//===========//
 		// rendering //
 		//===========//
-		
+
 		if (opaquePass)
 		{
 			// TODO why can these sometimes be null when teleporting between multiverses
@@ -397,28 +399,28 @@ public class RenderBufferHandler implements AutoCloseable
 				}
 			}
 		}
-		
-		
-		
+
+
+
 		//=========================//
 		// debug wireframe cleanup //
 		//=========================//
-		
+
 		if (renderWireframe)
 		{
-			// default back to GL_FILL since all other rendering uses it 
+			// default back to GL_FILL since all other rendering uses it
 			GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
 			GLMC.enableFaceCulling();
 		}
-		
+
 	}
-	
-	
-	
+
+
+
 	//=========//
 	// F3 menu //
 	//=========//
-	
+
 	public String getVboRenderDebugMenuString()
 	{
 		String countText = F3Screen.NUMBER_FORMAT.format(this.visibleBufferCount);
@@ -435,7 +437,7 @@ public class RenderBufferHandler implements AutoCloseable
 		{
 			return null;
 		}
-		
+
 		String countText = F3Screen.NUMBER_FORMAT.format(this.shadowVisibleBufferCount);
 		if (!Config.Client.Advanced.Graphics.Culling.disableFrustumCulling.get())
 		{
@@ -443,33 +445,33 @@ public class RenderBufferHandler implements AutoCloseable
 		}
 		return LodUtil.formatLog("Shadow VBO Render Count: " + countText);
 	}
-	
-	
-	
+
+
+
 	//=========//
 	// cleanup //
 	//=========//
-	
+
 	@Override
 	public void close() { this.lodQuadTree.close(); }
-	
-	
-	
+
+
+
 	//================//
 	// helper classes //
 	//================//
-	
+
 	private static class LoadedRenderBuffer
 	{
 		public final ColumnRenderBuffer buffer;
 		public final long pos;
-		
+
 		LoadedRenderBuffer(ColumnRenderBuffer buffer, long pos)
 		{
 			this.buffer = buffer;
 			this.pos = pos;
 		}
-		
+
 	}
-	
+
 }
