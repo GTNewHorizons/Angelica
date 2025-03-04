@@ -21,8 +21,10 @@ package com.seibel.distanthorizons.forge.wrappers.modAccessor;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
 import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.ModContainer;
 
 import java.io.File;
+import java.util.List;
 
 public class ModChecker implements IModChecker
 {
@@ -37,7 +39,12 @@ public class ModChecker implements IModChecker
 	@Override
 	public File modLocation(String modid)
 	{
-		return Loader.instance().getModList().stream().filter(x -> x.getModId().equals(modid)).findFirst().get().getSource();
+        List<ModContainer> found = Loader.instance().getModList().stream().filter(x -> x.getModId().equals(modid)).toList();
+        if (found.isEmpty())
+        {
+            throw new RuntimeException("Mod not found: " + modid);
+        }
+        return found.get(0).getSource();
 	}
 
 }
