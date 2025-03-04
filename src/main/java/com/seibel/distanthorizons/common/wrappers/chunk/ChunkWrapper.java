@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.common.wrappers.chunk;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
+import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.misc.MutableBlockPosWrapper;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
@@ -248,7 +249,7 @@ public class ChunkWrapper implements IChunkWrapper
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
         // TODO copy into pooled array, this isn't thread safe and can cause MC to throw errors if the chunk is loaded
-        return BlockStateWrapper.fromBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ), this.wrappedLevel);
+        return BlockStateWrapper.fromBlockState(new FakeBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ)), this.wrappedLevel);
     }
 
     @Override
@@ -256,7 +257,7 @@ public class ChunkWrapper implements IChunkWrapper
     {
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
-        return BlockStateWrapper.fromBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ), this.wrappedLevel, guess);
+        return BlockStateWrapper.fromBlockState(new FakeBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ)), this.wrappedLevel, guess);
     }
 
     /**
