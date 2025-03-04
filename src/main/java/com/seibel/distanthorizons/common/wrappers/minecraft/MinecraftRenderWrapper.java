@@ -175,7 +175,14 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
         return height;
     }
 
-    private RenderTarget getRenderTarget() { return RenderTarget.builder().setDimensions(MC.displayWidth, MC.displayHeight).build(); /* MC.getMainRenderTarget(); TODO */ }
+    static RenderTarget targetDummy;
+
+    private RenderTarget getRenderTarget() {
+        if (targetDummy == null)
+            targetDummy = RenderTarget.builder().setDimensions(MC.displayWidth, MC.displayHeight).build();
+        /* MC.getMainRenderTarget(); TODO */
+        return targetDummy;
+    }
 
     @Override
     public int getTargetFrameBuffer()
@@ -187,9 +194,13 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     public void clearTargetFrameBuffer() { this.finalLevelFrameBufferId = -1; }
 
     @Override
-    public int getDepthTextureId() { return this.getRenderTarget().getAltTexture(); } /* TODO */
+    public int getDepthTextureId() {
+        return this.getRenderTarget().getAltTexture();
+    } /* TODO */
     @Override
-    public int getColorTextureId() { return this.getRenderTarget().getMainTexture(); } /* TODO */
+    public int getColorTextureId() {
+        return this.getRenderTarget().getMainTexture();
+    } /* TODO */
 
     @Override
     public int getTargetFrameBufferViewportWidth()
@@ -204,7 +215,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     }
 
     @Override
-    public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return null; /* TODO */ }
+    public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return new LightMapWrapper(); }
 
     @Override
     public boolean isFogStateSpecial()

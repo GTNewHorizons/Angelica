@@ -548,16 +548,16 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         if (pass == BlockRenderPass.CUTOUT_MIPPED)
         {
             ClientApi.INSTANCE.renderLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
-            ClientApi.INSTANCE.renderFadeOpaque(
+            /*ClientApi.INSTANCE.renderFadeOpaque(
                 mcModelViewMatrix,
                 mcProjectionMatrix,
                 frameTime,
                 ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld)
-            );
+            );*/
         }
         else
         {
-            ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
+           // ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
         }
     }
 
