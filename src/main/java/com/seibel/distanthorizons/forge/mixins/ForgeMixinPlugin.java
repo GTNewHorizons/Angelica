@@ -1,7 +1,6 @@
 package com.seibel.distanthorizons.forge.mixins;
 
-import net.minecraftforge.fml.ModList;
-import org.objectweb.asm.tree.ClassNode;
+import cpw.mods.fml.common.Loader;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
@@ -16,8 +15,8 @@ public class ForgeMixinPlugin implements IMixinConfigPlugin
 {
 	private boolean firstRun = false;
 	private boolean isForgeMixinFile;
-	
-	
+
+
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName)
 	{
@@ -31,10 +30,10 @@ public class ForgeMixinPlugin implements IMixinConfigPlugin
 		}
 		if (!this.isForgeMixinFile)
 			return false;
-		
+
 		if (mixinClassName.contains(".mods."))
 		{ // If the mixin wants to go into a mod then we check if that mod is loaded or not
-			return ModList.get().isLoaded(
+			return Loader.isModLoaded(
 					mixinClassName
 							// What these 2 regex's do is get the mod name that we are checking out of the mixinClassName
 							// Eg. "com.seibel.distanthorizons.mixins.mods.sodium.MixinSodiumChunkRenderer" turns into "sodium"
@@ -42,27 +41,28 @@ public class ForgeMixinPlugin implements IMixinConfigPlugin
 							.replaceAll("\\..*$", "") // Replaces everything after the mod name
 			);
 		}
-		
+
 		return true;
 	}
-	
-	
+
+
 	@Override
 	public void onLoad(String mixinPackage) { }
-	
+
 	@Override
 	public String getRefMapperConfig() { return null; }
-	
+
 	@Override
 	public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) { }
-	
+
 	@Override
 	public List<String> getMixins() { return null; }
-	
-	@Override
-	public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) { }
-	
-	@Override
-	public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) { }
-	
+
+    @Override
+    public void preApply(String s, org.spongepowered.asm.lib.tree.ClassNode classNode, String s1, IMixinInfo iMixinInfo) {
+    }
+
+    @Override
+    public void postApply(String s, org.spongepowered.asm.lib.tree.ClassNode classNode, String s1, IMixinInfo iMixinInfo) {
+    }
 }
