@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.forge;
 
 import com.seibel.distanthorizons.common.AbstractModInitializer;
+import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
@@ -30,6 +31,7 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
+import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -53,6 +55,20 @@ public class ForgeMain extends AbstractModInitializer
         {
             this.onInitializeServer();
         }
+    }
+
+    // ServerWorldLoadEvent
+    @Mod.EventHandler
+    public void dedicatedWorldLoadEvent(FMLServerAboutToStartEvent event)
+    {
+        ServerApi.INSTANCE.serverLoadEvent(event.getServer().isDedicatedServer());
+    }
+
+    // ServerWorldUnloadEvent
+    @Mod.EventHandler
+    public void serverWorldUnloadEvent(FMLServerStoppingEvent event)
+    {
+        ServerApi.INSTANCE.serverUnloadEvent();
     }
 
     @Override
@@ -85,7 +101,8 @@ public class ForgeMain extends AbstractModInitializer
 
     @Mod.EventHandler
     public void onServerAboutToStart(FMLServerAboutToStartEvent event) {
-        eventHandlerStartServer.accept(event.getServer());
+        if (eventHandlerStartServer != null)
+            eventHandlerStartServer.accept(event.getServer());
     }
 
     Consumer<MinecraftServer> eventHandlerStartServer;
