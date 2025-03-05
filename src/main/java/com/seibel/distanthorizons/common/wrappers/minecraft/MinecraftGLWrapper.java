@@ -19,11 +19,13 @@
 
 package com.seibel.distanthorizons.common.wrappers.minecraft;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL32;
 
 
@@ -65,13 +67,13 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void enableScissorTest()
     {
-        GL32.glEnable(GL32.GL_SCISSOR_TEST);
+        GLStateManager.enableScissorTest();
     }
     /** @see GL32#GL_SCISSOR_TEST */
     @Override
     public void disableScissorTest()
     {
-        GL32.glDisable(GL32.GL_SCISSOR_TEST);
+       GLStateManager.disableScissorTest();
     }
 
 
@@ -89,33 +91,33 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void enableDepthTest()
     {
-        GL32.glEnable(GL32.GL_DEPTH_TEST);
+        GLStateManager.enableDepthTest();
     }
     /** @see GL32#GL_DEPTH_TEST */
     @Override
     public void disableDepthTest()
     {
-        GL32.glDisable(GL32.GL_DEPTH_TEST);
+        GLStateManager.disableDepthTest();
     }
 
     /** @see GL32#glDepthFunc(int)  */
     @Override
     public void glDepthFunc(int func)
     {
-        GL32.glDepthFunc(func);
+        GLStateManager.glDepthFunc(func);
     }
 
     /** @see GL32#glDepthMask(boolean) */
     @Override
     public void enableDepthMask()
     {
-        GL32.glDepthMask(true);
+        GLStateManager.glDepthMask(true);
     }
     /** @see GL32#glDepthMask(boolean) */
     @Override
     public void disableDepthMask()
     {
-        GL32.glDepthMask(false);
+        GLStateManager.glDepthMask(false);
     }
 
 
@@ -125,26 +127,26 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void enableBlend()
     {
-        GL32.glEnable(GL32.GL_BLEND);
+        GLStateManager.enableBlend();
     }
     /** @see GL32#GL_BLEND */
     @Override
     public void disableBlend()
     {
-        GL32.glDisable(GL32.GL_BLEND);
+        GLStateManager.disableBlend();
     }
 
     /** @see GL32#glBlendFunc */
     @Override
     public void glBlendFunc(int sfactor, int dfactor)
     {
-        GL32.glBlendFunc(sfactor, dfactor);
+        GLStateManager.glBlendFunc(sfactor, dfactor);
     }
     /** @see GL32#glBlendFuncSeparate */
     @Override
     public void glBlendFuncSeparate(int sfactorRGB, int dfactorRGB, int sfactorAlpha, int dfactorAlpha)
     {
-        GL32.glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+        GLStateManager.tryBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
     }
 
 
@@ -177,13 +179,13 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void enableFaceCulling()
     {
-        GL32.glEnable(GL32.GL_CULL_FACE);
+        GLStateManager.enableCull();
     }
     /** @see GL32#GL_CULL_FACE */
     @Override
     public void disableFaceCulling()
     {
-        GL32.glDisable(GL32.GL_CULL_FACE);
+        GLStateManager.disableCull();
     }
 
 
@@ -200,10 +202,12 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void glActiveTexture(int textureId)
     {
-        GL32.glActiveTexture(textureId);
+        GLStateManager.glActiveTexture(textureId);
     }
     @Override
-    public int getActiveTexture() { return GL32.glGetInteger(GL32.GL_ACTIVE_TEXTURE); }
+    public int getActiveTexture() {
+        return GLStateManager.getActiveTextureUnit();
+    }
 
     /**
      * Always binds to {@link GL32#GL_TEXTURE_2D}
@@ -212,7 +216,7 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     @Override
     public void glBindTexture(int texture)
     {
-        GL32.glBindTexture(GL32.GL_TEXTURE_2D, texture);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
     }
 
 
