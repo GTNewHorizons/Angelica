@@ -187,7 +187,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public int getTargetFrameBuffer()
     {
-        return 0; //this.getRenderTarget().frameBufferId;
+        return Minecraft.getMinecraft().getFramebuffer().framebufferObject;
     }
 
     @Override
@@ -205,13 +205,13 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public int getTargetFrameBufferViewportWidth()
     {
-        return getRenderTarget().getWidth();
+        return Minecraft.getMinecraft().getFramebuffer().framebufferWidth;
     }
 
     @Override
     public int getTargetFrameBufferViewportHeight()
     {
-        return getRenderTarget().getHeight();
+        return  Minecraft.getMinecraft().getFramebuffer().framebufferHeight;
     }
 
     @Override
