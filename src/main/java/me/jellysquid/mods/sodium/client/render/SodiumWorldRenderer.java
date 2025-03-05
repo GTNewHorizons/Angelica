@@ -19,6 +19,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import jss.notfine.core.SettingsManager;
 import lombok.Getter;
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -61,12 +62,14 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
+import org.lwjgl.opengl.GL32;
 
 import java.util.Set;
 
 /**
  * Provides an extension to vanilla's {@link WorldRenderer}.
  */
+@Lwjgl3Aware
 public class SodiumWorldRenderer {
     private static SodiumWorldRenderer instance;
 
@@ -291,6 +294,7 @@ public class SodiumWorldRenderer {
                 mcModelViewMatrix,
                 mcProjectionMatrix,
                 frameTime);
+            GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
         }
     }
 
