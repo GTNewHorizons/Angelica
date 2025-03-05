@@ -17,8 +17,8 @@ minecraft {
     javaCompatibilityVersion = 21
 
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
-    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoading=true", "-Dlegacy.debugClassLoadingFiner=false", "-Dlegacy.debugClassLoadingSave=true")
-    //extraRunJvmArguments.addAll("-Dlegacy.debugClassLoading=true", "-Dlegacy.debugClassLoadingSave=true")
+    //extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
+    //extraRunJvmArguments.addAll("-Dlegacy.debugClassLoading=true", "-Dlegacy.debugClassLoadingFiner=false", "-Dlegacy.debugClassLoadingSave=true")
 }
 
 tasks.runClient { enabled = false }
