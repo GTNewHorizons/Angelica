@@ -54,7 +54,7 @@ public class McObjectConverter
 		FloatBuffer buffer = FloatBuffer.allocate(16);
 		storeMatrix(mcMatrix, buffer);
 		Mat4f matrix = new Mat4f(buffer);
-		// TODO ? matrix.transpose();
+		matrix.transpose();
 		return matrix;
 	}
 	/** Taken from Minecraft's com.mojang.math.Matrix4f class from 1.18.2 */

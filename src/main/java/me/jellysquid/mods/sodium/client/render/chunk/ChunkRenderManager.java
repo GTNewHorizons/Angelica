@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.MinecraftAccessor;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
@@ -24,6 +25,7 @@ import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
+import me.jellysquid.mods.sodium.client.render.GameRendererContext;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.ChunkBuildResult;
@@ -516,7 +518,39 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         return render;
     }
 
+    private void renderLODs()
+    {
+        // get the matrices directly from MC
+        Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
+        //Mat4f mcModelViewMatrix2 = McObjectConverter.Convert(matrixStack.peek().getModel());
+        Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
+        //Mat4f mcProjectionMatrix2 = McObjectConverter.Convert( RenderingState.INSTANCE.getProjectionMatrix());
+
+
+        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+
+        // only render before solid blocks
+       // if (pass == BlockRenderPass.CUTOUT_MIPPED)
+        {
+            ClientApi.INSTANCE.renderLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
+            /*ClientApi.INSTANCE.renderFadeOpaque(
+                mcModelViewMatrix,
+                mcProjectionMatrix,
+                frameTime,
+                ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld)
+            );*/
+        }
+       // else
+        {
+            // ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
+        }
+    }
+
     public void renderLayer(MatrixStack matrixStack, BlockRenderPass pass, double x, double y, double z) {
+        if (!pass.isTranslucent())
+        {
+            renderLODs();
+        }
         final ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
         final ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
 
@@ -533,32 +567,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.backend.end(matrixStack);
 
         commandList.flush();
-
-
-
-        // get the matrices directly from MC
-        Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
-        Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
-
-
-
-        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-
-        // only render before solid blocks
-        if (pass == BlockRenderPass.CUTOUT_MIPPED)
-        {
-            ClientApi.INSTANCE.renderLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
-            /*ClientApi.INSTANCE.renderFadeOpaque(
-                mcModelViewMatrix,
-                mcProjectionMatrix,
-                frameTime,
-                ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld)
-            );*/
-        }
-        else
-        {
-           // ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
-        }
     }
 
     public void tickVisibleRenders() {
