@@ -72,7 +72,7 @@ public class ColumnRenderBuffer implements AutoCloseable
 
 	public ColumnRenderBuffer(DhBlockPos blockPos)
 	{
-		this.blockPos = new DhBlockPos(blockPos.getX(), blockPos.getY()+50, blockPos.getZ());
+		this.blockPos = new DhBlockPos(blockPos.getX(), blockPos.getY(), blockPos.getZ());
 		this.vbos = new GLVertexBuffer[0];
 		this.vbosTransparent = new GLVertexBuffer[0];
 	}

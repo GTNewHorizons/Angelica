@@ -518,39 +518,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         return render;
     }
 
-    private void renderLODs()
-    {
-        // get the matrices directly from MC
-        Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
-        //Mat4f mcModelViewMatrix2 = McObjectConverter.Convert(matrixStack.peek().getModel());
-        Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
-        //Mat4f mcProjectionMatrix2 = McObjectConverter.Convert( RenderingState.INSTANCE.getProjectionMatrix());
-
-
-        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-
-        // only render before solid blocks
-       // if (pass == BlockRenderPass.CUTOUT_MIPPED)
-        {
-            ClientApi.INSTANCE.renderLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
-            /*ClientApi.INSTANCE.renderFadeOpaque(
-                mcModelViewMatrix,
-                mcProjectionMatrix,
-                frameTime,
-                ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld)
-            );*/
-        }
-       // else
-        {
-            // ClientApi.INSTANCE.renderDeferredLods(ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld), mcModelViewMatrix, mcProjectionMatrix, frameTime);
-        }
-    }
-
     public void renderLayer(MatrixStack matrixStack, BlockRenderPass pass, double x, double y, double z) {
-        if (!pass.isTranslucent())
-        {
-            renderLODs();
-        }
         final ChunkRenderList<T> chunkRenderList = this.chunkRenderLists[pass.ordinal()];
         final ChunkRenderListIterator<T> iterator = chunkRenderList.iterator(pass.isTranslucent());
 
