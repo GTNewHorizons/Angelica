@@ -1,8 +1,5 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -59,7 +56,7 @@ public class HUDCaching {
     public static boolean renderCrosshairsCaptured;
 
     private final static RenderGameOverlayEvent fakeTextEvent = new RenderGameOverlayEvent.Text(new RenderGameOverlayEvent(0, null, 0, 0), null, null);
-    private final static RenderGameOverlayEvent fakePreEvent = new RenderGameOverlayEvent.Pre(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
+    private final static RenderGameOverlayEvent.Post fakePostEvent = new RenderGameOverlayEvent.Post(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static final HUDCaching INSTANCE = new HUDCaching();
 
@@ -125,11 +122,11 @@ public class HUDCaching {
         	GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
         	if (renderHelmetCaptured) {
         		guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
-                if (ModStatus.isHoloInventoryLoaded){
+                if (ModStatus.isHoloInventoryLoaded) {
                     Renderer.INSTANCE.angelicaOverride = false;
                     // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
-                    ((RenderGameOverlayEventAccessor) fakePreEvent).setPartialTicks(partialTicks);
-                    Renderer.INSTANCE.renderEvent(fakePreEvent);
+                    ((RenderGameOverlayEventAccessor) fakePostEvent).setPartialTicks(partialTicks);
+                    Renderer.INSTANCE.renderEvent(fakePostEvent);
                 }
         	}
         	if (renderPortalCapturedTicks > 0) {
