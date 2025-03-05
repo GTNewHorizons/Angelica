@@ -58,6 +58,7 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
+import org.lwjgl.opengl.GL32;
 
 import java.util.Set;
 
@@ -287,6 +288,7 @@ public class SodiumWorldRenderer {
                 mcModelViewMatrix,
                 mcProjectionMatrix,
                 frameTime);
+            GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
         }
     }
 
