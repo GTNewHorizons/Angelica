@@ -1,5 +1,9 @@
 package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glLogicOp;
+
 import lombok.Getter;
 import lombok.Setter;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
@@ -152,12 +156,12 @@ public class SearchTextFieldComponent extends AbstractWidget {
         if (x1 > this.dim.getOriginX() + this.dim.getWidth()) {
             x1 = this.dim.getOriginX() + this.dim.getWidth();
         }
-        GL11.glEnable(GL11.GL_COLOR_LOGIC_OP);
-        GL11.glLogicOp(GL11.GL_OR_REVERSE);
+        glEnable(GL11.GL_COLOR_LOGIC_OP);
+        glLogicOp(GL11.GL_OR_REVERSE);
 
         drawRect(x1, y1, x2, y2, -0xFFFF01);
 
-        GL11.glDisable(GL11.GL_COLOR_LOGIC_OP);
+        glDisable(GL11.GL_COLOR_LOGIC_OP);
 
     }
 

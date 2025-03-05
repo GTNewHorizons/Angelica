@@ -25,6 +25,8 @@
 
 package com.gtnewhorizons.angelica.rendering;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glCallList;
+
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -55,7 +57,7 @@ public class ItemRenderListManager implements IResourceManagerReloadListener {
         if (theMap.containsKey(prop)) {
             val list = theMap.get(prop);
             propList.add(propList.remove(propList.indexOf(prop)));
-            GL11.glCallList(list);
+            glCallList(list);
             return true;
         } else {
             if (propList.size() >= AngelicaConfig.itemRendererDisplayListCacheSize) {

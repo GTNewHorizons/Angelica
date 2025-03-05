@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
@@ -36,7 +38,7 @@ public abstract class MixinMinecraft {
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GL11.glEnable(GL11.GL_LIGHTING);
+        glEnable(GL11.GL_LIGHTING);
     }
 
     @Inject(
@@ -65,7 +67,7 @@ public abstract class MixinMinecraft {
         angelica$lastFrameTime = time;
     }
 
-    @WrapOperation(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V"))
+    @WrapOperation(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
     private void angelica$noopFPSLimiter(int fps, Operation<Void> original) {
         if (AngelicaConfig.sleepBeforeSwap) return;
         original.call(fps);

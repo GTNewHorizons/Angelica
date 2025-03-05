@@ -1,5 +1,7 @@
 package com.prupe.mcpatcher.hd;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexLevelParameteri;
+
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
@@ -147,8 +149,8 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
             return;
         }
         TexturePackAPI.bindTexture(dstName);
-        int dstWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-        int dstHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+        int dstWidth = glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        int dstHeight = glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
         int levels = MipmapHelper.getMipmapLevelsForCurrentTexture();
         if (x + w > dstWidth || y + h > dstHeight) {
             properties.error(

@@ -1,5 +1,8 @@
 package com.prupe.mcpatcher.mob;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
@@ -126,8 +129,8 @@ public class LineRenderer {
         TexturePackAPI.bindTexture(texture);
         Tessellator tessellator = Tessellator.instance;
         tessellator.startDrawingQuads();
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glDisable(GL11.GL_CULL_FACE);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         dx += sx + plusSX;
         dy += sy + plusSY;
         dz += sz + plusSZ;

@@ -1,5 +1,11 @@
 package com.prupe.mcpatcher.hd;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetFloat;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexParameteri;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexImage2D;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameterf;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameteri;
+
 import java.math.BigInteger;
 import java.nio.IntBuffer;
 import java.util.HashMap;
@@ -53,7 +59,7 @@ public class MipmapHelper {
 
         anisoSupported = GLContext.getCapabilities().GL_EXT_texture_filter_anisotropic;
         if (anisoSupported) {
-            anisoMax = (int) GL11.glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+            anisoMax = (int) glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
             checkGLError("glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)");
             anisoLevel = Math.max(Math.min(MCPatcherForgeConfig.ExtendedHD.anisotropicFiltering, anisoMax), 1);
         } else {
@@ -79,10 +85,10 @@ public class MipmapHelper {
         int minFilter = mipmaps > 0 ? GL11.GL_NEAREST_MIPMAP_LINEAR : magFilter;
         int wrap = clamp ? GL11.GL_CLAMP : GL11.GL_REPEAT;
         if (mipmaps > 0) {
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmaps);
+            glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmaps);
             checkGLError("%s: set GL_TEXTURE_MAX_LEVEL = %d", textureName, mipmaps);
             if (anisoSupported && anisoLevel > 1) {
-                GL11.glTexParameterf(
+                glTexParameterf(
                     GL11.GL_TEXTURE_2D,
                     EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT,
                     anisoLevel);
@@ -96,12 +102,12 @@ public class MipmapHelper {
                 checkGLError("%s: set GL_TEXTURE_LOD_BIAS_EXT = %d", textureName, lodBias);
             }
         }
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minFilter);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, magFilter);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wrap);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, wrap);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minFilter);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, magFilter);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wrap);
+        glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, wrap);
         for (int level = 0; level <= mipmaps; level++) {
-            GL11.glTexImage2D(
+            glTexImage2D(
                 GL11.GL_TEXTURE_2D,
                 level,
                 GL11.GL_RGBA,
@@ -174,11 +180,11 @@ public class MipmapHelper {
     }
 
     static int getMipmapLevelsForCurrentTexture() {
-        int filter = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+        int filter = glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
         if (filter != GL11.GL_NEAREST_MIPMAP_LINEAR && filter != GL11.GL_NEAREST_MIPMAP_NEAREST) {
             return 0;
         }
-        return Math.min(maxMipmapLevel, GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL));
+        return Math.min(maxMipmapLevel, glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL));
     }
 
     private static int gcd(int a, int b) {

@@ -20,34 +20,41 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.lang.reflect.Field;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.glDisable;
-import static org.lwjgl.opengl.GL11.glEnable;
-import static org.lwjgl.opengl.GL11.glPopMatrix;
-import static org.lwjgl.opengl.GL11.glPushMatrix;
-import static org.lwjgl.opengl.GL11.glScalef;
-import static org.lwjgl.opengl.GL11.glTranslatef;
 
 @SuppressWarnings("deprecation")
 @Mixin(targets = { "cpw/mods/fml/client/SplashProgress$3" })
 public class MixinSplashProgress {
-    private static final int memoryGoodColor = 0x78CB34;
-    private static final int memoryWarnColor = 0xE6E84A;
-    private static final int memoryLowColor = 0xE42F2F;
-    private static float memoryColorPercent;
-    private static long memoryColorChangeTime;
-    private static FontRenderer fontRenderer = null;
+    @Unique
+    private static final int angelica$memoryGoodColor = 0x78CB34;
+    @Unique
+    private static final int angelica$memoryWarnColor = 0xE6E84A;
+    @Unique
+    private static final int angelica$memoryLowColor = 0xE42F2F;
+    @Unique
+    private static float angelica$memoryColorPercent;
+    @Unique
+    private static long angelica$memoryColorChangeTime;
+    @Unique
+    private static FontRenderer angelica$fontRenderer = null;
     @Unique
     private static Boolean angelica$isArchaicFixPresent = null;
+
     @Inject(method = "run", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 1, remap = false, shift = At.Shift.AFTER), remap = false, require = 0)
     private void injectDrawMemoryBar(CallbackInfo ci) {
         // NOTE: Disable this if you're checking for off thread GL calls via `-Dangelica.assertMainThread=true`
-        if(fontRenderer == null) {
+        if (angelica$fontRenderer == null) {
             try {
                 Field f = SplashProgress.class.getDeclaredField("fontRenderer");
                 f.setAccessible(true);
-                fontRenderer = (FontRenderer)f.get(null);
-            } catch(ReflectiveOperationException e) {
+                angelica$fontRenderer = (FontRenderer) f.get(null);
+            } catch (ReflectiveOperationException e) {
                 AngelicaTweaker.LOGGER.error(e);
                 return;
             }
@@ -58,23 +65,22 @@ public class MixinSplashProgress {
             try {
                 Class.forName("org.embeddedt.archaicfix.ArchaicCore");
                 angelica$isArchaicFixPresent = true;
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 angelica$isArchaicFixPresent = false;
             }
         }
 
         glPushMatrix();
-        glTranslatef(320 - Display.getWidth() / 2 + 4, 240 + Display.getHeight() / 2 - textHeight2, 0);
+        glTranslatef(320 - (float) Display.getWidth() / 2 + 4, 240 + (float) Display.getHeight() / 2 - textHeight2, 0);
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        fontRenderer.drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
+        angelica$fontRenderer.drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
-        if(AngelicaConfig.showSplashMemoryBar) {
+        if (AngelicaConfig.showSplashMemoryBar) {
             glPushMatrix();
             glTranslatef(320 - (float) barWidth / 2, 20, 0);
-            drawMemoryBar();
+            angelica$drawMemoryBar();
             glPopMatrix();
         }
     }
@@ -89,10 +95,11 @@ public class MixinSplashProgress {
     @Shadow(remap = false)
     private int barWidth, barHeight, textHeight2;
 
-    private void drawMemoryBar() {
-        final int maxMemory = bytesToMb(Runtime.getRuntime().maxMemory());
-        final int totalMemory = bytesToMb(Runtime.getRuntime().totalMemory());
-        final int freeMemory = bytesToMb(Runtime.getRuntime().freeMemory());
+    @Unique
+    private void angelica$drawMemoryBar() {
+        final int maxMemory = angelica$bytesToMb(Runtime.getRuntime().maxMemory());
+        final int totalMemory = angelica$bytesToMb(Runtime.getRuntime().totalMemory());
+        final int freeMemory = angelica$bytesToMb(Runtime.getRuntime().freeMemory());
         final int usedMemory = totalMemory - freeMemory;
         final float usedMemoryPercent = usedMemory / (float) maxMemory;
 
@@ -101,7 +108,7 @@ public class MixinSplashProgress {
         setColor(AccessorSplashProgress.getFontColor());
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        fontRenderer.drawString("Memory Used / Total", 0, 0, 0x000000);
+        angelica$fontRenderer.drawString("Memory Used / Total", 0, 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
         // border
@@ -116,43 +123,44 @@ public class MixinSplashProgress {
         // slidy part
 
         final long time = System.currentTimeMillis();
-        if (usedMemoryPercent > memoryColorPercent || (time - memoryColorChangeTime > 1000)) {
-            memoryColorChangeTime = time;
-            memoryColorPercent = usedMemoryPercent;
+        if (usedMemoryPercent > angelica$memoryColorPercent || (time - angelica$memoryColorChangeTime > 1000)) {
+            angelica$memoryColorChangeTime = time;
+            angelica$memoryColorPercent = usedMemoryPercent;
         }
 
         final int memoryBarColor;
-        if (memoryColorPercent < 0.75f) {
-            memoryBarColor = memoryGoodColor;
-        } else if (memoryColorPercent < 0.85f) {
-            memoryBarColor = memoryWarnColor;
+        if (angelica$memoryColorPercent < 0.75f) {
+            memoryBarColor = angelica$memoryGoodColor;
+        } else if (angelica$memoryColorPercent < 0.85f) {
+            memoryBarColor = angelica$memoryWarnColor;
         } else {
-            memoryBarColor = memoryLowColor;
+            memoryBarColor = angelica$memoryLowColor;
         }
-        setColor(memoryLowColor);
+        setColor(angelica$memoryLowColor);
         glPushMatrix();
-        glTranslatef((barWidth - 2) * (totalMemory) / (maxMemory) - 2, 0, 0);
+        glTranslatef((barWidth - 2f) * totalMemory / maxMemory - 2, 0, 0);
         drawBox(2, barHeight - 2);
         glPopMatrix();
         setColor(memoryBarColor);
         drawBox((barWidth - 2) * (usedMemory) / (maxMemory), barHeight - 2);
 
         // progress text
-        final String progress = getMemoryString(usedMemory) + " / " + getMemoryString(maxMemory);
-        glTranslatef(((float)barWidth - 2) / 2 - fontRenderer.getStringWidth(progress), 2, 0);
+        final String progress = angelica$getMemoryString(usedMemory) + " / " + angelica$getMemoryString(maxMemory);
+        glTranslatef(((float)barWidth - 2) / 2 - angelica$fontRenderer.getStringWidth(progress), 2, 0);
         setColor(AccessorSplashProgress.getFontColor());
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        fontRenderer.drawString(progress, 0, 0, 0x000000);
+        angelica$fontRenderer.drawString(progress, 0, 0, 0x000000);
         glPopMatrix();
     }
 
-    private String getMemoryString(int memory)
-    {
+    @Unique
+    private String angelica$getMemoryString(int memory) {
         return StringUtils.leftPad(Integer.toString(memory), 4, ' ') + " MB";
     }
-    private static int bytesToMb(long bytes)
-    {
+
+    @Unique
+    private static int angelica$bytesToMb(long bytes) {
         return (int) (bytes / 1024L / 1024L);
     }
 }

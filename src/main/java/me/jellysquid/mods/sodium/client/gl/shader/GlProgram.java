@@ -1,5 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glUseProgram;
+
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -30,11 +32,11 @@ public abstract class GlProgram extends GlObject {
     }
 
     public void bind() {
-        GL20.glUseProgram(this.handle());
+        glUseProgram(this.handle());
     }
 
     public void unbind() {
-    	GL20.glUseProgram(0);
+    	glUseProgram(0);
     }
 
     public ResourceLocation getName() {

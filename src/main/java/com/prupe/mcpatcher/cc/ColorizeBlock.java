@@ -1,5 +1,7 @@
 package com.prupe.mcpatcher.cc;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -398,7 +400,7 @@ public class ColorizeBlock {
                 waterColor = new float[3];
                 ColorUtils.intToFloat3(waterColorMap.getColorMultiplier(), waterColor);
             }
-            GL11.glColor4f(waterColor[0], waterColor[1], waterColor[2], 1.0f);
+            glColor4f(waterColor[0], waterColor[1], waterColor[2], 1.0f);
         }
     }
 

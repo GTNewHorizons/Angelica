@@ -4,6 +4,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawElements;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -287,7 +288,7 @@ public class BatchingFontRenderer {
             }
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
-            GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
+            glDrawElements(GL11.GL_TRIANGLES, batchIndices);
         }
 
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);

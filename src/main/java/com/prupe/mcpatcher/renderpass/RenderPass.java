@@ -1,5 +1,11 @@
 package com.prupe.mcpatcher.renderpass;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glShadeModel;
+import static org.lwjgl.opengl.GL11C.glPolygonOffset;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -297,16 +303,16 @@ public class RenderPass {
                 break;
 
             case RenderPassAPI.OVERLAY_RENDER_PASS:
-                GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-                GL11.glPolygonOffset(-2.0f, -2.0f);
-                GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+                glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+                glPolygonOffset(-2.0f, -2.0f);
+                glEnable(GL11.GL_POLYGON_OFFSET_FILL);
                 if (backfaceCulling[pass]) {
-                    GL11.glEnable(GL11.GL_CULL_FACE);
+                    glEnable(GL11.GL_CULL_FACE);
                 } else {
-                    GL11.glDisable(GL11.GL_CULL_FACE);
+                    glDisable(GL11.GL_CULL_FACE);
                 }
                 if (ambientOcclusion) {
-                    GL11.glShadeModel(GL11.GL_SMOOTH);
+                    glShadeModel(GL11.GL_SMOOTH);
                 }
                 blendMethod.applyBlending();
                 break;
@@ -335,8 +341,8 @@ public class RenderPass {
                 if (!backfaceCulling[currentRenderPass]) {
                     GL11.glEnable(GL11.GL_CULL_FACE);
                 }
-                GL11.glDisable(GL11.GL_BLEND);
-                GL11.glShadeModel(GL11.GL_FLAT);
+                glDisable(GL11.GL_BLEND);
+                glShadeModel(GL11.GL_FLAT);
                 break;
 
             default:

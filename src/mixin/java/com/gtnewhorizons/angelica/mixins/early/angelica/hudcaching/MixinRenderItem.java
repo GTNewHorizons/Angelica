@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.dummy.DummyTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.renderer.Tessellator;
@@ -32,7 +33,7 @@ public class MixinRenderItem {
         )
     )
     private void angelica$neuterGlDisable(int cap) {
-        if (cap == GL_LIGHTING) GL11.glDisable(cap);
+        if (cap == GL_LIGHTING) GLStateManager.glDisable(cap);
     }
 
     @Redirect(

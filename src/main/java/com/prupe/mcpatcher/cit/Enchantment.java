@@ -1,5 +1,20 @@
 package com.prupe.mcpatcher.cit;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetBoolean;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glLoadIdentity;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glMatrixMode;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glRotatef;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
+
 import java.awt.image.BufferedImage;
 
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
@@ -35,42 +50,42 @@ final class Enchantment extends OverrideBase {
     private float armorScaleY;
 
     static void beginOuter2D() {
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_EQUAL);
-        GL11.glDepthMask(false);
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        glEnable(GL11.GL_ALPHA_TEST);
+        glAlphaFunc(GL11.GL_GREATER, 0.01f);
+        glEnable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_EQUAL);
+        glDepthMask(false);
+        glDisable(GL11.GL_LIGHTING);
+        glMatrixMode(GL11.GL_TEXTURE);
     }
 
     static void endOuter2D() {
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glDepthMask(true);
-        GL11.glEnable(GL11.GL_LIGHTING);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glDisable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_LEQUAL);
+        glDepthMask(true);
+        glEnable(GL11.GL_LIGHTING);
+        glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     static void beginOuter3D() {
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_EQUAL);
-        lightingWasEnabled = GL11.glGetBoolean(GL11.GL_LIGHTING);
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        glEnable(GL11.GL_ALPHA_TEST);
+        glAlphaFunc(GL11.GL_GREATER, 0.01f);
+        glEnable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_EQUAL);
+        lightingWasEnabled = glGetBoolean(GL11.GL_LIGHTING);
+        glDisable(GL11.GL_LIGHTING);
+        glMatrixMode(GL11.GL_TEXTURE);
     }
 
     static void endOuter3D() {
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glDisable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_LEQUAL);
         if (lightingWasEnabled) {
-            GL11.glEnable(GL11.GL_LIGHTING);
+            glEnable(GL11.GL_LIGHTING);
         }
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     Enchantment(PropertiesFile properties) {
@@ -162,46 +177,46 @@ final class Enchantment extends OverrideBase {
     }
 
     void beginArmor(float intensity) {
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_EQUAL);
-        GL11.glDepthMask(false);
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        glEnable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_EQUAL);
+        glDepthMask(false);
+        glDisable(GL11.GL_LIGHTING);
+        glMatrixMode(GL11.GL_TEXTURE);
         begin(intensity);
         if (!armorScaleSet) {
             setArmorScale();
         }
-        GL11.glScalef(armorScaleX, armorScaleY, 1.0f);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glScalef(armorScaleX, armorScaleY, 1.0f);
+        glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     void endArmor() {
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glDepthMask(true);
-        GL11.glEnable(GL11.GL_LIGHTING);
-        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glDisable(GL11.GL_BLEND);
+        glDepthFunc(GL11.GL_LEQUAL);
+        glDepthMask(true);
+        glEnable(GL11.GL_LIGHTING);
+        glMatrixMode(GL11.GL_TEXTURE);
         end();
-        GL11.glLoadIdentity();
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glLoadIdentity();
+        glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     void begin(float intensity) {
         blendMethod.applyBlending();
         blendMethod.applyDepthFunc();
         blendMethod.applyFade(intensity);
-        GL11.glPushMatrix();
+        glPushMatrix();
         if (speed != 0.0) {
             double offset = ((double) System.currentTimeMillis() * speed) / 3000.0;
             offset -= Math.floor(offset);
-            GL11.glTranslatef((float) offset * 8.0f, 0.0f, 0.0f);
+            glTranslatef((float) offset * 8.0f, 0.0f, 0.0f);
         }
-        GL11.glRotatef(rotation, 0.0f, 0.0f, 1.0f);
+        glRotatef(rotation, 0.0f, 0.0f, 1.0f);
     }
 
     void end() {
-        GL11.glPopMatrix();
+        glPopMatrix();
     }
 
     private void setArmorScale() {

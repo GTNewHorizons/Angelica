@@ -1,5 +1,12 @@
 package com.prupe.mcpatcher.mal.resource;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -157,29 +164,29 @@ public class BlendMethod {
 
     public void applyFade(float fade) {
         if (fadeRGB && fadeAlpha) {
-            GL11.glColor4f(fade, fade, fade, fade);
+            glColor4f(fade, fade, fade, fade);
         } else if (fadeRGB) {
-            GL11.glColor4f(fade, fade, fade, 1.0f);
+            glColor4f(fade, fade, fade, 1.0f);
         } else if (fadeAlpha) {
-            GL11.glColor4f(1.0f, 1.0f, 1.0f, fade);
+            glColor4f(1.0f, 1.0f, 1.0f, fade);
         }
     }
 
     public void applyAlphaTest() {
         if (blend) {
-            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            glDisable(GL11.GL_ALPHA_TEST);
         } else {
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
-            GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
+            glEnable(GL11.GL_ALPHA_TEST);
+            glAlphaFunc(GL11.GL_GREATER, 0.01f);
         }
     }
 
     public void applyDepthFunc() {
         if (blend) {
-            GL11.glDepthFunc(GL11.GL_EQUAL);
+            glDepthFunc(GL11.GL_EQUAL);
         } else {
-            GL11.glDepthFunc(GL11.GL_LEQUAL);
-            GL11.glDepthMask(true);
+            glDepthFunc(GL11.GL_LEQUAL);
+            glDepthMask(true);
         }
     }
 
