@@ -31,6 +31,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import cpw.mods.fml.common.registry.GameData;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBeacon;
+import net.minecraft.block.BlockGrass;
 import net.minecraft.block.BlockLeavesBase;
 import net.minecraft.init.Blocks;
 import org.apache.logging.log4j.Logger;
@@ -534,7 +535,6 @@ public class BlockStateWrapper implements IBlockStateWrapper
             return EDhApiBlockMaterial.AIR;
         }
 
-
         String serialString = this.getSerialString().toLowerCase();
 
         if (this.blockState.block instanceof BlockLeavesBase
@@ -565,7 +565,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
         {
             return EDhApiBlockMaterial.METAL;
         }
-		else if (serialString.contains("grass_block"))
+		else if (this.blockState.block instanceof BlockGrass)
     {
         return EDhApiBlockMaterial.GRASS;
     }
