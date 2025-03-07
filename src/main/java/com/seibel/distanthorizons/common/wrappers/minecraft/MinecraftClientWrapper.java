@@ -116,7 +116,7 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
                 if (MINECRAFT.theWorld != null)
                 {
                     ForgeDirection mcDir = McObjectConverter.Convert(lodDirection);
-                    return 0; // TODO
+                    return 1; // TODO
                 }
                 else
                 {
