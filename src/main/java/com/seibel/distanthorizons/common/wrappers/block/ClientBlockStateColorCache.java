@@ -220,7 +220,7 @@ public class ClientBlockStateColorCache
 				}
 				else
 				{*/
-                    IIcon icon = blockState.block.getIcon(ForgeDirection.NORTH.ordinal(), blockState.meta); // TODO
+                    IIcon icon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta); // TODO
 					// Backup method.
 					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
 					this.needShade = false;
