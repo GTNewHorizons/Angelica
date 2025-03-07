@@ -50,7 +50,7 @@ public class BiomeWrapper implements IBiomeWrapper
     public static final String EMPTY_BIOME_STRING = "EMPTY";
     public static final BiomeWrapper EMPTY_WRAPPER = new BiomeWrapper(null, null);
 
-    public static final String PLAINS_RESOURCE_LOCATION_STRING = "minecraft:plains";
+    public static final String PLAINS_RESOURCE_LOCATION_STRING = "biome:Plains";
 
     /** keep track of broken biomes so we don't log every time */
     private static final HashSet<String> brokenResourceLocationStrings = new HashSet<>();
@@ -240,8 +240,11 @@ public class BiomeWrapper implements IBiomeWrapper
             {
                 BiomeGenBase foundBiome = null;
 
-                for (BiomeGenBase biome : BiomeGenBase.getBiomeGenArray())
+                BiomeGenBase[] biomes = BiomeGenBase.getBiomeGenArray();
+                for (BiomeGenBase biome : biomes)
                 {
+                    if (biome == null)
+                        continue;
                     String id = "biome:" + biome.biomeName;
                     if (id.equals(resourceLocationString))
                     {
