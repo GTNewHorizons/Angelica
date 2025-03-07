@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.common.wrappers.block;
 
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
+import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
@@ -221,7 +222,7 @@ public class ClientBlockStateColorCache
 				{*/
                     IIcon icon = blockState.block.getIcon(ForgeDirection.NORTH.ordinal(), blockState.meta); // TODO
 					// Backup method.
-					this.needPostTinting = false;
+					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
 					this.needShade = false;
 					this.tintIndex = 0;
 					this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
@@ -375,7 +376,7 @@ public class ClientBlockStateColorCache
 	// public getter //
 	//===============//
 
-	public int getColor(BiomeWrapper biome, DhBlockPos pos)
+	public int getColor(BiomeWrapper biome, DhBlockPos pos, ClientLevelWrapper level)
 	{
 		// only get the tint if the block needs to be tinted
 		if (!this.needPostTinting)
@@ -391,7 +392,7 @@ public class ClientBlockStateColorCache
 
 
 		// attempt to get the tint
-		int tintColor =  blockState.block.getRenderColor(blockState.meta);
+		int tintColor =  blockState.block.colorMultiplier(level.getLevel(), pos.getX(), pos.getY(), pos.getZ());
         /*
 		try
 		{
