@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.common.wrappers.block;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -33,8 +34,9 @@ public class TextureAtlasSpriteWrapper
 {
 	public static int getPixelRGBA(TextureAtlasSprite sprite, int frameIndex, int x, int y)
 	{
-        // TODO
-        return (255) + (255<<16) +(255 << 24);
+        ISpriteExt spriteExt = (ISpriteExt)sprite;
+        int[] spriteData = spriteExt.getSpriteData();
+        return spriteData[sprite.getIconWidth() * y + x];
 	}
 
 }
