@@ -130,7 +130,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
             ((BlockStateWrapper) blockWrapper).blockState,
             (block) -> new ClientBlockStateColorCache(block, this));
 
-        return blockColorCache.getColor((BiomeWrapper) biome, pos);
+        return blockColorCache.getColor((BiomeWrapper) biome, pos, this);
     }
 
     @Override
