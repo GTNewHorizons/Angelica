@@ -25,15 +25,15 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockFlower;
-import net.minecraft.block.BlockLeavesBase;
+import net.minecraft.block.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import java.util.Random;
 
 import net.minecraft.util.IIcon;
+import net.minecraft.world.ColorizerFoliage;
 import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.apache.logging.log4j.Logger;
 
@@ -223,6 +223,10 @@ public class ClientBlockStateColorCache
                     IIcon icon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta); // TODO
 					// Backup method.
 					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
+                    if (blockState.block instanceof BlockGrass || blockState.block instanceof  BlockLeavesBase || blockState.block instanceof BlockBush)
+                    {
+                        needPostTinting = true;
+                    }
 					this.needShade = false;
 					this.tintIndex = 0;
 					this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
@@ -376,7 +380,7 @@ public class ClientBlockStateColorCache
 	// public getter //
 	//===============//
 
-	public int getColor(BiomeWrapper biome, DhBlockPos pos, ClientLevelWrapper level)
+	public int getColor(BiomeWrapper biomeWrapper, DhBlockPos pos, ClientLevelWrapper level)
 	{
 		// only get the tint if the block needs to be tinted
 		if (!this.needPostTinting)
@@ -392,7 +396,26 @@ public class ClientBlockStateColorCache
 
 
 		// attempt to get the tint
-		int tintColor =  blockState.block.colorMultiplier(level.getLevel(), pos.getX(), pos.getY(), pos.getZ());
+        BiomeGenBase biome = (BiomeGenBase)biomeWrapper.getWrappedMcObject();
+        int tintColor;
+        if (blockState.block instanceof BlockGrass || blockState.block instanceof BlockBush)
+        {
+            tintColor = biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
+        }
+        else if (blockState.block instanceof  BlockOldLeaf)
+        {
+            int l = blockState.meta;;
+            tintColor= (l & 3) == 1 ? ColorizerFoliage.getFoliageColorPine() : ((l & 3) == 2 ? ColorizerFoliage.getFoliageColorBirch() : biome.getBiomeFoliageColor(pos.getX(), pos.getY(), pos.getZ()));
+        }
+        else if (blockState.block instanceof  BlockLeavesBase)
+        {
+            tintColor = biome.getBiomeFoliageColor(pos.getX(), pos.getY(), pos.getZ());
+        }
+        else
+        {
+            /* TODO: Might break when chunks are unloaded... */
+            tintColor =  blockState.block.colorMultiplier(level.getLevel(), pos.getX(), pos.getY(), pos.getZ());
+        }
         /*
 		try
 		{
