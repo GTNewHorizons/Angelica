@@ -175,15 +175,6 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
         return height;
     }
 
-    static RenderTarget targetDummy;
-
-    private RenderTarget getRenderTarget() {
-        if (targetDummy == null)
-            targetDummy = RenderTarget.builder().setDimensions(MC.displayWidth, MC.displayHeight).build();
-        /* MC.getMainRenderTarget(); TODO */
-        return targetDummy;
-    }
-
     @Override
     public int getTargetFrameBuffer()
     {
@@ -195,12 +186,12 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 
     @Override
     public int getDepthTextureId() {
-        return this.getRenderTarget().getAltTexture();
-    } /* TODO */
+        throw new RuntimeException();
+    }
     @Override
     public int getColorTextureId() {
-        return this.getRenderTarget().getMainTexture();
-    } /* TODO */
+        throw new RuntimeException();
+    }
 
     @Override
     public int getTargetFrameBufferViewportWidth()
