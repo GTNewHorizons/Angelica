@@ -1,6 +1,6 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static org.lwjgl.system.MemoryUtil.memGetFloat;
 
 import net.coderbot.iris.vertices.IrisQuadView;
 

@@ -1,6 +1,7 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static org.lwjgl.system.MemoryUtil.memPutFloat;
+import static org.lwjgl.system.MemoryUtil.memPutInt;
 
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;

@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import static org.lwjgl.system.MemoryUtil.memAllocInt;
+import static org.lwjgl.system.MemoryUtil.memFree;
+
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.GL11;
@@ -60,7 +62,7 @@ public class NativeImage extends BufferedImage {
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
 
-        final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
+        final IntBuffer buffer = memAllocInt(size);
 
         try {
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
@@ -69,7 +71,7 @@ public class NativeImage extends BufferedImage {
             buffer.get(data);
             setRGB(0, 0, width, height, data, 0, width);
         } finally {
-            MemoryUtilities.memFree(buffer);
+            memFree(buffer);
         }
     }
 

@@ -1,28 +1,27 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawElements;
+import static org.lwjgl.system.MemoryUtil.memAlloc;
+import static org.lwjgl.system.MemoryUtil.memAllocFloat;
+import static org.lwjgl.system.MemoryUtil.memAllocInt;
+import static org.lwjgl.system.MemoryUtil.memRealloc;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import jss.util.RandomXoshiro256StarStar;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
-
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
-
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawElements;
+import jss.util.RandomXoshiro256StarStar;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 /**
  * A batching replacement for {@code FontRenderer}

@@ -1,7 +1,8 @@
 package net.coderbot.iris.gl.program;
 
+import static org.lwjgl.system.MemoryStack.stackPush;
+
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.IntBuffer;
@@ -25,6 +26,7 @@ import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.system.MemoryStack;
 
 public class ProgramUniforms {
 	private static ProgramUniforms active;
@@ -148,7 +150,7 @@ public class ProgramUniforms {
 		@Override
 		public Builder addUniform(UniformUpdateFrequency updateFrequency, Uniform uniform) {
 			Objects.requireNonNull(uniform);
-            if(uniform == null) {
+            if (uniform == null) {
                 throw new NullPointerException("uniform");
             }
 
@@ -196,7 +198,7 @@ public class ProgramUniforms {
                 final int size;
                 final int type;
 
-                try (MemoryStack stack = MemoryStack.stackPush()) {
+                try (MemoryStack stack = stackPush()) {
                     final IntBuffer sizeBuf = stack.mallocInt(1);
                     final IntBuffer typeBuf = stack.mallocInt(1);
                     final String name = RenderSystem.getActiveUniform(program, index, 128, sizeBuf, typeBuf);

@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.util;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static org.lwjgl.system.MemoryUtil.memAllocInt;
+import static org.lwjgl.system.MemoryUtil.memFree;
 
 import org.lwjgl.opengl.GL20;
 

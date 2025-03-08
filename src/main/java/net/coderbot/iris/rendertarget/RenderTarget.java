@@ -1,10 +1,11 @@
 package net.coderbot.iris.rendertarget;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+import static org.lwjgl.system.MemoryStack.stackPush;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import lombok.Getter;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelFormat;
@@ -13,9 +14,7 @@ import org.joml.Vector2i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
+import org.lwjgl.system.MemoryStack;
 
 public class RenderTarget {
 	@Getter

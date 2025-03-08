@@ -1,8 +1,7 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+import static org.lwjgl.system.MemoryStack.stackPush;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.FloatBuffer;
@@ -15,6 +14,7 @@ import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import org.lwjgl.system.MemoryStack;
 
 public class IrisChunkProgram extends ChunkProgram {
 	// Uniform variable binding indexes

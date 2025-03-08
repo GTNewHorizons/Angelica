@@ -1,12 +1,12 @@
 package me.jellysquid.mods.sodium.client.render;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import java.nio.FloatBuffer;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import org.joml.Matrix4f;
+import org.lwjgl.system.MemoryStack;
 
 public class GameRendererContext {
     /**

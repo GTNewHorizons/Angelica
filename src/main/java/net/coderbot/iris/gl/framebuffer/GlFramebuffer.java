@@ -1,8 +1,7 @@
 package net.coderbot.iris.gl.framebuffer;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+import static org.lwjgl.system.MemoryStack.stackPush;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
@@ -14,6 +13,7 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.system.MemoryStack;
 
 public class GlFramebuffer extends GlResource {
 	private final Int2IntMap attachments;

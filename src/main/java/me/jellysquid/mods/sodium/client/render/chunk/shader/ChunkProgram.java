@@ -1,7 +1,9 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import static org.lwjgl.system.MemoryStack.stackPush;
+
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
+import java.util.function.Function;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
 import me.jellysquid.mods.sodium.client.render.GameRendererContext;
@@ -9,10 +11,7 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
-
-import java.util.function.Function;
-
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
+import org.lwjgl.system.MemoryStack;
 
 /**
  * A forward-rendering shader program for chunks.
