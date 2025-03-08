@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.forge.ForgeServerProxy;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.network.play.server.S01PacketJoinGame;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,11 +15,13 @@ public class NetHandlerPlayClientMixin {
     private void connect(S01PacketJoinGame packetIn, CallbackInfo ci)
     {
         ClientApi.INSTANCE.onClientOnlyConnected();
+        ForgeServerProxy.connected = true;
     }
 
     @Inject(method = "cleanup", at = @At("RETURN"))
     private void disconnect(CallbackInfo ci)
     {
+        ForgeServerProxy.connected = false;
         ClientApi.INSTANCE.onClientOnlyDisconnected();
     }
 }

@@ -66,11 +66,13 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	// events //
 	//========//
 
+    public static boolean connected = false;
+
 	// ServerTickEvent (at end)
 	@SubscribeEvent
 	public void serverTickEvent(TickEvent.ServerTickEvent event)
 	{
-		if (event.phase == TickEvent.Phase.END)
+		if (connected && event.phase == TickEvent.Phase.END)
 		{
 			this.serverApi.serverTickEvent();
 		}
