@@ -8,6 +8,7 @@ public enum TargetedMod {
     , FASTCRAFT("FastCraft", "fastcraft.Tweaker")
     , OPTIFINE("Optifine", "optifine.OptiFineForgeTweaker", "Optifine")
     , ARCHAICFIX("ArchaicFix", "org.embeddedt.archaicfix.ArchaicCore", "archaicfix")
+    , BACKHAND("Backhand","xonin.backhand.coremod.BackhandLoadingPlugin", "backhand")
     , BOTANIA("Botania", null, "Botania")
     , CAMPFIRE_BACKPORT("CampfireBackport", null, "campfirebackport")
     , CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks")

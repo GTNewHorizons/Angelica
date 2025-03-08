@@ -8,9 +8,11 @@ import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,21 +23,25 @@ public class Feature {
         GL13.GL_MULTISAMPLE_BIT, GL11.GL_PIXEL_MODE_BIT, GL11.GL_POINT_BIT, GL11.GL_POLYGON_BIT, GL11.GL_POLYGON_STIPPLE_BIT, GL11.GL_SCISSOR_BIT,
         GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_TEXTURE_BIT, GL11.GL_TRANSFORM_BIT, GL11.GL_VIEWPORT_BIT };
 
-    static final Int2ObjectMap<Set<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
+    static final Int2ObjectMap<List<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
 
-    static Set<IStateStack<?>> maskToFeatures(int mask) {
+    static List<IStateStack<?>> maskToFeatures(int mask) {
         if(maskToFeaturesMap.containsKey(mask)) {
             return maskToFeaturesMap.get(mask);
         }
 
         final Set<IStateStack<?>> features = new HashSet<>();
+
         for(int attrib : Feature.supportedAttribs) {
             if((mask & attrib) == attrib) {
                 features.addAll(getFeatures(attrib));
             }
         }
-        maskToFeaturesMap.put(mask, features);
-        return features;
+
+        final List<IStateStack<?>> asList = new ArrayList<>(features);
+
+        maskToFeaturesMap.put(mask, asList);
+        return asList;
     }
 
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
