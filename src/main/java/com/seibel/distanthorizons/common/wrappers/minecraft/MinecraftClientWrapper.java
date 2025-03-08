@@ -205,7 +205,7 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
     public DhBlockPos getPlayerBlockPos()
     {
         EntityPlayerSP player = this.getPlayer();
-        return new DhBlockPos(player.serverPosX, player.serverPosY, player.serverPosZ);
+        return new DhBlockPos((int)player.posX, (int)player.posY, (int)player.posZ);
     }
 
     @Override
