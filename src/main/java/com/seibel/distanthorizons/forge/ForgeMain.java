@@ -33,8 +33,11 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.World;
+import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -45,6 +48,8 @@ import java.util.function.Consumer;
 @Mod(modid = "distanthorizons", name = "DistantHorizons")
 public class ForgeMain extends AbstractModInitializer
 {
+    @Mod.Instance
+    public static Object instance;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -55,6 +60,12 @@ public class ForgeMain extends AbstractModInitializer
         {
             this.onInitializeServer();
         }
+        ForgeChunkManager.setForcedChunkLoadingCallback(instance, (List<ForgeChunkManager.Ticket> tickets, World world) -> chunkLoadedCallback());
+    }
+
+    private void chunkLoadedCallback()
+    {
+
     }
 
     // ServerWorldLoadEvent
