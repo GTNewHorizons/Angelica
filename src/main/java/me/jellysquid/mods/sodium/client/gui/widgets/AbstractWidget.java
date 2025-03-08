@@ -3,7 +3,6 @@ package me.jellysquid.mods.sodium.client.gui.widgets;
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
@@ -13,7 +12,6 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
 
-@Lwjgl3Aware
 public abstract class AbstractWidget implements Drawable, Element {
     protected final FontRenderer font;
 

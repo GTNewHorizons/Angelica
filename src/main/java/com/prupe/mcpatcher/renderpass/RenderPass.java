@@ -1,25 +1,5 @@
 package com.prupe.mcpatcher.renderpass;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glShadeModel;
-import static org.lwjgl.opengl.GL11C.glPolygonOffset;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.block.Block;
-import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.IBlockAccess;
-
-import org.lwjgl.opengl.GL11;
-
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.ctm.CTMUtils;
@@ -29,8 +9,24 @@ import com.prupe.mcpatcher.mal.resource.BlendMethod;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
+import net.minecraft.block.Block;
+import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.IBlockAccess;
+import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glShadeModel;
+import static org.lwjgl.opengl.GL11C.glPolygonOffset;
+
 public class RenderPass {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_GLASS);

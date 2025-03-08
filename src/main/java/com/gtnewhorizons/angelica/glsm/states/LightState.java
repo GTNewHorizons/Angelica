@@ -1,11 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
-
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -13,7 +8,11 @@ import org.joml.Vector4f;
 import org.joml.Vector4i;
 import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+
 public class LightState implements ISettableState<LightState> {
 
     private static final Vector4i vector4i = new Vector4i();

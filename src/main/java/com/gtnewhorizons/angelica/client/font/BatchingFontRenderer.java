@@ -1,35 +1,34 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawElements;
-
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
 import jss.util.RandomXoshiro256StarStar;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Objects;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawElements;
+
 /**
  * A batching replacement for {@code FontRenderer}
  *
  * @author eigenraven
  */
-@Lwjgl3Aware
 public class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */

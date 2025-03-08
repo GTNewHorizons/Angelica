@@ -1,5 +1,16 @@
 package com.prupe.mcpatcher.cit;
 
+import com.prupe.mcpatcher.mal.resource.BlendMethod;
+import com.prupe.mcpatcher.mal.resource.PropertiesFile;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
+import net.minecraft.client.renderer.ItemRenderer;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.IIcon;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
+
+import java.awt.image.BufferedImage;
+
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
@@ -15,21 +26,6 @@ import static com.gtnewhorizons.angelica.glsm.GLStateManager.glRotatef;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
 
-import java.awt.image.BufferedImage;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.renderer.ItemRenderer;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.ResourceLocation;
-
-import org.lwjgl.opengl.GL11;
-
-import com.prupe.mcpatcher.mal.resource.BlendMethod;
-import com.prupe.mcpatcher.mal.resource.PropertiesFile;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-
-@Lwjgl3Aware
 final class Enchantment extends OverrideBase {
 
     private static final float ITEM_2D_THICKNESS = 0.0625f;

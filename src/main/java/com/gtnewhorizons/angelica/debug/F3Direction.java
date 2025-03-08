@@ -1,5 +1,12 @@
 package com.gtnewhorizons.angelica.debug;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.Entity;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import org.lwjgl.opengl.GL11;
+
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
@@ -10,15 +17,6 @@ import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
 import static org.lwjgl.opengl.GL11C.glLineWidth;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.entity.Entity;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import org.lwjgl.opengl.GL11;
-
-@Lwjgl3Aware
 public class F3Direction {
     public static void renderWorldDirectionsEvent(Minecraft mc, RenderGameOverlayEvent.Pre event) {
         if (mc.gameSettings.showDebugInfo && mc.gameSettings.thirdPersonView == 0) {

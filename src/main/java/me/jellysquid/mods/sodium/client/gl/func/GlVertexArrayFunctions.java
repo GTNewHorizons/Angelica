@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
 import org.lwjgl.opengl.ARBVertexArrayObject;
-import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GLCapabilities;
 
 /**
  * Requires OpenGL 3.0+ or the ARB_vertex_array_object extension.
@@ -57,7 +57,7 @@ public enum GlVertexArrayFunctions {
         }
     };
 
-    static GlVertexArrayFunctions load(ContextCapabilities capabilities) {
+    static GlVertexArrayFunctions load(GLCapabilities capabilities) {
         if (capabilities.OpenGL30) {
             return BASE;
         } else if (capabilities.GL_ARB_vertex_array_object) {

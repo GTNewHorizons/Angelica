@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
-import java.nio.ByteBuffer;
-
 import org.lwjgl.opengl.ARBMultiDrawIndirect;
-import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GLCapabilities;
+
+import java.nio.ByteBuffer;
 
 public enum GlIndirectMultiDrawFunctions {
     CORE {
@@ -41,7 +41,7 @@ public enum GlIndirectMultiDrawFunctions {
         }
     };
 
-    public static GlIndirectMultiDrawFunctions load(ContextCapabilities capabilities) {
+    public static GlIndirectMultiDrawFunctions load(GLCapabilities capabilities) {
         if (capabilities.OpenGL43) {
             return CORE;
         } else if (capabilities.GL_ARB_multi_draw_indirect && capabilities.GL_ARB_draw_indirect) {

@@ -1,5 +1,12 @@
 package com.prupe.mcpatcher.mal.resource;
 
+import com.prupe.mcpatcher.MCPatcherUtils;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
+
+import java.util.HashSet;
+import java.util.Set;
+
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
@@ -7,17 +14,6 @@ import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.util.ResourceLocation;
-
-import org.lwjgl.opengl.GL11;
-
-import com.prupe.mcpatcher.MCPatcherUtils;
-
-@Lwjgl3Aware
 public class BlendMethod {
 
     private static final Set<ResourceLocation> blankResources = new HashSet<>();

@@ -1,19 +1,18 @@
 package com.gtnewhorizons.angelica.util;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.stream.IntStream;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+
 public class GLSMUtil {
 
     public static void verifyIsEnabled(int glCap, boolean expected) {

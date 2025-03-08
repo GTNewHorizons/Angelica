@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
 import org.lwjgl.opengl.ARBInstancedArrays;
-import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL33;
+import org.lwjgl.opengl.GLCapabilities;
 
 public enum GlInstancedArrayFunctions {
     CORE {
@@ -24,7 +24,7 @@ public enum GlInstancedArrayFunctions {
         }
     };
 
-    public static GlInstancedArrayFunctions load(ContextCapabilities capabilities) {
+    public static GlInstancedArrayFunctions load(GLCapabilities capabilities) {
         if (capabilities.OpenGL33) {
             return CORE;
         } else if (capabilities.GL_ARB_instanced_arrays) {

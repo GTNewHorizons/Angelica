@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
 import me.jellysquid.mods.sodium.client.gl.device.DrawCommandList;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -21,7 +20,6 @@ import org.lwjgl.opengl.GL20;
 
 import java.util.Iterator;
 
-@Lwjgl3Aware
 public class ChunkRenderBackendOneshot extends ChunkRenderShaderBackend<ChunkOneshotGraphicsState> {
     private final GlMultiDrawBatch batch = new GlMultiDrawBatch(ModelQuadFacing.COUNT);
 

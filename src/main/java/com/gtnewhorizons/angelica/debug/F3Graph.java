@@ -1,5 +1,16 @@
 package com.gtnewhorizons.angelica.debug;
 
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.BufferUtils;
+
+import java.nio.FloatBuffer;
+
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBlendFunc;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
@@ -30,18 +41,6 @@ import static org.lwjgl.opengl.GL20C.glUniform1fv;
 import static org.lwjgl.opengl.GL20C.glUniform1i;
 import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
-import java.nio.FloatBuffer;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.ResourceLocation;
-import org.lwjgl.BufferUtils;
-
-@Lwjgl3Aware
 public abstract class F3Graph {
     private static final int NUM_SAMPLES = 240;
     // Two floats (x,y)

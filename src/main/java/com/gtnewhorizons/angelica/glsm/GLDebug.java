@@ -5,12 +5,6 @@
 
 package com.gtnewhorizons.angelica.glsm;
 
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
-
-import java.io.PrintStream;
-import java.util.function.Consumer;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.GL11;
@@ -21,7 +15,12 @@ import org.lwjgl.opengl.GLDebugMessageARBCallback;
 import org.lwjgl.opengl.GLDebugMessageCallback;
 import org.lwjgl.opengl.KHRDebug;
 
-@Lwjgl3Aware
+import java.io.PrintStream;
+import java.util.function.Consumer;
+
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
+
 public final class GLDebug {
     /**
      * Sets up debug callbacks

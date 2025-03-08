@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
-
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import org.lwjgl.MemoryUtil;
+import org.lwjgl.system.MemoryUtil;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
 
 /**
  * Provides a fixed-size buffer which can be used to batch chunk section draw calls.
@@ -68,7 +68,7 @@ public abstract class ChunkDrawCallBatcher extends StructBuffer {
         public UnsafeChunkDrawCallBatcher(int capacity) {
             super(capacity);
 
-            this.basePointer = MemoryUtil.getAddress(this.buffer);
+            this.basePointer = MemoryUtil.memAddress(this.buffer);
         }
 
         @Override

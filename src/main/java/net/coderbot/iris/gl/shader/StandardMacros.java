@@ -8,9 +8,9 @@ import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
-import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.system.Platform;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -164,11 +164,10 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L709-L714">Optifine Doc</a>
 	 */
 	public static String getOsString() {
-        return switch (LWJGLUtil.getPlatform()) {
-            case LWJGLUtil.PLATFORM_MACOSX -> "MC_OS_MAC";
-            case LWJGLUtil.PLATFORM_LINUX -> "MC_OS_LINUX";
-            case LWJGLUtil.PLATFORM_WINDOWS -> "MC_OS_WINDOWS";
-            default -> "MC_OS_UNKNOWN";
+        return switch (Platform.get()) {
+            case Platform.MACOSX -> "MC_OS_MAC";
+            case Platform.LINUX -> "MC_OS_LINUX";
+            case Platform.WINDOWS -> "MC_OS_WINDOWS";
         };
 	}
 
@@ -179,7 +178,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L716-L723">Optifine Doc</a>
 	 */
 	public static String getVendor() {
-		String vendor = Objects.requireNonNull(GL11.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
+		final String vendor = Objects.requireNonNull(GL11.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
 		if (vendor.startsWith("ati")) {
 			return "MC_GL_VENDOR_ATI";
 		} else if (vendor.startsWith("intel")) {

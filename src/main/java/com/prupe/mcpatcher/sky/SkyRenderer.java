@@ -1,11 +1,18 @@
 package com.prupe.mcpatcher.sky;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glRotatef;
+import com.prupe.mcpatcher.MCLogger;
+import com.prupe.mcpatcher.MCPatcherUtils;
+import com.prupe.mcpatcher.mal.resource.BlendMethod;
+import com.prupe.mcpatcher.mal.resource.GLAPI;
+import com.prupe.mcpatcher.mal.resource.PropertiesFile;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
+import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
+import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,25 +21,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glRotatef;
 
-import org.lwjgl.opengl.GL11;
-
-import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
-import com.prupe.mcpatcher.mal.resource.BlendMethod;
-import com.prupe.mcpatcher.mal.resource.GLAPI;
-import com.prupe.mcpatcher.mal.resource.PropertiesFile;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
-
-import jss.notfine.config.MCPatcherForgeConfig;
-
-@Lwjgl3Aware
 public class SkyRenderer {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_SKIES);

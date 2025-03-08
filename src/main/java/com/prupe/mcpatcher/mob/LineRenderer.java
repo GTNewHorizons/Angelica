@@ -1,23 +1,18 @@
 package com.prupe.mcpatcher.mob;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.ResourceLocation;
-
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.GL11;
-
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.util.InputHandler;
-
 import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
+
 public class LineRenderer {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.RANDOM_MOBS);

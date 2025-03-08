@@ -1,11 +1,13 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
-
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
-import org.lwjgl.MemoryUtil;
+import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
 
 /**
  * Provides a resizeable vector backed by native memory that can be used to build an array of chunk draw call
@@ -43,7 +45,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
         public UnsafeChunkDrawCallVector(int capacity) {
             super(capacity);
 
-            this.basePointer = MemoryUtil.getAddress(this.buffer);
+            this.basePointer = MemoryUtil.memAddress(this.buffer);
         }
 
         @Override

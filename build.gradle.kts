@@ -21,6 +21,14 @@ minecraft {
     //extraRunJvmArguments.addAll("-Dlegacy.debugClassLoading=true", "-Dlegacy.debugClassLoadingFiner=false", "-Dlegacy.debugClassLoadingSave=true")
 }
 
+for (jarTask in listOf(tasks.jar, tasks.shadowJar, tasks.sourcesJar)) {
+    jarTask.configure {
+        manifest {
+            attributes("Lwjgl3ify-Aware" to true)
+        }
+    }
+}
+
 tasks.runClient { enabled = false }
 tasks.runServer { enabled = false }
 tasks.runClient17 { enabled = false }

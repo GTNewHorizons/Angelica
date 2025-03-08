@@ -1,11 +1,7 @@
 package com.gtnewhorizons.angelica;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
-
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -15,7 +11,9 @@ import org.lwjglx.opengl.Display;
 import org.lwjglx.opengl.DisplayMode;
 import org.lwjglx.opengl.PixelFormat;
 
-@Lwjgl3Aware
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
+
 public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
 
     private static boolean started = false;

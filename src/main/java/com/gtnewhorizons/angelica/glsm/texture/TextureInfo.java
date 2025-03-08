@@ -3,10 +3,8 @@ package com.gtnewhorizons.angelica.glsm.texture;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import lombok.Setter;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
 public class TextureInfo {
 
     @Getter protected final int id;

@@ -1,22 +1,5 @@
 package com.prupe.mcpatcher.cc;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.block.Block;
-import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.IBlockAccess;
-
-import org.lwjgl.opengl.GL11;
-
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.biome.BiomeAPI;
@@ -30,10 +13,21 @@ import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.ResourceList;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-
 import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.block.Block;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.init.Blocks;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.IBlockAccess;
 
-@Lwjgl3Aware
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+
 public class ColorizeBlock {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);

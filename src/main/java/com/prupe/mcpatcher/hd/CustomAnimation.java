@@ -1,6 +1,16 @@
 package com.prupe.mcpatcher.hd;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexLevelParameteri;
+import com.prupe.mcpatcher.MCLogger;
+import com.prupe.mcpatcher.MCPatcherUtils;
+import com.prupe.mcpatcher.mal.resource.GLAPI;
+import com.prupe.mcpatcher.mal.resource.PropertiesFile;
+import com.prupe.mcpatcher.mal.resource.ResourceList;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
+import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
+import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.util.glu.GLU;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -11,23 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.util.ResourceLocation;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexLevelParameteri;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.util.glu.GLU;
-
-import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
-import com.prupe.mcpatcher.mal.resource.GLAPI;
-import com.prupe.mcpatcher.mal.resource.PropertiesFile;
-import com.prupe.mcpatcher.mal.resource.ResourceList;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
-
-import jss.notfine.config.MCPatcherForgeConfig;
-
-@Lwjgl3Aware
 public class CustomAnimation implements Comparable<CustomAnimation> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");

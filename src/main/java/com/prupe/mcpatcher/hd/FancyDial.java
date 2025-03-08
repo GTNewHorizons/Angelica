@@ -1,5 +1,40 @@
 package com.prupe.mcpatcher.hd;
 
+import com.prupe.mcpatcher.MCLogger;
+import com.prupe.mcpatcher.MCPatcherUtils;
+import com.prupe.mcpatcher.mal.resource.BlendMethod;
+import com.prupe.mcpatcher.mal.resource.GLAPI;
+import com.prupe.mcpatcher.mal.resource.PropertiesFile;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
+import com.prupe.mcpatcher.mal.util.InputHandler;
+import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureClock;
+import net.minecraft.client.renderer.texture.TextureCompass;
+import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.util.IIcon;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.EXTFramebufferObject;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.util.glu.GLU;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glActiveTexture;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBegin;
@@ -33,47 +68,6 @@ import static org.lwjgl.opengl.GL11C.glReadPixels;
 import static org.lwjgl.opengl.GL11C.glScissor;
 import static org.lwjgl.opengl.GL11C.glTexSubImage2D;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import javax.imageio.ImageIO;
-
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.renderer.texture.ITextureObject;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureClock;
-import net.minecraft.client.renderer.texture.TextureCompass;
-import net.minecraft.client.renderer.texture.TextureMap;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.ResourceLocation;
-
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.EXTFramebufferObject;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GLContext;
-import org.lwjgl.util.glu.GLU;
-
-import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.MCPatcherUtils;
-import com.prupe.mcpatcher.mal.resource.BlendMethod;
-import com.prupe.mcpatcher.mal.resource.GLAPI;
-import com.prupe.mcpatcher.mal.resource.PropertiesFile;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-import com.prupe.mcpatcher.mal.util.InputHandler;
-
-import jss.notfine.config.MCPatcherForgeConfig;
-
-@Lwjgl3Aware
 public class FancyDial {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");
@@ -81,8 +75,8 @@ public class FancyDial {
     private static final double ANGLE_UNSET = Double.MAX_VALUE;
     private static final int NUM_SCRATCH_TEXTURES = 3;
 
-    private static final boolean fboSupported = GLContext.getCapabilities().GL_EXT_framebuffer_object;
-    private static final boolean gl13Supported = GLContext.getCapabilities().OpenGL13;
+    private static final boolean fboSupported = GL.getCapabilities().GL_EXT_framebuffer_object;
+    private static final boolean gl13Supported = GL.getCapabilities().OpenGL13;
     private static final boolean enableCompass = MCPatcherForgeConfig.ExtendedHD.fancyCompass;
     private static final boolean enableClock = MCPatcherForgeConfig.ExtendedHD.fancyClock;
     private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.ExtendedHD.useGL13;

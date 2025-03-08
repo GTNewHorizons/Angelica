@@ -1,7 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.vertex.buffer;
 
 import me.jellysquid.mods.sodium.client.model.vertex.type.BufferVertexType;
-import org.lwjgl.MemoryUtil;
+import org.lwjgl.system.MemoryUtil;
 
 /**
  * An unsafe {@link VertexBufferWriter} implementation which uses direct memory operations to enable fast blitting of
@@ -22,7 +22,7 @@ public abstract class VertexBufferWriterUnsafe extends VertexBufferWriter {
 
     @Override
     protected void onBufferStorageChanged() {
-        this.writePointer = MemoryUtil.getAddress(this.backingBuffer.getDirectBuffer(), this.backingBuffer.getWriterPosition());
+        this.writePointer = MemoryUtil.memAddress(this.backingBuffer.getDirectBuffer(), this.backingBuffer.getWriterPosition());
     }
 
     @Override

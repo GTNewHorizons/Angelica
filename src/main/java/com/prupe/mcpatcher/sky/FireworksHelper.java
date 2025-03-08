@@ -1,22 +1,17 @@
 package com.prupe.mcpatcher.sky;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.particle.EntityFireworkOverlayFX;
-import net.minecraft.client.particle.EntityFireworkSparkFX;
-import net.minecraft.util.ResourceLocation;
-
-import org.lwjgl.opengl.GL11;
-
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
 import com.prupe.mcpatcher.mal.resource.GLAPI;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-
 import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.client.particle.EntityFX;
+import net.minecraft.client.particle.EntityFireworkOverlayFX;
+import net.minecraft.client.particle.EntityFireworkSparkFX;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
-@Lwjgl3Aware
 public class FireworksHelper {
 
     private static final int LIT_LAYER = 3;

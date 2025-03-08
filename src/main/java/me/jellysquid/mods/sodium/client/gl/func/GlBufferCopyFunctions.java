@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.gl.func;
 
 import org.lwjgl.opengl.ARBCopyBuffer;
-import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GLCapabilities;
 
 /**
  * Requires OpenGL 3.1+ or the ARB_copy_buffer extension.
@@ -27,7 +27,7 @@ public enum GlBufferCopyFunctions {
         }
     };
 
-    static GlBufferCopyFunctions load(ContextCapabilities capabilities) {
+    static GlBufferCopyFunctions load(GLCapabilities capabilities) {
         if (capabilities.OpenGL31) {
             return GlBufferCopyFunctions.CORE;
         } else if (capabilities.GL_ARB_copy_buffer) {

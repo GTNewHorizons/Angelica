@@ -1,34 +1,29 @@
 package com.prupe.mcpatcher.hd;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetFloat;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexParameteri;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexImage2D;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameterf;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameteri;
+import com.prupe.mcpatcher.MCLogger;
+import com.prupe.mcpatcher.mal.resource.GLAPI;
+import com.prupe.mcpatcher.mal.resource.PropertiesFile;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
+import jss.notfine.config.MCPatcherForgeConfig;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
+import org.lwjgl.opengl.EXTTextureLODBias;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.util.glu.GLU;
 
 import java.math.BigInteger;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-import net.minecraft.util.ResourceLocation;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetFloat;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexParameteri;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexImage2D;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameterf;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameteri;
 
-import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
-import org.lwjgl.opengl.EXTTextureLODBias;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GLContext;
-import org.lwjgl.util.glu.GLU;
-
-import com.prupe.mcpatcher.MCLogger;
-import com.prupe.mcpatcher.mal.resource.GLAPI;
-import com.prupe.mcpatcher.mal.resource.PropertiesFile;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
-
-import jss.notfine.config.MCPatcherForgeConfig;
-
-@Lwjgl3Aware
 public class MipmapHelper {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD);
@@ -54,10 +49,10 @@ public class MipmapHelper {
     private static final Map<String, Boolean> mipmapType = new HashMap<>();
 
     static {
-        mipmapSupported = GLContext.getCapabilities().OpenGL12;
+        mipmapSupported = GL.getCapabilities().OpenGL12;
         useMipmap = mipmapSupported && mipmapEnabled && maxMipmapLevel > 0;
 
-        anisoSupported = GLContext.getCapabilities().GL_EXT_texture_filter_anisotropic;
+        anisoSupported = GL.getCapabilities().GL_EXT_texture_filter_anisotropic;
         if (anisoSupported) {
             anisoMax = (int) glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
             checkGLError("glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)");
@@ -65,13 +60,8 @@ public class MipmapHelper {
         } else {
             anisoMax = anisoLevel = 1;
         }
-
-        lodSupported = GLContext.getCapabilities().GL_EXT_texture_lod_bias;
-        if (lodSupported) {
-            lodBias = MCPatcherForgeConfig.ExtendedHD.lodBias;
-        } else {
-            lodBias = 0;
-        }
+        lodSupported = true;
+        lodBias = MCPatcherForgeConfig.ExtendedHD.lodBias;
 
         logger.config("mipmap: supported=%s, enabled=%s, level=%d", mipmapSupported, mipmapEnabled, maxMipmapLevel);
         logger.config("anisotropic: supported=%s, level=%d, max=%d", anisoSupported, anisoLevel, anisoMax);

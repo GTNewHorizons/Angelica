@@ -1,8 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-import static org.lwjgl.opengl.ARBImaging.GL_BLEND_COLOR;
-
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
@@ -37,19 +34,9 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
-import java.nio.ByteBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
-import java.util.AbstractMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.IntSupplier;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
@@ -66,29 +53,39 @@ import org.joml.Matrix4fStack;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
-import org.lwjglx.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
-import org.lwjglx.opengl.ContextCapabilities;
-import org.lwjglx.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
-import org.lwjglx.opengl.GLContext;
+import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.KHRDebug;
+import org.lwjglx.LWJGLException;
+import org.lwjglx.opengl.Drawable;
 
-import java.lang.Math;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
+import java.util.AbstractMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.IntSupplier;
+
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+import static org.lwjgl.opengl.ARBImaging.GL_BLEND_COLOR;
 
 @SuppressWarnings("unused") // Used in ASM
-@Lwjgl3Aware
 public class GLStateManager {
-    public static ContextCapabilities capabilities;
+    public static GLCapabilities capabilities;
 
     @Getter protected static boolean poppingAttributes;
     public static boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
@@ -215,7 +212,7 @@ public class GLStateManager {
     }
 
     public static void preInit() {
-        capabilities = GLContext.getCapabilities();
+        capabilities = GL.getCapabilities();
         HAS_MULTIPLE_SET
             .addFeature(GL11.GL_ACCUM_CLEAR_VALUE)
             .addFeature(GL_BLEND_COLOR)
