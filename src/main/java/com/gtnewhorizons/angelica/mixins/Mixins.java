@@ -33,6 +33,7 @@ public enum Mixins {
             ,"angelica.optimizations.MixinRendererLivingEntity"
             ,"angelica.MixinFMLClientHandler"
             ,"angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            ,"angelica.NetHandlerPlayClientMixin"
         )
     ),
     ANGELICA_VBO(
