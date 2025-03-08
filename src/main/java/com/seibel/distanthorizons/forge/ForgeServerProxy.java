@@ -24,6 +24,11 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Supplier;
+
 public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 {
 	private static World GetEventLevel(WorldEvent e) { return e.world; }
@@ -116,6 +121,42 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 		);
 	}
 
+    private static final Queue<ScheduledTask<?>> taskQueue = new ConcurrentLinkedQueue<>();
+
+    // Schedule a task that runs on the main thread and returns a CompletableFuture result
+    public static <T> CompletableFuture<T> schedule(Supplier<T> task) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        taskQueue.add(new ScheduledTask<>(task, future));
+        return future;
+    }
+
+    @SubscribeEvent
+    public void onServerTick(TickEvent.ServerTickEvent event) {
+        while (!taskQueue.isEmpty()) {
+            ScheduledTask<?> scheduledTask = taskQueue.poll();
+            if (scheduledTask != null) {
+                scheduledTask.run();
+            }
+        }
+    }
+
+    private static class ScheduledTask<T> {
+        private final Supplier<T> task;
+        private final CompletableFuture<T> future;
+
+        public ScheduledTask(Supplier<T> task, CompletableFuture<T> future) {
+            this.task = task;
+            this.future = future;
+        }
+
+        public void run() {
+            try {
+                future.complete(task.get());
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        }
+    }
 
 
 	//================//
