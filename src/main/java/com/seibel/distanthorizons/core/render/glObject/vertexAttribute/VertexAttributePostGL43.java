@@ -20,7 +20,6 @@
 package com.seibel.distanthorizons.core.render.glObject.vertexAttribute;
 
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL43;
 
 /**
@@ -28,34 +27,33 @@ import org.lwjgl.opengl.GL43;
  * Now it provides support for buffer binding points natively.
  * This means that setting up the VAO is just use ONE native call when
  * binding to a buffer. <br><br>
- *
+ * 
  * Since I no longer need to implement binding points, I also no
  * longer needs to keep track of Pointers.
  */
-@Lwjgl3Aware
 public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 {
 	int numberOfBindingPoints = 0;
 	int strideSize = 0;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	/** This will bind the {@link AbstractVertexAttribute} */
 	public VertexAttributePostGL43()
 	{
 		super(); // also bind AbstractVertexAttribute
 	}
-
-
-
+	
+	
+	
 	//=========//
 	// binding //
 	//=========//
-
+	
 	/** Requires both AbstractVertexAttribute and VertexBuffer to be bound */
 	@Override
 	public void bindBufferToAllBindingPoints(int buffer)
@@ -65,20 +63,20 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 			GL43.glBindVertexBuffer(i, buffer, 0, this.strideSize);
 		}
 	}
-
+	
 	/** Requires both AbstractVertexAttribute and VertexBuffer to be bound */
 	@Override
 	public void bindBufferToBindingPoint(int buffer, int bindingPoint)
 	{
 		GL43.glBindVertexBuffer(bindingPoint, buffer, 0, this.strideSize);
 	}
-
-
-
+	
+	
+	
 	//===========//
 	// unbinding //
 	//===========//
-
+	
 	/** Requires AbstractVertexAttribute to be bound */
 	@Override
 	public void unbindBuffersFromAllBindingPoint()
@@ -88,20 +86,20 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 			GL43.glBindVertexBuffer(i, 0, 0, 0);
 		}
 	}
-
+	
 	/** Requires AbstractVertexAttribute to be bound */
 	@Override
 	public void unbindBuffersFromBindingPoint(int bindingPoint)
 	{
 		GL43.glBindVertexBuffer(bindingPoint, 0, 0, 0);
 	}
-
-
-
+	
+	
+	
 	//==========================//
 	// manual attribute setting //
 	//==========================//
-
+	
 	/** Requires AbstractVertexAttribute to be bound */
 	@Override
 	public void setVertexAttribute(int bindingPoint, int attributeIndex, VertexPointer attribute)
@@ -115,7 +113,7 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 			GL43.glVertexAttribFormat(attributeIndex, attribute.elementCount, attribute.glType,
 					attribute.normalized, this.strideSize); // Here strideSize is new attrib offset
 		}
-
+		
 		this.strideSize += attribute.byteSize;
 		if (this.numberOfBindingPoints <= bindingPoint)
 		{
@@ -124,13 +122,13 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 		GL43.glVertexAttribBinding(attributeIndex, bindingPoint);
 		GL43.glEnableVertexAttribArray(attributeIndex);
 	}
-
-
-
+	
+	
+	
 	//============//
 	// validation //
 	//============//
-
+	
 	/** Requires AbstractVertexAttribute to be bound */
 	@Override
 	public void completeAndCheck(int expectedStrideSize)
@@ -141,9 +139,9 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 					" does not match the provided expected stride size " + expectedStrideSize + "!");
 			throw new IllegalArgumentException("Vertex Attribute Incorrect Format");
 		}
-
+		
 		GLProxy.GL_LOGGER.info("Vertex Attribute (GL43+) completed. It contains " + this.numberOfBindingPoints
 				+ " binding points and a stride size of " + this.strideSize);
 	}
-
+	
 }

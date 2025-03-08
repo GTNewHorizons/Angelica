@@ -27,7 +27,6 @@ import com.seibel.distanthorizons.core.render.renderer.SSAORenderer;
 import com.seibel.distanthorizons.core.render.renderer.ScreenQuad;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 
 /**
@@ -37,20 +36,19 @@ import org.lwjgl.opengl.GL32;
  * {@link SSAORenderer} - Parent to this shader. <br>
  * {@link SSAOApplyShader} - draws the SSAO texture to DH's FrameBuffer. <br>
  */
-@Lwjgl3Aware
 public class SSAOShader extends AbstractShaderRenderer
 {
 	public static SSAOShader INSTANCE = new SSAOShader();
-
+	
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
-
-
+	
+	
 	public int frameBuffer;
-
+	
 	private Mat4f projection;
 	private Mat4f invertedProjection;
-
-
+	
+	
 	// uniforms
 	public int gProjUniform;
 	public int gInvProjUniform;
@@ -60,20 +58,20 @@ public class SSAOShader extends AbstractShaderRenderer
 	public int gMinLightUniform;
 	public int gBiasUniform;
 	public int gDepthMapUniform;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	@Override
 	public void onInit()
 	{
 		this.shader = new ShaderProgram("shaders/normal.vert", "shaders/ssao/ao.frag",
 				"fragColor", new String[]{ "vPosition" }
 		);
-
+		
 		// uniform setup
 		this.gProjUniform = this.shader.getUniformLocation("gProj");
 		this.gInvProjUniform = this.shader.getUniformLocation("gInvProj");
@@ -84,54 +82,54 @@ public class SSAOShader extends AbstractShaderRenderer
 		this.gBiasUniform = this.shader.getUniformLocation("gBias");
 		this.gDepthMapUniform = this.shader.getUniformLocation("gDepthMap");
 	}
-
-
-
+	
+	
+	
 	//=============//
 	// render prep //
 	//=============//
-
+	
 	public void setProjectionMatrix(Mat4f projectionMatrix)
 	{
 		this.projection = projectionMatrix;
-
+		
 		this.invertedProjection = new Mat4f(projectionMatrix);
 		this.invertedProjection.invert();
 	}
-
+	
 	@Override
 	protected void onApplyUniforms(float partialTicks)
 	{
 		this.shader.setUniform(this.gProjUniform, this.projection);
-
+		
 		this.shader.setUniform(this.gInvProjUniform, this.invertedProjection);
-
+		
 		this.shader.setUniform(this.gSampleCountUniform,
 				Config.Client.Advanced.Graphics.Ssao.sampleCount.get());
-
+		
 		// Implicit Number cast needs to be done to prevent issues with the default value being a int
-		Number radius = Config.Client.Advanced.Graphics.Ssao.radius.get();
+		Number radius = Config.Client.Advanced.Graphics.Ssao.radius.get(); 
 		this.shader.setUniform(this.gRadiusUniform, radius.floatValue());
-
-
+		
+		
 		Number strength = Config.Client.Advanced.Graphics.Ssao.strength.get();
 		this.shader.setUniform(this.gStrengthUniform, strength.floatValue());
-
+		
 		Number minLight = Config.Client.Advanced.Graphics.Ssao.minLight.get();
 		this.shader.setUniform(this.gMinLightUniform, minLight.floatValue());
-
+		
 		Number bias = Config.Client.Advanced.Graphics.Ssao.bias.get();
 		this.shader.setUniform(this.gBiasUniform, bias.floatValue());
-
+		
 		GL32.glUniform1i(this.gDepthMapUniform, 0);
 	}
-
-
-
+	
+	
+	
 	//========//
 	// render //
 	//========//
-
+	
 	@Override
 	protected void onRender()
 	{
@@ -139,10 +137,10 @@ public class SSAOShader extends AbstractShaderRenderer
 		GLMC.disableScissorTest();
 		GLMC.disableDepthTest();
 		GLMC.disableBlend();
-
+		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
 		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
-
+		
 		ScreenQuad.INSTANCE.render();
 	}
 }

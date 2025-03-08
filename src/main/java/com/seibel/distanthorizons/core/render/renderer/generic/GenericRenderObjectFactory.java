@@ -28,7 +28,6 @@ import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
@@ -36,45 +35,44 @@ import java.util.*;
 
 /**
  * Handles creating {@link DhApiRenderableBox}.
- *
+ * 
  * @see IDhApiCustomRenderRegister
  * @see DhApiRenderableBox
  */
-@Lwjgl3Aware
 public class GenericRenderObjectFactory implements IDhApiCustomRenderObjectFactory
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-
+	
 	public static final GenericRenderObjectFactory INSTANCE = new GenericRenderObjectFactory();
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	private GenericRenderObjectFactory() { }
-
-
-
+	
+	
+	
 	//================//
 	// group creation //
 	//================//
-
-	@Override
+	
+	@Override 
 	public IDhApiRenderableBoxGroup createForSingleBox(String resourceLocation, DhApiRenderableBox box)
 	{
 		ArrayList<DhApiRenderableBox> list = new ArrayList<>();
 		list.add(box);
 		return this.createAbsolutePositionedGroup(resourceLocation, list);
 	}
-
-	@Override
+	
+	@Override 
 	public IDhApiRenderableBoxGroup createRelativePositionedGroup(String resourceLocation, DhApiVec3d originBlockPos, List<DhApiRenderableBox> boxList)
 	{ return new RenderableBoxGroup(resourceLocation, new DhApiVec3d(originBlockPos.x, originBlockPos.y, originBlockPos.z), boxList, true); }
-
-	@Override
+	
+	@Override 
 	public IDhApiRenderableBoxGroup createAbsolutePositionedGroup(String resourceLocation, List<DhApiRenderableBox> boxList)
 	{ return new RenderableBoxGroup(resourceLocation, new DhApiVec3d(0, 0, 0), boxList, false); }
-
+	
 }

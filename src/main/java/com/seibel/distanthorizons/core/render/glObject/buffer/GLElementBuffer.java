@@ -19,7 +19,6 @@
 
 package com.seibel.distanthorizons.core.render.glObject.buffer;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 
 /**
@@ -29,7 +28,6 @@ import org.lwjgl.opengl.GL32;
  * @author James Seibel
  * @version 11-20-2021
  */
-@Lwjgl3Aware
 public class GLElementBuffer extends GLBuffer
 {
 	/**
@@ -40,23 +38,23 @@ public class GLElementBuffer extends GLBuffer
 	public int getIndicesCount() { return this.indicesCount; }
 	protected int type = GL32.GL_UNSIGNED_INT;
 	public int getType() { return type; }
-
+	
 	public GLElementBuffer(boolean isBufferStorage)
 	{
 		super(isBufferStorage);
 	}
-
+	
 	@Override
 	public void destroyAsync()
 	{
 		super.destroyAsync();
 		this.indicesCount = 0;
 	}
-
+	
 	@Override
 	public int getBufferBindingTarget()
 	{
 		return GL32.GL_ELEMENT_ARRAY_BUFFER;
 	}
-
+	
 }

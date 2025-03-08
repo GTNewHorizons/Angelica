@@ -11,6 +11,7 @@ import com.seibel.distanthorizons.core.network.session.NetworkSession;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import org.apache.logging.log4j.LogManager;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -64,7 +65,7 @@ public class ClientPluginChannelApi
 	//================//
 	
 	/** fired when this client connects to a server with DH support */
-	public void onJoinServer(NetworkSession networkSession)
+	public void onJoinServer(@NonNull NetworkSession networkSession)
 	{
 		Objects.requireNonNull(networkSession);
 		this.networkSession = networkSession;

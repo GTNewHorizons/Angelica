@@ -29,7 +29,6 @@ import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 
 /**
@@ -38,29 +37,28 @@ import org.lwjgl.opengl.GL32;
  * @author James Seibel
  * @version 2023-2-8
  */
-@Lwjgl3Aware
 public class DhApiRenderProxy implements IDhApiRenderProxy
 {
 	public static final DhApiRenderProxy INSTANCE = new DhApiRenderProxy();
-
+	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-
+	
 	private boolean deferTransparentRendering = false;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	private DhApiRenderProxy() { }
-
-
-
+	
+	
+	
 	//=========//
 	// methods //
 	//=========//
-
+	
 	public DhApiResult<Boolean> clearRenderDataCache()
 	{
 		// make sure this is a valid time to run the method
@@ -69,8 +67,8 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 		{
 			return DhApiResult.createFail("No world loaded");
 		}
-
-
+		
+		
 		// clear the render caches for each level
 		Iterable<? extends IDhLevel> loadedLevels = world.getAllLoadedLevels();
 		for (IDhLevel level : loadedLevels)
@@ -80,11 +78,11 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 				((IDhClientLevel) level).clearRenderCache();
 			}
 		}
-
+		
 		return DhApiResult.createSuccess();
 	}
-
-
+	
+	
 	@Override
 	public DhApiResult<Integer> getDhDepthTextureId()
 	{
@@ -97,14 +95,14 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 		int activeTexture = LodRenderer.getActiveColorTextureId();
 		return (activeTexture == -1) ? DhApiResult.createFail("DH's color texture hasn't been created and/or bound yet.", -1) : DhApiResult.createSuccess(activeTexture);
 	}
-
-
-	@Override
+	
+	
+	@Override 
 	public void setDeferTransparentRendering(boolean deferTransparentRendering) { this.deferTransparentRendering = deferTransparentRendering; }
-	@Override
+	@Override 
 	public boolean getDeferTransparentRendering() { return this.deferTransparentRendering; }
-
+	
 	@Override
 	public float getNearClipPlaneDistanceInBlocks(float partialTicks) { return RenderUtil.getNearClipPlaneDistanceInBlocks(partialTicks); }
-
+	
 }

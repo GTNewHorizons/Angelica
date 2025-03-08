@@ -37,7 +37,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.system.MemoryUtil;
 
@@ -46,24 +45,23 @@ import org.lwjgl.system.MemoryUtil;
  *
  * Note: the magic number 6 you see throughout this method represents the number of sides on a cube.
  */
-@Lwjgl3Aware
 public class LodQuadBuilder
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-
+	
 	@SuppressWarnings("unchecked")
 	private final ArrayList<BufferQuad>[] opaqueQuads = (ArrayList<BufferQuad>[]) new ArrayList[6];
 	@SuppressWarnings("unchecked")
 	private final ArrayList<BufferQuad>[] transparentQuads = (ArrayList<BufferQuad>[]) new ArrayList[6];
-
+	
 	private final boolean doTransparency;
 	private final IClientLevelWrapper clientLevelWrapper;
-
+	
 	private final EDhApiDebugRendering debugRenderingMode;
 	private final EDhApiGrassSideRendering grassSideRenderingMode;
-
-
+	
+	
 	public static final int[][][] DIRECTION_VERTEX_IBO_QUAD = new int[][][]
 			{
 					// X,Z //
@@ -79,48 +77,48 @@ public class LodQuadBuilder
 							{1, 1}, // 2
 							{1, 0}, // 3
 					},
-
+					
 					// X,Y //
 					{ // NORTH
 							{0, 0}, // 0
 							{0, 1}, // 1
 							{1, 1}, // 2
-
+							
 							{1, 0}, // 3
 					},
 					{ // SOUTH
 							{1, 0}, // 0
 							{1, 1}, // 1
 							{0, 1}, // 2
-
+							
 							{0, 0}, // 3
 					},
-
+					
 					// Z,Y //
 					{ // WEST
 							{0, 0}, // 0
 							{1, 0}, // 1
 							{1, 1}, // 2
-
+							
 							{0, 1}, // 3
 					},
 					{ // EAST
 							{0, 1}, // 0
 							{1, 1}, // 1
 							{1, 0}, // 2
-
+							
 							{0, 0}, // 3
 					},
 			};
-
+	
 	private int premergeCount = 0;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	public LodQuadBuilder(boolean doTransparency, IClientLevelWrapper clientLevelWrapper)
 	{
 		this.doTransparency = doTransparency;
@@ -129,20 +127,20 @@ public class LodQuadBuilder
 			this.opaqueQuads[i] = new ArrayList<>();
 			this.transparentQuads[i] = new ArrayList<>();
 		}
-
+		
 		this.clientLevelWrapper = clientLevelWrapper;
-
+		
 		this.debugRenderingMode = Config.Client.Advanced.Debugging.debugRendering.get();
 		this.grassSideRenderingMode = Config.Client.Advanced.Graphics.Quality.grassSideRendering.get();
-
+		
 	}
-
-
-
+	
+	
+	
 	//===========//
 	// add quads //
 	//===========//
-
+	
 	public void addQuadAdj(
 			EDhDirection dir, short x, short y, short z,
 			short widthEastWest, short widthNorthSouthOrUpDown,
@@ -152,7 +150,7 @@ public class LodQuadBuilder
 		{
 			throw new IllegalArgumentException("addQuadAdj() is only for adj direction! Not UP or Down!");
 		}
-
+		
 		BufferQuad quad = new BufferQuad(x, y, z, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skyLight, blockLight, dir);
 		ArrayList<BufferQuad> quadList = (this.doTransparency && ColorUtil.getAlpha(color) < 255) ? this.transparentQuads[dir.ordinal()] : this.opaqueQuads[dir.ordinal()];
 		if (!quadList.isEmpty() &&
@@ -164,18 +162,18 @@ public class LodQuadBuilder
 			this.premergeCount++;
 			return;
 		}
-
+		
 		quadList.add(quad);
 	}
-
+	
 	// XZ
 	public void addQuadUp(short minX, short maxY, short minZ, short widthEastWest, short widthNorthSouthOrUpDown, int color, byte irisBlockMaterialId, byte skylight, byte blocklight) // TODO argument names are wrong
 	{
 		BufferQuad quad = new BufferQuad(minX, maxY, minZ, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.UP);
 		boolean isTransparent = (this.doTransparency && ColorUtil.getAlpha(color) < 255);
 		ArrayList<BufferQuad> quadList = isTransparent ? this.transparentQuads[EDhDirection.UP.ordinal()] : this.opaqueQuads[EDhDirection.UP.ordinal()];
-
-
+		
+		
 		// attempt to merge this quad with adjacent ones
 		if (!quadList.isEmpty() &&
 				(
@@ -186,10 +184,10 @@ public class LodQuadBuilder
 			this.premergeCount++;
 			return;
 		}
-
+		
 		quadList.add(quad);
 	}
-
+	
 	public void addQuadDown(short x, short y, short z, short width, short wz, int color, byte irisBlockMaterialId, byte skylight, byte blocklight)
 	{
 		BufferQuad quad = new BufferQuad(x, y, z, width, wz, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.DOWN);
@@ -205,16 +203,16 @@ public class LodQuadBuilder
 		}
 		qs.add(quad);
 	}
-
-
-
+	
+	
+	
 	//=================//
 	// data finalizing //
 	//=================//
-
+	
 	/** runs any final data cleanup, merging, etc. */
 	public void finalizeData() { this.mergeQuads(); }
-
+	
 	/** Uses Greedy meshing to merge this builder's Quads. */
 	public void mergeQuads()
 	{
@@ -224,7 +222,7 @@ public class LodQuadBuilder
 		{
 			return;
 		}
-
+		
 		for (int directionIndex = 0; directionIndex < 6; directionIndex++)
 		{
 			mergeCount += mergeQuadsInternal(this.opaqueQuads, directionIndex, BufferMergeDirectionEnum.EastWest);
@@ -232,8 +230,8 @@ public class LodQuadBuilder
 			{
 				mergeCount += mergeQuadsInternal(this.transparentQuads, directionIndex, BufferMergeDirectionEnum.EastWest);
 			}
-
-
+			
+			
 			// only run the second merge if the face is the top or bottom
 			if (directionIndex == EDhDirection.UP.ordinal() || directionIndex == EDhDirection.DOWN.ordinal())
 			{
@@ -244,26 +242,26 @@ public class LodQuadBuilder
 				}
 			}
 		}
-
+		
 		//long postQuadsCount = this.getCurrentOpaqueQuadsCount() + this.getCurrentTransparentQuadsCount();
 		//LOGGER.trace("Merged "+mergeCount+"/"+preQuadsCount+"("+(mergeCount / (double) preQuadsCount)+") quads");
 	}
-
+	
 	/** Merges all of this builder's quads for the given directionIndex (up, down, left, etc.) in the given direction */
 	private static long mergeQuadsInternal(ArrayList<BufferQuad>[] list, int directionIndex, BufferMergeDirectionEnum mergeDirection)
 	{
 		if (list[directionIndex].size() <= 1)
 			return 0;
-
+		
 		list[directionIndex].sort((objOne, objTwo) -> objOne.compare(objTwo, mergeDirection));
-
+		
 		long mergeCount = 0;
 		ListIterator<BufferQuad> iter = list[directionIndex].listIterator();
 		BufferQuad currentQuad = iter.next();
 		while (iter.hasNext())
 		{
 			BufferQuad nextQuad = iter.next();
-
+			
 			if (currentQuad.tryMerge(nextQuad, mergeDirection))
 			{
 				// merge successful, attempt to merge the next quad
@@ -279,19 +277,19 @@ public class LodQuadBuilder
 		list[directionIndex].removeIf(Objects::isNull);
 		return mergeCount;
 	}
-
-
-
+	
+	
+	
 	//==============//
 	// buffer setup //
 	//==============//
-
+	
 	public ArrayList<ByteBuffer> makeOpaqueVertexBuffers() { return this.makeVertexBuffers(this.opaqueQuads); }
 	public ArrayList<ByteBuffer> makeTransparentVertexBuffers() { return this.makeVertexBuffers(this.transparentQuads); }
 	private ArrayList<ByteBuffer> makeVertexBuffers(ArrayList<BufferQuad>[] quadList)
 	{
 		ArrayList<ByteBuffer> byteBufferList = new ArrayList<>(3);
-
+		
 		ByteBuffer buffer = null;
 		for (int directionIndex = 0; directionIndex < 6; directionIndex++)
 		{
@@ -300,27 +298,22 @@ public class LodQuadBuilder
 			{
 				continue;
 			}
-
+			
 			// put all the quads in this direction into the buffer
 			for (int quadIndex = 0; quadIndex < quadList[directionIndex].size(); quadIndex++)
 			{
-				// if this is the first iteration or the buffer is full,
+				// if this is the first iteration or the buffer is full, 
 				// create a new buffer
 				if (buffer == null || !buffer.hasRemaining())
 				{
-                    try {
-                        buffer = MemoryUtil.memAlloc(ColumnRenderBuffer.FULL_SIZED_BUFFER);
-                    }catch(Exception e)
-                    {
-
-                    }
+					buffer = MemoryUtil.memAlloc(ColumnRenderBuffer.FULL_SIZED_BUFFER);
 					byteBufferList.add(buffer);
 				}
-
+				
 				this.putQuad(buffer, quadList[directionIndex].get(quadIndex));
 			}
 		}
-
+		
 		// rewind all the buffers so they can be read from
 		for (int i = 0; i < byteBufferList.size(); i++)
 		{
@@ -328,7 +321,7 @@ public class LodQuadBuilder
 			buffer.limit(buffer.position());
 			buffer.rewind();
 		}
-
+		
 		return byteBufferList;
 	}
 	private void putQuad(ByteBuffer bb, BufferQuad quad)
@@ -371,10 +364,10 @@ public class LodQuadBuilder
 				default:
 					throw new IllegalArgumentException("Invalid Axis enum: " + axis);
 			}
-
-
+			
+			
 			int color = quad.color;
-
+			
 			// use custom side color logic for grass blocks
 			if (quad.irisBlockMaterialId == EDhApiBlockMaterial.GRASS.index)
 			{
@@ -402,8 +395,8 @@ public class LodQuadBuilder
 					}
 				}
 			}
-
-
+			
+			
 			this.putVertex(bb, (short) (quad.x + dx), (short) (quad.y + dy), (short) (quad.z + dz),
 					quad.hasError ? ColorUtil.RED : color,
 					quad.hasError ? 0 : normalIndex,
@@ -417,11 +410,11 @@ public class LodQuadBuilder
 	{
 		skylight %= 16;
 		blocklight %= 16;
-
+		
 		bb.putShort(x);
 		bb.putShort(y);
 		bb.putShort(z);
-
+		
 		short meta = 0;
 		meta |= (skylight | (blocklight << 4));
 		byte mirco = 0;
@@ -434,7 +427,7 @@ public class LodQuadBuilder
 		if (my != 0) mirco |= my > 0 ? 0b0100 : 0b1100;
 		if (mz != 0) mirco |= mz > 0 ? 0b010000 : 0b110000;
 		meta |= mirco << 8;
-
+		
 		bb.putShort(meta);
 		byte r = (byte) ColorUtil.getRed(color);
 		byte g = (byte) ColorUtil.getGreen(color);
@@ -444,19 +437,19 @@ public class LodQuadBuilder
 		bb.put(g);
 		bb.put(b);
 		bb.put(a);
-
+		
 		// Block ID and normal index are used by the Iris format
 		bb.put(irisBlockMaterialId);
 		bb.put(normalIndex);
 		bb.putShort((short) 0); // padding to make sure the vertex format as a whole is a multiple of 4
 	}
-
-
-
+	
+	
+	
 	//=========//
 	// getters //
 	//=========//
-
+	
 	public int getCurrentOpaqueQuadsCount()
 	{
 		int i = 0;
@@ -464,7 +457,7 @@ public class LodQuadBuilder
 		{
 			i += quadList.size();
 		}
-
+		
 		return i;
 	}
 	public int getCurrentTransparentQuadsCount()
@@ -473,16 +466,16 @@ public class LodQuadBuilder
 		{
 			return 0;
 		}
-
+		
 		int i = 0;
 		for (ArrayList<BufferQuad> quadList : this.transparentQuads)
 		{
 			i += quadList.size();
 		}
-
+		
 		return i;
 	}
-
+	
 	/** Returns how many GpuBuffers will be needed to render opaque quads in this builder. */
 	public int getCurrentNeededOpaqueVertexBufferCount() { return MathUtil.ceilDiv(this.getCurrentOpaqueQuadsCount(), ColumnRenderBuffer.MAX_QUADS_PER_BUFFER); }
 	/** Returns how many GpuBuffers will be needed to render transparent quads in this builder. */
@@ -492,8 +485,8 @@ public class LodQuadBuilder
 		{
 			return 0;
 		}
-
+		
 		return MathUtil.ceilDiv(this.getCurrentTransparentQuadsCount(), ColumnRenderBuffer.MAX_QUADS_PER_BUFFER);
 	}
-
+	
 }

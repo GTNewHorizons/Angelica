@@ -70,11 +70,9 @@ public class FullDataPayloadSender implements AutoCloseable
 			int chunkSize = Math.min(Math.min(bytesToSend, FULL_DATA_SPLIT_SIZE_IN_BYTES), pendingTransfer.buffer.readableBytes());
 			boolean isFirstChunk = pendingTransfer.buffer.readerIndex() == 0;
 			
-
-			// TODO FullDataSplitMessage chunkMessage = new FullDataSplitMessage(pendingTransfer.bufferId, pendingTransfer.buffer.readRetainedSlice(chunkSize), isFirstChunk);
-            FullDataSplitMessage chunkMessage = new FullDataSplitMessage(pendingTransfer.bufferId, pendingTransfer.buffer.readSlice(chunkSize).retain(), isFirstChunk);
-            this.session.sendMessage(chunkMessage);
-
+			FullDataSplitMessage chunkMessage = new FullDataSplitMessage(pendingTransfer.bufferId, pendingTransfer.buffer.readRetainedSlice(chunkSize), isFirstChunk);
+			this.session.sendMessage(chunkMessage);
+			
 			bytesToSend -= chunkSize;
 			
 			if (pendingTransfer.buffer.readableBytes() == 0)
@@ -97,8 +95,7 @@ public class FullDataPayloadSender implements AutoCloseable
 		private PendingTransfer(FullDataPayload payload, Runnable sendFinalMessage)
 		{
 			this.bufferId = payload.dtoBufferId;
-			// TODO this.buffer = payload.dtoBuffer.retainedDuplicate().readerIndex(0);
-            this.buffer = payload.dtoBuffer.duplicate().retain().readerIndex(0);
+			this.buffer = payload.dtoBuffer.retainedDuplicate().readerIndex(0);
 			this.sendFinalMessage = sendFinalMessage;
 		}
 		

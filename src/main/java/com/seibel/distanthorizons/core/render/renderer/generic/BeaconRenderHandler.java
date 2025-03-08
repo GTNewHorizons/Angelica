@@ -35,7 +35,6 @@ import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,32 +44,32 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
-@Lwjgl3Aware
+
 public class BeaconRenderHandler
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-
+	
 	/** how often should we check if a beacon should be culled? */
 	private static final int MAX_CULLING_FREQUENCY_IN_MS = 1_000;
-
-
-
+	
+	
+	
 	private final ReentrantLock updateLock = new ReentrantLock();
-
+	
 	private final IDhApiRenderableBoxGroup beaconBoxGroup;
 	private final ArrayList<DhApiRenderableBox> fullBeaconBoxList = new ArrayList<>();
 	private final HashSet<DhBlockPos> beaconBlockPosSet = new HashSet<>();
-
+	
 	private boolean cullingThreadRunning = false;
 	private boolean updateRenderDataNextFrame = false;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	public BeaconRenderHandler(@NotNull GenericObjectRenderer renderer)
 	{
 		this.beaconBoxGroup = GenericRenderObjectFactory.INSTANCE.createAbsolutePositionedGroup(ModInfo.NAME+":Beacons", new ArrayList<>(0));
@@ -79,22 +78,22 @@ public class BeaconRenderHandler
 		this.beaconBoxGroup.setSsaoEnabled(false);
 		this.beaconBoxGroup.setShading(DhApiRenderableBoxGroupShading.getUnshaded());
 		this.beaconBoxGroup.setPreRenderFunc(this::beforeRender);
-
+		
 		renderer.add(this.beaconBoxGroup);
 	}
-
-
-
+	
+	
+	
 	//=================//
 	// render handling //
 	//=================//
-
+	
 	public void startRenderingBeacon(BeaconBeamDTO beacon)
 	{
 		try
 		{
 			this.updateLock.lock();
-
+			
 			if (this.beaconBlockPosSet.add(beacon.blockPos))
 			{
 				int maxBeaconBeamHeight = Config.Client.Advanced.Graphics.GenericRendering.beaconRenderHeight.get();
@@ -104,7 +103,7 @@ public class BeaconRenderHandler
 						beacon.color,
 						EDhApiBlockMaterial.ILLUMINATED
 				);
-
+				
 				this.beaconBoxGroup.add(beaconBox);
 				this.fullBeaconBoxList.add(beaconBox);
 				this.beaconBoxGroup.triggerBoxChange();
@@ -115,13 +114,13 @@ public class BeaconRenderHandler
 			this.updateLock.unlock();
 		}
 	}
-
+	
 	public void stopRenderingBeaconAtPos(DhBlockPos beaconPos)
 	{
 		try
 		{
 			this.updateLock.lock();
-
+			
 			if (this.beaconBlockPosSet.remove(beaconPos))
 			{
 				Predicate<DhApiRenderableBox> removePredicate = (DhApiRenderableBox box) ->
@@ -132,7 +131,7 @@ public class BeaconRenderHandler
 				};
 				this.beaconBoxGroup.removeIf(removePredicate);
 				this.fullBeaconBoxList.removeIf(removePredicate);
-
+				
 				this.beaconBoxGroup.triggerBoxChange();
 			}
 		}
@@ -141,13 +140,13 @@ public class BeaconRenderHandler
 			this.updateLock.unlock();
 		}
 	}
-
+	
 	public void updateBeaconColor(BeaconBeamDTO newBeam)
 	{
 		try
 		{
 			this.updateLock.lock();
-
+			
 			DhBlockPos pos = newBeam.blockPos;
 			for (int i = 0; i < this.fullBeaconBoxList.size(); i++)
 			{
@@ -167,18 +166,18 @@ public class BeaconRenderHandler
 			this.updateLock.unlock();
 		}
 	}
-
-
-	private void beforeRender(DhApiRenderParam renderEventParam)
+	
+	
+	private void beforeRender(DhApiRenderParam renderEventParam) 
 	{
 		if (Config.Client.Advanced.Graphics.Culling.disableBeaconDistanceCulling.get())
 		{
-			// this could be called only when the player moves, but it's an extremely cheap check,
-			// so there isn't much of a reason to bother
+			// this could be called only when the player moves, but it's an extremely cheap check, 
+			// so there isn't much of a reason to bother 
 			this.tryUpdateBeaconCullingAsync();
 		}
-
-
+		
+		
 		// this must be called on the render thread to prevent concurrency issues
 		if (this.updateRenderDataNextFrame)
 		{
@@ -191,11 +190,11 @@ public class BeaconRenderHandler
 	private void tryUpdateBeaconCullingAsync()
 	{
 		ThreadPoolExecutor executor = ThreadPoolUtil.getBeaconCullingExecutor();
-		if (executor != null
+		if (executor != null 
 			&& !this.cullingThreadRunning)
 		{
 			this.cullingThreadRunning = true;
-
+			
 			try
 			{
 				executor.execute(() ->
@@ -205,25 +204,25 @@ public class BeaconRenderHandler
 						Thread.sleep(MAX_CULLING_FREQUENCY_IN_MS);
 					}
 					catch (InterruptedException ignore) { }
-
+					
 					try
 					{
 						// lock to make sure we don't try adding beacons to the arrays while processing them
 						this.updateLock.lock();
-
+						
 						Vec3d cameraPos = MC_RENDER.getCameraExactPosition();
 						double mcRenderDistance = MC_RENDER.getRenderDistance() * LodUtil.CHUNK_WIDTH;
 						// multiplying by overdraw prevention helps reduce beacons from rendering strangely
 						// on the border of DH's render distance
 						mcRenderDistance *= Config.Client.Advanced.Graphics.Culling.overdrawPrevention.get();
-
-
+						
+						
 						// Clear the existing box group so we can re-populate it.
 						// Since the box group is only used when we trigger an update, clearing it here
 						// and repopulating it is fine.
 						this.beaconBoxGroup.clear();
-
-						// While iterating over every beacon isn't a great way of doing this,
+						
+						// While iterating over every beacon isn't a great way of doing this, 
 						// when 940 beacons were tested this only took ~0.9 Milliseconds, so as long as
 						// we aren't freezing the render thread this method of culling works just fine.
 						for (DhApiRenderableBox box : this.fullBeaconBoxList)
@@ -235,7 +234,7 @@ public class BeaconRenderHandler
 								this.beaconBoxGroup.add(box);
 							}
 						}
-
+						
 						this.updateRenderDataNextFrame = true;
 					}
 					catch (Exception e)
@@ -253,6 +252,6 @@ public class BeaconRenderHandler
 			{ /* If this happens that means everything is already shut down and no culling is necessary */ }
 		}
 	}
-
-
+	
+	
 }

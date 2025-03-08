@@ -27,7 +27,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.lwjgl.opengl.GL32;
 
 /**
@@ -37,12 +36,11 @@ import org.lwjgl.opengl.GL32;
  * @author James Seibel
  * @version 11-8-2021
  */
-@Lwjgl3Aware
 public class Shader
 {
 	/** OpenGL shader ID */
 	public final int id;
-
+	
 	/**
 	 * Creates a shader with specified type.
 	 *
@@ -58,7 +56,7 @@ public class Shader
 		id = GL32.glCreateShader(type);
 		StringBuilder source = loadFile(path, absoluteFilePath, new StringBuilder());
 		GL32.glShaderSource(id, source);
-
+		
 		GL32.glCompileShader(id);
 		// check if the shader compiled
 		int status = GL32.glGetShaderi(id, GL32.GL_COMPILE_STATUS);
@@ -70,7 +68,7 @@ public class Shader
 		}
 		GLProxy.GL_LOGGER.info("Shader at " + path + " loaded sucessfully.");
 	}
-
+	
 	public Shader(int type, String sourceString)
 	{
 		GLProxy.GL_LOGGER.info("Loading shader with type: {}", type);
@@ -78,13 +76,13 @@ public class Shader
 		// Create an empty shader object
 		id = GL32.glCreateShader(type);
 		GL32.glShaderSource(id, sourceString);
-
+		
 		GL32.glCompileShader(id);
 		// check if the shader compiled
 		int status = GL32.glGetShaderi(id, GL32.GL_COMPILE_STATUS);
 		if (status != GL32.GL_TRUE)
 		{
-
+			
 			String message = "Shader compiler error. Details: " + GL32.glGetShaderInfoLog(id);
 			message += "\nSource:\n" + sourceString;
 			free(); // important!
@@ -92,13 +90,13 @@ public class Shader
 		}
 		GLProxy.GL_LOGGER.info("Shader loaded sucessfully.");
 	}
-
+	
 	// REMEMBER to always free the resource!
 	public void free()
 	{
 		GL32.glDeleteShader(id);
 	}
-
+	
 	public static StringBuilder loadFile(String path, boolean absoluteFilePath, StringBuilder stringBuilder)
 	{
 		try
@@ -119,7 +117,7 @@ public class Shader
 				}
 			}
 			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
+			
 			// read in the file
 			String line;
 			while ((line = reader.readLine()) != null)
@@ -133,5 +131,5 @@ public class Shader
 		}
 		return stringBuilder;
 	}
-
+	
 }

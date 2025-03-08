@@ -47,7 +47,6 @@ import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,12 +63,11 @@ import java.util.function.Supplier;
  * A render section represents an area that could be rendered.
  * For more information see {@link LodQuadTree}.
  */
-@Lwjgl3Aware
 public class LodRenderSection implements IDebugRenderable, AutoCloseable
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-
+	
 	/**
 	 * Used to limit how many upload tasks are queued at once.
 	 * If all the upload tasks are queued at once, they will start uploading nearest
@@ -78,20 +76,20 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	 * Only queuing a few of the sections at a time solves this problem.
 	 */
 	public static final AtomicInteger GLOBAL_UPLOAD_TASKS_COUNT_REF = new AtomicInteger(0);
-
-
-
+	
+	
+	
 	public final long pos;
-
+	
 	private final IDhClientLevel level;
 	@WillNotClose
 	private final FullDataSourceProviderV2 fullDataSourceProvider;
 	private final LodQuadTree quadTree;
 	private final KeyedLockContainer<Long> renderLoadLockContainer;
 	private final Cache<Long, CachedColumnRenderSource> cachedRenderSourceByPos;
-
-	/**
-	 * contains the list of beacons currently being rendered in this section
+	
+	/** 
+	 * contains the list of beacons currently being rendered in this section 
 	 * if this list is modified the {@link LodRenderSection#beaconRenderHandler} should be updated to match.
 	 */
 	private final List<BeaconBeamDTO> activeBeaconList = new ArrayList<>();
@@ -99,58 +97,58 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	public final BeaconRenderHandler beaconRenderHandler;
 	@Nullable
 	public final BeaconBeamRepo beaconBeamRepo;
-
-
+	
+	
 	private boolean renderingEnabled = false;
-
+	
 	/** this reference is necessary so we can determine what VBO to render */
-	public ColumnRenderBuffer renderBuffer;
-
-
-	/**
+	public ColumnRenderBuffer renderBuffer; 
+	
+	
+	/** 
 	 * Encapsulates everything between pulling data from the database (including neighbors)
 	 * up to the point when geometry data is uploaded to the GPU.
 	 */
 	private CompletableFuture<Void> getAndBuildRenderDataFuture = null;
 	@Nullable
-	public CompletableFuture<Void> getRenderDataBuildFuture() { return this.getAndBuildRenderDataFuture; }
-
-	/**
+	public CompletableFuture<Void> getRenderDataBuildFuture() { return this.getAndBuildRenderDataFuture; } 
+	
+	/** 
 	 * used alongside {@link LodRenderSection#getAndBuildRenderDataFuture} so we can remove
 	 * unnecessary tasks from the executor.
 	 */
 	private Runnable getAndBuildRenderDataRunnable = null;
-
-	/**
+	
+	/** 
 	 * Represents just uploading the {@link LodQuadBuilder} to the GPU. <br>
 	 * Separate from {@link LodRenderSection#getAndBuildRenderDataFuture} because they run on
 	 * different threads (buffer uploading is on the MC render thread) and need to be canceled separately.
 	 */
 	private CompletableFuture<ColumnRenderBuffer> bufferUploadFuture = null;
 
-	/**
+	/** 
 	 * should be an empty array if no positions need to be generated
-	 *
+	 * 
 	 * @deprecated see the comment where this variable is set
 	 */
 	@Nullable
 	@Deprecated
 	private Supplier<LongArrayList> missingGenerationPosFunc;
 	private LongArrayList getMissingGenerationPos() { return this.missingGenerationPosFunc != null ? this.missingGenerationPosFunc.get() : null; }
-
+	
 	private boolean checkedIfFullDataSourceExists = false;
 	private boolean fullDataSourceExists = false;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	public LodRenderSection(
-			long pos,
-			LodQuadTree quadTree,
-			IDhClientLevel level, FullDataSourceProviderV2 fullDataSourceProvider,
+			long pos, 
+			LodQuadTree quadTree, 
+			IDhClientLevel level, FullDataSourceProviderV2 fullDataSourceProvider, 
 			Cache<Long, CachedColumnRenderSource> cachedRenderSourceByPos, KeyedLockContainer<Long> renderLoadLockContainer)
 	{
 		this.pos = pos;
@@ -159,19 +157,19 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		this.renderLoadLockContainer = renderLoadLockContainer;
 		this.level = level;
 		this.fullDataSourceProvider = fullDataSourceProvider;
-
+		
 		this.beaconRenderHandler = this.quadTree.beaconRenderHandler;
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
-
+		
 		DebugRenderer.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus);
 	}
-
-
-
+	
+	
+	
 	//======================================//
 	// render data generation and uploading //
 	//======================================//
-
+	
 	/** @return true if the upload started, false if it wasn't able to for any reason */
 	public synchronized boolean uploadRenderDataToGpuAsync()
 	{
@@ -181,19 +179,19 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			// which would cause the system to crash
 			return false;
 		}
-
+		
 		if (this.getAndBuildRenderDataFuture != null)
 		{
 			// don't accidentally queue multiple uploads at the same time
 			return false;
 		}
-
+		
 		PriorityTaskPicker.Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
 		if (executor == null || executor.isTerminated())
 		{
 			return false;
 		}
-
+		
 		// Only queue a some of the upload tasks at a time,
 		// this means the closer (higher priority) tasks will load first.
 		// This also prevents issues where the nearby tasks are canceled due to
@@ -203,23 +201,23 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			GLOBAL_UPLOAD_TASKS_COUNT_REF.decrementAndGet();
 			return false;
 		}
-
+		
 		try
 		{
 			CompletableFuture<Void> future = new CompletableFuture<>();
 			this.getAndBuildRenderDataFuture = future;
-			future.handle((voidObj, throwable) ->
+			future.handle((voidObj, throwable) -> 
 			{
 				// this has to fire are the end of every added future, otherwise we'll lock up and nothing will load
-				GLOBAL_UPLOAD_TASKS_COUNT_REF.decrementAndGet();
-				return null;
+				GLOBAL_UPLOAD_TASKS_COUNT_REF.decrementAndGet(); 
+				return null; 
 			});
-
+			
 			this.getAndBuildRenderDataRunnable = () ->
 			{
 				this.getAndRefreshRenderingBeacons();
 				this.getAndUploadRenderDataToGpuAsync()
-					.thenRun(() ->
+					.thenRun(() -> 
 					{
 						// the future is passed in separately (IE not using the local var) to prevent any possible race condition null pointers
 						future.complete(null);
@@ -229,7 +227,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 					});
 			};
 			executor.execute(this.getAndBuildRenderDataRunnable);
-
+			
 			return true;
 		}
 		catch (RejectedExecutionException ignore)
@@ -237,7 +235,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			this.getAndBuildRenderDataFuture.complete(null);
 			this.getAndBuildRenderDataFuture = null;
 			this.getAndBuildRenderDataRunnable = null;
-
+			
 			/* the thread pool was probably shut down because it's size is being changed, just wait a sec and it should be back */
 			return false;
 		}
@@ -246,7 +244,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	{
 		// get the center pos data
 		return this.getRenderSourceForPosAsync(this.pos)
-			.thenCompose((CachedColumnRenderSource cachedRenderSource) ->
+			.thenCompose((CachedColumnRenderSource cachedRenderSource) -> 
 			{
 				try
 				{
@@ -259,12 +257,12 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 						return CompletableFuture.completedFuture(null);
 					}
 					ColumnRenderSource thisRenderSource = cachedRenderSource.columnRenderSource;
-
-
+					
+					
 					boolean enableTransparency = Config.Client.Advanced.Graphics.Quality.transparency.get().transparencyEnabled;
 					LodQuadBuilder lodQuadBuilder = new LodQuadBuilder(enableTransparency, this.level.getClientLevelWrapper());
-
-
+					
+					
 					// get the adjacent positions
 					// needs to be done async to prevent threads waiting on the same positions to be processed
 					final CompletableFuture<CachedColumnRenderSource>[] adjacentLoadFutures = new CompletableFuture[4];
@@ -284,13 +282,13 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 							adjacentRenderSections[EDhDirection.SOUTH.ordinal() - 2] = (southRenderSource != null) ? southRenderSource.columnRenderSource : null;
 							adjacentRenderSections[EDhDirection.EAST.ordinal() - 2] = (eastRenderSource != null) ? eastRenderSource.columnRenderSource : null;
 							adjacentRenderSections[EDhDirection.WEST.ordinal() - 2] = (westRenderSource != null) ? westRenderSource.columnRenderSource : null;
-
+							
 							boolean[] adjIsSameDetailLevel = new boolean[EDhDirection.ADJ_DIRECTIONS.length];
 							adjIsSameDetailLevel[EDhDirection.NORTH.ordinal() - 2] = this.isAdjacentPosSameDetailLevel(EDhDirection.NORTH);
 							adjIsSameDetailLevel[EDhDirection.SOUTH.ordinal() - 2] = this.isAdjacentPosSameDetailLevel(EDhDirection.SOUTH);
 							adjIsSameDetailLevel[EDhDirection.EAST.ordinal() - 2] = this.isAdjacentPosSameDetailLevel(EDhDirection.EAST);
 							adjIsSameDetailLevel[EDhDirection.WEST.ordinal() - 2] = this.isAdjacentPosSameDetailLevel(EDhDirection.WEST);
-
+							
 							// the render sources are only needed by this synchronous method,
 							// then they can be closed
 							ColumnRenderBufferBuilder.makeLodRenderData(lodQuadBuilder, thisRenderSource, this.level, adjacentRenderSections, adjIsSameDetailLevel);
@@ -315,7 +313,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			});
 	}
 	/** async is done so each thread can run without waiting on others */
-	private CompletableFuture<CachedColumnRenderSource> getRenderSourceForPosAsync(long pos)
+	private CompletableFuture<CachedColumnRenderSource> getRenderSourceForPosAsync(long pos) 
 	{
 		ReentrantLock lock = this.renderLoadLockContainer.getLockForPos(pos);
 		try
@@ -323,7 +321,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			// we don't want multiple threads attempting to load the same position at the same time,
 			// and we don't want to access the cache while invalidating it on a different thread
 			lock.lock();
-
+			
 			// use the cached data if possible
 			CachedColumnRenderSource existingCachedRenderSource = this.cachedRenderSourceByPos.getIfPresent(pos);
 			if (existingCachedRenderSource != null)
@@ -331,17 +329,17 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				existingCachedRenderSource.markInUse();
 				return existingCachedRenderSource.loadFuture;
 			}
-
-
-
+			
+			
+			
 			PriorityTaskPicker.Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
 			if (executor == null || executor.isTerminated())
 			{
 				// should only happen if the threadpool is actively being re-sized
 				return CompletableFuture.completedFuture(null);
 			}
-
-
+			
+			
 			// queue loading the render data
 			CompletableFuture<CachedColumnRenderSource> loadFuture = new CompletableFuture<>();
 			final CachedColumnRenderSource newCachedRenderSource = new CachedColumnRenderSource(loadFuture, lock, this.cachedRenderSourceByPos);
@@ -362,7 +360,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				}
 			});
 			this.cachedRenderSourceByPos.put(pos, newCachedRenderSource);
-
+			
 			return loadFuture;
 		}
 		catch (RejectedExecutionException ignore)
@@ -395,32 +393,32 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			// prevents the CPU from working on something that won't be used
 			this.bufferUploadFuture.cancel(true);
 		}
-
+		
 		this.bufferUploadFuture = ColumnRenderBufferBuilder.uploadBuffersAsync(this.level, this.pos, lodQuadBuilder);
 		this.bufferUploadFuture.thenAccept((buffer) ->
 		{
 			// needed to clean up the old data
 			ColumnRenderBuffer previousBuffer = this.renderBuffer;
-
+			
 			// upload complete
 			this.renderBuffer = buffer.buffersUploaded ? buffer : null;
 			this.getAndBuildRenderDataFuture = null;
-
+			
 			if (previousBuffer != null)
 			{
 				previousBuffer.close();
 			}
 		});
 	}
-
-
-
+	
+	
+	
 	//========================//
 	// getters and properties //
 	//========================//
-
+	
 	public boolean canRender() { return this.renderBuffer != null; }
-
+	
 	public boolean getRenderingEnabled() { return this.renderingEnabled; }
 	/**
 	 * Separate from {@link LodRenderSection#onRenderingEnabled} and {@link LodRenderSection#onRenderingDisabled}
@@ -430,14 +428,14 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	 * enable the new section(s) first before disabling the old one(s).
 	 */
 	public void setRenderingEnabled(boolean enabled) { this.renderingEnabled = enabled;}
-
+	
 	/** @see LodRenderSection#setRenderingEnabled */
 	public void onRenderingEnabled() { this.startRenderingBeacons(); }
 	/** @see LodRenderSection#setRenderingEnabled */
-	public void onRenderingDisabled()
+	public void onRenderingDisabled() 
 	{
 		this.stopRenderingBeacons();
-
+		
 		if (Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus.get())
 		{
 			// show that this position has just been disabled
@@ -449,32 +447,32 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			);
 		}
 	}
-
+	
 	public boolean gpuUploadInProgress() { return this.getAndBuildRenderDataFuture != null; }
-
-
-
+	
+	
+	
 	//=================================//
 	// full data retrieval (world gen) //
 	//=================================//
-
+	
 	public boolean isFullyGenerated()
 	{
 		LongArrayList missingGenerationPos = this.getMissingGenerationPos();
 		return missingGenerationPos != null && missingGenerationPos.isEmpty();
 	}
 	/** Returns true if an LOD exists, regardless of what data is in it */
-	public boolean getFullDataSourceExists()
-	{
+	public boolean getFullDataSourceExists() 
+	{  
 		if (!this.checkedIfFullDataSourceExists)
 		{
 			this.fullDataSourceExists = this.fullDataSourceProvider.repo.existsWithKey(this.pos);
 			this.checkedIfFullDataSourceExists = true;
 		}
-
+		
 		return this.fullDataSourceExists;
 	}
-	public void updateFullDataSourceExists()
+	public void updateFullDataSourceExists() 
 	{
 		// we don't have any ability to remove LODs so we only
 		// need to check if an LOD was previously missing
@@ -484,7 +482,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			this.getFullDataSourceExists();
 		}
 	}
-
+	
 	public boolean missingPositionsCalculated() { return this.getMissingGenerationPos() != null; }
 	public int ungeneratedPositionCount()
 	{
@@ -498,7 +496,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		{
 			return 0;
 		}
-
+		
 		int chunkCount = 0;
 		// get the number of chunks each position contains
 		for (int i = 0; i < missingGenerationPos.size(); i++)
@@ -508,7 +506,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		}
 		return chunkCount;
 	}
-
+	
 	public void tryQueuingMissingLodRetrieval()
 	{
 		if (this.fullDataSourceProvider.canRetrieveMissingDataSources() && this.fullDataSourceProvider.canQueueRetrieval())
@@ -528,9 +526,9 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				//  to test if the memoization is actually needed.
 				this.missingGenerationPosFunc = Suppliers.memoizeWithExpiration(
 						() -> this.fullDataSourceProvider.getPositionsToRetrieve(this.pos),
-						10, TimeUnit.MINUTES)::get;
+						10, TimeUnit.MINUTES);
 			}
-
+			
 			LongArrayList missingGenerationPos = this.getMissingGenerationPos();
 			if (missingGenerationPos != null)
 			{
@@ -542,7 +540,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 						// the data source provider isn't accepting any more jobs
 						break;
 					}
-
+					
 					long pos = missingGenerationPos.removeLong(i);
 					boolean positionQueued = (this.fullDataSourceProvider.queuePositionForRetrieval(pos) != null);
 					if (!positionQueued)
@@ -554,41 +552,41 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			}
 		}
 	}
-
-
-
+	
+	
+	
 	//=================//
 	// beacon handling //
 	//=================//
-
+	
 	/** gets the active beacon list and stops/starts beacon rendering as necessary */
 	private void getAndRefreshRenderingBeacons()
 	{
 		// do nothing if beacon rendering or repos are unavailable
-		if (this.beaconBeamRepo == null
+		if (this.beaconBeamRepo == null 
 			|| this.beaconRenderHandler == null)
 		{
 			return;
 		}
-
-
+		
+		
 		// Synchronized to prevent two threads for starting/stopping rendering at once
 		// Shouldn't be necessary, but just in case.
 		synchronized (this.activeBeaconList)
 		{
 			List<BeaconBeamDTO> activeBeacons = this.beaconBeamRepo.getAllBeamsForPos(this.pos);
-
-
+			
+			
 			// stop rendering current beacons
 			for (BeaconBeamDTO beam : this.activeBeaconList)
 			{
 				this.beaconRenderHandler.stopRenderingBeaconAtPos(beam.blockPos);
 			}
-
+			
 			// swap old and new active beacon list
 			this.activeBeaconList.clear();
 			this.activeBeaconList.addAll(activeBeacons);
-
+			
 			// start rendering new beacon list
 			for (BeaconBeamDTO beam : this.activeBeaconList)
 			{
@@ -596,7 +594,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			}
 		}
 	}
-
+	
 	private void stopRenderingBeacons()
 	{
 		// do nothing if beacon rendering is unavailable
@@ -604,8 +602,8 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		{
 			return;
 		}
-
-
+		
+		
 		synchronized (this.activeBeaconList)
 		{
 			for (BeaconBeamDTO beam : this.activeBeaconList)
@@ -614,16 +612,16 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			}
 		}
 	}
-
+	
 	private void startRenderingBeacons()
 	{
-		// do nothing if beacon rendering is unavailable
+		// do nothing if beacon rendering is unavailable 
 		if (this.beaconRenderHandler == null)
 		{
 			return;
 		}
-
-
+		
+		
 		synchronized (this.activeBeaconList)
 		{
 			for (BeaconBeamDTO beam : this.activeBeaconList)
@@ -632,14 +630,14 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			}
 		}
 	}
-
-
-
-
+	
+	
+	
+	
 	//==============//
 	// base methods //
 	//==============//
-
+	
 	@Override
 	public void debugRender(DebugRenderer debugRenderer)
 	{
@@ -656,10 +654,10 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		{
 			color = Color.cyan;
 		}
-
+		
 		debugRenderer.renderBox(new DebugRenderer.Box(this.pos, 400, 8f, Objects.hashCode(this), 0.1f, color));
 	}
-
+	
 	@Override
 	public String toString()
 	{
@@ -667,12 +665,12 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				"enabled=[" + this.renderingEnabled + "] " +
 				"uploading=[" + this.gpuUploadInProgress() + "] ";
 	}
-
+	
 	@Override
 	public void close()
 	{
 		DebugRenderer.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus);
-
+		
 		if (Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus.get())
 		{
 			// show a particle for the closed section
@@ -683,15 +681,15 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				)
 			);
 		}
-
-
+		
+		
 		this.stopRenderingBeacons();
-
+		
 		if (this.renderBuffer != null)
 		{
 			this.renderBuffer.close();
 		}
-
+		
 		// removes any in-progress futures since they aren't needed any more
 		CompletableFuture<Void> buildFuture = this.getAndBuildRenderDataFuture;
 		if (buildFuture != null)
@@ -708,23 +706,23 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				}
 			}
 		}
-
+		
 		CompletableFuture<ColumnRenderBuffer> uploadFuture = this.bufferUploadFuture;
 		if (uploadFuture != null)
 		{
 			uploadFuture.cancel(true);
 		}
-
-
-
+		
+		
+		
 		// remove any active world gen requests that may be for this position
 		ThreadPoolExecutor executor = ThreadPoolUtil.getCleanupExecutor();
-		// while this should generally be a fast operation
+		// while this should generally be a fast operation 
 		// this is run on a separate thread to prevent lag on the render thread
 		executor.execute(() -> this.fullDataSourceProvider.removeRetrievalRequestIf((genPos) -> DhSectionPos.contains(this.pos, genPos)));
-
+		
 	}
-
-
-
+	
+	
+	
 }

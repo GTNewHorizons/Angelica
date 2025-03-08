@@ -5,40 +5,38 @@ import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadow
 import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverrideInjector;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 
-/**
- * Dummy {@link IDhApiCullingFrustum} that allows everything through. <br>
+/** 
+ * Dummy {@link IDhApiCullingFrustum} that allows everything through. <br> 
  * Useful when a frustum is required, but culling shouldn't be done.
  */
-@Lwjgl3Aware
 public class NeverCullFrustum implements IDhApiCullingFrustum, IDhApiShadowCullingFrustum
 {
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	public NeverCullFrustum() { }
-
-
-
+	
+	
+	
 	//=========//
 	// methods //
 	//=========//
-
+	
 	@Override
 	public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f dhWorldViewProjection) { /* update isn't needed */ }
-
+	
 	@Override
 	public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) { return true; }
-
-
-
+	
+	
+	
 	//=====================//
 	// overridable methods //
 	//=====================//
-
-	@Override
+	
+	@Override 
 	public int getPriority() { return IOverrideInjector.CORE_PRIORITY; }
-
+	
 }

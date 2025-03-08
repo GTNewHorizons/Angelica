@@ -93,19 +93,18 @@ public class ConfigBasedLogger
 		Message msg = param.length > 0
 				? this.logger.getMessageFactory().newMessage(str, param)
 				: this.logger.getMessageFactory().newMessage("{}", str);
-
 		
 		String msgStr = msg.getFormattedMessage();
-		if (level.isAtLeastAsSpecificAs(mode.levelForFile))
+		if (mode.levelForFile.isLessSpecificThan(level))
 		{
-			Level logLevel = Level.INFO.isAtLeastAsSpecificAs(level) ? Level.INFO : level;
+			Level logLevel = level.isLessSpecificThan(Level.INFO) ? Level.INFO : level;
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				logger.log(logLevel, msgStr, (Throwable) param[param.length - 1]);
 			else
 				logger.log(logLevel, msgStr);
 		}
-
-		if (MC != null && level.isAtLeastAsSpecificAs(mode.levelForChat))
+		
+		if (MC != null && mode.levelForChat.isLessSpecificThan(level))
 		{
 			if (param.length > 0 && param[param.length - 1] instanceof Throwable)
 				MC.logToChat(level, msgStr + "\n" +
