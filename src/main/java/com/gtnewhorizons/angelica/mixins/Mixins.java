@@ -52,6 +52,7 @@ public enum Mixins {
             ,"angelica.threading.MixinBlock"
             ,"angelica.threading.MixinRenderingRegistry"
             ,"angelica.threading.MixinTileEntity"
+            ,"angelica.NetHandlerPlayClientMixin"
         )
     ),
     ANGELICA_VBO(
