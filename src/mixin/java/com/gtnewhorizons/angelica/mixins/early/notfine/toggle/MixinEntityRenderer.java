@@ -65,7 +65,8 @@ abstract public class MixinEntityRenderer {
         at = @At(
             value = "INVOKE",
             target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V",
-            ordinal = 15
+            ordinal = 15,
+            remap = false
         )
     )
     private float notFine$replaceFarFogDistance(float value) {
