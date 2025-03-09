@@ -10,6 +10,5 @@ public interface AccessorBiomeColorEvent {
 
     @Mutable
     @Accessor(value = "originalColor", remap = false)
-    @Mutable
     void setOriginalColor(int value);
 }
