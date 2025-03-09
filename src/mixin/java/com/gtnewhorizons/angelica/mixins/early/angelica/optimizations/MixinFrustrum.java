@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import net.minecraft.client.renderer.culling.Frustrum;

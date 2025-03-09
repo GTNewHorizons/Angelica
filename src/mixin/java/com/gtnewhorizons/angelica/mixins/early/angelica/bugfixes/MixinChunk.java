@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
@@ -28,7 +28,7 @@ public abstract class MixinChunk {
     public int xPosition, zPosition;
 
     @Inject(method = "fillChunk", at = @At("RETURN"))
-    private void sodium$populateBiomes(CallbackInfo ci) {
+    private void angelica$populateBiomes(CallbackInfo ci) {
         if(this.worldObj.isRemote && !Minecraft.getMinecraft().isSingleplayer()) {
             // We are in multiplayer, the server might not have sent all biomes to the client.
             // Populate them now while we're on the main thread.

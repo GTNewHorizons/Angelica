@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.compat;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;

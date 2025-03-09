@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.errorhandling;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;

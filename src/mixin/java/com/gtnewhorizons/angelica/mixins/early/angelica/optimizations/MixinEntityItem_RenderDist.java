@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
@@ -14,10 +14,10 @@ public abstract class MixinEntityItem_RenderDist extends Entity {
 
     @Override
     public boolean isInRangeToRender3d(double x, double y, double z) {
-        double d3 = this.posX - x;
-        double d4 = this.posY - y;
-        double d5 = this.posZ - z;
-        double d6 = d3 * d3 + d4 * d4 + d5 * d5;
+        final double d3 = this.posX - x;
+        final double d4 = this.posY - y;
+        final double d5 = this.posZ - z;
+        final double d6 = d3 * d3 + d4 * d4 + d5 * d5;
         // set render distance to 32 blocks
         return this.isInRangeToRenderDist(d6 / 4.0D);
     }

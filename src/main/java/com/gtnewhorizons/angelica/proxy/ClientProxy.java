@@ -5,6 +5,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.client.gui.SodiumOptionsGUI;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -36,6 +37,9 @@ import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import jss.notfine.core.Settings;
+import jss.notfine.gui.GuiCustomMenu;
+import jss.notfine.gui.NotFineGameOptionPages;
+import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -45,6 +49,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiVideoSettings;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.settings.GameSettings;
@@ -58,11 +64,13 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
 
+@SuppressWarnings("unused")
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
@@ -306,6 +314,25 @@ public class ClientProxy extends CommonProxy {
 
     private float gameStartTime = -1;
 
+    @SubscribeEvent
+    public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
+        if(event.gui instanceof GuiVideoSettings eventGui) {
+            event.setCanceled(true);
+            if(AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
+                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen,
+                    NotFineGameOptionPages.general(),
+                    NotFineGameOptionPages.detail(), NotFineGameOptionPages.atmosphere(),
+                    NotFineGameOptionPages.particles(), NotFineGameOptionPages.other()
+                ));
+            } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
+                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
+            } else {
+                Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));
+            }
+        }
+    }
+
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
         if (!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
@@ -316,6 +343,7 @@ public class ClientProxy extends CommonProxy {
 
     /* coerce NaN fog values back to 0 (https://bugs.mojang.com/browse/MC-10480) - from ArchaicFix */
     @SubscribeEvent(priority = EventPriority.LOWEST)
+
     public void onFogColor(EntityViewRenderEvent.FogColors event) {
         if (Float.isNaN(event.red)) event.red = 0f;
         if (Float.isNaN(event.green)) event.green = 0f;

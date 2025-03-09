@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.threading;
 
 import com.gtnewhorizons.angelica.glsm.ThreadedBlockData;
 import net.minecraft.block.Block;

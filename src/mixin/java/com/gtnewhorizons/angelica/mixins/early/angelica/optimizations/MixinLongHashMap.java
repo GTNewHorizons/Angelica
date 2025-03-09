@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
 import net.minecraft.util.LongHashMap;
 import org.spongepowered.asm.mixin.Mixin;

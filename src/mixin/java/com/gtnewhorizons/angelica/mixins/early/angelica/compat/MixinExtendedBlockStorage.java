@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.compat;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedBlockStorageAccessor;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;

@@ -23,23 +23,6 @@ public class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
-    @SubscribeEvent
-    public void onGui(GuiScreenEvent.InitGuiEvent.Pre event) {
-        if(event.gui instanceof GuiVideoSettings eventGui) {
-            event.setCanceled(true);
-            if(AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen,
-                    NotFineGameOptionPages.general(),
-                    NotFineGameOptionPages.detail(), NotFineGameOptionPages.atmosphere(),
-                    NotFineGameOptionPages.particles(), NotFineGameOptionPages.other()
-                ));
-            } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
-            } else {
-                Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));
-            }
-        }
-    }
 
     @Override
     public void init(FMLInitializationEvent event) {

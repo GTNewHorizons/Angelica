@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderManager;
 import net.minecraftforge.client.ForgeHooksClient;
@@ -15,5 +15,6 @@ public class MixinForgeHooksClient {
     public static int getWorldRenderPass() {
         return ChunkRenderManager.getWorldRenderPass();
     }
+
 
 }

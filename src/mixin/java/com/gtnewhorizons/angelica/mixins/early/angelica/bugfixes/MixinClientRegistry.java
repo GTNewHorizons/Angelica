@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import org.spongepowered.asm.mixin.Mixin;

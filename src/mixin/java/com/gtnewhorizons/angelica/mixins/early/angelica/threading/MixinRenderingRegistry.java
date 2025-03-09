@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.threading;
 
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRH;
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;

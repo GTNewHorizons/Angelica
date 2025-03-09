@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.minecraft.tileentity.TileEntity;

@@ -1,5 +1,6 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
+import com.gtnewhorizons.angelica.mixins.early.sodium.AccessorBiomeColorEvent;
 import com.gtnewhorizons.angelica.utils.EventUtils;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.event.terraingen.BiomeEvent;
@@ -18,7 +19,7 @@ public class MixinBiomeGenBase {
     private void prepareEvent(BiomeEvent.BiomeColor event, int defaultColor) {
         event.newColor = defaultColor;
         EventUtils.clearPhase(event);
-        ((AccessorBiomeColorEvent) event).setOriginalColor(defaultColor);
+        event.originalColor = defaultColor;
     }
 
     @Redirect(method = "getWaterColorMultiplier", at = @At(value = "NEW", target = "(Lnet/minecraft/world/biome/BiomeGenBase;I)Lnet/minecraftforge/event/terraingen/BiomeEvent$GetWaterColor;"))

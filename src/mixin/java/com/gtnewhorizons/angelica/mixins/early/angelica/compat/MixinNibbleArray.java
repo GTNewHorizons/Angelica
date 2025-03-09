@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.angelica.compat;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ExtendedNibbleArray;
 import net.minecraft.world.chunk.NibbleArray;
