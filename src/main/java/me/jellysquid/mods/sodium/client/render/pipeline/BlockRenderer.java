@@ -50,7 +50,6 @@ public class BlockRenderer {
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
 
-    private Object Quad;
     private final ObjectPooler<QuadView> quadPool = new ObjectPooler<>(Quad::new);
     // TODO: Use modern model API, and store them here
 
@@ -183,13 +182,7 @@ public class BlockRenderer {
             renderData.addSprite(sprite);
         }
     }
-    private LightMode getLightingMode(Block block) {
-        if (this.useAmbientOcclusion && block.getAmbientOcclusionLightValue() != 1.0F && block.getLightValue() == 0) {
-            return LightMode.SMOOTH;
-        } else {
-            return LightMode.FLAT;
-        }
-    }
+
     public static class Flags {
         boolean hasTexture;
         public boolean hasBrightness;

@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -10,7 +8,6 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import javax.imageio.ImageIO;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
@@ -113,18 +110,15 @@ public class NativeImage extends BufferedImage {
 
 
     public enum Format {
-        RGBA(4, GL11.GL_RGBA, BufferedImage.TYPE_INT_ARGB),
-        RGB(3, GL11.GL_RGB, BufferedImage.TYPE_INT_RGB);
+        RGBA(4, GL11.GL_RGBA),
+        RGB(3, GL11.GL_RGB);
 
         private final int components;
         private final int glFormat;
-        private final int imageType;
 
-
-        Format(int components, int glFormat, int imageType) {
+        Format(int components, int glFormat) {
             this.components = components;
             this.glFormat = glFormat;
-            this.imageType = imageType;
         }
     }
 

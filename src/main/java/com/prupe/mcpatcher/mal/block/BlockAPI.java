@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.block.Block;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
 
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
@@ -21,6 +19,7 @@ import cpw.mods.fml.common.registry.GameData;
 
 public class BlockAPI {
 
+    @SuppressWarnings("unchecked")
     BlockAPI(FMLControlledNamespacedRegistry<Block> registry) {
         File outputFile = new File("blocks17.txt");
         if (outputFile.isFile()) {

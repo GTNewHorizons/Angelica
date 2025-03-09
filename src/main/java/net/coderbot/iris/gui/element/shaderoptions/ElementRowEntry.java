@@ -11,15 +11,12 @@ import java.util.List;
 public class ElementRowEntry extends BaseEntry {
 
     private final List<AbstractElementWidget<?>> widgets;
-    private final ShaderPackScreen screen;
 
     private int cachedWidth;
     private int cachedPosX;
 
-    public ElementRowEntry(ShaderPackScreen screen, NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
+    public ElementRowEntry(NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
         super(navigation);
-
-        this.screen = screen;
         this.widgets = widgets;
     }
 
@@ -51,10 +48,12 @@ public class ElementRowEntry extends BaseEntry {
         return MathHelper.clamp_int((int) Math.floor(widgets.size() * positionAcrossWidget), 0, widgets.size() - 1);
     }
 
+    @Override
     public boolean mouseClicked(int mouseX, int mouseY, int button) {
         return this.widgets.get(getHoveredWidget(mouseX)).mouseClicked(mouseX, mouseY, button);
     }
 
+    @Override
     public boolean mouseReleased(int mouseX, int mouseY, int button) {
         return this.widgets.get(getHoveredWidget(mouseX)).mouseReleased(mouseX, mouseY, button);
     }

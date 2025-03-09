@@ -41,7 +41,8 @@ public class IrisChunkProgram extends ChunkProgram {
 		this.irisProgramImages = irisProgramImages;
 	}
 
-	public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
+	@Override
+    public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
 		super.setup(matrixStack, modelScale, textureScale);
 
 		if (irisProgramUniforms != null) {

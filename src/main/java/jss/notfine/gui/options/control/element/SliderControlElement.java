@@ -26,6 +26,7 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
         value = MathHelper.clamp_float((value - min) / (max - min), 0f, 1f);
     }
 
+    @Override
     public String getLabel() {
         return super.getLabel() + formatter.format(option.getValue());
     }

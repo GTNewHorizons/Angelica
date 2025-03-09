@@ -10,7 +10,6 @@ public class BlockOcclusionCache {
     private static final byte UNCACHED_VALUE = (byte) 127;
 
     private final Object2ByteLinkedOpenHashMap<CachedOcclusionShapeTest> map;
-    private final CachedOcclusionShapeTest cachedTest = new CachedOcclusionShapeTest();
     private final BlockPos cpos = new BlockPos();
 
     public BlockOcclusionCache() {
@@ -40,29 +39,6 @@ public class BlockOcclusionCache {
         // TODO: Use VoxelShape occlusion from modern
     }
 
-    private boolean calculate(Block selfShape, Block adjShape) {
-        final CachedOcclusionShapeTest cache = this.cachedTest;
-        cache.a = selfShape;
-        cache.b = adjShape;
-        cache.updateHash();
-
-        final byte cached = this.map.getByte(cache);
-
-        if (cached != UNCACHED_VALUE) {
-            return cached == 1;
-        }
-
-        final boolean ret = adjShape.isOpaqueCube() && selfShape.isOpaqueCube();
-
-        this.map.put(cache.copy(), (byte) (ret ? 1 : 0));
-
-        if (this.map.size() > 2048) {
-            this.map.removeFirstByte();
-        }
-
-        return ret;
-    }
-
     private static final class CachedOcclusionShapeTest {
         private Block a, b;
         private int hashCode;
@@ -75,17 +51,6 @@ public class BlockOcclusionCache {
             this.a = a;
             this.b = b;
             this.hashCode = hashCode;
-        }
-
-        public void updateHash() {
-            int result = System.identityHashCode(this.a);
-            result = 31 * result + System.identityHashCode(this.b);
-
-            this.hashCode = result;
-        }
-
-        public CachedOcclusionShapeTest copy() {
-            return new CachedOcclusionShapeTest(this.a, this.b, this.hashCode);
         }
 
         @Override

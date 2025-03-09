@@ -120,7 +120,7 @@ final public class PropertiesFile {
 
     @SuppressWarnings("unchecked")
     public Set<Map.Entry<String, String>> entrySet() {
-        return (Set<Map.Entry<String, String>>) (Set) properties.entrySet();
+        return (Set<Map.Entry<String, String>>) (Set<?>) properties.entrySet();
     }
 
     public ResourceLocation getResource() {

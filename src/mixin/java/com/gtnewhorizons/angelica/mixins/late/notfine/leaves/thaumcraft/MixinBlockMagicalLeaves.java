@@ -27,6 +27,7 @@ public abstract class MixinBlockMagicalLeaves extends Block implements IFaceObst
      * @author jss2a98aj
      * @reason Support new leaf rendering modes on Thaumcraft leaves.
      */
+    @Override
     @Overwrite
     public boolean shouldSideBeRendered(IBlockAccess world, int x, int y, int z, int side) {
         return LeafRenderUtil.shouldSideBeRendered(world, x, y, z, side);
