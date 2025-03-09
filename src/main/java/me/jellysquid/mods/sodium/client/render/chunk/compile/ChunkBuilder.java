@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -457,8 +458,10 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             this.task = task;
             this.future = new CompletableFuture<>();
             this.future.exceptionally(e -> {
-                LOGGER.info("Exception thrown while building chunk", e);
-//                e.printStackTrace();
+                if (!(e instanceof CancellationException)) {
+                    LOGGER.info("Exception thrown while building chunk", e);
+                }
+
                 return null;
             });
         }
