@@ -1,7 +1,10 @@
 package kroppeb.stareval.exception;
 
 public class UnexpectedCharacterException extends ParseException {
-	public UnexpectedCharacterException(char expected, char actual, int index) {
+
+	private static final long serialVersionUID = -3886198952263126846L;
+
+    public UnexpectedCharacterException(char expected, char actual, int index) {
 		this("Expected to read '" + expected + "' but got '" + actual + "' at index " + index);
 	}
 

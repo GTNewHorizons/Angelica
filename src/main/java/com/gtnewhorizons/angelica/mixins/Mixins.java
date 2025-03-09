@@ -37,8 +37,6 @@ public enum Mixins {
             ,"angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             ,"angelica.bugfixes.MixinTileEntityRendererDispatcher"
             ,"angelica.compat.MixinBlockFluidBase"
-            ,"angelica.compat.MixinNibbleArray"
-            ,"angelica.compat.MixinExtendedBlockStorage"
             ,"angelica.errorhandling.MixinRenderBlocks"
             ,"angelica.optimizations.MixinBiomeGenBase"
             ,"angelica.optimizations.MixinEntity_RenderDist"
@@ -111,8 +109,8 @@ public enum Mixins {
         )
     ),
 
-    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).addMixinClasses(
+    ARCHAIC_CORE(new Builder("Archaic Core").addTargetedMod(TargetedMod.VANILLA).addExcludedMod(TargetedMod.ARCHAICFIX)
+        .setSide(Side.CLIENT).setPhase(Phase.EARLY).addMixinClasses(
              "angelica.archaic.MixinBlockFence"
             ,"angelica.archaic.MixinFMLClientHandler"
             ,"angelica.archaic.MixinGuiIngameForge"
@@ -180,14 +178,7 @@ public enum Mixins {
     ),
 
     IRIS_ACCESSORS(new Builder("Iris Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
-             "shaders.accessors.MixinMinecraft"
-            ,"shaders.accessors.MixinEntityRenderer"
-            ,"shaders.accessors.MixinSimpleTexture"
-            ,"shaders.accessors.MixinTextureAtlasSprite"
-            ,"shaders.accessors.MixinTextureMap"
-            ,"shaders.accessors.MixinAnimationMetadataSection"
-        )
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses("shaders.accessors.MixinEntityRenderer")
     ),
 
     ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)

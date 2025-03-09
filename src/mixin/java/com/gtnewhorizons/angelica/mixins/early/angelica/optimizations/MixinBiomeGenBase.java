@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
-import com.gtnewhorizons.angelica.mixins.early.sodium.AccessorBiomeColorEvent;
 import com.gtnewhorizons.angelica.utils.EventUtils;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.event.terraingen.BiomeEvent;

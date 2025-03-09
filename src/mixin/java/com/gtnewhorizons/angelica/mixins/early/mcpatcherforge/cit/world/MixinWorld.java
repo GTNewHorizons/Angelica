@@ -15,7 +15,7 @@ public abstract class MixinWorld implements IWorldSpawnItemBreakParticle {
 
     public void spawnItemBreakParticle(ItemStack itemStack, String particleName, double x, double y, double z, double velocityX, double velocityY, double velocityZ) {
         for (int i = 0; i < worldAccesses.size(); ++i) {
-            IWorldAccess access = (IWorldAccess)worldAccesses.get(i);
+            IWorldAccess access = worldAccesses.get(i);
             if (access instanceof IRenderGlobalSpawnItemBreakParticle) {
                 ((IRenderGlobalSpawnItemBreakParticle)access).spawnItemBreakParticle(itemStack, x, y, z, velocityX, velocityY, velocityZ);
             } else {
@@ -25,6 +25,6 @@ public abstract class MixinWorld implements IWorldSpawnItemBreakParticle {
     }
 
     @Shadow
-    protected List worldAccesses;
+    protected List<IWorldAccess> worldAccesses;
 
 }

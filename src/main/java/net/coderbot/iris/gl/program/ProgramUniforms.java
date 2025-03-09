@@ -150,9 +150,6 @@ public class ProgramUniforms {
 		@Override
 		public Builder addUniform(UniformUpdateFrequency updateFrequency, Uniform uniform) {
 			Objects.requireNonNull(uniform);
-            if (uniform == null) {
-                throw new NullPointerException("uniform");
-            }
 
 			switch (updateFrequency) {
 				case ONCE:

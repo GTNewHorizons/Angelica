@@ -7,6 +7,7 @@ import cpw.mods.fml.client.SplashProgress;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
+@SuppressWarnings("deprecation")
 @Mixin(value = SplashProgress.class, remap = false)
 public class MixinSplashProgress {
     @WrapOperation(method="Lcpw/mods/fml/client/SplashProgress;start()V", at=@At(value="INVOKE", target="Lcpw/mods/fml/client/SplashProgress;getBool(Ljava/lang/String;Z)Z"))

@@ -37,7 +37,7 @@ public class ShaderTransformer {
     private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^\\s*(in|out)(\\s+)");
 
     private static final int CACHE_SIZE = 100;
-    private static final Object2ObjectLinkedOpenHashMap<TransformKey, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
+    private static final Object2ObjectLinkedOpenHashMap<TransformKey<?>, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
     private static final boolean useCache = true;
 
     /**
@@ -71,23 +71,11 @@ public class ShaderTransformer {
             this.params = params;
         }
 
-        public Patch patchType() {
-            return patchType;
-        }
-
-        public EnumMap<PatchShaderType, String> inputs() {
-            return inputs;
-        }
-
-        public P params() {
-            return params;
-        }
-
         @Override
         public boolean equals(Object obj) {
             if (obj == this) return true;
             if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (TransformKey) obj;
+            var that = (TransformKey<?>) obj;
             return Objects.equals(this.patchType, that.patchType) &&
                 Objects.equals(this.inputs, that.inputs) &&
                 Objects.equals(this.params, that.params);
@@ -120,7 +108,7 @@ public class ShaderTransformer {
             inputs.put(PatchShaderType.GEOMETRY, geometry);
             inputs.put(PatchShaderType.FRAGMENT, fragment);
 
-            var key = new TransformKey(patchType, inputs, parameters);
+            var key = new TransformKey<>(patchType, inputs, parameters);
 
             result = shaderTransformationCache.getAndMoveToFirst(key);
             if(result == null || !useCache) {
