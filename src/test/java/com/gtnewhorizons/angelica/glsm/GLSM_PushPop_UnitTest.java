@@ -1,28 +1,28 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
-import com.gtnewhorizons.angelica.util.GLBit;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.TestInstance;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
+import static org.lwjglx.opengl.GL14.GL_BLEND_COLOR;
+import static org.lwjglx.opengl.GL14.GL_BLEND_EQUATION;
 
-import java.nio.FloatBuffer;
-import java.util.ArrayList;
-
+import com.gtnewhorizons.angelica.OpenGLTestBase;
+import com.gtnewhorizons.angelica.util.GLBit;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyNotDefaultState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
-import static org.lwjglx.opengl.GL14.GL_BLEND_COLOR;
-import static org.lwjglx.opengl.GL14.GL_BLEND_EQUATION;
 
-@ExtendWith(AngelicaExtension.class)
-class GLSM_PushPop_UnitTest {
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
 
     public static final boolean[] BOOLEAN_ARRAY_4_TRUE = { true, true, true, true };
     public static final boolean[] BOOLEAN_ARRAY_4_FALSE = { false, false, false, false };

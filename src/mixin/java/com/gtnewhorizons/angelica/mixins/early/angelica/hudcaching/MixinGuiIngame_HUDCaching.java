@@ -16,46 +16,46 @@ import net.minecraft.client.gui.GuiIngame;
 public class MixinGuiIngame_HUDCaching {
 	@Inject(method = "renderGameOverlay", at = @At("HEAD"))
     private void angelica$resetCaptures(CallbackInfo ci) {
-        if (HUDCaching.renderingCacheOverride) {
-        	HUDCaching.renderVignetteCaptured = false;
-        	HUDCaching.renderHelmetCaptured = false;
-        	HUDCaching.renderPortalCapturedTicks = -1;
+        if (HUDCaching.INSTANCE.renderingCacheOverride) {
+        	HUDCaching.INSTANCE.renderVignetteCaptured = false;
+        	HUDCaching.INSTANCE.renderHelmetCaptured = false;
+        	HUDCaching.INSTANCE.renderPortalCapturedTicks = -1;
         	// GuiIngame doesn't allow a clean way to capture crosshair
         }
     }
-	
+
     @Inject(method = "renderVignette", at = @At("HEAD"), cancellable = true)
     private void angelica$captureRenderVignette(CallbackInfo ci) {
-        if (HUDCaching.renderingCacheOverride) {
-        	HUDCaching.renderVignetteCaptured = true;
+        if (HUDCaching.INSTANCE.renderingCacheOverride) {
+        	HUDCaching.INSTANCE.renderVignetteCaptured = true;
         	ci.cancel();
         }
     }
-    
+
     @Inject(method = "renderPumpkinBlur", at = @At("HEAD"), cancellable = true)
     private void angelica$captureRenderPumpkimBlur(CallbackInfo ci) {
-    	if (HUDCaching.renderingCacheOverride) {
-    		HUDCaching.renderHelmetCaptured = true;
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
+    		HUDCaching.INSTANCE.renderHelmetCaptured = true;
         	ci.cancel();
         }
     }
-    
+
     @Inject(method = "func_130015_b", at = @At("HEAD"), cancellable = true)
     private void angelica$captureRenderPortal(float partialTicks, int width, int height, CallbackInfo ci) {
-    	if (HUDCaching.renderingCacheOverride) {
-    		HUDCaching.renderPortalCapturedTicks = partialTicks;
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
+    		HUDCaching.INSTANCE.renderPortalCapturedTicks = partialTicks;
         	ci.cancel();
         }
     }
-    
+
     @WrapOperation(method = "func_96136_a", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;III)I"))
     private int angelica$fixScoreboardTextAlpha(FontRenderer fontRenderer, String text, int x, int y, int color, Operation<Integer> op) {
     	// Vanilla uses 0x20 for the alpha but it looks like 0xFF for some reason
     	// here we just make it 0xFF so it doesn't cause issues
-    	if (HUDCaching.renderingCacheOverride) {
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
     		color |= 0xFF000000;
     	}
     	return op.call(fontRenderer, text, x, y, color);
     }
-    
+
 }

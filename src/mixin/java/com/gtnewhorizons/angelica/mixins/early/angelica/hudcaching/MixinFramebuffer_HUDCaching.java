@@ -14,8 +14,8 @@ public class MixinFramebuffer_HUDCaching {
     @Inject(method = "bindFramebuffer", at = @At("HEAD"), cancellable = true)
     public void angelica$bindHUDCachingBuffer(boolean viewport, CallbackInfo ci) {
         final Framebuffer framebuffer = (Framebuffer) (Object) this;
-        if (HUDCaching.renderingCacheOverride && framebuffer == Minecraft.getMinecraft().getFramebuffer()) {
-            HUDCaching.framebuffer.bindFramebuffer(viewport);
+        if (HUDCaching.INSTANCE.renderingCacheOverride && framebuffer == Minecraft.getMinecraft().getFramebuffer()) {
+            HUDCaching.INSTANCE.framebuffer.bindFramebuffer(viewport);
             ci.cancel();
         }
     }

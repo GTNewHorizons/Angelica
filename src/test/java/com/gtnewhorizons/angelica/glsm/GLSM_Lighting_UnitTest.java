@@ -1,24 +1,22 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
+import java.nio.FloatBuffer;
+
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.TestInstance;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-
+import com.gtnewhorizons.angelica.OpenGLTestBase;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyMaterialState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
-@ExtendWith(AngelicaExtension.class)
-public class GLSM_Lighting_UnitTest {
-
-    static final FloatBuffer f4b = ByteBuffer.allocateDirect(4 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
-    static final FloatBuffer f3b = ByteBuffer.allocateDirect(3 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
+    private static final FloatBuffer f4b = BufferUtils.createFloatBuffer(4);
+    private static final FloatBuffer f3b = BufferUtils.createFloatBuffer(3);
 
     @Test
     void testLightEnablement() {

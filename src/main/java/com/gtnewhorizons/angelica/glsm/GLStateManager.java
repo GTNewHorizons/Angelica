@@ -46,7 +46,6 @@ import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
@@ -609,12 +608,12 @@ public class GLStateManager {
                 return;
             }
         }
-        if (HUDCaching.renderingCacheOverride) {
+        if (HUDCaching.INSTANCE.renderingCacheOverride) {
             blendState.setSrcRgb(srcFactor);
             blendState.setDstRgb(dstFactor);
             blendState.setSrcAlpha(GL11.GL_ONE);
             blendState.setDstAlpha(GL11.GL_ONE_MINUS_SRC_ALPHA);
-            OpenGlHelper.glBlendFunc(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL14.glBlendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             return;
         }
         if (shouldBypassCache() || blendState.getSrcRgb() != srcFactor || blendState.getDstRgb() != dstFactor) {
@@ -642,7 +641,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (HUDCaching.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
+        if (HUDCaching.INSTANCE.renderingCacheOverride && dstAlpha != GL11.GL_ONE_MINUS_SRC_ALPHA) {
             srcAlpha = GL11.GL_ONE;
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
@@ -652,7 +651,7 @@ public class GLStateManager {
             blendState.setDstRgb(dstRgb);
             blendState.setSrcAlpha(srcAlpha);
             blendState.setDstAlpha(dstAlpha);
-            OpenGlHelper.glBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
+            GL14.glBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
 
         // Iris

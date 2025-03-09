@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.loading.rfb;
+package com.gtnewhorizons.angelica.rfb.transformers;
 
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;

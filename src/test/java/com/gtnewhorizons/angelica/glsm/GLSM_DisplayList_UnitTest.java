@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.OpenGLTestBase;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
-@ExtendWith(AngelicaExtension.class)
-class GLSM_DisplayList_UnitTest {
+class GLSM_DisplayList_UnitTest extends OpenGLTestBase  {
 
     @Test
     void testDisplayListCompileCall() {

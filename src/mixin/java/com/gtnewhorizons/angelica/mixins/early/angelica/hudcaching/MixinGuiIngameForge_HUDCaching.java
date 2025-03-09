@@ -16,18 +16,18 @@ import net.minecraftforge.client.GuiIngameForge;
 public class MixinGuiIngameForge_HUDCaching {
 	@Inject(method = "renderGameOverlay", at = @At("HEAD"))
     private void angelica$resetCaptures(CallbackInfo ci) {
-        if (HUDCaching.renderingCacheOverride) {
-        	HUDCaching.renderVignetteCaptured = false;
-        	HUDCaching.renderHelmetCaptured = false;
-        	HUDCaching.renderPortalCapturedTicks = -1;
-        	HUDCaching.renderCrosshairsCaptured = false;
+        if (HUDCaching.INSTANCE.renderingCacheOverride) {
+        	HUDCaching.INSTANCE.renderVignetteCaptured = false;
+        	HUDCaching.INSTANCE.renderHelmetCaptured = false;
+        	HUDCaching.INSTANCE.renderPortalCapturedTicks = -1;
+        	HUDCaching.INSTANCE.renderCrosshairsCaptured = false;
         }
     }
 
     @Inject(method = "renderCrosshairs", at = @At("HEAD"), cancellable = true, remap = false)
     private void angelica$captureRenderCrosshair(CallbackInfo ci) {
-        if (HUDCaching.renderingCacheOverride) {
-        	HUDCaching.renderCrosshairsCaptured = true;
+        if (HUDCaching.INSTANCE.renderingCacheOverride) {
+        	HUDCaching.INSTANCE.renderCrosshairsCaptured = true;
         	HUDCaching.fixGLStateBeforeRenderingCache();
         	ci.cancel();
         }
@@ -35,8 +35,8 @@ public class MixinGuiIngameForge_HUDCaching {
 
     @Inject(method = "renderHelmet", at = @At("HEAD"), cancellable = true, remap = false)
     private void angelica$captureRenderHelmet(ScaledResolution res, float partialTicks, boolean hasScreen, int mouseX, int mouseY, CallbackInfo ci) {
-    	if (HUDCaching.renderingCacheOverride) {
-    		HUDCaching.renderHelmetCaptured = true;
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
+    		HUDCaching.INSTANCE.renderHelmetCaptured = true;
         	ci.cancel();
         }
 
@@ -45,8 +45,8 @@ public class MixinGuiIngameForge_HUDCaching {
 
     @Inject(method = "renderPortal", at = @At("HEAD"), cancellable = true, remap = false)
     private void angelica$captureRenderPortal(int width, int height, float partialTicks, CallbackInfo ci) {
-    	if (HUDCaching.renderingCacheOverride) {
-    		HUDCaching.renderPortalCapturedTicks = partialTicks;
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
+    		HUDCaching.INSTANCE.renderPortalCapturedTicks = partialTicks;
         	ci.cancel();
         }
     }
@@ -55,7 +55,7 @@ public class MixinGuiIngameForge_HUDCaching {
     private void angelica$bindBossHealthTexture(CallbackInfo ci) {
     	// boss health texture is bind in renderCrosshairs
     	// but HUD caching skips rendering crosshairs when rendering into cache
-    	if (HUDCaching.renderingCacheOverride) {
+    	if (HUDCaching.INSTANCE.renderingCacheOverride) {
     		((GuiIngameForgeAccessor) this).callBind(Gui.icons);
     	}
     }
