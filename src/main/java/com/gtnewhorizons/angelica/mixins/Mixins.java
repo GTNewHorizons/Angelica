@@ -151,40 +151,6 @@ public enum Mixins {
 
         )),
 
-    SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
-             "sodium.MixinBlock"
-            ,"sodium.MixinBlockFluidBase"
-            ,"sodium.AccessorBiomeColorEvent"
-            ,"sodium.MixinBiomeGenBase"
-            ,"sodium.MixinChunk"
-            ,"sodium.MixinChunkProviderServer"
-            ,"sodium.MixinClientRegistry"
-            ,"sodium.MixinEntity_RenderDist"
-            ,"sodium.MixinEntityItem_RenderDist"
-            ,"sodium.MixinRenderManager"
-            ,"sodium.MixinExtendedBlockStorage"
-            ,"sodium.MixinEntityRenderer"
-            ,"sodium.MixinFMLClientHandler"
-            ,"sodium.MixinForgeHooksClient"
-            ,"sodium.MixinGameSettings"
-            ,"sodium.MixinFrustrum"
-            ,"sodium.MixinMaterial"
-            ,"sodium.MixinMinecraft"
-            ,"sodium.MixinNibbleArray"
-            ,"sodium.MixinRenderBlocks"
-            ,"sodium.MixinRenderGlobal"
-            ,"sodium.MixinWorldClient"
-            ,"sodium.MixinTileEntity"
-            ,"sodium.MixinTileEntityMobSpawner"
-            ,"sodium.MixinEffectRenderer"
-            ,"sodium.MixinTileEntityRendererDispatcher"
-            ,"sodium.MixinLongHashMap"
-            ,"sodium.MixinRenderingRegistry"
-            ,"sodium.MixinPlayerManager"
-        )
-    ),
-
     IRIS_RENDERING(new Builder("Iris Shaders").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
              "shaders.MixinEntityRenderer"

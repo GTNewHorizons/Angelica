@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.sodium;
+package com.gtnewhorizons.angelica.mixins.early.shaders.sodium;
 
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.client.gui.options.named.LightingQuality;
@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(RenderManager.class)
-public class MixinRenderManager {
+public class MixinRenderManager_dynamiclights {
 
     /**
      * Sodium: Use Sodium smooth entity light if enabled.

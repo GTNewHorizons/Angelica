@@ -1,6 +1,7 @@
 package org.taumc.celeritas.impl.render.terrain;
 
 import com.google.common.collect.Iterators;
+import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -45,7 +46,7 @@ import java.util.function.Consumer;
 /**
  * Provides an extension to vanilla's {@link net.minecraft.client.renderer.RenderGlobal}.
  */
-public class CeleritasWorldRenderer {
+public class CeleritasWorldRenderer implements IRenderGlobalExt {
     private final Minecraft client;
 
     private WorldClient world;
