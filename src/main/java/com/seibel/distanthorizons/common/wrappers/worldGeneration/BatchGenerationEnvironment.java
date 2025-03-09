@@ -61,6 +61,9 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
+import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.chunk.storage.AnvilChunkLoader;
+import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.ForgeChunkManager;
 import org.apache.logging.log4j.LogManager;
 
@@ -815,11 +818,31 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         return processGeneratedChunksFuture;
     }
 
-    private static CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int chunkX, int chunkZ) {
+    private static void loadChunkIfNotExists(IChunkProvider provider, int x, int z)
+    {
+        if (!provider.chunkExists(x, z)) {
+            provider.loadChunk(x, z);
+        }
+    }
+
+    private static CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
         return ForgeServerProxy.schedule(() ->
             {
-                Chunk chunk = world.getChunkProvider().provideChunk(chunkX, chunkZ);
-                return chunk;
+                ChunkProviderServer provider = (ChunkProviderServer)world.getChunkProvider();
+
+                for (int i = -1; i <= 1; i++)
+                {
+                    for (int j = -1; j <= 1; j++)
+                    {
+                        if (i != 0 || j != 0)
+                        {
+                            loadChunkIfNotExists(provider, x + i, z + j);
+                        }
+                    }
+                }
+
+                Chunk ret = provider.provideChunk(x, z);
+                return ret;
             });
     }
 
