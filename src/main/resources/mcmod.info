@@ -46,18 +46,20 @@
       "dependants": []
     },
     {
-      "modid": "embeddium",
-      "name": "Embeddium",
+      "modid": "celeritas",
+      "name": "Celeritas",
+      "description": "An open-source client performance mod for Minecraft",
       "version": "${modVersion}",
       "mcversion": "${minecraftVersion}",
-      "authorList": [
-        "embeddedt",
-        "NanoLive",
-        "CaffeineMC",
-        "mitchej123"
-      ]
+      "url": "",
+      "updateUrl": "",
+      "authorList": ["embeddedt"],
+      "credits": "The Sodium project",
+      "logoFile": "/assets/modid/icon.png",
+      "screenshots": [],
+      "dependencies": []
     },
-	{
+    {
       "modid": "mcpatcherforge",
       "name": "MCPatcherForge",
       "description": "MCPatcher ported to forge 1.7.10. Adding a variety of graphical enhancements to the game such as connected textures, random mob skins, and custom skyboxes",
@@ -65,7 +67,10 @@
       "mcversion": "1.7.10",
       "url": "https://github.com/mist475/MCPatcherForge",
       "updateUrl": "",
-      "authorList": ["Paul Rupe","Mist475"],
+      "authorList": [
+        "Paul Rupe",
+        "Mist475"
+      ],
       "credits": "Alexdoru for asm examples, Hodgepodge & Angelica for mixins handling. Paul Rupe for original code: https://bitbucket.org/prupe/mcpatcher/src/master/. DarkBum for default bookshelves & glass ctm (available under CC-BY-SA)",
       "logoFile": "",
       "screenshots": [],
@@ -73,7 +78,7 @@
       "requiredMods": [],
       "dependencies": [],
       "dependants": []
-	}
+    }
   ]
 }
 

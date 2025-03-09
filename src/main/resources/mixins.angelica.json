@@ -3,6 +3,9 @@
   "minVersion": "0.8.3-GTNH",
   "refmap": "mixins.angelica.refmap.json",
   "target": "@env(DEFAULT)",
+  "overwrites" : {
+    "conformVisibility" : true
+  },
   "compatibilityLevel": "JAVA_21"
 }
 

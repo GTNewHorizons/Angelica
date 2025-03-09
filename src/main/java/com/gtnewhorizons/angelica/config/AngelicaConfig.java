@@ -4,8 +4,15 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 
 @Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
-    @Config.Comment("Enable Sodium rendering")
+
+
+    @Config.Comment("Enable Celeritas rendering")
     @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableCeleritas;
+
+    @Config.Comment("Enable Sodium rendering - Deprecated in favor of celeritas")
+    @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableSodium;
 
@@ -112,8 +119,9 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean fixFluidRendererCheckingBlockAgain;
 
-    @Config.Comment("Dynamically modifies the render distance of dropped items entities to preserve performance."
-                  + " It starts reducing the render distance when exceeding the threshold set below.")
+    @Config.Comment(
+        "Dynamically modifies the render distance of dropped items entities to preserve performance."
+            + " It starts reducing the render distance when exceeding the threshold set below.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean dynamicItemRenderDistance;
@@ -123,8 +131,9 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 32, max = 2048)
     public static int droppedItemLimit;
 
-    @Config.Comment("Use total world time instead of normal world time. Allows most shader animations to play when "
-                  + "doDaylightCycle is off, but causes shader animations to desync from time of day.")
+    @Config.Comment(
+        "Use total world time instead of normal world time. Allows most shader animations to play when "
+            + "doDaylightCycle is off, but causes shader animations to desync from time of day.")
     @Config.DefaultBoolean(false)
     public static boolean useTotalWorldTime;
 

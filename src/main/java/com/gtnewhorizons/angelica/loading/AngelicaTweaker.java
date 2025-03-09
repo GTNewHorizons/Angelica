@@ -68,6 +68,15 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
             // Debug features
             AngelicaConfig.enableTestBlocks = Boolean.parseBoolean(System.getProperty("angelica.enableTestBlocks", "false"));
+            if(AngelicaConfig.enableCeleritas && AngelicaConfig.enableSodium) {
+                LOGGER.warn("Both Celeritas and Sodium are enabled. Disabling Sodium.");
+                AngelicaConfig.enableSodium = false;
+            }
+
+            if(AngelicaConfig.enableIris && !AngelicaConfig.enableSodium) {
+                LOGGER.warn("Iris Shaders require Sodium to be enabled. Disabling Iris Shaders.");
+                AngelicaConfig.enableIris = false;
+            }
 
         } catch (ConfigException e) {
             throw new RuntimeException(e);

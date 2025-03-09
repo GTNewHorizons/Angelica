@@ -112,6 +112,25 @@ public enum Mixins {
         )
     ),
 
+    CELERITAS(new Builder("Celeritas").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableCeleritas).addMixinClasses(
+         "celeritas.core.frustum.FrustumMixin"
+        ,"celeritas.core.terrain.WorldClientMixin"
+        ,"celeritas.core.terrain.TessellatorMixin"
+        ,"celeritas.core.terrain.RenderGlobalMixin"
+        ,"celeritas.core.terrain.ClientChunkManagerMixin"
+        ,"celeritas.core.biome_blending.BlockLiquidMixin"
+        ,"celeritas.core.biome_blending.BlockLeavesMixin"
+        ,"celeritas.core.biome_blending.BlockGrassMixin"
+        ,"celeritas.core.MinecraftMixin"
+        ,"celeritas.features.mipmaps.TextureAtlasSpriteMixin"
+        ,"celeritas.features.mipmaps.TextureUtilMixin"
+        ,"celeritas.features.textures.TextureAtlasSpriteMixin"
+        ,"celeritas.features.textures.TextureAtlasMixin"
+
+
+        )),
+
     SODIUM(new Builder("Sodium").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableSodium).addMixinClasses(
              "sodium.MixinBlock"
