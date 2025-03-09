@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockFire;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
@@ -15,7 +14,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Set;
 

@@ -13,6 +13,7 @@ import cpw.mods.fml.common.registry.GameData;
 
 public class ItemAPI {
 
+    @SuppressWarnings("unchecked")
     ItemAPI() {
         File outputFile = new File("items17.txt");
         if (outputFile.isFile()) {

@@ -32,8 +32,6 @@ abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private static final int META_MASK = 0xffff;
-
     private final PropertiesFile properties;
     private final String baseFilename;
     private final TileLoader tileLoader;
@@ -41,7 +39,6 @@ abstract class TileOverride implements Comparable<TileOverride> {
     private final int weight;
     private final List<BlockStateMatcher> matchBlocks;
     private final Set<String> matchTiles;
-    private final int defaultMetaMask;
     private final BlockFaceMatcher faceMatcher;
     private final int connectType;
     private final boolean innerSeams;
@@ -50,7 +47,6 @@ abstract class TileOverride implements Comparable<TileOverride> {
 
     private final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
-    private int matchMetadata = META_MASK;
 
     static TileOverride create(ResourceLocation propertiesFile, TileLoader tileLoader) {
         if (propertiesFile == null) {
@@ -133,11 +129,6 @@ abstract class TileOverride implements Comparable<TileOverride> {
         if (matchBlocks.isEmpty() && matchTiles.isEmpty()) {
             matchTiles.add(baseFilename);
         }
-        int bits = 0;
-        for (int i : properties.getIntList("metadata", 0, 15, "0-15")) {
-            bits |= 1 << i;
-        }
-        defaultMetaMask = bits;
 
         faceMatcher = BlockFaceMatcher.create(properties.getString("faces", ""));
 

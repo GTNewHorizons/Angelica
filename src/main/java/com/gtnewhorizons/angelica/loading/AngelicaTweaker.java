@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.loading;
 
-import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
@@ -153,18 +152,5 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         }
     }
 
-    private static final ImmutableMap<String, TargetedMod> MODS_BY_CLASS = ImmutableMap.<String, TargetedMod>builder()
-        .put("optifine.OptiFineForgeTweaker", TargetedMod.OPTIFINE)
-        .put("fastcraft.Tweaker", TargetedMod.FASTCRAFT)
-        .put("cofh.asm.LoadingPlugin", TargetedMod.COFHCORE)
-        .build();
     public static final Set<TargetedMod> coreMods = new HashSet<>();
-
-    private static void detectCoreMods(Set<String> loadedCoreMods) {
-        MODS_BY_CLASS.forEach((key, value) -> {
-            if (loadedCoreMods.contains(key))
-                coreMods.add(value);
-        });
-    }
-
 }

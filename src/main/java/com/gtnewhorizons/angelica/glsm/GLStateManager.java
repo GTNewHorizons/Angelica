@@ -204,6 +204,9 @@ public class GLStateManager {
 
 
     public static class GLFeatureSet extends IntOpenHashSet {
+
+        private static final long serialVersionUID = 8558779940775721010L;
+
         public GLFeatureSet addFeature(int feature) {
             super.add(feature);
             return this;

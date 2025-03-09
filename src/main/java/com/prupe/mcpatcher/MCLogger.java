@@ -172,6 +172,8 @@ public class MCLogger {
 
     private static class ErrorLevel extends Level {
 
+        private static final long serialVersionUID = 3987750897854233321L;
+
         protected ErrorLevel() {
             super("ERROR", (Level.WARNING.intValue() + Level.SEVERE.intValue()) / 2);
         }
