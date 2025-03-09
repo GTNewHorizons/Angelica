@@ -55,6 +55,7 @@ public class TopButtonRowEntry extends BaseEntry {
         this.shaderPackSelectionList.getScreen().refreshScreenSwitchButton();
     }
 
+    @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int listWidth, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
         this.buttons.setWidth(this.enableDisableButton, (listWidth - 1) - REFRESH_BUTTON_WIDTH);
         this.enableDisableButton.centerX = x + (int)(listWidth * 0.5);
