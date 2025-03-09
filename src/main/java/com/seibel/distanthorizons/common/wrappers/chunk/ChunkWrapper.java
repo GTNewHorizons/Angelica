@@ -36,6 +36,8 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.chunk.Chunk;
 import org.apache.logging.log4j.Logger;
 
@@ -132,7 +134,8 @@ public class ChunkWrapper implements IChunkWrapper
             return this.minNonEmptyHeight;
         }
 
-        return this.chunk.heightMapMinimum; // TODO?
+        return 0;
+        //return this.chunk.heightMapMinimum; // TODO?
     }
 
 
@@ -466,6 +469,11 @@ public class ChunkWrapper implements IChunkWrapper
 
     @Override
     public String toString() { return this.chunk.getClass().getSimpleName() + this.chunk.xPosition + "," + this.chunk.zPosition; }
+
+    public boolean isChunkReady() {
+        boolean ret = chunk.isTerrainPopulated && chunk.isLightPopulated;
+        return ret;
+    }
 
     //@Override
     //public int hashCode()

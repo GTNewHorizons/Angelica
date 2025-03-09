@@ -24,6 +24,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.EmptyChunk;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -222,7 +223,18 @@ public class ClientLevelWrapper implements IClientLevelWrapper
             return null;
         }
 
-        return new ChunkWrapper(chunk, this);
+        if (chunk instanceof EmptyChunk)
+        {
+            return null;
+        }
+
+        ChunkWrapper wrapper = new ChunkWrapper(chunk, this);
+        if (!wrapper.isChunkReady())
+        {
+            return null;
+        }
+
+        return wrapper;
     }
 
     @Override
