@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.world;
 
 import java.util.Arrays;
 
+import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -34,7 +35,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-public class WorldSlice implements IBlockAccess {
+public class WorldSlice implements IBlockAccessExtended {
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
 
     // The number of blocks on each axis in a section.
@@ -406,6 +407,7 @@ public class WorldSlice implements IBlockAccess {
         };
     }
 
+    @Override
     public World getWorld() {
         return this.world;
     }
