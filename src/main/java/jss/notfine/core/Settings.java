@@ -60,6 +60,7 @@ public enum Settings {
             DynamicLights.ShaderForce = (boolean) this.option.getStore();
         }
     },
+    FOG_DISABLE(new NotFineOptionTickBox(false, OptionImpact.LOW)),
     FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
         @Override
