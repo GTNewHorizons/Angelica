@@ -18,12 +18,14 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -68,10 +70,33 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 
     public static boolean connected = false;
 
+    private class ChunkLoadEvent
+    {
+        public final ChunkWrapper chunk;
+        public final ILevelWrapper level;
+
+        private ChunkLoadEvent(ChunkWrapper chunk, ILevelWrapper level) {
+            this.chunk = chunk;
+            this.level = level;
+        }
+    }
+
+    private static final Queue<ChunkLoadEvent> chunkLoadEvents = new ConcurrentLinkedQueue<>();
+
 	// ServerTickEvent (at end)
 	@SubscribeEvent
 	public void serverTickEvent(TickEvent.ServerTickEvent event)
 	{
+        Iterator<ChunkLoadEvent> iterator = chunkLoadEvents.iterator();
+        while(iterator.hasNext())
+        {
+            ChunkLoadEvent chunkLoadEvent = iterator.next();
+            if (chunkLoadEvent.chunk.isChunkReady())
+            {
+                this.serverApi.serverChunkLoadEvent(chunkLoadEvent.chunk, chunkLoadEvent.level);
+                iterator.remove();
+            }
+        }
 		if (connected && event.phase == TickEvent.Phase.END)
 		{
 			this.serverApi.serverTickEvent();
@@ -102,9 +127,8 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	public void serverChunkLoadEvent(ChunkEvent.Load event)
 	{
 		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-
-		IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
-		this.serverApi.serverChunkLoadEvent(chunk, levelWrapper);
+		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+        chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
 	}
 
 	@SubscribeEvent
@@ -134,10 +158,16 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
+        int count = 0;
         while (!taskQueue.isEmpty()) {
             ScheduledTask<?> scheduledTask = taskQueue.poll();
             if (scheduledTask != null) {
                 scheduledTask.run();
+            }
+            count++;
+            if (count > 5)
+            {
+                break;
             }
         }
     }
