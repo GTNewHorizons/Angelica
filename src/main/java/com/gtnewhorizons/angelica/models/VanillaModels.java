@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
 import com.gtnewhorizon.gtnhlib.client.model.Variant;
@@ -20,6 +19,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
+@SuppressWarnings("UnstableApiUsage")
 public class VanillaModels {
 
     private static boolean init = false;

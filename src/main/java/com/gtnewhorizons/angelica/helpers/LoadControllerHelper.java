@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("UnstableApiUsage")
 public class LoadControllerHelper {
     private static LoadController loadController;
     private static ListMultimap<String, ModContainer> packageOwners;
