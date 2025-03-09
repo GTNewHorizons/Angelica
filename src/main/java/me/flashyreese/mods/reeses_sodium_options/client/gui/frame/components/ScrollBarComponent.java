@@ -1,7 +1,7 @@
 package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components;
 
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
+import com.gtnewhorizons.angelica.client.gui.widgets.AbstractWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.util.MathHelper;
 

@@ -3,7 +3,7 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.OptionPageFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.ScrollableFrame;
-import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import com.gtnewhorizons.angelica.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 
 import java.util.concurrent.atomic.AtomicReference;

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
-import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import com.gtnewhorizons.angelica.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.model.light.EntityLighter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.RenderManager;

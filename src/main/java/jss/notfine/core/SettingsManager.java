@@ -7,7 +7,7 @@ import jss.notfine.gui.options.named.DownfallQuality;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import jss.notfine.gui.options.named.GraphicsToggle;
 import jss.notfine.gui.options.named.LeavesQuality;
-import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import com.gtnewhorizons.angelica.client.gui.options.named.GraphicsQuality;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.init.Blocks;

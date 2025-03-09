@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import com.gtnewhorizons.angelica.client.gui.SodiumGameOptions;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

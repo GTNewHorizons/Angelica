@@ -1,6 +1,6 @@
 package jss.notfine.gui.options.named;
 
-import me.jellysquid.mods.sodium.client.gui.options.named.NamedState;
+import com.gtnewhorizons.angelica.client.gui.options.named.NamedState;
 
 public enum BackgroundSelect implements NamedState {
     DEFAULT("generator.default"),

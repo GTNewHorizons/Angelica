@@ -1,7 +1,7 @@
 package me.flashyreese.mods.reeses_sodium_options.util;
 
-import me.jellysquid.mods.sodium.client.gui.options.Option;
-import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import com.gtnewhorizons.angelica.client.gui.options.Option;
+import com.gtnewhorizons.angelica.client.gui.options.OptionPage;
 
 import java.util.ArrayList;
 import java.util.List;

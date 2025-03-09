@@ -8,9 +8,8 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import com.gtnewhorizons.angelica.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.proxy.CommonProxy;
-import net.minecraft.client.Minecraft;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

@@ -1,14 +1,14 @@
 package me.flashyreese.mods.reeses_sodium_options.client.gui.frame;
 
 import me.flashyreese.mods.reeses_sodium_options.client.gui.OptionExtended;
-import me.jellysquid.mods.sodium.client.gui.options.Option;
-import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
-import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
-import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
-import me.jellysquid.mods.sodium.client.gui.options.control.Control;
-import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
-import me.jellysquid.mods.sodium.client.gui.options.control.element.SodiumControlElementFactory;
-import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
+import com.gtnewhorizons.angelica.client.gui.options.Option;
+import com.gtnewhorizons.angelica.client.gui.options.OptionGroup;
+import com.gtnewhorizons.angelica.client.gui.options.OptionImpact;
+import com.gtnewhorizons.angelica.client.gui.options.OptionPage;
+import com.gtnewhorizons.angelica.client.gui.options.control.Control;
+import com.gtnewhorizons.angelica.client.gui.options.control.ControlElement;
+import com.gtnewhorizons.angelica.client.gui.options.control.element.SodiumControlElementFactory;
+import com.gtnewhorizons.angelica.client.gui.widgets.AbstractWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;

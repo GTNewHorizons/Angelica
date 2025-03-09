@@ -1,6 +1,6 @@
 package jss.notfine.gui;
 
-import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import com.gtnewhorizons.angelica.client.gui.options.OptionPage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 

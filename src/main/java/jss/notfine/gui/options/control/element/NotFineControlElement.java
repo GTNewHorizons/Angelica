@@ -1,9 +1,9 @@
 package jss.notfine.gui.options.control.element;
 
 import jss.notfine.gui.GuiCustomMenu;
-import me.jellysquid.mods.sodium.client.gui.options.Option;
-import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
-import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
+import com.gtnewhorizons.angelica.client.gui.options.Option;
+import com.gtnewhorizons.angelica.client.gui.options.OptionFlag;
+import com.gtnewhorizons.angelica.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;

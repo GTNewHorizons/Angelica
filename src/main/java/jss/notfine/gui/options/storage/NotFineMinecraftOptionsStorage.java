@@ -2,7 +2,7 @@ package jss.notfine.gui.options.storage;
 
 import jss.notfine.NotFine;
 import jss.notfine.core.SettingsManager;
-import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
+import com.gtnewhorizons.angelica.client.gui.options.storage.OptionStorage;
 
 public class NotFineMinecraftOptionsStorage implements OptionStorage<OptionStorageDummy> {
 

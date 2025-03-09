@@ -2,8 +2,8 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab;
 
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components.ScrollBarComponent;
-import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
-import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
+import com.gtnewhorizons.angelica.client.gui.widgets.AbstractWidget;
+import com.gtnewhorizons.angelica.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import org.apache.commons.lang3.Validate;
 

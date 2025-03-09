@@ -1,7 +1,7 @@
 package jss.notfine.gui.options.control.element;
 
-import me.jellysquid.mods.sodium.client.gui.options.Option;
-import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
+import com.gtnewhorizons.angelica.client.gui.options.Option;
+import com.gtnewhorizons.angelica.client.gui.options.control.ControlValueFormatter;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MathHelper;
