@@ -1,7 +1,6 @@
 package net.coderbot.iris.vertices;
 
 import org.joml.Vector3f;
-import org.joml.Math;
 
 /**
  * Provides some utilities for working with packed normal vectors. Each normal component provides 8 bits of
@@ -52,15 +51,6 @@ public class NormI8 {
      */
     public static int packColor(float x, float y, float z, float w) {
         return ((int) (x * 127) & 0xFF) | (((int) (y * 127) & 0xFF) << 8) | (((int) (z * 127) & 0xFF) << 16) | (((int) w & 0xFF) << 24);
-    }
-
-    /**
-     * Encodes a float in the range of -1.0..1.0 to a normalized unsigned integer in the range of 0..255 which can then
-     * be passed to graphics memory.
-     */
-    private static int encode(float comp) {
-        // TODO: is the clamp necessary here? our inputs should always be normalized vector components
-        return ((int) (Math.clamp(comp, -1.0F, 1.0F) * COMPONENT_RANGE) & 255);
     }
 
     /**

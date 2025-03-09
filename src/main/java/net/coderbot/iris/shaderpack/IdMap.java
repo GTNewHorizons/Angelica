@@ -13,6 +13,7 @@ import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
@@ -202,8 +203,8 @@ public class IdMap {
 				ArrayList<ItemStack> leaves = OreDictionary.getOres("treeLeaves");
 				for (ItemStack leaf : leaves) {
 					if (leaf.getItem() instanceof ItemBlock) {
-						Iris.logger.warn("Found leaf " + leaf.getItem().itemRegistry.getNameForObject(leaf.getItem()));
-						value.append(" ").append(leaf.getItem().itemRegistry.getNameForObject(leaf.getItem()));
+						Iris.logger.warn("Found leaf " + Item.itemRegistry.getNameForObject(leaf.getItem()));
+						value.append(" ").append(Item.itemRegistry.getNameForObject(leaf.getItem()));
 					}
 				}
 			}
