@@ -49,7 +49,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.27")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.30")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
@@ -57,11 +57,11 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     // Use modern models+textures to inject QuadProviders
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.0:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.2:dev')
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.6.13:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
@@ -78,7 +78,7 @@ dependencies {
     devOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.5:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.9-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.10-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.8.2:dev")
 
     compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.1:dev")
@@ -100,7 +100,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
 
-    compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.0-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.1-GTNH:dev")
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 
