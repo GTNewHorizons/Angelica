@@ -89,6 +89,7 @@ public class SodiumGameOptionPages {
             .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
             .add(Settings.MODE_STARS.option)
             .add(Settings.TOTAL_STARS.option)
+            .add(Settings.FOG_DISABLE.option)
             .add(Settings.FOG_NEAR_DISTANCE.option)
             .add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
