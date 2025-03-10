@@ -274,7 +274,7 @@ public class SodiumWorldRenderer {
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
         // This fix a long-standing issue with culling state leaking because of mods,
         // or other factors as having clouds disabled.
-        GLStateManager.enableCull();
+        GLStateManager.enableCullFace();
 
         if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already

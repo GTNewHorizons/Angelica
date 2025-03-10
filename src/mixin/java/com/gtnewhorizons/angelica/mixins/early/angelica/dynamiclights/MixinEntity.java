@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -17,6 +16,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.taumc.celeritas.impl.render.terrain.CeleritasWorldRenderer;
 
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IDynamicLightSource {
@@ -97,7 +97,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer) {
+    public boolean angelica$updateDynamicLight(@NotNull CeleritasWorldRenderer renderer) {
         double deltaX = this.posX - this.angelica$prevX;
         double deltaY = this.posY - this.angelica$prevY;
         double deltaZ = this.posZ - this.angelica$prevZ;
@@ -148,7 +148,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer) {
+    public void angelica$scheduleTrackedChunksRebuild(@NotNull CeleritasWorldRenderer renderer) {
         for (long pos : this.angelica$trackedLitChunkPos) {
             DynamicLights.scheduleChunkRebuild(renderer, pos);
         }

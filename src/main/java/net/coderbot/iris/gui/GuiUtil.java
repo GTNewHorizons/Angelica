@@ -63,7 +63,7 @@ public final class GuiUtil {
 		GLStateManager.enableBlend();
 
 		// Sets RenderSystem to be able to use textures when drawing
-        GLStateManager.enableTexture();
+        GLStateManager.enableTexture2D();
 
 		// Top left section
 		GuiUtils.drawTexturedModalRect(x, y, 0, vOffset, halfWidth, halfHeight, 0);
@@ -198,7 +198,7 @@ public final class GuiUtil {
             GLStateManager.enableBlend();
 
 			// Sets RenderSystem to be able to use textures when drawing
-            GLStateManager.enableTexture();
+            GLStateManager.enableTexture2D();
 
 			// Draw the texture to the screen
 			GuiUtils.drawTexturedModalRect(x, y, u, v, width, height, 256);

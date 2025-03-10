@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import java.util.List;
 
 @Mixin(TextureAtlasSprite.class)
-public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSprite {
+public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSprite, ISpriteExt {
 
     @Unique
     private boolean needsAnimationUpdate = false;
@@ -62,10 +62,28 @@ public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSpr
 
     @ModifyReturnValue(method = "getMinU", at = @At("RETURN"))
     private float angelica$onUVAccessed(float value) {
-        if (((ISpriteExt)this).isAnimation()) {
+        if (this instanceof ISpriteExt && ((ISpriteExt)this).isAnimation()) {
             AnimationsRenderUtils.onSpriteUsed(this);
             needsAnimationUpdate = true;
         }
         return value;
+    }
+
+    @Override
+    public boolean isAnimation() {
+        return animationMetadata != null && animationMetadata.getFrameCount() > 1;
+    }
+
+    @Override
+    public int getFrame() {
+        return frameCounter;
+    }
+
+    @Override
+    public void callUpload(int frameIndex) {}
+
+    @Override
+    public AnimationMetadataSection getMetadata() {
+        return animationMetadata;
     }
 }

@@ -9,7 +9,6 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import mods.battlegear2.api.core.IBattlePlayer;
 import mods.battlegear2.api.core.IInventoryPlayerBattle;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -27,6 +26,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.taumc.celeritas.impl.render.terrain.CeleritasWorldRenderer;
 import xonin.backhand.api.core.BackhandUtils;
 
 import java.util.Set;
@@ -64,7 +64,7 @@ public class DynamicLights {
      *
      * @param renderer the renderer
      */
-    public void updateAll(@NotNull SodiumWorldRenderer renderer) {
+    public void updateAll(@NotNull CeleritasWorldRenderer renderer) {
         if (!isEnabled())
             return;
 
@@ -106,8 +106,8 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (it.equals(lightSource)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null)
-                    lightSource.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                if (CeleritasWorldRenderer.instance() != null)
+                    lightSource.angelica$scheduleTrackedChunksRebuild(CeleritasWorldRenderer.instance());
                 break;
             }
         }
@@ -129,10 +129,10 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (filter.test(it)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null) {
+                if (CeleritasWorldRenderer.instance() != null) {
                     if (it.angelica$getLuminance() > 0)
                         it.angelica$resetDynamicLight();
-                    it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                    it.angelica$scheduleTrackedChunksRebuild(CeleritasWorldRenderer.instance());
                 }
                 break;
             }
@@ -152,10 +152,10 @@ public class DynamicLights {
         while (dynamicLightSources.hasNext()) {
             it = dynamicLightSources.next();
             dynamicLightSources.remove();
-            if (SodiumWorldRenderer.getInstance() != null) {
+            if (CeleritasWorldRenderer.instance() != null) {
                 if (it.angelica$getLuminance() > 0)
                     it.angelica$resetDynamicLight();
-                it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                it.angelica$scheduleTrackedChunksRebuild(CeleritasWorldRenderer.instance());
             }
         }
 
@@ -274,7 +274,7 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull CeleritasWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
         scheduleChunkRebuild(renderer, chunkPos.getX(), chunkPos.getY(), chunkPos.getZ());
     }
 
@@ -284,11 +284,11 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the packed chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, long chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull CeleritasWorldRenderer renderer, long chunkPos) {
         scheduleChunkRebuild(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
     }
 
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, int x, int y, int z) {
+    public static void scheduleChunkRebuild(@NotNull CeleritasWorldRenderer renderer, int x, int y, int z) {
         renderer.scheduleRebuildForChunk(x, y, z, false);
     }
 

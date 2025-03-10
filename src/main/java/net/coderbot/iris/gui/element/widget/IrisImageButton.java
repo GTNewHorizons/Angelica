@@ -41,7 +41,7 @@ public class IrisImageButton extends IrisButton {
         GLStateManager.enableBlend();
 
         // Sets RenderSystem to be able to use textures when drawing
-        GLStateManager.enableTexture();
+        GLStateManager.enableTexture2D();
         mc.getTextureManager().bindTexture(this.textureLocation);
 
         // Draw the texture to the screen

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.dynamiclights;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.taumc.celeritas.impl.render.terrain.CeleritasWorldRenderer;
 
 public interface IDynamicLightSource {
     /**
@@ -73,7 +74,7 @@ public interface IDynamicLightSource {
      */
     void angelica$dynamicLightTick();
 
-    boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer);
+    boolean angelica$updateDynamicLight(@NotNull CeleritasWorldRenderer renderer);
 
-    void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer);
+    void angelica$scheduleTrackedChunksRebuild(@NotNull CeleritasWorldRenderer renderer);
 }

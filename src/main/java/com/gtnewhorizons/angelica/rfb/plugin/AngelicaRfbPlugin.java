@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rfb.plugin;
 
+import com.gtnewhorizons.angelica.rfb.transformers.GLRedirectorRfbTransformer;
 import com.gtnewhorizons.angelica.rfb.transformers.RedirectorTransformerWrapper;
 import com.gtnewhorizons.retrofuturabootstrap.api.PluginContext;
 import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
@@ -9,7 +10,12 @@ import net.minecraft.launchwrapper.Launch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Angelica RFB Plugin to register transformers
+ */
 public class AngelicaRfbPlugin implements RfbPlugin {
+
+    public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("angelica.verbose", "false"));
 
     @Override
     public void onConstruction(@NotNull PluginContext ctx) {
@@ -22,8 +28,10 @@ public class AngelicaRfbPlugin implements RfbPlugin {
         if (isServer) {
             return null;
         }
+
         return new RfbClassTransformer[] {
-            new RedirectorTransformerWrapper()
+              new RedirectorTransformerWrapper()
+            , new GLRedirectorRfbTransformer()
         };
     }
 }

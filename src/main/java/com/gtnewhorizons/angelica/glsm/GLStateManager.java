@@ -63,7 +63,7 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjglx.LWJGLException;
-import org.lwjglx.opengl.Drawable;
+import org.lwjgl.opengl.Drawable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -257,7 +257,7 @@ public class GLStateManager {
     }
 
     public static void init() {
-
+        LOGGER.info("Initializing GLStateManager");
 
         RenderSystem.initRenderer();
 
@@ -302,7 +302,7 @@ public class GLStateManager {
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
             case GL11.GL_BLEND -> enableBlend();
-            case GL11.GL_CULL_FACE -> enableCull();
+            case GL11.GL_CULL_FACE -> enableCullFace();
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_FOG -> enableFog();
             case GL11.GL_LIGHTING -> enableLighting();
@@ -316,7 +316,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT7 -> enableLight(7);
             case GL11.GL_COLOR_MATERIAL -> enableColorMaterial();
             case GL11.GL_SCISSOR_TEST -> enableScissorTest();
-            case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL11.GL_TEXTURE_2D -> enableTexture2D();
             case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
             default -> GL11.glEnable(cap);
         }
@@ -326,7 +326,7 @@ public class GLStateManager {
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> disableAlphaTest();
             case GL11.GL_BLEND -> disableBlend();
-            case GL11.GL_CULL_FACE -> disableCull();
+            case GL11.GL_CULL_FACE -> disableCullFace();
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_FOG -> disableFog();
             case GL11.GL_LIGHTING -> disableLighting();
@@ -340,7 +340,7 @@ public class GLStateManager {
             case GL11.GL_LIGHT7 -> disableLight(7);
             case GL11.GL_COLOR_MATERIAL -> disableColorMaterial();
             case GL11.GL_SCISSOR_TEST -> disableScissorTest();
-            case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL11.GL_TEXTURE_2D -> disableTexture2D();
             case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
             default -> GL11.glDisable(cap);
         }
@@ -931,7 +931,7 @@ public class GLStateManager {
         GL11.glDeleteTextures(ids);
     }
 
-    public static void enableTexture() {
+    public static void enableTexture2D() {
         final int textureUnit = getActiveTextureUnit();
         if (AngelicaConfig.enableIris) {
             // Iris
@@ -951,7 +951,7 @@ public class GLStateManager {
         textures.getTextureUnitStates(textureUnit).enable();
     }
 
-    public static void disableTexture() {
+    public static void disableTexture2D() {
         final int textureUnit = getActiveTextureUnit();
         if (AngelicaConfig.enableIris) {
             // Iris
@@ -1072,11 +1072,11 @@ public class GLStateManager {
         tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
-    public static void enableCull() {
+    public static void enableCullFace() {
         cullState.enable();
     }
 
-    public static void disableCull() {
+    public static void disableCullFace() {
         cullState.disable();
     }
 

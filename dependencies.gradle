@@ -74,6 +74,7 @@ dependencies {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
+    shadowImplementation("org.apache.commons:commons-csv:1.10.0") // Apache 2.0
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI

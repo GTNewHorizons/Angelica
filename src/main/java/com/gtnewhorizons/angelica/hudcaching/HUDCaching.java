@@ -219,7 +219,7 @@ public class HUDCaching {
     }
 
     private void drawTexturedRect(Tessellator tessellator, float width, float height) {
-        GLStateManager.enableTexture();
+        GLStateManager.enableTexture2D();
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         tessellator.startDrawingQuads();

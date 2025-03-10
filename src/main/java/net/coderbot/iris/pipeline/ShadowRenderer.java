@@ -333,12 +333,12 @@ public class ShadowRenderer {
 		// However, it only partially resolves issues of light leaking into caves.
 		//
 		// TODO: Better way of preventing light from leaking into places where it shouldn't
-		GLStateManager.disableCull();
+		GLStateManager.disableCullFace();
 	}
 
 	private void restoreGlState() {
 		// Restore backface culling
-        GLStateManager.enableCull();
+        GLStateManager.enableCullFace();
 
 		// Make sure to unload the projection matrix
 		RenderSystem.restoreProjectionMatrix();

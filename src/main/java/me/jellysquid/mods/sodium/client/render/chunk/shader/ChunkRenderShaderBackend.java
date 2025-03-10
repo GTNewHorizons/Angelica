@@ -197,7 +197,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
             // No back face culling during the shadow pass
             // TODO: Hopefully this won't be necessary in the future...
-            GLStateManager.disableCull();
+            GLStateManager.disableCullFace();
         }
 
         this.override = irisChunkProgramOverrides.getProgramOverride(device, pass);

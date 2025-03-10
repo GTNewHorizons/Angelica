@@ -308,12 +308,12 @@ public abstract class RenderPhase {
         public Cull(boolean culling) {
             super("cull", () -> {
                 if (!culling) {
-                    GLStateManager.disableCull();
+                    GLStateManager.disableCullFace();
                 }
 
             }, () -> {
                 if (!culling) {
-                    GLStateManager.enableCull();
+                    GLStateManager.enableCullFace();
                 }
 
             }, culling);
@@ -410,7 +410,7 @@ public abstract class RenderPhase {
 
         public Texture(ResourceLocation id, boolean bilinear, boolean mipmap) {
             super("texture", () -> {
-                GLStateManager.enableTexture();
+                GLStateManager.enableTexture2D();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
                 //GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
@@ -422,7 +422,7 @@ public abstract class RenderPhase {
         }
 
         public Texture() {
-            super("texture", GLStateManager::disableTexture, GLStateManager::enableTexture);
+            super("texture", GLStateManager::disableTexture2D, GLStateManager::enableTexture2D);
             this.id = Optional.empty();
             this.bilinear = false;
             this.mipmap = false;

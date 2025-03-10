@@ -48,6 +48,7 @@ public enum Mixins {
             ,"angelica.settings.MixinGameSettings"
             ,"angelica.settings.MixinMinecraft"
             ,"angelica.settings.MixinPlayerManager"
+            ,"angelica.textures.MixinTextureUtil"
             ,"angelica.threading.MixinBlock"
             ,"angelica.threading.MixinRenderingRegistry"
             ,"angelica.threading.MixinTileEntity"
@@ -180,12 +181,6 @@ public enum Mixins {
     IRIS_ACCESSORS(new Builder("Iris Accessors").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses("shaders.accessors.MixinEntityRenderer")
     ),
-
-    ANGELICA_TEXTURE(new Builder("Textures").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
-        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium).addMixinClasses(
-             "angelica.textures.MixinTextureAtlasSprite"
-            ,"angelica.textures.MixinTextureUtil"
-        )),
 
     ANGELICA_ZOOM(new Builder("Zoom").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableZoom)

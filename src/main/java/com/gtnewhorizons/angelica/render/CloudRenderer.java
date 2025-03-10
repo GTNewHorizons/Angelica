@@ -307,7 +307,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLStateManager.glTranslated(offU * PX_SIZE, offV * PX_SIZE, 0);
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
 
-        GLStateManager.disableCull();
+        GLStateManager.disableCullFace();
 
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
@@ -339,7 +339,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
-        GLStateManager.enableTexture();
+        GLStateManager.enableTexture2D();
 
         // Bind the clouds texture last so the shader's sampler2D is correct.
         GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
@@ -370,13 +370,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (WIREFRAME) {
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
             GL11.glLineWidth(2.0F);
-            GLStateManager.disableTexture();
+            GLStateManager.disableTexture2D();
             GLStateManager.glDepthMask(false);
             GLStateManager.disableFog();
             vbo.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
-            GLStateManager.enableTexture();
+            GLStateManager.enableTexture2D();
             GLStateManager.enableFog();
         }
 
@@ -385,7 +385,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         // Disable our coloring.
         GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
-        GLStateManager.disableTexture();
+        GLStateManager.disableTexture2D();
         GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
 
         // Reset texture matrix.
@@ -394,7 +394,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         GLStateManager.disableBlend();
-        GLStateManager.enableCull();
+        GLStateManager.enableCullFace();
 
         GLStateManager.glPopMatrix();
 

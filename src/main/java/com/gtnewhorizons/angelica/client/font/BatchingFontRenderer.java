@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.Objects;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
@@ -250,7 +249,7 @@ public class BatchingFontRenderer {
         boolean textureChanged = false;
 
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
-        GLStateManager.enableTexture();
+        GLStateManager.enableTexture2D();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
