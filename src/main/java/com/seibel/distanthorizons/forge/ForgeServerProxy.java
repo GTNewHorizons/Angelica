@@ -74,6 +74,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     {
         public final ChunkWrapper chunk;
         public final ILevelWrapper level;
+        public int age;
 
         private ChunkLoadEvent(ChunkWrapper chunk, ILevelWrapper level) {
             this.chunk = chunk;
@@ -95,6 +96,15 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             {
                 this.serverApi.serverChunkLoadEvent(chunkLoadEvent.chunk, chunkLoadEvent.level);
                 iterator.remove();
+            }
+            else
+            {
+                // Cleanup old events if they never got ready
+                chunkLoadEvent.age++;
+                if (chunkLoadEvent.age > 200)
+                {
+                    iterator.remove();
+                }
             }
         }
 		if (connected && event.phase == TickEvent.Phase.END)
@@ -121,6 +131,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 		{
 			this.serverApi.serverLevelUnloadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
 		}
+        chunkLoadEvents.removeIf(x -> x.level.getWrappedMcObject() == event.world);
 	}
 
 	@SubscribeEvent
