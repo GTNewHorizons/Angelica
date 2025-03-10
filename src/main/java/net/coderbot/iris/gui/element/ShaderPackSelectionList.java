@@ -81,7 +81,7 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
     }
 
     public void addPackEntry(int index, String name) {
-        final ShaderPackEntry entry = new ShaderPackEntry(index, this, name);
+        final ShaderPackEntry entry = new ShaderPackEntry(this, name);
 
         Iris.getIrisConfig().getShaderPackName().ifPresent(currentPackName -> {
             if (name.equals(currentPackName)) {

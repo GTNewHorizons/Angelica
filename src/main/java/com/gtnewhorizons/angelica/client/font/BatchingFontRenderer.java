@@ -45,8 +45,6 @@ public class BatchingFontRenderer {
     private int[] colorCode;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
-    /** The RenderEngine used to load and setup glyph textures. */
-    private final TextureManager renderEngine;
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
 
     /** The full list of characters present in the default Minecraft font, excluding the Unicode font */
@@ -77,14 +75,13 @@ public class BatchingFontRenderer {
     }
 
     public BatchingFontRenderer(FontRenderer underlying, ResourceLocation[] unicodePageLocations, int[] charWidth,
-        byte[] glyphWidth, int[] colorCode, ResourceLocation locationFontTexture, TextureManager renderEngine) {
+        byte[] glyphWidth, int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
         this.unicodePageLocations = unicodePageLocations;
         this.charWidth = charWidth;
         this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
         this.locationFontTexture = locationFontTexture;
-        this.renderEngine = renderEngine;
 
         for (int i = 0; i < 64; i++) {
             batchCommandPool.add(new FontDrawCmd());

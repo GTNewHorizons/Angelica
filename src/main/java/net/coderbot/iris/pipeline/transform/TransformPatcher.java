@@ -10,11 +10,7 @@ import java.util.Map;
 public class TransformPatcher {
 
     private static final int MAX_CACHE_ENTRIES = 400;
-    private static final Map<TransformPatcher.CacheKey, Map<PatchShaderType, String>> cache =  new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true) {
-        public boolean removeEldestEntry(Map.Entry eldest) {
-            return size() > MAX_CACHE_ENTRIES;
-        }
-    };
+    private static final Map<TransformPatcher.CacheKey, Map<PatchShaderType, String>> cache =  new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true);
 
     private static final boolean useCache = true;
 

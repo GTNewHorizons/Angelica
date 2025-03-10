@@ -22,7 +22,6 @@ import org.lwjgl.Sys;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -66,7 +65,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     private boolean optionMenuOpen = false;
 
     private boolean dropChanges = false;
-    private static final String development = "Development Environment";
     private String developmentComponent;
     private String updateComponent;
 
@@ -235,10 +233,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         }
 
         if (inWorld) {
-            final String showOrHide = this.guiHidden
-                ? I18n.format("options.iris.gui.show")
-                : I18n.format("options.iris.gui.hide");
-
             final float endOfLastButton = this.width / 2.0f + 154.0f;
             final float freeSpace = this.width - endOfLastButton;
             final int x;
@@ -320,7 +314,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         if (Iris.getCurrentPack().isPresent()) {
             final ShaderPack currentPack = Iris.getCurrentPack().get();
 
-            this.navigation = new NavigationController(currentPack.getMenuContainer());
+            this.navigation = new NavigationController();
 
             if (this.shaderOptionList != null) {
                 this.shaderOptionList.applyShaderPack(currentPack);

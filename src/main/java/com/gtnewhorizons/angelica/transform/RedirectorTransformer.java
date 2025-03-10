@@ -76,7 +76,6 @@ public class RedirectorTransformer implements IClassTransformer {
         "com.gtnewhorizons.angelica.transform",
         "me.eigenraven.lwjgl3ify"
     );
-    private static int remaps = 0;
 
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
@@ -365,7 +364,6 @@ public class RedirectorTransformer implements IClassTransformer {
                         }
                         changed = true;
                         redirectInMethod = true;
-                        remaps++;
                     } else if (mNode.owner.startsWith(Drawable) && mNode.name.equals("makeCurrent")) {
                         mNode.setOpcode(Opcodes.INVOKESTATIC);
                         mNode.owner = GLStateManager;
@@ -386,7 +384,6 @@ public class RedirectorTransformer implements IClassTransformer {
                             mNode.name = redirects.get(mNode.name);
                             changed = true;
                             redirectInMethod = true;
-                            remaps++;
                         }
                     }
                 }
@@ -440,6 +437,9 @@ public class RedirectorTransformer implements IClassTransformer {
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {
+
+        private static final long serialVersionUID = 1712218575345511543L;
+
         public static RedirectMap<String> newMap() {
             return new RedirectMap<>();
         }

@@ -73,7 +73,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
 
             return new GlShader(device, type, name, transformations.toString(), ShaderConstants.fromStringList(constants));
         } else {
-            return ShaderLoader.loadShader(device, type, name, constants);
+            return ShaderLoader.loadShader(device, type, name, ShaderConstants.fromStringList(constants));
         }
     }
 
@@ -92,7 +92,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
 
         GlShader vertShader = loadShaderRedirect(device, ShaderType.VERTEX, new ResourceLocation("sodium", "chunk_gl20"), fogMode.getDefines());
 
-        GlShader fragShader = ShaderLoader.loadShader(device, ShaderType.FRAGMENT, new ResourceLocation("sodium", "chunk_gl20"), fogMode.getDefines());
+        GlShader fragShader = ShaderLoader.loadShader(device, ShaderType.FRAGMENT, new ResourceLocation("sodium", "chunk_gl20"), ShaderConstants.fromStringList(fogMode.getDefines()));
 
         try {
             return GlProgram.builder(new ResourceLocation("sodium", "chunk_shader"))

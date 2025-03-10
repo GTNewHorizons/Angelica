@@ -112,18 +112,15 @@ public class NativeImage extends BufferedImage {
 
 
     public enum Format {
-        RGBA(4, GL11.GL_RGBA, BufferedImage.TYPE_INT_ARGB),
-        RGB(3, GL11.GL_RGB, BufferedImage.TYPE_INT_RGB);
+        RGBA(4, GL11.GL_RGBA),
+        RGB(3, GL11.GL_RGB);
 
         private final int components;
         private final int glFormat;
-        private final int imageType;
 
-
-        Format(int components, int glFormat, int imageType) {
+        Format(int components, int glFormat) {
             this.components = components;
             this.glFormat = glFormat;
-            this.imageType = imageType;
         }
     }
 

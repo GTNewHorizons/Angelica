@@ -6,7 +6,6 @@ import me.jellysquid.mods.sodium.client.model.light.cache.HashLightDataCache;
 import me.jellysquid.mods.sodium.client.render.pipeline.BlockRenderer;
 import me.jellysquid.mods.sodium.client.render.pipeline.ChunkRenderCache;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
 
@@ -19,8 +18,6 @@ public class ChunkRenderCacheShared extends ChunkRenderCache {
     private final HashLightDataCache lightCache;
 
     private ChunkRenderCacheShared(WorldSlice world) {
-        Minecraft client = Minecraft.getMinecraft();
-
         this.lightCache = new HashLightDataCache(world);
         LightPipelineProvider lightPipelineProvider = new LightPipelineProvider(this.lightCache);
 

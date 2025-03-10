@@ -1,11 +1,6 @@
 package net.coderbot.iris.gui.option;
 
-import java.io.IOException;
-
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.I18n;
 
 public class IrisVideoSettings {
     public static int shadowDistance = 32;

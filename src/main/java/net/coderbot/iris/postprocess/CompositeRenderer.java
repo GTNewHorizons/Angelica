@@ -23,7 +23,6 @@ import net.coderbot.iris.samplers.IrisImages;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.shaderpack.ComputeSource;
 import net.coderbot.iris.shaderpack.PackDirectives;
-import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import net.coderbot.iris.shaderpack.ProgramDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
@@ -63,9 +62,6 @@ public class CompositeRenderer {
 		this.centerDepthSampler = centerDepthSampler;
 		this.renderTargets = renderTargets;
 		this.customTextureIds = customTextureIds;
-
-		final PackRenderTargetDirectives renderTargetDirectives = packDirectives.getRenderTargetDirectives();
-		final Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargetSettings = renderTargetDirectives.getRenderTargetSettings();
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -136,7 +132,6 @@ public class CompositeRenderer {
 			pass.framebuffer = framebuffer;
 			pass.viewportScale = directives.getViewportScale();
 			pass.mipmappedBuffers = directives.getMipmappedBuffers();
-			pass.flippedAtLeastOnce = flippedAtLeastOnceSnapshot;
 
 			passes.add(pass);
 		}
@@ -175,7 +170,6 @@ public class CompositeRenderer {
 		Program program;
 		ComputeProgram[] computes;
 		GlFramebuffer framebuffer;
-		ImmutableSet<Integer> flippedAtLeastOnce;
 		ImmutableSet<Integer> stageReadsFromAlt;
 		ImmutableSet<Integer> mipmappedBuffers;
 		float viewportScale;

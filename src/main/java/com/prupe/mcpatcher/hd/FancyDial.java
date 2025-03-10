@@ -199,6 +199,7 @@ public class FancyDial {
     static void registerAnimations() {
         ITextureObject texture = TexturePackAPI.getTextureObject(TexturePackAPI.ITEMS_PNG);
         if (texture instanceof TextureMap map) {
+            @SuppressWarnings("unchecked")
             List<TextureAtlasSprite> animations = map.listAnimatedSprites;
             for (FancyDial instance : instances.values()) {
                 instance.registerAnimation(animations);

@@ -40,6 +40,7 @@ public class ChunkPos {
         return (long)x & 4294967295L | ((long)z & 4294967295L) << 32;
     }
 
+    @Override
     public int hashCode()
     {
         final int i = 1664525 * this.x + 1013904223;
@@ -47,6 +48,7 @@ public class ChunkPos {
         return i ^ j;
     }
 
+    @Override
     public boolean equals(Object object) {
         if (this == object) {
             return true;

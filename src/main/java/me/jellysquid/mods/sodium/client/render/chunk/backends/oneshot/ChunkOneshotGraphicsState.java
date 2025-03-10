@@ -72,6 +72,7 @@ public class ChunkOneshotGraphicsState extends ChunkGraphicsState {
 
         commandList.uploadData(this.vertexBuffer, vertexData);
 
+        @SuppressWarnings("unchecked")
         GlVertexFormat<ChunkMeshAttribute> vertexFormat = (GlVertexFormat<ChunkMeshAttribute>) vertexData.format;
 
         this.tessellation = commandList.createTessellation(GlPrimitiveType.QUADS, new TessellationBinding[] {

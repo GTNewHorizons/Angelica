@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkStatus;
 import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTracker;
 import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTrackerHolder;

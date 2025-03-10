@@ -2,22 +2,17 @@ package net.coderbot.iris.gui;
 
 import lombok.Getter;
 import net.coderbot.iris.gui.element.ShaderPackOptionList;
-import net.coderbot.iris.shaderpack.option.menu.OptionMenuContainer;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 
 public class NavigationController {
-	private final OptionMenuContainer container;
+
 	private ShaderPackOptionList optionList;
 
 	@Getter
     private String currentScreen = null;
 	private final Deque<String> history = new ArrayDeque<>();
-
-	public NavigationController(OptionMenuContainer container) {
-		this.container = container;
-	}
 
 	public void back() {
 		if (history.size() > 0) {

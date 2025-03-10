@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.client.renderer.texture.ITickableTextureObject;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.SimpleResource;
@@ -25,7 +26,7 @@ public abstract class MixinTextureMap extends AbstractTexture implements ITickab
 
 	@Shadow
 	@Final
-	private Map mapRegisteredSprites;
+	private Map<String, TextureAtlasSprite> mapRegisteredSprites;
 
 	@Shadow
 	protected abstract ResourceLocation completeResourceLocation(ResourceLocation p_147634_1_, int p_147634_2_);

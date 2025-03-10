@@ -53,7 +53,7 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
         }
     }
 
-    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0), remap = false)
+    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0))
     private void iris$deleteDepthBuffer(CallbackInfo ci) {
         if(this.iris$depthTextureId > -1 ) {
             GLStateManager.glDeleteTextures(this.iris$depthTextureId);
