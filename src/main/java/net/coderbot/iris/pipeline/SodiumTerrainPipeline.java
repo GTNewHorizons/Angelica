@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import lombok.Getter;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
@@ -9,6 +10,7 @@ import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +30,9 @@ public class SodiumTerrainPipeline {
 	//GlFramebuffer framebuffer;
 	ProgramSet programSet;
 
+    @Getter
+    private final CustomUniforms customUniforms;
+
 	private final WorldRenderingPipeline parent;
 
 	private final IntFunction<ProgramSamplers> createTerrainSamplers;
@@ -40,7 +45,7 @@ public class SodiumTerrainPipeline {
 								 ProgramSet programSet, IntFunction<ProgramSamplers> createTerrainSamplers,
 								 IntFunction<ProgramSamplers> createShadowSamplers,
 								 IntFunction<ProgramImages> createTerrainImages,
-								 IntFunction<ProgramImages> createShadowImages) {
+								 IntFunction<ProgramImages> createShadowImages, CustomUniforms customUniforms) {
 		this.parent = Objects.requireNonNull(parent);
 
 		Optional<ProgramSource> terrainSource = first(programSet.getGbuffersTerrain(), programSet.getGbuffersTexturedLit(), programSet.getGbuffersTextured(), programSet.getGbuffersBasic());
@@ -48,6 +53,8 @@ public class SodiumTerrainPipeline {
 		Optional<ProgramSource> shadowSource = programSet.getShadow();
 
 		this.programSet = programSet;
+
+        this.customUniforms = customUniforms;
 
 		terrainSource.ifPresent(sources -> {
 			Map<PatchShaderType, String> result = TransformPatcher.patchSodiumTerrain(
@@ -135,8 +142,11 @@ public class SodiumTerrainPipeline {
 
 		CommonUniforms.addCommonUniforms(uniforms, programSet.getPack().getIdMap(), programSet.getPackDirectives(), parent.getFrameUpdateNotifier());
 		BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
+        customUniforms.push(uniforms);
 
-		return uniforms.buildUniforms();
+		ProgramUniforms build = uniforms.buildUniforms();
+        customUniforms.assignTo(uniforms);
+        return build;
 	}
 
 	public boolean hasShadowPass() {

@@ -423,7 +423,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		};
         this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
-			shadowRenderer == null ? null : createShadowTerrainImages);
+			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms);
 	}
 
 	private RenderTargets getRenderTargets() {

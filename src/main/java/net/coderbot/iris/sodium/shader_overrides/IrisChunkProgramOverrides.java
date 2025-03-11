@@ -155,7 +155,7 @@ public class IrisChunkProgramOverrides {
 							images = pipeline.initTerrainImages(name);
 						}
 
-						return new IrisChunkProgram(device, program, name, uniforms, samplers, images);
+                        return new IrisChunkProgram(device, program, name, uniforms, samplers, images);
 					});
 		} finally {
 			vertShader.delete();
