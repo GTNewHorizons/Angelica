@@ -398,9 +398,19 @@ public class ClientBlockStateColorCache
 		// attempt to get the tint
         BiomeGenBase biome = (BiomeGenBase)biomeWrapper.getWrappedMcObject();
         int tintColor;
-        if (blockState.block instanceof BlockGrass || blockState.block instanceof BlockBush)
+        if (blockState.block instanceof BlockGrass)
         {
             tintColor = biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
+        }
+        else if (blockState.block instanceof BlockDoublePlant)
+        {
+            int l = blockState.meta;
+            tintColor = l != 2 && l != 3 ? 16777215 : biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
+        }
+        else if (blockState.block instanceof BlockTallGrass)
+        {
+            int l = blockState.meta;
+            tintColor = l == 0 ? 16777215 : biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
         }
         else if (blockState.block instanceof  BlockOldLeaf)
         {
