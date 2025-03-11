@@ -198,7 +198,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			forcedShadowRenderDistanceChunks = OptionalInt.empty();
 		}
 
-        this.customUniforms = programs.getPack().customUniforms.build();
+        this.customUniforms = programs.getPack().customUniforms.build(
+            holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
+        );
 
         // TODO: BlockStateIdMap
 		BlockRenderingSettings.INSTANCE.setBlockMatches(BlockMaterialMapping.createBlockStateIdMap(programs.getPack().getIdMap().getBlockProperties()));
@@ -290,7 +292,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		Map<Pair<ProgramId, InputAvailability>, Pass> cachedPasses = new HashMap<>();
 
-		this.shadowComputes = createShadowComputes(programs.getShadowCompute(), programs);
+		this.shadowComputes = createShadowComputes(programs.getShadowCompute());
 
 		this.table = new ProgramTable<>((condition, availability) -> {
 			int idx;
@@ -359,6 +361,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			this.shadowClearPassesFull = ImmutableList.of();
 			this.shadowRenderer = null;
 		}
+
+        this.customUniforms.optimise();
 
 		this.clearPassesFull = ClearPassCreator.createClearPasses(renderTargets, true, programs.getPackDirectives().getRenderTargetDirectives());
 		this.clearPasses = ClearPassCreator.createClearPasses(renderTargets, false, programs.getPackDirectives().getRenderTargetDirectives());
@@ -603,13 +607,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		ProgramBuilder builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
 			IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 
-		return createPassInner(builder, source.getParent().getPack().getIdMap(), source.getDirectives(), source.getParent().getPackDirectives(), availability, shadow, id);
+		return createPassInner(builder, source.getDirectives(), availability, shadow, id);
 	}
 
-	private Pass createPassInner(ProgramBuilder builder, IdMap map, ProgramDirectives programDirectives,
-								 PackDirectives packDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
+	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
 
-		CommonUniforms.addCommonUniforms(builder, map, packDirectives, updateNotifier);
+		CommonUniforms.addDynamicUniforms(builder);
 
 		Supplier<ImmutableSet<Integer>> flipped;
 
@@ -880,6 +883,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 				for (ComputeProgram computeProgram : shadowComputes) {
 					if (computeProgram != null) {
+                        computeProgram.use();
+                        this.customUniforms.push(computeProgram);
 						computeProgram.dispatch(shadowMapResolution, shadowMapResolution);
 					}
 				}
@@ -942,7 +947,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 	}
 
-	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
+	private ComputeProgram[] createShadowComputes(ComputeSource[] compute) {
 		ComputeProgram[] programs = new ComputeProgram[compute.length];
 		for (int i = 0; i < programs.length; i++) {
 			ComputeSource source = compute[i];
@@ -958,7 +963,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					throw new RuntimeException("Shader compilation failed!", e);
 				}
 
-				CommonUniforms.addCommonUniforms(builder, programSet.getPack().getIdMap(), programSet.getPackDirectives(), updateNotifier);
+				CommonUniforms.addDynamicUniforms(builder);
 
 				Supplier<ImmutableSet<Integer>> flipped;
 
@@ -1103,6 +1108,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		updateNotifier.onNewFrame();
+
+        this.customUniforms.update();
 
 		// Get ready for world rendering
 		prepareRenderTargets();

@@ -143,7 +143,10 @@ public class IrisChunkProgramOverrides {
 					.bindAttribute("at_midBlock", IrisChunkShaderBindingPoints.MID_BLOCK)
 					.bindAttribute("iris_ModelOffset", ChunkShaderBindingPoints.MODEL_OFFSET)
 					.build((program, name) -> {
-						ProgramUniforms uniforms = pipeline.initUniforms(name);
+                        ProgramUniforms.Builder uniformsBuilder = ProgramUniforms.builder("<sodium shaders>", name);
+						ProgramUniforms uniforms = pipeline.initUniforms(uniformsBuilder);
+                        pipeline.getCustomUniforms().mapholderToPass(uniformsBuilder, uniforms);
+
 						ProgramSamplers samplers;
 						ProgramImages images;
 
