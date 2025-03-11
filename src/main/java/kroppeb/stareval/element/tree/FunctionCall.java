@@ -1,25 +1,13 @@
 package kroppeb.stareval.element.tree;
 
+import com.github.bsideup.jabel.Desugar;
 import kroppeb.stareval.element.ExpressionElement;
 
 import java.util.List;
 
-public class FunctionCall implements ExpressionElement {
-	private final String id;
-	private final List<? extends ExpressionElement> args;
+@Desugar
+public record FunctionCall(String id, List<? extends ExpressionElement> args) implements ExpressionElement {
 
-	public FunctionCall(String id, List<? extends ExpressionElement> args) {
-		this.id = id;
-		this.args = args;
-	}
-
-	public String getId() {
-		return this.id;
-	}
-
-	public List<? extends ExpressionElement> getArgs() {
-		return this.args;
-	}
 
 	@Override
 	public String toString() {

@@ -57,6 +57,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -108,6 +109,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Nullable
 	private final ShadowRenderer shadowRenderer;
+
+    private final CustomUniforms customUniforms;
 
 	private final int shadowMapResolution;
 	private final CompositeRenderer deferredRenderer;
@@ -195,6 +198,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			forcedShadowRenderDistanceChunks = OptionalInt.empty();
 		}
 
+        this.customUniforms = programs.getPack().customUniforms.build();
+
         // TODO: BlockStateIdMap
 		BlockRenderingSettings.INSTANCE.setBlockMatches(BlockMaterialMapping.createBlockStateIdMap(programs.getPack().getIdMap().getBlockProperties()));
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
@@ -235,25 +240,25 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.prepareRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getPrepare(), programs.getPrepareCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.PREPARE),
-				programs.getPackDirectives().getExplicitFlips("prepare_pre"));
+				programs.getPackDirectives().getExplicitFlips("prepare_pre"), customUniforms);
 
 		flippedAfterPrepare = flipper.snapshot();
 
 		this.deferredRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getDeferred(), programs.getDeferredCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.DEFERRED),
-				programs.getPackDirectives().getExplicitFlips("deferred_pre"));
+				programs.getPackDirectives().getExplicitFlips("deferred_pre"), customUniforms);
 
 		flippedAfterTranslucent = flipper.snapshot();
 
 		this.compositeRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getComposite(), programs.getCompositeCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				programs.getPackDirectives().getExplicitFlips("composite_pre"));
+				programs.getPackDirectives().getExplicitFlips("composite_pre"), customUniforms);
 		this.finalPassRenderer = new FinalPassRenderer(programs, renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, flipper.snapshot(),
 				centerDepthSampler, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				this.compositeRenderer.getFlippedAtLeastOnceFinal());
+				this.compositeRenderer.getFlippedAtLeastOnceFinal(), customUniforms);
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
 		ProgramId[] ids = new ProgramId[] {

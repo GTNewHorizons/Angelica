@@ -28,6 +28,7 @@ import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
@@ -48,6 +49,7 @@ public class CompositeRenderer {
 	private final IntSupplier noiseTexture;
 	private final FrameUpdateNotifier updateNotifier;
 	private final CenterDepthSampler centerDepthSampler;
+    private final CustomUniforms customUniforms;
 	private final Object2ObjectMap<String, IntSupplier> customTextureIds;
 	@Getter
     private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
@@ -56,12 +58,13 @@ public class CompositeRenderer {
 							 IntSupplier noiseTexture, FrameUpdateNotifier updateNotifier,
 							 CenterDepthSampler centerDepthSampler, BufferFlipper bufferFlipper,
 							 Supplier<ShadowRenderTargets> shadowTargetsSupplier,
-							 Object2ObjectMap<String, IntSupplier> customTextureIds, ImmutableMap<Integer, Boolean> explicitPreFlips) {
+							 Object2ObjectMap<String, IntSupplier> customTextureIds, ImmutableMap<Integer, Boolean> explicitPreFlips, CustomUniforms customUniforms) {
 		this.noiseTexture = noiseTexture;
 		this.updateNotifier = updateNotifier;
 		this.centerDepthSampler = centerDepthSampler;
 		this.renderTargets = renderTargets;
 		this.customTextureIds = customTextureIds;
+        this.customUniforms = customUniforms;
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -207,6 +210,7 @@ public class CompositeRenderer {
 				if (computeProgram != null) {
 					ranCompute = true;
                     final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
+                    this.customUniforms.push(computeProgram);
 					computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
 				}
 			}
@@ -235,6 +239,8 @@ public class CompositeRenderer {
 
 			renderPass.framebuffer.bind();
 			renderPass.program.use();
+
+            this.customUniforms.push(renderPass.program);
 
 			FullScreenQuadRenderer.INSTANCE.renderQuad();
 		}
@@ -316,6 +322,8 @@ public class CompositeRenderer {
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
 		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
+        this.customUniforms.assignTo(builder);
+
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get());
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get());
@@ -324,8 +332,11 @@ public class CompositeRenderer {
 		// TODO: Don't duplicate this with FinalPassRenderer
 		centerDepthSampler.setUsage(builder.addDynamicSampler(centerDepthSampler::getCenterDepthTexture, "iris_centerDepthSmooth"));
 
-		return builder.build();
-	}
+		Program build = builder.build();
+	    this.customUniforms.mapholderToPass(builder, build);
+
+        return build;
+    }
 
 	private ComputeProgram[] createComputes(ComputeSource[] compute, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
 		ComputeProgram[] programs = new ComputeProgram[compute.length];
@@ -354,6 +365,8 @@ public class CompositeRenderer {
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
 				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
+                this.customUniforms.assignTo(builder);
+
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get());
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get());
@@ -363,6 +376,8 @@ public class CompositeRenderer {
 				centerDepthSampler.setUsage(builder.addDynamicSampler(centerDepthSampler::getCenterDepthTexture, "iris_centerDepthSmooth"));
 
 				programs[i] = builder.buildCompute();
+
+                customUniforms.mapholderToPass(builder, programs[i]);
 
 				programs[i].setWorkGroupInfo(source.getWorkGroupRelative(), source.getWorkGroups());
 			}

@@ -1,12 +1,7 @@
 package net.coderbot.iris.gl.uniform;
 
 import net.minecraft.util.Vec3;
-import org.joml.Matrix4f;
-import org.joml.Vector2f;
-import org.joml.Vector2i;
-import org.joml.Vector3d;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
+import org.joml.*;
 
 import java.util.OptionalInt;
 import java.util.function.BooleanSupplier;
@@ -75,6 +70,13 @@ public interface LocationalUniformHolder extends UniformHolder {
 		return this;
 	}
 
+    @Override
+    default LocationalUniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3i> value) {
+        location(name, UniformType.VEC3I).ifPresent(id -> addUniform(updateFrequency, new Vector3IntegerJomlUniform(id, value)));
+
+        return this;
+    }
+
 	@Override
 	default LocationalUniformHolder uniformVanilla3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vec3> value) {
 		location(name, UniformType.VEC3).ifPresent(id -> addUniform(updateFrequency, new VanillaVector3Uniform(id, value)));
@@ -102,6 +104,13 @@ public interface LocationalUniformHolder extends UniformHolder {
 
 		return this;
 	}
+
+    @Override
+    default LocationalUniformHolder uniform4fArray(UniformUpdateFrequency updateFrequency, String name, Supplier<float[]> value) {
+        location(name, UniformType.VEC4).ifPresent(id -> addUniform(updateFrequency, new Vector4ArrayUniform(id, value)));
+
+        return this;
+    }
 
 	@Override
 	default LocationalUniformHolder uniformMatrix(UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4f> value) {

@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.function.Supplier;
+
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
@@ -20,6 +22,7 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
@@ -283,7 +286,7 @@ public class ProgramUniforms {
 			return this;
 		}
 
-		@Override
+        @Override
 		public UniformHolder externallyManagedUniform(String name, UniformType type) {
 			externalUniformNames.put(name, type);
 
