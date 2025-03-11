@@ -113,16 +113,6 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
         {
             default:
             case AUTO:
-                if (MINECRAFT.theWorld != null)
-                {
-                    ForgeDirection mcDir = McObjectConverter.Convert(lodDirection);
-                    return 1; // TODO
-                }
-                else
-                {
-                    return 0.0f;
-                }
-
             case ENABLED:
                 switch (lodDirection)
                 {
