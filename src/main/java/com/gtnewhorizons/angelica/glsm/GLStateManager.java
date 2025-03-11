@@ -16,6 +16,8 @@ import com.gtnewhorizons.angelica.glsm.stacks.LightModelStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
+import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.ISettableState;
@@ -53,6 +55,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
@@ -63,7 +66,6 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjglx.LWJGLException;
-import org.lwjgl.opengl.Drawable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -159,6 +161,8 @@ public class GLStateManager {
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
     @Getter protected static int activeProgram = 0;
+
+    @Getter protected static final ScissorStateStack scissorState = new ScissorStateStack();
 
     public static void reset() {
         runningSplash = true;
@@ -1936,7 +1940,7 @@ public class GLStateManager {
     }
 
     public static void glUseProgram(int program) {
-        if(program != activeProgram || shouldBypassCache()) {
+        if (program != activeProgram || shouldBypassCache()) {
             activeProgram = program;
             if(AngelicaMod.lwjglDebug) {
                 final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
@@ -1944,5 +1948,290 @@ public class GLStateManager {
             }
             GL20.glUseProgram(program);
         }
+    }
+
+    public static int glCreateShader(int type) {
+        return GL20.glCreateShader(type);
+    }
+
+    public static void glCompileShader(int shader) {
+        GL20.glCompileShader(shader);
+    }
+
+    public static void glShaderSource(int shader, CharSequence string) {
+        GL20.glShaderSource(shader, string);
+    }
+
+    public static void glShaderSource(int shader, CharSequence[] strings) {
+        GL20.glShaderSource(shader, strings);
+    }
+
+    public static int glCreateProgram() {
+        return GL20.glCreateProgram();
+    }
+
+    public static void glAttachShader(int program, int shader) {
+        GL20.glAttachShader(program, shader);
+    }
+
+    public static void glDetachShader(int program, int shader) {
+        GL20.glDetachShader(program, shader);
+    }
+
+    public static void glLinkProgram(int program) {
+        GL20.glLinkProgram(program);
+    }
+
+    public static void glValidateProgram(int program) {
+        GL20.glValidateProgram(program);
+    }
+
+    public static void glDeleteShader(int shader) {
+        GL20.glDeleteShader(shader);
+    }
+
+    public static void glDeleteProgram(int program) {
+        if (program == activeProgram) {
+            activeProgram = 0;
+        }
+        GL20.glDeleteProgram(program);
+    }
+
+    public static int glGetProgrami(int program, int pname) {
+        return GL20.glGetProgrami(program, pname);
+    }
+
+    public static int glGetShaderi(int shader, int pname) {
+        return GL20.glGetShaderi(shader, pname);
+    }
+
+    public static String glGetProgramInfoLog(int program) {
+        return GL20.glGetProgramInfoLog(program, 1024);
+    }
+
+    public static String glGetShaderInfoLog(int shader) {
+        return GL20.glGetShaderInfoLog(shader, 1024);
+    }
+
+    public static int glGetUniformLocation(int program, CharSequence name) {
+        return GL20.glGetUniformLocation(program, name);
+    }
+
+    public static int glGetAttribLocation(int program, CharSequence name) {
+        return GL20.glGetAttribLocation(program, name);
+    }
+
+    public static void glBindAttribLocation(int program, int index, CharSequence name) {
+        GL20.glBindAttribLocation(program, index, name);
+    }
+
+    public static void glUniform1i(int location, int value) {
+        GL20.glUniform1i(location, value);
+    }
+
+    public static void glUniform1f(int location, float value) {
+        GL20.glUniform1f(location, value);
+    }
+
+    public static void glUniform2i(int location, int v0, int v1) {
+        GL20.glUniform2i(location, v0, v1);
+    }
+
+    public static void glUniform2f(int location, float v0, float v1) {
+        GL20.glUniform2f(location, v0, v1);
+    }
+
+    public static void glUniform3i(int location, int v0, int v1, int v2) {
+        GL20.glUniform3i(location, v0, v1, v2);
+    }
+
+    public static void glUniform3f(int location, float v0, float v1, float v2) {
+        GL20.glUniform3f(location, v0, v1, v2);
+    }
+
+    public static void glUniform4i(int location, int v0, int v1, int v2, int v3) {
+        GL20.glUniform4i(location, v0, v1, v2, v3);
+    }
+
+    public static void glUniform4f(int location, float v0, float v1, float v2, float v3) {
+        GL20.glUniform4f(location, v0, v1, v2, v3);
+    }
+
+    public static void glVertex4i(int x, int y, int z, int w) {
+        GL11.glVertex4i(x, y, z, w);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
+        GL11.glVertexPointer(size, type, stride, pointer_buffer_offset);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
+        GL11.glVertexPointer(size, type, stride, pointer);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, FloatBuffer pointer) {
+        GL11.glVertexPointer(size, type, stride, pointer);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, IntBuffer pointer) {
+        GL11.glVertexPointer(size, type, stride, pointer);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, ShortBuffer pointer) {
+        GL11.glVertexPointer(size, type, stride, pointer);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
+        GL11.glColorPointer(size, type, stride, pointer_buffer_offset);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
+        GL11.glColorPointer(size, type, stride, pointer);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, FloatBuffer pointer) {
+        GL11.glColorPointer(size, type, stride, pointer);
+    }
+
+    public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
+        GL11.glNormalPointer(type, stride, pointer_buffer_offset);
+    }
+
+    public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
+        GL11.glNormalPointer(type, stride, pointer);
+    }
+
+    public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
+        GL11.glNormalPointer(type, stride, pointer);
+    }
+
+    public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
+        GL11.glNormalPointer(type, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
+        GL11.glTexCoordPointer(size, type, stride, pointer_buffer_offset);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
+        GL11.glTexCoordPointer(size, type, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
+        GL11.glTexCoordPointer(size, type, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
+        GL11.glTexCoordPointer(size, type, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
+        GL11.glTexCoordPointer(size, type, stride, pointer);
+    }
+
+    @Getter protected static final BooleanStateStack vertexArrayState = new BooleanStateStack(GL11.GL_VERTEX_ARRAY);
+    @Getter protected static final BooleanStateStack normalArrayState = new BooleanStateStack(GL11.GL_NORMAL_ARRAY);
+    @Getter protected static final BooleanStateStack colorArrayState = new BooleanStateStack(GL11.GL_COLOR_ARRAY);
+    @Getter protected static final BooleanStateStack texCoordArrayState = new BooleanStateStack(GL11.GL_TEXTURE_COORD_ARRAY);
+
+    public static void glEnableClientState(int cap) {
+        boolean changed = false;
+        switch (cap) {
+            case GL11.GL_VERTEX_ARRAY:
+                changed = !vertexArrayState.isEnabled();
+                vertexArrayState.enable();
+                break;
+            case GL11.GL_NORMAL_ARRAY:
+                changed = !normalArrayState.isEnabled();
+                normalArrayState.enable();
+                break;
+            case GL11.GL_COLOR_ARRAY:
+                changed = !colorArrayState.isEnabled();
+                colorArrayState.enable();
+                break;
+            case GL11.GL_TEXTURE_COORD_ARRAY:
+                changed = !texCoordArrayState.isEnabled();
+                texCoordArrayState.enable();
+                break;
+            default:
+                // For any other capabilities, always call the GL method
+                changed = true;
+                break;
+        }
+
+        // Only make the GL call if the state actually changed or we want to bypass the cache
+        if (changed || shouldBypassCache()) {
+            GL11.glEnableClientState(cap);
+        }
+    }
+
+    public static void glDisableClientState(int cap) {
+        boolean changed = false;
+        switch (cap) {
+            case GL11.GL_VERTEX_ARRAY:
+                changed = vertexArrayState.isEnabled();
+                vertexArrayState.disable();
+                break;
+            case GL11.GL_NORMAL_ARRAY:
+                changed = normalArrayState.isEnabled();
+                normalArrayState.disable();
+                break;
+            case GL11.GL_COLOR_ARRAY:
+                changed = colorArrayState.isEnabled();
+                colorArrayState.disable();
+                break;
+            case GL11.GL_TEXTURE_COORD_ARRAY:
+                changed = texCoordArrayState.isEnabled();
+                texCoordArrayState.disable();
+                break;
+            default:
+                // For any other capabilities, always call the GL method
+                changed = true;
+                break;
+        }
+
+        // Only make the GL call if the state actually changed or we want to bypass the cache
+        if (changed || shouldBypassCache()) {
+            GL11.glDisableClientState(cap);
+        }
+    }
+
+    @Getter protected static final StencilStateStack stencilState = new StencilStateStack();
+    @Getter protected static final BooleanStateStack stencilTest = new BooleanStateStack(GL11.GL_STENCIL_TEST);
+
+    public static void enableStencilTest() {
+        stencilTest.enable();
+    }
+
+    public static void disableStencilTest() {
+        stencilTest.disable();
+    }
+
+    public static void glStencilFunc(int func, int ref, int mask) {
+        stencilState.setFunc(func, ref, mask);
+    }
+
+    public static void glStencilOp(int sfail, int dpfail, int dppass) {
+        stencilState.setOp(sfail, dpfail, dppass);
+    }
+
+    public static void glStencilMask(int mask) {
+        stencilState.setMask(mask);
+    }
+
+    public static void glStencilFuncSeparate(int face, int func, int ref, int mask) {
+        GL20.glStencilFuncSeparate(face, func, ref, mask);
+    }
+
+    public static void glStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
+        GL20.glStencilOpSeparate(face, sfail, dpfail, dppass);
+    }
+
+    public static void glStencilMaskSeparate(int face, int mask) {
+        GL20.glStencilMaskSeparate(face, mask);
+    }
+
+    public static void glScissor(int x, int y, int width, int height) {
+        scissorState.setScissor(x, y, width, height);
     }
 }
