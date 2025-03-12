@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.GL45;
 
@@ -16,14 +17,14 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteri(int texture, int target, int pname, int param) {
-        if(!GLStateManager.updateTexParameteriCache(target, texture, pname, param)) return;
+        if(!GLTextureManager.updateTexParameteriCache(target, texture, pname, param)) return;
 
         ARBDirectStateAccess.glTextureParameteri(texture, pname, param);
     }
 
     @Override
     public void texParameterf(int texture, int target, int pname, float param) {
-        if(!GLStateManager.updateTexParameterfCache(target, texture, pname, param)) return;
+        if(!GLTextureManager.updateTexParameterfCache(target, texture, pname, param)) return;
 
         ARBDirectStateAccess.glTextureParameterf(texture, pname, param);
     }
@@ -45,7 +46,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> ARBDirectStateAccess.glGetTextureParameteri(texture, pname));
+        return GLTextureManager.getTexParameterOrDefault(texture, pname, () -> ARBDirectStateAccess.glGetTextureParameteri(texture, pname));
     }
 
     @Override
@@ -55,13 +56,13 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void bindTextureToUnit(int unit, int texture) {
-        if(GLStateManager.getBoundTexture(unit) == texture) return;
+        if(GLTextureManager.getBoundTexture(unit) == texture) return;
 
         if (texture == 0) {
             super.bindTextureToUnit(unit, texture);
         } else {
             ARBDirectStateAccess.glBindTextureUnit(unit, texture);
-            GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture);
+            GLTextureManager.textures.getTextureUnitBindings(unit).setBinding(texture);
         }
     }
 

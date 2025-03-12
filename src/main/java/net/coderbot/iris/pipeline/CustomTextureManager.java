@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -140,9 +140,9 @@ public class CustomTextureManager {
                         TextureFormat textureFormat = TextureFormatLoader.getFormat();
 						if (textureFormat != null) {
 							int previousBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-							GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, pbrTexture.getGlTextureId());
+							GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, pbrTexture.getGlTextureId());
 							textureFormat.setupTextureParameters(pbrType, pbrTexture);
-							GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousBinding);
+							GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, previousBinding);
 						}
 
 						return pbrTexture.getGlTextureId();

@@ -28,6 +28,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
@@ -337,12 +338,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             | (int) (b * 255);
         COLOR_TEX.updateDynamicTexture();
 
-        GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
-        GLStateManager.enableTexture2D();
+        GLTextureManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
+        GLTextureManager.enableTexture2D();
 
         // Bind the clouds texture last so the shader's sampler2D is correct.
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLTextureManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
         mc.renderEngine.bindTexture(texture);
 
         vbo.setupState();
@@ -370,13 +371,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (WIREFRAME) {
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
             GL11.glLineWidth(2.0F);
-            GLStateManager.disableTexture2D();
+            GLTextureManager.disableTexture2D();
             GLStateManager.glDepthMask(false);
             GLStateManager.disableFog();
             vbo.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
-            GLStateManager.enableTexture2D();
+            GLTextureManager.enableTexture2D();
             GLStateManager.enableFog();
         }
 
@@ -384,9 +385,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         vbo.cleanupState(); // Unbind buffer and disable pointers.
 
         // Disable our coloring.
-        GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
-        GLStateManager.disableTexture2D();
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLTextureManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLTextureManager.disableTexture2D();
+        GLTextureManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
 
         // Reset texture matrix.
         GLStateManager.glMatrixMode(GL11.GL_TEXTURE);

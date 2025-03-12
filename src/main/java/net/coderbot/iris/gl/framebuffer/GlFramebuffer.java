@@ -3,7 +3,7 @@ package net.coderbot.iris.gl.framebuffer;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import java.nio.IntBuffer;
@@ -31,7 +31,7 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void addDepthAttachment(int texture) {
-		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(texture).getInternalFormat();
+		final int internalFormat = GLTextureManager.textureCache.getInfo(texture).getInternalFormat();
         final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
         final int fb = getGlId();

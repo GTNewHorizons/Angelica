@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.hudcaching;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
@@ -219,7 +220,7 @@ public class HUDCaching {
     }
 
     private void drawTexturedRect(Tessellator tessellator, float width, float height) {
-        GLStateManager.enableTexture2D();
+        GLTextureManager.enableTexture2D();
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         tessellator.startDrawingQuads();

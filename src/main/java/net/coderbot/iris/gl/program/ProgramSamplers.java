@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.sampler.SamplerBinding;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
@@ -52,7 +53,7 @@ public class ProgramSamplers {
 			samplerBinding.update();
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
 	}
 
 	public void removeListeners() {

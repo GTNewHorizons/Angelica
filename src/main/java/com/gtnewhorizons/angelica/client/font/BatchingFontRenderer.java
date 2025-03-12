@@ -7,6 +7,7 @@ import static org.lwjgl.system.MemoryUtil.memAllocInt;
 import static org.lwjgl.system.MemoryUtil.memRealloc;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -249,7 +250,7 @@ public class BatchingFontRenderer {
         boolean textureChanged = false;
 
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
-        GLStateManager.enableTexture2D();
+        GLTextureManager.enableTexture2D();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
@@ -293,7 +294,7 @@ public class BatchingFontRenderer {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         }
         if (textureChanged) {
-        	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+        	GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
         // Clear for the next batch

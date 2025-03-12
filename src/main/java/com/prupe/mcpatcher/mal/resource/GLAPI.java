@@ -1,6 +1,7 @@
 package com.prupe.mcpatcher.mal.resource;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
@@ -11,7 +12,7 @@ public class GLAPI {
 
     public static void glBindTexture(int texture) {
         if (texture >= 0) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         }
     }
 

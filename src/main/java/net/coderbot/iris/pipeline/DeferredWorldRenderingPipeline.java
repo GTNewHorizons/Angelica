@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
@@ -173,7 +173,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
         final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
-		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
+		final int internalFormat = GLTextureManager.textureCache.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
 		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, depthTextureId,
@@ -206,13 +206,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(true);
 
 		// Don't clobber anything in texture unit 0. It probably won't cause issues, but we're just being cautious here.
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE2);
 
 		customTextureManager = new CustomTextureManager(programs.getPackDirectives(), programs.getPack().getCustomTextureDataMap(), programs.getPack().getCustomNoiseTexture());
 
 		whitePixel = new NativeImageBackedSingleColorTexture(255, 255, 255, 255);
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 
 		this.flippedBeforeShadow = ImmutableSet.of();
 
@@ -851,7 +851,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private void prepareRenderTargets() {
 		// Make sure we're using texture unit 0 for this.
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
 		if (shadowRenderTargets != null) {
@@ -895,7 +895,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
         final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
-		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
+		final int internalFormat = GLTextureManager.textureCache.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
 		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthTextureId, main.framebufferWidth,

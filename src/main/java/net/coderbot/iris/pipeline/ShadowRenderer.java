@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -188,7 +189,7 @@ public class ShadowRenderer {
 		final ImmutableList<PackShadowDirectives.SamplingSettings> colorSamplingSettings =
 			shadowDirectives.getColorSamplingSettings();
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE4);
 
 		configureDepthSampler(targets.getDepthTexture().getTextureId(), depthSamplingSettings.get(0));
 
@@ -200,7 +201,7 @@ public class ShadowRenderer {
 			configureSampler(glTextureId, colorSamplingSettings.get(i));
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
     private final IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
@@ -237,13 +238,13 @@ public class ShadowRenderer {
 	}
 
 	private void generateMipmaps() {
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE4);
 
 		for (MipmapPass mipmapPass : mipmapPasses) {
 			setupMipmappingForTexture(mipmapPass.getTexture(), mipmapPass.getTargetFilteringMode());
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	private void setupMipmappingForTexture(int texture, int filteringMode) {

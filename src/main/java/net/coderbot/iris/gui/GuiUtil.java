@@ -1,6 +1,7 @@
 package net.coderbot.iris.gui;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import cpw.mods.fml.client.config.GuiUtils;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
@@ -63,7 +64,7 @@ public final class GuiUtil {
 		GLStateManager.enableBlend();
 
 		// Sets RenderSystem to be able to use textures when drawing
-        GLStateManager.enableTexture2D();
+        GLTextureManager.enableTexture2D();
 
 		// Top left section
 		GuiUtils.drawTexturedModalRect(x, y, 0, vOffset, halfWidth, halfHeight, 0);
@@ -198,7 +199,7 @@ public final class GuiUtil {
             GLStateManager.enableBlend();
 
 			// Sets RenderSystem to be able to use textures when drawing
-            GLStateManager.enableTexture2D();
+            GLTextureManager.enableTexture2D();
 
 			// Draw the texture to the screen
 			GuiUtils.drawTexturedModalRect(x, y, u, v, width, height, 256);

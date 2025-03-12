@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
@@ -123,8 +124,8 @@ public class Feature {
         ));
 
         // GL_TEXTURE_2D flag
-        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            enableBits.add(GLStateManager.textures.getTextureUnitStates(i));
+        for(int i = 0 ; i < GLTextureManager.MAX_TEXTURE_UNITS; i++) {
+            enableBits.add(GLTextureManager.textures.getTextureUnitStates(i));
         }
 
         attribToFeatures.put(GL11.GL_ENABLE_BIT, enableBits);
@@ -247,7 +248,7 @@ public class Feature {
             // Stencil buffer writemask
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
-            GLStateManager.activeTextureUnit // Active texture unit
+            GLTextureManager.activeTextureUnit // Active texture unit
                 // Enable bits for the four texture coordinates
 
                 // Border color for each texture image
@@ -263,8 +264,8 @@ public class Feature {
         ));
 
         // Current Texture Bindings - GL_TEXTURE_BINDING_2D
-        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            textureAttribs.add(GLStateManager.textures.getTextureUnitBindings(i));
+        for(int i = 0 ; i < GLTextureManager.MAX_TEXTURE_UNITS; i++) {
+            textureAttribs.add(GLTextureManager.textures.getTextureUnitBindings(i));
 //            textureAttribs.add(GLStateManager.textures.getInfo(i))
         }
 

@@ -21,7 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexLevelParameteri;
+import static com.gtnewhorizons.angelica.glsm.managers.GLTextureManager.glGetTexLevelParameteri;
 
 public class CustomAnimation implements Comparable<CustomAnimation> {
 

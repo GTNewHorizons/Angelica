@@ -1,8 +1,8 @@
 package net.coderbot.iris.rendertarget;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import lombok.Getter;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
@@ -175,7 +175,7 @@ public class RenderTargets {
 	public void copyPreTranslucentDepth() {
 		if (translucentDepthDirty) {
 			translucentDepthDirty = false;
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
+			GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 		} else {
@@ -186,7 +186,7 @@ public class RenderTargets {
 	public void copyPreHandDepth() {
 		if (handDepthDirty) {
 			handDepthDirty = false;
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
+			GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 		} else {

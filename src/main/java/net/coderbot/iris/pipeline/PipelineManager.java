@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -93,13 +93,13 @@ public class PipelineManager {
 		//
 		// Without this code, there will be weird issues when reloading certain shaderpacks.
 		for (int i = 0; i < 16; i++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
 		// Set the active texture unit to unit 0
 		//
 		// This seems to be what most code expects. It's a sane default in any case.
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 }

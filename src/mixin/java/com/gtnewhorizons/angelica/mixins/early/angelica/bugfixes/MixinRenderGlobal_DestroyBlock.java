@@ -1,11 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.EntityLivingBase;
@@ -22,11 +20,11 @@ public class MixinRenderGlobal_DestroyBlock {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V")
     )
     private void iris$beginDrawBlockDamageTexture(Tessellator tessellator, EntityLivingBase entity, float partialTicks, CallbackInfo ci, @Share("lastMin") LocalIntRef lastMin, @Share("lastMag") LocalIntRef lastMag) {
-        TextureInfo info = TextureInfoCache.INSTANCE.getInfo(GLStateManager.getBoundTexture());
+        TextureInfo info = GLTextureManager.textureCache.getInfo(GLTextureManager.getBoundTexture());
         lastMin.set(info.getMinFilter());
         lastMag.set(info.getMagFilter());
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
     @Inject(
@@ -35,7 +33,7 @@ public class MixinRenderGlobal_DestroyBlock {
         remap = false
     )
     private void iris$endDrawBlockDamageTexture(Tessellator tessellator, EntityLivingBase entity, float partialTicks, CallbackInfo ci, @Share("lastMin") LocalIntRef lastMin, @Share("lastMag") LocalIntRef lastMag) {
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, lastMin.get());
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, lastMag.get());
+        GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, lastMin.get());
+        GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, lastMag.get());
     }
 }

@@ -1,7 +1,7 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.texture.TextureUploadHelper;
 import org.lwjgl.opengl.EXTFramebufferObject;
@@ -32,6 +32,6 @@ public class ColorTexture extends GlResource {
 
 	@Override
 	protected void destroyInternal() {
-		GLStateManager.glDeleteTextures(getGlId());
+		GLTextureManager.glDeleteTextures(getGlId());
 	}
 }

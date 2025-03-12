@@ -19,10 +19,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetFloat;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glGetTexParameteri;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexImage2D;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameterf;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTexParameteri;
+import static com.gtnewhorizons.angelica.glsm.managers.GLTextureManager.glGetTexParameteri;
+import static com.gtnewhorizons.angelica.glsm.managers.GLTextureManager.glTexImage2D;
+import static com.gtnewhorizons.angelica.glsm.managers.GLTextureManager.glTexParameterf;
+import static com.gtnewhorizons.angelica.glsm.managers.GLTextureManager.glTexParameteri;
 
 public class MipmapHelper {
 

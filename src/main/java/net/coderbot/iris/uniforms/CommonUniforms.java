@@ -1,9 +1,9 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
@@ -60,11 +60,11 @@ public final class CommonUniforms {
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
 		//       but we do. How will custom uniforms depending on atlasSize work?
 		uniforms.uniform2i("atlasSize", () -> {
-			final int glId = GLStateManager.getBoundTexture();
+			final int glId = GLTextureManager.getBoundTexture();
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
-				final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+				final TextureInfo info = GLTextureManager.textureCache.getInfo(glId);
 				return new Vector2i(info.getWidth(), info.getHeight());
 			}
 
@@ -72,9 +72,9 @@ public final class CommonUniforms {
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
-			final int glId = GLStateManager.getBoundTexture();
+			final int glId = GLTextureManager.getBoundTexture();
 
-			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
+			final TextureInfo info = GLTextureManager.textureCache.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());
 
 		}, StateUpdateNotifiers.bindTextureNotifier);

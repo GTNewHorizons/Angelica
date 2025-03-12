@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -65,8 +66,8 @@ public class RenderSystem {
 	}
 
 	public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+		GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {

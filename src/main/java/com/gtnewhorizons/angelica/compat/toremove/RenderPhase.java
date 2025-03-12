@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -410,7 +411,7 @@ public abstract class RenderPhase {
 
         public Texture(ResourceLocation id, boolean bilinear, boolean mipmap) {
             super("texture", () -> {
-                GLStateManager.enableTexture2D();
+                GLTextureManager.enableTexture2D();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
                 //GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
@@ -422,7 +423,7 @@ public abstract class RenderPhase {
         }
 
         public Texture() {
-            super("texture", GLStateManager::disableTexture2D, GLStateManager::enableTexture2D);
+            super("texture", GLTextureManager::disableTexture2D, GLTextureManager::enableTexture2D);
             this.id = Optional.empty();
             this.bilinear = false;
             this.mipmap = false;

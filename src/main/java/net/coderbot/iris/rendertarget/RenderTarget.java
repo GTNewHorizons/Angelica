@@ -2,10 +2,11 @@ package net.coderbot.iris.rendertarget;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import lombok.Getter;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.gl.texture.PixelFormat;
@@ -56,7 +57,7 @@ public class RenderTarget {
 
 		// Clean up after ourselves
 		// This is strictly defensive to ensure that other buggy code doesn't tamper with our textures
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	private void setupTexture(int texture, int width, int height, boolean allowsLinear) {
@@ -106,7 +107,7 @@ public class RenderTarget {
 		isValid = false;
         deleteBuffer.put(0, mainTexture);
         deleteBuffer.put(1, altTexture);
-        GLStateManager.glDeleteTextures(deleteBuffer);
+        GLTextureManager.glDeleteTextures(deleteBuffer);
 	}
 
 	private void requireValid() {

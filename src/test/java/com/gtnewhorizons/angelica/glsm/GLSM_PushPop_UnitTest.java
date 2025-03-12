@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.lwjgl.BufferUtils;
@@ -133,7 +134,7 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
         // Apparently glIndex is not implemented in lwjgl2?
         GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
-        GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
+        GLTextureManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
         GLStateManager.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
         // GL_CURRENT_RASTER_POSITION_VALID flag
         // RGBA color associated with current raster position
@@ -401,21 +402,21 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         final int tex2 = GL11.glGenTextures();
 
         GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
 
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Unit 1 - Switch");
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1 - Set");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1");
 
@@ -432,14 +433,14 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         GLStateManager.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture Unit 0 - Reset");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 0 - Reset");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 1 - Reset");
 
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glDeleteTextures(tex1);
-        GLStateManager.glDeleteTextures(tex2);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLTextureManager.glDeleteTextures(tex1);
+        GLTextureManager.glDeleteTextures(tex2);
     }
 
     @Test
@@ -451,26 +452,26 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         final int tex2 = GL11.glGenTextures();
 
         GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
 
         GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
-        GLStateManager.glDeleteTextures(tex2);
+        GLTextureManager.glDeleteTextures(tex2);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
-        GLStateManager.glDeleteTextures(tex1);
+        GLTextureManager.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
 
         GLStateManager.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding Deleted - Unit 1");
-        GLStateManager.glDeleteTextures(tex1);
+        GLTextureManager.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
 
         GLStateManager.glPopAttrib();

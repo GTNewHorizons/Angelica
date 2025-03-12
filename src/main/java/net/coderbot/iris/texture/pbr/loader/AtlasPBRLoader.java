@@ -2,8 +2,8 @@ package net.coderbot.iris.texture.pbr.loader;
 
 import com.google.common.collect.Lists;
 import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.format.TextureFormat;
@@ -40,7 +40,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
     @SuppressWarnings("unchecked")
     @Override
     public void load(TextureMap texMap, IResourceManager resourceManager, PBRTextureConsumer pbrTextureConsumer) {
-        final TextureInfo textureInfo = TextureInfoCache.INSTANCE.getInfo(texMap.getGlTextureId());
+        final TextureInfo textureInfo = GLTextureManager.textureCache.getInfo(texMap.getGlTextureId());
         final int atlasWidth = textureInfo.getWidth();
         final int atlasHeight = textureInfo.getHeight();
         final int mipLevel = fetchAtlasMipLevel(texMap);

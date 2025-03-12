@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.texture;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.opengl.GL11;
@@ -53,11 +54,11 @@ public class TextureInfo {
         final int previousTextureBinding = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 
         // Bind this texture and grab the parameter from it.
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
         final int parameter = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, pname);
 
         // Make sure to re-bind the previous texture to avoid issues.
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
 
         return parameter;
     }

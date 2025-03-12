@@ -2,9 +2,10 @@ package net.coderbot.iris.texture.util;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
@@ -33,7 +34,7 @@ public class TextureManipulationUtil {
                 (rgba >> 16 & 0xFF) / 255.0f,
                 (rgba >> 8 & 0xFF) / 255.0f,
                 (rgba & 0xFF) / 255.0f);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+            GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
             for (int level = 0; level <= maxLevel; ++level) {
                 final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
                 final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
@@ -63,7 +64,7 @@ public class TextureManipulationUtil {
                 previousClearColorBuffer.get(1),
                 previousClearColorBuffer.get(2),
                 previousClearColorBuffer.get(3));
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
+            GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
             GL11.glViewport(
                 previousViewportBuffer.get(0),
                 previousViewportBuffer.get(1),

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
 import lombok.Getter;
@@ -14,14 +14,14 @@ public class TextureUnitArray {
     public final Matrix4fStack[] textureMatricies;
 
     public TextureUnitArray() {
-        bindings = new TextureBindingStack[GLStateManager.MAX_TEXTURE_UNITS];
-        states = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        textureMatricies = new Matrix4fStack[GLStateManager.MAX_TEXTURE_UNITS];
+        bindings = new TextureBindingStack[GLTextureManager.MAX_TEXTURE_UNITS];
+        states = new BooleanStateStack[GLTextureManager.MAX_TEXTURE_UNITS];
+        textureMatricies = new Matrix4fStack[GLTextureManager.MAX_TEXTURE_UNITS];
 
-        for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+        for (int i = 0; i < GLTextureManager.MAX_TEXTURE_UNITS; i++) {
             bindings[i] = new TextureBindingStack();
             states[i] = new BooleanStateStack(GL11.GL_TEXTURE_2D);
-            textureMatricies[i] = new Matrix4fStack(GLStateManager.MAX_TEXTURE_STACK_DEPTH);
+            textureMatricies[i] = new Matrix4fStack(GLTextureManager.MAX_TEXTURE_STACK_DEPTH);
         }
     }
 
@@ -41,7 +41,7 @@ public class TextureUnitArray {
     public boolean equals(Object state) {
         if (this == state) return true;
         if (!(state instanceof TextureUnitArray textureUnitArray)) return false;
-        for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+        for (int i = 0; i < GLTextureManager.MAX_TEXTURE_UNITS; i++) {
             if (!bindings[i].sameAs(textureUnitArray.bindings[i])) return false;
             if (!states[i].sameAs(textureUnitArray.states[i])) return false;
         }

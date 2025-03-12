@@ -1,6 +1,6 @@
 package net.coderbot.iris.texture.pbr;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -85,7 +85,7 @@ public class PBRTextureManager {
 				} catch (Exception e) {
 					Iris.logger.error("Failed to load PBR textures for texture " + id, e);
 				} finally {
-					GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
+					GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
 				}
 			}
 		}

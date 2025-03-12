@@ -1,6 +1,7 @@
 package net.coderbot.iris.gui.element.widget;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import cpw.mods.fml.client.config.GuiUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
@@ -41,7 +42,7 @@ public class IrisImageButton extends IrisButton {
         GLStateManager.enableBlend();
 
         // Sets RenderSystem to be able to use textures when drawing
-        GLStateManager.enableTexture2D();
+        GLTextureManager.enableTexture2D();
         mc.getTextureManager().bindTexture(this.textureLocation);
 
         // Draw the texture to the screen

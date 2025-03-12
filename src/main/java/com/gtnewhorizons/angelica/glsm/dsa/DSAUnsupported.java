@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -16,26 +16,26 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public void generateMipmaps(int texture, int target) {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         GL30.glGenerateMipmap(target);
     }
 
     @Override
     public void texParameteri(int texture, int target, int pname, int param) {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameteri(target, pname, param);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glTexParameteri(target, pname, param);
     }
 
     @Override
     public void texParameterf(int texture, int target, int pname, float param) {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameterf(target, pname, param);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glTexParameterf(target, pname, param);
     }
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameter(target, pname, params);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glTexParameter(target, pname, params);
     }
 
     @Override
@@ -52,22 +52,22 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        return GLStateManager.glGetTexParameteri(target, pname);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        return GLTextureManager.glGetTexParameteri(target, pname);
     }
 
     @Override
     public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
-        final int previous = GLStateManager.getBoundTexture();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
+        final int previous = GLTextureManager.getBoundTexture();
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
         GL11.glCopyTexSubImage2D(target, i, i1, i2, i3, i4, width, height);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
     }
 
     @Override
     public void bindTextureToUnit(int unit, int texture) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
     }
 
     @Override
@@ -104,7 +104,7 @@ public class DSAUnsupported implements DSAAccess {
     @Override
     public int createTexture(int target) {
         final int texture = GL11.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         return texture;
     }
 }

@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -222,7 +223,7 @@ public class CompositeRenderer {
 			}
 
 			if (!renderPass.mipmappedBuffers.isEmpty()) {
-				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+				GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 
 				for (int index : renderPass.mipmappedBuffers) {
 					setupMipmapping(CompositeRenderer.this.renderTargets.get(index), renderPass.stageReadsFromAlt.contains(index));
@@ -252,11 +253,11 @@ public class CompositeRenderer {
 		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work propely
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLTextureManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
