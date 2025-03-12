@@ -283,16 +283,17 @@ public class SodiumWorldRenderer {
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         if (pass == BlockRenderPass.CUTOUT_MIPPED)
         {
+            GL32.glDisable(GL32.GL_ALPHA_TEST);
             if (fade)
             {
-                GLStateManager.disableBlend();
                 ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
             }
             else
             {
                 ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
-                GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
             }
+            GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
+            GL32.glEnable(GL32.GL_ALPHA_TEST);
         }
     }
 
