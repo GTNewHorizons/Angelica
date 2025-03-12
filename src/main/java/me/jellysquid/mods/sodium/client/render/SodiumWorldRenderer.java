@@ -276,7 +276,7 @@ public class SodiumWorldRenderer {
         tracker.forEachEvent(this.chunkRenderManager::onChunkAdded, this.chunkRenderManager::onChunkRemoved);
     }
 
-    void drawLods(BlockRenderPass pass)
+    void drawLods(BlockRenderPass pass, boolean fade)
     {
         Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
         Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
@@ -284,11 +284,16 @@ public class SodiumWorldRenderer {
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         if (pass == BlockRenderPass.CUTOUT_MIPPED)
         {
-            ClientApi.INSTANCE.renderLods(levelWrapper,
-                mcModelViewMatrix,
-                mcProjectionMatrix,
-                frameTime);
-            GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
+            if (fade)
+            {
+                GLStateManager.disableBlend();
+                ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+            }
+            else
+            {
+                ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
+                GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
+            }
         }
     }
 
@@ -296,7 +301,7 @@ public class SodiumWorldRenderer {
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
-        drawLods(pass);
+        drawLods(pass, false);
         // This fix a long-standing issue with culling state leaking because of mods,
         // or other factors as having clouds disabled.
         GLStateManager.enableCullFace();
@@ -309,6 +314,7 @@ public class SodiumWorldRenderer {
 
         //pass.endDrawing();
         GLLightingManager.clearCurrentColor();
+        drawLods(pass, true);
     }
 
     public void reload() {
