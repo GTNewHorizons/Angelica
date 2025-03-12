@@ -1,12 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -90,7 +90,7 @@ public abstract class MixinRenderGlobal {
         float cloudWidth = 8f;
         int renderRadius = (int)((int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore() / (cloudScale * 2f));
         float edgeOverlap = 0.0001f;//0.001F;
-        GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
+        GLMatrixManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
         for (int loop = 0; loop < 2; ++loop) {
             if (loop == 0) {

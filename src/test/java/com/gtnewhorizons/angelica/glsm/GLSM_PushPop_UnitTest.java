@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -486,7 +487,7 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         verifyState(GL12.GL_RESCALE_NORMAL, false, "Initial Rescale Normal");
 
         GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLMatrixManager.glMatrixMode(GL11.GL_PROJECTION);
         GLStateManager.glEnable(GL11.GL_NORMALIZE);
         GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
 

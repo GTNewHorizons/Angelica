@@ -12,6 +12,6 @@ public class MixinInitGLStateManager {
     @Inject(method = "initializeTextures", at = @At("RETURN"))
     private static void angelica$initializeGLStateManager(CallbackInfo ci) {
         GLStateManager.preInit();
-        GLStateManager.init();
+        GLStateManager.minecraftInit();
     }
 }

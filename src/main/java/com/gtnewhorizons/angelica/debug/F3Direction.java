@@ -10,11 +10,11 @@ import org.lwjgl.opengl.GL11;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glRotatef;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
+import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glPopMatrix;
+import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glPushMatrix;
+import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glRotatef;
+import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glScalef;
+import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glTranslatef;
 import static org.lwjgl.opengl.GL11C.glLineWidth;
 
 public class F3Direction {

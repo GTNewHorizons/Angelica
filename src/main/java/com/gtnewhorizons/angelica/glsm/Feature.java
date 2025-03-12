@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -274,7 +275,7 @@ public class Feature {
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes
-              GLStateManager.matrixMode
+              GLMatrixManager.matrixMode
             // GL_NORMALIZE flag
             , GLStateManager.rescaleNormalState // GL_RESCALE_NORMAL flag
         ));

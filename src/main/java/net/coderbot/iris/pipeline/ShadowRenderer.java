@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import java.nio.FloatBuffer;
@@ -469,7 +470,7 @@ public class ShadowRenderer {
 
 			shadowTileEntities++;
 		}
-        GLStateManager.glPopMatrix();
+        GLMatrixManager.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
 

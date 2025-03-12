@@ -28,6 +28,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
@@ -294,19 +295,19 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         int offU = fullCoord(x, scale);
         int offV = fullCoord(z, scale);
 
-        GLStateManager.glPushMatrix();
+        GLMatrixManager.glPushMatrix();
 
         // Translate by the remainder after the UV offset.
-        GLStateManager.glTranslated((offU * scale) - x, y, (offV * scale) - z);
+        GLMatrixManager.glTranslated((offU * scale) - x, y, (offV * scale) - z);
 
         // Modulo to prevent texture samples becoming inaccurate at extreme offsets.
         offU = offU % texW;
         offV = offV % texH;
 
         // Translate the texture.
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glTranslated(offU * PX_SIZE, offV * PX_SIZE, 0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLMatrixManager.glMatrixMode(GL11.GL_TEXTURE);
+        GLMatrixManager.glTranslated(offU * PX_SIZE, offV * PX_SIZE, 0);
+        GLMatrixManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         GLStateManager.disableCullFace();
 
@@ -390,14 +391,14 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLTextureManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
 
         // Reset texture matrix.
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLMatrixManager.glMatrixMode(GL11.GL_TEXTURE);
+        GLMatrixManager.glLoadIdentity();
+        GLMatrixManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         GLStateManager.disableBlend();
         GLStateManager.enableCullFace();
 
-        GLStateManager.glPopMatrix();
+        GLMatrixManager.glPopMatrix();
 
         return true;
     }

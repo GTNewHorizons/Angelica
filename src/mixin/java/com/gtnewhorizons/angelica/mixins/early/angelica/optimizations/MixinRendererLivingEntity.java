@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -22,7 +22,7 @@ public abstract class MixinRendererLivingEntity {
      */
     @Overwrite
     protected void rotateCorpse(EntityLivingBase entity, float p_77043_2_, float p_77043_3_, float partialTicks) {
-        GLStateManager.glRotatef(180.0F - p_77043_3_, 0.0F, 1.0F, 0.0F);
+        GLMatrixManager.glRotatef(180.0F - p_77043_3_, 0.0F, 1.0F, 0.0F);
 
         if (entity.deathTime > 0) {
             float f3 = ((float)entity.deathTime + partialTicks - 1.0F) / 20.0F * 1.6F;
@@ -32,15 +32,15 @@ public abstract class MixinRendererLivingEntity {
                 f3 = 1.0F;
             }
 
-            GLStateManager.glRotatef(f3 * this.getDeathMaxRotation(entity), 0.0F, 0.0F, 1.0F);
+            GLMatrixManager.glRotatef(f3 * this.getDeathMaxRotation(entity), 0.0F, 0.0F, 1.0F);
         }
         else if ((entity instanceof EntityLiving entityLiving) && entityLiving.hasCustomNameTag() || (entity instanceof EntityPlayer entityPlayer) && !entityPlayer.getHideCape()) {
 
             final String s = EnumChatFormatting.getTextWithoutFormattingCodes(entity.getCommandSenderName());
 
             if ((s.equals("Dinnerbone") || s.equals("Grumm"))) {
-                GLStateManager.glTranslatef(0.0F, entity.height + 0.1F, 0.0F);
-                GLStateManager.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
+                GLMatrixManager.glTranslatef(0.0F, entity.height + 0.1F, 0.0F);
+                GLMatrixManager.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
             }
         }
     }

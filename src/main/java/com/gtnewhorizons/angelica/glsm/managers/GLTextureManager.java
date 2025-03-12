@@ -37,6 +37,11 @@ public class GLTextureManager {
     public static final TextureUnitArray textures = new TextureUnitArray();
     public static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
 
+    public static void reset() {
+        textureCache.reset();
+    }
+
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
         textureCache.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         GL33C.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -384,4 +389,5 @@ public class GLTextureManager {
     public static void glTexCoord4d(double s, double t, double r, double q) {
         GL11.glTexCoord4d(s, t, r, q);
     }
+
 }

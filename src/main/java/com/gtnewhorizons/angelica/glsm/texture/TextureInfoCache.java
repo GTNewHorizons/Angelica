@@ -16,7 +16,12 @@ public class TextureInfoCache {
 	public TextureInfoCache() {
 	}
 
-	public TextureInfo getInfo(int id) {
+    public void reset() {
+        cache.clear();
+    }
+
+
+    public TextureInfo getInfo(int id) {
         if(id < 0 || !GLStateManager.isMainThread()) return null;
 		return cache.computeIfAbsent(id, TextureInfo::new);
 	}

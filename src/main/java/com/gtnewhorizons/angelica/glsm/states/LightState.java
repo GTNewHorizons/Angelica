@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -65,10 +66,10 @@ public class LightState implements ISettableState<LightState> {
         this.quadraticAttenuation = quadraticAttenuation;
 
         this.position = position;
-        this.position.mul(GLStateManager.getModelViewMatrix());
+        this.position.mul(GLMatrixManager.modelViewMatrix);
 
         this.spotDirection = spotDirection;
-        GLStateManager.getModelViewMatrix().get3x3(matrix3f);
+        GLMatrixManager.modelViewMatrix.get3x3(matrix3f);
         this.spotDirection.mul(matrix3f);
     }
 
@@ -128,14 +129,14 @@ public class LightState implements ISettableState<LightState> {
         // are big and probably more than just bypassing. We would need to track the modelview matrix it was transformed
         // with and the untransformed coordinates in addition to the final transformation.
         this.position.set(newBuffer);
-        this.position.mul(GLStateManager.getModelViewMatrix());
+        this.position.mul(GLMatrixManager.modelViewMatrix);
         GL11.glLightfv(this.light, GL11.GL_POSITION, newBuffer);
     }
 
     public void setPosition(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         this.position.set((float) vector4i.x, (float) vector4i.y, (float) vector4i.z, (float) vector4i.w);
-        this.position.mul(GLStateManager.getModelViewMatrix());
+        this.position.mul(GLMatrixManager.modelViewMatrix);
         GL11.glLightiv(this.light, GL11.GL_POSITION, newBuffer);
     }
 
@@ -143,7 +144,7 @@ public class LightState implements ISettableState<LightState> {
         // We are bypassing cache everytime for spot direction, because the necessary components to enable tracking the cache
         // are big and probably more than just bypassing. We would need to track the modelview matrix it was transformed
         // with and the untransformed coordinates in addition to the final transformation.
-        GLStateManager.getModelViewMatrix().get3x3(matrix3f);
+        GLMatrixManager.modelViewMatrix.get3x3(matrix3f);
         this.spotDirection.set(newBuffer);
         this.spotDirection.mul(matrix3f);
         GL11.glLightfv(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
@@ -151,7 +152,7 @@ public class LightState implements ISettableState<LightState> {
 
     public void setSpotDirection(IntBuffer newBuffer) {
         vector3i.set(newBuffer);
-        GLStateManager.getModelViewMatrix().get3x3(matrix3f);
+        GLMatrixManager.modelViewMatrix.get3x3(matrix3f);
         this.spotDirection.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
         this.spotDirection.mul(matrix3f);
         GL11.glLightiv(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
