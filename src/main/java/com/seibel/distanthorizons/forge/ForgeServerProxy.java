@@ -88,22 +88,32 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverTickEvent(TickEvent.ServerTickEvent event)
 	{
-        Iterator<ChunkLoadEvent> iterator = chunkLoadEvents.iterator();
-        while(iterator.hasNext())
-        {
-            ChunkLoadEvent chunkLoadEvent = iterator.next();
-            if (chunkLoadEvent.chunk.isChunkReady())
-            {
-                this.serverApi.serverChunkLoadEvent(chunkLoadEvent.chunk, chunkLoadEvent.level);
-                iterator.remove();
-            }
-            else
-            {
-                // Cleanup old events if they never got ready
-                chunkLoadEvent.age++;
-                if (chunkLoadEvent.age > 200)
-                {
+        if(event.phase == TickEvent.Phase.END) {
+            Iterator<ChunkLoadEvent> iterator = chunkLoadEvents.iterator();
+            while (iterator.hasNext()) {
+                ChunkLoadEvent chunkLoadEvent = iterator.next();
+                if (chunkLoadEvent.chunk.isChunkReady()) {
+                    this.serverApi.serverChunkLoadEvent(chunkLoadEvent.chunk, chunkLoadEvent.level);
                     iterator.remove();
+                } else {
+                    // Cleanup old events if they never got ready
+                    chunkLoadEvent.age++;
+                    if (chunkLoadEvent.age > 200) {
+                        iterator.remove();
+                    }
+                }
+            }
+
+            int count = 0;
+            while (!taskQueue.isEmpty()) {
+                ScheduledTask<?> scheduledTask = taskQueue.poll();
+                if (scheduledTask != null) {
+                    scheduledTask.run();
+                }
+                count++;
+                if (count > 5)
+                {
+                    break;
                 }
             }
         }
@@ -165,22 +175,6 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         CompletableFuture<T> future = new CompletableFuture<>();
         taskQueue.add(new ScheduledTask<>(task, future));
         return future;
-    }
-
-    @SubscribeEvent
-    public void onServerTick(TickEvent.ServerTickEvent event) {
-        int count = 0;
-        while (!taskQueue.isEmpty()) {
-            ScheduledTask<?> scheduledTask = taskQueue.poll();
-            if (scheduledTask != null) {
-                scheduledTask.run();
-            }
-            count++;
-            if (count > 5)
-            {
-                break;
-            }
-        }
     }
 
     private static class ScheduledTask<T> {
