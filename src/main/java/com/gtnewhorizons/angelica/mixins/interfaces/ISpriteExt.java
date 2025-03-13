@@ -11,6 +11,4 @@ public interface ISpriteExt {
     void callUpload(int frameIndex);
 
     AnimationMetadataSection getMetadata();
-
-    int[] getSpriteData();
 }
