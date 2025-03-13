@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.MinecraftAccessor;
 import com.seibel.distanthorizons.common.wrappers.WrapperFactory;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
@@ -41,6 +40,7 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
+import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.minecraft.client.Minecraft;
@@ -100,7 +100,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public Vec3d getCameraExactPosition()
     {
-        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         Camera camera = new Camera(MC.renderViewEntity, frameTime);
         Vector3d projectedView = camera.getPos();
 
@@ -127,7 +127,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     {
         if (!MC.theWorld.provider.hasNoSky)
         {
-            float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+            float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
             Vec3 color = MC.theWorld.provider.getSkyColor(MC.renderViewEntity, frameTime);
 
             return new Color((float) color.xCoord, (float) color.yCoord, (float) color.zCoord);

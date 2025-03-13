@@ -24,6 +24,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
+import com.seibel.distanthorizons.interfaces.IMixinEntityRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.lwjgl.opengl.GL32;
@@ -36,8 +37,8 @@ public class LightMapWrapper implements ILightMapWrapper
     @Override
     public void bind()
     {
-        EntityRendererAccessor entityRendererAccessor = (EntityRendererAccessor)Minecraft.getMinecraft().entityRenderer;
-        DynamicTexture lightmapTexture = entityRendererAccessor.getLightmapTexture();
+        IMixinEntityRenderer entityRenderer = (IMixinEntityRenderer)Minecraft.getMinecraft().entityRenderer;
+        DynamicTexture lightmapTexture = entityRenderer.getLightmapTexture();
         GLMC.glActiveTexture(GL32.GL_TEXTURE0);
         oldTexture = GLStateManager.getBoundTexture();
         GLMC.glBindTexture(lightmapTexture.getGlTextureId());

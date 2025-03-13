@@ -33,7 +33,6 @@ public enum Mixins {
             ,"angelica.optimizations.MixinRendererLivingEntity"
             ,"angelica.MixinFMLClientHandler"
             ,"angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
-            ,"angelica.NetHandlerPlayClientMixin"
         )
     ),
     ANGELICA_VBO(
@@ -189,6 +188,15 @@ public enum Mixins {
             "angelica.zoom.MixinMinecraft_Zoom",
             "angelica.zoom.MixinMouseFilter"
         )),
+
+    DISTANTHORIZONS(new Builder("Distant Horizons").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
+        .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableDistantHorizons).addMixinClasses(
+            "distanthorizons.MixinMinecraft",
+            "distanthorizons.MixinEntityRenderer",
+            "distanthorizons.MixinTextureAtlasSprite",
+            "distanthorizons.MixinNetHandlerPlayClient"
+        )
+    ),
 
     HUD_CACHING(new Builder("Renders the HUD elements 20 times per second maximum to improve performance")
         .addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT).setPhase(Phase.EARLY)

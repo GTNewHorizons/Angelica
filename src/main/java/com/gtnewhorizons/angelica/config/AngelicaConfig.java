@@ -37,6 +37,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableIris;
 
+    @Config.Comment("Enable Distant Horizons [Requires Sodium]")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableDistantHorizons;
+
     @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart

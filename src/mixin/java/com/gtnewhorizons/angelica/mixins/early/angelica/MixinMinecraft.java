@@ -5,25 +5,22 @@ import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
-import com.gtnewhorizons.angelica.mixins.interfaces.MinecraftAccessor;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
-import net.minecraft.util.Timer;
 import org.lwjglx.input.Keyboard;
 import org.lwjglx.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
-public abstract class MixinMinecraft implements MinecraftAccessor {
+public abstract class MixinMinecraft {
     @Shadow
     public GameSettings gameSettings;
 
@@ -80,8 +77,4 @@ public abstract class MixinMinecraft implements MinecraftAccessor {
     private void angelica$setShowFpsGraph(CallbackInfo ci) {
         ((IGameSettingsExt) gameSettings).angelica$setShowFpsGraph(Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU));
     }
-
-    @Override
-    @Accessor("timer")
-    public abstract Timer getTimer();
 }

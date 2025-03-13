@@ -6,13 +6,13 @@ import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.interfaces.MinecraftAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import jss.notfine.core.SettingsManager;
 import lombok.Getter;
@@ -277,9 +277,11 @@ public class SodiumWorldRenderer {
 
     void drawLods(BlockRenderPass pass, boolean fade)
     {
+        if (!AngelicaConfig.enableDistantHorizons)
+            return;
         Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
         Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
-        float frameTime = ((MinecraftAccessor)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         if (pass == BlockRenderPass.CUTOUT_MIPPED)
         {
