@@ -8,9 +8,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glAlphaFunc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glDepthFunc;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
 

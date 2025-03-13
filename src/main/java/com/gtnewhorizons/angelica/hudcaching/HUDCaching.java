@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.hudcaching;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
@@ -14,8 +15,6 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
-
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
@@ -126,14 +125,14 @@ public class HUDCaching {
         GLStateManager.enableBlend();
 
         // reset the color that may be applied by some items
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLLightingManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
         // render bits that were captured when rendering into cache
         final GuiIngameAccessor gui = (GuiIngameAccessor) ingame;
         if (renderVignetteCaptured) {
             gui.callRenderVignette(getMinecraft().thePlayer.getBrightness(partialTicks), width, height);
         } else {
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+            GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
         if (ingame instanceof GuiIngameForge) {
             final GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
@@ -152,7 +151,7 @@ public class HUDCaching {
             if (renderCrosshairsCaptured) {
                 if (ModStatus.isXaerosMinimapLoaded) {
                     // this fixes the crosshair going invisible when no lines are being drawn under the minimap
-                    GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+                    GLLightingManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 }
                 guiForge.callRenderCrosshairs(width, height);
             }
@@ -180,12 +179,12 @@ public class HUDCaching {
         // render cached frame
         final Tessellator tessellator = TessellatorManager.get();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLLightingManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         framebuffer.bindFramebufferTexture();
         drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
 
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         getMinecraft().getTextureManager().bindTexture(Gui.icons);
     }
 
@@ -199,10 +198,10 @@ public class HUDCaching {
     }
 
     private void fixGLStateBeforeRenderingCacheImpl() {
-        GLStateManager.glDepthMask(true);
+        GLLightingManager.glDepthMask(true);
         GLStateManager.enableDepthTest();
         GLStateManager.enableAlphaTest();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.disableBlend();
     }
 
@@ -220,7 +219,7 @@ public class HUDCaching {
     }
 
     private void drawTexturedRect(Tessellator tessellator, float width, float height) {
-        GLTextureManager.enableTexture2D();
+        GLStateManager.enableTexture2D();
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         tessellator.startDrawingQuads();

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -47,10 +48,10 @@ public class Feature {
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
     static {
         attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
-              GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
-            , GLStateManager.alphaState // Alpha test function and reference value
-            , GLStateManager.blendMode  // GL_BLEND enable bit
-            , GLStateManager.blendState // Blending source and destination functions
+              GLLightingManager.alphaTest  // GL_ALPHA_TEST enable bit
+            , GLLightingManager.alphaState // Alpha test function and reference value
+            , GLLightingManager.blendMode  // GL_BLEND enable bit
+            , GLLightingManager.blendState // Blending source and destination functions
             // Constant blend color
             // Blending equation
             // GL_DITHER enable bit
@@ -58,11 +59,11 @@ public class Feature {
             // GL_COLOR_LOGIC_OP enable bit
             // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
-            , GLStateManager.colorMask   // Color-mode and index-mode writemasks
-            , GLStateManager.clearColor  // Color-mode and index-mode clear values
+            , GLLightingManager.colorMask   // Color-mode and index-mode writemasks
+            , GLLightingManager.clearColor  // Color-mode and index-mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
-              GLStateManager.color  // Current RGBA color
+              GLLightingManager.color  // Current RGBA color
             // Current color index
             // Current normal vector
             // Current texture coordinates
@@ -74,31 +75,31 @@ public class Feature {
             // GL_EDGE_FLAG flag
         ));
         attribToFeatures.put(GL11.GL_DEPTH_BUFFER_BIT, ImmutableSet.of(
-              GLStateManager.depthTest     // GL_DEPTH_TEST enable bit
-            , GLStateManager.depthState    // Depth buffer test function
+              GLLightingManager.depthTest     // GL_DEPTH_TEST enable bit
+            , GLLightingManager.depthState    // Depth buffer test function
             // Depth buffer clear value
             // GL_DEPTH_WRITEMASK enable bit
         ));
 
         final HashSet<IStateStack<?>> enableBits = new HashSet<>(ImmutableSet.of(
-              GLStateManager.alphaTest // GL_ALPHA_TEST flag
+              GLLightingManager.alphaTest // GL_ALPHA_TEST flag
             // GL_AUTO_NORMAL flag
-            , GLStateManager.blendMode // GL_BLEND flag
+            , GLLightingManager.blendMode // GL_BLEND flag
             // Enable bits for the user-definable clipping planes
-            , GLStateManager.colorMaterial // GL_COLOR_MATERIAL
-            , GLStateManager.cullState // GL_CULL_FACE flag
-            , GLStateManager.depthTest // GL_DEPTH_TEST flag
+            , GLLightingManager.colorMaterial // GL_COLOR_MATERIAL
+            , GLLightingManager.cullState // GL_CULL_FACE flag
+            , GLLightingManager.depthTest // GL_DEPTH_TEST flag
             // GL_DITHER flag
             , GLStateManager.fogMode // GL_FOG flag
-            , GLStateManager.lightStates[0] // GL_LIGHT0
-            , GLStateManager.lightStates[1] // GL_LIGHT1
-            , GLStateManager.lightStates[2] // GL_LIGHT2
-            , GLStateManager.lightStates[3] // GL_LIGHT3
-            , GLStateManager.lightStates[4] // GL_LIGHT4
-            , GLStateManager.lightStates[5] // GL_LIGHT5
-            , GLStateManager.lightStates[6] // GL_LIGHT6
-            , GLStateManager.lightStates[7] // GL_LIGHT7
-            , GLStateManager.lightingState // GL_LIGHTING flag
+            , GLLightingManager.lightStates[0] // GL_LIGHT0
+            , GLLightingManager.lightStates[1] // GL_LIGHT1
+            , GLLightingManager.lightStates[2] // GL_LIGHT2
+            , GLLightingManager.lightStates[3] // GL_LIGHT3
+            , GLLightingManager.lightStates[4] // GL_LIGHT4
+            , GLLightingManager.lightStates[5] // GL_LIGHT5
+            , GLLightingManager.lightStates[6] // GL_LIGHT6
+            , GLLightingManager.lightStates[7] // GL_LIGHT7
+            , GLLightingManager.lightingState // GL_LIGHTING flag
             // GL_LINE_SMOOTH flag
             // GL_LINE_STIPPLE flag
             // GL_INDEX_LOGIC_OP flag
@@ -156,36 +157,36 @@ public class Feature {
             // GL_TEXTURE_COMPRESSION_HINT setting
         ));
         attribToFeatures.put(GL11.GL_LIGHTING_BIT, ImmutableSet.of(
-            GLStateManager.colorMaterial // GL_COLOR_MATERIAL enable bit
-            , GLStateManager.colorMaterialFace // GL_COLOR_MATERIAL_FACE value
-            , GLStateManager.colorMaterialParameter // Color material parameters that are tracking the current color
-            , GLStateManager.lightModel // Ambient scene color, GL_LIGHT_MODEL_LOCAL_VIEWER, GL_LIGHT_MODEL_TWO_SIDE
-            , GLStateManager.lightingState  // GL_LIGHTING enable bit
+            GLLightingManager.colorMaterial // GL_COLOR_MATERIAL enable bit
+            , GLLightingManager.colorMaterialFace // GL_COLOR_MATERIAL_FACE value
+            , GLLightingManager.colorMaterialParameter // Color material parameters that are tracking the current color
+            , GLLightingManager.lightModel // Ambient scene color, GL_LIGHT_MODEL_LOCAL_VIEWER, GL_LIGHT_MODEL_TWO_SIDE
+            , GLLightingManager.lightingState  // GL_LIGHTING enable bit
             // Enable bit for each light
-            , GLStateManager.lightStates[0] // GL_LIGHT0
-            , GLStateManager.lightStates[1] // GL_LIGHT1
-            , GLStateManager.lightStates[2] // GL_LIGHT2
-            , GLStateManager.lightStates[3] // GL_LIGHT3
-            , GLStateManager.lightStates[4] // GL_LIGHT4
-            , GLStateManager.lightStates[5] // GL_LIGHT5
-            , GLStateManager.lightStates[6] // GL_LIGHT6
-            , GLStateManager.lightStates[7] // GL_LIGHT7
+            , GLLightingManager.lightStates[0] // GL_LIGHT0
+            , GLLightingManager.lightStates[1] // GL_LIGHT1
+            , GLLightingManager.lightStates[2] // GL_LIGHT2
+            , GLLightingManager.lightStates[3] // GL_LIGHT3
+            , GLLightingManager.lightStates[4] // GL_LIGHT4
+            , GLLightingManager.lightStates[5] // GL_LIGHT5
+            , GLLightingManager.lightStates[6] // GL_LIGHT6
+            , GLLightingManager.lightStates[7] // GL_LIGHT7
             // Ambient, diffuse, and specular intensity for each light
             // Direction, position, exponent, and cutoff angle for each light
             // Constant, linear, and quadratic attenuation factors for each light
-            , GLStateManager.lightDataStates[0]
-            , GLStateManager.lightDataStates[1]
-            , GLStateManager.lightDataStates[2]
-            , GLStateManager.lightDataStates[3]
-            , GLStateManager.lightDataStates[4]
-            , GLStateManager.lightDataStates[5]
-            , GLStateManager.lightDataStates[6]
-            , GLStateManager.lightDataStates[7]
+            , GLLightingManager.lightDataStates[0]
+            , GLLightingManager.lightDataStates[1]
+            , GLLightingManager.lightDataStates[2]
+            , GLLightingManager.lightDataStates[3]
+            , GLLightingManager.lightDataStates[4]
+            , GLLightingManager.lightDataStates[5]
+            , GLLightingManager.lightDataStates[6]
+            , GLLightingManager.lightDataStates[7]
             // Ambient, diffuse, specular, and emissive color for each material
             // Ambient, diffuse, and specular color indices for each material
             // Specular exponent for each material
-            , GLStateManager.frontMaterial
-            , GLStateManager.backMaterial
+            , GLLightingManager.frontMaterial
+            , GLLightingManager.backMaterial
             , GLStateManager.shadeModelState // GL_SHADE_MODEL setting
         ));
         attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(
@@ -221,7 +222,7 @@ public class Feature {
             // Point size
         ));
         attribToFeatures.put(GL11.GL_POLYGON_BIT, ImmutableSet.of(
-              GLStateManager.cullState // GL_CULL_FACE enable bit
+              GLLightingManager.cullState // GL_CULL_FACE enable bit
             // GL_CULL_FACE_MODE value
             // GL_FRONT_FACE indicator
             // GL_POLYGON_MODE setting
@@ -277,7 +278,7 @@ public class Feature {
             // Enable bits for the user-definable clipping planes
               GLMatrixManager.matrixMode
             // GL_NORMALIZE flag
-            , GLStateManager.rescaleNormalState // GL_RESCALE_NORMAL flag
+            , GLLightingManager.rescaleNormalState // GL_RESCALE_NORMAL flag
         ));
         attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
             // Depth range (near and far)

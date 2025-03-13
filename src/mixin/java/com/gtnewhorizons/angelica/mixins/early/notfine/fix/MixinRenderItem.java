@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.fix;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import jss.notfine.core.Settings;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderItem;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,7 +27,7 @@ public abstract class MixinRenderItem {
 
         float layerUVNoise = 4.0F;
 
-        GLStateManager.tryBlendFuncSeparate(772, 1, 0, 1);
+        GLLightingManager.tryBlendFuncSeparate(772, 1, 0, 1);
 
         //for(int layer = 0; layer < 2; ++layer) {
         	final int timeUVDenominator = 3000 /*+ layer * 1873*/;
@@ -56,7 +55,7 @@ public abstract class MixinRenderItem {
             //layerUVNoise = -1.0F;
         //}
 
-        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GLLightingManager.tryBlendFuncSeparate(770, 771, 1, 0);
     }
 
     @Shadow public float zLevel;

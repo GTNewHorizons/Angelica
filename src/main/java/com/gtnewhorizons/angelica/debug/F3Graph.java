@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.debug;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBlendFunc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glBlendFunc;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glColor4f;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDrawArrays;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;

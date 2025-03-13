@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -22,38 +22,38 @@ public abstract class RenderPhase {
     });
     protected static final Transparency ADDITIVE_TRANSPARENCY = new Transparency("additive_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLLightingManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
     });
     protected static final Transparency LIGHTNING_TRANSPARENCY = new Transparency("lightning_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        GLLightingManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
     });
     protected static final Transparency GLINT_TRANSPARENCY = new Transparency("glint_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
     });
     protected static final Transparency CRUMBLING_TRANSPARENCY = new Transparency("crumbling_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
     }, () -> {
         GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
     });
     protected static final Transparency TRANSLUCENT_TRANSPARENCY = new Transparency("translucent_transparency", () -> {
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }, () -> {
         GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
     });
     protected static final Alpha ZERO_ALPHA = new Alpha(0.0F);
     protected static final Alpha ONE_TENTH_ALPHA = new Alpha(0.003921569F);
@@ -214,20 +214,20 @@ public abstract class RenderPhase {
         public WriteMaskState(boolean color, boolean depth) {
             super("write_mask_state", () -> {
                 if (!depth) {
-                    GLStateManager.glDepthMask(depth);
+                    GLLightingManager.glDepthMask(depth);
                 }
 
                 if (!color) {
-                    GLStateManager.glColorMask(color, color, color, color);
+                    GLLightingManager.glColorMask(color, color, color, color);
                 }
 
             }, () -> {
                 if (!depth) {
-                    GLStateManager.glDepthMask(true);
+                    GLLightingManager.glDepthMask(true);
                 }
 
                 if (!color) {
-                    GLStateManager.glColorMask(true, true, true, true);
+                    GLLightingManager.glColorMask(true, true, true, true);
                 }
 
             });
@@ -267,13 +267,13 @@ public abstract class RenderPhase {
             super("depth_test", () -> {
                 if (i != GL11.GL_ALWAYS) {
                     GLStateManager.enableDepthTest();
-                    GLStateManager.glDepthFunc(i);
+                    GLLightingManager.glDepthFunc(i);
                 }
 
             }, () -> {
                 if (i != GL11.GL_ALWAYS) {
                     GLStateManager.disableDepthTest();
-                    GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                    GLLightingManager.glDepthFunc(GL11.GL_LEQUAL);
                 }
 
             });
@@ -411,7 +411,7 @@ public abstract class RenderPhase {
 
         public Texture(ResourceLocation id, boolean bilinear, boolean mipmap) {
             super("texture", () -> {
-                GLTextureManager.enableTexture2D();
+                GLStateManager.enableTexture2D();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
                 //GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
@@ -423,7 +423,7 @@ public abstract class RenderPhase {
         }
 
         public Texture() {
-            super("texture", GLTextureManager::disableTexture2D, GLTextureManager::enableTexture2D);
+            super("texture", GLStateManager::disableTexture2D, GLStateManager::enableTexture2D);
             this.id = Optional.empty();
             this.bilinear = false;
             this.mipmap = false;

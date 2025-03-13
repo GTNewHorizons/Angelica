@@ -9,9 +9,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL33C;
 
 import java.nio.ByteBuffer;
@@ -400,16 +397,16 @@ public class GLSM_TextureManager_UnitTest extends OpenGLTestBase {
         verifyState(GL33C.GL_TEXTURE_2D, false, "Texture 2D should initially be disabled");
 
         // Enable texture 2D
-        GLTextureManager.enableTexture2D();
+        GLStateManager.enableTexture2D();
         verifyState(GL33C.GL_TEXTURE_2D, true, "Texture 2D should be enabled");
 
         // Disable texture 2D
-        GLTextureManager.disableTexture2D();
+        GLStateManager.disableTexture2D();
         verifyState(GL33C.GL_TEXTURE_2D, false, "Texture 2D should be disabled again");
 
         // Check with multiple texture units
         GLTextureManager.glActiveTexture(GL33C.GL_TEXTURE1);
-        GLTextureManager.enableTexture2D();
+        GLStateManager.enableTexture2D();
         verifyState(GL33C.GL_TEXTURE_2D, true, "Texture 2D should be enabled on unit 1");
 
         GLTextureManager.glActiveTexture(GL33C.GL_TEXTURE0);
@@ -417,6 +414,6 @@ public class GLSM_TextureManager_UnitTest extends OpenGLTestBase {
 
         // Clean up
         GLTextureManager.glActiveTexture(GL33C.GL_TEXTURE1);
-        GLTextureManager.disableTexture2D();
+        GLStateManager.disableTexture2D();
     }
 }

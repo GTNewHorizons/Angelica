@@ -7,6 +7,7 @@ import static org.lwjgl.system.MemoryUtil.memAllocInt;
 import static org.lwjgl.system.MemoryUtil.memRealloc;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
@@ -250,10 +251,10 @@ public class BatchingFontRenderer {
         boolean textureChanged = false;
 
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
-        GLTextureManager.enableTexture2D();
+        GLStateManager.enableTexture2D();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
         GL11.glTexCoordPointer(2, GL11.GL_FLOAT, 0, batchVtxTexCoords);
@@ -262,7 +263,7 @@ public class BatchingFontRenderer {
         GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
         GL11.glVertexPointer(2, GL11.GL_FLOAT, 0, batchVtxPositions);
         GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLLightingManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();

@@ -7,7 +7,7 @@ import net.minecraft.entity.Entity;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.opengl.GL11;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glPopMatrix;

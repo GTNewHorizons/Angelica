@@ -28,6 +28,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import jss.notfine.core.Settings;
@@ -312,7 +313,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLStateManager.disableCullFace();
 
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
         // Color multiplier.
         Vec3 color = mc.theWorld.getCloudColour(partialTicks);
@@ -341,7 +342,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         GLTextureManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
         GLTextureManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
-        GLTextureManager.enableTexture2D();
+        GLStateManager.enableTexture2D();
 
         // Bind the clouds texture last so the shader's sampler2D is correct.
         GLTextureManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
@@ -350,20 +351,20 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         vbo.setupState();
 
         // Depth pass to prevent insides rendering from the outside.
-        GLStateManager.glColorMask(false, false, false, false);
+        GLLightingManager.glColorMask(false, false, false, false);
 
         vbo.draw();
 
         // Full render.
         if (!mc.gameSettings.anaglyph) {
-            GLStateManager.glColorMask(true, true, true, true);
+            GLLightingManager.glColorMask(true, true, true, true);
         } else {
             switch (EntityRenderer.anaglyphField) {
                 case 0:
-                    GLStateManager.glColorMask(false, true, true, true);
+                    GLLightingManager.glColorMask(false, true, true, true);
                     break;
                 case 1:
-                    GLStateManager.glColorMask(true, false, false, true);
+                    GLLightingManager.glColorMask(true, false, false, true);
                     break;
             }
         }
@@ -372,13 +373,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (WIREFRAME) {
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
             GL11.glLineWidth(2.0F);
-            GLTextureManager.disableTexture2D();
-            GLStateManager.glDepthMask(false);
+            GLStateManager.disableTexture2D();
+            GLLightingManager.glDepthMask(false);
             GLStateManager.disableFog();
             vbo.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-            GLStateManager.glDepthMask(true);
-            GLTextureManager.enableTexture2D();
+            GLLightingManager.glDepthMask(true);
+            GLStateManager.enableTexture2D();
             GLStateManager.enableFog();
         }
 
@@ -387,7 +388,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         // Disable our coloring.
         GLTextureManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
-        GLTextureManager.disableTexture2D();
+        GLStateManager.disableTexture2D();
         GLTextureManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
 
         // Reset texture matrix.

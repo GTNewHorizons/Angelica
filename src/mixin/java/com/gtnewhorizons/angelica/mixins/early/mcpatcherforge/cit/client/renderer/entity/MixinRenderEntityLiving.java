@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cit.client.renderer.entity;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBlendFunc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthFunc;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDepthMask;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glBlendFunc;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glDepthFunc;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glDepthMask;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glLoadIdentity;

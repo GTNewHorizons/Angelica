@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -148,7 +149,7 @@ public class FinalPassRenderer {
 	public void renderFinalPass() {
         GLStateManager.disableBlend();
         GLStateManager.disableAlphaTest();
-        GLStateManager.glDepthMask(false);
+        GLLightingManager.glDepthMask(false);
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 		final int baseWidth = main.framebufferWidth;

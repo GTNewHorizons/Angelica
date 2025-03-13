@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.client.gui.widgets;
 
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
@@ -35,7 +35,7 @@ public abstract class AbstractWidget implements Drawable, Element {
     protected void drawQuads(Consumer<Tessellator> consumer) {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
 
         final Tessellator tessellator = Tessellator.instance;
         tessellator.startDrawingQuads();

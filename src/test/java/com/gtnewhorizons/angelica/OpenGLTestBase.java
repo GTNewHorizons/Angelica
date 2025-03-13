@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -142,7 +143,7 @@ public abstract class OpenGLTestBase {
         final FloatBuffer defaultAmbient = BufferUtils.createFloatBuffer(4);
         defaultAmbient.put(new float[]{0.2f, 0.2f, 0.2f, 1.0f});
         defaultAmbient.flip();
-        GLStateManager.glMaterialfv(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, defaultAmbient);
+        GLLightingManager.glMaterialfv(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, defaultAmbient);
 
         // Reset GLStateManager
         GLStateManager.reset();

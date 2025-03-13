@@ -3,7 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -119,7 +119,7 @@ public class HandRenderer {
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
         mc.entityRenderer.disableLightmap(tickDelta);
 
-        GLStateManager.defaultBlendFunc();
+        GLLightingManager.defaultBlendFunc();
         GL11.glDepthMask(false);
         GL11.glPopMatrix();
 

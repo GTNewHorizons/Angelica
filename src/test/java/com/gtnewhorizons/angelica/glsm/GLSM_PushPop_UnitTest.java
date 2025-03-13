@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.junit.jupiter.api.Test;
@@ -67,14 +68,14 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         GLStateManager.glDisable(GL11.GL_DITHER);
         GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
         GLStateManager.glEnable(GL11.GL_INDEX_LOGIC_OP);
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glBlendColor(1f, 1f, 1f, 1f);
-        GLStateManager.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT);
+        GLLightingManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLLightingManager.glBlendColor(1f, 1f, 1f, 1f);
+        GLLightingManager.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT);
         GLStateManager.glDrawBuffer(GL11.GL_FRONT_AND_BACK);
         GLStateManager.glLogicOp(GL11.GL_OR);
-        GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
-        GLStateManager.glColorMask(false, false, false, false);
-        GLStateManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
+        GLLightingManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
+        GLLightingManager.glColorMask(false, false, false, false);
+        GLLightingManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
 
 
         verifyIsEnabled(GL11.GL_ALPHA_TEST, true, "Alpha Test Enable");
@@ -116,7 +117,7 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, FLOAT_ARRAY_4_0, "Color Clear Value - Reset");
 
         // Reset State
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLLightingManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     }
 
@@ -132,7 +133,7 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         verifyState(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Initial Raster Texture Coordinates");
 
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
-        GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+        GLLightingManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
         // Apparently glIndex is not implemented in lwjgl2?
         GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
         GLTextureManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
@@ -175,9 +176,9 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
 
         GLStateManager.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
         GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_NEVER);
-        GLStateManager.glClearDepth(0.5f); // Not currently Implemented in GLSM
-        GLStateManager.glDepthMask(false);
+        GLLightingManager.glDepthFunc(GL11.GL_NEVER);
+        GLLightingManager.glClearDepth(0.5f); // Not currently Implemented in GLSM
+        GLLightingManager.glDepthMask(false);
 
         verifyState(GL11.GL_DEPTH_TEST, true, "Depth Test");
         verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_NEVER, "Depth Function");
@@ -279,9 +280,9 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         //we're specifically trying to test GL_ENABLE_BIT here.
         FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
         floatBuffer.put(0.2F).put(0.2F).put(0.2F).put(1.0F).flip();
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, floatBuffer);
+        GLLightingManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, floatBuffer);
         floatBuffer.put(0.8F).put(0.8F).put(0.8F).put(1.0F).flip();
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, floatBuffer);
+        GLLightingManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, floatBuffer);
 
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
 
@@ -331,20 +332,20 @@ public class GLSM_PushPop_UnitTest extends OpenGLTestBase {
         }
 
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
-        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
+        GLLightingManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
         // Ambient scene color ??
-        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
-        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
+        GLLightingManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
+        GLLightingManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
         floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
-        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
-        GLStateManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
+        GLLightingManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
+        GLLightingManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
+        GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
+        GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
+        GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
 
         floatBuffer.put(FLOAT_ARRAY_4_0010).flip();
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
+        GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
         floatBuffer.put(FLOAT_ARRAY_4_0).flip();
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 

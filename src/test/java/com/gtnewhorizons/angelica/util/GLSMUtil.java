@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.util;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -127,7 +128,7 @@ public class GLSMUtil {
         glFloatBuffer.clear();
         GL11.glGetLightfv(glLight, pname, glFloatBuffer);
         glsmFloatBuffer.clear();
-        GLStateManager.glGetLight(glLight, pname, glsmFloatBuffer);
+        GLLightingManager.glGetLight(glLight, pname, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
@@ -138,7 +139,7 @@ public class GLSMUtil {
         glFloatBuffer.clear();
         GL11.glGetMaterialfv(face, pname, glFloatBuffer);
         glsmFloatBuffer.clear();
-        GLStateManager.glGetMaterial(face, pname, glsmFloatBuffer);
+        GLLightingManager.glGetMaterial(face, pname, glsmFloatBuffer);
         IntStream.range (0, expected.length).forEach(i -> assertAll(message,
             () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
             () -> assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)

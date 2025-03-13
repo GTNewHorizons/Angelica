@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
@@ -53,7 +53,7 @@ public abstract class MixinRenderGlobal {
         Tessellator tessellator = Tessellator.instance;
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_BLEND);
-        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GLLightingManager.tryBlendFuncSeparate(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
@@ -94,15 +94,15 @@ public abstract class MixinRenderGlobal {
 
         for (int loop = 0; loop < 2; ++loop) {
             if (loop == 0) {
-                GLStateManager.glColorMask(false, false, false, false);
+                GLLightingManager.glColorMask(false, false, false, false);
             } else if (mc.gameSettings.anaglyph) {
                 if (EntityRenderer.anaglyphField == 0) {
-                    GLStateManager.glColorMask(false, true, true, true);
+                    GLLightingManager.glColorMask(false, true, true, true);
                 } else {
-                    GLStateManager.glColorMask(true, false, false, true);
+                    GLLightingManager.glColorMask(true, false, false, true);
                 }
             } else {
-                GLStateManager.glColorMask(true, true, true, true);
+                GLLightingManager.glColorMask(true, true, true, true);
             }
 
             for(int chunkX = -renderRadius + 1; chunkX <= renderRadius; ++chunkX) {
@@ -185,7 +185,7 @@ public abstract class MixinRenderGlobal {
             }
         }
 
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLLightingManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glEnable(GL11.GL_CULL_FACE);
     }
@@ -194,7 +194,7 @@ public abstract class MixinRenderGlobal {
         Tessellator tessellator = Tessellator.instance;
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_BLEND);
-        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GLLightingManager.tryBlendFuncSeparate(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
@@ -239,7 +239,7 @@ public abstract class MixinRenderGlobal {
         tessellator.addVertexWithUV(neg, cameraRelativeY, neg, startXUv, startZUv);
         tessellator.draw();
 
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLLightingManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glEnable(GL11.GL_CULL_FACE);
     }

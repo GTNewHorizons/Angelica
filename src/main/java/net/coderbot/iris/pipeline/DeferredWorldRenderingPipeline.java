@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.Iris;
@@ -512,10 +513,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			case TERRAIN_SOLID, TERRAIN_CUTOUT, TERRAIN_CUTOUT_MIPPED:
 				return RenderCondition.TERRAIN_OPAQUE;
 			case ENTITIES:
-                if (GLStateManager.getBlendState().getSrcRgb() == SRC_ALPHA &&
-                    GLStateManager.getBlendState().getSrcAlpha() == ONE_MINUS_SRC_ALPHA &&
-                    GLStateManager.getBlendState().getDstRgb() == ONE &&
-                    GLStateManager.getBlendState().getDstAlpha() == ONE_MINUS_SRC_ALPHA)
+                if (GLLightingManager.blendState.getSrcRgb() == SRC_ALPHA &&
+                    GLLightingManager.blendState.getSrcAlpha() == ONE_MINUS_SRC_ALPHA &&
+                    GLLightingManager.blendState.getDstRgb() == ONE &&
+                    GLLightingManager.blendState.getDstAlpha() == ONE_MINUS_SRC_ALPHA)
                 {
 					return RenderCondition.ENTITIES_TRANSLUCENT;
 				} else {

@@ -1,6 +1,6 @@
 package com.prupe.mcpatcher.mal.resource;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
@@ -20,7 +20,7 @@ public class GLAPI {
         if (useGlBlendFuncSeparate) {
             GL14.glBlendFuncSeparate(src, dst, srcAlpha, dstAlpha);
         } else {
-            GLStateManager.glBlendFunc(src, dst);
+            GLLightingManager.glBlendFunc(src, dst);
         }
     }
 }

@@ -9,7 +9,7 @@ import org.lwjgl.opengl.GL12;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+import static com.gtnewhorizons.angelica.glsm.utils.GLHelper.i2f;
 
 public class LightModelState implements ISettableState<LightModelState> {
 

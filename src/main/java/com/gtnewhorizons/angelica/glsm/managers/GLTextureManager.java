@@ -8,10 +8,6 @@ import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
-import lombok.Getter;
-import net.coderbot.iris.Iris;
-import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
-import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
@@ -70,46 +66,6 @@ public class GLTextureManager {
         }
 
         GL33C.glDeleteTextures(ids);
-    }
-
-    public static void enableTexture2D() {
-        final int textureUnit = GLStateManager.getActiveTextureUnit();
-        if (AngelicaConfig.enableIris) {
-            // Iris
-            boolean updatePipeline = false;
-            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
-                StateTracker.INSTANCE.albedoSampler = true;
-                updatePipeline = true;
-            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
-                StateTracker.INSTANCE.lightmapSampler = true;
-                updatePipeline = true;
-            }
-
-            if (updatePipeline) {
-                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
-            }
-        }
-        textures.getTextureUnitStates(textureUnit).enable();
-    }
-
-    public static void disableTexture2D() {
-        final int textureUnit = GLStateManager.getActiveTextureUnit();
-        if (AngelicaConfig.enableIris) {
-            // Iris
-            boolean updatePipeline = false;
-            if (textureUnit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
-                StateTracker.INSTANCE.albedoSampler = false;
-                updatePipeline = true;
-            } else if (textureUnit == IrisSamplers.LIGHTMAP_TEXTURE_UNIT) {
-                StateTracker.INSTANCE.lightmapSampler = false;
-                updatePipeline = true;
-            }
-
-            if (updatePipeline) {
-                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
-            }
-        }
-        textures.getTextureUnitStates(textureUnit).disable();
     }
 
     // Iris Functions

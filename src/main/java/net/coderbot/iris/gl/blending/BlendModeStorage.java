@@ -2,6 +2,7 @@ package net.coderbot.iris.gl.blending;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
@@ -16,7 +17,7 @@ public class BlendModeStorage {
 		if (!blendLocked) {
 			// Only save the previous state if the blend mode wasn't already locked
 			originalBlendEnable = GL11.glGetBoolean(GL11.GL_BLEND);
-            originalBlend.set(GLStateManager.getBlendState());
+            originalBlend.set(GLLightingManager.blendState);
 		}
 
 		blendLocked = false;
@@ -36,7 +37,7 @@ public class BlendModeStorage {
 		if (!blendLocked) {
 			// Only save the previous state if the blend mode wasn't already locked
             originalBlendEnable = GL11.glGetBoolean(GL11.GL_BLEND);
-            originalBlend.set(GLStateManager.getBlendState());
+            originalBlend.set(GLLightingManager.blendState);
 		}
 
 		if (override == null) {
@@ -73,6 +74,6 @@ public class BlendModeStorage {
             GLStateManager.disableBlend();
 		}
 
-        GLStateManager.tryBlendFuncSeparate(originalBlend.getSrcRgb(), originalBlend.getDstRgb(), originalBlend.getSrcAlpha(), originalBlend.getDstAlpha());
+        GLLightingManager.tryBlendFuncSeparate(originalBlend.getSrcRgb(), originalBlend.getDstRgb(), originalBlend.getSrcAlpha(), originalBlend.getDstAlpha());
 	}
 }

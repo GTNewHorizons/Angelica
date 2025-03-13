@@ -10,7 +10,7 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glColor4f;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glColor4f;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 
 public class LineRenderer {

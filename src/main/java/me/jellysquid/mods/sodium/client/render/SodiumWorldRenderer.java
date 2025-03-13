@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import jss.notfine.core.SettingsManager;
@@ -283,7 +284,7 @@ public class SodiumWorldRenderer {
         this.chunkRenderManager.renderLayer(matrixStack, pass, x, y, z);
 
         //pass.endDrawing();
-        GLStateManager.clearCurrentColor();
+        GLLightingManager.clearCurrentColor();
     }
 
     public void reload() {

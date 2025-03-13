@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cit.client.renderer.entity;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -53,7 +53,7 @@ public abstract class MixinRenderItem extends Render {
         remap = false)
     private void modifyRenderItemIntoGUI1(FontRenderer fontRenderer, TextureManager manager, ItemStack itemStack, int x,
         int y, boolean renderEffect, CallbackInfo ci) {
-        GLStateManager.glDepthMask(false);
+        GLLightingManager.glDepthMask(false);
     }
 
     @Inject(
@@ -62,7 +62,7 @@ public abstract class MixinRenderItem extends Render {
         remap = false)
     private void modifyRenderItemIntoGUI2(FontRenderer fontRenderer, TextureManager manager, ItemStack itemStack, int x,
         int y, boolean renderEffect, CallbackInfo ci) {
-        GLStateManager.glDepthMask(true);
+        GLLightingManager.glDepthMask(true);
     }
 
     @Redirect(
@@ -119,18 +119,18 @@ public abstract class MixinRenderItem extends Render {
     private void modifyRenderItemAndEffectIntoGUI2(FontRenderer fontRenderer, TextureManager manager,
         ItemStack itemStack, int x, int y, CallbackInfo ci) {
         if (!CITUtils.renderEnchantmentGUI(itemStack, x, y, this.zLevel) && itemStack.hasEffect(0)) {
-            GLStateManager.glDepthFunc(GL11.GL_EQUAL);
+            GLLightingManager.glDepthFunc(GL11.GL_EQUAL);
             GL11.glDisable(GL11.GL_LIGHTING);
-            GLStateManager.glDepthMask(false);
+            GLLightingManager.glDepthMask(false);
             manager.bindTexture(RES_ITEM_GLINT);
             GL11.glEnable(GL11.GL_ALPHA_TEST);
             GL11.glEnable(GL11.GL_BLEND);
-            GLStateManager.glColor4f(0.5F, 0.25F, 0.8F, 1.0F);
+            GLLightingManager.glColor4f(0.5F, 0.25F, 0.8F, 1.0F);
             this.renderGlint(x * 431278612 + y * 32178161, x - 2, y - 2, 20, 20);
-            GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-            GLStateManager.glDepthMask(true);
+            GLLightingManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            GLLightingManager.glDepthMask(true);
             GL11.glEnable(GL11.GL_LIGHTING);
-            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+            GLLightingManager.glDepthFunc(GL11.GL_LEQUAL);
         }
     }
 }

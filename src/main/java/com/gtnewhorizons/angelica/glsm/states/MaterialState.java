@@ -10,7 +10,7 @@ import org.lwjgl.opengl.GL11;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+import static com.gtnewhorizons.angelica.glsm.utils.GLHelper.i2f;
 
 public class MaterialState implements ISettableState<MaterialState> {
 

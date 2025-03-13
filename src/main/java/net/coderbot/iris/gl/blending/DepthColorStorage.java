@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl.blending;
 
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -14,8 +15,8 @@ public class DepthColorStorage {
     public static void disableDepthColor() {
 		if (!depthColorLocked) {
 			// Only save the previous state if the depth and color mask wasn't already locked
-			ColorMask colorMask = GLStateManager.getColorMask();
-			final DepthState depthState = GLStateManager.getDepthState();
+			final ColorMask colorMask = GLLightingManager.colorMask;
+			final DepthState depthState = GLLightingManager.depthState;
 
 			originalDepthEnable = depthState.isEnabled();
 			originalColor = new net.coderbot.iris.gl.blending.ColorMask(colorMask.red, colorMask.green, colorMask.blue, colorMask.alpha);
@@ -23,8 +24,8 @@ public class DepthColorStorage {
 
 		depthColorLocked = false;
 
-		GLStateManager.glDepthMask(false);
-        GLStateManager.glColorMask(false, false, false, false);
+		GLLightingManager.glDepthMask(false);
+        GLLightingManager.glColorMask(false, false, false, false);
 
 		depthColorLocked = true;
 	}
@@ -44,8 +45,8 @@ public class DepthColorStorage {
 
 		depthColorLocked = false;
 
-        GLStateManager.glDepthMask(originalDepthEnable);
+        GLLightingManager.glDepthMask(originalDepthEnable);
 
-        GLStateManager.glColorMask(originalColor.isRedMasked(), originalColor.isGreenMasked(), originalColor.isBlueMasked(), originalColor.isAlphaMasked());
+        GLLightingManager.glColorMask(originalColor.isRedMasked(), originalColor.isGreenMasked(), originalColor.isBlueMasked(), originalColor.isAlphaMasked());
 	}
 }
