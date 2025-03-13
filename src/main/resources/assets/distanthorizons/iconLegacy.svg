@@ -1,0 +1,69 @@
+<?xml version="1.0" standalone="yes"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2040" height="2040">
+    <!-- Distant Horizons logo in svg format -->
+    <!-- Converted svg made by coolGi -->
+    <!-- Made by hand so there may be inaccuracies -->
+
+    <!-- TODO: Re-Write this but in a more mathematical way to be more perfect -->
+
+
+    <style>
+        .Blue {
+            fill:#465AA8
+        }
+        .Green {
+            fill:#5C7E3C
+        }
+        .Sand {
+            fill:#DCD7AA
+        }
+    </style>
+
+
+    <!-- Big Blue -->
+    <polygon points="1018.5,15 1434,255 1018.5,486 603,255" class="Blue" />
+    <polygon points="1460,270 1875.5,509.5 1460,750 1045,509" class="Blue" />
+    <polygon points="1889,531.5 1889,1012 1473,1252 1473,772" class="Blue" />
+    <!-- Big Green -->
+    <polygon points="577,269 992,510 577,750 162,509.5" class="Green" />
+    <polygon points="149,532 564,772 564,1252 149,1012" class="Green" />
+    <polygon points="1889,1041 1889,1522 1474,1762 1473,1281" class="Green" />
+    <!-- Big Sand -->
+    <polygon points="149,1042 564,1282 564,1762 149,1522" class="Sand" />
+    <polygon points="590,1297 1006,1537 1006,2017 590,1777" class="Sand" />
+    <polygon points="1031,1537 1447,1297 1447,1777 1031,2017" class="Sand" />
+
+
+    <!-- Mid Blue -->
+    <polygon points="1239.5,652 1434,764.5 1239.5,877 1045,764.5" class="Blue" />
+    <polygon points="1447,787 1447,1012 1252,1125 1252,899" class="Blue" />
+    <!-- Mid Green -->
+    <polygon points="1018.5,525 1214,637 1018.5,749 824,637" class="Green" />
+    <polygon points="798,652 992,764.5 798,877 603,764.5" class="Green" />
+    <polygon points="590,787 785,899 785,1125 590,1012" class="Green" />
+    <polygon points="1447,1042 1447,1267 1252,1380 1252,1154" class="Green" />
+    <polygon points="1226,1170 1226,1395 1031,1507 1031,1282" class="Green" />
+    <!-- Mid Sand -->
+    <polygon points="590,1042 785,1154 785,1379 590,1267" class="Sand" />
+    <polygon points="811,1169 1006,1282 1006,1507 811,1395" class="Sand" />
+
+    <!-- Out Small Blue -->
+    <polygon points="1018.5,779.5 1103,828 1018.5,877 934,828" class="Blue" />
+    <polygon points="1129,843 1214,892 1129,941 1044,892" class="Blue" />
+    <polygon points="1226,914 1226,1012 1142,1061 1142,963" class="Blue" />
+    <polygon points="1226,1042 1226,1140 1142,1188 1142,1090" class="Blue" />
+    <polygon points="1116,1105 1116,1203 1031,1252 1031,1154" class="Blue" />
+    <!-- Out Small Green -->
+    <polygon points="908,843 993,892 908,941 823,892" class="Green" />
+    <polygon points="811,914 895,963 895,1061 811,1012" class="Green" />
+    <polygon points="921,1105 1006,1154 1006,1252 921,1203" class="Green" />
+    <!-- Out Small Sand -->
+    <polygon points="811,1042 895,1090 895,1188 811,1140" class="Sand" />
+
+    <!-- In Small Blue -->
+    <polygon points="1116,978 1116,1076 1031,1125 1031,1027" class="Blue" />
+    <!-- In Small Green -->
+    <polygon points="1018.5,907 1103,956 1018.5,1004 934,956" class="Green" />
+    <polygon points="921,978 1006,1027 1006,1125 921,1076" class="Green" />
+</svg>
+
