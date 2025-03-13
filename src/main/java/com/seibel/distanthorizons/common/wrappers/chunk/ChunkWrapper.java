@@ -446,7 +446,20 @@ public class ChunkWrapper implements IChunkWrapper
         {
             this.blockLightPosList = new ArrayList<>();
 
-           /* TODO : IMPLEMENT */
+            for (int x = 0; x  < 16; x++)
+            {
+                for (int z = 0; z < 16; z++)
+                {
+                    for (int y = 0; y < 256; y++)
+                    {
+                        Block block = chunk.getBlock(x, y, z);
+                        if (block.getLightValue() > 0)
+                        {
+                            this.blockLightPosList.add(new DhBlockPos(x + chunkPos.getMinBlockX(), y, z + chunkPos.getMinBlockZ()));
+                        }
+                    }
+                }
+            }
         }
 
         return this.blockLightPosList;
