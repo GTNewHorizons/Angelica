@@ -111,7 +111,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
                     scheduledTask.run();
                 }
                 count++;
-                if (count > 5)
+                if (count > 25)
                 {
                     break;
                 }

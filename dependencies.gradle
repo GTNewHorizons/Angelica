@@ -109,7 +109,7 @@ dependencies {
 
     compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.0-GTNH:dev")
 
-    runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
+    api(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
