@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.angelica;
+package com.gtnewhorizons.angelica.mixins.early.distanthorizons;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.forge.ForgeServerProxy;
@@ -10,7 +10,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(NetHandlerPlayClient.class)
-public class NetHandlerPlayClientMixin {
+public class MixinNetHandlerPlayClient {
+
     @Inject(method = "handleJoinGame", at = @At("RETURN"))
     private void connect(S01PacketJoinGame packetIn, CallbackInfo ci)
     {
