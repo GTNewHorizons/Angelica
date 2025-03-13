@@ -107,7 +107,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
                 }
             }
         }
-		if (connected && event.phase == TickEvent.Phase.END)
+		if ((connected || isDedicated) && event.phase == TickEvent.Phase.END)
 		{
 			this.serverApi.serverTickEvent();
 		}
