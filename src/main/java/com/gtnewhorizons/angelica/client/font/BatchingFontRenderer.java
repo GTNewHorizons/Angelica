@@ -479,13 +479,13 @@ public class BatchingFontRenderer {
                     final int endColumn = this.glyphWidth[chr] & 15;
                     final float startColumnF = (float) startColumn;
                     final float endColumnF = (float) (endColumn + 1);
-                    uStart = ((float) (chr % 16 * 16) + startColumnF + 0.20f) / 256.0f;
-                    vStart = ((float) ((chr & 255) / 16 * 16) + 0.20f) / 256.0f;
+                    uStart = ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
+                    vStart = ((float) ((chr & 255) / 16 * 16) + 0.21f) / 256.0f;
                     final float chrWidth = endColumnF - startColumnF - 0.02F;
                     glyphW = chrWidth / 2.0f + 1.0f;
                     xAdvance = (endColumnF - startColumnF) / 2.0F + 1.0F;
-                    uSz = (chrWidth - 0.4f) / 256.0f;
-                    vSz = (16.0f - 0.4f) / 256.0f;
+                    uSz = (chrWidth - 0.42f) / 256.0f;
+                    vSz = (16.0f - 0.42f) / 256.0f;
 
                 } else {
                     // Draw "ASCII" char
