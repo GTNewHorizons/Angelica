@@ -29,16 +29,11 @@ public enum ChunkFogMode {
     }
 
     public static ChunkFogMode fromGLMode(int mode) {
-        switch (mode) {
-            case 0:
-                return ChunkFogMode.NONE;
-            case GL20.GL_EXP2:
-            case GL20.GL_EXP:
-                return ChunkFogMode.EXP2;
-            case GL20.GL_LINEAR:
-                return ChunkFogMode.SMOOTH;
-            default:
-                throw new UnsupportedOperationException("Unknown fog mode: " + mode);
-        }
+        return switch (mode) {
+            case 0 -> ChunkFogMode.NONE;
+            case GL20.GL_EXP2, GL20.GL_EXP -> ChunkFogMode.EXP2;
+            case GL20.GL_LINEAR -> ChunkFogMode.SMOOTH;
+            default -> throw new UnsupportedOperationException("Unknown fog mode: " + mode);
+        };
     }
 }

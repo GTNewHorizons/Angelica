@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLShaderManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
@@ -38,7 +39,6 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLCapabilities;
-import org.lwjgl.opengl.KHRDebug;
 import org.lwjglx.LWJGLException;
 
 import java.io.Serial;
@@ -82,8 +82,6 @@ public class GLStateManager {
     @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
 
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
-
-    @Getter protected static int activeProgram = 0;
 
     @Getter protected static final ScissorStateStack scissorState = new ScissorStateStack();
 
@@ -523,7 +521,7 @@ public class GLStateManager {
             case GL14.GL_BLEND_SRC_RGB -> GLLightingManager.blendState.getSrcRgb();
             case GL11.GL_COLOR_MATERIAL_FACE -> GLLightingManager.colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> GLLightingManager.colorMaterialParameter.getValue();
-            case GL20.GL_CURRENT_PROGRAM -> activeProgram;
+            case GL20.GL_CURRENT_PROGRAM -> GLShaderManager.getActiveProgram();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> GLMatrixManager.getMatrixStackDepth(GLMatrixManager.modelViewMatrix);
             case GL11.GL_PROJECTION_STACK_DEPTH -> GLMatrixManager.getMatrixStackDepth(GLMatrixManager.projectionMatrix);
 
@@ -958,124 +956,6 @@ public class GLStateManager {
 
     public static void glDepthRange(double near, double far) {
         GL11.glDepthRange(near, far);
-    }
-
-    public static void glUseProgram(int program) {
-        if (program != activeProgram || shouldBypassCache()) {
-            activeProgram = program;
-            if(AngelicaMod.lwjglDebug) {
-                final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
-                GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
-            }
-            GL20.glUseProgram(program);
-        }
-    }
-
-    public static int glCreateShader(int type) {
-        return GL20.glCreateShader(type);
-    }
-
-    public static void glCompileShader(int shader) {
-        GL20.glCompileShader(shader);
-    }
-
-    public static void glShaderSource(int shader, CharSequence string) {
-        GL20.glShaderSource(shader, string);
-    }
-
-    public static void glShaderSource(int shader, CharSequence[] strings) {
-        GL20.glShaderSource(shader, strings);
-    }
-
-    public static int glCreateProgram() {
-        return GL20.glCreateProgram();
-    }
-
-    public static void glAttachShader(int program, int shader) {
-        GL20.glAttachShader(program, shader);
-    }
-
-    public static void glDetachShader(int program, int shader) {
-        GL20.glDetachShader(program, shader);
-    }
-
-    public static void glLinkProgram(int program) {
-        GL20.glLinkProgram(program);
-    }
-
-    public static void glValidateProgram(int program) {
-        GL20.glValidateProgram(program);
-    }
-
-    public static void glDeleteShader(int shader) {
-        GL20.glDeleteShader(shader);
-    }
-
-    public static void glDeleteProgram(int program) {
-        if (program == activeProgram) {
-            activeProgram = 0;
-        }
-        GL20.glDeleteProgram(program);
-    }
-
-    public static int glGetProgrami(int program, int pname) {
-        return GL20.glGetProgrami(program, pname);
-    }
-
-    public static int glGetShaderi(int shader, int pname) {
-        return GL20.glGetShaderi(shader, pname);
-    }
-
-    public static String glGetProgramInfoLog(int program) {
-        return GL20.glGetProgramInfoLog(program, 1024);
-    }
-
-    public static String glGetShaderInfoLog(int shader) {
-        return GL20.glGetShaderInfoLog(shader, 1024);
-    }
-
-    public static int glGetUniformLocation(int program, CharSequence name) {
-        return GL20.glGetUniformLocation(program, name);
-    }
-
-    public static int glGetAttribLocation(int program, CharSequence name) {
-        return GL20.glGetAttribLocation(program, name);
-    }
-
-    public static void glBindAttribLocation(int program, int index, CharSequence name) {
-        GL20.glBindAttribLocation(program, index, name);
-    }
-
-    public static void glUniform1i(int location, int value) {
-        GL20.glUniform1i(location, value);
-    }
-
-    public static void glUniform1f(int location, float value) {
-        GL20.glUniform1f(location, value);
-    }
-
-    public static void glUniform2i(int location, int v0, int v1) {
-        GL20.glUniform2i(location, v0, v1);
-    }
-
-    public static void glUniform2f(int location, float v0, float v1) {
-        GL20.glUniform2f(location, v0, v1);
-    }
-
-    public static void glUniform3i(int location, int v0, int v1, int v2) {
-        GL20.glUniform3i(location, v0, v1, v2);
-    }
-
-    public static void glUniform3f(int location, float v0, float v1, float v2) {
-        GL20.glUniform3f(location, v0, v1, v2);
-    }
-
-    public static void glUniform4i(int location, int v0, int v1, int v2, int v3) {
-        GL20.glUniform4i(location, v0, v1, v2, v3);
-    }
-
-    public static void glUniform4f(int location, float v0, float v1, float v2, float v3) {
-        GL20.glUniform4f(location, v0, v1, v2, v3);
     }
 
     public static void glVertex4i(int x, int y, int z, int w) {

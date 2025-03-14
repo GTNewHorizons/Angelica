@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glUseProgram;
+import static com.gtnewhorizons.angelica.glsm.managers.GLShaderManager.glUseProgram;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
