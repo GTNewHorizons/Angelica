@@ -4,22 +4,19 @@ import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLShaderManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
-import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
-import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
-import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ISettableState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import lombok.Getter;
@@ -31,7 +28,6 @@ import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
-import org.joml.Vector3d;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
@@ -61,34 +57,22 @@ public class GLStateManager {
 
     public static boolean BYPASS_CACHE = Boolean.parseBoolean(System.getProperty("angelica.disableGlCache", "false"));
 
-    // NOTE: These are set as part of static initialization and require a valid active OpenGL context
-    public static final int MAX_ATTRIB_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_ATTRIB_STACK_DEPTH);
-
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
-    @Getter protected static boolean poppingAttributes;
 
     @Getter protected static boolean NVIDIA;
     @Getter protected static boolean AMD;
     @Getter protected static boolean INTEL;
     @Getter protected static boolean MESA;
 
-    // GLStateManager State Trackers
-    private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
-    protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
-
+    // NOTE: These are set as part of static initialization and require a valid active OpenGL context
     @Getter protected static final BooleanStateStack scissorTest = new BooleanStateStack(GL11.GL_SCISSOR_TEST);
-
-    @Getter protected static final FogStateStack fogState = new FogStateStack();
-    @Getter protected static final BooleanStateStack fogMode = new BooleanStateStack(GL11.GL_FOG);
-
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
-
     @Getter protected static final ScissorStateStack scissorState = new ScissorStateStack();
 
     public static void reset() {
         runningSplash = true;
-        while(!attribs.isEmpty()) {
-            attribs.popInt();
+        while(!GLAttribManager.attribs.isEmpty()) {
+            GLAttribManager.attribs.popInt();
         }
 
         final List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
@@ -108,12 +92,6 @@ public class GLStateManager {
 
 
     }
-
-    private static Runnable fogToggleListener = null;
-    private static Runnable fogModeListener = null;
-    private static Runnable fogStartListener = null;
-    private static Runnable fogEndListener = null;
-    private static Runnable fogDensityListener = null;
 
     // Thread Checking
     @Getter private static final Thread MainThread = Thread.currentThread();
@@ -340,12 +318,9 @@ public class GLStateManager {
 
         if (AngelicaConfig.enableIris) {
             StateUpdateNotifiers.blendFuncNotifier = listener -> GLLightingManager.blendFuncListener = listener;
-            StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
-            StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
-            StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
-            StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
-            StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
         }
+
+        GLFogManager.minecraftInit();
 
         if(AngelicaMod.lwjglDebug) {
             LOGGER.info("Enabling additional LWJGL debug output");
@@ -430,7 +405,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> GLLightingManager.blendMode.isEnabled();
             case GL11.GL_CULL_FACE -> GLLightingManager.cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> GLLightingManager.depthTest.isEnabled();
-            case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_FOG -> GLFogManager.fogMode.isEnabled();
             case GL11.GL_LIGHTING -> GLLightingManager.lightingState.isEnabled();
             case GL11.GL_LIGHT0 -> GLLightingManager.lightStates[0].isEnabled();
             case GL11.GL_LIGHT1 -> GLLightingManager.lightStates[1].isEnabled();
@@ -458,7 +433,7 @@ public class GLStateManager {
             case GL11.GL_CULL_FACE -> GLLightingManager.cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> GLLightingManager.depthTest.isEnabled();
             case GL11.GL_DEPTH_WRITEMASK -> GLLightingManager.depthState.isEnabled();
-            case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_FOG -> GLFogManager.fogMode.isEnabled();
             case GL11.GL_LIGHTING -> GLLightingManager.lightingState.isEnabled();
             case GL11.GL_LIGHT0 -> GLLightingManager.lightStates[0].isEnabled();
             case GL11.GL_LIGHT1 -> GLLightingManager.lightStates[1].isEnabled();
@@ -513,7 +488,7 @@ public class GLStateManager {
             case GL11.GL_DEPTH_FUNC -> GLLightingManager.depthState.getFunc();
             case GL11.GL_LIST_MODE -> glListMode;
             case GL11.GL_MATRIX_MODE -> GLMatrixManager.matrixMode.getMode();
-            case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
+            case GL11.GL_SHADE_MODEL -> GLLightingManager.shadeModelState.getValue();
             case GL11.GL_TEXTURE_BINDING_2D -> GLTextureManager.getBoundTexture();
             case GL14.GL_BLEND_DST_ALPHA -> GLLightingManager.blendState.getDstAlpha();
             case GL14.GL_BLEND_DST_RGB -> GLLightingManager.blendState.getDstRgb();
@@ -726,100 +701,11 @@ public class GLStateManager {
     }
 
     public static void enableFog() {
-        fogMode.enable();
-        if (fogToggleListener != null) {
-            fogToggleListener.run();
-        }
+        GLFogManager.enableFog();
     }
 
     public static void disableFog() {
-        fogMode.disable();
-        if (fogToggleListener != null) {
-            fogToggleListener.run();
-        }
-    }
-
-    public static void glFog(int pname, FloatBuffer param) {
-        glFogfv(pname, param);
-    }
-
-    public static void glFogfv(int pname, FloatBuffer param) {
-        // TODO: Iris Notifier
-        if (HAS_MULTIPLE_SET.contains(pname)) {
-            GL11.glFogfv(pname, param);
-            if (pname == GL11.GL_FOG_COLOR) {
-                final float red = param.get(0);
-                final float green = param.get(1);
-                final float blue = param.get(2);
-
-                fogState.getFogColor().set(red, green, blue);
-                fogState.setFogAlpha(param.get(3));
-                fogState.getFogColorBuffer().clear();
-                fogState.getFogColorBuffer().put((FloatBuffer) param.position(0)).flip();
-            }
-        } else {
-            GLStateManager.glFogf(pname, param.get(0));
-        }
-    }
-
-    public static Vector3d getFogColor() {
-        return fogState.getFogColor();
-    }
-
-    public static void fogColor(float red, float green, float blue, float alpha) {
-        if (shouldBypassCache() || red != fogState.getFogColor().x || green != fogState.getFogColor().y || blue != fogState.getFogColor().z || alpha != fogState.getFogAlpha()) {
-            fogState.getFogColor().set(red, green, blue);
-            fogState.setFogAlpha(alpha);
-            fogState.getFogColorBuffer().clear();
-            fogState.getFogColorBuffer().put(red).put(green).put(blue).put(alpha).flip();
-            GL11.glFogfv(GL11.GL_FOG_COLOR, fogState.getFogColorBuffer());
-        }
-    }
-
-    public static void glFogf(int pname, float param) {
-        GL11.glFogf(pname, param);
-        // Note: Does not handle GL_FOG_INDEX
-        switch (pname) {
-            case GL11.GL_FOG_DENSITY -> {
-                fogState.setDensity(param);
-                if (fogDensityListener != null) {
-                    fogDensityListener.run();
-                }
-            }
-            case GL11.GL_FOG_START -> {
-                fogState.setStart(param);
-                if (fogStartListener != null) {
-                    fogStartListener.run();
-                }
-            }
-            case GL11.GL_FOG_END -> {
-                fogState.setEnd(param);
-                if (fogEndListener != null) {
-                    fogEndListener.run();
-                }
-            }
-        }
-    }
-
-    public static void glFogi(int pname, int param) {
-        GL11.glFogi(pname, param);
-        if (pname == GL11.GL_FOG_MODE) {
-            fogState.setFogMode(param);
-            if (fogModeListener != null) {
-                fogModeListener.run();
-            }
-        }
-    }
-
-    public static void setFogBlack() {
-        glFogf(GL11.GL_FOG_COLOR, 0.0F);
-    }
-
-    public static void glShadeModel(int mode) {
-        if (shouldBypassCache() || shadeModelState.getValue() != mode) {
-            shadeModelState.setValue(mode);
-            GL11.glShadeModel(mode);
-        }
+        GLFogManager.disableFog();
     }
 
     public static void makeCurrent(Drawable drawable) throws LWJGLException {
@@ -904,7 +790,7 @@ public class GLStateManager {
     }
 
     public static void pushState(int mask) {
-        attribs.push(mask);
+        GLAttribManager.attribs.push(mask);
 
         List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
         int size = stacks.size();
@@ -915,7 +801,7 @@ public class GLStateManager {
     }
 
     public static void popState() {
-        final int mask = attribs.popInt();
+        final int mask = GLAttribManager.attribs.popInt();
 
         List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
         int size = stacks.size();
@@ -928,17 +814,6 @@ public class GLStateManager {
     public static void glClear(int mask) {
         // TODO: Implement
         GL11.glClear(mask);
-    }
-    public static void glPushAttrib(int mask) {
-        pushState(mask);
-        GL11.glPushAttrib(mask);
-    }
-
-    public static void glPopAttrib() {
-        poppingAttributes = true;
-        popState();
-        GL11.glPopAttrib();
-        poppingAttributes = false;
     }
 
     public static void glViewport(int x, int y, int width, int height) {
@@ -996,106 +871,6 @@ public class GLStateManager {
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
         GL11.glNormalPointer(type, stride, pointer);
-    }
-
-    @Getter protected static final BooleanStateStack vertexArrayState = new BooleanStateStack(GL11.GL_VERTEX_ARRAY);
-    @Getter protected static final BooleanStateStack normalArrayState = new BooleanStateStack(GL11.GL_NORMAL_ARRAY);
-
-    public static void glEnableClientState(int cap) {
-        boolean changed = false;
-        switch (cap) {
-            case GL11.GL_VERTEX_ARRAY:
-                changed = !vertexArrayState.isEnabled();
-                vertexArrayState.enable();
-                break;
-            case GL11.GL_NORMAL_ARRAY:
-                changed = !normalArrayState.isEnabled();
-                normalArrayState.enable();
-                break;
-            case GL11.GL_COLOR_ARRAY:
-                changed = !GLLightingManager.colorArrayState.isEnabled();
-                GLLightingManager.colorArrayState.enable();
-                break;
-            case GL11.GL_TEXTURE_COORD_ARRAY:
-                changed = !GLLightingManager.texCoordArrayState.isEnabled();
-                GLLightingManager.texCoordArrayState.enable();
-                break;
-            default:
-                // For any other capabilities, always call the GL method
-                changed = true;
-                break;
-        }
-
-        // Only make the GL call if the state actually changed or we want to bypass the cache
-        if (changed || shouldBypassCache()) {
-            GL11.glEnableClientState(cap);
-        }
-    }
-
-    public static void glDisableClientState(int cap) {
-        boolean changed = false;
-        switch (cap) {
-            case GL11.GL_VERTEX_ARRAY:
-                changed = vertexArrayState.isEnabled();
-                vertexArrayState.disable();
-                break;
-            case GL11.GL_NORMAL_ARRAY:
-                changed = normalArrayState.isEnabled();
-                normalArrayState.disable();
-                break;
-            case GL11.GL_COLOR_ARRAY:
-                changed = GLLightingManager.colorArrayState.isEnabled();
-                GLLightingManager.colorArrayState.disable();
-                break;
-            case GL11.GL_TEXTURE_COORD_ARRAY:
-                changed = GLLightingManager.texCoordArrayState.isEnabled();
-                GLLightingManager.texCoordArrayState.disable();
-                break;
-            default:
-                // For any other capabilities, always call the GL method
-                changed = true;
-                break;
-        }
-
-        // Only make the GL call if the state actually changed or we want to bypass the cache
-        if (changed || shouldBypassCache()) {
-            GL11.glDisableClientState(cap);
-        }
-    }
-
-    @Getter protected static final StencilStateStack stencilState = new StencilStateStack();
-    @Getter protected static final BooleanStateStack stencilTest = new BooleanStateStack(GL11.GL_STENCIL_TEST);
-
-    public static void enableStencilTest() {
-        stencilTest.enable();
-    }
-
-    public static void disableStencilTest() {
-        stencilTest.disable();
-    }
-
-    public static void glStencilFunc(int func, int ref, int mask) {
-        stencilState.setFunc(func, ref, mask);
-    }
-
-    public static void glStencilOp(int sfail, int dpfail, int dppass) {
-        stencilState.setOp(sfail, dpfail, dppass);
-    }
-
-    public static void glStencilMask(int mask) {
-        stencilState.setMask(mask);
-    }
-
-    public static void glStencilFuncSeparate(int face, int func, int ref, int mask) {
-        GL20.glStencilFuncSeparate(face, func, ref, mask);
-    }
-
-    public static void glStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
-        GL20.glStencilOpSeparate(face, sfail, dpfail, dppass);
-    }
-
-    public static void glStencilMaskSeparate(int face, int mask) {
-        GL20.glStencilMaskSeparate(face, mask);
     }
 
     public static void glScissor(int x, int y, int width, int height) {

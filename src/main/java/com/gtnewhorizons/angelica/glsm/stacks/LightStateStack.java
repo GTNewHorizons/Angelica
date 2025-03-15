@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 
 public class LightStateStack extends LightState implements IStateStack<LightStateStack> {
@@ -12,8 +12,8 @@ public class LightStateStack extends LightState implements IStateStack<LightStat
 
     public LightStateStack(int light) {
         super(light);
-        stack = new LightState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new LightState[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new LightState(light);
         }
     }

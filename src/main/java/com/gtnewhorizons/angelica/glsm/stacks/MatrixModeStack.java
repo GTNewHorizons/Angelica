@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.MatrixMode;
 
 public class MatrixModeStack extends MatrixMode implements IStateStack<MatrixModeStack> {
@@ -11,8 +11,8 @@ public class MatrixModeStack extends MatrixMode implements IStateStack<MatrixMod
     protected int pointer;
 
     public MatrixModeStack() {
-        stack = new MatrixMode[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new MatrixMode[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new MatrixMode();
         }
     }

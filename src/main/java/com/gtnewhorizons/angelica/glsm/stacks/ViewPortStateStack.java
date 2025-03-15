@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 
 public class ViewPortStateStack extends ViewportState implements IStateStack<ViewPortStateStack> {
@@ -11,8 +11,8 @@ public class ViewPortStateStack extends ViewportState implements IStateStack<Vie
     protected int pointer;
 
     public ViewPortStateStack() {
-        stack = new ViewportState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new ViewportState[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new ViewportState();
         }
     }

@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.compat;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkFogMode;
 import org.lwjgl.opengl.GL11;
 
@@ -11,24 +12,24 @@ public class FogHelper {
     public static float red, green, blue;
 
     public static float getFogEnd() {
-    	return GLStateManager.getFogState().getEnd();
+    	return GLFogManager.getFogState().getEnd();
     }
 
     public static float getFogStart() {
-    	return GLStateManager.getFogState().getStart();
+    	return GLFogManager.getFogState().getStart();
     }
 
     public static float getFogDensity() {
-    	return GLStateManager.getFogState().getDensity();
+    	return GLFogManager.getFogState().getDensity();
     }
 
     /**
      * Retrieves the current fog mode from the fixed-function pipeline.
      */
     public static ChunkFogMode getFogMode() {
-        final int mode = GLStateManager.getFogState().getFogMode();
+        final int mode = GLFogManager.getFogState().getFogMode();
 
-        if(mode == 0 || !GLStateManager.getFogMode().isEnabled())
+        if(mode == 0 || !GLFogManager.getFogMode().isEnabled())
         	return ChunkFogMode.NONE;
 
         return switch (mode) {
@@ -39,9 +40,7 @@ public class FogHelper {
     }
 
     public static float getFogCutoff() {
-    	int mode = GLStateManager.getFogState().getFogMode();
-
-        return switch (mode) {
+        return switch (GLFogManager.getFogState().getFogMode()) {
             case GL11.GL_LINEAR -> getFogEnd();
             case GL11.GL_EXP -> FAR_PLANE_THRESHOLD_EXP / getFogDensity();
             case GL11.GL_EXP2 -> FAR_PLANE_THRESHOLD_EXP2 / getFogDensity();

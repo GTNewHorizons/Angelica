@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 
 public class MaterialStateStack extends MaterialState implements IStateStack<MaterialStateStack> {
@@ -12,8 +12,8 @@ public class MaterialStateStack extends MaterialState implements IStateStack<Mat
 
     public MaterialStateStack(int face) {
         super(face);
-        stack = new MaterialState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new MaterialState[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new MaterialState(face);
         }
     }

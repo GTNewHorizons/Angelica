@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import java.nio.FloatBuffer;
 
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
 
     @Test
     void testLightValues() {
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
 
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0F, 0F, 0F, 1F},  "GL_LIGHT0 Initial Ambient");
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, new float[]{1F, 1F, 1F, 1F}, "GL_LIGHT0 Initial Diffuse");
@@ -51,11 +52,11 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         newf4b(0.25F, 0.5F, 0.25F, 0.5F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 Ambient Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.6F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0.3F, 0.4F, 0.5F, 0.6F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_AMBIENT, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 attrib pop state check");
 
         // The position is stored in eye coordinates, so we're moving around the modelview matrix before changing them
@@ -69,32 +70,32 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         newf4b(0.25F, 0.5F, 0.25F, 0.0F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.1090F, 0.5189F, 0.3062F, 0.0F}, "GL_LIGHT0 Position Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.0F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.2824F, 0.4200F, 0.4937F, 0.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_POSITION, new float[]{0.1090F, 0.5189F, 0.3062F, 0.0F}, "GL_LIGHT0 attrib pop state check");
         GLMatrixManager.glPopMatrix();
 
         newf4b(0.25F, 0.5F, 0.25F, 0.5F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 Diffuse Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.6F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, new float[]{0.3F, 0.4F, 0.5F, 0.6F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 attrib pop state check");
 
         newf4b(0.25F, 0.5F, 0.25F, 0.5F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 Specular Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.6F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, new float[]{0.3F, 0.4F, 0.5F, 0.6F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPECULAR, new float[]{0.25F, 0.5F, 0.25F, 0.5F}, "GL_LIGHT0 attrib pop state check");
 
         GLMatrixManager.glMatrixMode(GL11.GL_MODELVIEW);
@@ -104,107 +105,107 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         newf4b(0.25F, 0.5F, 0.25F, 0.0F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.1090F, 0.5189F, 0.3062F}, "GL_LIGHT0 Spot Direction Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.3F, 0.4F, 0.5F, 0.0F);
         GLLightingManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, f4b);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.2824F, 0.4200F, 0.4937F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, new float[]{0.1090F, 0.5189F, 0.3062F}, "GL_LIGHT0 attrib pop state check");
         GLMatrixManager.glPopMatrix();
 
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, 1.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, new float[]{1.0F}, "GL_LIGHT0 Spot Exponent Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, 2.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, new float[]{2.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_EXPONENT, new float[]{1.0F}, "GL_LIGHT0 attrib pop state check");
 
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_SPOT_CUTOFF, 20.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_CUTOFF, new float[]{20.0F}, "GL_LIGHT0 Spot Cutoff Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_SPOT_CUTOFF, 40.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_CUTOFF, new float[]{40.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_CUTOFF, new float[]{20.0F}, "GL_LIGHT0 attrib pop state check");
 
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 10.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 Constant Attenuation Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 20.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, new float[]{20.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
 
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_LINEAR_ATTENUATION, 10.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_LINEAR_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 Linear Attenuation Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_LINEAR_ATTENUATION, 20.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_LINEAR_ATTENUATION, new float[]{20.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_LINEAR_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
 
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, 10.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 Quadratic Attenuation Changed State");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightf(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, 20.0F);
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{20.0F}, "GL_LIGHT0 attrib push state changed check");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_QUADRATIC_ATTENUATION, new float[]{10.0F}, "GL_LIGHT0 attrib pop state check");
 
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
     }
 
     @Test
     void testLightModel() {
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "GL_LIGHT_MODEL_AMBIENT initial state");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, f4b);
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT,  new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "GL_LIGHT_MODEL_AMBIENT changed state");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F});
 
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SINGLE_COLOR);
 
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 0.8F);
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, true);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
 
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightModeli(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, true);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false);
 
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 0.8F);
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
 
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glLightModeli(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1);
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, true);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_LIGHT_MODEL_TWO_SIDE, false);
     }
 
     @Test
     void testColorMaterial() {
         verifyState(GL11.GL_COLOR_MATERIAL, false);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT | GL11.GL_CURRENT_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT | GL11.GL_CURRENT_BIT);
         GLLightingManager.glColor4f(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
         GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
@@ -212,13 +213,13 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
         verifyState(GL11.GL_COLOR_MATERIAL, false);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL, false);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
 
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT_AND_DIFFUSE);
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
@@ -228,7 +229,7 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         GLLightingManager.glColorMaterial(GL11.GL_BACK, GL11.GL_DIFFUSE);
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_DIFFUSE);
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK);
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE);
     }
@@ -236,63 +237,63 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
     @Test
     void testMaterial() {
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, f4b);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
 
         verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, f4b);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
 
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE, f4b);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_AMBIENT, new float[]{0.2F, 0.2F, 0.2F, 1.0F}, "");
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
         verifyMaterialState(GL11.GL_BACK, GL11.GL_DIFFUSE, new float[]{0.8F, 0.8F, 0.8F, 1.0F}, "");
 
         verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glMaterial(GL11.GL_BACK, GL11.GL_SPECULAR, f4b);
         verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_BACK, GL11.GL_SPECULAR, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
 
         verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.2F);
         GLLightingManager.glMaterial(GL11.GL_BACK, GL11.GL_EMISSION, f4b);
         verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.8F, 0.6F, 0.4F, 0.2F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_BACK, GL11.GL_EMISSION, new float[]{0.0F, 0.0F, 0.0F, 1.0F}, "");
 
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{0.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         GLLightingManager.glMaterialf(GL11.GL_FRONT, GL11.GL_SHININESS, 5.5F);
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{5.5F}, "");
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_SHININESS, new float[]{0.0F}, "");
 
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLAttribManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.0F);
         GLLightingManager.glMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, f4b);
         if (GLStateManager.isNVIDIA()) {
@@ -300,7 +301,7 @@ public class GLSM_Lighting_UnitTest extends OpenGLTestBase {
         } else {
             verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.6F, 0.4F}, "");
         }
-        GLStateManager.glPopAttrib();
+        GLAttribManager.glPopAttrib();
         verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.0F, 1.0F, 1.0F}, "");
 
     }

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
 import org.lwjgl.opengl.GL11;
 
@@ -13,8 +14,8 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
 
     public BooleanStateStack(int glCap) {
         super(glCap);
-        stack = new BooleanState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new BooleanState[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new BooleanState(glCap);
         }
     }

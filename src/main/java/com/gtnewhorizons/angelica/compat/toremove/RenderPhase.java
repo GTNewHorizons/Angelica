@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
@@ -152,7 +153,7 @@ public abstract class RenderPhase {
             GLStateManager.enableFog();
         }, GLStateManager::disableFog);
         BLACK_FOG = new Fog("black_fog", () -> {
-            GLStateManager.fogColor(0.0F, 0.0F, 0.0F, 1.0F);
+            GLFogManager.fogColor(0.0F, 0.0F, 0.0F, 1.0F);
             GLStateManager.enableFog();
         }, () -> {
             // Unclear what this should do
@@ -462,8 +463,8 @@ public abstract class RenderPhase {
 
         public ShadeModel(boolean smooth) {
             super("shade_model",
-                () -> GLStateManager.glShadeModel(smooth ? GL11.GL_SMOOTH : GL11.GL_FLAT),
-                () -> GLStateManager.glShadeModel(GL11.GL_FLAT));
+                () -> GLLightingManager.glShadeModel(smooth ? GL11.GL_SMOOTH : GL11.GL_FLAT),
+                () -> GLLightingManager.glShadeModel(GL11.GL_FLAT));
             this.smooth = smooth;
         }
 

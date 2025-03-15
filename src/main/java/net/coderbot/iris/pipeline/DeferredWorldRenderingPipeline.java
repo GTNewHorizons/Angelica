@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -924,7 +925,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			passes = clearPasses;
 		}
 
-		final Vector3d fogColor3 = GLStateManager.getFogColor();
+		final Vector3d fogColor3 = GLFogManager.getFogColor();
 
 		// NB: The alpha value must be 1.0 here, or else you will get a bunch of bugs. Sildur's Vibrant Shaders
 		//     will give you pink reflections and other weirdness if this is zero.
@@ -1115,7 +1116,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             GL11.glDisable(GL11.GL_TEXTURE_2D);
 			GL11.glDepthMask(false);
 
-			final Vector3d fogColor = GLStateManager.getFogColor();
+			final Vector3d fogColor = GLFogManager.getFogColor();
             GL11.glColor4f((float) fogColor.x, (float) fogColor.y, (float) fogColor.z, 1.0F);
 
 			horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewBuffer());

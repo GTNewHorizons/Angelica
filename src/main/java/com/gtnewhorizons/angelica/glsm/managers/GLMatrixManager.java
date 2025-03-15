@@ -32,9 +32,9 @@ public class GLMatrixManager {
     public static final Matrix4f conversionMatrix4f = new Matrix4f();
     private static final MethodHandle MAT4_STACK_CURR_DEPTH;
 
-    public static final int MAX_MODELVIEW_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
+    public static final int MAX_MODELVIEW_STACK_DEPTH = GL33C.glGetInteger(GL11.GL_MAX_MODELVIEW_STACK_DEPTH);
     public static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
-    public static final int MAX_PROJECTION_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
+    public static final int MAX_PROJECTION_STACK_DEPTH = GL33C.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
     public static final Matrix4fStack projectionMatrix = new Matrix4fStack(MAX_PROJECTION_STACK_DEPTH);
 
 

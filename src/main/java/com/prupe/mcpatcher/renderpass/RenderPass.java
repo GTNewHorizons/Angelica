@@ -24,7 +24,7 @@ import java.util.Set;
 import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glColor4f;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glShadeModel;
+import static com.gtnewhorizons.angelica.glsm.managers.GLLightingManager.glShadeModel;
 import static org.lwjgl.opengl.GL11C.glPolygonOffset;
 
 public class RenderPass {

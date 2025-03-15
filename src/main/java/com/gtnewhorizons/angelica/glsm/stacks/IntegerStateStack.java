@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.IntegerState;
 
 public class IntegerStateStack extends IntegerState implements IStateStack<IntegerStateStack> {
@@ -12,8 +12,8 @@ public class IntegerStateStack extends IntegerState implements IStateStack<Integ
 
     public IntegerStateStack(int val) {
         setValue(val);
-        stack = new IntegerState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new IntegerState[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new IntegerState();
             stack[i].setValue(val);
         }

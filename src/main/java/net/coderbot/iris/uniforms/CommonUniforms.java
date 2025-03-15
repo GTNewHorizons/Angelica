@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
@@ -125,7 +125,7 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
-			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor);
+			.uniform3d(PER_FRAME, "fogColor", GLFogManager::getFogColor);
 	}
 
     private static boolean isOnGround() {

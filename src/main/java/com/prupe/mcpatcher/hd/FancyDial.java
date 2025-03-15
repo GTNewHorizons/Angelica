@@ -52,9 +52,9 @@ import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glLoadIde
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glMatrixMode;
 import static com.gtnewhorizons.angelica.glsm.GLStateManager.glNewList;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glOrtho;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopAttrib;
+import static com.gtnewhorizons.angelica.glsm.managers.GLAttribManager.glPopAttrib;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glPopMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushAttrib;
+import static com.gtnewhorizons.angelica.glsm.managers.GLAttribManager.glPushAttrib;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glPushMatrix;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glRotatef;
 import static com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager.glScalef;

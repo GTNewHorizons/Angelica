@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 
 public class ColorMaskStack extends ColorMask implements IStateStack<ColorMaskStack> {
@@ -11,8 +11,8 @@ public class ColorMaskStack extends ColorMask implements IStateStack<ColorMaskSt
     protected int pointer;
 
     public ColorMaskStack() {
-        stack = new ColorMask[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new ColorMask[GLAttribManager.MAX_ATTRIB_STACK_DEPTH];
+        for (int i = 0; i < GLAttribManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new ColorMask();
         }
     }

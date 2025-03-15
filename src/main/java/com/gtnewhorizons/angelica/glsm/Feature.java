@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.managers.GLFogManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLMatrixManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLTextureManager;
@@ -90,7 +91,7 @@ public class Feature {
             , GLLightingManager.cullState // GL_CULL_FACE flag
             , GLLightingManager.depthTest // GL_DEPTH_TEST flag
             // GL_DITHER flag
-            , GLStateManager.fogMode // GL_FOG flag
+            , GLFogManager.fogMode // GL_FOG flag
             , GLLightingManager.lightStates[0] // GL_LIGHT0
             , GLLightingManager.lightStates[1] // GL_LIGHT1
             , GLLightingManager.lightStates[2] // GL_LIGHT2
@@ -139,8 +140,8 @@ public class Feature {
             // GL_AUTO_NORMAL enable bit
         ));
         attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
-              GLStateManager.fogMode    // GL_FOG enable bit
-            , GLStateManager.fogState   // Fog color
+              GLFogManager.fogMode    // GL_FOG enable bit
+            , GLFogManager.fogState   // Fog color
                                        // ^^ Fog density
                                        // ^^ Linear fog start
                                        // ^^ Linear fog end
@@ -187,7 +188,7 @@ public class Feature {
             // Specular exponent for each material
             , GLLightingManager.frontMaterial
             , GLLightingManager.backMaterial
-            , GLStateManager.shadeModelState // GL_SHADE_MODEL setting
+            , GLLightingManager.shadeModelState // GL_SHADE_MODEL setting
         ));
         attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(
             // GL_LINE_SMOOTH flag

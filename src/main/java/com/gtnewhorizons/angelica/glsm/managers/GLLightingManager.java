@@ -33,7 +33,7 @@ import java.nio.IntBuffer;
  * so we need to use GL11 for these legacy functions.  They will additionally need emulation
  * for the core profile.
  */
-@SuppressWarnings("unused")
+@SuppressWarnings("unused") // Entrypoint via ASM
 public class GLLightingManager {
 
     public static final BooleanStateStack lightingState = new BooleanStateStack(GL11.GL_LIGHTING);
@@ -71,6 +71,7 @@ public class GLLightingManager {
         }
     }
 
+    public static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
     public static void reset() {
 
@@ -556,5 +557,12 @@ public class GLLightingManager {
 
     public static void glColorPointer(int size, int type, int stride, FloatBuffer pointer) {
         GL11.glColorPointer(size, type, stride, pointer);
+    }
+
+    public static void glShadeModel(int mode) {
+        if (GLStateManager.shouldBypassCache() || shadeModelState.getValue() != mode) {
+            shadeModelState.setValue(mode);
+            GL11.glShadeModel(mode);
+        }
     }
 }

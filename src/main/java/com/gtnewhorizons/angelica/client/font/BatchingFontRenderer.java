@@ -255,7 +255,7 @@ public class BatchingFontRenderer {
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
         GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glShadeModel(GL11.GL_FLAT);
+        GLLightingManager.glShadeModel(GL11.GL_FLAT);
 
         GL11.glTexCoordPointer(2, GL11.GL_FLOAT, 0, batchVtxTexCoords);
         GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
