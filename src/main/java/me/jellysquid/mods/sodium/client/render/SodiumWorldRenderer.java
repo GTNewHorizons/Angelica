@@ -280,8 +280,8 @@ public class SodiumWorldRenderer {
     {
         if (!AngelicaConfig.enableDistantHorizons)
             return;
-        Mat4f mcModelViewMatrix = McObjectConverter.Convert(GLStateManager.getModelViewMatrix());
-        Mat4f mcProjectionMatrix = McObjectConverter.Convert(GLStateManager.getProjectionMatrix());
+        Mat4f mcModelViewMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getModelViewMatrix());
+        Mat4f mcProjectionMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getProjectionMatrix());
         float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         if (pass == BlockRenderPass.CUTOUT_MIPPED)
@@ -295,7 +295,7 @@ public class SodiumWorldRenderer {
             {
                 ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
             }
-            GLStateManager.glDepthFunc(GL32.GL_LEQUAL);
+            GLLightingManager.glDepthFunc(GL32.GL_LEQUAL);
             GL32.glEnable(GL32.GL_ALPHA_TEST);
         }
     }
