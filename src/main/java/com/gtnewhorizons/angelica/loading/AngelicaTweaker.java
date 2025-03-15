@@ -23,6 +23,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
+import org.taumc.celeritas.impl.render.terrain.CeleritasWorldRenderer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -75,6 +76,11 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             if(AngelicaConfig.enableIris && !AngelicaConfig.enableSodium) {
                 LOGGER.warn("Iris Shaders require Sodium to be enabled. Disabling Iris Shaders.");
                 AngelicaConfig.enableIris = false;
+            }
+
+            if(AngelicaConfig.enableDistantHorizons && !AngelicaConfig.enableIris) {
+                LOGGER.warn("DH fading requires Iris to be enabled. Disabling DH fadings.");
+                CeleritasWorldRenderer.enableDHFading = false;
             }
 
         } catch (ConfigException e) {

@@ -257,6 +257,8 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
         tracker.forEachEvent(this.renderSectionManager::onChunkAdded, this.renderSectionManager::onChunkRemoved);
     }
 
+    public static boolean enableDHFading = true;
+
     void drawLods(boolean fade)
     {
         if (!AngelicaConfig.enableDistantHorizons)
@@ -267,7 +269,9 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         if (fade)
         {
-            ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+            if (enableDHFading) {
+                ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+            }
         }
         else
         {
