@@ -8,12 +8,6 @@ import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
-import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
-import com.seibel.distanthorizons.core.api.internal.ClientApi;
-import com.seibel.distanthorizons.core.util.math.Mat4f;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
-import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import jss.notfine.core.SettingsManager;
 import lombok.Getter;
@@ -58,7 +52,6 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
-import org.lwjgl.opengl.GL32;
 
 import java.util.Set;
 
@@ -276,35 +269,10 @@ public class SodiumWorldRenderer {
         tracker.forEachEvent(this.chunkRenderManager::onChunkAdded, this.chunkRenderManager::onChunkRemoved);
     }
 
-    void drawLods(BlockRenderPass pass, boolean fade)
-    {
-        if (!AngelicaConfig.enableDistantHorizons)
-            return;
-        Mat4f mcModelViewMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getModelViewMatrix());
-        Mat4f mcProjectionMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getProjectionMatrix());
-        float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-        IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
-        if (pass == BlockRenderPass.CUTOUT_MIPPED)
-        {
-            GL32.glDisable(GL32.GL_ALPHA_TEST);
-            if (fade)
-            {
-                ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
-            }
-            else
-            {
-                ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
-            }
-            GLLightingManager.glDepthFunc(GL32.GL_LEQUAL);
-            GL32.glEnable(GL32.GL_ALPHA_TEST);
-        }
-    }
-
     /**
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
-        drawLods(pass, false);
         // This fix a long-standing issue with culling state leaking because of mods,
         // or other factors as having clouds disabled.
         GLStateManager.enableCullFace();
@@ -317,7 +285,6 @@ public class SodiumWorldRenderer {
 
         //pass.endDrawing();
         GLLightingManager.clearCurrentColor();
-        drawLods(pass, true);
     }
 
     public void reload() {
