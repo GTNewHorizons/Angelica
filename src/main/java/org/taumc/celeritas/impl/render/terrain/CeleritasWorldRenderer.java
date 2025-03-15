@@ -1,8 +1,18 @@
 package org.taumc.celeritas.impl.render.terrain;
 
 import com.google.common.collect.Iterators;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
+import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.core.util.math.Mat4f;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import lombok.Getter;
+import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.ActiveRenderInfo;
@@ -30,6 +40,7 @@ import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.util.PositionUtil;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL32;
 import org.taumc.celeritas.CeleritasArchaic;
 import org.taumc.celeritas.impl.extensions.RenderGlobalExtension;
 import org.taumc.celeritas.impl.render.terrain.compile.ArchaicRenderSectionBuiltInfo;
@@ -246,6 +257,25 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
         tracker.forEachEvent(this.renderSectionManager::onChunkAdded, this.renderSectionManager::onChunkRemoved);
     }
 
+    void drawLods(boolean fade)
+    {
+        if (!AngelicaConfig.enableDistantHorizons)
+            return;
+        Mat4f mcModelViewMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getModelViewMatrix());
+        Mat4f mcProjectionMatrix = McObjectConverter.Convert(RenderingState.INSTANCE.getProjectionMatrix());
+        float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
+        if (fade)
+        {
+            ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+        }
+        else
+        {
+            ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
+            GLLightingManager.glDepthFunc(GL32.GL_LEQUAL);
+        }
+    }
+
     /**
      * Draws all visible chunks for the given pass.
      */
@@ -257,11 +287,13 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
 
         Collection<TerrainRenderPass> passes = this.renderSectionManager.getRenderPassConfiguration().vanillaRenderStages().get(vanillaPass);
 
+        drawLods(false);
         if (passes != null && !passes.isEmpty()) {
             for (var pass : passes) {
                 this.renderSectionManager.renderLayer(matrices, pass, x, y, z);
             }
         }
+        drawLods(true);
 
         GL11.glColor4f(1, 1, 1, 1);
     }
