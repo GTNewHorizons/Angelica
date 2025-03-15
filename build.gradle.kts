@@ -59,3 +59,7 @@ tasks.register<Copy>("copyDependencies") {
     from(configurations.default)
     into("testDependencies")
 }
+
+tasks.shadowJar {
+    relocate("org.slf4j", "com.gtnewhorizons.angelica.shadow.org.slf4j")
+}
