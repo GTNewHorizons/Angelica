@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinProfiler {
     @Inject(method = "startSection(Ljava/lang/String;)V", at = @At("HEAD"))
     private void debugStartSection(String name, CallbackInfo ci) {
-        GLDebug.pushGroup("minecraft:" + name);
+        GLDebug.pushGroup(0, "minecraft:" + name);
     }
 
     @Inject(method = "endSection()V", at = @At("HEAD"))

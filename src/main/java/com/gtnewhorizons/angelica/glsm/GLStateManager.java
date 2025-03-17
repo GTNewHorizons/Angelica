@@ -322,13 +322,15 @@ public class GLStateManager {
 
         GLFogManager.minecraftInit();
 
+        GLDebug.reloadDebugState();
+
         if(AngelicaMod.lwjglDebug) {
+            System.setProperty("celeritas.enableGLDebug", "true");
             LOGGER.info("Enabling additional LWJGL debug output");
 
             GLDebug.setupDebugMessageCallback();
-            GLDebug.initDebugState();
 
-            GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+            GLDebug.debugMessage(0, "Angelica Debug Annotator Initialized");
         }
 
     }

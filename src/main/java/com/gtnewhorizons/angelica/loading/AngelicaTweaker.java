@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
+import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
@@ -141,6 +142,11 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String getMixinConfig() {
+        // Temporarily until the common module defines Lwjg3ify-aware
+        final var handle = SharedConfig.getRfbTransformers().stream().filter(transformer -> transformer.id().equals("lwjgl3ify:redirect")).findFirst().orElseThrow();
+        handle.exclusions().add("org.embeddedt.embeddium");
+        handle.exclusions().add("org.taumc.celeritas");
+
         return "mixins.angelica.early.json";
     }
 

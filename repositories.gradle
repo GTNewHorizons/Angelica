@@ -5,7 +5,7 @@ repositories {
         name = 'mavenpattern'
         url = 'https://mvn.falsepattern.com/releases'
         content {
-            includeGroup 'com.falsepattern'
+            includeGroup('com.falsepattern')
         }
     }
     exclusiveContent {
@@ -29,7 +29,8 @@ repositories {
         name = 'taumc'
         url = 'https://maven.taumc.org/releases'
         content {
-            includeGroup 'org.taumc'
+            includeGroup('org.taumc')
+            includeGroup('org.embeddedt.celeritas')
         }
     }
     mavenLocal()

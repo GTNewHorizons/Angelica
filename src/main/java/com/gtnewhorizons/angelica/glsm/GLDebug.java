@@ -5,6 +5,7 @@
 
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.GL11;
@@ -273,15 +274,14 @@ public final class GLDebug {
 
     private interface DebugState {
 		void nameObject(int id, int object, String name);
-		void pushGroup(String name);
+		void pushGroup(int id, String name);
 		void popGroup();
-        void debugMessage(String name);
+        void debugMessage(int id, String name);
 
         String getObjectLabel(int glProgram, int program);
     }
 
 	private static class KHRDebugState implements DebugState {
-        private static final int ID = 0;
 		private int depth = 0;
         private static final int maxDepth = GL11.glGetInteger(KHRDebug.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
         private static final int maxNameLength = GL11.glGetInteger(KHRDebug.GL_MAX_LABEL_LENGTH);
@@ -292,12 +292,12 @@ public final class GLDebug {
 		}
 
 		@Override
-		public void pushGroup(String name) {
+		public void pushGroup(int id, String name) {
             depth++;
             if (depth > maxDepth) {
                 throw new RuntimeException("Stack overflow");
             }
-			KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, ID, name);
+			KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, id, name);
 		}
 
 		@Override
@@ -310,8 +310,8 @@ public final class GLDebug {
 		}
 
         @Override
-        public void debugMessage(String message) {
-            KHRDebug.glDebugMessageInsert(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, KHRDebug.GL_DEBUG_TYPE_MARKER, ID, KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION, message);
+        public void debugMessage(int id, String message) {
+            KHRDebug.glDebugMessageInsert(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, KHRDebug.GL_DEBUG_TYPE_MARKER, id, KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION, message);
         }
 
         @Override
@@ -329,7 +329,7 @@ public final class GLDebug {
 		}
 
 		@Override
-		public void pushGroup(String name) {
+		public void pushGroup(int id, String name) {
 		}
 
 		@Override
@@ -337,7 +337,7 @@ public final class GLDebug {
 		}
 
         @Override
-        public void debugMessage(String name) {
+        public void debugMessage(int id, String name) {
 
         }
 
@@ -347,8 +347,8 @@ public final class GLDebug {
         }
     }
 
-	public static void initDebugState() {
-		if (GLStateManager.capabilities.GL_KHR_debug || GLStateManager.capabilities.OpenGL43) {
+	public static void reloadDebugState() {
+		if (AngelicaMod.lwjglDebug && (GLStateManager.capabilities.GL_KHR_debug || GLStateManager.capabilities.OpenGL43)) {
 			debugState = new KHRDebugState();
 		} else {
 			debugState = new UnsupportedDebugState();
@@ -360,9 +360,9 @@ public final class GLDebug {
             debugState.nameObject(id, object, name);
         }
     }
-    public static void pushGroup(String group) {
+    public static void pushGroup(int id, String group) {
         if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
-            debugState.pushGroup(group);
+            debugState.pushGroup(id, group);
         }
     }
     public static void popGroup() {
@@ -370,9 +370,9 @@ public final class GLDebug {
             debugState.popGroup();
         }
     }
-    public static void debugMessage(String message) {
+    public static void debugMessage(int id, String message) {
         if(debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
-            debugState.debugMessage(message);
+            debugState.debugMessage(id, message);
         }
     }
     public static String getObjectLabel(int glProgram, int program) {

@@ -124,7 +124,7 @@ public class GLShaderManager {
             activeProgram = program;
             if(AngelicaMod.lwjglDebug) {
                 final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
-                GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
+                GLDebug.debugMessage(0, "Activating Program - " + program + ":" + programName);
             }
             GL33C.glUseProgram(program);
         }

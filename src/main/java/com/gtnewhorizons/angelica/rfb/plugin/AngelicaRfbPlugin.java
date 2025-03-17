@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rfb.plugin;
 
 import com.gtnewhorizons.angelica.rfb.transformers.GLRedirectorRfbTransformer;
 import com.gtnewhorizons.angelica.rfb.transformers.RedirectorTransformerWrapper;
+import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import com.gtnewhorizons.retrofuturabootstrap.api.PluginContext;
 import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
