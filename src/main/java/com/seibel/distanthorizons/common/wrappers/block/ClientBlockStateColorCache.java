@@ -25,6 +25,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import cpw.mods.fml.common.FMLLog;
 import net.minecraft.block.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -253,7 +254,7 @@ public class ClientBlockStateColorCache
 		}
 	}
 	//TODO: Perhaps make this not just use the first frame?
-	private static int calculateColorFromTexture(TextureAtlasSprite texture, ColorMode colorMode)
+	private int calculateColorFromTexture(TextureAtlasSprite texture, ColorMode colorMode)
 	{
 		int count = 0;
 		int alpha = 0;
@@ -261,6 +262,11 @@ public class ClientBlockStateColorCache
 		double green = 0;
 		double blue = 0;
 		int tempColor;
+
+        if (TextureAtlasSpriteWrapper.getPixelRGBA(texture, 0, 0, 0) == 0xFFFF00FF)
+        {
+            FMLLog.getLogger().error("DH: Failed to get texture for " + blockState.block.getUnlocalizedName());
+        }
 
 		// don't render Chiseled blocks.
 		// Since ColorMode is set per block, you only need to check this once.

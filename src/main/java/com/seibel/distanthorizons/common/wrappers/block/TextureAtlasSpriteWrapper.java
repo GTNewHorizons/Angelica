@@ -33,6 +33,10 @@ public class TextureAtlasSpriteWrapper
 	{
         IMixinTextureAtlasSprite spriteExt = (IMixinTextureAtlasSprite)sprite;
         int[] spriteData = spriteExt.getSpriteData();
+        if (spriteData == null)
+        {
+            return 0xFFFF00FF;
+        }
         return spriteData[sprite.getIconWidth() * y + x];
 	}
 
