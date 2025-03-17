@@ -613,6 +613,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
 
 		CommonUniforms.addDynamicUniforms(builder);
+        this.customUniforms.assignTo(builder);
 
 		Supplier<ImmutableSet<Integer>> flipped;
 
@@ -682,8 +683,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		});
 
-		return new Pass(builder.build(), framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
-				programDirectives.getBlendModeOverride().orElse(id.getBlendModeOverride()), bufferOverrides, shadow);
+        Pass pass = new Pass(builder.build(), framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
+            programDirectives.getBlendModeOverride().orElse(id.getBlendModeOverride()), bufferOverrides, shadow);
+
+        this.customUniforms.mapholderToPass(builder, pass);
+
+		return pass;
 	}
 
 	private boolean isPostChain;
@@ -758,6 +763,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (program != null && !sodiumTerrainRendering) {
 				program.use();
 			}
+
+            DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
@@ -964,6 +971,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 
 				CommonUniforms.addDynamicUniforms(builder);
+                this.customUniforms.assignTo(builder);
 
 				Supplier<ImmutableSet<Integer>> flipped;
 
@@ -989,6 +997,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 
 				programs[i] = builder.buildCompute();
+
+                this.customUniforms.mapholderToPass(builder, programs[i]);
 
 				programs[i].setWorkGroupInfo(source.getWorkGroupRelative(), source.getWorkGroups());
 			}

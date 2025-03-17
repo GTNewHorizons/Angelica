@@ -314,16 +314,16 @@ public class CompositeRenderer {
 			throw new RuntimeException("Shader compilation failed!", e);
 		}
 
+        CommonUniforms.addDynamicUniforms(builder);
+        this.customUniforms.assignTo(builder);
+
 		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
-		CommonUniforms.addDynamicUniforms(builder);
 		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true);
 		IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
 		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
-
-        this.customUniforms.assignTo(builder);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get());
@@ -334,6 +334,7 @@ public class CompositeRenderer {
 		centerDepthSampler.setUsage(builder.addDynamicSampler(centerDepthSampler::getCenterDepthTexture, "iris_centerDepthSmooth"));
 
 		Program build = builder.build();
+
 	    this.customUniforms.mapholderToPass(builder, build);
 
         return build;
@@ -360,13 +361,14 @@ public class CompositeRenderer {
 				ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
 				CommonUniforms.addDynamicUniforms(builder);
+
+                this.customUniforms.assignTo(builder);
+
 				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true);
 				IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
 				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
-
-                this.customUniforms.assignTo(builder);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get());

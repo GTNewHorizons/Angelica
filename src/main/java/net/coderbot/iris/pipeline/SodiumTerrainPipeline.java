@@ -137,11 +137,14 @@ public class SodiumTerrainPipeline {
 		return shadowFragment;
 	}
 
-	public ProgramUniforms initUniforms(ProgramUniforms.Builder uniforms) {
-		CommonUniforms.addDynamicUniforms(uniforms);
-		BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
+	public ProgramUniforms.Builder initUniforms(int programId) {
+		ProgramUniforms.Builder uniforms = ProgramUniforms.builder("<sodium shaders>", programId);
+
+        CommonUniforms.addDynamicUniforms(uniforms);
         customUniforms.assignTo(uniforms);
-		return uniforms.buildUniforms();
+
+        BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
+        return uniforms;
 	}
 
 	public boolean hasShadowPass() {
