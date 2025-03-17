@@ -878,4 +878,8 @@ public class GLStateManager {
     public static void glScissor(int x, int y, int width, int height) {
         scissorState.setScissor(x, y, width, height);
     }
+
+    public static void tryBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        GLLightingManager.tryBlendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+    }
 }
