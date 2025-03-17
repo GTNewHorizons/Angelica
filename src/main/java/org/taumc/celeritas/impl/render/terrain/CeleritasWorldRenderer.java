@@ -291,13 +291,18 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
 
         Collection<TerrainRenderPass> passes = this.renderSectionManager.getRenderPassConfiguration().vanillaRenderStages().get(vanillaPass);
 
-        drawLods(false);
+        if (vanillaPass == 0) {
+            GL32.glDisable(GL32.GL_ALPHA_TEST);
+            drawLods(false);
+        }
         if (passes != null && !passes.isEmpty()) {
             for (var pass : passes) {
                 this.renderSectionManager.renderLayer(matrices, pass, x, y, z);
             }
         }
-        drawLods(true);
+        if (vanillaPass == 0) {
+            drawLods(true);
+        }
 
         GL11.glColor4f(1, 1, 1, 1);
     }
