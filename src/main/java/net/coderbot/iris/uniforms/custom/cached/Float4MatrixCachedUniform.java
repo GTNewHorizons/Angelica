@@ -5,11 +5,13 @@ import net.coderbot.iris.parsing.MatrixType;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL20;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.function.Supplier;
 
 public class Float4MatrixCachedUniform extends VectorCachedUniform<Matrix4f> {
-	final private FloatBuffer buffer = FloatBuffer.allocate(16);
+	final private FloatBuffer buffer = ByteBuffer.allocateDirect(16 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
 
 	public Float4MatrixCachedUniform(String name, UniformUpdateFrequency updateFrequency, Supplier<Matrix4f> supplier) {
 		super(name, updateFrequency, new Matrix4f(), supplier);
