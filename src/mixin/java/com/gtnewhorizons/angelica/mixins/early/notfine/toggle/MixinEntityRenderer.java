@@ -12,10 +12,12 @@ import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import org.lwjglx.opengl.GL11;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityRenderer.class)
 abstract public class MixinEntityRenderer {
@@ -58,23 +60,16 @@ abstract public class MixinEntityRenderer {
         )
     )
     private float notFine$nearFogDistance(float value) {
-        // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
-        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 15;
         return farPlaneDistance * (int) Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F;
     }
 
-    @ModifyArg(
-        method = "setupFog(IF)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V",
-            ordinal = 15,
-            remap = false
-        )
-    )
-    private float notFine$replaceFarFogDistance(float value) {
-        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 16;
-        return value;
+    @Inject(method = "setupFog", at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", shift = At.Shift.AFTER, remap = false))
+    private void notFine$disableFog(int p_78468_1_, float p_78468_2_, CallbackInfo ci) {
+        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) {
+            // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
+            GL11.glFogf(org.lwjgl.opengl.GL11.GL_FOG_START, 1024 * 1024 * 15);
+            GL11.glFogf(GL11.GL_FOG_END, 1024 * 1024 * 16);
+        }
     }
 
     @Redirect(
