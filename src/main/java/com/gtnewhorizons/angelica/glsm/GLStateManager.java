@@ -28,7 +28,7 @@ import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
-import org.lwjgl.opengl.Drawable;
+import org.lwjglx.opengl.Drawable;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
