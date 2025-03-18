@@ -23,6 +23,7 @@ import net.coderbot.iris.shaderpack.preprocessor.JcppProcessor;
 import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.coderbot.iris.shaderpack.texture.TextureFilteringData;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,6 +47,8 @@ import java.util.stream.Collectors;
 
 public class ShaderPack {
 	private static final Gson GSON = new Gson();
+
+    public final CustomUniforms.Builder customUniforms;
 
 	private final ProgramSet base;
 	@Nullable
@@ -243,6 +246,8 @@ public class ShaderPack {
 
 			customTextureDataMap.put(textureStage, innerCustomTextureDataMap);
 		});
+
+        this.customUniforms = shaderProperties.getCustomUniforms();
 	}
 
 	private String getCurrentProfileName() {
