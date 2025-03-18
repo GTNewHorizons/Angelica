@@ -21,6 +21,7 @@ import net.coderbot.iris.gl.texture.TextureScaleOverride;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -42,6 +43,7 @@ import java.util.function.Consumer;
  * values in here & the values parsed from shader source code.
  */
 public class ShaderProperties {
+    @Getter private final CustomUniforms.Builder customUniforms = new CustomUniforms.Builder();
 	@Getter private CloudSetting cloudSetting = CloudSetting.DEFAULT;
 	@Getter private OptionalBoolean oldHandLight = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean dynamicHandLight = OptionalBoolean.DEFAULT;
@@ -308,6 +310,26 @@ public class ShaderProperties {
 
 			handleWhitespacedListDirective(key, value, "iris.features.required", options -> requiredFeatureFlags = options);
 			handleWhitespacedListDirective(key, value, "iris.features.optional", options -> optionalFeatureFlags = options);
+
+            handlePassDirective("variable.", key, value, pass -> {
+                String[] parts = pass.split("\\.");
+                if (parts.length != 2) {
+                    Iris.logger.warn("Custom variables should take the form of `variable.<type>.<name> = <expression>. Ignoring " + key);
+                    return;
+                }
+
+                customUniforms.addVariable(parts[0], parts[1], value, false);
+            });
+
+            handlePassDirective("uniform.", key, value, pass -> {
+               String[] parts = pass.split("\\.");
+               if (parts.length != 2) {
+                   Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
+                   return;
+               }
+
+               customUniforms.addVariable(parts[0], parts[1], value, true);
+            });
 
 			// TODO: Buffer size directives
 			// TODO: Conditional program enabling directives
