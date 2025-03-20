@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.EnumSet;
+import java.util.Set;
 
 public class VideoSettings {
     private final File optionsFile;
@@ -19,11 +21,12 @@ public class VideoSettings {
 
     public void loadSettings() {
         try {
-            if (!optionsFile.exists()) {
+            if (!optionsFile.exists() && !optionsFile.createNewFile()) {
                 return;
             }
             BufferedReader bufferedreader = new BufferedReader(new FileReader(optionsFile));
             String settingString;
+            Set<Settings> loadedSettings = EnumSet.noneOf(Settings.class);
 
             while((settingString = bufferedreader.readLine()) != null) {
                 try {
@@ -31,12 +34,19 @@ public class VideoSettings {
                     Settings setting = Settings.valueOf(fragments[0]);
                     setting.option.deserialize(fragments[1]);
                     setting.applyChanges();
+                    loadedSettings.add(setting);
                 } catch (Exception exception) {
                     NotFine.logger.warn("Skipping bad option: " + settingString);
                 }
 
             }
             bufferedreader.close();
+
+            for (Settings setting : Settings.values()) {
+                if (!loadedSettings.contains(setting)) {
+                    setting.applyChanges();
+                }
+            }
         } catch (Exception exception) {
             NotFine.logger.error("Failed to load options", exception);
         }
