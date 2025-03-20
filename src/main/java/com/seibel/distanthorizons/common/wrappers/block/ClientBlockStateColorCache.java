@@ -27,7 +27,7 @@ import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import cpw.mods.fml.common.FMLLog;
 import net.minecraft.block.*;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.IconFlipped;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import java.util.Random;
 
@@ -222,6 +222,10 @@ public class ClientBlockStateColorCache
 				else
 				{*/
                     IIcon icon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta); // TODO
+
+                    if (icon instanceof IconFlipped) {
+                        icon = ((IconFlipped) icon).baseIcon;
+                    }
 					// Backup method.
 					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
                     if (blockState.block instanceof BlockGrass || blockState.block instanceof  BlockLeavesBase || blockState.block instanceof BlockBush)
@@ -230,8 +234,14 @@ public class ClientBlockStateColorCache
                     }
 					this.needShade = false;
 					this.tintIndex = 0;
-					this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
-							ColorMode.getColorMode(this.blockState.block));
+
+                    if (icon instanceof TextureAtlasSprite)
+                    {
+                        this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
+                            ColorMode.getColorMode(this.blockState.block));
+                    } else {
+                        this.baseColor = blockState.block.getBlockColor();
+                    }
 				//}
 			}
 			else
