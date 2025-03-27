@@ -27,6 +27,7 @@ import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 
@@ -41,6 +42,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.World;
 
 import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
@@ -228,6 +230,14 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 			}
 		}
 	}
+
+    @SubscribeEvent
+    public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo) return;
+
+        F3Screen.addStringToDisplay(event.right);
+    }
 
 
 }
