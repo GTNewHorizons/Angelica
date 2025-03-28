@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.common.wrappers.gui;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.config.ILangWrapper;
+import net.minecraft.client.resources.language.I18n;
 
 public class LangWrapper implements ILangWrapper
 {
@@ -8,13 +9,13 @@ public class LangWrapper implements ILangWrapper
 	@Override
 	public boolean langExists(String str)
 	{
-		return false; // TODO
+		return I18n.exists(str);
 	}
-
+	
 	@Override
 	public String getLang(String str)
 	{
-		return "<TODO!>"; // TODO
+		return I18n.get(str);
 	}
-
+	
 }
