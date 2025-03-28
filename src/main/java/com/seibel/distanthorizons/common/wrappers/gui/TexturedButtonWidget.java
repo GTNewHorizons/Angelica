@@ -28,39 +28,37 @@ import net.minecraft.util.ResourceLocation;
  * @author coolGi
  * @version 2023-10-03
  */
-public class TexturedButtonWidget extends GuiButton
-{
-	public final boolean renderBackground;
+public class TexturedButtonWidget extends GuiButton {
+    public final boolean renderBackground;
 
-	private final int u;
-	private final int v;
-	private final int hoveredVOffset;
+    private final int u;
+    private final int v;
+    private final int hoveredVOffset;
 
-	private final ResourceLocation textureResourceLocation;
+    private final ResourceLocation textureResourceLocation;
 
-	private final int textureWidth;
-	private final int textureHeight;
+    private final int textureWidth;
+    private final int textureHeight;
 
 
-	public TexturedButtonWidget(int x, int y, int width, int height, int u, int v, int hoveredVOffset, ResourceLocation textureResourceLocation, int textureWidth, int textureHeight, int id, String text)
-	{
-		this(x, y, width, height, u, v, hoveredVOffset, textureResourceLocation, textureWidth, textureHeight, id, text, true);
-	}
-	public TexturedButtonWidget(int x, int y, int width, int height, int u, int v, int hoveredVOffset, ResourceLocation textureResourceLocation, int textureWidth, int textureHeight, int id, String text, boolean renderBackground)
-	{
-		super(id, x, y, width, height, text);
+    public TexturedButtonWidget(int x, int y, int width, int height, int u, int v, int hoveredVOffset, ResourceLocation textureResourceLocation, int textureWidth, int textureHeight, int id, String text) {
+        this(x, y, width, height, u, v, hoveredVOffset, textureResourceLocation, textureWidth, textureHeight, id, text, true);
+    }
 
-		this.u = u;
-		this.v = v;
-		this.hoveredVOffset = hoveredVOffset;
+    public TexturedButtonWidget(int x, int y, int width, int height, int u, int v, int hoveredVOffset, ResourceLocation textureResourceLocation, int textureWidth, int textureHeight, int id, String text, boolean renderBackground) {
+        super(id, x, y, width, height, text);
 
-		this.textureResourceLocation = textureResourceLocation;
+        this.u = u;
+        this.v = v;
+        this.hoveredVOffset = hoveredVOffset;
 
-		this.textureWidth = textureWidth;
-		this.textureHeight = textureHeight;
+        this.textureResourceLocation = textureResourceLocation;
 
-		this.renderBackground = renderBackground;
-	}
+        this.textureWidth = textureWidth;
+        this.textureHeight = textureHeight;
+
+        this.renderBackground = renderBackground;
+    }
 
 	/*
 	#if MC_VER < MC_1_20_2
