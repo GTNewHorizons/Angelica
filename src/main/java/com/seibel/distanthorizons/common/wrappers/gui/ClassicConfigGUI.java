@@ -213,11 +213,16 @@ public class ClassicConfigGUI
 		public void updateScreen()
 		{
 			super.updateScreen();
+			for (GuiTextField field : textFieldList.keySet())
+			{
+				field.updateCursorCounter();
+			}
 		}
 
         int nextId = 0;
 
         private Map<Integer, OnPressed> buttonMap = new HashMap<>();
+		private Map<GuiTextField, Predicate<String>> textFieldList = new HashMap<>();
 
         private GuiButton MakeBtn(String name, int posX, int posZ, int width, int height, OnPressed action)
         {
@@ -239,6 +244,31 @@ public class ClassicConfigGUI
                 buttonMap.get(button.id).pressed(button);
             }
         }
+
+		@Override
+		protected void keyTyped(char typedChar, int keyCode)
+		{
+			super.keyTyped(typedChar, keyCode);
+
+			for (Map.Entry<GuiTextField, Predicate<String>> entry : textFieldList.entrySet())
+			{
+				GuiTextField field = entry.getKey();
+				if (field.isFocused())
+				{
+					field.textboxKeyTyped(typedChar, keyCode);
+					entry.getValue().test(field.getText());
+				}
+			}
+		}
+
+		@Override
+		protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+			super.mouseClicked(mouseX, mouseY, mouseButton);
+			for (GuiTextField field : textFieldList.keySet())
+			{
+				field.mouseClicked(mouseX, mouseY, mouseButton);
+			}
+		}
 
 		/**
 		 * When you close it, it goes to the previous screen and saves
@@ -371,10 +401,10 @@ public class ClassicConfigGUI
 				else if (((EntryInfo) info.guiValue).widget != null)
 				{
 					GuiTextField widget = new GuiTextField(fontRendererObj, this.width - 150 - ConfigScreenConfigs.SpaceFromRightScreen + 2, 0, 150 - 4, 20);
-					//widget.setMaxLength(150);
+					widget.setMaxStringLength(150);
 					widget.setText(String.valueOf(info.get()));
 					Predicate<String> processor = ((BiFunction<GuiTextField, GuiButton, Predicate<String>>) ((EntryInfo) info.guiValue).widget).apply(widget, doneButton);
-					//widget.setFilter(processor);
+					textFieldList.put(widget, processor);
 					this.list.addButton(widget, resetButton, null, name);
 					return;
 				}
@@ -415,6 +445,7 @@ public class ClassicConfigGUI
 		{
 			this.drawDefaultBackground();
 			this.list.render(mouseX, mouseY, delta); // Render buttons
+			super.drawScreen(mouseX, mouseY, delta);
 
 			DhDrawCenteredString(title, width / 2, 15, 0xFFFFFF); // Render title
 
@@ -467,7 +498,6 @@ public class ClassicConfigGUI
 					}
 				}
 			}
-			super.drawScreen(mouseX, mouseY, delta);
 		}
 
 	}
@@ -634,7 +664,7 @@ public class ClassicConfigGUI
                 if (button instanceof GuiButton guiButton)
                 {
 					guiButton.yPosition = y;
-                    guiButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
+                    //guiButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
                 }
                 if (button instanceof GuiTextField guiTextField)
                 {
@@ -645,12 +675,12 @@ public class ClassicConfigGUI
 			if (resetButton != null)
 			{
 				resetButton.yPosition = y;
-				resetButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
+				//resetButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
 			}
 			if (indexButton != null)
 			{
 				indexButton.yPosition = y;
-				indexButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
+				//indexButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
 			}
 			if (text != null && (!text.contains("spacer") || button != null))
                 button.drawString(Minecraft.getMinecraft().fontRenderer, text, 12, y + 5, 0xFFFFFF);
