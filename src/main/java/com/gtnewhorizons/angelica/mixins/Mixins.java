@@ -195,7 +195,8 @@ public enum Mixins {
             "distanthorizons.MixinMinecraft",
             "distanthorizons.MixinEntityRenderer",
             "distanthorizons.MixinTextureAtlasSprite",
-            "distanthorizons.MixinNetHandlerPlayClient"
+            "distanthorizons.MixinNetHandlerPlayClient",
+            "distanthorizons.MixinOptionsScreen"
         )
     ),
 

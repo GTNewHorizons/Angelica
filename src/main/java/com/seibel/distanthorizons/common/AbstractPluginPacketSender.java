@@ -23,7 +23,7 @@ public abstract class AbstractPluginPacketSender implements IPluginPacketSender
 	private static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
 			() -> Config.Common.Logging.logNetworkEvent.get());
 
-	public static final String WRAPPER_PACKET_RESOURCE = "channelDistantHorizons";
+	public static final String WRAPPER_PACKET_RESOURCE = "channelDH";
 
 
 	@Override

@@ -3,6 +3,7 @@ package com.seibel.distanthorizons.forge;
 import com.seibel.distanthorizons.common.AbstractPluginPacketSender;
 import com.seibel.distanthorizons.common.wrappers.misc.ServerPlayerWrapper;
 import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
+import com.seibel.distanthorizons.core.network.messages.MessageRegistry;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -50,17 +51,25 @@ public class ForgePluginPacketSender extends AbstractPluginPacketSender
 	@SuppressWarnings({"ClassCanBeRecord", "RedundantSuppression"})
 	public static class MessageWrapper implements IMessage
 	{
-		public final AbstractNetworkMessage message;
+		public AbstractNetworkMessage message;
 
 		public MessageWrapper(AbstractNetworkMessage message) { this.message = message; }
 
+        public MessageWrapper()
+        {
+            // For reflection
+        }
+
         @Override
         public void fromBytes(ByteBuf buf) {
+            int messageId = buf.readByte();
+            message = MessageRegistry.INSTANCE.createMessage(messageId);
             message.decode(buf);
         }
 
         @Override
         public void toBytes(ByteBuf buf) {
+            buf.writeByte(MessageRegistry.INSTANCE.getMessageId(message));
             message.encode(buf);
         }
 
