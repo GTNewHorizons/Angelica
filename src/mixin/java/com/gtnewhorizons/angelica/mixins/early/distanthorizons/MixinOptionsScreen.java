@@ -23,13 +23,11 @@ import com.seibel.distanthorizons.common.wrappers.gui.GetConfigScreen;
 import com.seibel.distanthorizons.common.wrappers.gui.TexturedButtonWidget;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.config.Config;
-import net.minecraft.client.gui.screens.OptionsScreen;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-#if MC_VER < MC_1_19_2
-import net.minecraft.network.chat.TranslatableComponent;
-#endif
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -43,21 +41,19 @@ import java.util.Objects;
  * @author coolGi
  * @version 12-02-2021
  */
-@Mixin(OptionsScreen.class)
-public class MixinOptionsScreen extends Screen
+@Mixin(GuiOptions.class)
+public class MixinOptionsScreen extends GuiScreen
 {
 	// Get the texture for the button
 	private static final ResourceLocation ICON_TEXTURE = new ResourceLocation(ModInfo.ID, "textures/gui/button.png");
-	protected MixinOptionsScreen(Component title)
-	{
-		super(title);
-	}
 
-	@Inject(at = @At("HEAD"), method = "init")
+    private static final int button_id = 99;
+
+	@Inject(at = @At("HEAD"), method = "initGui")
 	private void lodconfig$init(CallbackInfo ci)
 	{
 		if (Config.Client.showDhOptionsButtonInMinecraftUi.get())
-			this. #if MC_VER < MC_1_17_1 addButton #else addRenderableWidget #endif
+			this.buttonList.add(
 					(new TexturedButtonWidget(
 							// Where the button is on the screen
 							this.width / 2 - 180, this.height / 6 - 12,
@@ -69,13 +65,20 @@ public class MixinOptionsScreen extends Screen
 							20, ICON_TEXTURE, 20, 40,
 							// Create the button and tell it where to go
 							// For now it goes to the client option by default
-							(buttonWidget) -> Objects.requireNonNull(minecraft).setScreen(GetConfigScreen.getScreen(this)),
+							button_id,
 							// Add a title to the button
-                            #if MC_VER < MC_1_19_2
-							new TranslatableComponent(ModInfo.ID + ".title")));
-                            #else
-							Component.translatable(ModInfo.ID + ".title")));
-                            #endif
+							"DH" /* ModInfo.ID + ".title" */)));
+
 	}
+
+    @Inject(at = @At("HEAD"), method = "actionPerformed", cancellable = true)
+    private void lodconfig$actionPerformed(GuiButton button, CallbackInfo ci)
+    {
+        if (button.id == button_id)
+        {
+            Minecraft.getMinecraft().displayGuiScreen(GetConfigScreen.getScreen(this));
+            ci.cancel();
+        }
+    }
 
 }
