@@ -6,6 +6,8 @@ import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.misc.ServerPlayerWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
+import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
@@ -21,12 +23,16 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.ChunkDataEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
 import java.util.Iterator;
 import java.util.Queue;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
@@ -152,6 +158,14 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
 	}
 
+    @SubscribeEvent
+    public void serverChunkUnLoadEvent(ChunkDataEvent.Save event)
+    {
+        ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
+        ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+        ServerApi.INSTANCE.serverChunkSaveEvent(chunk, levelWrapper);
+    }
+
 	@SubscribeEvent
 	public void playerLoggedInEvent(PlayerEvent.PlayerLoggedInEvent event)
 	{ this.serverApi.serverPlayerJoinEvent(getServerPlayerWrapper(event)); }
@@ -167,6 +181,30 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 				getServerLevelWrapper(event.toDim, event)
 		);
 	}
+
+    @SubscribeEvent
+    public void clickBlockEvent(PlayerInteractEvent event)
+    {
+        if (SharedApi.isChunkAtBlockPosAlreadyUpdating(event.x, event.z))
+        {
+            return;
+        }
+
+        //LOGGER.trace("interact or block place event at blockPos: " + event.getPos());
+
+        World level = event.world;
+
+        AbstractExecutorService executor = ThreadPoolUtil.getFileHandlerExecutor();
+        if (executor != null)
+        {
+            executor.execute(() ->
+            {
+                Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
+                ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
+                SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel), wrappedLevel);
+            });
+        }
+    }
 
     private static final Queue<ScheduledTask<?>> taskQueue = new ConcurrentLinkedQueue<>();
 
