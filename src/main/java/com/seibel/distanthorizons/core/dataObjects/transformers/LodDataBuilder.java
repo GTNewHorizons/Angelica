@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.dataObjects.transformers;
 import java.util.Collections;
 import java.util.List;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiBlocksToAvoid;
 import com.seibel.distanthorizons.api.enums.config.EDhApiWorldCompressionMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
@@ -131,6 +132,7 @@ public class LodDataBuilder
 		
 		EDhApiWorldCompressionMode worldCompressionMode = Config.Common.LodBuilding.worldCompression.get();
 		boolean ignoreHiddenBlocks = (worldCompressionMode != EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
+		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		
 		try
 		{
@@ -207,21 +209,29 @@ public class LodDataBuilder
 						}
 					}
 					
-					
+					boolean forceSingleBlock = false;
 					for (; y >= minBuildHeight; y--)
 					{
 						IBiomeWrapper newBiome = chunkWrapper.getBiome(relBlockX, y, relBlockZ);
 						IBlockStateWrapper newBlockState = previousBlockState = chunkWrapper.getBlockState(relBlockX, y, relBlockZ, mcBlockPos, previousBlockState);
 						byte newBlockLight = (byte) chunkWrapper.getDhBlockLight(relBlockX, y + 1, relBlockZ);
 						byte newSkyLight = (byte) chunkWrapper.getDhSkyLight(relBlockX, y + 1, relBlockZ);
-						
+
 						// save the biome/block change
-						if (!newBiome.equals(biome) || !newBlockState.equals(blockState))
+						if (!newBiome.equals(biome) || !newBlockState.equals(blockState) || forceSingleBlock)
 						{
+							forceSingleBlock = false;
+							// Check if the  previous block colors this block
+							// If so, we must make this block a single entry, aka add the next block even if it is the same
+							if (ignoreNonCollidingBlocks && !blockState.isAir()
+								&& !blockState.isSolid() && !blockState.isLiquid() && blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
+							{
+								forceSingleBlock = true;
+							}
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
 							biome = newBiome;
 							blockState = newBlockState;
-							
+
 							mappedId = dataSource.mapping.addIfNotPresentAndGetId(biome, blockState);
 							blockLight = newBlockLight;
 							skyLight = newSkyLight;
