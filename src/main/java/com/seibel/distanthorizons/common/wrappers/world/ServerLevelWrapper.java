@@ -73,7 +73,7 @@ public class ServerLevelWrapper implements IServerLevelWrapper
     @Override
     public File getMcSaveFolder()
     {
-        return this.level.getChunkSaveLocation(); // TODO ?
+        return new File(this.level.getChunkSaveLocation(), "data");
     }
 
     @Override
