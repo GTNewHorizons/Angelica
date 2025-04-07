@@ -210,7 +210,8 @@ public class ChunkWrapper implements IChunkWrapper
     @Override
     public int getSolidHeightMapValue(int xRel, int zRel)
     {
-        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(xRel, zRel);
+        return 255;
+        /*this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(xRel, zRel);
 
         // will be null if we want to use MC heightmaps
         if (this.solidHeightMap == null)
@@ -220,7 +221,7 @@ public class ChunkWrapper implements IChunkWrapper
         else
         {
             return this.solidHeightMap[xRel][zRel];
-        }
+        }*/
     }
 
     @Override
