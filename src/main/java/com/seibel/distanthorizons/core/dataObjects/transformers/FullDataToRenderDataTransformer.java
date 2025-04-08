@@ -210,6 +210,7 @@ public class FullDataToRenderDataTransformer
 		
 		int colorToApplyToNextBlock = -1;
 		int lastColor = 0;
+		int lastBlockLight = 0;
 		int lastBottom = -10_000;
 		
 		int skylightToApplyToNextBlock = -1;
@@ -362,7 +363,7 @@ public class FullDataToRenderDataTransformer
 			//=============================//
 			
 			// check if they share a top-bottom face and if they have same color
-			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0)
+			if (color == lastColor && lastBlockLight == blockLight && bottomY + blockHeight == lastBottom  && renderDataIndex > 0)
 			{
 				//replace the previous block with new bottom
 				long columnData = renderColumnData.get(renderDataIndex - 1);
@@ -379,6 +380,7 @@ public class FullDataToRenderDataTransformer
 			}
 			lastBottom = bottomY;
 			lastColor = color;
+			lastBlockLight = blockLight;
 		}
 		
 		
