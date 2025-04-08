@@ -61,6 +61,29 @@ public class LodDataBuilder
 	// converters //
 	//============//
 	
+	private static boolean isBlockTouchingTransparentStep(IChunkWrapper wrapper, int x, int y, int z)
+	{
+		if (x < 0 || x > 15 || z < 0 || z > 15 || y < 0)
+			return false;
+		
+		return wrapper.getBlockState(x, y, z).getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
+	}
+	
+	private static boolean isBlockTouchingTransparent(IChunkWrapper wrapper, int x, int y, int z)
+	{
+		if (isBlockTouchingTransparentStep(wrapper, x, y - 1, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x - 1, y, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x + 1, y, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x, y, z - 1))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x, y, z + 1))
+			return true;
+		return false;
+	}
+	
 	public static FullDataSourceV2 createFromChunk(IChunkWrapper chunkWrapper)
 	{
 		// only block lighting is needed here, sky lighting is populated at the data source stage
@@ -227,6 +250,14 @@ public class LodDataBuilder
 								&& !blockState.isSolid() && !blockState.isLiquid() && blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
 							{
 								forceSingleBlock = true;
+							}
+							if (newBlockLight > 0)
+							{
+								newBlockLight = 5;
+								if (!isBlockTouchingTransparent(chunkWrapper, relBlockX, y, relBlockZ))
+								{
+									forceSingleBlock = true;
+								}
 							}
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
 							biome = newBiome;
