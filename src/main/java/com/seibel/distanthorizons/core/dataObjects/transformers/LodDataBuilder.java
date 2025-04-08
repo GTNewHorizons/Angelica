@@ -61,6 +61,29 @@ public class LodDataBuilder
 	// converters //
 	//============//
 	
+	private static boolean isBlockTouchingTransparentStep(IChunkWrapper wrapper, int x, int y, int z)
+	{
+		if (x < 0 || x > 15 || z < 0 || z > 15 || y < 0)
+			return false;
+		
+		return wrapper.getBlockState(x, y, z).getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
+	}
+	
+	private static boolean isBlockTouchingTransparent(IChunkWrapper wrapper, int x, int y, int z)
+	{
+		if (isBlockTouchingTransparentStep(wrapper, x, y - 1, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x - 1, y, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x + 1, y, z))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x, y, z - 1))
+			return true;
+		if (isBlockTouchingTransparentStep(wrapper, x, y, z + 1))
+			return true;
+		return false;
+	}
+	
 	public static FullDataSourceV2 createFromChunk(IChunkWrapper chunkWrapper)
 	{
 		// only block lighting is needed here, sky lighting is populated at the data source stage
@@ -210,6 +233,7 @@ public class LodDataBuilder
 					}
 					
 					boolean forceSingleBlock = false;
+					boolean hasColumnLight = false;
 					for (; y >= minBuildHeight; y--)
 					{
 						IBiomeWrapper newBiome = chunkWrapper.getBiome(relBlockX, y, relBlockZ);
@@ -228,6 +252,7 @@ public class LodDataBuilder
 							{
 								forceSingleBlock = true;
 							}
+							hasColumnLight = newBlockLight > 0;
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
 							biome = newBiome;
 							blockState = newBlockState;
@@ -236,6 +261,11 @@ public class LodDataBuilder
 							blockLight = newBlockLight;
 							skyLight = newSkyLight;
 							lastY = y;
+						}
+
+						if (hasColumnLight && !isBlockTouchingTransparent(chunkWrapper, relBlockX, y, relBlockZ))
+						{
+							forceSingleBlock = true;
 						}
 					}
 					longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
