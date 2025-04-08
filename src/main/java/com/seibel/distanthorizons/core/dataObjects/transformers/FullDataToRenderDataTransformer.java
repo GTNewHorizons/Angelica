@@ -262,7 +262,7 @@ public class FullDataToRenderDataTransformer
 				continue;
 			}
 			
-			
+			blockLight = Math.max(blockLight, block.getLightEmission());
 			
 			//====================//
 			// ignored block and  //
