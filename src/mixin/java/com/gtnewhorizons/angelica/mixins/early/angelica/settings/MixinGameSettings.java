@@ -28,6 +28,6 @@ public class MixinGameSettings implements IGameSettingsExt {
      */
     @ModifyConstant(method = "<init>(Lnet/minecraft/client/Minecraft;Ljava/io/File;)V", constant = @Constant(floatValue = 16.0f))
     private float increaseMaxDistance(float old) {
-        return 32.0f;
+        return 128;
     }
 }

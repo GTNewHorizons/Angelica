@@ -12,7 +12,7 @@ public class MixinPlayerManager {
 
     @ModifyArgs(method = "func_152622_a(I)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/MathHelper;clamp_int(III)I"))
     public void clamp_int(Args args) {
-        args.set(2, 32);
+        args.set(2, 128);
     }
 
 }
