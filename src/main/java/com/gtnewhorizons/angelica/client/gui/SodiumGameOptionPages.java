@@ -28,11 +28,12 @@ import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
-import org.lwjgl.opengl.Display;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 
 public class SodiumGameOptionPages {
     private static final SodiumOptionsStorage sodiumOpts = new SodiumOptionsStorage();
@@ -143,7 +144,7 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                         .setBinding((opts, value) -> {
                             opts.enableVsync = value;
-                            Display.setVSyncEnabled(opts.enableVsync);
+                            glfwSwapInterval(opts.enableVsync ? 1 : 0);
                         }, opts -> opts.enableVsync)
                         .setImpact(OptionImpact.VARIES)
                         .build())
