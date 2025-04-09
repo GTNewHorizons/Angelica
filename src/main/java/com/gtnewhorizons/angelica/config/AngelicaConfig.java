@@ -49,6 +49,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableDistantHorizons;
 
+    @Config.Comment("Distant Horizons chunk updates per second")
+    @Config.DefaultInt(5)
+    @Config.RequiresMcRestart
+    public static int distantHorizonsChunkUpdatesPerSecond;
+
     @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
