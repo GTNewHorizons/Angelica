@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.toggle;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -65,7 +66,7 @@ abstract public class MixinEntityRenderer {
 
     @Inject(method = "setupFog", at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", shift = At.Shift.AFTER, remap = false))
     private void notFine$disableFog(int p_78468_1_, float p_78468_2_, CallbackInfo ci) {
-        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) {
+        if ((Boolean) Settings.FOG_DISABLE.option.getStore() || AngelicaConfig.enableDistantHorizons) {
             // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
             GL11.glFogf(org.lwjgl.opengl.GL11.GL_FOG_START, 1024 * 1024 * 15);
             GL11.glFogf(GL11.GL_FOG_END, 1024 * 1024 * 16);
