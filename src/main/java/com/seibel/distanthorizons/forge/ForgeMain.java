@@ -33,12 +33,15 @@ import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
+import cpw.mods.fml.common.network.NetworkCheckHandler;
+import cpw.mods.fml.relauncher.Side;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -51,6 +54,8 @@ public class ForgeMain extends AbstractModInitializer
 {
     @Mod.Instance
     public static Object instance;
+
+    public static boolean isHodgePodgeInstalled;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -136,5 +141,13 @@ public class ForgeMain extends AbstractModInitializer
 
 	@Override
 	protected void runDelayedSetup() { SingletonInjector.INSTANCE.runDelayedSetup(); }
+
+    @NetworkCheckHandler
+    public boolean checkNetwork(Map<String, String> map, Side side) {
+        if (side == Side.SERVER) {
+            isHodgePodgeInstalled = map.containsKey("hodgepodge");
+        }
+        return true;
+    }
 
 }

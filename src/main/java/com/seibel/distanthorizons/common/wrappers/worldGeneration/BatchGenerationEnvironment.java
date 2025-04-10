@@ -768,6 +768,8 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
                     // release the generated chunks
 
                     Iterator<ChunkPos> iterator = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0).iterator();
+
+
                     while (iterator.hasNext())
                     {
                         ChunkPos chunkPos = iterator.next();
@@ -851,7 +853,11 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
     {
         return CompletableFuture.supplyAsync(() ->
         {
-            ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
+            ChunkCoordIntPair chunk = new ChunkCoordIntPair(pos.x, pos.z);
+            if (ForgeMain.isHodgePodgeInstalled) {
+                HodgePodgeCompat.preventChunkSimulation(level, chunk, true);
+            }
+            ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, chunk);
 
             try {
                 return forceLoadChunkAsync(level, pos.x, pos.z).get();
@@ -865,7 +871,12 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
     /** @param chunkWasGeneratedUpToFeatures if false this assumes the chunk was generated to "FULL" status */
     private void releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
     {
-        ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
+        ChunkCoordIntPair chunk = new ChunkCoordIntPair(pos.x, pos.z);
+
+        ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, chunk);
+        if (ForgeMain.isHodgePodgeInstalled) {
+            HodgePodgeCompat.preventChunkSimulation(level, chunk, false);
+        }
     }
 
     /*
