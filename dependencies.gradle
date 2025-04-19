@@ -65,6 +65,7 @@ dependencies {
 
     // Use modern models+textures to inject QuadProviders
     devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.0:dev')
+    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:9.9.9")
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
@@ -112,6 +113,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.0-GTNH:dev")
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.1.41-pre")
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
