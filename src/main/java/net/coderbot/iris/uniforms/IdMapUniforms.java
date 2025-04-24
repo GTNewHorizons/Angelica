@@ -13,7 +13,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
@@ -54,7 +53,6 @@ public final class IdMapUniforms {
 		private final boolean applyOldHandLight;
 		private int intID;
 		private int lightValue;
-		private Vector3f lightColor;
 
 		HeldItemSupplier(InteractionHand hand, Object2IntFunction<NamespacedId> itemIdMap, boolean shouldApplyOldHandLight) {
 			this.hand = hand;
@@ -65,7 +63,6 @@ public final class IdMapUniforms {
 		private void invalidate() {
 			intID = -1;
 			lightValue = 0;
-			lightColor = IrisItemLightProvider.DEFAULT_LIGHT_COLOR;
 		}
 
 		public void update() {
@@ -100,8 +97,6 @@ public final class IdMapUniforms {
 			if (applyOldHandLight) {
 				lightProvider = applyOldHandLighting(player, lightProvider);
 			}
-
-			lightColor = lightProvider.getLightColor(Minecraft.getMinecraft().thePlayer, heldStack);
 		}
 
 		private IrisItemLightProvider applyOldHandLighting(@NotNull EntityPlayer player, IrisItemLightProvider existing) {
@@ -134,10 +129,6 @@ public final class IdMapUniforms {
 
 		public int getLightValue() {
 			return lightValue;
-		}
-
-		public Vector3f getLightColor() {
-			return lightColor;
 		}
 	}
 }

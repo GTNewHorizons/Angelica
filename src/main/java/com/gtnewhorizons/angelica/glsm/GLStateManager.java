@@ -26,6 +26,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -35,6 +36,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
@@ -65,12 +67,16 @@ import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
 import java.lang.Math;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.AbstractMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
@@ -134,10 +140,20 @@ public class GLStateManager {
     @Getter protected static final MaterialStateStack frontMaterial = new MaterialStateStack(GL11.GL_FRONT);
     @Getter protected static final MaterialStateStack backMaterial = new MaterialStateStack(GL11.GL_BACK);
 
+    private static final MethodHandle MAT4_STACK_CURR_DEPTH;
+
     static {
         for (int i = 0; i < lightStates.length; i ++) {
             lightStates[i] = new BooleanStateStack(GL11.GL_LIGHT0 + i);
             lightDataStates[i] = new LightStateStack(GL11.GL_LIGHT0 + i);
+        }
+
+        try {
+            Field curr = ReflectionHelper.findField(Matrix4fStack.class, "curr");
+            curr.setAccessible(true);
+            MAT4_STACK_CURR_DEPTH = MethodHandles.lookup().unreflectGetter(curr);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -150,11 +166,18 @@ public class GLStateManager {
         while(!attribs.isEmpty()) {
             attribs.popInt();
         }
-        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            IStateStack<?> stack = stacks.get(i);
+
             while(!stack.isEmpty()) {
                 stack.pop();
             }
         }
+
         modelViewMatrix.clear();
         projectionMatrix.clear();
     }
@@ -181,6 +204,9 @@ public class GLStateManager {
 
 
     public static class GLFeatureSet extends IntOpenHashSet {
+
+        private static final long serialVersionUID = 8558779940775721010L;
+
         public GLFeatureSet addFeature(int feature) {
             super.add(feature);
             return this;
@@ -399,6 +425,11 @@ public class GLStateManager {
         }
     }
 
+    @SneakyThrows
+    public static int getMatrixStackDepth(Matrix4fStack stack) {
+        return (int) MAT4_STACK_CURR_DEPTH.invokeExact(stack);
+    }
+
     public static int glGetInteger(int pname) {
         if(shouldBypassCache()) {
             return GL11.glGetInteger(pname);
@@ -418,6 +449,8 @@ public class GLStateManager {
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
+            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
+            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
 
             default -> GL11.glGetInteger(pname);
         };
@@ -1212,13 +1245,21 @@ public class GLStateManager {
             glListNesting += 1;
             return;
         }
+
         glListId = list;
         glListMode = mode;
         GL11.glNewList(list, mode);
-        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            IStateStack<?> stack = stacks.get(i);
+
             // Feature Stack, copy of current feature state
             glListStates.put(stack, (ISettableState<?>) ((ISettableState<?>)stack).copy());
         }
+
         if(glListMode == GL11.GL_COMPILE) {
             pushState(GL11.GL_ALL_ATTRIB_BITS);
         }
@@ -1274,15 +1315,23 @@ public class GLStateManager {
 
     public static void pushState(int mask) {
         attribs.push(mask);
-        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
-            stack.push();
-        }
 
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            stacks.get(i).push();
+        }
     }
+
     public static void popState() {
         final int mask = attribs.popInt();
-        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
-            stack.pop();
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            stacks.get(i).pop();
         }
     }
 

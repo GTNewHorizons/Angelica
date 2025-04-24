@@ -32,7 +32,6 @@ abstract public class ColorMap implements IColorMap {
     private static final int BIOME_HEIGHT = 2;
 
     private static final int COLORMAP_WIDTH = 256;
-    private static final int COLORMAP_HEIGHT = 256;
 
     public static final String BLOCK_COLORMAP_DIR = TexturePackAPI.MCPATCHER_SUBDIR + "colormap/blocks";
     public static final List<ResourceLocation> unusedPNGs = new ArrayList<>();

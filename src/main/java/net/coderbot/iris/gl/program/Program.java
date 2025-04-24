@@ -30,7 +30,8 @@ public final class Program extends GlResource {
 		GL20.glUseProgram(0);
 	}
 
-	public void destroyInternal() {
+	@Override
+    public void destroyInternal() {
 		GL20.glDeleteProgram(getGlId());
 	}
 

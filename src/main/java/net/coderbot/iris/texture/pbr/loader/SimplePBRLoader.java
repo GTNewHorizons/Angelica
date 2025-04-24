@@ -1,6 +1,5 @@
 package net.coderbot.iris.texture.pbr.loader;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.SimpleTextureAccessor;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.SimpleTexture;
@@ -13,7 +12,7 @@ import java.io.IOException;
 public class SimplePBRLoader implements PBRTextureLoader<SimpleTexture> {
 	@Override
 	public void load(SimpleTexture texture, IResourceManager resourceManager, PBRTextureConsumer pbrTextureConsumer) {
-		ResourceLocation location = ((SimpleTextureAccessor) texture).getLocation();
+		ResourceLocation location = texture.textureLocation;
 
 		AbstractTexture normalTexture = createPBRTexture(location, resourceManager, PBRType.NORMAL);
 		AbstractTexture specularTexture = createPBRTexture(location, resourceManager, PBRType.SPECULAR);

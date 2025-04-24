@@ -29,7 +29,7 @@ public class ChunkGraphCuller implements ChunkCuller {
     private boolean useOcclusionCulling;
 
     private int activeFrame = 0;
-    private int centerChunkX, centerChunkY, centerChunkZ;
+    private int centerChunkX, centerChunkZ;
 
     public ChunkGraphCuller(World world, int renderDistance) {
         this.world = world;
@@ -83,7 +83,6 @@ public class ChunkGraphCuller implements ChunkCuller {
         final int chunkZ = origin.getZ() >> 4;
 
         this.centerChunkX = chunkX;
-        this.centerChunkY = chunkY;
         this.centerChunkZ = chunkZ;
 
         final ChunkGraphNode rootNode = this.getNode(chunkX, chunkY, chunkZ);

@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 
-import net.minecraft.block.BlockPortal;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;

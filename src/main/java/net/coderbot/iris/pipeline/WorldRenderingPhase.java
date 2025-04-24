@@ -1,7 +1,5 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
-
 public enum WorldRenderingPhase {
 	NONE,
 	SKY,

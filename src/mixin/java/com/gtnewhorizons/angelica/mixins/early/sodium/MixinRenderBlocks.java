@@ -95,6 +95,7 @@ public abstract class MixinRenderBlocks {
         return Minecraft.isAmbientOcclusionEnabled();
     }
 
+    @SuppressWarnings("deprecation")
     private boolean handleISBRHException(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
         try {
             return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);

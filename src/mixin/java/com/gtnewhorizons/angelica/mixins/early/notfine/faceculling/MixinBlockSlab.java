@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.Shadow;
 @Mixin(value = BlockSlab.class)
 public abstract class MixinBlockSlab extends Block implements IFaceObstructionCheckHelper {
 
+    @Override
     public boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
         //If the slab is not a full cube and this is up or down
         if(!field_150004_a && side <= 1) {

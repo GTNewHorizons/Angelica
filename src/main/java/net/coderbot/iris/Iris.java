@@ -313,7 +313,8 @@ public class Iris {
             return false;
         }
 
-        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map) properties)
+        @SuppressWarnings("unchecked")
+        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map<?, ?>) properties)
             .orElse(new HashMap<>());
 
         changedConfigs.putAll(shaderPackOptionQueue);

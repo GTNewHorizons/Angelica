@@ -48,7 +48,7 @@ public enum Settings {
         }
     },
     DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
-    DYNAMIC_LIGHTS(new NotFineOptionCycling(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
+    DYNAMIC_LIGHTS(new NotFineOptionCycling<>(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
         @Override
         public void applyChanges() {
             DynamicLights.Mode = (DynamicLightsMode) this.option.getStore();
@@ -60,6 +60,7 @@ public enum Settings {
             DynamicLights.ShaderForce = (boolean) this.option.getStore();
         }
     },
+    FOG_DISABLE(new NotFineOptionTickBox(false, OptionImpact.LOW)),
     FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
         @Override
@@ -132,9 +133,9 @@ public enum Settings {
     },
     VOID_FOG(new NotFineOptionTickBox(false, OptionImpact.LOW));
 
-    public final NotFineOption option;
+    public final NotFineOption<?> option;
 
-    Settings(NotFineOption option) {
+    Settings(NotFineOption<?> option) {
         this.option = option;
     }
 

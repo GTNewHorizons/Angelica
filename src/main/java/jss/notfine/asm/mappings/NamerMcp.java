@@ -13,6 +13,7 @@ import jss.notfine.asm.mappings.Names.Meth;
 
 public class NamerMcp extends NamerSrg {
 
+    @Override
     public void setNames() {
         setNamesSrg();
         final String confPath = System.getProperty("net.minecraftforge.gradle.GradleStart.csvDir", "../conf") + "/";

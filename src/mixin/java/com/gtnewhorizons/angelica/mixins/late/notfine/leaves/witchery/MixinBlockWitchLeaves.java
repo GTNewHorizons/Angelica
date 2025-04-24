@@ -18,6 +18,7 @@ public abstract class MixinBlockWitchLeaves extends BlockLeavesBase {
      * @author jss2a98aj
      * @reason Support new leaf rendering modes on Witchery leaves.
      */
+    @Override
     @Overwrite
     public boolean isOpaqueCube() {
         return SettingsManager.leavesOpaque;

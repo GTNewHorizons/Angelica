@@ -18,7 +18,8 @@ public abstract class MixinBlockSnow extends Block implements IFaceObstructionCh
 	 * @author jss2a98aj
 	 * @reason More accurate face culling.
 	 */
-	@Overwrite()
+	@Override
+    @Overwrite()
 	@SideOnly(Side.CLIENT)
 	public boolean shouldSideBeRendered(IBlockAccess worldIn, int x, int y, int z, int side) {
         //If this is the top and this is not full height
