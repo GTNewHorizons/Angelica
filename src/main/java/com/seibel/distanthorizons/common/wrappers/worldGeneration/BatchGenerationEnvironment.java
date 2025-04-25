@@ -767,12 +767,13 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
                     // cleanup
                     // release the generated chunks
 
-                    Iterator<ChunkPos> iterator = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0).iterator();
-                    while (iterator.hasNext())
-                    {
-                        ChunkPos chunkPos = iterator.next();
-                        releaseChunkToServer(this.params.level, chunkPos, true);
-                    }
+                    Stream<ChunkPos> stream = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0);
+
+                    Stream<CompletableFuture<Void>> futures = stream.map(pos ->  releaseChunkToServer(this.params.level, pos, true));
+
+                    CompletableFuture<Void> releaseFuture = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+
+                    releaseFuture.join();
 
                     genEvent.timer.complete();
                     genEvent.refreshTimeout();
@@ -825,10 +826,11 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         }
     }
 
-    private static CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
-        return ForgeServerProxy.schedule(() ->
+    private CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
+        return ForgeServerProxy.schedule(true, () ->
             {
                 ChunkProviderServer provider = (ChunkProviderServer)world.getChunkProvider();
+                ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(x, z));
 
                 for (int i = -1; i <= 1; i++)
                 {
@@ -851,8 +853,6 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
     {
         return CompletableFuture.supplyAsync(() ->
         {
-            ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
-
             try {
                 return forceLoadChunkAsync(level, pos.x, pos.z).get();
             } catch (InterruptedException e) {
@@ -863,9 +863,13 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         });
     }
     /** @param chunkWasGeneratedUpToFeatures if false this assumes the chunk was generated to "FULL" status */
-    private void releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
+    private CompletableFuture<Void> releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
     {
-        ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
+        return ForgeServerProxy.schedule(false, () ->
+        {
+            ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
+            return null;
+        });
     }
 
     /*
