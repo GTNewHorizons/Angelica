@@ -29,6 +29,8 @@ import cpw.mods.fml.common.FMLLog;
 import net.minecraft.block.*;
 import net.minecraft.client.renderer.IconFlipped;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+
+import java.lang.reflect.Field;
 import java.util.Random;
 
 import net.minecraft.util.IIcon;
@@ -221,10 +223,13 @@ public class ClientBlockStateColorCache
 				}
 				else
 				{*/
-                    IIcon icon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta); // TODO
-
+                    IIcon originalIcon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta);
+                    IIcon icon = originalIcon;
                     if (icon instanceof IconFlipped) {
                         icon = ((IconFlipped) icon).baseIcon;
+                    }
+                    else if (icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
+                        icon = getIconByReflection(icon, "baseIcon");
                     }
 					// Backup method.
 					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
@@ -240,6 +245,7 @@ public class ClientBlockStateColorCache
                         this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
                             ColorMode.getColorMode(this.blockState.block));
                     } else {
+                        FMLLog.warning("Can't handle icon of type " + originalIcon.getClass().getName());
                         this.baseColor = blockState.block.getBlockColor();
                     }
 				//}
@@ -263,6 +269,18 @@ public class ClientBlockStateColorCache
 			RESOLVE_LOCK.unlock();
 		}
 	}
+
+    private IIcon getIconByReflection(IIcon icon, String name) {
+        try {
+            Field field = icon.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return (IIcon) field.get(icon);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 	//TODO: Perhaps make this not just use the first frame?
 	private int calculateColorFromTexture(TextureAtlasSprite texture, ColorMode colorMode)
 	{
