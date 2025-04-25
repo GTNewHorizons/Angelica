@@ -69,11 +69,11 @@ public class FullDataPayloadReceiver implements AutoCloseable
 
 			// TODO composite.addComponent(true, message.buffer);
             composite.addComponent(message.buffer);
+            composite.writerIndex(composite.writerIndex() + message.buffer.writerIndex());
 			LOGGER.debug("Updated full data buffer [" + message.bufferId + "]: [" + composite + "].");
 			return composite;
 		});
 	}
-	
 	public FullDataSourceV2DTO decodeDataSourceAndReleaseBuffer(FullDataPayload msg)
 	{
 		CompositeByteBuf compositeByteBuffer = this.buffersById.get(msg.dtoBufferId);
