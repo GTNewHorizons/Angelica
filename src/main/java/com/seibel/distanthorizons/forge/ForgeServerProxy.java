@@ -109,10 +109,13 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             int count = 0;
             while (!taskQueue.isEmpty()) {
                 ScheduledTask<?> scheduledTask = taskQueue.poll();
-                if (scheduledTask != null) {
-                    scheduledTask.run();
+                if (scheduledTask == null) {
+                    continue;
                 }
-                count++;
+                scheduledTask.run();
+                if (scheduledTask.isLimited()) {
+                    count++;
+                }
                 if (count >= AngelicaConfig.distantHorizonsChunkUpdatesPerTick)
                 {
                     break;
@@ -205,19 +208,21 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     private static final Queue<ScheduledTask<?>> taskQueue = new ConcurrentLinkedQueue<>();
 
     // Schedule a task that runs on the main thread and returns a CompletableFuture result
-    public static <T> CompletableFuture<T> schedule(Supplier<T> task) {
+    public static <T> CompletableFuture<T> schedule(boolean limited, Supplier<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        taskQueue.add(new ScheduledTask<>(task, future));
+        taskQueue.add(new ScheduledTask<>(task, future, limited));
         return future;
     }
 
     private static class ScheduledTask<T> {
         private final Supplier<T> task;
         private final CompletableFuture<T> future;
+        private final boolean limited;
 
-        public ScheduledTask(Supplier<T> task, CompletableFuture<T> future) {
+        public ScheduledTask(Supplier<T> task, CompletableFuture<T> future, boolean limited) {
             this.task = task;
             this.future = future;
+            this.limited = limited;
         }
 
         public void run() {
@@ -226,6 +231,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             } catch (Exception e) {
                 future.completeExceptionally(e);
             }
+        }
+
+        public boolean isLimited() {
+            return limited;
         }
     }
 
