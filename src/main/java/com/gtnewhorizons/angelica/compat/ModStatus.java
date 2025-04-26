@@ -47,24 +47,18 @@ public class ModStatus {
 
         if (isHoloInventoryLoaded){
             isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
-                ) <= 0;
+                .compareTo(LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()) <= 0;
         }
 
         // remove compat with original release of BG2
         if (isBattlegearLoaded){
             isBattlegearLoaded = new DefaultArtifactVersion("1.2.0")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion()
-                ) <= 0;
+                .compareTo(LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion()) <= 0;
         }
 
         if (isBackhandLoaded){
             isBackhandLoaded = new DefaultArtifactVersion("1.6.9")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()
-                ) <= 0;
+                .compareTo(LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()) <= 0;
         }
 
 

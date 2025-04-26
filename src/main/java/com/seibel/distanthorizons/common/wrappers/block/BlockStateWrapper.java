@@ -29,6 +29,9 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import cpw.mods.fml.common.registry.GameData;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBeacon;
 import net.minecraft.block.BlockGrass;
@@ -39,7 +42,6 @@ import org.apache.logging.log4j.Logger;
 import java.awt.*;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jetbrains.annotations.Nullable;
@@ -55,7 +57,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
     // must be defined before AIR, otherwise a null pointer will be thrown
     private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 
-    public static final ConcurrentHashMap<FakeBlockState, BlockStateWrapper> WRAPPER_BY_BLOCK_STATE = new ConcurrentHashMap<>();
+    public static final Int2ObjectMap<BlockStateWrapper> WRAPPER_BY_BLOCK_ID_AND_META = Int2ObjectMaps.synchronize(new Int2ObjectOpenHashMap<>());
     public static final ConcurrentHashMap<String, BlockStateWrapper> WRAPPER_BY_RESOURCE_LOCATION = new ConcurrentHashMap<>();
 
     public static final String AIR_STRING = "AIR";
@@ -98,42 +100,33 @@ public class BlockStateWrapper implements IBlockStateWrapper
     // constructors //
     //==============//
 
-    public static BlockStateWrapper fromBlockState(FakeBlockState blockState, ILevelWrapper levelWrapper)
-    {
-        if (blockState == null || blockState.block == Blocks.air)
-        {
+    public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper) {
+        if(block == null || block == Blocks.air) {
             return AIR;
         }
-
-        if (WRAPPER_BY_BLOCK_STATE.containsKey(blockState))
-        {
-            return WRAPPER_BY_BLOCK_STATE.get(blockState);
-        }
-        else
-        {
-            BlockStateWrapper newWrapper = new BlockStateWrapper(blockState, levelWrapper);
-            WRAPPER_BY_BLOCK_STATE.put(blockState, newWrapper);
+        final int blockId = Block.getIdFromBlock(block);
+        final int packed = FakeBlockState.calculateHashCode(blockId, meta);
+        if(WRAPPER_BY_BLOCK_ID_AND_META.containsKey(packed)) {
+            return WRAPPER_BY_BLOCK_ID_AND_META.get(packed);
+        } else {
+            final FakeBlockState blockState = new FakeBlockState(block, meta, blockId);
+            final BlockStateWrapper newWrapper = new BlockStateWrapper(blockState, levelWrapper);
+            WRAPPER_BY_BLOCK_ID_AND_META.put(packed, newWrapper);
             return newWrapper;
         }
     }
 
     /**
-     * Can be faster than {@link BlockStateWrapper#fromBlockState(FakeBlockState, ILevelWrapper)}
+     * Can be faster than {@link BlockStateWrapper#fromBlockAndMeta(Block, int, ILevelWrapper)}
      * in cases where the same block state is expected to be referenced multiple times.
      */
-    public static BlockStateWrapper fromBlockState(FakeBlockState blockState, ILevelWrapper levelWrapper, IBlockStateWrapper guess)
-    {
-        FakeBlockState guessBlockState = (guess == null || guess.isAir()) ? null : (FakeBlockState) guess.getWrappedMcObject();
-        FakeBlockState inputBlockState = (blockState == null || blockState.block == Blocks.air) ? null : blockState;
+    public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper, IBlockStateWrapper guess) {
+        final FakeBlockState guessBlockState = (guess == null || guess.isAir()) ? null : (FakeBlockState) guess.getWrappedMcObject();
 
-        if (guess instanceof BlockStateWrapper
-            && guessBlockState == inputBlockState)
-        {
+        if (guess instanceof BlockStateWrapper && guessBlockState != null && guessBlockState.block == block && guessBlockState.meta == meta) {
             return (BlockStateWrapper) guess;
-        }
-        else
-        {
-            return fromBlockState(blockState, levelWrapper);
+        } else {
+            return fromBlockAndMeta(block, meta, levelWrapper);
         }
     }
 
@@ -280,9 +273,10 @@ public class BlockStateWrapper implements IBlockStateWrapper
                 BlockStateWrapper defaultBlockStateToIgnore = (BlockStateWrapper) deserialize(cleanedResourceLocation, levelWrapper);
                 blockStateWrappers.add(defaultBlockStateToIgnore);
 
-                if (defaultBlockStateToIgnore != AIR)
-                {
-                    BlockStateWrapper newBlockToIgnore = BlockStateWrapper.fromBlockState(defaultBlockStateToIgnore.blockState, levelWrapper);
+                if (defaultBlockStateToIgnore != AIR) {
+                    final Block block = defaultBlockStateToIgnore.blockState.block;
+                    final int meta = defaultBlockStateToIgnore.blockState.meta;
+                    BlockStateWrapper newBlockToIgnore = BlockStateWrapper.fromBlockAndMeta(block, meta, levelWrapper);
                     blockStateWrappers.add(newBlockToIgnore);
                 }
                 else

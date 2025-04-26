@@ -7,7 +7,7 @@
 * It's a cute angle -mitchej123
 * It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons** 
+## **Beta Quality - Here there be Dragons**
 * Shaders - Beta
    * Complementary & BSL mostly function, but have some bugs
    * Sildurs, Seus, and any other shader probably doesn't work
@@ -15,7 +15,7 @@
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.19
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.6.6
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.6.21
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities

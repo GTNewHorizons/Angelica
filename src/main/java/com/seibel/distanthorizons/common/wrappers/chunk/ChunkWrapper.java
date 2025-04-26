@@ -253,7 +253,9 @@ public class ChunkWrapper implements IChunkWrapper
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
         // TODO copy into pooled array, this isn't thread safe and can cause MC to throw errors if the chunk is loaded
-        return BlockStateWrapper.fromBlockState(new FakeBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ)), this.wrappedLevel);
+        final Block block = this.chunk.getBlock(relX, relY, relZ);
+        final int meta = this.chunk.getBlockMetadata(relX, relY, relZ);
+        return BlockStateWrapper.fromBlockAndMeta(block, meta, this.wrappedLevel);
     }
 
     @Override
@@ -261,7 +263,9 @@ public class ChunkWrapper implements IChunkWrapper
     {
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
-        return BlockStateWrapper.fromBlockState(new FakeBlockState(this.chunk.getBlock(relX, relY, relZ), this.chunk.getBlockMetadata(relX, relY, relZ)), this.wrappedLevel, guess);
+        final Block block = this.chunk.getBlock(relX, relY, relZ);
+        final int meta = this.chunk.getBlockMetadata(relX, relY, relZ);
+        return BlockStateWrapper.fromBlockAndMeta(block, meta, this.wrappedLevel, guess);
     }
 
     /**
