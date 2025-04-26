@@ -21,7 +21,7 @@ public class FakeBlockState {
     }
 
     public static int calculateHashCode(int blockId, int meta) {
-        return blockId << 16 + meta;
+        return (blockId << 16) + meta;
     }
 
     @Override
