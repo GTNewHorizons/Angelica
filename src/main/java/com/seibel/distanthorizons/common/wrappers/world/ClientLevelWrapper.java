@@ -246,9 +246,9 @@ public class ClientLevelWrapper implements IClientLevelWrapper
     @Override
     public IBlockStateWrapper getBlockState(DhBlockPos pos)
     {
-        Block block = this.level.getBlock(pos.getX(), pos.getY(), pos.getZ());
-        int meta = this.level.getBlockMetadata(pos.getX(), pos.getY(), pos.getZ());
-        return BlockStateWrapper.fromBlockState(new FakeBlockState(block, meta), this);
+        final Block block = this.level.getBlock(pos.getX(), pos.getY(), pos.getZ());
+        final int meta = this.level.getBlockMetadata(pos.getX(), pos.getY(), pos.getZ());
+        return BlockStateWrapper.fromBlockAndMeta(block, meta, this);
     }
 
     @Override

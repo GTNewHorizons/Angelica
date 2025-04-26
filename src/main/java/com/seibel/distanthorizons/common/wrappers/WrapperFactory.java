@@ -278,9 +278,9 @@ public class WrapperFactory implements IWrapperFactory
             throw new ClassCastException(createBlockStateWrapperErrorMessage(objectArray));
         }
 
-        Block block = (Block) objectArray[0];
-        Integer meta = (Integer) objectArray[1];
-		return BlockStateWrapper.fromBlockState(new FakeBlockState(block, meta), coreLevelWrapper);
+        final Block block = (Block) objectArray[0];
+        final Integer meta = (Integer) objectArray[1];
+		return BlockStateWrapper.fromBlockAndMeta(block, meta, coreLevelWrapper);
 		//#endif
 	}
 	/**
