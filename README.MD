@@ -15,7 +15,7 @@
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.19
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.6.6
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.6.20
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities
@@ -29,6 +29,7 @@
 * FalseTweaks - Not currently planned (Looking for volunteers) [Might work if you effectively disable most of the mod]
 * SmoothFont - Not currently planned (Looking for volunteers)
 * RPLE - Not currently planned (Looking for volunteers)
+* LiteLoader - Install [LiteloaderLoader](https://github.com/Midnight145/LiteloaderLoader)
 
 # Permanent Incompatibilities
 * OptiFine [Disabled, won't fix]

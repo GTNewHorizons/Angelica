@@ -57,6 +57,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -108,6 +109,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Nullable
 	private final ShadowRenderer shadowRenderer;
+
+    private final CustomUniforms customUniforms;
 
 	private final int shadowMapResolution;
 	private final CompositeRenderer deferredRenderer;
@@ -195,6 +198,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			forcedShadowRenderDistanceChunks = OptionalInt.empty();
 		}
 
+        this.customUniforms = programs.getPack().customUniforms.build(
+            holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
+        );
+
 		BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(programs.getPackDirectives().getAmbientOcclusionLevel());
 		BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
 		BlockRenderingSettings.INSTANCE.setUseSeparateAo(programs.getPackDirectives().shouldUseSeparateAo());
@@ -230,25 +237,25 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.prepareRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getPrepare(), programs.getPrepareCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.PREPARE),
-				programs.getPackDirectives().getExplicitFlips("prepare_pre"));
+				programs.getPackDirectives().getExplicitFlips("prepare_pre"), customUniforms);
 
 		flippedAfterPrepare = flipper.snapshot();
 
 		this.deferredRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getDeferred(), programs.getDeferredCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.DEFERRED),
-				programs.getPackDirectives().getExplicitFlips("deferred_pre"));
+				programs.getPackDirectives().getExplicitFlips("deferred_pre"), customUniforms);
 
 		flippedAfterTranslucent = flipper.snapshot();
 
 		this.compositeRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getComposite(), programs.getCompositeCompute(), renderTargets,
 				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				programs.getPackDirectives().getExplicitFlips("composite_pre"));
+				programs.getPackDirectives().getExplicitFlips("composite_pre"), customUniforms);
 		this.finalPassRenderer = new FinalPassRenderer(programs, renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, flipper.snapshot(),
 				centerDepthSampler, shadowTargetsSupplier,
 				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				this.compositeRenderer.getFlippedAtLeastOnceFinal());
+				this.compositeRenderer.getFlippedAtLeastOnceFinal(), customUniforms);
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
 		ProgramId[] ids = new ProgramId[] {
@@ -280,7 +287,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		Map<Pair<ProgramId, InputAvailability>, Pass> cachedPasses = new HashMap<>();
 
-		this.shadowComputes = createShadowComputes(programs.getShadowCompute(), programs);
+		this.shadowComputes = createShadowComputes(programs.getShadowCompute());
 
 		this.table = new ProgramTable<>((condition, availability) -> {
 			int idx;
@@ -350,6 +357,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			this.shadowRenderer = null;
 		}
 
+        this.customUniforms.optimise();
+
 		this.clearPassesFull = ClearPassCreator.createClearPasses(renderTargets, true, programs.getPackDirectives().getRenderTargetDirectives());
 		this.clearPasses = ClearPassCreator.createClearPasses(renderTargets, false, programs.getPackDirectives().getRenderTargetDirectives());
 
@@ -413,7 +422,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		};
         this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
-			shadowRenderer == null ? null : createShadowTerrainImages);
+			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms);
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -593,13 +602,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		ProgramBuilder builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
 			IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 
-		return createPassInner(builder, source.getParent().getPack().getIdMap(), source.getDirectives(), source.getParent().getPackDirectives(), availability, shadow, id);
+		return createPassInner(builder, source.getDirectives(), availability, shadow, id);
 	}
 
-	private Pass createPassInner(ProgramBuilder builder, IdMap map, ProgramDirectives programDirectives,
-								 PackDirectives packDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
+	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
 
-		CommonUniforms.addCommonUniforms(builder, map, packDirectives, updateNotifier);
+		CommonUniforms.addDynamicUniforms(builder);
+        this.customUniforms.assignTo(builder);
 
 		Supplier<ImmutableSet<Integer>> flipped;
 
@@ -669,8 +678,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		});
 
-		return new Pass(builder.build(), framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
-				programDirectives.getBlendModeOverride().orElse(id.getBlendModeOverride()), bufferOverrides, shadow);
+        Pass pass = new Pass(builder.build(), framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
+            programDirectives.getBlendModeOverride().orElse(id.getBlendModeOverride()), bufferOverrides, shadow);
+
+        this.customUniforms.mapholderToPass(builder, pass);
+
+		return pass;
 	}
 
 	private boolean isPostChain;
@@ -745,6 +758,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (program != null && !sodiumTerrainRendering) {
 				program.use();
 			}
+
+            DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
@@ -870,6 +885,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 				for (ComputeProgram computeProgram : shadowComputes) {
 					if (computeProgram != null) {
+                        computeProgram.use();
+                        this.customUniforms.push(computeProgram);
 						computeProgram.dispatch(shadowMapResolution, shadowMapResolution);
 					}
 				}
@@ -932,7 +949,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 	}
 
-	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
+	private ComputeProgram[] createShadowComputes(ComputeSource[] compute) {
 		ComputeProgram[] programs = new ComputeProgram[compute.length];
 		for (int i = 0; i < programs.length; i++) {
 			ComputeSource source = compute[i];
@@ -948,7 +965,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					throw new RuntimeException("Shader compilation failed!", e);
 				}
 
-				CommonUniforms.addCommonUniforms(builder, programSet.getPack().getIdMap(), programSet.getPackDirectives(), updateNotifier);
+				CommonUniforms.addDynamicUniforms(builder);
+                this.customUniforms.assignTo(builder);
 
 				Supplier<ImmutableSet<Integer>> flipped;
 
@@ -974,6 +992,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 
 				programs[i] = builder.buildCompute();
+
+                this.customUniforms.mapholderToPass(builder, programs[i]);
 
 				programs[i].setWorkGroupInfo(source.getWorkGroupRelative(), source.getWorkGroups());
 			}
@@ -1093,6 +1113,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		updateNotifier.onNewFrame();
+
+        this.customUniforms.update();
 
 		// Get ready for world rendering
 		prepareRenderTargets();
