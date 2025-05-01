@@ -33,6 +33,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public class ClientLevelWrapper implements IClientLevelWrapper
 {
@@ -119,17 +120,23 @@ public class ClientLevelWrapper implements IClientLevelWrapper
     }
 
 
+    private ClientBlockStateColorCache createBlockColorCache(FakeBlockState block) {
+        return new ClientBlockStateColorCache(block, this);
+    }
+
+    private final Function<FakeBlockState, ClientBlockStateColorCache> cachedBlockColorCacheFunction = this::createBlockColorCache;
 
     //====================//
     // base level methods //
     //====================//
 
+
+
     @Override
     public int getBlockColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper blockWrapper)
     {
-        ClientBlockStateColorCache blockColorCache = this.blockCache.computeIfAbsent(
-            ((BlockStateWrapper) blockWrapper).blockState,
-            (block) -> new ClientBlockStateColorCache(block, this));
+        final ClientBlockStateColorCache blockColorCache = this.blockCache.computeIfAbsent(
+            ((BlockStateWrapper) blockWrapper).blockState, cachedBlockColorCacheFunction);
 
         return blockColorCache.getColor((BiomeWrapper) biome, pos, this);
     }
