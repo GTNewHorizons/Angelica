@@ -56,7 +56,7 @@ minecraft {
 dependencies {
     api("com.github.GTNewHorizons:lwjgl3ify:2.1.11:dev")
 
-    api("com.github.GTNewHorizons:Hodgepodge:2.6.38")
+    api("com.github.GTNewHorizons:Hodgepodge:2.6.40")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.10") { transitive = false }
 
