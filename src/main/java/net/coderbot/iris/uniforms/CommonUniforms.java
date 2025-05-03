@@ -45,17 +45,22 @@ public final class CommonUniforms {
 		// no construction allowed
 	}
 
+    public static void addNonDynamicUniforms(UniformHolder uniforms, IdMap idMap, PackDirectives directives, FrameUpdateNotifier updateNotifier) {
+        CameraUniforms.addCameraUniforms(uniforms, updateNotifier);
+        ViewportUniforms.addViewportUniforms(uniforms);
+        WorldTimeUniforms.addWorldTimeUniforms(uniforms);
+        SystemTimeUniforms.addSystemTimeUniforms(uniforms);
+        new CelestialUniforms(directives.getSunPathRotation()).addCelestialUniforms(uniforms);
+        IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
+        IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
+        MatrixUniforms.addMatrixUniforms(uniforms, directives);
+        HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+        CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
+    }
+
 	// Needs to use a LocationalUniformHolder as we need it for the common uniforms
-	public static void addCommonUniforms(DynamicUniformHolder uniforms, IdMap idMap, PackDirectives directives, FrameUpdateNotifier updateNotifier) {
-		CameraUniforms.addCameraUniforms(uniforms, updateNotifier);
-		ViewportUniforms.addViewportUniforms(uniforms);
-		WorldTimeUniforms.addWorldTimeUniforms(uniforms);
-		SystemTimeUniforms.addSystemTimeUniforms(uniforms);
-		new CelestialUniforms(directives.getSunPathRotation()).addCelestialUniforms(uniforms);
-		IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
-		IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
-		MatrixUniforms.addMatrixUniforms(uniforms, directives);
-		HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+	public static void addDynamicUniforms(DynamicUniformHolder uniforms) {
+        IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms);
 
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
@@ -92,7 +97,6 @@ public final class CommonUniforms {
 
         uniforms.uniform4f("entityColor", CapturedRenderingState.INSTANCE::getCurrentEntityColor, CapturedRenderingState.INSTANCE.getEntityColorNotifier());
 
-		CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
 	}
 
 	public static void generalCommonUniforms(UniformHolder uniforms, FrameUpdateNotifier updateNotifier, PackDirectives directives) {

@@ -64,7 +64,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.36")
 
     // Use modern models+textures to inject QuadProviders
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.0:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.2:dev')
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
@@ -87,7 +87,7 @@ dependencies {
     devOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.5:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.9-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.10-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.8.2:dev")
 
     compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.1:dev")

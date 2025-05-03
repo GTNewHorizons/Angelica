@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraftforge.client.MinecraftForgeClient;
 import org.lwjglx.opengl.GL11;
 import org.lwjglx.opengl.GL14;
 import org.lwjglx.opengl.GL30;
@@ -81,8 +82,24 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
             GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
             GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
             GLTextureManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, 0);
-            GLTextureManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
+            if (MinecraftForgeClient.getStencilBits() != 0) {
+                GLTextureManager.glTexImage2D(
+                    GL11.GL_TEXTURE_2D,
+                    0,
+                    GL30.GL_DEPTH24_STENCIL8,
+                    width,
+                    height,
+                    0,
+                    GL30.GL_DEPTH_STENCIL,
+                    GL30.GL_UNSIGNED_INT_24_8,
+                    (IntBuffer) null);
+            } else {
+                GLTextureManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
+            }
             OpenGlHelper.func_153188_a/*glFramebufferTexture2D*/(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
+            if (MinecraftForgeClient.getStencilBits() != 0) {
+                OpenGlHelper.func_153188_a/*glFramebufferTexture2D*/(GL30.GL_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
+            }
         }
     }
 

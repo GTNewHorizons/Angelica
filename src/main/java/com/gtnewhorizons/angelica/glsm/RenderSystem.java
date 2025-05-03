@@ -98,6 +98,8 @@ public class RenderSystem {
         GL20.glUniform3f(location, v0, v1, v2);
 	}
 
+    public static void uniform3i(int location, int v0, int v1, int v2) { GL20.glUniform3i(location, v0, v1, v2); }
+
 	public static void uniform4f(int location, float v0, float v1, float v2, float v3) {
         GL20.glUniform4f(location, v0, v1, v2, v3);
 	}

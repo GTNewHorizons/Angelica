@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
+
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
@@ -174,8 +175,7 @@ public class ProgramUniforms {
 				return OptionalInt.empty();
 			}
 
-			// TODO: Temporary hack until custom uniforms are merged.
-			if ((!locations.containsKey(id) && !uniformNames.containsKey(name)) || name.equals("framemod8")) {
+			if ((!locations.containsKey(id) && !uniformNames.containsKey(name))) {
 				locations.put(id, name);
 				uniformNames.put(name, type);
 			} else {
@@ -248,12 +248,6 @@ public class ProgramUniforms {
 					continue;
 				}
 
-				// TODO: This is an absolutely horrific hack, but is needed until custom uniforms work.
-				if ("framemod8".equals(name) && expected == UniformType.FLOAT && provided == UniformType.INT) {
-					SystemTimeUniforms.addFloatFrameMod8Uniform(this);
-					provided = UniformType.FLOAT;
-				}
-
 				if (provided != null && provided != expected) {
 					String expectedName;
 
@@ -291,7 +285,7 @@ public class ProgramUniforms {
 			return this;
 		}
 
-		@Override
+        @Override
 		public UniformHolder externallyManagedUniform(String name, UniformType type) {
 			externalUniformNames.put(name, type);
 

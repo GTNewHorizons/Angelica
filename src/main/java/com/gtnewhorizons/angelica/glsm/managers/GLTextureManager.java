@@ -16,6 +16,7 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL33C;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
@@ -45,6 +46,17 @@ public class GLTextureManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         textureCache.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
+        GL33C.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+
+
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
+        textureCache.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        GL33C.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
+        textureCache.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         GL33C.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 

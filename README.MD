@@ -29,6 +29,7 @@
 * FalseTweaks - Not currently planned (Looking for volunteers) [Might work if you effectively disable most of the mod]
 * SmoothFont - Not currently planned (Looking for volunteers)
 * RPLE - Not currently planned (Looking for volunteers)
+* LiteLoader - Install [LiteloaderLoader](https://github.com/Midnight145/LiteloaderLoader)
 
 # Permanent Incompatibilities
 * OptiFine [Disabled, won't fix]

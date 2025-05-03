@@ -11,6 +11,8 @@ import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogCompon
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.pipeline.SodiumTerrainPipeline;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -30,15 +32,20 @@ public class IrisChunkProgram extends ChunkProgram {
 	@Nullable
 	private final ProgramImages irisProgramImages;
 
-	public IrisChunkProgram(RenderDevice owner, ResourceLocation name, int handle,
-							@Nullable ProgramUniforms irisProgramUniforms, @Nullable ProgramSamplers irisProgramSamplers,
-							@Nullable ProgramImages irisProgramImages) {
+    private CustomUniforms customUniforms;
+
+	public IrisChunkProgram(RenderDevice owner, ResourceLocation name, int handle, boolean isShadowPass, SodiumTerrainPipeline pipeline, CustomUniforms customUniforms) {
 		super(owner, name, handle, ChunkShaderFogComponent.None::new);
 		this.uModelViewMatrix = this.getUniformLocation("iris_ModelViewMatrix");
 		this.uNormalMatrix = this.getUniformLocation("iris_NormalMatrix");
-		this.irisProgramUniforms = irisProgramUniforms;
-		this.irisProgramSamplers = irisProgramSamplers;
-		this.irisProgramImages = irisProgramImages;
+        this.customUniforms = customUniforms;
+
+        ProgramUniforms.Builder builder = pipeline.initUniforms(handle);
+        customUniforms.mapholderToPass(builder, this);
+        this.irisProgramUniforms = builder.buildUniforms();
+        this.irisProgramSamplers
+            = isShadowPass? pipeline.initShadowSamplers(handle) : pipeline.initTerrainSamplers(handle);
+        this.irisProgramImages = isShadowPass ? pipeline.initShadowImages(handle) : pipeline.initTerrainImages(handle);
 	}
 
 	@Override
@@ -64,6 +71,8 @@ public class IrisChunkProgram extends ChunkProgram {
 
 		uniformMatrix(uModelViewMatrix, modelViewMatrix);
 		uniformMatrix(uNormalMatrix, normalMatrix);
+
+        customUniforms.push(this);
 	}
 
 	@Override
