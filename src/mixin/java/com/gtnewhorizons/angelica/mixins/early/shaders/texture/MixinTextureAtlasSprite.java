@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.shaders.startup;
+package com.gtnewhorizons.angelica.mixins.early.shaders.texture;
 
 import net.coderbot.iris.texture.pbr.PBRSpriteHolder;
 import net.coderbot.iris.texture.pbr.TextureAtlasSpriteExtension;

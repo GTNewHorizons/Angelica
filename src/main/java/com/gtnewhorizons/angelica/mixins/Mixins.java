@@ -126,8 +126,8 @@ public enum Mixins {
             ,"shaders.startup.MixinGuiMainMenu"
             ,"shaders.startup.MixinInitRenderer"
             ,"shaders.startup.MixinAbstractTexture"
-            ,"shaders.startup.MixinTextureAtlasSprite"
-            ,"shaders.startup.MixinTextureMap"
+            ,"shaders.texture.MixinTextureAtlasSprite"
+            ,"shaders.texture.MixinTextureMap"
         )
     ),
 
