@@ -2,6 +2,7 @@
 
 package net.coderbot.iris.gl.shader;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.apache.logging.log4j.LogManager;
@@ -37,11 +38,11 @@ public class ProgramCreator {
 
 		String log = RenderSystem.getProgramInfoLog(program);
 
-		if (!log.isEmpty()) {
+		int result = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
+
+		if ((AngelicaConfig.enableDebugLogging || result != GL11.GL_TRUE) && !log.isEmpty()) {
 			LOGGER.warn("Program link log for " + name + ": " + log);
 		}
-
-		int result = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
 
 		if (result != GL11.GL_TRUE) {
 			throw new RuntimeException("Shader program linking failed, see log for details");

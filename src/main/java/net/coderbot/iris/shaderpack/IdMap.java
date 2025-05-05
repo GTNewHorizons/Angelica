@@ -1,18 +1,37 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizon.gtnhlib.tags.BlockTags;
+import com.gtnewhorizon.gtnhlib.util.data.ImmutableBlockMeta;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import it.unimi.dsi.fastutil.ints.Int2ShortFunction;
+import it.unimi.dsi.fastutil.ints.Int2ShortMap;
+import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ShortOpenHashMap;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.MaterialIdLookup;
+import net.coderbot.iris.shaderpack.materialmap.BlockMetaEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
+import net.coderbot.iris.shaderpack.materialmap.Entry;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.coderbot.iris.shaderpack.materialmap.TagEntry;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
+
+import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -27,43 +46,57 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * A utility class for parsing entries in item.properties, block.properties, and entities.properties files in shaderpacks
  */
+@Getter
+@EqualsAndHashCode
 public class IdMap {
 	/**
 	 * Maps a given item ID to an integer ID
 	 */
-	private final Object2IntMap<NamespacedId> itemIdMap;
+    private final Object2IntMap<NamespacedId> itemIdMap;
 
 	/**
 	 * Maps a given entity ID to an integer ID
 	 */
-	private final Object2IntMap<NamespacedId> entityIdMap;
+    private final Object2IntMap<NamespacedId> entityIdMap;
+
+    /**
+     * Maps tags to block ids defined in block.properties
+     */
+    private final Int2ObjectLinkedOpenHashMap<List<TagEntry>> blockTagMap;
 
 	/**
 	 * Maps block states to block ids defined in block.properties
 	 */
-	private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
+    private Int2ObjectMap<List<BlockMetaEntry>> blockPropertiesMap;
+
+    @EqualsAndHashCode.Exclude
+    private final Object2ObjectMap<Block, Int2ShortMap> blockPropertiesLookup = new Object2ObjectOpenHashMap<>();
 
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
 	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
+		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines)
+            .map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
 
-		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines)
+            .map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+        blockTagMap = new Int2ObjectLinkedOpenHashMap<>();
 
 		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties", blockTagMap);
 			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
 		});
 
@@ -75,10 +108,110 @@ public class IdMap {
 			LegacyIdMap.addLegacyValues(blockPropertiesMap);
 		}
 
-		if (blockRenderTypeMap == null) {
+        // if blocks aren't loaded, don't load the material lookup immediately
+        if (ClientProxy.hitPostInit) {
+            loadMaterialIdLookup();
+        }
+
+        if (blockRenderTypeMap == null) {
 			blockRenderTypeMap = Collections.emptyMap();
 		}
+
+        BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(getBlockRenderTypeMap()));
+        BlockRenderingSettings.INSTANCE.setEntityIds(getEntityIdMap());
 	}
+
+    public void loadMaterialIdLookup() {
+        blockPropertiesLookup.clear();
+
+        blockPropertiesMap.forEach((materialId, blockEntries) -> {
+            short matId = materialId.shortValue();
+
+            for (BlockMetaEntry entry : blockEntries) {
+                Block block = entry.getId().getBlock();
+
+                if (block == null) {
+                    if (AngelicaConfig.enableDebugLogging) {
+                        Iris.logger.warn("Not adding shader material id for missing block " + entry.getId().describe());
+                    }
+                    continue;
+                }
+
+                Int2ShortMap metaMap = blockPropertiesLookup.computeIfAbsent(block, ignored -> {
+                    Int2ShortMap map = new Int2ShortOpenHashMap();
+                    if (entry.getMetas().isEmpty()) {
+                        // spec has no meta, meaning that it should be applied to all variants of the block
+                        map.defaultReturnValue(matId);
+                    } else {
+                        // spec has meta, it should only be applied to specific variants of the block
+                        // note that -1 can be overridden by a meta-less spec in the future, this isn't permanent
+                        map.defaultReturnValue((short) -1);
+                    }
+                    return map;
+                });
+
+                if (entry.getMetas().isEmpty()) {
+                    if (metaMap.defaultReturnValue() != matId) {
+                        if (metaMap.defaultReturnValue() != -1) {
+                            Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), matId, entry.getId().describe());
+                        } else {
+                            metaMap.defaultReturnValue(matId);
+                        }
+                    }
+                } else {
+                    for (int meta : entry.getMetas()) {
+                        metaMap.put(meta, matId);
+                    }
+                }
+            }
+        });
+
+        Object2ShortOpenHashMap<String> tagMats = new Object2ShortOpenHashMap<>();
+        tagMats.defaultReturnValue((short) -1);
+
+        blockTagMap.forEach((materialId, tagEntries) -> {
+            short matId = materialId.shortValue();
+
+            for (TagEntry entry : tagEntries) {
+                tagMats.put(entry.getId().describe(), matId);
+
+                Set<ImmutableBlockMeta> blocks = BlockTags.getBlocksInTag(entry.getId().describe());
+
+                if (AngelicaConfig.enableDebugLogging && blocks.isEmpty()) {
+                    Iris.logger.warn("Tag contained no blocks: " + entry.getId().describe());
+                }
+
+                for (ImmutableBlockMeta bm : blocks) {
+                    Int2ShortMap metaMap = blockPropertiesLookup.computeIfAbsent(bm.getBlock(), ignored -> {
+                        Int2ShortMap map = new Int2ShortOpenHashMap();
+                        if (bm.getBlockMeta() == OreDictionary.WILDCARD_VALUE) {
+                            // b/m is wildcard, meaning that it should be applied to all variants of the block
+                            map.defaultReturnValue(matId);
+                        } else {
+                            // b/m isn't wildcard, and it should only be applied to specific variants of the block
+                            // note that -1 can be overridden by a meta-less spec in the future, this isn't permanent
+                            map.defaultReturnValue((short) -1);
+                        }
+                        return map;
+                    });
+
+                    if (bm.getBlockMeta() == OreDictionary.WILDCARD_VALUE) {
+                        if (metaMap.defaultReturnValue() != matId) {
+                            if (metaMap.defaultReturnValue() != -1) {
+                                Iris.logger.error("Attempted to replace default shader material id {} with {} for block {}", metaMap.defaultReturnValue(), matId, entry.getId().describe());
+                            } else {
+                                metaMap.defaultReturnValue(matId);
+                            }
+                        }
+                    } else {
+                        metaMap.put(bm.getBlockMeta(), matId);
+                    }
+                }
+            }
+        });
+
+        BlockRenderingSettings.INSTANCE.setLookup(getMaterialIdLookup());
+    }
 
 	/**
 	 * Loads properties from a properties file in a shaderpack path
@@ -175,57 +308,79 @@ public class IdMap {
 		return Object2IntMaps.unmodifiable(idMap);
 	}
 
-	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
-		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
+	private static Int2ObjectMap<List<BlockMetaEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName, Int2ObjectLinkedOpenHashMap<List<TagEntry>> blockTagMap) {
+		Int2ObjectMap<List<BlockMetaEntry>> blockEntriesById = new Int2ObjectOpenHashMap<>();
+        Int2ObjectLinkedOpenHashMap<List<TagEntry>> tagEntriesById = new Int2ObjectLinkedOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
-			final String key = (String) keyObject;
-			StringBuilder value = new StringBuilder((String) valueObject);
+            String key = (String) keyObject;
+            String value = (String) valueObject;
 
 			if (!key.startsWith(keyPrefix)) {
 				// Not a valid line, ignore it
 				return;
 			}
 
-			final int intId;
+			int matId;
 
 			try {
-				intId = Integer.parseInt(key.substring(keyPrefix.length()));
+				matId = Integer.parseInt(key.substring(keyPrefix.length()));
 			} catch (NumberFormatException e) {
 				// Not a valid property line
 				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
 				return;
 			}
 
-			final List<BlockEntry> entries = new ArrayList<>();
+			List<BlockMetaEntry> blockEntries = new ArrayList<>();
+            List<TagEntry> tagEntries = new ArrayList<>();
 
-			if (value.toString().contains("minecraft:leaves")) {
+			if (value.contains("minecraft:leaves")) {
 				ArrayList<ItemStack> leaves = OreDictionary.getOres("treeLeaves");
+
+                StringBuilder newValue = new StringBuilder(value);
+
 				for (ItemStack leaf : leaves) {
 					if (leaf.getItem() instanceof ItemBlock) {
-						Iris.logger.warn("Found leaf " + Item.itemRegistry.getNameForObject(leaf.getItem()));
-						value.append(" ").append(Item.itemRegistry.getNameForObject(leaf.getItem()));
+                        if (AngelicaConfig.enableDebugLogging) {
+                            Iris.logger.info("Found leaf " + Item.itemRegistry.getNameForObject(leaf.getItem()));
+                        }
+                        newValue.append(" ").append(Item.itemRegistry.getNameForObject(leaf.getItem()));
 					}
 				}
+
+                value = newValue.toString();
 			}
 
 			// Split on whitespace groups, not just single spaces
-			for (String part : value.toString().split("\\s+")) {
+			for (String part : value.split("\\s+")) {
 				if (part.isEmpty()) {
 					continue;
 				}
 
 				try {
-					entries.add(BlockEntry.parse(part));
+                    Entry entry = BlockMetaEntry.parse(part);
+                    if (entry instanceof BlockMetaEntry be) {
+                        blockEntries.add(be);
+                    } else if (entry instanceof TagEntry te) {
+                        tagEntries.add(te);
+                    }
 				} catch (Exception e) {
 					Iris.logger.warn("Unexpected error while parsing an entry from " + fileName + " for the key " + key + ":", e);
 				}
 			}
 
-			entriesById.put(intId, Collections.unmodifiableList(entries));
+            if (!blockEntries.isEmpty()) {
+                blockEntriesById.put(matId, Collections.unmodifiableList(blockEntries));
+            }
+
+            if (!tagEntries.isEmpty()) {
+                tagEntriesById.put(matId, Collections.unmodifiableList(tagEntries));
+            }
 		});
 
-		return Int2ObjectMaps.unmodifiable(entriesById);
+        blockTagMap.putAll(tagEntriesById);
+
+		return Int2ObjectMaps.unmodifiable(blockEntriesById);
 	}
 
 	/**
@@ -265,42 +420,15 @@ public class IdMap {
 		return overrides;
 	}
 
-	public Int2ObjectMap<List<BlockEntry>> getBlockProperties() {
-		return blockPropertiesMap;
-	}
+    public short getMaterialId(Block block, int meta) {
+        Int2ShortFunction fn = blockPropertiesLookup.get(block);
 
-	public Object2IntFunction<NamespacedId> getItemIdMap() {
-		return itemIdMap;
-	}
+        if (fn == null) return (short) -1;
 
-	public Object2IntFunction<NamespacedId> getEntityIdMap() {
-		return entityIdMap;
-	}
+        return fn.get(meta);
+    }
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
-			return true;
-		}
-
-		if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
-
-		IdMap idMap = (IdMap) o;
-
-		return Objects.equals(itemIdMap, idMap.itemIdMap)
-				&& Objects.equals(entityIdMap, idMap.entityIdMap)
-				&& Objects.equals(blockPropertiesMap, idMap.blockPropertiesMap)
-				&& Objects.equals(blockRenderTypeMap, idMap.blockRenderTypeMap);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(itemIdMap, entityIdMap, blockPropertiesMap, blockRenderTypeMap);
-	}
+    public MaterialIdLookup getMaterialIdLookup() {
+        return this::getMaterialId;
+    }
 }

@@ -2,7 +2,6 @@ package net.coderbot.iris.block_rendering;
 
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
@@ -15,7 +14,7 @@ public class BlockRenderingSettings {
 
 	@Getter
     private boolean reloadRequired;
-	private Object2IntMap<Block> blockMatches;
+	private MaterialIdLookup lookup;
 	private Map<Block, RenderLayer> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
 	private float ambientOcclusionLevel;
@@ -25,7 +24,7 @@ public class BlockRenderingSettings {
 
 	public BlockRenderingSettings() {
 		reloadRequired = false;
-		blockMatches = null;
+		lookup = null;
 		blockTypeIds = null;
 		ambientOcclusionLevel = 1.0F;
 		disableDirectionalShading = false;
@@ -38,8 +37,8 @@ public class BlockRenderingSettings {
 	}
 
     @Nullable
-	public Object2IntMap<Block> getBlockMatches() {
-		return blockMatches;
+	public MaterialIdLookup getLookup() {
+		return lookup;
 	}
 
 	@Nullable
@@ -52,13 +51,9 @@ public class BlockRenderingSettings {
 		return entityIds;
 	}
 
-	public void setBlockMatches(Object2IntMap<Block> blockIds) {
-		if (this.blockMatches != null && this.blockMatches.equals(blockIds)) {
-			return;
-		}
-
+	public void setLookup(MaterialIdLookup lookup) {
 		this.reloadRequired = true;
-		this.blockMatches = blockIds;
+		this.lookup = lookup;
 	}
 
 	public void setBlockTypeIds(Map<Block, RenderLayer> blockTypeIds) {
