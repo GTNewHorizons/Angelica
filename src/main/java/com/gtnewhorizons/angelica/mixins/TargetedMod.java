@@ -25,6 +25,7 @@ public enum TargetedMod {
     , MRTJPCORE("MrTJPCore", null, "MrTJPCoreMod")
     , NATURA("Natura", null, "Natura")
     , PROJECTRED_ILLUMINATION("ProjectRed Illumination", null, "ProjRed|Illumination")
+    , SECURITYCRAFT("SecurityCraft", null, "securitycraft")
     , SMART_RENDER("Smart Render", null, "SmartRender")
     , THAUMCRAFT("Thaumcraft", null, "Thaumcraft")
     , TINKERS_CONSTRUCT("Tinker's Construct", null, "TConstruct")

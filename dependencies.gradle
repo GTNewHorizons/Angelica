@@ -99,6 +99,7 @@ dependencies {
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
+    compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
 
     compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.1-GTNH:dev")
 

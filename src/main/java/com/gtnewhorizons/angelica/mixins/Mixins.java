@@ -226,6 +226,14 @@ public enum Mixins {
         .setApplyIf(() -> AngelicaConfig.removeUnicodeEvenScaling)
         .addMixinClasses("angelica.bugfixes.MixinScaledResolution_UnicodeFix")),
 
+    SECURITYCRAFT_COMPAT(new Builder("Fix reflection in SecurityCraft for compat with Angelica").setPhase(Phase.LATE)
+        .addTargetedMod(TargetedMod.SECURITYCRAFT).setSide(Side.CLIENT)
+        .setApplyIf(() -> CompatConfig.fixSecurityCraft)
+        .addMixinClasses(
+            "client.securitycraft.MixinBlockReinforcedFenceGate",
+            "client.securitycraft.MixinBlockReinforcedIronBars"
+        )),
+
     EXTRA_UTILITIES_THREAD_SAFETY(new Builder("Enable thread safety fixes in Extra Utilities").setPhase(Phase.LATE)
         .addTargetedMod(TargetedMod.EXTRAUTILS).setSide(Side.CLIENT)
         .setApplyIf(() -> CompatConfig.fixExtraUtils)
