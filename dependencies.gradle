@@ -75,7 +75,7 @@ dependencies {
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.1.7-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.5:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
     compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.10-GTNH:dev") { transitive = false }
