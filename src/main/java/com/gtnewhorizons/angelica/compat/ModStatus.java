@@ -1,13 +1,18 @@
 package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
 import net.dries007.holoInventory.HoloInventory;
-import xonin.backhand.Backhand;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ModStatus {
+    public static final Logger LOGGER = LogManager.getLogger("ModCompat");
+
+    public static BackhandReflectionCompat backhandCompat;
     /**
      * Mixin Version
      */
@@ -16,7 +21,6 @@ public class ModStatus {
      * ASM Version
      */
     public static boolean isOldNEIDLoaded;
-
     public static boolean isBetterCrashesLoaded;
     public static boolean isNEIDMetadataExtended;
     public static boolean isLotrLoaded;
@@ -31,6 +35,11 @@ public class ModStatus {
     public static boolean isBaublesLoaded;
 
     public static void preInit(){
+        isBackhandLoaded = Loader.isModLoaded("backhand");
+        if(isBackhandLoaded) {
+            isBackhandLoaded = BackhandReflectionCompat.isBackhandLoaded();
+        }
+
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
         isNEIDLoaded = Loader.isModLoaded("neid");
         isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
@@ -40,7 +49,6 @@ public class ModStatus {
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBattlegearLoaded = Loader.isModLoaded("battlegear2");
-        isBackhandLoaded = Loader.isModLoaded("backhand");
         isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
@@ -57,13 +65,6 @@ public class ModStatus {
             isBattlegearLoaded = new DefaultArtifactVersion("1.2.0")
                 .compareTo(
                     LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion()
-                ) <= 0;
-        }
-
-        if (isBackhandLoaded){
-            isBackhandLoaded = new DefaultArtifactVersion("1.6.9")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()
                 ) <= 0;
         }
 
