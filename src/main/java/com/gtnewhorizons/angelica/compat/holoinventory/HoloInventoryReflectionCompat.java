@@ -13,27 +13,28 @@ public class HoloInventoryReflectionCompat {
     private static final String RENDERER_CLASS = "net.dries007.holoInventory.client.Renderer";
 
     private static boolean isLoaded;
+    private static final MethodHandle renderEventPostMethod;
     private static final MethodHandle renderEventMethod;
     private static final MethodHandle angelicaOverrideSetter;
-    private static final Object rendererInstance;
 
     static {
+        MethodHandle renderEventPostMethodTemp = null;
         MethodHandle renderEventMethodTemp = null;
         MethodHandle angelicaOverrideSetterTemp = null;
-        Object rendererInstanceTemp = null;
+        final Object rendererInstance;
+        final Class<?> rendererClass;
 
         try {
-            final Class<?> rendererClass = Class.forName(RENDERER_CLASS);
+            rendererClass = Class.forName(RENDERER_CLASS);
 
             // Get and cache the Renderer.INSTANCE
             final Field instanceField = rendererClass.getDeclaredField("INSTANCE");
             instanceField.setAccessible(true);
-            rendererInstanceTemp = instanceField.get(null);
+            rendererInstance = instanceField.get(null);
 
-            // Get the renderEvent method (RenderGameOverlayEvent base class)
             final MethodHandles.Lookup lookup = MethodHandles.lookup();
             try {
-                renderEventMethodTemp = lookup.findVirtual(rendererClass, "renderEvent", MethodType.methodType(void.class, RenderGameOverlayEvent.Post.class));
+                renderEventPostMethodTemp = lookup.findVirtual(rendererClass, "renderEvent", MethodType.methodType(void.class, RenderGameOverlayEvent.Post.class));
             } catch (NoSuchMethodException e) {
                 // Fallback for 2.5.0-GTNH and earlier
                 renderEventMethodTemp = lookup.findVirtual(rendererClass, "renderEvent", MethodType.methodType(void.class, RenderGameOverlayEvent.class));
@@ -43,6 +44,17 @@ public class HoloInventoryReflectionCompat {
             angelicaOverrideField.setAccessible(true);
             angelicaOverrideSetterTemp = lookup.unreflectSetter(angelicaOverrideField);
 
+            // Bind the method handles to the instance
+            if (rendererInstance != null) {
+                if (renderEventPostMethodTemp != null) {
+                    renderEventPostMethodTemp = renderEventPostMethodTemp.bindTo(rendererInstance);
+                }
+                if (renderEventMethodTemp != null) {
+                    renderEventMethodTemp = renderEventMethodTemp.bindTo(rendererInstance);
+                }
+                angelicaOverrideSetterTemp = angelicaOverrideSetterTemp.bindTo(rendererInstance);
+            }
+
             isLoaded = true;
             LOGGER.info("Successfully initialized HoloInventory compatibility layer");
         } catch (Exception e) {
@@ -50,9 +62,9 @@ public class HoloInventoryReflectionCompat {
             isLoaded = false;
         }
 
+        renderEventPostMethod = renderEventPostMethodTemp;
         renderEventMethod = renderEventMethodTemp;
         angelicaOverrideSetter = angelicaOverrideSetterTemp;
-        rendererInstance = rendererInstanceTemp;
     }
 
     public static boolean isHoloInventoryLoaded() {
@@ -62,7 +74,11 @@ public class HoloInventoryReflectionCompat {
     public static void renderEvent(RenderGameOverlayEvent event) {
         if (!isLoaded) return;
         try {
-            renderEventMethod.invoke(rendererInstance, event);
+            if (event instanceof RenderGameOverlayEvent.Post && renderEventPostMethod != null) {
+                renderEventPostMethod.invokeExact((RenderGameOverlayEvent.Post) event);
+            } else {
+                renderEventMethod.invokeExact(event);
+            }
         } catch (Throwable e) {
             LOGGER.error("Failed to invoke HoloInventory renderEvent", e);
             isLoaded = false;
@@ -72,7 +88,7 @@ public class HoloInventoryReflectionCompat {
     public static void setAngelicaOverride(boolean value) {
         if (!isLoaded) return;
         try {
-            angelicaOverrideSetter.invoke(rendererInstance, value);
+            angelicaOverrideSetter.invokeExact(value);
         } catch (Throwable e) {
             LOGGER.error("Failed to set HoloInventory angelicaOverride", e);
             isLoaded = false;
