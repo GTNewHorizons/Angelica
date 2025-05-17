@@ -160,6 +160,8 @@ public class ClientProxy extends CommonProxy {
         wasGLSMKeyPressed = isPressed;
     }
 
+    public static boolean hitPostInit = false;
+
     @Override
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
@@ -173,6 +175,12 @@ public class ClientProxy extends CommonProxy {
             } catch (ClassNotFoundException e) {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
+        }
+
+        hitPostInit = true;
+
+        if (AngelicaConfig.enableIris) {
+            Iris.getCurrentPack().ifPresent(pack -> pack.getIdMap().loadMaterialIdLookup());
         }
     }
 
