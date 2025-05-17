@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import xonin.backhand.client.hooks.ItemRendererHooks;
 
 @Mixin(ItemRenderer.class)
 public class MixinItemRendererBackhand {
@@ -21,13 +20,13 @@ public class MixinItemRendererBackhand {
                 ci.cancel();
                 if (ModStatus.isBackhandLoaded){
                     iris$skipTranslucentHandsBackhand(partialTicks, ci);
-                    ItemRendererHooks.renderOffhandReturn(partialTicks);
+                    ModStatus.backhandCompat.renderOffhand(partialTicks);
                 }
             } else if (!HandRenderer.INSTANCE.isRenderingSolid() && !isHandTranslucent) {
                 ci.cancel();
                 if (ModStatus.isBackhandLoaded){
                     iris$skipTranslucentHandsBackhand(partialTicks, ci);
-                    ItemRendererHooks.renderOffhandReturn(partialTicks);
+                    ModStatus.backhandCompat.renderOffhand(partialTicks);
                 }
             }
         }

@@ -27,7 +27,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import xonin.backhand.api.core.BackhandUtils;
 
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -383,7 +382,7 @@ public class DynamicLights {
                 }
             }
             else if (ModStatus.isBackhandLoaded && living instanceof EntityPlayer player){
-                ItemStack offhand = BackhandUtils.getOffhandItem(player);
+                ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
                 if (offhand != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
                 }
