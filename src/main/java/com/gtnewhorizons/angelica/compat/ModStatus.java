@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
+import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
-import net.dries007.holoInventory.HoloInventory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -53,11 +53,8 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
 
-        if (isHoloInventoryLoaded){
-            isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
-                ) <= 0;
+        if (isHoloInventoryLoaded) {
+            isHoloInventoryLoaded = HoloInventoryReflectionCompat.isHoloInventoryLoaded();
         }
 
         // remove compat with original release of BG2
@@ -68,10 +65,9 @@ public class ModStatus {
                 ) <= 0;
         }
 
-
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {
-            int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
+            final int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
