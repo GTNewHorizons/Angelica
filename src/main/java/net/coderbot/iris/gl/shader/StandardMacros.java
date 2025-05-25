@@ -56,6 +56,7 @@ public class StandardMacros {
         define(standardDefines, "IS_ANGELICA");
         define(standardDefines, "ANGELICA_VERSION", Tags.VERSION);
 		define(standardDefines, "MC_HAND_DEPTH", Float.toString(HandRenderer.DEPTH));
+        define(standardDefines, "IRIS_TAG_SUPPORT", "2");
 
 		TextureFormat textureFormat = TextureFormatLoader.getFormat();
 		if (textureFormat != null) {

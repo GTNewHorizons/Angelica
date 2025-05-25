@@ -2,9 +2,19 @@ package net.coderbot.iris.shaderpack.materialmap;
 
 import java.util.Objects;
 
+import net.minecraft.block.Block;
+
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.registry.GameRegistry;
+import lombok.Getter;
+
 public class NamespacedId {
+    @Getter
 	private final String namespace;
+    @Getter
 	private final String name;
+
+    private Block block;
 
 	public NamespacedId(String combined) {
 		int colonIdx = combined.indexOf(':');
@@ -23,13 +33,28 @@ public class NamespacedId {
 		this.name = Objects.requireNonNull(name);
 	}
 
-	public String getNamespace() {
-		return namespace;
-	}
+    private static final String ETFUTURUM = "etfuturum";
 
-	public String getName() {
-		return name;
-	}
+    private static Boolean EFT = null;
+
+    public Block getBlock() {
+        if (block == null) {
+            block = GameRegistry.findBlock(namespace, name);
+
+            // very cursed, but unless we want to manually edit every shaderpack this is probably the best option
+            if (block == null && namespace.equals("minecraft")) {
+                if (EFT == null) {
+                    EFT = Loader.isModLoaded(ETFUTURUM);
+                }
+
+                if (EFT) {
+                    block = GameRegistry.findBlock(ETFUTURUM, name);
+                }
+            }
+        }
+
+        return block;
+    }
 
 	@Override
 	public boolean equals(Object o) {
@@ -58,4 +83,8 @@ public class NamespacedId {
 				", name='" + name + '\'' +
 				'}';
 	}
+
+    public String describe() {
+        return String.format("%s:%s", namespace, name);
+    }
 }

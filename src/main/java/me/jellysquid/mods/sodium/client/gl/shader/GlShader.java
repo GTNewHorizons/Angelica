@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gl.shader;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gl.GlObject;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import net.minecraft.util.ResourceLocation;
@@ -34,11 +35,11 @@ public class GlShader extends GlObject {
 
         String log = GL20.glGetShaderInfoLog(handle, GL20.GL_INFO_LOG_LENGTH);
 
-        if (!log.isEmpty()) {
+        int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
+
+        if ((AngelicaConfig.enableDebugLogging || result != GL11.GL_TRUE) && !log.isEmpty()) {
             LOGGER.warn("Shader compilation log for " + this.name + ": " + log);
         }
-
-        int result = GL20.glGetShaderi(handle, GL20.GL_COMPILE_STATUS);
 
         if (result != GL11.GL_TRUE) {
             throw new RuntimeException("Shader compilation failed, see log for details");
