@@ -668,14 +668,14 @@ public class Iris {
 
         int blockId = getShaderMaterialOverrideId(block, meta);
 
-        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-        tess.setShaderBlockId(blockId);
+        if (TessellatorManager.get() instanceof CapturingTessellator tess)
+            tess.setShaderBlockId(blockId);
     }
 
     public static void resetShaderMaterialOverride() {
         if (!AngelicaConfig.enableIris)
             return;
-        CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-        tess.setShaderBlockId(-1);
+        if (TessellatorManager.get() instanceof CapturingTessellator tess)
+            tess.setShaderBlockId(-1);
     }
 }
