@@ -4,8 +4,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.archaic;
 
 import com.gtnewhorizons.angelica.Tags;
-import com.gtnewhorizons.angelica.client.font.SplashFontRendererRef;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+
+import cpw.mods.fml.client.SplashProgress.SplashFontRenderer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.lwjgl.opengl.Display;
@@ -25,6 +26,7 @@ import static org.lwjgl.opengl.GL11.glPushMatrix;
 import static org.lwjgl.opengl.GL11.glScalef;
 import static org.lwjgl.opengl.GL11.glTranslatef;
 
+@SuppressWarnings("deprecation")
 @Mixin(targets = { "cpw/mods/fml/client/SplashProgress$3" })
 public class MixinSplashProgress$3 {
 
@@ -54,7 +56,7 @@ public class MixinSplashProgress$3 {
         glTranslatef(320 - Display.getWidth() / 2 + 4, 240 + Display.getHeight() / 2 - textHeight2, 0);
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        SplashFontRendererRef.fontRenderer.drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
+        AccessorSplashProgress.getFontRenderer().drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
         if(AngelicaConfig.showSplashMemoryBar) {
@@ -81,13 +83,14 @@ public class MixinSplashProgress$3 {
         final int freeMemory = bytesToMb(Runtime.getRuntime().freeMemory());
         final int usedMemory = totalMemory - freeMemory;
         final float usedMemoryPercent = usedMemory / (float) maxMemory;
+        final SplashFontRenderer fontRenderer = AccessorSplashProgress.getFontRenderer();
 
         glPushMatrix();
         // title - message
         setColor(AccessorSplashProgress.getFontColor());
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        SplashFontRendererRef.fontRenderer.drawString("Memory Used / Total", 0, 0, 0x000000);
+        fontRenderer.drawString("Memory Used / Total", 0, 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
         // border
@@ -125,11 +128,11 @@ public class MixinSplashProgress$3 {
 
         // progress text
         final String progress = getMemoryString(usedMemory) + " / " + getMemoryString(maxMemory);
-        glTranslatef(((float)barWidth - 2) / 2 - SplashFontRendererRef.fontRenderer.getStringWidth(progress), 2, 0);
+        glTranslatef(((float)barWidth - 2) / 2 - fontRenderer.getStringWidth(progress), 2, 0);
         setColor(AccessorSplashProgress.getFontColor());
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        SplashFontRendererRef.fontRenderer.drawString(progress, 0, 0, 0x000000);
+        fontRenderer.drawString(progress, 0, 0, 0x000000);
         glPopMatrix();
     }
 
