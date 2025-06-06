@@ -15,8 +15,13 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         modid = "angelica",
         name = "Angelica",
         version = Tags.VERSION,
-        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.4.4,);" + " after:CodeChickenCore@[1.2.0,);"
-                     + " after:archaicfix@[0.7.0,);" + " required-after:gtnhlib@[0.6.6,);",
+        dependencies = """
+            required-after:gtnhlib@[0.6.6,);\
+            before:lwjgl3ify@[1.5.3,);\
+            after:hodgepodge@[2.4.4,);\
+            after:CodeChickenCore@[1.2.0,);\
+            after:archaicfix@[0.7.0,);\
+            """,
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*",
         guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
