@@ -5,9 +5,9 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.archaic;
 
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import cpw.mods.fml.client.SplashProgress;
-import net.minecraft.client.gui.FontRenderer;
+
+import cpw.mods.fml.client.SplashProgress.SplashFontRenderer;
+
 import org.apache.commons.lang3.StringUtils;
 import org.lwjgl.opengl.Display;
 import org.spongepowered.asm.mixin.Final;
@@ -17,8 +17,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.lang.reflect.Field;
 
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.glDisable;
@@ -30,29 +28,19 @@ import static org.lwjgl.opengl.GL11.glTranslatef;
 
 @SuppressWarnings("deprecation")
 @Mixin(targets = { "cpw/mods/fml/client/SplashProgress$3" })
-public class MixinSplashProgress {
-    private static final int memoryGoodColor = 0x78CB34;
-    private static final int memoryWarnColor = 0xE6E84A;
-    private static final int memoryLowColor = 0xE42F2F;
+public class MixinSplashProgress$3 {
+
+    private static final int MEMORY_GOOD_COLOR = 0x78CB34;
+    private static final int MEMORY_WARN_COLOR = 0xE6E84A;
+    private static final int MEMORY_LOW_COLOR = 0xE42F2F;
     private static float memoryColorPercent;
     private static long memoryColorChangeTime;
-    private static FontRenderer fontRenderer = null;
+
     @Unique
     private static Boolean angelica$isArchaicFixPresent = null;
+
     @Inject(method = "run", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 1, remap = false, shift = At.Shift.AFTER), remap = false, require = 0)
     private void injectDrawMemoryBar(CallbackInfo ci) {
-        // NOTE: Disable this if you're checking for off thread GL calls via `-Dangelica.assertMainThread=true`
-        if(fontRenderer == null) {
-            try {
-                Field f = SplashProgress.class.getDeclaredField("fontRenderer");
-                f.setAccessible(true);
-                fontRenderer = (FontRenderer)f.get(null);
-            } catch(ReflectiveOperationException e) {
-                AngelicaTweaker.LOGGER.error(e);
-                return;
-            }
-        }
-
         // This runs before Loader.isModLoaded() works
         if (angelica$isArchaicFixPresent == null) {
             try {
@@ -68,7 +56,7 @@ public class MixinSplashProgress {
         glTranslatef(320 - Display.getWidth() / 2 + 4, 240 + Display.getHeight() / 2 - textHeight2, 0);
         glScalef(2, 2, 1);
         glEnable(GL_TEXTURE_2D);
-        fontRenderer.drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
+        AccessorSplashProgress.getFontRenderer().drawString("Angelica " + Tags.VERSION, 0, angelica$isArchaicFixPresent ? -10 : 0, 0x000000);
         glDisable(GL_TEXTURE_2D);
         glPopMatrix();
         if(AngelicaConfig.showSplashMemoryBar) {
@@ -95,6 +83,7 @@ public class MixinSplashProgress {
         final int freeMemory = bytesToMb(Runtime.getRuntime().freeMemory());
         final int usedMemory = totalMemory - freeMemory;
         final float usedMemoryPercent = usedMemory / (float) maxMemory;
+        final SplashFontRenderer fontRenderer = AccessorSplashProgress.getFontRenderer();
 
         glPushMatrix();
         // title - message
@@ -123,13 +112,13 @@ public class MixinSplashProgress {
 
         final int memoryBarColor;
         if (memoryColorPercent < 0.75f) {
-            memoryBarColor = memoryGoodColor;
+            memoryBarColor = MEMORY_GOOD_COLOR;
         } else if (memoryColorPercent < 0.85f) {
-            memoryBarColor = memoryWarnColor;
+            memoryBarColor = MEMORY_WARN_COLOR;
         } else {
-            memoryBarColor = memoryLowColor;
+            memoryBarColor = MEMORY_LOW_COLOR;
         }
-        setColor(memoryLowColor);
+        setColor(MEMORY_LOW_COLOR);
         glPushMatrix();
         glTranslatef((barWidth - 2) * (totalMemory) / (maxMemory) - 2, 0, 0);
         drawBox(2, barHeight - 2);

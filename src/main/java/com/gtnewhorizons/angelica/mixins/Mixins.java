@@ -86,7 +86,7 @@ public enum Mixins {
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new Builder("ArchaicFix Splash").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug).addMixinClasses(
-              "angelica.archaic.MixinSplashProgress"
+              "angelica.archaic.MixinSplashProgress$3"
              ,"angelica.archaic.AccessorSplashProgress"
         )
     ),
