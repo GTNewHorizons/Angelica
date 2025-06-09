@@ -360,7 +360,12 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public int getLightEmission() { return (this.blockState != null) ? this.blockState.block.getLightValue() : 0; }
+    public int getLightEmission() {
+        if (this.blockState == null) {
+            return 0;
+        }
+        return Math.min(15, this.blockState.block.getLightValue());
+    }
 
     @Override
     public String getSerialString() { return this.serialString; }
