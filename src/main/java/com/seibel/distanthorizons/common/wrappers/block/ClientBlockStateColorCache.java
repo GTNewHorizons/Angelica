@@ -25,6 +25,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.forge.ForgeMain;
 import cpw.mods.fml.common.FMLLog;
 import net.minecraft.block.*;
 import net.minecraft.client.renderer.IconFlipped;
@@ -225,7 +226,12 @@ public class ClientBlockStateColorCache
 				{*/
                     IIcon originalIcon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta);
                     IIcon icon = originalIcon;
-                    if (icon instanceof IconFlipped) {
+                    if (icon == null) {
+                        if (ForgeMain.gtCompat != null) {
+                            icon = ForgeMain.gtCompat.resolveIcon(blockState.block, blockState.meta);
+                        }
+                    }
+                    else if (icon instanceof IconFlipped) {
                         icon = ((IconFlipped) icon).baseIcon;
                     }
                     else if (icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
@@ -240,10 +246,14 @@ public class ClientBlockStateColorCache
 					this.needShade = false;
 					this.tintIndex = 0;
 
+
                     if (icon instanceof TextureAtlasSprite)
                     {
                         this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
                             ColorMode.getColorMode(this.blockState.block));
+                    } else if  (icon == null) {
+                        FMLLog.warning("Can't get icon for block type " + blockState.block.getClass());
+                        this.baseColor = blockState.block.getBlockColor();
                     } else {
                         FMLLog.warning("Can't handle icon of type " + originalIcon.getClass().getName());
                         this.baseColor = blockState.block.getBlockColor();
