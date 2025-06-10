@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
-import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
@@ -53,9 +52,7 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
 
-        if (isHoloInventoryLoaded) {
-            isHoloInventoryLoaded = HoloInventoryReflectionCompat.isHoloInventoryLoaded();
-        }
+        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
         // remove compat with original release of BG2
         if (isBattlegearLoaded){

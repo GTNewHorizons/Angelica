@@ -67,10 +67,6 @@ public class HoloInventoryReflectionCompat {
         angelicaOverrideSetter = angelicaOverrideSetterTemp;
     }
 
-    public static boolean isHoloInventoryLoaded() {
-        return isLoaded;
-    }
-
     public static void renderEvent(RenderGameOverlayEvent event) {
         if (!isLoaded) return;
         try {
