@@ -30,7 +30,6 @@ public abstract class MixinEntityLivingBase extends Entity {
             vec31.rotateAroundX(-rotationPitch * 3.1415927F / 180.0F);
             vec31.rotateAroundY(-rotationYaw * 3.1415927F / 180.0F);
             vec31 = vec31.addVector(posX, posY + (double)getEyeHeight(), posZ);
-            NotFine.logger.info("Item broken, calling IWorldSpawnItemBreakParticle spawnItemBreakParticle");
             ((IWorldSpawnItemBreakParticle)worldObj).spawnItemBreakParticle(itemStack,
                 "iconcrack_" + Item.getIdFromItem(itemStack.getItem()),
                 vec31.xCoord, vec31.yCoord, vec31.zCoord, vec3.xCoord, vec3.yCoord + 0.05, vec3.zCoord);
