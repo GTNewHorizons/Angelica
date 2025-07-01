@@ -104,7 +104,7 @@ public enum Mixins {
     IRIS_STARTUP(new Builder("Start Iris").addTargetedMod(TargetedMod.VANILLA).setSide(Side.CLIENT)
         .setPhase(Phase.EARLY).setApplyIf(() -> AngelicaConfig.enableIris).addMixinClasses(
              "shaders.startup.MixinGameSettings"
-            ,"shaders.startup.MixinGuiMainMenu"
+            ,"shaders.startup.MixinMinecraft"
             ,"shaders.startup.MixinInitRenderer"
             ,"shaders.startup.MixinAbstractTexture"
             ,"shaders.startup.MixinTextureAtlasSprite"
