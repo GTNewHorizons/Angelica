@@ -184,7 +184,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             if (ModStatus.isFluidLoggedLoaded) {
                                 if (fluid != null && canRenderInPass(fluid.getBlock(), pass)) {
                                     ChunkRenderManager.setWorldRenderPass(pass);
-                                    System.out.println("We are rendering a fluidlogged");
                                     cache.getBlockRenderer().renderFluidLogged(fluid, renderBlocks, pos, buffers.get(pass), seed);
                                 }
                             }
