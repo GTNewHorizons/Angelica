@@ -113,10 +113,6 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-//        if (ModStatus.isFluidLoggedLoaded) {
-//            rendered = renderFluidLogged(world, renderBlocks, pos, buffers, seed);
-//        }
-
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         final QuadProvider model = ((ModeledBlock) block).getModel();
