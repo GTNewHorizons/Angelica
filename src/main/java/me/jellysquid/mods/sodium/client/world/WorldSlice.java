@@ -502,6 +502,10 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         return this.fluidArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
     }
 
+    public Fluid getFluidRelative(int x, int y, int z) {
+        return this.fluidArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)];
+    }
+
     @Override
     public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {
         throw new UnsupportedOperationException("Cannot set fluids in a world slice. WorldSlice is read-only");

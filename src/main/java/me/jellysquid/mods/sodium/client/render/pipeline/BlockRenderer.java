@@ -67,9 +67,7 @@ public class BlockRenderer {
         this.occlusionCache = new BlockOcclusionCache();
     }
 
-    private boolean renderFluidLogged(IBlockAccess world, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
-        Fluid fluid = ((WorldSlice) world).fl$getFluid(pos.x, pos.y, pos.z);
-
+    public boolean renderFluidLogged(Fluid fluid, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
         if (fluid == null) {
             return false;
         }
@@ -115,9 +113,9 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        if (ModStatus.isFluidLoggedLoaded) {
-            rendered = renderFluidLogged(world, renderBlocks, pos, buffers, seed);
-        }
+//        if (ModStatus.isFluidLoggedLoaded) {
+//            rendered = renderFluidLogged(world, renderBlocks, pos, buffers, seed);
+//        }
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 

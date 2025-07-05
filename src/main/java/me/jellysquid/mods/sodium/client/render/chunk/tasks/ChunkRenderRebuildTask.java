@@ -37,6 +37,7 @@ import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.IIcon;
+import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
 import java.util.Map;
@@ -156,6 +157,11 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
             for (int relZ = 0; relZ < 16; relZ++) {
                 for (int relX = 0; relX < 16; relX++) {
+                    Fluid fluid = null;
+                    if (ModStatus.isFluidLoggedLoaded) {
+                        fluid = slice.getFluidRelative(relX + 16, relY + 16, relZ + 16);
+                    }
+
                     final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
 
                     // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
@@ -173,10 +179,17 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
                     if (rendersOffThread(block)) {
                         // Do regular block rendering
+                        final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
+                            if (ModStatus.isFluidLoggedLoaded) {
+                                if (fluid != null && canRenderInPass(fluid.getBlock(), pass)) {
+                                    ChunkRenderManager.setWorldRenderPass(pass);
+                                    System.out.println("We are rendering a fluidlogged");
+                                    cache.getBlockRenderer().renderFluidLogged(fluid, renderBlocks, pos, buffers.get(pass), seed);
+                                }
+                            }
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
-                                final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
                                 if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                                 if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
@@ -184,6 +197,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                                 }
                             }
                         }
+
                     } else {
                         mainThreadBlocks.enqueue(pos.asLong());
                         hasMainThreadBlocks = true;
