@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.world;
 import java.util.Arrays;
 
 import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -10,6 +11,7 @@ import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSectionCache;
+import mega.fluidlogged.api.FLBlockAccess;
 import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.init.Blocks;
@@ -24,6 +26,8 @@ import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.Fluid;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Takes a slice of world state (block states, biome and light data arrays) and copies the data for use in off-thread
@@ -35,7 +39,7 @@ import net.minecraftforge.common.util.ForgeDirection;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-public class WorldSlice implements IBlockAccessExtended {
+public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
 
     // The number of blocks on each axis in a section.
@@ -68,6 +72,7 @@ public class WorldSlice implements IBlockAccessExtended {
 
     // Local Section->BlockState table.
     private final Block[][] blockArrays;
+    private final Fluid[][] fluidArrays;
     private final int[][] metadataArrays;
 
     // Local Section->Light table
@@ -145,6 +150,12 @@ public class WorldSlice implements IBlockAccessExtended {
         this.biomeData = new BiomeGenBase[SECTION_TABLE_ARRAY_SIZE][];
         this.lightArrays = new NibbleArray[SECTION_TABLE_ARRAY_SIZE][LIGHT_TYPES.length];
 
+        if (ModStatus.isFluidLoggedLoaded) {
+            this.fluidArrays = new Fluid[SECTION_TABLE_ARRAY_SIZE][];
+        } else {
+            this.fluidArrays = null;
+        }
+
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
@@ -152,6 +163,10 @@ public class WorldSlice implements IBlockAccessExtended {
                     this.blockArrays[i] = new Block[SECTION_BLOCK_COUNT];
                     Arrays.fill(this.blockArrays[i], Blocks.air);
                     this.metadataArrays[i] = new int[SECTION_BLOCK_COUNT];
+
+                    if (ModStatus.isFluidLoggedLoaded && this.fluidArrays != null) {
+                        this.fluidArrays[i] = new Fluid[SECTION_BLOCK_COUNT];
+                    }
                 }
             }
         }
@@ -175,6 +190,11 @@ public class WorldSlice implements IBlockAccessExtended {
                     final ClonedChunkSection section = this.sections[idx];
 
                     this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], section, context.getVolume());
+
+                    if (ModStatus.isFluidLoggedLoaded) {
+                        this.unpackFluidLoggedData(this.fluidArrays[idx], section, context.getVolume());
+                    }
+
                     this.biomeData[idx] = section.getBiomeData();
 
                     this.lightArrays[idx][EnumSkyBlock.Block.ordinal()] = section.getLightArray(EnumSkyBlock.Block);
@@ -265,6 +285,14 @@ public class WorldSlice implements IBlockAccessExtended {
         return getBlock(x, y, z).isSideSolid(this, x, y, z, side);
     }
 
+    private void unpackFluidLoggedData(Fluid[] fluids, ClonedChunkSection section, StructureBoundingBox box) {
+        if (this.origin.equals(section.getPosition())) {
+            this.unpackFluidLoggedDataZ(fluids, section);
+        } else {
+            this.unpackFluidLoggedDataR(fluids, section, box);
+        }
+    }
+
     private void unpackBlockData(Block[] blocks, int[] metas, ClonedChunkSection section, StructureBoundingBox box) {
         if (this.origin.equals(section.getPosition()))  {
             this.unpackBlockDataZ(blocks, metas, section);
@@ -273,6 +301,48 @@ public class WorldSlice implements IBlockAccessExtended {
         }
     }
 
+    private void unpackFluidLoggedDataR(Fluid[] fluids, ClonedChunkSection section, StructureBoundingBox box) {
+        final ChunkSectionPos pos = section.getPosition();
+
+        final int minBlockX = Math.max(box.minX, pos.getMinX());
+        final int maxBlockX = Math.min(box.maxX, pos.getMaxX());
+
+        final int minBlockY = Math.max(box.minY, pos.getMinY());
+        final int maxBlockY = Math.min(box.maxY, pos.getMaxY());
+
+        final int minBlockZ = Math.max(box.minZ, pos.getMinZ());
+        final int maxBlockZ = Math.min(box.maxZ, pos.getMaxZ());
+
+        copyFluids(fluids, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
+    }
+
+    private void unpackFluidLoggedDataZ(Fluid[] fluids, ClonedChunkSection section) {
+        // TODO: Look into a faster copy for this?
+        final ChunkSectionPos pos = section.getPosition();
+
+        final int minBlockX = pos.getMinX();
+        final int maxBlockX = pos.getMaxX();
+
+        final int minBlockY = pos.getMinY();
+        final int maxBlockY = pos.getMaxY();
+
+        final int minBlockZ = pos.getMinZ();
+        final int maxBlockZ = pos.getMaxZ();
+
+        // TODO: Can this be optimized?
+        copyFluids(fluids, section, minBlockY, maxBlockY, minBlockZ, maxBlockZ, minBlockX, maxBlockX);
+    }
+
+    private static void copyFluids(Fluid[] fluids, ClonedChunkSection section, int minBlockY, int maxBlockY, int minBlockZ, int maxBlockZ, int minBlockX, int maxBlockX) {
+        for (int y = minBlockY; y <= maxBlockY; y++) {
+            for (int z = minBlockZ; z <= maxBlockZ; z++) {
+                for (int x = minBlockX; x <= maxBlockX; x++) {
+                    final int blockIdx = getLocalBlockIndex(x & 15, y & 15, z & 15);
+                    fluids[blockIdx] = section.getFluid(x & 15, y & 15, z & 15);
+                }
+            }
+        }
+    }
 
     private static void copyBlocks(Block[] blocks, int[] metas, ClonedChunkSection section, int minBlockY, int maxBlockY, int minBlockZ, int maxBlockZ, int minBlockX, int maxBlockX) {
         for (int y = minBlockY; y <= maxBlockY; y++) {
@@ -418,5 +488,22 @@ public class WorldSlice implements IBlockAccessExtended {
             y <= box.maxY &&
             z >= box.minZ &&
             z <= box.maxZ;
+    }
+
+    @Override
+    public @Nullable Fluid fl$getFluid(int x, int y, int z) {
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return null;
+        }
+
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
+        return this.fluidArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
+    }
+
+    @Override
+    public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {
+        throw new UnsupportedOperationException("Cannot set fluids in a world slice. WorldSlice is read-only");
     }
 }

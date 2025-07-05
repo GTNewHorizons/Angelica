@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -339,6 +340,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
     }
 
     private static boolean shouldUseSodiumFluidRendering(Block block) {
-        return AngelicaConfig.enableSodiumFluidRendering && WorldUtil.isFluidBlock(block);
+        return AngelicaConfig.enableSodiumFluidRendering && WorldUtil.isFluidBlock(block) && !ModStatus.isFluidLoggedLoaded;
     }
 }
