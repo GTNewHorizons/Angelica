@@ -114,5 +114,5 @@ dependencies {
     testImplementation("org.mockito:mockito-core:3.+")
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
 
-    api("mega:fluidlogged-mc1.7.10:0.1.2")
+    compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 }

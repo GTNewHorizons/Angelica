@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import cpw.mods.fml.common.Optional;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
@@ -39,6 +40,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
+@Optional.Interface(iface = "mega.fluidlogged.api.FLBlockAccess", modid = "fluidlogged")
 public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
 
@@ -211,8 +213,8 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
             return (15 << 20) | (min << 4);
         }
 
-        final int skyBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Sky, x, y, z);
-        int blockBrightness = this.getSkyBlockTypeBrightness(net.minecraft.world.EnumSkyBlock.Block, x, y, z);
+        final int skyBrightness = this.getSkyBlockTypeBrightness(EnumSkyBlock.Sky, x, y, z);
+        int blockBrightness = this.getSkyBlockTypeBrightness(EnumSkyBlock.Block, x, y, z);
 
         if (blockBrightness < min) {
             blockBrightness = min;
@@ -490,7 +492,6 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
             z <= box.maxZ;
     }
 
-    @Override
     public @Nullable Fluid fl$getFluid(int x, int y, int z) {
         if (!blockBoxContains(this.volume, x, y, z)) {
             return null;
@@ -506,7 +507,6 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         return this.fluidArrays[getLocalSectionIndex(x >> 4, y >> 4, z >> 4)][getLocalBlockIndex(x & 15, y & 15, z & 15)];
     }
 
-    @Override
     public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {
         throw new UnsupportedOperationException("Cannot set fluids in a world slice. WorldSlice is read-only");
     }
