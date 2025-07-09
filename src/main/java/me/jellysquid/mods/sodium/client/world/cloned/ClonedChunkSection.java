@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import lombok.Getter;
+import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
 import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.EnumSkyBlock;
@@ -15,6 +16,7 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
+import net.minecraftforge.fluids.Fluid;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -100,6 +102,14 @@ public class ClonedChunkSection {
 
     public Block getBlock(int x, int y, int z) {
         return data.getBlockByExtId(x, y, z);
+    }
+
+    public Fluid getFluid(int x, int y, int z) {
+        if (ModStatus.isFluidLoggedLoaded) {
+            return ((FLSubChunk) data).fl$getFluid(x, y, z);
+        }
+
+        return null;
     }
 
     public int getBlockMetadata(int x, int y, int z) {
