@@ -19,8 +19,11 @@
 
 package com.seibel.distanthorizons.common.wrappers.gui;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 /**
  * Creates a button with a texture on it (and a background) that works with all mc versions
@@ -60,119 +63,30 @@ public class TexturedButtonWidget extends GuiButton {
         this.renderBackground = renderBackground;
     }
 
-	/*
-	#if MC_VER < MC_1_20_2
-	#if MC_VER < MC_1_19_4
-	@Override
-	public void renderButton(PoseStack matrices, int mouseX, int mouseY, float delta)
-	{
-		if (this.renderBackground) // Renders the background of the button
-		{
-			#if MC_VER < MC_1_17_1
-			Minecraft.getInstance().getTextureManager().bind(WIDGETS_LOCATION);
-			RenderSystem.color4f(1.0F, 1.0F, 1.0F, this.alpha);
-			#else
-			RenderSystem.setShader(GameRenderer::getPositionTexShader);
-			RenderSystem.setShaderTexture(0, WIDGETS_LOCATION);
-			RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha);
-			#endif
-
-			int i = this.getYImage(this.isHovered);
-			RenderSystem.enableBlend();
-			RenderSystem.defaultBlendFunc();
-			RenderSystem.enableDepthTest();
-			#if MC_VER < MC_1_19_4
-			this.blit(matrices, this.x, this.y, 0, 46 + i * 20, this.width / 2, this.height);
-			this.blit(matrices, this.x + this.width / 2, this.y, 200 - this.width / 2, 46 + i * 20, this.width / 2, this.height);
-			#else
-			this.blit(matrices, this.getX(), this.getY(), 0, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-			this.blit(matrices, this.getX() + this.getWidth() / 2, this.getY(), 200 - this.width / 2, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-			#endif
-		}
-
-		super.renderButton(matrices, mouseX, mouseY, delta);
-	}
-
-	#else
-    #if MC_VER < MC_1_20_1
-	@Override
-    public void renderWidget(PoseStack matrices, int mouseX, int mouseY, float delta)
+    @Override
+    public void drawButton(Minecraft mc, int mouseX, int mouseY)
     {
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderTexture(0, WIDGETS_LOCATION);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha);
-    #else
-	@Override
-	public void renderWidget(GuiGraphics matrices, int mouseX, int mouseY, float delta)
-	{
-    #endif
-		if (this.renderBackground) // Renders the background of the button
-		{
-			int i = 1;
-			if (!this.active)           i = 0;
-			else if (this.isHovered)    i = 2;
+        this.field_146123_n = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+        int k = this.getHoverState(this.field_146123_n);
 
-            #if MC_VER < MC_1_20_1
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-            RenderSystem.enableDepthTest();
+        if (this.renderBackground)
+        {
+            mc.getTextureManager().bindTexture(buttonTextures);
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glEnable(GL11.GL_BLEND);
+            OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + k * 20, this.width / 2, this.height);
+            this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + k * 20, this.width / 2, this.height);
+        }
 
-            this.blit(matrices, this.getX(), this.getY(), 0, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-            this.blit(matrices, this.getX() + this.getWidth() / 2, this.getY(), 200 - this.width / 2, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-            #else
-			matrices.blit(WIDGETS_LOCATION, this.getX(), this.getY(), 0, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-			matrices.blit(WIDGETS_LOCATION, this.getX() + this.getWidth() / 2, this.getY(), 200 - this.width / 2, 46 + i * 20, this.getWidth() / 2, this.getHeight());
-            #endif
-		}
-
-		super.renderWidget(matrices, mouseX, mouseY, delta);
-	}
-	#endif
-
-	#else
-	@Override
-	public void renderWidget(GuiGraphics matrices, int mouseX, int mouseY, float delta)
-	{
-		if (this.renderBackground)
-		{
-			#if MC_VER < MC_1_21_3
-			matrices.blitSprite(SPRITES.get(this.active, this.isHoveredOrFocused()), this.getX(), this.getY(), this.getWidth(), this.getHeight());
-			#else
-			matrices.blitSprite(
-				RenderType::guiTextured,
-				SPRITES.get(this.active, this.isHoveredOrFocused()),
-				this.getX(), this.getY(),
-				this.getWidth(), this.getHeight());
-
-			#endif
-		}
-
-
-		// Renders the sprite
-		int i = 0;
-		if (!this.active)
-		{
-			i = 2;
-		}
-		else if (this.isHovered)
-		{
-			i = 1;
-		}
-
-		#if MC_VER < MC_1_21_3
-		matrices.blit(this.textureResourceLocation, this.getX(), this.getY(), this.u, this.v + (this.hoveredVOffset * i), this.width, this.height, this.textureWidth, this.textureHeight);
-		#else
-		matrices.blit(
-				RenderType::guiTextured,
-				this.textureResourceLocation,
-				this.getX(), this.getY(),
-				this.u, this.v + (this.hoveredVOffset * i),
-				this.width, this.height,
-				this.textureWidth, this.textureHeight);
-
-		#endif
-	}
-	#endif
-
-	 */
+        mc.getTextureManager().bindTexture(textureResourceLocation);
+        if (!this.renderBackground) {
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glEnable(GL11.GL_BLEND);
+            OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        }
+        this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 0, this.textureWidth, this.textureHeight);
+    }
 }
