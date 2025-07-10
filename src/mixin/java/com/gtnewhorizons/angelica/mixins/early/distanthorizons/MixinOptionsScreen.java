@@ -60,7 +60,7 @@ public class MixinOptionsScreen extends GuiScreen
 							// Offset
 							0, 0,
 							// Some textuary stuff
-							20, ICON_TEXTURE, 20, 20,
+							20, ICON_TEXTURE, 20, 40,
 							// Create the button and tell it where to go
 							// For now it goes to the client option by default
 							button_id,
