@@ -88,6 +88,8 @@ public class TexturedButtonWidget extends GuiButton {
             OpenGlHelper.glBlendFunc(770, 771, 1, 0);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         }
+
+        // this function lets you draw images of different sizes
         func_146110_a(this.xPosition, this.yPosition, this.u, this.v + (hoveredVOffset * k), this.width, this.height, this.textureWidth, this.textureHeight);
     }
 
