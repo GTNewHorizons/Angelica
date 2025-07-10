@@ -33,8 +33,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Objects;
-
 /**
  * Adds a button to the menu to goto the config
  *
@@ -62,7 +60,7 @@ public class MixinOptionsScreen extends GuiScreen
 							// Offset
 							0, 0,
 							// Some textuary stuff
-							20, ICON_TEXTURE, 20, 40,
+							20, ICON_TEXTURE, 20, 20,
 							// Create the button and tell it where to go
 							// For now it goes to the client option by default
 							button_id,
