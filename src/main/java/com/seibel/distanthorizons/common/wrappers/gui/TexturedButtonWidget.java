@@ -67,10 +67,10 @@ public class TexturedButtonWidget extends GuiButton {
     public void drawButton(Minecraft mc, int mouseX, int mouseY)
     {
         this.field_146123_n = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
-        int k = this.getHoverState(this.field_146123_n);
 
         if (this.renderBackground)
         {
+            int k = this.getHoverState(this.field_146123_n);
             mc.getTextureManager().bindTexture(buttonTextures);
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glEnable(GL11.GL_BLEND);
@@ -80,6 +80,7 @@ public class TexturedButtonWidget extends GuiButton {
             this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + k * 20, this.width / 2, this.height);
         }
 
+        int k = getIconHoverState(this.field_146123_n);
         mc.getTextureManager().bindTexture(textureResourceLocation);
         if (!this.renderBackground) {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
@@ -87,6 +88,14 @@ public class TexturedButtonWidget extends GuiButton {
             OpenGlHelper.glBlendFunc(770, 771, 1, 0);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         }
-        this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 0, this.textureWidth, this.textureHeight);
+
+        // this function lets you draw images of different sizes
+        func_146110_a(this.xPosition, this.yPosition, this.u, this.v + (hoveredVOffset * k), this.width, this.height, this.textureWidth, this.textureHeight);
+    }
+
+    public int getIconHoverState(boolean mouseOver) {
+        if (!this.enabled || mouseOver) // grey out if mouse over/disabled
+            return 1;
+        return 0; // regular button colors
     }
 }
