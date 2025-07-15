@@ -1,61 +1,31 @@
 package com.gtnewhorizons.angelica.mixins;
 
+import com.gtnewhorizon.gtnhmixins.builders.ITargetMod;
+import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
 import lombok.Getter;
 
-public enum TargetedMod {
+@Getter
+public enum TargetedMod implements ITargetMod {
 
-      VANILLA("Minecraft", null)
-    , FASTCRAFT("FastCraft", "fastcraft.Tweaker")
-    , OPTIFINE("Optifine", "optifine.OptiFineForgeTweaker", "Optifine")
-    , ARCHAICFIX("ArchaicFix", "org.embeddedt.archaicfix.ArchaicCore", "archaicfix")
-    , BACKHAND("Backhand","xonin.backhand.coremod.BackhandLoadingPlugin", "backhand")
-    , BOTANIA("Botania", null, "Botania")
-    , CAMPFIRE_BACKPORT("CampfireBackport", null, "campfirebackport")
-    , CHICKENCHUNKS("ChickenChunks", null, "ChickenChunks")
-    , COFHCORE("CoFHCore", "cofh.asm.LoadingPlugin", "CoFHCore")
-    , DYNAMIC_SURROUNDINGS_MIST("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround")
-    , DYNAMIC_SURROUNDINGS_ORIGINAL("Dynamic Surroundings", "org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround")
-    , EXTRAUTILS("ExtraUtilities", null, "ExtraUtilities")
-    ,  MINEFACTORY_RELOADED("MineFactory Reloaded", null, "MineFactoryReloaded")
-    , GTNHLIB("GTNHLib", "com.gtnewhorizon.gtnhlib.core.GTNHLibCore", "gtnhlib")
-    , IC2("IC2", "ic2.core.coremod.IC2core", "IC2")
-    , JABBA("JABBA", null, "JABBA")
-    , JOURNEYMAP("JourneyMap", null, "journeymap")
-    , LWJGL3IFY("lwjgl3ify", "me.eigenraven.lwjgl3ify.core.Lwjgl3ifyCoremod", "lwjgl3ify")
-    , MRTJPCORE("MrTJPCore", null, "MrTJPCoreMod")
-    , NATURA("Natura", null, "Natura")
-    , PROJECTRED_ILLUMINATION("ProjectRed Illumination", null, "ProjRed|Illumination")
-    , SECURITYCRAFT("SecurityCraft", null, "securitycraft")
-    , SMART_RENDER("Smart Render", null, "SmartRender")
-    , THAUMCRAFT("Thaumcraft", null, "Thaumcraft")
-    , TINKERS_CONSTRUCT("Tinker's Construct", null, "TConstruct")
-    , TWILIGHT_FOREST("TwilightForest", null, "TwilightForest")
-    , WITCHERY("Witchery", null, "witchery")
-    ;
+    ARCHAICFIX("org.embeddedt.archaicfix.ArchaicCore", "archaicfix"),
+    BACKHAND("xonin.backhand.coremod.BackhandLoadingPlugin", "backhand"),
+    CAMPFIRE_BACKPORT(null, "campfirebackport"),
+    COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
+    DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),
+    DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
+    EXTRAUTILS(null, "ExtraUtilities"),
+    MINEFACTORY_RELOADED(null, "MineFactoryReloaded"),
+    IC2("ic2.core.coremod.IC2core", "IC2"),
+    NATURA(null, "Natura"),
+    SECURITYCRAFT(null, "securitycraft"),
+    THAUMCRAFT(null, "Thaumcraft"),
+    TINKERS_CONSTRUCT(null, "TConstruct"),
+    TWILIGHT_FOREST(null, "TwilightForest"),
+    WITCHERY(null, "witchery");
 
+    private final TargetModBuilder builder;
 
-    /** The "name" in the @Mod annotation */
-    @Getter
-    public final String modName;
-    /** Class that implements the IFMLLoadingPlugin interface */
-    @Getter
-    public final String coreModClass;
-    /** The "modid" in the @Mod annotation */
-    @Getter
-    public final String modId;
-
-    TargetedMod(String modName, String coreModClass) {
-        this(modName, coreModClass, null);
-    }
-
-    TargetedMod(String modName, String coreModClass, String modId) {
-        this.modName = modName;
-        this.coreModClass = coreModClass;
-        this.modId = modId;
-    }
-
-    @Override
-    public String toString() {
-        return "TargetedMod{modName='" + modName + "', coreModClass='" + coreModClass + "', modId='" + modId + "'}";
+    TargetedMod(String coreModClass, String modId) {
+        this.builder = new TargetModBuilder().setCoreModClass(coreModClass).setModId(modId);
     }
 }

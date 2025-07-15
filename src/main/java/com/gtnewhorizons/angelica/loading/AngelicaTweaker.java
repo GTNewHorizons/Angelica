@@ -4,10 +4,11 @@ import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizon.gtnhmixins.builders.IMixins;
+import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
-import com.gtnewhorizons.angelica.mixins.TargetedMod;
 import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
@@ -15,6 +16,7 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
 import jss.notfine.config.MCPatcherForgeConfig;
+import jss.notfine.config.NotFineConfig;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +27,7 @@ import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -95,7 +97,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             transformers.add(GenericCompatTransformer.class.getName());
 
             // Add NotFine transformers
-            final List<String> notFineTransformers = AsmTransformers.getTransformers();
+            final List<String> notFineTransformers = Arrays.asList(ITransformers.getTransformers(AsmTransformers.class));
             if (!notFineTransformers.isEmpty()) Namer.initNames();
             transformers.addAll(notFineTransformers);
 
@@ -131,7 +133,12 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
-        return Mixins.getEarlyMixins(loadedCoreMods);
+        NotFineConfig.loadSettings();
+        //This may be possible to handle differently or fix.
+        if (loadedCoreMods.contains("cofh.asm.LoadingPlugin")) {
+            MCPatcherForgeConfig.ExtendedHD.hdFont = false;
+        }
+        return IMixins.getEarlyMixins(Mixins.class, loadedCoreMods);
     }
 
     public static boolean DUMP_CLASSES() {
@@ -151,6 +158,4 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             ASMUtil.saveAsRawClassFile(transformedBytes, className + "_POST", transformer);
         }
     }
-
-    public static final Set<TargetedMod> coreMods = new HashSet<>();
 }
