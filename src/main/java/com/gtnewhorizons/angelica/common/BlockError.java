@@ -26,17 +26,7 @@ public class BlockError extends Block {
     public BlockError() {
         super(Material.rock);
 
-        MinecraftForge.EVENT_BUS.register(this);
-    }
-
-    @SubscribeEvent
-    @SideOnly(Side.CLIENT)
-    public void onTextureStitch(TextureStitchEvent.Pre event) {
-        if (event.map.getTextureType() == 0) {
-            for (int i = 0; i < icons.length; i++) {
-                icons[i] = event.map.registerIcon("angelica:error_block_" + i);
-            }
-        }
+        MinecraftForge.EVENT_BUS.register(new EventHandler());
     }
 
     @Override
@@ -45,4 +35,15 @@ public class BlockError extends Block {
         return meta >= 0 && meta < icons.length ? icons[meta] : null;
     }
 
+    public static class EventHandler{
+        @SubscribeEvent
+        @SideOnly(Side.CLIENT)
+        public void onTextureStitch(TextureStitchEvent.Pre event) {
+            if (event.map.getTextureType() == 0) {
+                for (int i = 0; i < icons.length; i++) {
+                    icons[i] = event.map.registerIcon("angelica:error_block_" + i);
+                }
+            }
+        }
+    }
 }
