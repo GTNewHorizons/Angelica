@@ -6,7 +6,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.mojang.realmsclient.gui.ChatFormatting;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -39,6 +38,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.input.Keyboard;
 
@@ -603,18 +603,18 @@ public class Iris {
     }
 
     public static String getFormattedVersion() {
-        final ChatFormatting color;
+        final EnumChatFormatting color;
         String version = getVersion();
 
         if (version.endsWith("-development-environment")) {
-            color = ChatFormatting.GOLD;
+            color = EnumChatFormatting.GOLD;
             version = version.replace("-development-environment", " (Development Environment)");
         } else if (version.endsWith("-dirty") || version.contains("unknown") || version.endsWith("-nogit")) {
-            color = ChatFormatting.RED;
+            color = EnumChatFormatting.RED;
         } else if (version.contains("+rev.")) {
-            color = ChatFormatting.LIGHT_PURPLE;
+            color = EnumChatFormatting.LIGHT_PURPLE;
         } else {
-            color = ChatFormatting.GREEN;
+            color = EnumChatFormatting.GREEN;
         }
 
         return color + version;
