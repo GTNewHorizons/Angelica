@@ -196,12 +196,6 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    IRIS_ACCESSORS(new MixinBuilder()
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableIris)
-        .addClientMixins("shaders.accessors.MixinEntityRenderer")
-    ),
-
     ANGELICA_TEXTURE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium)
