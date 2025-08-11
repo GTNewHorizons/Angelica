@@ -22,10 +22,8 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,9 +32,9 @@ import java.util.stream.Collectors;
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
  */
-public class RedirectorTransformer implements IClassTransformer {
+public final class RedirectorTransformer implements IClassTransformer {
 
-    private static final boolean ASSERT_MAIN_THREAD = Boolean.parseBoolean(System.getProperty("angelica.assertMainThread", "false"));
+    private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
@@ -59,23 +57,23 @@ public class RedirectorTransformer implements IClassTransformer {
         "initializeTextures", "func_77474_a"
     );
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final List<String> VanillaBlockExclusions = Arrays.asList(
+    private static final String[] VanillaBlockExclusions = {
         "net/minecraft/block/IGrowable",
         "net/minecraft/block/ITileEntityProvider",
         "net/minecraft/block/BlockEventData",
         "net/minecraft/block/BlockSourceImpl",
         "net/minecraft/block/material/"
-    );
+    };
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
-    private static final List<String> TransformerExclusions = Arrays.asList(
+    private static final String[] TransformerExclusions = {
         "org.lwjgl",
         "com.gtnewhorizons.angelica.glsm.",
         "com.gtnewhorizons.angelica.transform",
         "me.eigenraven.lwjgl3ify"
-    );
+    };
 
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
@@ -209,8 +207,7 @@ public class RedirectorTransformer implements IClassTransformer {
 
         try {
             final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            final MethodHandle sodiumGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableSodium", boolean.class);
-            angelicaConfigSodiumEnabledGetter = sodiumGetter;
+            angelicaConfigSodiumEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableSodium", boolean.class);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
@@ -240,11 +237,11 @@ public class RedirectorTransformer implements IClassTransformer {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
-    public static List<String> getTransformerExclusions() {
-        return Collections.unmodifiableList(TransformerExclusions);
+    public static String[] getTransformerExclusions() {
+        return TransformerExclusions.clone();
     }
 
-    public boolean shouldRfbTransform(byte[] basicClass) {
+    public static boolean shouldRfbTransform(byte[] basicClass) {
         return cstPoolParser.find(basicClass, true);
     }
 

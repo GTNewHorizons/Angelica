@@ -13,7 +13,7 @@ import java.util.jar.Manifest;
 /** RFB wrapper for {@link com.gtnewhorizons.angelica.transform.RedirectorTransformer} */
 public class RedirectorTransformerWrapper implements RfbClassTransformer {
 
-    public final RedirectorTransformer inner = new RedirectorTransformer();
+    private final RedirectorTransformer inner = new RedirectorTransformer();
 
     @Pattern("[a-z0-9-]+")
     @Override
@@ -33,7 +33,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
 
     @Override
     public @NotNull String @Nullable [] additionalExclusions() {
-        return RedirectorTransformer.getTransformerExclusions().toArray(new String[0]);
+        return RedirectorTransformer.getTransformerExclusions();
     }
 
     @Override
@@ -47,7 +47,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
             // If a class is already a transformed ClassNode, conservatively continue processing.
             return true;
         }
-        return inner.shouldRfbTransform(classNode.getOriginalBytes());
+        return RedirectorTransformer.shouldRfbTransform(classNode.getOriginalBytes());
     }
 
     @Override
