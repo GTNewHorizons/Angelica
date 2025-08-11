@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.FieldLevelTessellatorTransformer;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.HUDCachingEarlyReturnTransformer;
@@ -56,7 +56,7 @@ public class GenericCompatTransformer implements IClassTransformer {
         MixinClassWriter cw = new MixinClassWriter(MixinClassWriter.COMPUTE_MAXS | MixinClassWriter.COMPUTE_FRAMES);
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
-        AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
+        AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
     }
 

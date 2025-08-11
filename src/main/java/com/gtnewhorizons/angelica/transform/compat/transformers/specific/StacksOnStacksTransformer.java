@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform.compat.transformers.specific;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.ClassWriter;
@@ -47,7 +48,7 @@ public class StacksOnStacksTransformer implements IClassTransformer {
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
         AngelicaTweaker.LOGGER.info("[AngelicaCompat]Extra Transformers: Applied StacksOnStacksTransformer");
-        AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
+        AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
     }
 

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
@@ -270,7 +271,7 @@ public final class RedirectorTransformer implements IClassTransformer {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
+            AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
         return basicClass;

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.transform;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
@@ -36,7 +36,7 @@ public class BlockTransformer implements IClassTransformer {
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
-            AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
+            AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
             return bytes;
         }
         return basicClass;

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading.rfb;
 
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
@@ -56,6 +57,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
         final boolean changed = inner.transformClassNode(className, classNode.getNode());
         if (changed) {
             classNode.computeMaxs();
+            AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
     }
 }

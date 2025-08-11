@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.loading;
 
-import com.gtnewhorizon.gtnhlib.asm.ASMUtil;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
@@ -47,7 +46,6 @@ import java.util.Set;
         "com.gtnewhorizons.angelica.glsm.GLStateManager"})
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
-    private static final boolean DUMP_CLASSES = Boolean.parseBoolean(System.getProperty("angelica.dumpClass", "false"));
     private static boolean OBF_ENV;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
@@ -141,21 +139,10 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         return IMixins.getEarlyMixins(Mixins.class, loadedCoreMods);
     }
 
-    public static boolean DUMP_CLASSES() {
-        return DUMP_CLASSES || !OBF_ENV;
-    }
-
     /**
      * Returns true if we are in an obfuscated environment, returns false in dev environment.
      */
     public static boolean isObfEnv() {
         return OBF_ENV;
-    }
-
-    public static void dumpClass(String className, byte[] originalBytes, byte[] transformedBytes, Object transformer) {
-        if (AngelicaTweaker.DUMP_CLASSES()) {
-            ASMUtil.saveAsRawClassFile(originalBytes, className + "_PRE", transformer);
-            ASMUtil.saveAsRawClassFile(transformedBytes, className + "_POST", transformer);
-        }
     }
 }
