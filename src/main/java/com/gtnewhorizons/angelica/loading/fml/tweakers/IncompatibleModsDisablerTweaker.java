@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.CoreModManager;
+import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
@@ -20,32 +19,44 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-
-public class MixinCompatHackTweaker implements ITweaker {
+public class IncompatibleModsDisablerTweaker implements ITweaker {
 
     private static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
 
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
+        // no-op
+    }
+
+    @Override
+    public void injectIntoClassLoader(LaunchClassLoader classLoader) {
         if (DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS) {
-            LOGGER.info("Disabling Optifine, Fastcraft, BetterFPS, and other incompatible mods (if present)");
-            disableIncompatibleMods();
+            FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Disabling Optifine, Fastcraft, BetterFPS, and other incompatible mods (if present)");
+            disableIncompatibleMods(classLoader);
         }
     }
 
+    @Override
+    public String getLaunchTarget() {
+        return null;
+    }
+
+    @Override
+    public String[] getLaunchArguments() {
+        return new String[0];
+    }
+
     @SuppressWarnings("unchecked")
-    private void disableIncompatibleMods() {
+    private void disableIncompatibleMods(LaunchClassLoader lcl) {
         // Remove transformers, Mod Containers, and mixins for Optifine, Fastcraft, BetterFPS and other incompatible mods
         try {
-            final LaunchClassLoader lcl = Launch.classLoader;
             final Field xformersField = lcl.getClass().getDeclaredField("transformers");
             xformersField.setAccessible(true);
             final List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
             for (int idx = xformers.size() - 1; idx >= 0; idx--) {
                 final String name = xformers.get(idx).getClass().getName();
                 if (name.startsWith("optifine") || name.startsWith("fastcraft") || name.startsWith("me.guichaguri.betterfps")) {
-                    LOGGER.info("Removing transformer " + name);
+                    FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing transformer " + name);
                     xformers.remove(idx);
                 }
             }
@@ -53,13 +64,14 @@ public class MixinCompatHackTweaker implements ITweaker {
             throw new RuntimeException(e);
         }
         try {
-            final Field injectedContainersField = Loader.class.getDeclaredField("injectedContainers");
+            final Class<?> loaderClass = Class.forName("cpw.mods.fml.common.Loader", true, lcl);
+            final Field injectedContainersField = loaderClass.getDeclaredField("injectedContainers");
             injectedContainersField.setAccessible(true);
-            final List<String> containers = (List<String>) injectedContainersField.get(Loader.class);
+            final List<String> containers = (List<String>) injectedContainersField.get(loaderClass);
             for (int idx = containers.size() - 1; idx >= 0; idx--) {
                 final String name = containers.get(idx);
                 if (name.startsWith("optifine") || name.startsWith("fastcraft")) {
-                    LOGGER.info("Removing mod container " + name);
+                    FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing mod container " + name);
                     containers.remove(idx);
                 }
             }
@@ -73,7 +85,7 @@ public class MixinCompatHackTweaker implements ITweaker {
             for (int idx = reparsedCoremods.size() - 1; idx >= 0; idx--) {
                 final String coreMod = reparsedCoremods.get(idx);
                 if (coreMod.startsWith("optimizationsandtweaks")) {
-                    LOGGER.info("Removing reparsed coremod " + coreMod);
+                    FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing reparsed coremod " + coreMod);
                     // Fool the CoreModManager into not checking for a mod container again later
                     loadedCoremods.add(reparsedCoremods.remove(idx));
 
@@ -88,7 +100,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 for (int idx = mixinConfigsDefault.size() - 1; idx >= 0; idx--) {
                     final String name = mixinConfigsDefault.get(idx);
                     if (name != null && name.contains("optimizationsandtweaks")) {
-                        LOGGER.info("Removing mixin config " + name);
+                        FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing mixin config " + name);
                         mixinConfigsDefault.remove(idx);
                     }
                 }
@@ -99,7 +111,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 for (Config config : mixinConfigs) {
                     final String name = config.getName();
                     if (name != null && name.contains("optimizationsandtweaks")) {
-                        LOGGER.info("Removing queued mixin config " + config.getName());
+                        FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing queued mixin config " + config.getName());
                         toRemove.add(config);
                     }
                 }
@@ -113,7 +125,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 for (Map.Entry<IContainerHandle, MixinContainer> entry : containers.entrySet()) {
                     final String attribute = entry.getKey().getAttribute("MixinConfigs");
                     if (attribute != null && attribute.contains("optimizationsandtweaks")) {
-                        LOGGER.info("Removing mixin container " + entry.getKey().toString());
+                        FMLRelaunchLog.info("[Angelica/IncompatibleModsDisablerTweaker] Removing mixin container " + entry.getKey().toString());
                         containers.remove(entry.getKey());
                     }
                 }
@@ -122,20 +134,5 @@ public class MixinCompatHackTweaker implements ITweaker {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public void injectIntoClassLoader(LaunchClassLoader classLoader) {
-        // no-op
-    }
-
-    @Override
-    public String getLaunchTarget() {
-        return null;
-    }
-
-    @Override
-    public String[] getLaunchArguments() {
-        return new String[0];
     }
 }
