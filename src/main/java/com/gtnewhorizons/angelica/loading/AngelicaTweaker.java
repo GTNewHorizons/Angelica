@@ -126,6 +126,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         final List<String> tweaks = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
         if (tweaks != null) {
             tweaks.add(MixinCompatHackTweaker.class.getName());
+            if (AngelicaConfig.enableHudCaching) {
+                tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.XaerosTransformerDisablerTweaker");
+            }
             if (FMLLaunchHandler.side().isClient()) {
                 // We register ITweakers that will run last in order to register
                 // specific IClassTransformers that will run last in the transformer chain.

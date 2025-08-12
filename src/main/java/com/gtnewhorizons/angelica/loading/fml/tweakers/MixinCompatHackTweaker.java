@@ -32,28 +32,6 @@ public class MixinCompatHackTweaker implements ITweaker {
             LOGGER.info("Disabling Optifine, Fastcraft, BetterFPS, and other incompatible mods (if present)");
             disableIncompatibleMods();
         }
-        if (AngelicaConfig.enableHudCaching) {
-            disableXaerosMinimapWaypointTransformer();
-        }
-    }
-
-    private void disableXaerosMinimapWaypointTransformer() {
-        try {
-            final LaunchClassLoader lcl = Launch.classLoader;
-            final Field xformersField = lcl.getClass().getDeclaredField("transformers");
-            xformersField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            List<IClassTransformer> xformers = (List<IClassTransformer>) xformersField.get(lcl);
-            for (int idx = xformers.size() - 1; idx >= 0; idx--) {
-                final String name = xformers.get(idx).getClass().getName();
-                if (name.startsWith("xaero.common.core.transformer.GuiIngameForgeTransformer")) {
-                    LOGGER.info("Removing transformer " + name);
-                    xformers.remove(idx);
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @SuppressWarnings("unchecked")
