@@ -66,10 +66,17 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             ctx.updateLoggers();
 
             // Debug features
-            AngelicaConfig.enableTestBlocks = Boolean.parseBoolean(System.getProperty("angelica.enableTestBlocks", "false"));
+            AngelicaConfig.enableTestBlocks = Boolean.getBoolean("angelica.enableTestBlocks");
 
         } catch (ConfigException e) {
             throw new RuntimeException(e);
+        }
+        verifyDependencies();
+    }
+
+    private static void verifyDependencies() {
+        if (AngelicaTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
+            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
         }
     }
 

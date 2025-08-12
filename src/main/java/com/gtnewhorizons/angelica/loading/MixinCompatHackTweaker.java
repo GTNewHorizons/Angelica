@@ -26,28 +26,21 @@ import java.util.Set;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class MixinCompatHackTweaker implements ITweaker {
-    public static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
+
+    private static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
+
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-        verifyDependencies();
-
-        if(DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS) {
+        if (DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS) {
             LOGGER.info("Disabling Optifine, Fastcraft, BetterFPS, and other incompatible mods (if present)");
             disableIncompatibleMods();
         }
-
-        if (AngelicaConfig.enableHudCaching){
+        if (AngelicaConfig.enableHudCaching) {
             disableXaerosMinimapWaypointTransformer();
         }
     }
 
-    private void verifyDependencies() {
-        if(MixinCompatHackTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
-            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
-        }
-    }
-
-    private void disableXaerosMinimapWaypointTransformer(){
+    private void disableXaerosMinimapWaypointTransformer() {
         try {
             final LaunchClassLoader lcl = Launch.classLoader;
             final Field xformersField = lcl.getClass().getDeclaredField("transformers");
