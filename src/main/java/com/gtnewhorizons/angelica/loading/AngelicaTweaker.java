@@ -48,7 +48,7 @@ import java.util.Set;
     "com.gtnewhorizons.angelica.glsm.GLStateManager"})
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
-    private static boolean OBF_ENV;
+    private static Boolean OBF_ENV;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     private String[] transformerClasses;
@@ -120,7 +120,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        OBF_ENV = (boolean) data.get("runtimeDeobfuscationEnabled");
+        OBF_ENV = (Boolean) data.get("runtimeDeobfuscationEnabled");
         // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
         final List<String> tweaks = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
         if (tweaks != null) {
@@ -168,6 +168,22 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
      * Returns true if we are in an obfuscated environment, returns false in dev environment.
      */
     public static boolean isObfEnv() {
+        if (OBF_ENV == null) {
+            throw new IllegalStateException("Obfuscation state has been accessed too early!");
+        }
         return OBF_ENV;
+    }
+
+    /**
+     * Returns the appropriate name according to current environment's obfuscation
+     */
+    public static String obf(String deobf, String obf) {
+        if (OBF_ENV == null) {
+            throw new IllegalStateException("Obfuscation state has been accessed too early!");
+        }
+        if (OBF_ENV) {
+            return obf;
+        }
+        return deobf;
     }
 }

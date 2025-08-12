@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
 
-import com.gtnewhorizons.angelica.transform.AsmUtil;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
@@ -62,7 +62,7 @@ public class FieldLevelTessellatorTransformer {
             new FieldInsnNode(
                 Opcodes.GETSTATIC,
                 "net/minecraft/client/renderer/Tessellator",
-                AsmUtil.obf("instance", "field_78398_a"),
+                AngelicaTweaker.obf("instance", "field_78398_a"),
                 "Lnet/minecraft/client/renderer/Tessellator;"));
         list.add(new VarInsnNode(Opcodes.ASTORE, localIndex));
         mn.instructions.insert(list);
