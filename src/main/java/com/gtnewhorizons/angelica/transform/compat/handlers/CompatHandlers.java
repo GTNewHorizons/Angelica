@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.transform.compat.handlers;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -35,5 +36,24 @@ public enum CompatHandlers {
             }
         }
         return compatHandlers;
+    }
+
+    /**
+     * Returns extra transformers as well as the main transformer.
+     * Returns an empty list if no handlers registered.
+     */
+    public static List<String> getTransformers() {
+        final List<CompatHandler> handlers = getHandlers();
+        if (handlers.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> transformers =  new ArrayList<>();
+        for (CompatHandler handler : handlers) {
+            if (handler.extraTransformers() != null) {
+                transformers.addAll(handler.extraTransformers());
+            }
+        }
+        transformers.add("com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer");
+        return transformers;
     }
 }

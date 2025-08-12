@@ -8,8 +8,6 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
-import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
-import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
@@ -86,23 +84,11 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     public String[] getASMTransformerClass() {
         if (transformerClasses == null) {
             final List<String> transformers = new ArrayList<>();
-
-            // Regsiter compat handlers, and add extra specific transformers, then build and register the generic transformer
-            for (CompatHandler handler : CompatHandlers.getHandlers()) {
-                GenericCompatTransformer.register(handler);
-                if (handler.extraTransformers() != null) {
-                    transformers.addAll(handler.extraTransformers());
-                }
-            }
-
-            GenericCompatTransformer.build();
-            transformers.add(GenericCompatTransformer.class.getName());
-
+            transformers.addAll(CompatHandlers.getTransformers());
             // Add NotFine transformers
             final List<String> notFineTransformers = Arrays.asList(ITransformers.getTransformers(AsmTransformers.class));
             if (!notFineTransformers.isEmpty()) Namer.initNames();
             transformers.addAll(notFineTransformers);
-
             transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;

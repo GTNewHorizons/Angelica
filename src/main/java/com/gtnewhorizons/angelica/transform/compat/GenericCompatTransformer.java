@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.transform.compat;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
+import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.FieldLevelTessellatorTransformer;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.HUDCachingEarlyReturnTransformer;
 import com.gtnewhorizons.angelica.transform.compat.transformers.generic.ThreadSafeISBRHAnnotationTransformer;
@@ -20,18 +21,46 @@ import java.util.Set;
 
 public class GenericCompatTransformer implements IClassTransformer {
 
-    private static final Map<String, List<String>> fieldLevelTessellator = new Object2ObjectOpenHashMap<>();
-    private static final Map<String, List<String>> tileEntityNullGuard = new Object2ObjectOpenHashMap<>();
-    private static final Map<String, Boolean> threadSafeIBSRH = new Object2BooleanOpenHashMap<>();
-    private static final Map<String, List<String>> hudCachingEarlyReturn = new Object2ObjectOpenHashMap<>();
+    private final Map<String, List<String>> fieldLevelTessellator = new Object2ObjectOpenHashMap<>();
+    private final Map<String, List<String>> tileEntityNullGuard = new Object2ObjectOpenHashMap<>();
+    private final Map<String, Boolean> threadSafeIBSRH = new Object2BooleanOpenHashMap<>();
+    private final Map<String, List<String>> hudCachingEarlyReturn = new Object2ObjectOpenHashMap<>();
+    private final Set<String> targetedClasses = new ObjectOpenHashSet<>();
 
-    private static final Set<String> transformedClasses = new ObjectOpenHashSet<>();
+    public GenericCompatTransformer() {
+        for (CompatHandler handler : CompatHandlers.getHandlers()) {
+            registerHandler(handler);
+        }
+        buildTargetClassSet();
+    }
+
+    private void registerHandler(CompatHandler handler) {
+        if (handler.getFieldLevelTessellator() != null) {
+            fieldLevelTessellator.putAll(handler.getFieldLevelTessellator());
+        }
+        if (handler.getTileEntityNullGuard() != null) {
+            tileEntityNullGuard.putAll(handler.getTileEntityNullGuard());
+        }
+        if (handler.getThreadSafeISBRHAnnotations() != null) {
+            threadSafeIBSRH.putAll(handler.getThreadSafeISBRHAnnotations());
+        }
+        if (handler.getHUDCachingEarlyReturn() != null) {
+            hudCachingEarlyReturn.putAll(handler.getHUDCachingEarlyReturn());
+        }
+    }
+
+    private void buildTargetClassSet() {
+        targetedClasses.addAll(fieldLevelTessellator.keySet());
+        targetedClasses.addAll(tileEntityNullGuard.keySet());
+        targetedClasses.addAll(threadSafeIBSRH.keySet());
+        targetedClasses.addAll(hudCachingEarlyReturn.keySet());
+    }
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         if (basicClass == null) return null;
 
-        if (!transformedClasses.contains(transformedName)) return basicClass;
+        if (!targetedClasses.contains(transformedName)) return basicClass;
 
         ClassReader cr = new ClassReader(basicClass);
         ClassNode cn = new ClassNode();
@@ -58,23 +87,5 @@ public class GenericCompatTransformer implements IClassTransformer {
         final byte[] bytes = cw.toByteArray();
         AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
-    }
-
-    public static void register(CompatHandler handler) {
-        if (handler.getFieldLevelTessellator() != null)
-            fieldLevelTessellator.putAll(handler.getFieldLevelTessellator());
-        if (handler.getTileEntityNullGuard() != null)
-            tileEntityNullGuard.putAll(handler.getTileEntityNullGuard());
-        if (handler.getThreadSafeISBRHAnnotations() != null)
-            threadSafeIBSRH.putAll(handler.getThreadSafeISBRHAnnotations());
-        if (handler.getHUDCachingEarlyReturn() != null)
-            hudCachingEarlyReturn.putAll(handler.getHUDCachingEarlyReturn());
-    }
-
-    public static void build() {
-        transformedClasses.addAll(fieldLevelTessellator.keySet());
-        transformedClasses.addAll(tileEntityNullGuard.keySet());
-        transformedClasses.addAll(threadSafeIBSRH.keySet());
-        transformedClasses.addAll(hudCachingEarlyReturn.keySet());
     }
 }
