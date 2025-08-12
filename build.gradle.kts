@@ -4,7 +4,7 @@ plugins {
 
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
-    //extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+    extraRunJvmArguments.add("-Dangelica.dumpClass=true")
 }
 
 tasks.test {
