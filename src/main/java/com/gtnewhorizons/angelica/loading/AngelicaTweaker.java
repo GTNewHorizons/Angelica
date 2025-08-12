@@ -7,6 +7,7 @@ import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.loading.tweakers.MixinCompatHackTweaker;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;

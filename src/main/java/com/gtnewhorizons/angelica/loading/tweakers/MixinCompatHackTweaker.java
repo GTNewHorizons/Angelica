@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.loading;
+package com.gtnewhorizons.angelica.loading.tweakers;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.transform.BlockTransformer;
@@ -25,6 +25,10 @@ import java.util.Set;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
+// The ITweaker needs to be in a standalone package
+// because FML adds the whole package to the class
+// loader exclusion and that causes really hard to
+// find bugs.
 public class MixinCompatHackTweaker implements ITweaker {
 
     private static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
