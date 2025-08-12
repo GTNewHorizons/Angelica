@@ -53,7 +53,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     private String[] transformerClasses;
 
-    static {
+    public AngelicaTweaker() {
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
