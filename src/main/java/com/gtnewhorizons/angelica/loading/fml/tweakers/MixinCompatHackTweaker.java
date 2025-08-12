@@ -1,11 +1,8 @@
-package com.gtnewhorizons.angelica.loading.tweakers;
+package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.transform.BlockTransformer;
-import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.CoreModManager;
-import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
@@ -25,10 +22,6 @@ import java.util.Set;
 
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
-// The ITweaker needs to be in a standalone package
-// because FML adds the whole package to the class
-// loader exclusion and that causes really hard to
-// find bugs.
 public class MixinCompatHackTweaker implements ITweaker {
 
     private static final boolean DISABLE_OPTIFINE_FASTCRAFT_BETTERFPS = true;
@@ -84,9 +77,9 @@ public class MixinCompatHackTweaker implements ITweaker {
         try {
             final Field injectedContainersField = Loader.class.getDeclaredField("injectedContainers");
             injectedContainersField.setAccessible(true);
-            final List<String> containers = (List<String> ) injectedContainersField.get(Loader.class);
+            final List<String> containers = (List<String>) injectedContainersField.get(Loader.class);
             for (int idx = containers.size() - 1; idx >= 0; idx--) {
-            final String name = containers.get(idx);
+                final String name = containers.get(idx);
                 if (name.startsWith("optifine") || name.startsWith("fastcraft")) {
                     LOGGER.info("Removing mod container " + name);
                     containers.remove(idx);
@@ -141,7 +134,7 @@ public class MixinCompatHackTweaker implements ITweaker {
                 final Map<IContainerHandle, MixinContainer> containers = (Map<IContainerHandle, MixinContainer>) containersField.get(platformManager);
                 for (Map.Entry<IContainerHandle, MixinContainer> entry : containers.entrySet()) {
                     final String attribute = entry.getKey().getAttribute("MixinConfigs");
-                    if(attribute != null && attribute.contains("optimizationsandtweaks")) {
+                    if (attribute != null && attribute.contains("optimizationsandtweaks")) {
                         LOGGER.info("Removing mixin container " + entry.getKey().toString());
                         containers.remove(entry.getKey());
                     }
@@ -165,18 +158,6 @@ public class MixinCompatHackTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        if (FMLLaunchHandler.side().isClient()) {
-            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
-
-            if (!rfbLoaded) {
-                // Run after Mixins, but before LWJGl3ify
-                Launch.classLoader.registerTransformer(RedirectorTransformer.class.getName());
-            }
-            if(AngelicaConfig.enableSodium) {
-                Launch.classLoader.registerTransformer(BlockTransformer.class.getName());
-            }
-        }
-
         return new String[0];
     }
 }

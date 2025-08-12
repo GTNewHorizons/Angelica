@@ -7,16 +7,18 @@ import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
-import com.gtnewhorizons.angelica.loading.tweakers.MixinCompatHackTweaker;
+import com.gtnewhorizons.angelica.loading.fml.tweakers.MixinCompatHackTweaker;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
 import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
 import jss.notfine.config.MCPatcherForgeConfig;
 import jss.notfine.config.NotFineConfig;
+import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,8 +45,8 @@ import java.util.Set;
 //@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({
-        "com.gtnewhorizons.angelica.transform.RedirectorTransformer",
-        "com.gtnewhorizons.angelica.glsm.GLStateManager"})
+    "com.gtnewhorizons.angelica.transform.RedirectorTransformer",
+    "com.gtnewhorizons.angelica.glsm.GLStateManager"})
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     private static boolean OBF_ENV;
@@ -83,11 +85,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String[] getASMTransformerClass() {
-        // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
-        final List<String> mixinTweakClasses = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
-        if (mixinTweakClasses != null) {
-            mixinTweakClasses.add(MixinCompatHackTweaker.class.getName());
-        }
         if (transformerClasses == null) {
             final List<String> transformers = new ArrayList<>();
 
@@ -125,6 +122,24 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     @Override
     public void injectData(Map<String, Object> data) {
         OBF_ENV = (boolean) data.get("runtimeDeobfuscationEnabled");
+        // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
+        final List<String> tweaks = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
+        if (tweaks != null) {
+            tweaks.add(MixinCompatHackTweaker.class.getName());
+            if (FMLLaunchHandler.side().isClient()) {
+                // We register ITweakers that will run last in order to register
+                // specific IClassTransformers that will run last in the transformer chain.
+                // If we were to register them normally in getASMTransformerClass(),
+                // they would be sorted at index 0 which we do not want.
+                boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+                if (!rfbLoaded) {
+                    tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
+                }
+                if (AngelicaConfig.enableSodium) {
+                    tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.SodiumLateTweaker");
+                }
+            }
+        }
     }
 
     @Override
