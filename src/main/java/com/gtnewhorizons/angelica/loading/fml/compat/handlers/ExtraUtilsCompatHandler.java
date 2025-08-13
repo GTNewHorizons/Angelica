@@ -1,10 +1,11 @@
-package com.gtnewhorizons.angelica.transform.compat.handlers;
+package com.gtnewhorizons.angelica.loading.fml.compat.handlers;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.loading.fml.compat.ICompatHandler;
 
 import java.util.Map;
 
-public class ExtraUtilsCompatHandler implements CompatHandler {
+public class ExtraUtilsCompatHandler implements ICompatHandler {
 
     @Override
     public Map<String, Boolean> getThreadSafeISBRHAnnotations() {

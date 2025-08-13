@@ -8,7 +8,7 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
-import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
+import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;

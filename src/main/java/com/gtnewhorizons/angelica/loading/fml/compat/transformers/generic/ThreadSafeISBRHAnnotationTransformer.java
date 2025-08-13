@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
+package com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic;
 
 import org.spongepowered.asm.lib.tree.AnnotationNode;
 import org.spongepowered.asm.lib.tree.ClassNode;

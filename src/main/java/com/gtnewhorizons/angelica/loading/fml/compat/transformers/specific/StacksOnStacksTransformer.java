@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.transform.compat.transformers.specific;
+package com.gtnewhorizons.angelica.loading.fml.compat.transformers.specific;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;

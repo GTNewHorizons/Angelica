@@ -1,6 +1,11 @@
-package com.gtnewhorizons.angelica.transform.compat.handlers;
+package com.gtnewhorizons.angelica.loading.fml.compat;
 
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ExtraUtilsCompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ImmersiveEngineeringCompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.StacksOnStacksCompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumcraftCompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumicHorizonsCompatHandler;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,16 +21,16 @@ public enum CompatHandlers {
     THAUMIC_HORIZONS(() -> CompatConfig.fixThaumicHorizons, new ThaumicHorizonsCompatHandler());
 
     private final Supplier<Boolean> applyIf;
-    private final CompatHandler handler;
+    private final ICompatHandler handler;
 
-    CompatHandlers(Supplier<Boolean> applyIf, CompatHandler handler) {
+    CompatHandlers(Supplier<Boolean> applyIf, ICompatHandler handler) {
         this.applyIf = applyIf;
         this.handler = handler;
     }
 
-    private static List<CompatHandler> compatHandlers = null;
+    private static List<ICompatHandler> compatHandlers = null;
 
-    public static List<CompatHandler> getHandlers() {
+    public static List<ICompatHandler> getHandlers() {
         if (compatHandlers != null) {
             return compatHandlers;
         }
@@ -43,17 +48,17 @@ public enum CompatHandlers {
      * Returns an empty list if no handlers registered.
      */
     public static List<String> getTransformers() {
-        final List<CompatHandler> handlers = getHandlers();
+        final List<ICompatHandler> handlers = getHandlers();
         if (handlers.isEmpty()) {
             return Collections.emptyList();
         }
         List<String> transformers =  new ArrayList<>();
-        for (CompatHandler handler : handlers) {
+        for (ICompatHandler handler : handlers) {
             if (handler.extraTransformers() != null) {
                 transformers.addAll(handler.extraTransformers());
             }
         }
-        transformers.add("com.gtnewhorizons.angelica.transform.compat.GenericCompatTransformer");
+        transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.GenericCompatTransformer");
         return transformers;
     }
 }

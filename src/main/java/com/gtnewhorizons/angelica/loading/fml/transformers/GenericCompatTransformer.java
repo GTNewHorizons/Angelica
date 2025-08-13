@@ -1,12 +1,12 @@
-package com.gtnewhorizons.angelica.transform.compat;
+package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandler;
-import com.gtnewhorizons.angelica.transform.compat.handlers.CompatHandlers;
-import com.gtnewhorizons.angelica.transform.compat.transformers.generic.FieldLevelTessellatorTransformer;
-import com.gtnewhorizons.angelica.transform.compat.transformers.generic.HUDCachingEarlyReturnTransformer;
-import com.gtnewhorizons.angelica.transform.compat.transformers.generic.ThreadSafeISBRHAnnotationTransformer;
-import com.gtnewhorizons.angelica.transform.compat.transformers.generic.TileEntityNullGuardTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.ICompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
+import com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic.FieldLevelTessellatorTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic.HUDCachingEarlyReturnTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic.ThreadSafeISBRHAnnotationTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic.TileEntityNullGuardTransformer;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -28,13 +28,13 @@ public class GenericCompatTransformer implements IClassTransformer {
     private final Set<String> targetedClasses = new ObjectOpenHashSet<>();
 
     public GenericCompatTransformer() {
-        for (CompatHandler handler : CompatHandlers.getHandlers()) {
+        for (ICompatHandler handler : CompatHandlers.getHandlers()) {
             registerHandler(handler);
         }
         buildTargetClassSet();
     }
 
-    private void registerHandler(CompatHandler handler) {
+    private void registerHandler(ICompatHandler handler) {
         if (handler.getFieldLevelTessellator() != null) {
             fieldLevelTessellator.putAll(handler.getFieldLevelTessellator());
         }
