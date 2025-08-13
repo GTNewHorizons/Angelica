@@ -1,7 +1,8 @@
-package com.gtnewhorizons.angelica.transform;
+package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
+import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
@@ -10,9 +11,8 @@ import org.objectweb.asm.tree.ClassNode;
 
 import java.util.List;
 
-public class BlockTransformer implements IClassTransformer {
+public class SodiumBlockTransformer implements IClassTransformer {
 
-    private static final String BlockClassFriendly = "net.minecraft.block.Block";
     private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
         Pair.of("minX", "field_149759_B"),
         Pair.of("minY", "field_149760_C"),
@@ -28,7 +28,8 @@ public class BlockTransformer implements IClassTransformer {
      */
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        if (basicClass != null && BlockClassFriendly.equals(transformedName)) {
+        if (basicClass == null) return null;
+        if ("net.minecraft.block.Block".equals(transformedName)) {
             final ClassReader cr = new ClassReader(basicClass);
             final ClassNode cn = new ClassNode();
             cr.accept(cn, 0);

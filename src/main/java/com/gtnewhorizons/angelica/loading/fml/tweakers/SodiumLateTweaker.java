@@ -27,7 +27,7 @@ public class SodiumLateTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        String transformer = "com.gtnewhorizons.angelica.transform.BlockTransformer";
+        String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.SodiumBlockTransformer";
         FMLRelaunchLog.finer("Registering transformer %s", transformer);
         Launch.classLoader.registerTransformer(transformer);
         return new String[0];
