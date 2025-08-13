@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.transform;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
@@ -25,6 +26,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +58,14 @@ public final class RedirectorTransformer implements IClassTransformer {
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
+    );
+    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
+        Pair.of("minX", "field_149759_B"),
+        Pair.of("minY", "field_149760_C"),
+        Pair.of("minZ", "field_149754_D"),
+        Pair.of("maxX", "field_149755_E"),
+        Pair.of("maxY", "field_149756_F"),
+        Pair.of("maxZ", "field_149757_G")
     );
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final String[] VanillaBlockExclusions = {
@@ -299,7 +309,7 @@ public final class RedirectorTransformer implements IClassTransformer {
             } else {
                 // Check if we declare any known field names
                 Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
-                doWeShadow = BlockTransformer.BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
+                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
             }
             if (doWeShadow) {
                 AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
@@ -371,7 +381,7 @@ public final class RedirectorTransformer implements IClassTransformer {
                 else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
                         Pair<String, String> fieldToRedirect = null;
-                        for(Pair<String, String> blockPairs : BlockTransformer.BlockBoundsFields) {
+                        for (Pair<String, String> blockPairs : BlockBoundsFields) {
                             if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
                                 fieldToRedirect = blockPairs;
                                 break;

@@ -13,7 +13,7 @@ import java.util.List;
 public class BlockTransformer implements IClassTransformer {
 
     private static final String BlockClassFriendly = "net.minecraft.block.Block";
-    public static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
+    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
         Pair.of("minX", "field_149759_B"),
         Pair.of("minY", "field_149760_C"),
         Pair.of("minZ", "field_149754_D"),
