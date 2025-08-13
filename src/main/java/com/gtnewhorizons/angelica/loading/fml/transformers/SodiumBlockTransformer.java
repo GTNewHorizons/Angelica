@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.RedirectorTransformer;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.ClassReader;
@@ -23,7 +23,7 @@ public class SodiumBlockTransformer implements IClassTransformer {
     );
 
     /**
-     * Delete the global vanilla bounding box fields off the Block object. {@link RedirectorTransformer}
+     * Delete the global vanilla bounding box fields off the Block object. {@link AngelicaRedirector}
      * replaces these with a thread-safe alternative.
      */
     @Override

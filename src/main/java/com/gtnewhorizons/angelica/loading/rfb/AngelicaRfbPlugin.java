@@ -22,7 +22,7 @@ public class AngelicaRfbPlugin implements RfbPlugin {
             return null;
         }
         return new RfbClassTransformer[] {
-            new RedirectorTransformerWrapper()
+            new RFBAngelicaRedirector()
         };
     }
 }

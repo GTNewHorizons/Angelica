@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.loading.rfb;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.RedirectorTransformer;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaRedirector;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -11,10 +11,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.jar.Manifest;
 
-/** RFB wrapper for {@link RedirectorTransformer} */
-public class RedirectorTransformerWrapper implements RfbClassTransformer {
+/** RfbClassTransformer wrapper for {@link AngelicaRedirector} */
+public class RFBAngelicaRedirector implements RfbClassTransformer {
 
-    private final RedirectorTransformer inner = new RedirectorTransformer();
+    private final AngelicaRedirector inner = new AngelicaRedirector();
 
     @Pattern("[a-z0-9-]+")
     @Override
@@ -34,7 +34,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
 
     @Override
     public @NotNull String @Nullable [] additionalExclusions() {
-        return RedirectorTransformer.getTransformerExclusions();
+        return inner.getTransformerExclusions();
     }
 
     @Override
@@ -48,7 +48,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
             // If a class is already a transformed ClassNode, conservatively continue processing.
             return true;
         }
-        return RedirectorTransformer.shouldRfbTransform(classNode.getOriginalBytes());
+        return inner.shouldTransform(classNode.getOriginalBytes());
     }
 
     @Override

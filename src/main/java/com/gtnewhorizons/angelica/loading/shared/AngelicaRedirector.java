@@ -5,11 +5,8 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.IrisLogging;
-import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
  */
-public final class RedirectorTransformer implements IClassTransformer {
+public final class AngelicaRedirector {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
@@ -78,12 +75,6 @@ public final class RedirectorTransformer implements IClassTransformer {
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
-    private static final String[] TransformerExclusions = {
-        "org.lwjgl",
-        "com.gtnewhorizons.angelica.glsm.",
-        "com.gtnewhorizons.angelica.transform",
-        "me.eigenraven.lwjgl3ify"
-    };
 
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
@@ -247,43 +238,17 @@ public final class RedirectorTransformer implements IClassTransformer {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
-    public static String[] getTransformerExclusions() {
-        return TransformerExclusions.clone();
+    public String[] getTransformerExclusions() {
+        return new String[]{
+            "org.lwjgl",
+            "com.gtnewhorizons.angelica.glsm.",
+            "com.gtnewhorizons.angelica.transform",
+            "me.eigenraven.lwjgl3ify"
+        };
     }
 
-    public static boolean shouldRfbTransform(byte[] basicClass) {
+    public boolean shouldTransform(byte[] basicClass) {
         return cstPoolParser.find(basicClass, true);
-    }
-
-    @Override
-    public byte[] transform(final String className, String transformedName, byte[] basicClass) {
-        if (basicClass == null) return null;
-
-        // Ignore classes that are excluded from transformation - Doesn't fully work without the
-        // TransformerExclusions due to some nested classes
-        for (String exclusion : TransformerExclusions) {
-            if (className.startsWith(exclusion)) {
-                return basicClass;
-            }
-        }
-
-        if (!cstPoolParser.find(basicClass, true)) {
-            return basicClass;
-        }
-
-        // Keep in sync with com.gtnewhorizons.angelica.loading.rfb.RedirectorTransformerWrapper
-        final ClassReader cr = new ClassReader(basicClass);
-        final ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-        final boolean changed = transformClassNode(transformedName, cn);
-        if (changed) {
-            final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-            cn.accept(cw);
-            final byte[] bytes = cw.toByteArray();
-            AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
-            return bytes;
-        }
-        return basicClass;
     }
 
     /** @return Was the class changed? */
@@ -299,11 +264,11 @@ public final class RedirectorTransformer implements IClassTransformer {
         }
 
         // Check if this class shadows any fields of the parent class
-        if(moddedBlockSubclasses.contains(cn.name)) {
+        if (moddedBlockSubclasses.contains(cn.name)) {
             // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
             // superclass
             boolean doWeShadow;
-            if(blockOwnerExclusions.contains(cn.superName)) {
+            if (blockOwnerExclusions.contains(cn.superName)) {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
@@ -376,12 +341,11 @@ public final class RedirectorTransformer implements IClassTransformer {
                             redirectInMethod = true;
                         }
                     }
-                }
-                else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if(!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
+                } else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
                         Pair<String, String> fieldToRedirect = null;
                         for (Pair<String, String> blockPairs : BlockBoundsFields) {
-                            if(fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
+                            if (fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
                                 fieldToRedirect = blockPairs;
                                 break;
                             }
