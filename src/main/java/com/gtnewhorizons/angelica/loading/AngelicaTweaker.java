@@ -42,6 +42,7 @@ import java.util.Set;
 //@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE - 5)
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({
+    "jss.notfine.asm",
     "com.gtnewhorizons.angelica.loading",
     "com.gtnewhorizons.angelica.glsm.GLStateManager"})
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
