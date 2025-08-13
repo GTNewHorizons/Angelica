@@ -3,10 +3,10 @@ package com.gtnewhorizons.angelica.loading.shared;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -30,10 +30,15 @@ import java.util.stream.Collectors;
 
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
+ * <p>
+ * THIS CLASS MIGHT BE LOADED ON A DIFFERENT CLASS LOADER,
+ * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD
  */
 public final class AngelicaRedirector {
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
+    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
+    private static final Logger LOGGER = LogManager.getLogger("AngelicaRedirector");
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
@@ -276,7 +281,7 @@ public final class AngelicaRedirector {
                 doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
             }
             if (doWeShadow) {
-                AngelicaTweaker.LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
+                LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
                 blockOwnerExclusions.add(cn.name);
             }
         }
@@ -304,11 +309,11 @@ public final class AngelicaRedirector {
                                 name = "disable" + name;
                             }
                         }
-                        if (IrisLogging.ENABLE_SPAM) {
+                        if (LOG_SPAM) {
                             if (name == null) {
-                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}(I)V", transformedName, mNode.name, mNode.name);
+                                LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}(I)V", transformedName, mNode.name, mNode.name);
                             } else {
-                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}()V", transformedName, mNode.name, name);
+                                LOGGER.info("Redirecting call in {} from GL11.{}(I)V to GLStateManager.{}()V", transformedName, mNode.name, name);
                             }
                         }
                         mNode.owner = GLStateManager;
@@ -325,15 +330,15 @@ public final class AngelicaRedirector {
                         mNode.desc = "(L" + Drawable + ";)V";
                         mNode.itf = false;
                         changed = true;
-                        if (IrisLogging.ENABLE_SPAM) {
-                            AngelicaTweaker.LOGGER.info("Redirecting call in {} to GLStateManager.makeCurrent()", transformedName);
+                        if (LOG_SPAM) {
+                            LOGGER.info("Redirecting call in {} to GLStateManager.makeCurrent()", transformedName);
                         }
                     } else {
                         final Map<String, String> redirects = methodRedirects.get(mNode.owner);
                         if (redirects != null && redirects.containsKey(mNode.name)) {
-                            if (IrisLogging.ENABLE_SPAM) {
+                            if (LOG_SPAM) {
                                 final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                AngelicaTweaker.LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
                             }
                             mNode.owner = GLStateManager;
                             mNode.name = redirects.get(mNode.name);
@@ -351,8 +356,8 @@ public final class AngelicaRedirector {
                             }
                         }
                         if (fieldToRedirect != null) {
-                            if (IrisLogging.ENABLE_SPAM) {
-                                AngelicaTweaker.LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
+                            if (LOG_SPAM) {
+                                LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
                             }
                             // Perform the redirect
                             fNode.name = fieldToRedirect.getLeft(); // use unobfuscated name
