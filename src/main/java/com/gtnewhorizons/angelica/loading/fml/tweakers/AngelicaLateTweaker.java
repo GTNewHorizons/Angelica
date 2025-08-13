@@ -28,7 +28,7 @@ public class AngelicaLateTweaker implements ITweaker {
     @Override
     public String[] getLaunchArguments() {
         // Run after Mixins, but before LWJGl3ify
-        String transformer = "com.gtnewhorizons.angelica.transform.RedirectorTransformer";
+        String transformer = "com.gtnewhorizons.angelica.loading.shared.RedirectorTransformer";
         FMLRelaunchLog.finer("Registering transformer %s", transformer);
         Launch.classLoader.registerTransformer(transformer);
         return new String[0];

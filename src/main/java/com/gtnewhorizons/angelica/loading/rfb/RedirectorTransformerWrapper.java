@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.loading.rfb;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
+import com.gtnewhorizons.angelica.loading.shared.RedirectorTransformer;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.jar.Manifest;
 
-/** RFB wrapper for {@link com.gtnewhorizons.angelica.transform.RedirectorTransformer} */
+/** RFB wrapper for {@link RedirectorTransformer} */
 public class RedirectorTransformerWrapper implements RfbClassTransformer {
 
     private final RedirectorTransformer inner = new RedirectorTransformer();

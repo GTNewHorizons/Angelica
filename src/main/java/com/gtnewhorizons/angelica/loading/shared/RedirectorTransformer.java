@@ -1,10 +1,9 @@
-package com.gtnewhorizons.angelica.transform;
+package com.gtnewhorizons.angelica.loading.shared;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.coderbot.iris.IrisLogging;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
