@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.AngelicaRedirector;
+import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;

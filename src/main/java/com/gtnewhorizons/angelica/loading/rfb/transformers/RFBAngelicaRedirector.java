@@ -1,7 +1,7 @@
-package com.gtnewhorizons.angelica.loading.rfb;
+package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.AngelicaRedirector;
+import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;

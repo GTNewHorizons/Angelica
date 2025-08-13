@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading.rfb;
 
+import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBAngelicaRedirector;
 import com.gtnewhorizons.retrofuturabootstrap.api.PluginContext;
 import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;

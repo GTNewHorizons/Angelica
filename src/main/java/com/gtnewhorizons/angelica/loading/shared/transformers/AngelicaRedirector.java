@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.loading.shared;
+package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
