@@ -1,13 +1,13 @@
-package com.gtnewhorizons.angelica.transform.compat.handlers;
+package com.gtnewhorizons.angelica.loading.fml.compat.handlers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.gtnewhorizons.angelica.transform.compat.transformers.specific.StacksOnStacksTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.ICompatHandler;
 
 import java.util.List;
 import java.util.Map;
 
-public class StacksOnStacksCompatHandler implements CompatHandler {
+public class StacksOnStacksCompatHandler implements ICompatHandler {
 
     @Override
     public Map<String, List<String>> getFieldLevelTessellator() {
@@ -28,6 +28,6 @@ public class StacksOnStacksCompatHandler implements CompatHandler {
 
     @Override
     public List<String> extraTransformers() {
-        return ImmutableList.of(StacksOnStacksTransformer.class.getName());
+        return ImmutableList.of("com.gtnewhorizons.angelica.loading.fml.compat.transformers.specific.StacksOnStacksTransformer");
     }
 }

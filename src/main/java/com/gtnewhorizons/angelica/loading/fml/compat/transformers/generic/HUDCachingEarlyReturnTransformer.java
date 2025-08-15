@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.transform.compat.transformers.generic;
+package com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import org.spongepowered.asm.lib.Opcodes;

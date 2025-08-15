@@ -1,12 +1,13 @@
-package com.gtnewhorizons.angelica.transform.compat.handlers;
+package com.gtnewhorizons.angelica.loading.fml.compat.handlers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.loading.fml.compat.ICompatHandler;
 
 import java.util.List;
 import java.util.Map;
 
-public class ThaumicHorizonsCompatHandler implements CompatHandler {
+public class ThaumicHorizonsCompatHandler implements ICompatHandler {
 
     @Override
     public Map<String, List<String>> getHUDCachingEarlyReturn() {
