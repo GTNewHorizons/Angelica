@@ -35,6 +35,11 @@ import java.util.stream.Collectors;
  * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD
  */
 public final class AngelicaRedirector {
+    // TODO properly split this class in two because currently this class is doing
+    //  tow very different things :
+    //  - redirect the GL calls to our GL manager class
+    //  - replace the block fields with a thread safe replacement (only if Sodium is enabled)
+    // TODO add support for obfuscation to speedup and avoid checking twice as many names ?
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
