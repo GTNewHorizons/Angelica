@@ -35,11 +35,16 @@ import java.util.stream.Collectors;
  * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD
  */
 public final class AngelicaRedirector {
-    // TODO properly split this class in two because currently this class is doing
-    //  tow very different things :
+    // TODO(Alexdoru) properly split this class in two because currently this class is doing
+    //  two very different things :
     //  - redirect the GL calls to our GL manager class
     //  - replace the block fields with a thread safe replacement (only if Sodium is enabled)
-    // TODO add support for obfuscation to speedup and avoid checking twice as many names ?
+
+    public AngelicaRedirector(boolean isObf) {
+        IS_OBF = isObf;
+    }
+
+    private final boolean IS_OBF;
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
@@ -248,6 +253,10 @@ public final class AngelicaRedirector {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
+    private String getFieldName(Pair<String, String> fieldPair) {
+        return IS_OBF ? fieldPair.getRight() : fieldPair.getLeft();
+    }
+
     public String[] getTransformerExclusions() {
         return new String[]{
             "org.lwjgl",
@@ -282,8 +291,8 @@ public final class AngelicaRedirector {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
-                Set<String> fieldsDeclaredByClass = cn.fields.stream().map(f -> f.name).collect(Collectors.toSet());
-                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> fieldsDeclaredByClass.contains(pair.getLeft()) || fieldsDeclaredByClass.contains(pair.getRight()));
+                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> 
+                    cn.fields.stream().anyMatch(field -> field.name.equals(getFieldName(pair))));
             }
             if (doWeShadow) {
                 LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
@@ -353,13 +362,10 @@ public final class AngelicaRedirector {
                     }
                 } else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
-                        Pair<String, String> fieldToRedirect = null;
-                        for (Pair<String, String> blockPairs : BlockBoundsFields) {
-                            if (fNode.name.equals(blockPairs.getLeft()) || fNode.name.equals(blockPairs.getRight())) {
-                                fieldToRedirect = blockPairs;
-                                break;
-                            }
-                        }
+                        Pair<String, String> fieldToRedirect = BlockBoundsFields.stream()
+                            .filter(pair -> fNode.name.equals(getFieldName(pair)))
+                            .findFirst()
+                            .orElse(null);
                         if (fieldToRedirect != null) {
                             if (LOG_SPAM) {
                                 LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);

@@ -14,7 +14,11 @@ import java.util.jar.Manifest;
 /** RfbClassTransformer wrapper for {@link AngelicaRedirector} */
 public class RFBAngelicaRedirector implements RfbClassTransformer {
 
-    private final AngelicaRedirector inner = new AngelicaRedirector();
+    private final AngelicaRedirector inner;
+
+    public RFBAngelicaRedirector(boolean isObf) {
+        inner = new AngelicaRedirector(isObf);
+    }
 
     @Pattern("[a-z0-9-]+")
     @Override

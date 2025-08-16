@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.transformers;
 
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -14,7 +15,7 @@ public class AngelicaRedirectorTransformer implements IClassTransformer {
     private final String[] exclusions;
 
     public AngelicaRedirectorTransformer() {
-        inner = new AngelicaRedirector();
+        inner = new AngelicaRedirector(AngelicaTweaker.isObfEnv());
         exclusions = inner.getTransformerExclusions();
     }
 

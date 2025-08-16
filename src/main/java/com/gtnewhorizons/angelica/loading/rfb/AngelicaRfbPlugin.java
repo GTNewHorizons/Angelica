@@ -22,8 +22,10 @@ public class AngelicaRfbPlugin implements RfbPlugin {
         if (isServer) {
             return null;
         }
+
+        final boolean isObf = RetroFuturaBootstrap.API.launchClassLoader().findClassMetadata("net.minecraft.world.World") == null;
         return new RfbClassTransformer[] {
-            new RFBAngelicaRedirector()
+            new RFBAngelicaRedirector(isObf)
         };
     }
 }
