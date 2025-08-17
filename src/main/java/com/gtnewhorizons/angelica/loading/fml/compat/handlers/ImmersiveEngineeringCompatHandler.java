@@ -1,13 +1,13 @@
-package com.gtnewhorizons.angelica.transform.compat.handlers;
+package com.gtnewhorizons.angelica.loading.fml.compat.handlers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.gtnewhorizons.angelica.transform.compat.transformers.specific.ImmersiveEngineeringTransformer;
+import com.gtnewhorizons.angelica.loading.fml.compat.ICompatHandler;
 
 import java.util.List;
 import java.util.Map;
 
-public class ImmersiveEngineeringCompatHandler implements CompatHandler {
+public class ImmersiveEngineeringCompatHandler implements ICompatHandler {
 
     @Override
     public Map<String, List<String>> getTileEntityNullGuard() {
@@ -38,7 +38,7 @@ public class ImmersiveEngineeringCompatHandler implements CompatHandler {
 
     @Override
     public List<String> extraTransformers() {
-        return ImmutableList.of(ImmersiveEngineeringTransformer.class.getName());
+        return ImmutableList.of("com.gtnewhorizons.angelica.loading.fml.compat.transformers.specific.ImmersiveEngineeringTransformer");
     }
 
 }

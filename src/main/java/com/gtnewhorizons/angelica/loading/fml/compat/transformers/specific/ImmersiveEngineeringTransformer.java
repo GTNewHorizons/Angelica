@@ -1,6 +1,7 @@
-package com.gtnewhorizons.angelica.transform.compat.transformers.specific;
+package com.gtnewhorizons.angelica.loading.fml.compat.transformers.specific;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.spongepowered.asm.lib.ClassReader;
 import org.spongepowered.asm.lib.Opcodes;
@@ -60,7 +61,7 @@ public class ImmersiveEngineeringTransformer implements IClassTransformer {
         cn.accept(cw);
         final byte[] bytes = cw.toByteArray();
         AngelicaTweaker.LOGGER.info("[AngelicaCompat]Extra Transformers: Applied ImmersiveEngineeringTransformer");
-        AngelicaTweaker.dumpClass(transformedName, basicClass, bytes, this);
+        AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
         return bytes;
     }
 

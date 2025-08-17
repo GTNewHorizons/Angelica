@@ -1,6 +1,7 @@
-package com.gtnewhorizons.angelica.loading.rfb;
+package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
-import com.gtnewhorizons.angelica.transform.RedirectorTransformer;
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
+import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -10,10 +11,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.jar.Manifest;
 
-/** RFB wrapper for {@link com.gtnewhorizons.angelica.transform.RedirectorTransformer} */
-public class RedirectorTransformerWrapper implements RfbClassTransformer {
+/** RfbClassTransformer wrapper for {@link AngelicaRedirector} */
+public class RFBAngelicaRedirector implements RfbClassTransformer {
 
-    public final RedirectorTransformer inner = new RedirectorTransformer();
+    private final AngelicaRedirector inner;
+
+    public RFBAngelicaRedirector(boolean isObf) {
+        inner = new AngelicaRedirector(isObf);
+    }
 
     @Pattern("[a-z0-9-]+")
     @Override
@@ -33,7 +38,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
 
     @Override
     public @NotNull String @Nullable [] additionalExclusions() {
-        return RedirectorTransformer.getTransformerExclusions().toArray(new String[0]);
+        return inner.getTransformerExclusions();
     }
 
     @Override
@@ -47,7 +52,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
             // If a class is already a transformed ClassNode, conservatively continue processing.
             return true;
         }
-        return inner.shouldRfbTransform(classNode.getOriginalBytes());
+        return inner.shouldTransform(classNode.getOriginalBytes());
     }
 
     @Override
@@ -56,6 +61,7 @@ public class RedirectorTransformerWrapper implements RfbClassTransformer {
         final boolean changed = inner.transformClassNode(className, classNode.getNode());
         if (changed) {
             classNode.computeMaxs();
+            AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
     }
 }
