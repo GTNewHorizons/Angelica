@@ -311,19 +311,15 @@ public class TexturePackAPI {
     public static void flushUnusedTextures() {
         TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
         if (textureManager != null) {
-            Set<ResourceLocation> texturesToUnload = new HashSet<>();
             @SuppressWarnings("unchecked")
             Set<Map.Entry<ResourceLocation, ITextureObject>> entrySet = textureManager.mapTextureObjects.entrySet();
-            for (Map.Entry<ResourceLocation, ITextureObject> entry : entrySet) {
+            for (Map.Entry<ResourceLocation, ITextureObject> entry : new HashSet<>(entrySet)) {
                 ResourceLocation resource = entry.getKey();
                 ITextureObject texture = entry.getValue();
                 if (texture instanceof SimpleTexture && !(texture instanceof ThreadDownloadImageData)
                     && !TexturePackAPI.hasResource(resource)) {
-                    texturesToUnload.add(resource);
+                    unloadTexture(resource);
                 }
-            }
-            for (ResourceLocation resource : texturesToUnload) {
-                unloadTexture(resource);
             }
         }
     }
