@@ -168,9 +168,10 @@ public class AngelicaConfig {
     public static boolean removeUnicodeEvenScaling;
     
     @Config.Comment({
-            "Block corners and edges between chunks might have \"cracks\" in them. This option fixes it"
+            "Block corners and edges between chunks might have \"cracks\" in them. This option fixes it", 
+            "Note: May cause flickering (Z-fighting) on some blocks as a side effect"
     })
-    @Config.DefaultBoolean(true)
+    @Config.DefaultBoolean(false)
     public static boolean fixBlockCrack;
     
     @Config.Comment({

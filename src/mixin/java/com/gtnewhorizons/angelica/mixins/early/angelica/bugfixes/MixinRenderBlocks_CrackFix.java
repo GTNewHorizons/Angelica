@@ -26,26 +26,26 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderManager;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
 import net.minecraftforge.client.ForgeHooksClient;
-import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Arrays;
 import java.util.Objects;
+
 @Mixin(RenderBlocks.class)
 public class MixinRenderBlocks_CrackFix {
+	
 	@Unique
 	private static String[] angelica$currentCrackFixBlacklistArr;
 	@Unique
@@ -67,64 +67,68 @@ public class MixinRenderBlocks_CrackFix {
 	@Unique
 	private boolean angelica$disableCrackFix;
 	
-	@Redirect(method = "renderFaceXNeg",
+	@ModifyExpressionValue(method = "renderFaceXNeg",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
 					ordinal = 0),
 			require = 1)
-	private double xNegBounds(RenderBlocks instance) {
+	private double xNegBounds(double original) {
 		angelica$preBounds(ForgeDirection.WEST);
-		return instance.renderMinX;
+		return renderMinX;
 	}
-	
-	@Redirect(method = "renderFaceXPos",
+
+	@ModifyExpressionValue(method = "renderFaceXPos",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMaxX:D",
 					ordinal = 0),
 			require = 1)
-	private double xPosBounds(RenderBlocks instance) {
+	private double xPosBounds(double original) {
 		angelica$preBounds(ForgeDirection.EAST);
-		return instance.renderMaxX;
+		return renderMaxX;
 	}
+
 	@SuppressWarnings("SuspiciousNameCombination")
-	@Redirect(method = "renderFaceYNeg",
+	@ModifyExpressionValue(method = "renderFaceYNeg",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
 					ordinal = 5),
 			require = 1)
-	private double yNegBounds(RenderBlocks instance) {
+	private double yNegBounds(double original) {
 		angelica$preBounds(ForgeDirection.DOWN);
-		return instance.renderMinX;
+		return renderMinX;
 	}
+
 	@SuppressWarnings("SuspiciousNameCombination")
-	@Redirect(method = "renderFaceYPos",
+	@ModifyExpressionValue(method = "renderFaceYPos",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
 					ordinal = 5),
 			require = 1)
-	private double yPosBounds(RenderBlocks instance) {
+	private double yPosBounds(double original) {
 		angelica$preBounds(ForgeDirection.UP);
-		return instance.renderMinX;
+		return renderMinX;
 	}
-	
-	@Redirect(method = "renderFaceZNeg",
+
+	@ModifyExpressionValue(method = "renderFaceZNeg",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
 					ordinal = 6),
 			require = 1)
-	private double zNegBounds(RenderBlocks instance) {
+	private double zNegBounds(double original) {
 		angelica$preBounds(ForgeDirection.NORTH);
-		return instance.renderMinX;
+		return renderMinX;
 	}
-	@Redirect(method = "renderFaceZPos",
+
+	@ModifyExpressionValue(method = "renderFaceZPos",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
 					ordinal = 5),
 			require = 1)
-	private double zPosBounds(RenderBlocks instance) {
+	private double zPosBounds(double original) {
 		angelica$preBounds(ForgeDirection.SOUTH);
-		return instance.renderMinX;
+		return renderMinX;
 	}
+
 	@Unique
 	private void angelica$preBounds(ForgeDirection skipDir) {
 		if (angelica$crackFixOff()) {
@@ -163,6 +167,7 @@ public class MixinRenderBlocks_CrackFix {
 			case SOUTH: renderMaxZ = angelica$bounds[5]; break;
 		}
 	}
+
 	@Inject(method = {"renderFaceXNeg", "renderFaceXPos", "renderFaceYNeg", "renderFaceYPos", "renderFaceZNeg", "renderFaceZPos"},
 			at = @At(value = "RETURN"),
 			require = 6)
@@ -177,6 +182,7 @@ public class MixinRenderBlocks_CrackFix {
 		renderMaxY = angelica$bounds[4];
 		renderMaxZ = angelica$bounds[5];
 	}
+
 	@Inject(method = "renderBlockByRenderType",
 			at = @At("HEAD"),
 			require = 1)
