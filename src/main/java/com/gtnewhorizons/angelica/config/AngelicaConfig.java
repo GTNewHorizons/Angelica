@@ -166,26 +166,4 @@ public class AngelicaConfig {
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
-    
-    @Config.Comment({
-            "Block corners and edges between chunks might have \"cracks\" in them. This option fixes it"
-    })
-    @Config.DefaultBoolean(true)
-    public static boolean fixBlockCrack;
-    
-    @Config.Comment({
-            "The \"epsilon\" value for the block crack fix inside chunks. Set this a bit higher if you can",
-            "still see light leaking between solid blocks in dark areas"
-    })
-    @Config.RangeDouble(min = 0,
-            max = 0.005)
-    @Config.DefaultDouble(0.001)
-    public static double blockCrackFixEpsilon;
-    
-    @Config.Comment("Block classes that have bugs when rendering with the crack fix can be put here to avoid manipulating them")
-    @Config.DefaultStringList({
-            "net.minecraft.block.BlockCauldron",
-            "net.minecraft.block.BlockStairs"
-    })
-    public static String[] blockCrackFixBlacklist;
 }
