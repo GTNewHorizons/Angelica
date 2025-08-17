@@ -291,7 +291,7 @@ public final class AngelicaRedirector {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
-                doWeShadow = BlockBoundsFields.stream().anyMatch(pair -> 
+                doWeShadow = BlockBoundsFields.stream().anyMatch(pair ->
                     cn.fields.stream().anyMatch(field -> field.name.equals(getFieldName(pair))));
             }
             if (doWeShadow) {
@@ -407,8 +407,6 @@ public final class AngelicaRedirector {
     }
 
     private static class RedirectMap<K> extends HashMap<K, K> {
-
-        private static final long serialVersionUID = 1712218575345511543L;
 
         public static RedirectMap<String> newMap() {
             return new RedirectMap<>();
