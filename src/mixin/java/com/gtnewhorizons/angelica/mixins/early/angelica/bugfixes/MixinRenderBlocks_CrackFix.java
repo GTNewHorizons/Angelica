@@ -49,7 +49,11 @@ public class MixinRenderBlocks_CrackFix {
 	@Unique
 	private static String[] angelica$currentCrackFixBlacklistArr;
 	@Unique
+	private static String[] angelica$currentCrackFixWhitelistArr;
+	@Unique
 	private static Class<?>[] angelica$currentCrackFixBlacklistClasses;
+	@Unique
+	private static Class<?>[] angelica$currentCrackFixWhitelistClasses;
 	@Shadow
 	public double renderMinX;
 	@Shadow
@@ -66,6 +70,8 @@ public class MixinRenderBlocks_CrackFix {
 	private double[] angelica$bounds;
 	@Unique
 	private boolean angelica$disableCrackFix;
+	@Unique
+	private boolean angelica$bypassRenderPassCheck;
 	
 	@ModifyExpressionValue(method = "renderFaceXNeg",
 			at = @At(value = "FIELD",
@@ -144,20 +150,23 @@ public class MixinRenderBlocks_CrackFix {
 		angelica$bounds[4] = renderMaxY;
 		angelica$bounds[5] = renderMaxZ;
 		
-		if (ForgeHooksClient.getWorldRenderPass() != 0) {
+		if (ForgeHooksClient.getWorldRenderPass() != 0 && !angelica$bypassRenderPassCheck) {
 			return;
 		}
 		
 		if (renderMinX != 0 || renderMinY != 0 || renderMinZ != 0 || renderMaxX != 1 || renderMaxY != 1 || renderMaxZ != 1) {
 			return;
 		}
+		
 		double EPSILON = AngelicaConfig.blockCrackFixEpsilon;
+		
 		renderMinX -= EPSILON;
 		renderMinY -= EPSILON;
 		renderMinZ -= EPSILON;
 		renderMaxX += EPSILON;
 		renderMaxY += EPSILON;
 		renderMaxZ += EPSILON;
+		
 		switch (skipDir) {
 			case WEST: renderMinX = angelica$bounds[0]; break;
 			case DOWN: renderMinY = angelica$bounds[1]; break;
@@ -187,7 +196,8 @@ public class MixinRenderBlocks_CrackFix {
 			at = @At("HEAD"),
 			require = 1)
 	private void exclusion(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
-		angelica$disableCrackFix = angelica$isBlacklisted(block.getClass());
+		angelica$disableCrackFix = angelica$isListed(block.getClass(), false);
+		angelica$bypassRenderPassCheck = angelica$isListed(block.getClass(), true);
 	}
 	
 	@Inject(method = "renderBlockByRenderType",
@@ -195,15 +205,16 @@ public class MixinRenderBlocks_CrackFix {
 			require = 1)
 	private void endExclusion(Block p_147805_1_, int p_147805_2_, int p_147805_3_, int p_147805_4_, CallbackInfoReturnable<Boolean> cir) {
 		angelica$disableCrackFix = false;
+		angelica$bypassRenderPassCheck = false;
 	}
 	
 	@Unique
-	private static boolean angelica$isBlacklisted(Class<?> clazz) {
-		Class<?>[] blacklist = angelica$getCrackFixBlacklist();
-		if (blacklist == null) {
+	private static boolean angelica$isListed(Class<?> clazz, boolean whitelist) {
+		Class<?>[] list = whitelist ? angelica$getCrackFixRenderPassWhitelist() : angelica$getCrackFixBlacklist();
+		if (list == null) {
 			return false;
 		}
-		for (Class<?> element : blacklist) {
+		for (Class<?> element : list) {
 			if (element.isAssignableFrom(clazz)) {
 				return true;
 			}
@@ -219,12 +230,27 @@ public class MixinRenderBlocks_CrackFix {
 				try {
 					return Class.forName(name);
 				} catch (ClassNotFoundException e) {
-					AngelicaTweaker.LOGGER.info("Could not find class " + name + " for crack fix blacklist!");
+					AngelicaTweaker.LOGGER.debug("Could not find class " + name + " for crack fix blacklist!");
 					return null;
 				}
 			}).filter(Objects::nonNull).toArray(Class<?>[]::new);
 		}
 		return angelica$currentCrackFixBlacklistClasses;
+	}
+	@Unique
+	private static Class<?>[] angelica$getCrackFixRenderPassWhitelist() {
+		if (angelica$currentCrackFixWhitelistArr != AngelicaConfig.blockCrackFixRenderPassWhitelist) {
+			angelica$currentCrackFixWhitelistArr = AngelicaConfig.blockCrackFixRenderPassWhitelist;
+			angelica$currentCrackFixWhitelistClasses = Arrays.stream(angelica$currentCrackFixWhitelistArr).map((name) -> {
+				try {
+					return Class.forName(name);
+				} catch (ClassNotFoundException e) {
+					AngelicaTweaker.LOGGER.debug("Could not find class " + name + " for crack fix whitelist!");
+					return null;
+				}
+			}).filter(Objects::nonNull).toArray(Class<?>[]::new);
+		}
+		return angelica$currentCrackFixWhitelistClasses;
 	}
 	@Unique
 	private boolean angelica$crackFixOff() {

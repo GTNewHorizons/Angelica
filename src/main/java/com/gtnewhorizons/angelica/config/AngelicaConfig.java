@@ -167,11 +167,8 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
     
-    @Config.Comment({
-            "Block corners and edges between chunks might have \"cracks\" in them. This option fixes it", 
-            "Note: May cause flickering (Z-fighting) on some blocks as a side effect"
-    })
-    @Config.DefaultBoolean(false)
+    @Config.Comment("Block corners and edges between chunks might have \"cracks\" in them. This option fixes it")
+    @Config.DefaultBoolean(true)
     public static boolean fixBlockCrack;
     
     @Config.Comment({
@@ -189,4 +186,13 @@ public class AngelicaConfig {
             "net.minecraft.block.BlockStairs"
     })
     public static String[] blockCrackFixBlacklist;
+    
+    @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated",
+                     "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
+    })
+    @Config.DefaultStringList({
+            "gregtech.common.blocks.BlockOres",
+            "shukaro.artifice.block.world.BlockOre",
+    })
+    public static String[] blockCrackFixRenderPassWhitelist;
 }
