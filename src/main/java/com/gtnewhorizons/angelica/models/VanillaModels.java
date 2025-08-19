@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.models;
 
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
-import com.gtnewhorizon.gtnhlib.client.model.ModelVariant;
+import com.gtnewhorizon.gtnhlib.client.model.Variant;
 import com.gtnewhorizon.gtnhlib.client.model.json.ModelLocation;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockColoredCube;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockStaticCube;
@@ -135,7 +135,7 @@ public class VanillaModels {
         }
     };
 
-    public static final ModelVariant workbench = new ModelVariant(
+    public static final Variant workbench = new Variant(
         new ModelLocation("block/crafting_table"),
         0,
         0,
