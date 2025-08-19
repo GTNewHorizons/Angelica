@@ -3,7 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.BakedModel;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadOrientation;
@@ -111,7 +111,7 @@ public class BlockRenderer {
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
-        final QuadProvider model = ((ModeledBlock) block).getModel();
+        final BakedModel model = ((ModeledBlock) block).getModel();
 
         if (model != null) {
 

@@ -8,7 +8,7 @@ import com.gtnewhorizon.gtnhlib.client.model.template.BlockColoredCube;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockStaticCube;
 import com.gtnewhorizon.gtnhlib.client.model.template.Column3Rot;
 import com.gtnewhorizon.gtnhlib.client.model.template.Model4Rot;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.BakedModel;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.List;
@@ -29,10 +29,10 @@ public class VanillaModels {
     public static BlockColoredCube SPRUCE_LEAVES;
     public static BlockColoredCube BIRCH_LEAVES;
     public static BlockColoredCube JUNGLE_LEAVES;
-    public static QuadProvider OLD_LEAF = new QuadProvider() {
+    public static BakedModel OLD_LEAF = new BakedModel() {
         @Override
         public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, x, y, z, block);
+            return BakedModel.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
@@ -49,10 +49,10 @@ public class VanillaModels {
 
     public static BlockColoredCube ACACIA_LEAVES;
     public static BlockColoredCube DARK_OAK_LEAVES;
-    public static QuadProvider NEW_LEAF = new QuadProvider() {
+    public static BakedModel NEW_LEAF = new BakedModel() {
         @Override
         public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, x, y, z, block);
+            return BakedModel.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
@@ -73,7 +73,7 @@ public class VanillaModels {
     public static BlockStaticCube BIRCH_WOOD;
     public static BlockStaticCube SPRUCE_WOOD;
     public static BlockStaticCube JUNGLE_WOOD;
-    public static QuadProvider OLD_LOG = new QuadProvider() {
+    public static BakedModel OLD_LOG = new BakedModel() {
         @Override
         public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
@@ -108,7 +108,7 @@ public class VanillaModels {
     public static Column3Rot DARK_OAK_LOG;
     public static BlockStaticCube ACACIA_WOOD;
     public static BlockStaticCube DARK_OAK_WOOD;
-    public static QuadProvider NEW_LOG = new QuadProvider() {
+    public static BakedModel NEW_LOG = new BakedModel() {
         @Override
         public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
@@ -141,7 +141,7 @@ public class VanillaModels {
         0,
         true
     );
-    public static QuadProvider WORKBENCH;
+    public static BakedModel WORKBENCH;
 
     public static Model4Rot LECTERN;
 

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.models;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.BakedModel;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.models.VanillaModels;
@@ -19,7 +19,7 @@ public abstract class MixinBlock implements ModeledBlock {
 
     @Getter
     @Setter
-    private QuadProvider model = null;
+    private BakedModel model = null;
 
     @Inject(method = "registerBlocks", at = @At(value = "TAIL"))
     private static void angelica$registerInjectedQP(CallbackInfo ci) {
