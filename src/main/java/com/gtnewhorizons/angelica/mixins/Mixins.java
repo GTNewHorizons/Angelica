@@ -548,7 +548,7 @@ public enum Mixins {
     ),
     //End from NotFine
 
-    QPR(new Builder("Adds a QuadProvider field to blocks without populating it")
+    QPR(new Builder("Adds a BakedModel field to blocks without populating it")
         .setSide(Side.CLIENT)
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> true)

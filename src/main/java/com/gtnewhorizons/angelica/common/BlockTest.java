@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.BakedModel;
 import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
@@ -19,7 +19,7 @@ public class BlockTest extends Block implements ModeledBlock {
 
     @Getter
     @Setter
-    private QuadProvider model;
+    private BakedModel model;
 
     public BlockTest() {
         super(Material.wood);
