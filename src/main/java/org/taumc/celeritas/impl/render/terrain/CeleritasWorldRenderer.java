@@ -1,9 +1,7 @@
 package org.taumc.celeritas.impl.render.terrain;
 
-import com.google.common.collect.Iterators;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
-import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
@@ -12,7 +10,6 @@ import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.ActiveRenderInfo;
@@ -28,6 +25,7 @@ import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
+import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
 import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SortedRenderLists;
 import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTracker;
@@ -36,6 +34,7 @@ import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderFogComponent;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
+import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.util.PositionUtil;
 import org.joml.Matrix4f;
@@ -43,11 +42,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL32;
 import org.taumc.celeritas.CeleritasArchaic;
 import org.taumc.celeritas.impl.extensions.RenderGlobalExtension;
-import org.taumc.celeritas.impl.render.terrain.compile.ArchaicRenderSectionBuiltInfo;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +53,7 @@ import java.util.function.Consumer;
 /**
  * Provides an extension to vanilla's {@link net.minecraft.client.renderer.RenderGlobal}.
  */
-public class CeleritasWorldRenderer implements IRenderGlobalExt {
+public class CeleritasWorldRenderer {
     private final Minecraft client;
 
     private WorldClient world;
@@ -193,9 +189,10 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
 
         Entity viewEntity = Objects.requireNonNull(this.client.renderViewEntity, "Client must have view entity");
 
-        double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * ticks;
-        double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * ticks + (double) viewEntity.getEyeHeight();
-        double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * ticks;
+        var camPosition = CameraHelper.getCurrentCameraPosition(ticks);
+        double x = camPosition.x;
+        double y = camPosition.y + (double) viewEntity.getEyeHeight();
+        double z = camPosition.z;
 
         float pitch = viewEntity.rotationPitch;
         float yaw = viewEntity.rotationYaw;
@@ -296,8 +293,11 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
             drawLods(false);
         }
         if (passes != null && !passes.isEmpty()) {
+            var occlusionCamera = this.currentViewport.getTransform();
+            var realCamera = new CameraTransform(x, y, z);
+
             for (var pass : passes) {
-                this.renderSectionManager.renderLayer(matrices, pass, x, y, z);
+                this.renderSectionManager.renderLayer(matrices, pass, occlusionCamera, realCamera);
             }
         }
         if (vanillaPass == 0) {
@@ -350,87 +350,11 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
      * that method is not feasible.
      */
     public Iterator<TileEntity> blockEntityIterator() {
-        List<Iterator<TileEntity>> iterators = new ArrayList<>();
-
-        SortedRenderLists renderLists = this.renderSectionManager.getRenderLists();
-        Iterator<ChunkRenderList> renderListIterator = renderLists.iterator();
-
-        while (renderListIterator.hasNext()) {
-            var renderList = renderListIterator.next();
-
-            var renderRegion = renderList.getRegion();
-            var renderSectionIterator = renderList.sectionsWithEntitiesIterator();
-
-            if (renderSectionIterator == null) {
-                continue;
-            }
-
-            while (renderSectionIterator.hasNext()) {
-                var renderSectionId = renderSectionIterator.nextByteAsInt();
-                var renderSection = renderRegion.getSection(renderSectionId);
-
-                if (renderSection == null) {
-                    continue;
-                }
-
-                var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.CULLED_BLOCK_ENTITIES);
-
-                if (blockEntities.isEmpty()) {
-                    continue;
-                }
-
-                iterators.add(blockEntities.iterator());
-            }
-        }
-
-        for (var renderSection : this.renderSectionManager.getSectionsWithGlobalEntities()) {
-            var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES);
-
-            if (blockEntities.isEmpty()) {
-                continue;
-            }
-
-            iterators.add(blockEntities.iterator());
-        }
-
-        if(iterators.isEmpty()) {
-            return Collections.emptyIterator();
-        } else {
-            return Iterators.concat(iterators.iterator());
-        }
+        return MinecraftBuiltRenderSectionData.generateBlockEntityIterator(this.renderSectionManager.getRenderLists(), this.renderSectionManager.getSectionsWithGlobalEntities());
     }
 
     public void forEachVisibleBlockEntity(Consumer<TileEntity> consumer) {
-        SortedRenderLists renderLists = this.renderSectionManager.getRenderLists();
-        Iterator<ChunkRenderList> renderListIterator = renderLists.iterator();
-
-        while (renderListIterator.hasNext()) {
-            var renderList = renderListIterator.next();
-
-            var renderRegion = renderList.getRegion();
-            var renderSectionIterator = renderList.sectionsWithEntitiesIterator();
-
-            if (renderSectionIterator == null) {
-                continue;
-            }
-
-            while (renderSectionIterator.hasNext()) {
-                var renderSectionId = renderSectionIterator.nextByteAsInt();
-                var renderSection = renderRegion.getSection(renderSectionId);
-
-                if (renderSection == null) {
-                    continue;
-                }
-
-                var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.CULLED_BLOCK_ENTITIES);
-                blockEntities.forEach(consumer);
-            }
-        }
-
-        for (var renderSection : this.renderSectionManager.getSectionsWithGlobalEntities()) {
-            var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES);
-            blockEntities.forEach(consumer);
-        }
+        MinecraftBuiltRenderSectionData.forEachBlockEntity(consumer, this.renderSectionManager.getRenderLists(), this.renderSectionManager.getSectionsWithGlobalEntities());
     }
 
     private void renderTE(TileEntity tileEntity, int pass, float partialTicks) {
@@ -476,7 +400,13 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
                     continue;
                 }
 
-                var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.CULLED_BLOCK_ENTITIES);
+                var context = renderSection.getBuiltContext();
+
+                if (!(context instanceof MinecraftBuiltRenderSectionData mcData)) {
+                    continue;
+                }
+
+                List<TileEntity> blockEntities = mcData.culledBlockEntities;
 
                 if (blockEntities.isEmpty()) {
                     continue;
@@ -491,7 +421,13 @@ public class CeleritasWorldRenderer implements IRenderGlobalExt {
 
     private void renderGlobalBlockEntities(int pass, float partialTicks) {
         for (var renderSection : this.renderSectionManager.getSectionsWithGlobalEntities()) {
-            var blockEntities = renderSection.getContextOrDefault(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES);
+            var context = renderSection.getBuiltContext();
+
+            if (!(context instanceof MinecraftBuiltRenderSectionData mcData)) {
+                continue;
+            }
+
+            List<TileEntity> blockEntities = mcData.globalBlockEntities;
 
             if (blockEntities.isEmpty()) {
                 continue;

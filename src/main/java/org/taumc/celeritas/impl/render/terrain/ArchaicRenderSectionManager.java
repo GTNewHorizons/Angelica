@@ -1,13 +1,10 @@
 package org.taumc.celeritas.impl.render.terrain;
 
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ReferenceSet;
-import it.unimi.dsi.fastutil.objects.ReferenceSets;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.chunk.Chunk;
-import org.embeddedt.embeddium.impl.common.datastructure.ContextBundle;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
+import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
+import org.embeddedt.embeddium.impl.render.chunk.DefaultChunkRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
@@ -15,26 +12,23 @@ import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SectionTicker;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
+import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderInterface;
+import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderTextureSlot;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.GenericSectionSpriteTicker;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.util.position.SectionPos;
 import org.jetbrains.annotations.Nullable;
 import org.taumc.celeritas.impl.render.terrain.compile.ArchaicChunkBuildContext;
-import org.taumc.celeritas.impl.render.terrain.compile.ArchaicRenderSectionBuiltInfo;
 import org.taumc.celeritas.impl.render.terrain.compile.task.ChunkBuilderMeshingTask;
 import org.taumc.celeritas.impl.render.terrain.sprite.SpriteUtil;
 import org.taumc.celeritas.impl.world.cloned.ChunkRenderContext;
 
-import java.util.Collection;
-import java.util.List;
-
 public class ArchaicRenderSectionManager extends RenderSectionManager {
     private final WorldClient world;
-    private final ReferenceSet<RenderSection> sectionsWithGlobalEntities = new ReferenceOpenHashSet<>();
 
     public ArchaicRenderSectionManager(RenderPassConfiguration<?> configuration, WorldClient world, int renderDistance, CommandList commandList, int minSection, int maxSection, int requestedThreads) {
-        super(configuration, () -> new ArchaicChunkBuildContext(world, configuration), ArchaicChunkRenderer::new, renderDistance, commandList, minSection, maxSection, requestedThreads);
+        super(configuration, () -> new ArchaicChunkBuildContext(world, configuration), ChunkRenderer::new, renderDistance, commandList, minSection, maxSection, requestedThreads);
         this.world = world;
     }
 
@@ -98,29 +92,20 @@ public class ArchaicRenderSectionManager extends RenderSectionManager {
     }
 
     @Override
-    protected void updateSectionInfo(RenderSection render, ContextBundle<RenderSection> info) {
-        super.updateSectionInfo(render, info);
-
-        if (info == null || info.getContext(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES).isEmpty()) {
-            this.sectionsWithGlobalEntities.remove(render);
-        } else {
-            this.sectionsWithGlobalEntities.add(render);
-        }
-    }
-
-    @Override
-    public void destroy() {
-        super.destroy();
-        this.sectionsWithGlobalEntities.clear();
-    }
-
-    public Collection<RenderSection> getSectionsWithGlobalEntities() {
-        return ReferenceSets.unmodifiable(this.sectionsWithGlobalEntities);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
     protected @Nullable SectionTicker createSectionTicker() {
-        return new GenericSectionSpriteTicker<>((ContextBundle.Key<RenderSection, List<TextureAtlasSprite>>)(Object)ArchaicRenderSectionBuiltInfo.ANIMATED_SPRITES, SpriteUtil::markSpriteActive);
+        return new GenericSectionSpriteTicker<>(SpriteUtil::markSpriteActive);
+    }
+
+    private static class ChunkRenderer extends DefaultChunkRenderer {
+
+        public ChunkRenderer(RenderDevice device, RenderPassConfiguration<?> renderPassConfiguration) {
+            super(device, renderPassConfiguration);
+        }
+
+        @Override
+        protected void configureShaderInterface(ChunkShaderInterface shader) {
+            shader.setTextureSlot(ChunkShaderTextureSlot.BLOCK, 0);
+            shader.setTextureSlot(ChunkShaderTextureSlot.LIGHT, 1);
+        }
     }
 }

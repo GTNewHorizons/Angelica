@@ -1,30 +1,29 @@
 package org.taumc.celeritas.impl.render.terrain.compile.task;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ReportedException;
+import net.minecraft.world.ChunkCache;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.client.ForgeHooksClient;
-import net.minecraftforge.common.util.ForgeDirection;
-import org.embeddedt.embeddium.impl.common.datastructure.ContextBundle;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildContext;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.data.BuiltSectionMeshParts;
-import org.embeddedt.embeddium.impl.render.chunk.occlusion.GraphDirection;
-import org.embeddedt.embeddium.impl.render.chunk.occlusion.VisibilityEncoding;
+import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
+import org.embeddedt.embeddium.impl.render.chunk.occlusion.SectionVisibilityBuilder;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.util.position.SectionPos;
 import org.embeddedt.embeddium.impl.util.task.CancellationToken;
@@ -32,16 +31,12 @@ import org.joml.Vector3d;
 import org.taumc.celeritas.impl.extensions.TessellatorExtension;
 import org.taumc.celeritas.impl.extensions.WorldClientExtension;
 import org.taumc.celeritas.impl.render.terrain.compile.ArchaicChunkBuildContext;
-import org.taumc.celeritas.impl.render.terrain.compile.ArchaicRenderSectionBuiltInfo;
-import org.taumc.celeritas.impl.render.terrain.occlusion.ChunkOcclusionDataBuilder;
 import org.taumc.celeritas.impl.world.biome.SmoothBiomeColorCache;
 import org.taumc.celeritas.impl.world.cloned.ChunkRenderContext;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
     private final RenderSection render;
@@ -79,9 +74,8 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
         ArchaicChunkBuildContext buildContext = (ArchaicChunkBuildContext)context;
-        ContextBundle<RenderSection> renderData = new ContextBundle<>(RenderSection.class);
-        initializeContextBundle(renderData);
-        ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
+        MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity> renderData = new MinecraftBuiltRenderSectionData<>();
+        SectionVisibilityBuilder occluder = new SectionVisibilityBuilder();
 
         ChunkBuildBuffers buffers = buildContext.buffers;
         buffers.init(renderData, this.render.getSectionIndex());
@@ -101,7 +95,8 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
         ((WorldClientExtension)world).celeritas$getSmoothBiomeColorCache().update(new SectionPos(this.render.getChunkX(), this.render.getChunkY(), this.render.getChunkZ()));
         var chunk = world.getChunkFromChunkCoords(this.render.getChunkX(), this.render.getChunkZ());
         var section = chunk.getBlockStorageArray()[this.render.getChunkY()];
-        var renderBlocks = new RenderBlocks(world);
+        var region = new ChunkCache(world, minX - 1, minY - 1, minZ - 1, maxX + 1, maxY + 1, maxZ + 1, 1);
+        var renderBlocks = new RenderBlocks(region);
         var tesselator = Tessellator.instance;
         var extTesselator = (TessellatorExtension)tesselator;
 
@@ -128,7 +123,7 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
                         if (block.hasTileEntity(section.getExtBlockMetadata(x & 15, y & 15, z & 15))) {
                             TileEntity tileEntity = chunk.func_150806_e/*getBlockTileEntityInChunk*/(x & 15, y, z & 15);
                             if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
-                                renderData.getContext(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES).add(tileEntity);
+                                renderData.globalBlockEntities.add(tileEntity);
                             }
                         }
 
@@ -145,7 +140,7 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
 
 
                         if (block.isOpaqueCube()) {
-                            occluder.markClosed(blockPos);
+                            occluder.markOpaque(x, y, z);
                         }
                     }
                 }
@@ -165,10 +160,10 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
         Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,(float)camera.x - minX, (float)camera.y - minY, (float)camera.z - minZ);
 
         if (!meshes.isEmpty()) {
-            renderData.setContext(ArchaicRenderSectionBuiltInfo.HAS_BLOCK_GEOMETRY, true);
+            renderData.hasBlockGeometry = true;
         }
 
-        encodeVisibilityData(occluder, renderData);
+        renderData.visibilityData = occluder.computeVisibilityEncoding();
 
         return new ChunkBuildOutput(this.render, renderData, meshes, this.buildTime);
     }
@@ -194,31 +189,4 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
 
         return new ReportedException(report);
     }
-
-    private static final ForgeDirection[] FACINGS = new ForgeDirection[GraphDirection.COUNT];
-
-    static {
-        FACINGS[GraphDirection.UP] = ForgeDirection.UP;
-        FACINGS[GraphDirection.DOWN] = ForgeDirection.DOWN;
-        FACINGS[GraphDirection.WEST] = ForgeDirection.WEST;
-        FACINGS[GraphDirection.EAST] = ForgeDirection.EAST;
-        FACINGS[GraphDirection.NORTH] = ForgeDirection.NORTH;
-        FACINGS[GraphDirection.SOUTH] = ForgeDirection.SOUTH;
-    }
-
-    private static void initializeContextBundle(ContextBundle<RenderSection> renderData) {
-        renderData.setContext(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES, new ArrayList<>());
-        renderData.setContext(ArchaicRenderSectionBuiltInfo.CULLED_BLOCK_ENTITIES, new ArrayList<>());
-        renderData.setContext(ArchaicRenderSectionBuiltInfo.ANIMATED_SPRITES, new ObjectOpenHashSet<>());
-    }
-
-    private static void encodeVisibilityData(ChunkOcclusionDataBuilder occluder, ContextBundle<RenderSection> renderData) {
-        var data = occluder.build();
-        renderData.setContext(RenderSection.VISIBILITY_DATA, VisibilityEncoding.encode((from, to) -> data.isVisibleThrough(FACINGS[from], FACINGS[to])));
-
-        renderData.mapContext(ArchaicRenderSectionBuiltInfo.GLOBAL_BLOCK_ENTITIES, List::copyOf);
-        renderData.mapContext(ArchaicRenderSectionBuiltInfo.CULLED_BLOCK_ENTITIES, List::copyOf);
-        renderData.mapContext(ArchaicRenderSectionBuiltInfo.ANIMATED_SPRITES, List::copyOf);
-    }
-
 }

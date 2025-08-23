@@ -3,15 +3,18 @@ package org.taumc.celeritas.impl.render.terrain;
 import com.google.common.collect.ImmutableListMultimap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
+import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.material.parameters.AlphaCutoffParameter;
+import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.lwjgl.opengl.GL11;
 
 import java.util.Map;
 
 public class ArchaicRenderPassConfigurationBuilder {
+
     public static final TerrainRenderPass SOLID_PASS, CUTOUT_MIPPED_PASS, TRANSLUCENT_PASS;
     public static final Material SOLID_MATERIAL, CUTOUT_MIPPED_MATERIAL, TRANSLUCENT_MATERIAL;
 
@@ -36,7 +39,7 @@ public class ArchaicRenderPassConfigurationBuilder {
     }
 
     private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableBlend) {
-        return TerrainRenderPass.builder().pipelineState(new ArchaicPipelineState(pass, disableBlend));
+        return TerrainRenderPass.builder().pipelineState(new ArchaicPipelineState(pass, disableBlend)).vertexType(ChunkMeshFormats.VANILLA_LIKE).primitiveType(QuadPrimitiveType.TRIANGULATED);
     }
 
     static {
@@ -62,6 +65,9 @@ public class ArchaicRenderPassConfigurationBuilder {
     }
 
     public static RenderPassConfiguration<Integer> build(ChunkVertexType vertexType) {
+        if (vertexType != ChunkMeshFormats.VANILLA_LIKE) {
+            throw new UnsupportedOperationException();
+        }
         ImmutableListMultimap.Builder<Integer, TerrainRenderPass> vanillaRenderStages = ImmutableListMultimap.builder();
 
         vanillaRenderStages.put(1, TRANSLUCENT_PASS);
@@ -77,8 +83,7 @@ public class ArchaicRenderPassConfigurationBuilder {
 
         var vanillaRenderStageMap = vanillaRenderStages.build();
 
-        return new RenderPassConfiguration<>(vertexType,
-                renderTypeToMaterialMap,
+        return new RenderPassConfiguration<>(renderTypeToMaterialMap,
                 vanillaRenderStageMap.asMap(),
                 CUTOUT_MIPPED_MATERIAL,
                 CUTOUT_MIPPED_MATERIAL,

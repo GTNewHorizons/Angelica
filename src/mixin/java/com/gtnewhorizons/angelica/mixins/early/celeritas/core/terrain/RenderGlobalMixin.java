@@ -22,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.taumc.celeritas.impl.extensions.RenderGlobalExtension;
+import org.taumc.celeritas.impl.render.terrain.CameraHelper;
 import org.taumc.celeritas.impl.render.terrain.CeleritasWorldRenderer;
 
 import java.util.Map;
@@ -88,12 +89,10 @@ public abstract class RenderGlobalMixin implements RenderGlobalExtension {
 
         this.mc.entityRenderer.enableLightmap(partialTicks);
 
-        double d3 = entityIn.lastTickPosX + (entityIn.posX - entityIn.lastTickPosX) * partialTicks;
-        double d4 = entityIn.lastTickPosY + (entityIn.posY - entityIn.lastTickPosY) * partialTicks;
-        double d5 = entityIn.lastTickPosZ + (entityIn.posZ - entityIn.lastTickPosZ) * partialTicks;
+        var camPosition = CameraHelper.getCurrentCameraPosition(partialTicks);
 
         try {
-            this.renderer.drawChunkLayer(pass, d3, d4, d5);
+            this.renderer.drawChunkLayer(pass, camPosition.x, camPosition.y, camPosition.z);
         } finally {
             RenderDevice.exitManagedCode();
         }
