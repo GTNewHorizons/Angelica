@@ -130,12 +130,13 @@ final class Enchantment extends OverrideBase {
             return;
         }
         begin(intensity);
-        Tessellator.instance.startDrawingQuads();
-        Tessellator.instance.addVertexWithUV(x0, y0, z, 0.0f, 0.0f);
-        Tessellator.instance.addVertexWithUV(x0, y1, z, 0.0f, 1.0f);
-        Tessellator.instance.addVertexWithUV(x1, y1, z, 1.0f, 1.0f);
-        Tessellator.instance.addVertexWithUV(x1, y0, z, 1.0f, 0.0f);
-        Tessellator.instance.draw();
+        final Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
+        tess.addVertexWithUV(x0, y0, z, 0.0f, 0.0f);
+        tess.addVertexWithUV(x0, y1, z, 0.0f, 1.0f);
+        tess.addVertexWithUV(x1, y1, z, 1.0f, 1.0f);
+        tess.addVertexWithUV(x1, y0, z, 1.0f, 0.0f);
+        tess.draw();
         end();
     }
 

@@ -22,6 +22,8 @@ minecraft {
     lwjgl3Version = lwjglVersion
 
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
+    //extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+    //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
     //extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
     //extraRunJvmArguments.addAll("-Dlegacy.debugClassLoading=true", "-Dlegacy.debugClassLoadingFiner=false", "-Dlegacy.debugClassLoadingSave=true")
 }

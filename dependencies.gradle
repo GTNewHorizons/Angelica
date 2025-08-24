@@ -56,7 +56,7 @@ minecraft {
 dependencies {
     api("com.github.GTNewHorizons:lwjgl3ify:2.1.11:dev")
 
-    api("com.github.GTNewHorizons:Hodgepodge:2.6.40")
+    api("com.github.GTNewHorizons:Hodgepodge:2.6.97")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.10") { transitive = false }
 
@@ -64,11 +64,11 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.36")
 
     // Use modern models+textures to inject QuadProviders
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.2:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.5:dev')
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.6.21:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.6.39:dev")
     shadowImplementation("org.embeddedt.celeritas:celeritas-common:2.3.0-dev.NH1") // LGPL 3.0
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
@@ -79,21 +79,20 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
-    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.7.29-GTNH:dev')
-    devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.1:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.7.72-GTNH:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles:1.0.4:dev")
-    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.5:dev") { transitive = false }
+    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.1.9-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.9:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.10-GTNH:dev") { transitive = false }
-    compileOnly("com.github.GTNewHorizons:Natura:2.8.2:dev")
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.48-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:Natura:2.8.8:dev")
 
-    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.1:dev")
+    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.6:dev")
 
-    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.2:dev") { transitive = false }
-    compileOnly('com.github.GTNewHorizons:Backhand:1.6.11') { transitive = false }
+    compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.3:dev") { transitive = false }
 
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.5.1:api") { transitive = false }
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.5-beta0003:dev") { transitive = false }
@@ -103,13 +102,12 @@ dependencies {
 
     compileOnly("curse.maven:minefactory-reloaded-66672:2277486")
 
-    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.6:dev") // Mixin Version
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
-
-    compileOnly("com.github.GTNewHorizons:HoloInventory:2.5.1-GTNH:dev")
+    compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
     compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.341-pre:dev") { transitive = false }
@@ -133,4 +131,6 @@ dependencies {
     shadowImplementation("org.lwjgl:lwjgl-jawt:3.3.3") {
          exclude group: "org.lwjgl", module: "lwjgl"
     }
+
+    compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 }

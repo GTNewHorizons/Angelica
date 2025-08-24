@@ -36,7 +36,7 @@
 * FastCraft [Disabled, won't fix]
 * BetterFPS [Disabled, won't fix]
 * OptimizationsAndTweaks [Disabled, won't fix]
-* [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - use 1.2.2+
+* [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - Use 1.2.2+
 * [LWJGL3ify 1.5.4 and below](https://github.com/GTNewHorizons/lwjgl3ify/releases/) - Use the latest version available, 1.5.7+
 * [ArchaicFix 0.6.2 and below](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) - Use 0.7.0 or above
 * [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 0.4.5 or above
@@ -65,7 +65,7 @@
   * Makamys for [Neodymium](https://github.com/makamys/Neodymium) - Various Tessellator -> Quad functionality taken under the LGPL 3
 * MCPatcherForge
   * Original [MCPatcher](https://bitbucket.org/prupe/mcpatcher/src/master/): Paul Rupe
-  * [Forge version](https://bitbucket.org/prupe/mcpatcher/src/master/): Mist475 under LGPL 3.0 with default ctm textures for glass and bookshelves by DarkBum under CC-BY-SA
+  * [Forge version](https://github.com/mist475/MCPatcherForge): Mist475 under LGPL 3.0 with default ctm textures for glass and bookshelves by DarkBum under CC-BY-SA
 * HUDCaching
   * Created by [Moulberry](https://github.com/Moulberry/MCHUDCaching), backported from [Patcher](https://github.com/Sk1erLLC/Patcher) mod by Alexdoru under the CC-BY-SA-NC 4.0 license
 * Angelica

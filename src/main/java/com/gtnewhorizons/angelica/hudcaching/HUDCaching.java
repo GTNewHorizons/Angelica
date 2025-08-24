@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.hudcaching;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.managers.GLLightingManager;
@@ -10,7 +11,6 @@ import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
 import cpw.mods.fml.common.eventhandler.EventPriority;
-import net.dries007.holoInventory.client.Renderer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
@@ -134,15 +134,16 @@ public class HUDCaching {
         } else {
             GLLightingManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
+
         if (ingame instanceof GuiIngameForge) {
             final GuiIngameForgeAccessor guiForge = ((GuiIngameForgeAccessor) ingame);
             if (renderHelmetCaptured) {
                 guiForge.callRenderHelmet(resolution, partialTicks, hasScreen, mouseX, mouseY);
                 if (ModStatus.isHoloInventoryLoaded) {
-                    Renderer.INSTANCE.angelicaOverride = false;
+                    HoloInventoryReflectionCompat.setAngelicaOverride(false);
                     // only settings the partial ticks as mouseX and mouseY are not used in renderEvent
                     ((RenderGameOverlayEventAccessor) fakePostEvent).setPartialTicks(partialTicks);
-                    Renderer.INSTANCE.renderEvent(fakePostEvent);
+                    HoloInventoryReflectionCompat.renderEvent(fakePostEvent);
                 }
             }
             if (renderPortalCapturedTicks > 0) {
@@ -232,14 +233,13 @@ public class HUDCaching {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
-    // moved to here due to the method being called from a mixin
     public static void disableHoloInventory() {
         INSTANCE.disableHoloInventoryImpl();
     }
 
     private void disableHoloInventoryImpl() {
         if (ModStatus.isHoloInventoryLoaded) {
-            Renderer.INSTANCE.angelicaOverride = true;
+            HoloInventoryReflectionCompat.setAngelicaOverride(true);
         }
     }
 

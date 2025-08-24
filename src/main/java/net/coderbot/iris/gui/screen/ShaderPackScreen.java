@@ -1,5 +1,7 @@
 package net.coderbot.iris.gui.screen;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.managers.GLAttribManager;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
@@ -21,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.Sys;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
 import java.net.URI;
@@ -90,6 +93,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
+        GLAttribManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        
         if(dirty) {
             dirty = false;
             this.initGui();
@@ -167,6 +172,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         } else {
             this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 10, 0xFFFFFF);
         }
+
+        GLAttribManager.glPopAttrib();
     }
 
     @Override

@@ -39,4 +39,9 @@ public class CompatConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixImmersiveEngineering;
+
+    @Config.Comment("Apply fixes to Security Craft")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixSecurityCraft;
 }
