@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.interfaces;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.BakedModel;
+import com.gtnewhorizon.gtnhlib.client.model.BakedModel;
 
 public interface ModeledBlock {
 

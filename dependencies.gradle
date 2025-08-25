@@ -56,7 +56,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.34") { transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
-    // Use modern models+textures to inject QuadProviders
+    // Use modern models+textures to inject BakedModels
     devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.5:dev')
 
     // Iris Shaders
