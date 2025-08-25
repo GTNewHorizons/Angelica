@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import org.lwjgl.BufferUtils;
-import org.lwjgl.MemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 import java.nio.ByteBuffer;
 
@@ -11,7 +10,7 @@ public abstract class StructBuffer {
     protected final int stride;
 
     protected StructBuffer(int bytes, int stride) {
-        this.buffer = BufferUtils.createByteBuffer(bytes * stride);
+        this.buffer = memAlloc(bytes * stride);
         this.stride = stride;
     }
 
@@ -20,7 +19,7 @@ public abstract class StructBuffer {
     }
 
     public long getBufferAddress() {
-        return MemoryUtil.getAddress(this.buffer);
+        return memAddress(this.buffer);
     }
 
     public void delete() {

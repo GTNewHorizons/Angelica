@@ -67,7 +67,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 			row.add(element);
 
 			if (row.size() >= columns) {
-				this.addEntry(new ElementRowEntry(screen, this.navigation, row));
+				this.addEntry(new ElementRowEntry(this.navigation, row));
 				row = new ArrayList<>(); // Clearing the list would affect the row entry created above
 			}
 		}
@@ -77,7 +77,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 				row.add(AbstractElementWidget.EMPTY);
 			}
 
-			this.addEntry(new ElementRowEntry(screen, this.navigation, row));
+			this.addEntry(new ElementRowEntry(this.navigation, row));
 		}
 	}
 
@@ -90,6 +90,17 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     protected boolean elementClicked(int index, boolean doubleClick, int mouseX, int mouseY, int mouseButton) {
         final BaseEntry entry = this.entries.get(index);
         return entry.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+    @Override
+    public boolean mouseReleased( int mouseX, int mouseY, int button) {
+        final int relativeY = mouseY - this.top - this.headerPadding + (int) this.amountScrolled - 4;
+        final int index = relativeY / this.slotHeight;
+
+        if (index < 0 || index >= this.entries.size())
+            return false;
+
+        final BaseEntry entry = this.entries.get(index);
+        return entry.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override

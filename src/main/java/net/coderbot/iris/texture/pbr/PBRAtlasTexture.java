@@ -1,9 +1,9 @@
 package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
-import com.gtnewhorizons.angelica.mixins.interfaces.TextureAtlasSpriteAccessor;
-import com.gtnewhorizons.angelica.mixins.interfaces.TextureMapAccessor;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -34,7 +34,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public PBRAtlasTexture(TextureMap textureMap, PBRType type) {
 		this.texMap = textureMap;
 		this.type = type;
-		id = type.appendToFileLocation(((TextureMapAccessor)textureMap).getLocationBlocksTexture());
+		id = type.appendToFileLocation(TextureMap.locationBlocksTexture);
 
 	}
 
@@ -88,7 +88,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			}
 		}
 
-		if (PBRTextureManager.DEBUG) {
+		if (AngelicaConfig.enablePBRDebug) {
 			TextureExporter.exportTextures("pbr_debug/atlas", id.getResourceDomain() + "_" + id.getResourcePath().replaceAll("/", "_"), glId, mipLevel, atlasWidth, atlasHeight);
 		}
 	}
@@ -98,6 +98,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			upload(atlasWidth, atlasHeight, mipLevel, anisotropicFiltering);
 			return true;
 		} catch (Throwable t) {
+            Iris.logger.error("Could not upload PBR texture", t);
 			return false;
 		}
 	}
@@ -109,11 +110,10 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
 
-        final TextureAtlasSpriteAccessor accessor = (TextureAtlasSpriteAccessor) sprite;
-		if (accessor.getMetadata().getFrameCount() > 1) {
-			final AnimationMetadataSection metadata = accessor.getMetadata();
+		if (sprite.animationMetadata.getFrameCount() > 1) {
+			final AnimationMetadataSection metadata = sprite.animationMetadata;
 			final int frameCount = sprite.getFrameCount();
-			for (int frame = accessor.getFrame(); frame >= 0; frame--) {
+			for (int frame = sprite.frameCounter; frame >= 0; frame--) {
 				final int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
                     TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);

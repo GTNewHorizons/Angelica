@@ -29,9 +29,9 @@ public abstract class MixinWorld {
     }
 
     @ModifyReturnValue(method = "getLightBrightnessForSkyBlocks", at = @At(value = "RETURN"))
-    private int angelica$dynamiclights_getLightBrightnessForSkyBlocks(int lightmap, int p_72802_1_, int p_72802_2_, int p_72802_3_, int p_72802_4_){
-        if (DynamicLights.isEnabled()){
-            return DynamicLights.get().getLightmapWithDynamicLight(p_72802_1_, p_72802_2_, p_72802_3_, lightmap);
+    private int angelica$dynamiclights_getLightBrightnessForSkyBlocks(int lightmap, int x, int y, int z, int p_72802_4_){
+        if (DynamicLights.isEnabled() && !getBlock(x, y, z).isOpaqueCube()){
+            return DynamicLights.get().getLightmapWithDynamicLight(x, y, z, lightmap);
         }
         return lightmap;
     }

@@ -6,7 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.IntBuffer;
+import java.nio.Buffer;
 
 public class TextureInfoCache {
     /**
@@ -25,7 +25,7 @@ public class TextureInfoCache {
 		return cache.computeIfAbsent(id, TextureInfo::new);
 	}
 
-	public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels) {
+	public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
 		if (target == GL11.GL_TEXTURE_2D && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
             if(info == null) return;

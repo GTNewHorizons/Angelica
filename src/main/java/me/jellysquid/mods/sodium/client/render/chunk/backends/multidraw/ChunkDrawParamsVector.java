@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import org.lwjgl.MemoryUtil;
 
@@ -32,7 +33,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
 
     protected void growBuffer() {
         this.capacity = this.capacity * 2;
-        this.buffer = CompatMemoryUtil.memReallocDirect(this.buffer, this.capacity * this.stride);
+        this.buffer = memRealloc(this.buffer, this.capacity * this.stride);
     }
 
     public static class UnsafeChunkDrawCallVector extends ChunkDrawParamsVector {
@@ -51,9 +52,9 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
                 this.growBuffer();
             }
 
-            CompatMemoryUtil.memPutFloat(this.writePointer    , x);
-            CompatMemoryUtil.memPutFloat(this.writePointer + 4, y);
-            CompatMemoryUtil.memPutFloat(this.writePointer + 8, z);
+            memPutFloat(this.writePointer    , x);
+            memPutFloat(this.writePointer + 4, y);
+            memPutFloat(this.writePointer + 8, z);
 
             this.writePointer += this.stride;
         }
@@ -64,7 +65,7 @@ public abstract class ChunkDrawParamsVector extends StructBuffer {
 
             long offset = this.writePointer - this.basePointer;
 
-            this.basePointer = MemoryUtil.getAddress(this.buffer);
+            this.basePointer = memAddress(this.buffer);
             this.writePointer = this.basePointer + offset;
         }
 

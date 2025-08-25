@@ -10,6 +10,7 @@ public class TickBoxControlElement extends NotFineControlElement<Boolean> {
         super(option, dim);
     }
 
+    @Override
     public String getLabel() {
         return super.getLabel() + I18n.format(option.getValue() ? "options.on" : "options.off");
     }

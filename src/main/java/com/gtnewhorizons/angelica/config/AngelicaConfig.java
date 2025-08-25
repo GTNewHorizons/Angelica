@@ -38,7 +38,7 @@ public class AngelicaConfig {
     public static boolean enableIris;
 
     @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableMCPatcherForgeFeatures;
 
@@ -133,6 +133,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableDebugLogging;
 
+    @Config.Comment("Enables PBR atlas dumping")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable PBR Debug")
+    public static boolean enablePBRDebug;
+
     @Config.Comment("Enable Zoom")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -157,4 +162,8 @@ public class AngelicaConfig {
         "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
     @Config.DefaultBoolean(false)
     public static boolean sleepBeforeSwap;
+
+    @Config.Comment("Allows unicode languages to use an odd gui scale")
+    @Config.DefaultBoolean(true)
+    public static boolean removeUnicodeEvenScaling;
 }

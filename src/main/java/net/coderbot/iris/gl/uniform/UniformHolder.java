@@ -6,6 +6,7 @@ import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import java.util.function.BooleanSupplier;
@@ -30,6 +31,8 @@ public interface UniformHolder {
 
 	UniformHolder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3f> value);
 
+    UniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3i> value);
+
 	UniformHolder uniformVanilla3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vec3> value);
 
 	UniformHolder uniformTruncated3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4f> value);
@@ -37,6 +40,8 @@ public interface UniformHolder {
 	UniformHolder uniform3d(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3d> value);
 
 	UniformHolder uniform4f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4f> value);
+
+    UniformHolder uniform4fArray(UniformUpdateFrequency updateFrequency, String name, Supplier<float[]> value);
 
 	UniformHolder uniformMatrix(UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4f> value);
 

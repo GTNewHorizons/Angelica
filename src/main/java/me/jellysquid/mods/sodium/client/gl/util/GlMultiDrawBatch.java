@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gl.util;
 
-import org.lwjgl.BufferUtils;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import org.lwjgl.opengl.GL20;
 
 
@@ -17,8 +18,8 @@ public class GlMultiDrawBatch {
     private boolean isBuilding;
 
     public GlMultiDrawBatch(int capacity) {
-        this.bufIndices = BufferUtils.createIntBuffer(capacity);
-        this.bufLen = BufferUtils.createIntBuffer(capacity);
+        this.bufIndices = memAllocInt(capacity);
+        this.bufLen = memAllocInt(capacity);
     }
 
     public IntBuffer getIndicesBuffer() {
@@ -59,8 +60,8 @@ public class GlMultiDrawBatch {
     }
 
     public void delete() {
-        this.bufIndices.clear();
-        this.bufLen.clear();
+        memFree(this.bufIndices);
+        memFree(this.bufLen);
 
         this.bufIndices = null;
         this.bufLen = null;

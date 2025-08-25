@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.ChunkCache;
@@ -21,6 +22,11 @@ public class MixinChunkCache implements ITexturesCache {
 
     @Override
     public void enableTextureTracking() {
+
+    }
+
+    @Override
+    public void track(IPatchedTextureAtlasSprite sprite) {
 
     }
 }

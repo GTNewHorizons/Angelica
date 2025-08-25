@@ -1,14 +1,17 @@
 package com.gtnewhorizons.angelica.compat;
 
+import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.versioning.ArtifactVersion;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
-import net.dries007.holoInventory.HoloInventory;
-import xonin.backhand.Backhand;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ModStatus {
+    public static final Logger LOGGER = LogManager.getLogger("ModCompat");
+
+    public static BackhandReflectionCompat backhandCompat;
     /**
      * Mixin Version
      */
@@ -17,7 +20,6 @@ public class ModStatus {
      * ASM Version
      */
     public static boolean isOldNEIDLoaded;
-
     public static boolean isBetterCrashesLoaded;
     public static boolean isNEIDMetadataExtended;
     public static boolean isLotrLoaded;
@@ -30,8 +32,14 @@ public class ModStatus {
     public static boolean isThaumcraftLoaded;
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
+    public static boolean isFluidLoggedLoaded;
 
     public static void preInit(){
+        isBackhandLoaded = Loader.isModLoaded("backhand");
+        if(isBackhandLoaded) {
+            isBackhandLoaded = BackhandReflectionCompat.isBackhandLoaded();
+        }
+
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
         isNEIDLoaded = Loader.isModLoaded("neid");
         isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
@@ -41,17 +49,12 @@ public class ModStatus {
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBattlegearLoaded = Loader.isModLoaded("battlegear2");
-        isBackhandLoaded = Loader.isModLoaded("backhand");
         isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
+        isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
 
-        if (isHoloInventoryLoaded){
-            isHoloInventoryLoaded = new DefaultArtifactVersion("2.4.4-GTNH")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(HoloInventory.class).getProcessedVersion()
-                ) <= 0;
-        }
+        isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
         // remove compat with original release of BG2
         if (isBattlegearLoaded){
@@ -61,17 +64,9 @@ public class ModStatus {
                 ) <= 0;
         }
 
-        if (isBackhandLoaded){
-            isBackhandLoaded = new DefaultArtifactVersion("1.4.1")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(Backhand.class).getProcessedVersion()
-                ) <= 0;
-        }
-
-
         isNEIDMetadataExtended = false;
         if (isNEIDLoaded) {
-            int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
+            final int majorVersion = Integer.parseInt(Loader.instance().getIndexedModList().get("neid").getVersion().split("\\.")[0]);
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }

@@ -14,7 +14,6 @@ public class MixinItemRenderer {
     @Inject(method = "renderItemInFirstPerson", at = @At("HEAD"), cancellable = true)
     private void iris$skipTranslucentHands(float partialTicks, CallbackInfo ci) {
         if (IrisApi.getInstance().isShaderPackInUse()) {
-            // TODO: Offhand
             boolean isHandTranslucent = HandRenderer.INSTANCE.isHandTranslucent(InteractionHand.MAIN_HAND);
             if (HandRenderer.INSTANCE.isRenderingSolid() && isHandTranslucent) {
                 ci.cancel();

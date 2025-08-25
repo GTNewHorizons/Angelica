@@ -5,13 +5,11 @@ import com.google.common.collect.ImmutableSet;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
-import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 
 import java.util.function.IntSupplier;

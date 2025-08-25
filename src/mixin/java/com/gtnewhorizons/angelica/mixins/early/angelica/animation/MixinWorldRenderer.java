@@ -49,4 +49,9 @@ public class MixinWorldRenderer implements ITexturesCache {
     public void enableTextureTracking() {
 
     }
+
+    @Override
+    public void track(IPatchedTextureAtlasSprite sprite) {
+
+    }
 }

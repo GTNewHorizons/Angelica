@@ -1,11 +1,10 @@
 package kroppeb.stareval.parser;
 
-public class UnaryOp {
-	private final String name;
+import com.github.bsideup.jabel.Desugar;
 
-	public UnaryOp(String name) {
-		this.name = name;
-	}
+@Desugar
+public record UnaryOp(String name) {
+
 
 	@Override
 	public String toString() {

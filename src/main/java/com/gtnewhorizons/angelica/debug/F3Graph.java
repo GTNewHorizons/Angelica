@@ -28,9 +28,10 @@ import static org.lwjgl.opengl.GL20.glUniform1;
 import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glUniform1i;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
 
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
 import java.nio.FloatBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -131,7 +132,7 @@ public abstract class F3Graph {
         // Load vertex buffer
         vertBuf = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
-        try (final MemoryStack stack = MemoryStack.stackPush()) {
+        try (final MemoryStack stack = stackPush()) {
             final FloatBuffer vertices = stack.mallocFloat(VERT_COUNT * VERT_FLOATS);
             // Since we use a triangle strip, we only need 4 vertices. The quad extends to the top of the screen so spikes
             // don't get truncated. The max height is replaced in the vert shader, no need to be precise.

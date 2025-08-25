@@ -8,4 +8,5 @@ public interface ITexturesCache {
 
     Set<IIcon> getRenderedTextures();
     void enableTextureTracking();
+    void track(IPatchedTextureAtlasSprite sprite);
 }

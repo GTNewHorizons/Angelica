@@ -3,6 +3,7 @@ package net.coderbot.iris.uniforms;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
+import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
@@ -13,7 +14,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
@@ -22,7 +22,7 @@ public final class IdMapUniforms {
 	private IdMapUniforms() {
 	}
 
-	public static void addIdMapUniforms(FrameUpdateNotifier notifier, DynamicUniformHolder uniforms, IdMap idMap, boolean isOldHandLight) {
+	public static void addIdMapUniforms(FrameUpdateNotifier notifier, UniformHolder uniforms, IdMap idMap, boolean isOldHandLight) {
 		HeldItemSupplier mainHandSupplier = new HeldItemSupplier(InteractionHand.MAIN_HAND, idMap.getItemIdMap(), isOldHandLight);
 		HeldItemSupplier offHandSupplier = new HeldItemSupplier(InteractionHand.OFF_HAND, idMap.getItemIdMap(), false);
 		notifier.addListener(mainHandSupplier::update);
@@ -36,13 +36,15 @@ public final class IdMapUniforms {
 		// TODO: Figure out API.
 			//.uniformVanilla3f(PER_FRAME, "heldBlockLightColor", mainHandSupplier::getLightColor)
 			//.uniformVanilla3f(PER_FRAME, "heldBlockLightColor2", offHandSupplier::getLightColor);
-
-		uniforms.uniform1i("entityId", CapturedRenderingState.INSTANCE::getCurrentRenderedEntity,
-				CapturedRenderingState.INSTANCE.getEntityIdNotifier());
-
-		uniforms.uniform1i("blockEntityId", CapturedRenderingState.INSTANCE::getCurrentRenderedBlockEntity,
-				CapturedRenderingState.INSTANCE.getBlockEntityIdNotifier());
 	}
+
+    public static void addEntityIdMapUniforms(DynamicUniformHolder uniforms) {
+        uniforms.uniform1i("entityId", CapturedRenderingState.INSTANCE::getCurrentRenderedEntity,
+            CapturedRenderingState.INSTANCE.getEntityIdNotifier());
+
+        uniforms.uniform1i("blockEntityId", CapturedRenderingState.INSTANCE::getCurrentRenderedBlockEntity,
+            CapturedRenderingState.INSTANCE.getBlockEntityIdNotifier());
+    }
 
 	/**
 	 * Provides the currently held item, and it's light value, in the given hand as a uniform. Uses the item.properties ID map to map the item
@@ -54,7 +56,6 @@ public final class IdMapUniforms {
 		private final boolean applyOldHandLight;
 		private int intID;
 		private int lightValue;
-		private Vector3f lightColor;
 
 		HeldItemSupplier(InteractionHand hand, Object2IntFunction<NamespacedId> itemIdMap, boolean shouldApplyOldHandLight) {
 			this.hand = hand;
@@ -65,7 +66,6 @@ public final class IdMapUniforms {
 		private void invalidate() {
 			intID = -1;
 			lightValue = 0;
-			lightColor = IrisItemLightProvider.DEFAULT_LIGHT_COLOR;
 		}
 
 		public void update() {
@@ -76,9 +76,8 @@ public final class IdMapUniforms {
 				invalidate();
 				return;
 			}
-//			ItemStack heldStack = player.getItemInHand(hand);
-            // TODO: Offhand
-			ItemStack heldStack = player.getHeldItem();
+
+            ItemStack heldStack = hand.getItemInHand(player);
 
 			if (heldStack == null) {
 				invalidate();
@@ -101,14 +100,10 @@ public final class IdMapUniforms {
 			if (applyOldHandLight) {
 				lightProvider = applyOldHandLighting(player, lightProvider);
 			}
-
-			lightColor = lightProvider.getLightColor(Minecraft.getMinecraft().thePlayer, heldStack);
 		}
 
 		private IrisItemLightProvider applyOldHandLighting(@NotNull EntityPlayer player, IrisItemLightProvider existing) {
-            // TODO: Offhand
-//			ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
-			ItemStack offHandStack = null;
+            ItemStack offHandStack = InteractionHand.OFF_HAND.getItemInHand(player);
 
 			if (offHandStack == null) {
 				return existing;
@@ -137,10 +132,6 @@ public final class IdMapUniforms {
 
 		public int getLightValue() {
 			return lightValue;
-		}
-
-		public Vector3f getLightColor() {
-			return lightColor;
 		}
 	}
 }

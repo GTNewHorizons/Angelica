@@ -1,6 +1,7 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
@@ -32,14 +33,14 @@ public class EntityVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe imp
 		uSum += u;
 		vSum += v;
 
-		CompatMemoryUtil.memPutFloat(i, x);
-		CompatMemoryUtil.memPutFloat(i + 4, y);
-		CompatMemoryUtil.memPutFloat(i + 8, z);
-		CompatMemoryUtil.memPutInt(i + 12, color);
-		CompatMemoryUtil.memPutFloat(i + 16, u);
-		CompatMemoryUtil.memPutFloat(i + 20, v);
-		CompatMemoryUtil.memPutInt(i + 24, overlay);
-		CompatMemoryUtil.memPutInt(i + 28, light);
+		memPutFloat(i, x);
+		memPutFloat(i + 4, y);
+		memPutFloat(i + 8, z);
+		memPutInt(i + 12, color);
+		memPutFloat(i + 16, u);
+		memPutFloat(i + 20, v);
+		memPutInt(i + 24, overlay);
+		memPutInt(i + 28, light);
 
 		if (vertexCount == 4) {
 			this.endQuad(normal);
@@ -80,10 +81,10 @@ public class EntityVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe imp
 		int tangent = NormalHelper.computeTangent(normalX, normalY, normalZ, quad);
 
 		for (long vertex = 0; vertex < 4; vertex++) {
-			CompatMemoryUtil.memPutFloat(i + 36 - STRIDE * vertex, uSum);
-			CompatMemoryUtil.memPutFloat(i + 40 - STRIDE * vertex, vSum);
-			CompatMemoryUtil.memPutInt(i + 32 - STRIDE * vertex, normal);
-			CompatMemoryUtil.memPutInt(i + 44 - STRIDE * vertex, tangent);
+			memPutFloat(i + 36 - STRIDE * vertex, uSum);
+			memPutFloat(i + 40 - STRIDE * vertex, vSum);
+			memPutInt(i + 32 - STRIDE * vertex, normal);
+			memPutInt(i + 44 - STRIDE * vertex, tangent);
 		}
 
 		uSum = 0;

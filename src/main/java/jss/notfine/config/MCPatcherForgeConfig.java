@@ -11,7 +11,7 @@ public class MCPatcherForgeConfig {
     @Config(modid = "mcpatcherforge", category = "custom_colors")
     public static class CustomColors {
         @Config.Comment("Enable the custom colors module")
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enabled;
 
@@ -32,31 +32,31 @@ public class MCPatcherForgeConfig {
         @Config.RequiresMcRestart
         public static int fogBlendRadius;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean swampColors;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean water;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean tree;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean redstone;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean stem;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean otherBlocks;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean smoothBiomes;
 
@@ -64,43 +64,43 @@ public class MCPatcherForgeConfig {
         @Config.RequiresMcRestart
         public static boolean testColorSmoothing;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean potion;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean particle;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean fog;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean clouds;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean map;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean dye;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean text;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean xporb;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean egg;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean lightmaps;
     }
@@ -108,7 +108,7 @@ public class MCPatcherForgeConfig {
     @Config(modid = "mcpatcherforge", category = "custom_item_textures")
     public static class CustomItemTextures {
         @Config.Comment("Enable the custom item textures module")
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enabled;
 
@@ -117,15 +117,15 @@ public class MCPatcherForgeConfig {
         @Config.RequiresMcRestart
         public static LogLevel logging;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean items;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enchantments;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean armor;
     }
@@ -164,7 +164,7 @@ public class MCPatcherForgeConfig {
     @Config(modid = "mcpatcherforge", category = "extended_hd")
     public static class ExtendedHD {
         @Config.Comment("Enable the extended hd module")
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enabled;
 
@@ -186,27 +186,27 @@ public class MCPatcherForgeConfig {
         @Config.Name("lod bias")
         public static int lodBias;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean animations;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean fancyCompass;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean fancyClock;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean useGL13;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean useScratchTexture;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         @Config.Name("HDFont")
         public static boolean hdFont;
@@ -223,7 +223,7 @@ public class MCPatcherForgeConfig {
     @Config(modid = "mcpatcherforge", category = "random_mobs")
     public static class RandomMobs {
         @Config.Comment("Enable the random mobs module")
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enabled;
 
@@ -232,7 +232,7 @@ public class MCPatcherForgeConfig {
         @Config.RequiresMcRestart
         public static LogLevel logging;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean leashLine;
     }
@@ -240,7 +240,7 @@ public class MCPatcherForgeConfig {
     @Config(modid = "mcpatcherforge", category = "better_skies")
     public static class BetterSkies {
         @Config.Comment("Enable the better skies module")
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean enabled;
 
@@ -253,15 +253,15 @@ public class MCPatcherForgeConfig {
         @Config.RequiresMcRestart
         public static int horizon;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean brightenFireworks;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean skybox;
 
-        @Config.DefaultBoolean(true)
+        @Config.DefaultBoolean(false)
         @Config.RequiresMcRestart
         public static boolean unloadTextures;
     }

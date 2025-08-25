@@ -3,7 +3,6 @@ package net.coderbot.iris.gui.element.widget;
 import net.minecraft.client.gui.GuiButton;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class IrisButton extends GuiButton {
     protected final Consumer<IrisButton> onPress;

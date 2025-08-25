@@ -1,6 +1,7 @@
 package net.coderbot.iris.sodium.vertex_format.terrain_xhfp;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
@@ -29,7 +30,7 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 	}
 
 	@Override
-	public void writeQuad(float x, float y, float z, int color, float u, float v, int light) {
+	public void writeQuad(float x, float y, float z, int color, float u, float v, int light, int shaderBlockId) {
 		uSum += u;
 		vSum += v;
 
@@ -41,7 +42,7 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(u),
 				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(v),
 				light,
-				contextHolder.blockId,
+				shaderBlockId != -1 ? (short)shaderBlockId : contextHolder.blockId,
 				contextHolder.renderType,
 				ExtendedDataHelper.computeMidBlock(x, y, z, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ)
 		);
@@ -54,21 +55,21 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 		vertexCount++;
 		// NB: uSum and vSum must already be incremented outside of this function.
 
-		CompatMemoryUtil.memPutShort(i, x);
-		CompatMemoryUtil.memPutShort(i + 2, y);
-		CompatMemoryUtil.memPutShort(i + 4, z);
-		CompatMemoryUtil.memPutInt(i + 8, color);
-		CompatMemoryUtil.memPutShort(i + 12, u);
-		CompatMemoryUtil.memPutShort(i + 14, v);
-		CompatMemoryUtil.memPutShort(i + 16, (short) (light & 0xFFFF));
-		CompatMemoryUtil.memPutShort(i + 18, (short) (light >> 16 & 0xFFFF));
+		memPutShort(i, x);
+		memPutShort(i + 2, y);
+		memPutShort(i + 4, z);
+		memPutInt(i + 8, color);
+		memPutShort(i + 12, u);
+		memPutShort(i + 14, v);
+		memPutShort(i + 16, (short) (light & 0xFFFF));
+		memPutShort(i + 18, (short) (light >> 16 & 0xFFFF));
 		// NB: We don't set midTexCoord, normal, and tangent here, they will be filled in later.
 		// block ID: We only set the first 2 values, any legacy shaders using z or w will get filled in based on the GLSL spec
 		// https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_format
 		// TODO: can we pack this into one short?
-		CompatMemoryUtil.memPutShort(i + 36, materialId);
-		CompatMemoryUtil.memPutShort(i + 38, renderType);
-		CompatMemoryUtil.memPutInt(i + 40, packedMidBlock);
+		memPutShort(i + 36, materialId);
+		memPutShort(i + 38, renderType);
+		memPutInt(i + 40, packedMidBlock);
 
 		if (vertexCount == 4) {
 			vertexCount = 0;
@@ -103,15 +104,15 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 			uSum *= 0.25f;
 			vSum *= 0.25f;
 
-			CompatMemoryUtil.memPutFloat(i + 20, uSum);
-			CompatMemoryUtil.memPutFloat(i + 20 - STRIDE, uSum);
-			CompatMemoryUtil.memPutFloat(i + 20 - STRIDE * 2, uSum);
-			CompatMemoryUtil.memPutFloat(i + 20 - STRIDE * 3, uSum);
+			memPutFloat(i + 20, uSum);
+			memPutFloat(i + 20 - STRIDE, uSum);
+			memPutFloat(i + 20 - STRIDE * 2, uSum);
+			memPutFloat(i + 20 - STRIDE * 3, uSum);
 
-			CompatMemoryUtil.memPutFloat(i + 24, vSum);
-			CompatMemoryUtil.memPutFloat(i + 24 - STRIDE, vSum);
-			CompatMemoryUtil.memPutFloat(i + 24 - STRIDE * 2, vSum);
-			CompatMemoryUtil.memPutFloat(i + 24 - STRIDE * 3, vSum);
+			memPutFloat(i + 24, vSum);
+			memPutFloat(i + 24 - STRIDE, vSum);
+			memPutFloat(i + 24 - STRIDE * 2, vSum);
+			memPutFloat(i + 24 - STRIDE * 3, vSum);
 
 			uSum = 0;
 			vSum = 0;
@@ -124,17 +125,17 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 			NormalHelper.computeFaceNormal(normal, quad);
 			int packedNormal = NormalHelper.packNormal(normal, 0.0f);
 
-			CompatMemoryUtil.memPutInt(i + 32, packedNormal);
-			CompatMemoryUtil.memPutInt(i + 32 - STRIDE, packedNormal);
-			CompatMemoryUtil.memPutInt(i + 32 - STRIDE * 2, packedNormal);
-			CompatMemoryUtil.memPutInt(i + 32 - STRIDE * 3, packedNormal);
+			memPutInt(i + 32, packedNormal);
+			memPutInt(i + 32 - STRIDE, packedNormal);
+			memPutInt(i + 32 - STRIDE * 2, packedNormal);
+			memPutInt(i + 32 - STRIDE * 3, packedNormal);
 
 			int tangent = NormalHelper.computeTangent(normal.x, normal.y, normal.z, quad);
 
-			CompatMemoryUtil.memPutInt(i + 28, tangent);
-			CompatMemoryUtil.memPutInt(i + 28 - STRIDE, tangent);
-			CompatMemoryUtil.memPutInt(i + 28 - STRIDE * 2, tangent);
-			CompatMemoryUtil.memPutInt(i + 28 - STRIDE * 3, tangent);
+			memPutInt(i + 28, tangent);
+			memPutInt(i + 28 - STRIDE, tangent);
+			memPutInt(i + 28 - STRIDE * 2, tangent);
+			memPutInt(i + 28 - STRIDE * 3, tangent);
 		}
 
 		this.advance();

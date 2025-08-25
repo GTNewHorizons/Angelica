@@ -123,8 +123,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean dirtySwap;
 
-    private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
-
     private static final ThreadLocal<BlockRenderPass> threadLocalRenderPass = ThreadLocal.withInitial(() -> BlockRenderPass.CUTOUT_MIPPED);
     public static int getWorldRenderPass() {
         return threadLocalRenderPass.get().ordinal();
@@ -133,6 +131,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         threadLocalRenderPass.set(pass);
     }
 
+    @SuppressWarnings("unchecked")
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
@@ -212,6 +211,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
                 for(Object o : this.renders.getElements()) {
                     if(o == null)
                         continue;
+                    @SuppressWarnings("unchecked")
                     ChunkRenderContainer<T> render = (ChunkRenderContainer<T>)o;
                     if(render.getData().isEmpty())
                         continue;

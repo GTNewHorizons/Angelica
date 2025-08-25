@@ -10,17 +10,17 @@ import net.minecraft.util.MathHelper;
 
 public class SodiumControlElementFactory implements ControlElementFactory {
     @Override
-    public <T extends Enum<T>> ControlElement cyclingControlElement(Option<T> option, Dim2i dim, T[] allowedValues, String[] names) {
-        return new CyclingControlElement(option, dim, allowedValues, names);
+    public <T extends Enum<T>> ControlElement<T> cyclingControlElement(Option<T> option, Dim2i dim, T[] allowedValues, String[] names) {
+        return new CyclingControlElement<>(option, dim, allowedValues, names);
     }
 
     @Override
-    public ControlElement sliderControlElement(Option<Integer> option, Dim2i dim, int min, int max, int interval, ControlValueFormatter formatter) {
+    public ControlElement<Integer> sliderControlElement(Option<Integer> option, Dim2i dim, int min, int max, int interval, ControlValueFormatter formatter) {
         return new SliderControlElement(option, dim, min, max, interval, formatter);
     }
 
     @Override
-    public ControlElement tickBoxElement(Option<Boolean> option, Dim2i dim) {
+    public ControlElement<Boolean> tickBoxElement(Option<Boolean> option, Dim2i dim) {
         return new TickBoxControlElement(option, dim);
     }
 

@@ -1,6 +1,8 @@
 package net.coderbot.iris.sodium.shader_overrides;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.FloatBuffer;
@@ -10,6 +12,8 @@ import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderFogCompon
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.pipeline.SodiumTerrainPipeline;
+import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -28,18 +32,24 @@ public class IrisChunkProgram extends ChunkProgram {
 	@Nullable
 	private final ProgramImages irisProgramImages;
 
-	public IrisChunkProgram(RenderDevice owner, ResourceLocation name, int handle,
-							@Nullable ProgramUniforms irisProgramUniforms, @Nullable ProgramSamplers irisProgramSamplers,
-							@Nullable ProgramImages irisProgramImages) {
+    private CustomUniforms customUniforms;
+
+	public IrisChunkProgram(RenderDevice owner, ResourceLocation name, int handle, boolean isShadowPass, SodiumTerrainPipeline pipeline, CustomUniforms customUniforms) {
 		super(owner, name, handle, ChunkShaderFogComponent.None::new);
 		this.uModelViewMatrix = this.getUniformLocation("iris_ModelViewMatrix");
 		this.uNormalMatrix = this.getUniformLocation("iris_NormalMatrix");
-		this.irisProgramUniforms = irisProgramUniforms;
-		this.irisProgramSamplers = irisProgramSamplers;
-		this.irisProgramImages = irisProgramImages;
+        this.customUniforms = customUniforms;
+
+        ProgramUniforms.Builder builder = pipeline.initUniforms(handle);
+        customUniforms.mapholderToPass(builder, this);
+        this.irisProgramUniforms = builder.buildUniforms();
+        this.irisProgramSamplers
+            = isShadowPass? pipeline.initShadowSamplers(handle) : pipeline.initTerrainSamplers(handle);
+        this.irisProgramImages = isShadowPass ? pipeline.initShadowImages(handle) : pipeline.initTerrainImages(handle);
 	}
 
-	public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
+	@Override
+    public void setup(MatrixStack matrixStack, float modelScale, float textureScale) {
 		super.setup(matrixStack, modelScale, textureScale);
 
 		if (irisProgramUniforms != null) {
@@ -61,6 +71,8 @@ public class IrisChunkProgram extends ChunkProgram {
 
 		uniformMatrix(uModelViewMatrix, modelViewMatrix);
 		uniformMatrix(uNormalMatrix, normalMatrix);
+
+        customUniforms.push(this);
 	}
 
 	@Override
@@ -86,7 +98,7 @@ public class IrisChunkProgram extends ChunkProgram {
 			return;
 		}
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             FloatBuffer buffer = stack.mallocFloat(16);
 
             matrix.get(buffer);

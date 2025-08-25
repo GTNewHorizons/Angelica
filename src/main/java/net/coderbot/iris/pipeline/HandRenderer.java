@@ -78,9 +78,8 @@ public class HandRenderer {
     }
 
     public boolean isHandTranslucent(InteractionHand hand) {
-        // TODO: Offhand
-//        Item item = Minecraft.getMinecraft().thePlayer.getItemBySlot(hand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND).getItem();
-        ItemStack heldItem = Minecraft.getMinecraft().thePlayer.getHeldItem();
+        ItemStack heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
+
         if (heldItem == null) {
             return false;
         }

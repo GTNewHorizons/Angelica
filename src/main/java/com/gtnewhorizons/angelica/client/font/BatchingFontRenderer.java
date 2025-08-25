@@ -1,16 +1,17 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import jss.util.RandomXoshiro256StarStar;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -42,13 +43,11 @@ public class BatchingFontRenderer {
     private int[] colorCode;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
-    /** The RenderEngine used to load and setup glyph textures. */
-    private final TextureManager renderEngine;
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
 
     /** The full list of characters present in the default Minecraft font, excluding the Unicode font */
     @SuppressWarnings("UnnecessaryUnicodeEscape")
-    private static final String MCFONT_CHARS = "\u00c0\u00c1\u00c2\u00c8\u00ca\u00cb\u00cd\u00d3\u00d4\u00d5\u00da\u00df\u00e3\u00f5\u011f\u0130\u0131\u0152\u0153\u015e\u015f\u0174\u0175\u017e\u0207\u0000\u0000\u0000\u0000\u0000\u0000\u0000 !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u0000\u00c7\u00fc\u00e9\u00e2\u00e4\u00e0\u00e5\u00e7\u00ea\u00eb\u00e8\u00ef\u00ee\u00ec\u00c4\u00c5\u00c9\u00e6\u00c6\u00f4\u00f6\u00f2\u00fb\u00f9\u00ff\u00d6\u00dc\u00f8\u00a3\u00d8\u00d7\u0192\u00e1\u00ed\u00f3\u00fa\u00f1\u00d1\u00aa\u00ba\u00bf\u00ae\u00ac\u00bd\u00bc\u00a1\u00ab\u00bb\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255d\u255c\u255b\u2510\u2514\u2534\u252c\u251c\u2500\u253c\u255e\u255f\u255a\u2554\u2569\u2566\u2560\u2550\u256c\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256b\u256a\u2518\u250c\u2588\u2584\u258c\u2590\u2580\u03b1\u03b2\u0393\u03c0\u03a3\u03c3\u03bc\u03c4\u03a6\u0398\u03a9\u03b4\u221e\u2205\u2208\u2229\u2261\u00b1\u2265\u2264\u2320\u2321\u00f7\u2248\u00b0\u2219\u00b7\u221a\u207f\u00b2\u25a0\u0000";
+    private static final String MCFONT_CHARS = "\u00c0\u00c1\u00c2\u00c8\u00ca\u00cb\u00cd\u00d3\u00d4\u00d5\u00da\u00df\u00e3\u00f5\u011f\u0130\u0131\u0152\u0153\u015e\u015f\u0174\u0175\u017e\u0207\u0000\u0000\u0000\u0000\u0000\u0000\u0000 !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u2302\u00c7\u00fc\u00e9\u00e2\u00e4\u00e0\u00e5\u00e7\u00ea\u00eb\u00e8\u00ef\u00ee\u00ec\u00c4\u00c5\u00c9\u00e6\u00c6\u00f4\u00f6\u00f2\u00fb\u00f9\u00ff\u00d6\u00dc\u00f8\u00a3\u00d8\u00d7\u0192\u00e1\u00ed\u00f3\u00fa\u00f1\u00d1\u00aa\u00ba\u00bf\u00ae\u00ac\u00bd\u00bc\u00a1\u00ab\u00bb\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255d\u255c\u255b\u2510\u2514\u2534\u252c\u251c\u2500\u253c\u255e\u255f\u255a\u2554\u2569\u2566\u2560\u2550\u256c\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256b\u256a\u2518\u250c\u2588\u2584\u258c\u2590\u2580\u03b1\u03b2\u0393\u03c0\u03a3\u03c3\u03bc\u03c4\u03a6\u0398\u03a9\u03b4\u221e\u2205\u2208\u2229\u2261\u00b1\u2265\u2264\u2320\u2321\u00f7\u2248\u00b0\u2219\u00b7\u221a\u207f\u00b2\u25a0\u0000";
 
     private static final short[] MCFONT_ASCII_LUT = new short[512];
     private static final Char2ShortOpenHashMap MCFONT_UNI_LUT = new Char2ShortOpenHashMap();
@@ -74,14 +73,13 @@ public class BatchingFontRenderer {
     }
 
     public BatchingFontRenderer(FontRenderer underlying, ResourceLocation[] unicodePageLocations, int[] charWidth,
-        byte[] glyphWidth, int[] colorCode, ResourceLocation locationFontTexture, TextureManager renderEngine) {
+        byte[] glyphWidth, int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
         this.unicodePageLocations = unicodePageLocations;
         this.charWidth = charWidth;
         this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
         this.locationFontTexture = locationFontTexture;
-        this.renderEngine = renderEngine;
 
         for (int i = 0; i < 64; i++) {
             batchCommandPool.add(new FontDrawCmd());
@@ -97,10 +95,10 @@ public class BatchingFontRenderer {
     private static final int INITIAL_BATCH_SIZE = 256;
     private static final ResourceLocation DUMMY_RESOURCE_LOCATION = new ResourceLocation("angelica$dummy",
         "this is invalid!");
-    private FloatBuffer batchVtxPositions = BufferUtils.createFloatBuffer(INITIAL_BATCH_SIZE * 2);
-    private ByteBuffer batchVtxColors = BufferUtils.createByteBuffer(INITIAL_BATCH_SIZE * 4);
-    private FloatBuffer batchVtxTexCoords = BufferUtils.createFloatBuffer(INITIAL_BATCH_SIZE * 2);
-    private IntBuffer batchIndices = BufferUtils.createIntBuffer(INITIAL_BATCH_SIZE / 2 * 3);
+    private FloatBuffer batchVtxPositions = memAllocFloat(INITIAL_BATCH_SIZE * 2);
+    private ByteBuffer batchVtxColors = memAlloc(INITIAL_BATCH_SIZE * 4);
+    private FloatBuffer batchVtxTexCoords = memAllocFloat(INITIAL_BATCH_SIZE * 2);
+    private IntBuffer batchIndices = memAllocInt(INITIAL_BATCH_SIZE / 2 * 3);
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
@@ -109,12 +107,12 @@ public class BatchingFontRenderer {
         final int oldCap = batchVtxPositions.capacity() / 2;
         if (vtxWriterIndex >= oldCap) {
             final int newCap = oldCap * 2;
-            batchVtxPositions = CompatMemoryUtil.memReallocDirect(batchVtxPositions, newCap * 2);
-            batchVtxColors = CompatMemoryUtil.memReallocDirect(batchVtxColors, newCap * 4);
-            batchVtxTexCoords = CompatMemoryUtil.memReallocDirect(batchVtxTexCoords, newCap * 2);
+            batchVtxPositions = memRealloc(batchVtxPositions, newCap * 2);
+            batchVtxColors = memRealloc(batchVtxColors, newCap * 4);
+            batchVtxTexCoords = memRealloc(batchVtxTexCoords, newCap * 2);
             final int oldIdxCap = batchIndices.capacity();
             final int newIdxCap = oldIdxCap * 2;
-            batchIndices = CompatMemoryUtil.memReallocDirect(batchIndices, newIdxCap);
+            batchIndices = memRealloc(batchIndices, newIdxCap);
         }
         final int idx = vtxWriterIndex;
         final int idx2 = idx * 2;
@@ -153,7 +151,7 @@ public class BatchingFontRenderer {
         return idx;
     }
 
-    private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture) {
+    private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode) {
         if (!batchCommands.isEmpty()) {
             final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
             final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
@@ -169,7 +167,7 @@ public class BatchingFontRenderer {
             }
         }
         final FontDrawCmd cmd = batchCommandPool.pop();
-        cmd.reset(startIdx, idxCount, texture);
+        cmd.reset(startIdx, idxCount, texture, isUnicode);
         batchCommands.add(cmd);
     }
 
@@ -177,12 +175,14 @@ public class BatchingFontRenderer {
 
         public int startVtx;
         public int idxCount;
+        public boolean isUnicode;
         public ResourceLocation texture;
 
-        public void reset(int startVtx, int vtxCount, ResourceLocation texture) {
+        public void reset(int startVtx, int vtxCount, ResourceLocation texture, boolean isUnicode) {
             this.startVtx = startVtx;
             this.idxCount = vtxCount;
             this.texture = texture;
+            this.isUnicode = isUnicode;
         }
 
         @Override
@@ -283,7 +283,21 @@ public class BatchingFontRenderer {
             }
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
+
+            Minecraft mc = Minecraft.getMinecraft();
+            int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
+            boolean shouldApplyFilter = cmd.isUnicode && scaleFactor % 2 != 0;
+
+            if (shouldApplyFilter) {
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            }
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
+
+            if (shouldApplyFilter) {
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            }
         }
 
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
@@ -370,7 +384,7 @@ public class BatchingFontRenderer {
                     if (curUnderline && underlineStartX != underlineEndX) {
                         final int ulIdx = idxWriterIndex;
                         pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, 1.0f, curColor);
-                        pushDrawCmd(ulIdx, 6, null);
+                        pushDrawCmd(ulIdx, 6, null, false);
                         underlineStartX = underlineEndX;
                     }
                     if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
@@ -381,7 +395,7 @@ public class BatchingFontRenderer {
                             strikethroughEndX - strikethroughStartX,
                             1.0f,
                             curColor);
-                        pushDrawCmd(ulIdx, 6, null);
+                        pushDrawCmd(ulIdx, 6, null, false);
                         strikethroughStartX = strikethroughEndX;
                     }
 
@@ -465,13 +479,13 @@ public class BatchingFontRenderer {
                     final int endColumn = this.glyphWidth[chr] & 15;
                     final float startColumnF = (float) startColumn;
                     final float endColumnF = (float) (endColumn + 1);
-                    uStart = ((float) (chr % 16 * 16) + startColumnF) / 256.0f;
-                    vStart = ((float) ((chr & 255) / 16 * 16)) / 256.0f;
+                    uStart = ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
+                    vStart = ((float) ((chr & 255) / 16 * 16) + 0.21f) / 256.0f;
                     final float chrWidth = endColumnF - startColumnF - 0.02F;
                     glyphW = chrWidth / 2.0f + 1.0f;
                     xAdvance = (endColumnF - startColumnF) / 2.0F + 1.0F;
-                    uSz = chrWidth / 256.0f;
-                    vSz = 15.98f / 256.0f;
+                    uSz = (chrWidth - 0.42f) / 256.0f;
+                    vSz = (16.0f - 0.42f) / 256.0f;
 
                 } else {
                     // Draw "ASCII" char
@@ -559,7 +573,7 @@ public class BatchingFontRenderer {
                     vtxCount += 4;
                 }
 
-                pushDrawCmd(idxId, vtxCount / 2 * 3, texture);
+                pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
                 curX += xAdvance + (curBold ? shadowOffset : 0.0f);
                 underlineEndX = curX;
                 strikethroughEndX = curX;
@@ -568,7 +582,7 @@ public class BatchingFontRenderer {
             if (curUnderline && underlineStartX != underlineEndX) {
                 final int ulIdx = idxWriterIndex;
                 pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, 1.0f, curColor);
-                pushDrawCmd(ulIdx, 6, null);
+                pushDrawCmd(ulIdx, 6, null, false);
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
                 final int ulIdx = idxWriterIndex;
@@ -578,7 +592,7 @@ public class BatchingFontRenderer {
                     strikethroughEndX - strikethroughStartX,
                     1.0f,
                     curColor);
-                pushDrawCmd(ulIdx, 6, null);
+                pushDrawCmd(ulIdx, 6, null, false);
             }
 
         } finally {

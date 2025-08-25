@@ -7,6 +7,7 @@ import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.entity.Entity;
+import net.minecraft.tileentity.TileEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -39,7 +40,7 @@ public class MixinEffectRenderer {
 
     @Redirect(method = "renderParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
     private void renderParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if(cullingFrustum == null || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
+        if(cullingFrustum == null || particle.boundingBox == TileEntity.INFINITE_EXTENT_AABB || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
             particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
         }
     }
@@ -51,7 +52,7 @@ public class MixinEffectRenderer {
 
     @Redirect(method = "renderLitParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
     private void renderLitParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if(cullingFrustum == null || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
+        if(cullingFrustum == null || particle.boundingBox == TileEntity.INFINITE_EXTENT_AABB || cullingFrustum.isBoundingBoxInFrustum(particle.boundingBox)) {
             particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
         }
     }

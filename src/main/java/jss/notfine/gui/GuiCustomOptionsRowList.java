@@ -26,10 +26,10 @@ public class GuiCustomOptionsRowList extends GuiListExtended {
         field_148163_i = false;
 
         for(OptionGroup optionGroup : optionPage.getGroups()) {
-            Iterator settings = optionGroup.getOptions().stream().iterator();
+            Iterator<Option<?>> settings = optionGroup.getOptions().stream().iterator();
             while(settings.hasNext()) {
-                Option optionOne = (Option)settings.next();
-                Option optionTwo = settings.hasNext() ? (Option)settings.next() : null;
+                Option<?> optionOne = settings.next();
+                Option<?> optionTwo = settings.hasNext() ? settings.next() : null;
                 GuiButton buttonOne = (GuiButton)optionOne.getControl().createElement(new Dim2i(width / 2 - 155,0,150,20), factory);
                 GuiButton buttonTwo = optionTwo == null ? null : (GuiButton)optionTwo.getControl().createElement(new Dim2i(width / 2 - 155 + 160,0,150,20), factory);
                 settingsList.add(new GuiCustomOptionsRowList.Row(buttonOne, buttonTwo));

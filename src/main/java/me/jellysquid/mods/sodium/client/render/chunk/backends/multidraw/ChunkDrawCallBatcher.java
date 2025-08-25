@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.CompatMemoryUtil;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import org.lwjgl.MemoryUtil;
@@ -83,10 +84,10 @@ public abstract class ChunkDrawCallBatcher extends StructBuffer {
                 throw new BufferUnderflowException();
             }
 
-            CompatMemoryUtil.memPutInt(this.writePointer     , count);         // Vertex Count
-            CompatMemoryUtil.memPutInt(this.writePointer +  4, instanceCount); // Instance Count
-            CompatMemoryUtil.memPutInt(this.writePointer +  8, first);         // Vertex Start
-            CompatMemoryUtil.memPutInt(this.writePointer + 12, baseInstance);  // Base Instance
+            memPutInt(this.writePointer     , count);         // Vertex Count
+            memPutInt(this.writePointer +  4, instanceCount); // Instance Count
+            memPutInt(this.writePointer +  8, first);         // Vertex Start
+            memPutInt(this.writePointer + 12, baseInstance);  // Base Instance
 
             this.writePointer += this.stride;
         }

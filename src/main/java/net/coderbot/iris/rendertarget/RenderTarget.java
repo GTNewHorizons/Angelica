@@ -1,6 +1,8 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.compat.lwjgl.MemoryStack;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
@@ -41,7 +43,7 @@ public class RenderTarget {
 		this.width = builder.width;
 		this.height = builder.height;
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (MemoryStack stack = stackPush()) {
             IntBuffer textures = stack.mallocInt(2);
             GL11.glGenTextures(textures);
 
