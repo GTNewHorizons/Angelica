@@ -1,23 +1,16 @@
 package com.gtnewhorizons.angelica.models;
 
-import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
-import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
-import com.gtnewhorizon.gtnhlib.client.model.Variant;
-import com.gtnewhorizon.gtnhlib.client.model.json.ModelLocation;
+import com.gtnewhorizon.gtnhlib.client.model.BakedModel;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockColoredCube;
 import com.gtnewhorizon.gtnhlib.client.model.template.BlockStaticCube;
-import com.gtnewhorizon.gtnhlib.client.model.template.Column3Rot;
-import com.gtnewhorizon.gtnhlib.client.model.template.Model4Rot;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import net.minecraft.block.Block;
-import net.minecraft.world.IBlockAccess;
-import net.minecraftforge.common.util.ForgeDirection;
-
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
+import net.minecraft.block.Block;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class VanillaModels {
 
@@ -30,53 +23,53 @@ public class VanillaModels {
     public static BlockColoredCube SPRUCE_LEAVES;
     public static BlockColoredCube BIRCH_LEAVES;
     public static BlockColoredCube JUNGLE_LEAVES;
-    public static QuadProvider OLD_LEAF = new QuadProvider() {
+    public static BakedModel OLD_LEAF = new BakedModel() {
         @Override
-        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, pos, block);
+        public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
+            return BakedModel.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 4) {
                 case 0 -> OAK_LEAVES;
                 case 1 -> SPRUCE_LEAVES;
                 case 2 -> BIRCH_LEAVES;
                 case 3 -> JUNGLE_LEAVES;
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
     public static BlockColoredCube ACACIA_LEAVES;
     public static BlockColoredCube DARK_OAK_LEAVES;
-    public static QuadProvider NEW_LEAF = new QuadProvider() {
+    public static BakedModel NEW_LEAF = new BakedModel() {
         @Override
-        public int getColor(IBlockAccess world, IBlockPos pos, Block block, int meta, Random random) {
-            return QuadProvider.getDefaultColor(world, pos, block);
+        public int getColor(IBlockAccess world, int x, int y, int z, Block block, int meta, Random random) {
+            return BakedModel.getDefaultColor(world, x, y, z, block);
         }
 
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
             return (switch (meta % 2) {
                 case 0 -> ACACIA_LEAVES;
                 case 1 -> DARK_OAK_LEAVES;
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
     };
 
-    public static Column3Rot OAK_LOG;
-    public static Column3Rot SPRUCE_LOG;
-    public static Column3Rot BIRCH_LOG;
-    public static Column3Rot JUNGLE_LOG;
+    //public static Column3Rot OAK_LOG;
+    //public static Column3Rot SPRUCE_LOG;
+    //public static Column3Rot BIRCH_LOG;
+    //public static Column3Rot JUNGLE_LOG;
     public static BlockStaticCube OAK_WOOD;
     public static BlockStaticCube BIRCH_WOOD;
     public static BlockStaticCube SPRUCE_WOOD;
     public static BlockStaticCube JUNGLE_WOOD;
-    public static QuadProvider OLD_LOG = new QuadProvider() {
+    /*public static BakedModel OLD_LOG = new BakedModel() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {
@@ -85,7 +78,7 @@ public class VanillaModels {
                     case 14 -> BIRCH_WOOD;
                     case 15 -> JUNGLE_WOOD;
                     default -> throw new IllegalStateException("Unexpected value: " + meta);
-                }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+                }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
             }
 
             Column3Rot ret = switch (meta % 4) {
@@ -101,24 +94,24 @@ public class VanillaModels {
                 case 1 -> ret.eastwest();
                 case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
-    };
+    };*/
 
-    public static Column3Rot ACACIA_LOG;
-    public static Column3Rot DARK_OAK_LOG;
+    //public static Column3Rot ACACIA_LOG;
+    //public static Column3Rot DARK_OAK_LOG;
     public static BlockStaticCube ACACIA_WOOD;
     public static BlockStaticCube DARK_OAK_WOOD;
-    public static QuadProvider NEW_LOG = new QuadProvider() {
+    /*public static BakedModel NEW_LOG = new BakedModel() {
         @Override
-        public List<QuadView> getQuads(IBlockAccess world, IBlockPos pos, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
+        public List<QuadView> getQuads(IBlockAccess world, int x, int y, int z, Block block, int meta, ForgeDirection dir, Random random, int color, Supplier<QuadView> quadPool) {
 
             if (meta > 11) {
                 return (switch (meta) {
                     case 12 -> ACACIA_WOOD;
                     case 13 -> DARK_OAK_WOOD;
                     default -> throw new IllegalStateException("Unexpected value: " + meta);
-                }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+                }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
             }
 
             Column3Rot ret = switch (meta % 4) {
@@ -132,19 +125,19 @@ public class VanillaModels {
                 case 1 -> ret.eastwest();
                 case 2 -> ret.northsouth();
                 default -> throw new IllegalStateException("Unexpected value: " + meta);
-            }).getQuads(world, pos, block, meta, dir, random, color, quadPool);
+            }).getQuads(world, x, y, z, block, meta, dir, random, color, quadPool);
         }
-    };
+    };*/
 
-    public static final Variant workbench = new Variant(
+    /*public static final Variant workbench = new Variant(
         new ModelLocation("block/crafting_table"),
         0,
         0,
         true
-    );
-    public static QuadProvider WORKBENCH;
+    );*/
+    public static BakedModel WORKBENCH;
 
-    public static Model4Rot LECTERN;
+    //public static Model4Rot LECTERN;
 
     public static void init() {
 
@@ -161,12 +154,12 @@ public class VanillaModels {
             OAK_LEAVES = new BlockColoredCube("leaves_oak");
             SPRUCE_LEAVES = new BlockColoredCube("leaves_spruce");
 
-            ACACIA_LOG = new Column3Rot(new ModelLocation("block/acacia_log"));
-            BIRCH_LOG = new Column3Rot(new ModelLocation("block/birch_log"));
-            DARK_OAK_LOG = new Column3Rot(new ModelLocation("block/dark_oak_log"));
-            JUNGLE_LOG = new Column3Rot(new ModelLocation("block/jungle_log"));
-            OAK_LOG = new Column3Rot(new ModelLocation("block/oak_log"));
-            SPRUCE_LOG = new Column3Rot(new ModelLocation("block/spruce_log"));
+            //ACACIA_LOG = new Column3Rot(new ModelLocation("block/acacia_log"));
+            //BIRCH_LOG = new Column3Rot(new ModelLocation("block/birch_log"));
+            //DARK_OAK_LOG = new Column3Rot(new ModelLocation("block/dark_oak_log"));
+            //JUNGLE_LOG = new Column3Rot(new ModelLocation("block/jungle_log"));
+            //OAK_LOG = new Column3Rot(new ModelLocation("block/oak_log"));
+            //SPRUCE_LOG = new Column3Rot(new ModelLocation("block/spruce_log"));
 
             ACACIA_WOOD = new BlockStaticCube("log_acacia");
             BIRCH_WOOD = new BlockStaticCube("log_birch");
@@ -175,17 +168,15 @@ public class VanillaModels {
             OAK_WOOD = new BlockStaticCube("log_oak");
             SPRUCE_WOOD = new BlockStaticCube("log_spruce");
 
-            ModelLoader.registerModels(VanillaModels::loadModels,
-                workbench);
+            //ModelLoader.registerModels(VanillaModels::loadModels, workbench);
         }
 
-        if (AngelicaConfig.enableTestBlocks)
-            LECTERN = new Model4Rot(new ModelLocation("block/lectern"));
+        //if (AngelicaConfig.enableTestBlocks) LECTERN = new Model4Rot(new ModelLocation("block/lectern"));
 
         init = true;
     }
 
-    public static void loadModels() {
+    /*public static void loadModels() {
         WORKBENCH = ModelLoader.getModel(workbench);
-    }
+    }*/
 }
