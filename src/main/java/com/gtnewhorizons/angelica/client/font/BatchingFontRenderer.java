@@ -4,6 +4,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import jss.util.RandomXoshiro256StarStar;
@@ -472,7 +473,7 @@ public class BatchingFontRenderer {
                         continue;
                     }
                     // Draw unicode char
-                    shadowOffset = 0.5F;
+                    shadowOffset = AngelicaConfig.shadowOffsetFontUC;
                     final int uniPage = chr / 256;
                     texture = getUnicodePageLocation(uniPage);
                     final int startColumn = this.glyphWidth[chr] >>> 4;

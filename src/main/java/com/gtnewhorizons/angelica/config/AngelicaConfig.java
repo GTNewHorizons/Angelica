@@ -87,6 +87,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 
+    @Config.Comment("OffSet fonts shadows draw")
+    @Config.DefaultFloat(0.5F)
+    @Config.RangeFloat(min = 0.5F, max = 1F)
+    public static float shadowOffsetFontUC;
+
     @Config.Comment("Enable Dynamic Lights")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
