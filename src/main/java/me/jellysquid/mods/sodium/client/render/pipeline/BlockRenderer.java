@@ -3,7 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.model.BakedModel;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadOrientation;
@@ -111,11 +111,11 @@ public class BlockRenderer {
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
-        final QuadProvider model = ((ModeledBlock) block).getModel();
+        final BakedModel model = ((ModeledBlock) block).getModel();
 
         if (model != null) {
 
-            final int color = model.getColor(world, pos, block, meta, random);
+            final int color = model.getColor(world, pos.x, pos.y, pos.z, block, meta, random);
 
             for (ForgeDirection dir : DirectionUtil.ALL_DIRECTIONS) {
 
@@ -123,7 +123,7 @@ public class BlockRenderer {
                 List<QuadView> quads;
 
                 if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-                    quads = model.getQuads(world, pos, block, meta, dir, random, color, this.quadPool::getInstance);
+                    quads = model.getQuads(world, pos.x, pos.y, pos.z, block, meta, dir, random, color, this.quadPool::getInstance);
                     if (quads.isEmpty()) continue;
 
                     this.renderQuadList(pos, lighter, buffers, quads, ModelQuadFacing.fromDirection(dir), true);
