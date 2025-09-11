@@ -34,19 +34,35 @@ public class Zoom {
         zoom = MathHelper.clamp_float((float) (zoom * Math.pow(ZOOM_STEP, Integer.signum(eventDWheel))), ZOOM_MIN, ZOOM_MAX);
     }
 
+    private static void resetMouseFilters(Minecraft mc) {
+        ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
+        ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
+    }
+
+    public static void resetZoom() {
+        final Minecraft mc = Minecraft.getMinecraft();
+
+        lastSmoothCameraState = false;
+        mc.gameSettings.smoothCamera = false;
+
+        resetMouseFilters(mc);
+    }
+
     @SubscribeEvent
     public void onKeyPress(InputEvent.KeyInputEvent e) {
         final int keyCode = zoomKey.getKeyCode();
         if (keyCode == 0 || Keyboard.getEventKey() != keyCode || Keyboard.isRepeatEvent()) return;
+
         final Minecraft mc = Minecraft.getMinecraft();
+        if (mc.currentScreen != null) return;
+
         if (Keyboard.getEventKeyState()) {
             lastSmoothCameraState = mc.gameSettings.smoothCamera;
             mc.gameSettings.smoothCamera = true;
         } else {
             zoom = ZOOM_DEFAULT;
             if (mc.gameSettings.smoothCamera != lastSmoothCameraState) {
-                ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
-                ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
+                resetMouseFilters(mc);
             }
             mc.gameSettings.smoothCamera = lastSmoothCameraState;
         }
