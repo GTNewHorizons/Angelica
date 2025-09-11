@@ -12,14 +12,15 @@ import org.lwjgl.input.Keyboard;
 
 public class Zoom {
 
-    @Getter
-    private static float zoom = 4.0F;
-    @Getter
-    private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
-
     public static final float ZOOM_MIN = 1.0F;
     public static final float ZOOM_MAX = 64.0F;
     public static final float ZOOM_STEP = 1.2F;
+    public static final float ZOOM_DEFAULT = 4.0F;
+
+    @Getter
+    private static float zoom = ZOOM_DEFAULT;
+    @Getter
+    private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
 
     private static boolean lastSmoothCameraState = false;
 
@@ -42,7 +43,7 @@ public class Zoom {
             lastSmoothCameraState = mc.gameSettings.smoothCamera;
             mc.gameSettings.smoothCamera = true;
         } else {
-            zoom = 4.0F;
+            zoom = ZOOM_DEFAULT;
             if (mc.gameSettings.smoothCamera != lastSmoothCameraState) {
                 ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
                 ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
