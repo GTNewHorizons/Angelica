@@ -8,7 +8,6 @@ import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.MathHelper;
-import org.lwjgl.input.Keyboard;
 
 public class Zoom {
 
@@ -22,11 +21,15 @@ public class Zoom {
     @Getter
     private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
 
-    private static boolean lastSmoothCameraState = false;
+    private static boolean zoomEnabled = false;
 
     public static void init() {
         ClientRegistry.registerKeyBinding(zoomKey);
         FMLCommonHandler.instance().bus().register(new Zoom());
+    }
+
+    public static boolean isZoomedIn() {
+        return zoomEnabled;
     }
 
     public static void modifyZoom(int eventDWheel) {
@@ -42,29 +45,22 @@ public class Zoom {
     public static void resetZoom() {
         final Minecraft mc = Minecraft.getMinecraft();
 
-        lastSmoothCameraState = false;
-        mc.gameSettings.smoothCamera = false;
-
+        zoomEnabled = false;
+        zoom = ZOOM_DEFAULT;
         resetMouseFilters(mc);
     }
 
     @SubscribeEvent
     public void onKeyPress(InputEvent.KeyInputEvent e) {
-        final int keyCode = zoomKey.getKeyCode();
-        if (keyCode == 0 || Keyboard.getEventKey() != keyCode || Keyboard.isRepeatEvent()) return;
+        if (zoomKey.getKeyCode() == 0) return;
 
         final Minecraft mc = Minecraft.getMinecraft();
         if (mc.currentScreen != null) return;
 
-        if (Keyboard.getEventKeyState()) {
-            lastSmoothCameraState = mc.gameSettings.smoothCamera;
-            mc.gameSettings.smoothCamera = true;
-        } else {
-            zoom = ZOOM_DEFAULT;
-            if (mc.gameSettings.smoothCamera != lastSmoothCameraState) {
-                resetMouseFilters(mc);
-            }
-            mc.gameSettings.smoothCamera = lastSmoothCameraState;
+        if (zoomKey.getIsKeyPressed()) {
+            zoomEnabled = true;
+        } else if (zoomEnabled) {
+            resetZoom();
         }
     }
 }
