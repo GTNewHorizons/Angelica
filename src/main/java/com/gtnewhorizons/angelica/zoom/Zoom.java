@@ -8,6 +8,7 @@ import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.MathHelper;
+import org.lwjgl.input.Mouse;
 
 public class Zoom {
 
@@ -50,8 +51,7 @@ public class Zoom {
         resetMouseFilters(mc);
     }
 
-    @SubscribeEvent
-    public void onKeyPress(InputEvent.KeyInputEvent e) {
+    private void handleKeyEvent() {
         if (zoomKey.getKeyCode() == 0) return;
 
         final Minecraft mc = Minecraft.getMinecraft();
@@ -61,6 +61,20 @@ public class Zoom {
             zoomEnabled = true;
         } else if (zoomEnabled) {
             resetZoom();
+        }
+    }
+
+    @SubscribeEvent
+    public void onKeyPress(InputEvent.KeyInputEvent e) {
+        handleKeyEvent();
+    }
+
+    @SubscribeEvent
+    public void onMouseKeyPress(InputEvent.MouseInputEvent e) {
+        // MouseInputEvent is also fired on mouse movement, which we don't care about, only mouse button presses, so
+        // ensure that before any further key processing.
+        if (Mouse.getEventButton() >= 0) {
+            handleKeyEvent();
         }
     }
 }
