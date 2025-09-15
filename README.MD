@@ -7,7 +7,7 @@
 * It's a cute angle -mitchej123
 * It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons** 
+## **Beta Quality - Here there be Dragons**
 * Shaders - Beta
    * Complementary & BSL mostly function, but have some bugs
    * Sildurs, Seus, and any other shader probably doesn't work
@@ -27,7 +27,6 @@
 
 # Known Incompatibilities
 * FalseTweaks - Not currently planned (Looking for volunteers) [Might work if you effectively disable most of the mod]
-* SmoothFont - Not currently planned (Looking for volunteers)
 * RPLE - Not currently planned (Looking for volunteers)
 * LiteLoader - Install [LiteloaderLoader](https://github.com/Midnight145/LiteloaderLoader)
 

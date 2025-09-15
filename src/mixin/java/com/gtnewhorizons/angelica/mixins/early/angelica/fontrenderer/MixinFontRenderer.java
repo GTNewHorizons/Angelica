@@ -191,4 +191,15 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     private int angelica$maxCharWidth(int original) {
         return Integer.MAX_VALUE;
     }
+
+    @Inject(method = "getStringWidth", at = @At("HEAD"), cancellable = true)
+    public void getStringWidth(String text, CallbackInfoReturnable<Integer> cir) {
+        cir.setReturnValue(angelica$getBatcher().getStringWidth(text));
+    }
+
+    @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
+    public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {
+        cir.setReturnValue((int) angelica$getBatcher().getCharWidth(c));
+    }
+
 }
