@@ -17,6 +17,7 @@ public class SodiumBlockTransformer implements IClassTransformer {
     public SodiumBlockTransformer() {
         this.inner = new SodiumBlockTransform(AngelicaTweaker.isObfEnv());
         this.exclusions = inner.getTransformerExclusions();
+        this.inner.setSodiumSetting();
     }
 
     /**

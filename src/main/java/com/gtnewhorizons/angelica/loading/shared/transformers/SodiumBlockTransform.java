@@ -59,6 +59,7 @@ public class SodiumBlockTransform {
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
     private static final MethodHandle angelicaConfigSodiumEnabledGetter;
+    private static boolean isSodiumEnabled;
 
     static {
         try {
@@ -70,6 +71,7 @@ public class SodiumBlockTransform {
     }
 
     private static boolean isSodiumEnabled() {
+        if (isSodiumEnabled) return true;
         try {
             return (boolean) angelicaConfigSodiumEnabledGetter.invokeExact();
         } catch (Throwable e) {
@@ -201,5 +203,9 @@ public class SodiumBlockTransform {
         }
 
         return changed;
+    }
+
+    public void setSodiumSetting() {
+        isSodiumEnabled = true;
     }
 }
