@@ -116,6 +116,10 @@ public class SodiumBlockTransform {
             return false;
         }
 
+        if ("net.minecraft.block.Block".equals(transformedName) && isSodiumEnabled()) {
+            cn.fields.removeIf(field -> BlockBoundsFields.stream().anyMatch(pair -> field.name.equals(pair.getLeft()) || field.name.equals(pair.getRight())));
+        }
+
         // Track subclasses of Block
         if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
             moddedBlockSubclasses.add(cn.name);
