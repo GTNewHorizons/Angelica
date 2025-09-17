@@ -473,18 +473,17 @@ public class BatchingFontRenderer {
                 } else {
                     fontProvider = FontProviderMC.get(this.isSGA);
                 }
+                if (curRandom) {
+                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                }
                 boolean charAvailable = fontProvider.isGlyphAvailable(chr);
                 if (!charAvailable) {
                     fontProvider = FontProviderUnicode.get();
                 }
 
-                if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
-                }
-
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4 * getWhitespaceScale();
+                    curX += 4 * this.getWhitespaceScale();
                     continue;
                 }
 
@@ -570,43 +569,47 @@ public class BatchingFontRenderer {
     }
 
     public int getStringWidth(String text) {
-        if (text == null) { return 0; }
+        if (text == null || text.isEmpty()) { return 0; }
 
         float width = 0;
         boolean curBold = false;
 
         for (int i = 0; i < text.length(); ++i) {
             char ch = text.charAt(i);
-            float k = this.getCharWidth(ch);
+            float charWidth = this.getCharWidth(ch);
 
-            if (ch == FORMATTING_CHAR && i < text.length() - 1) {
+            if (charWidth < 0 && i < text.length() - 1) {
                 i++;
-                ch = text.charAt(i);
+                char fmtChar = Character.toLowerCase(text.charAt(i));
 
-                if (ch == 'l' || ch == 'L') {
+                if (fmtChar == 'l' || fmtChar == 'L') {
                     curBold = true;
-                } else if (ch == 'r' || ch == 'R') {
-                    curBold = false;
+                } else {
+                    final boolean is09 = charInRange(fmtChar, '0', '9');
+                    final boolean isAF = charInRange(fmtChar, 'a', 'f');
+                    if (fmtChar == 'r' || is09 || isAF) {
+                        curBold = false;
+                    }
                 }
 
-                k = 0;
+                charWidth = 0;
             }
 
-            width += k * getGlyphSpacing();
+            width += charWidth * this.getGlyphSpacing();
 
-            if (curBold && k > 0) {
-                width += fontProvider.getShadowOffset() * getGlyphSpacing();
+            if (curBold && charWidth > 0) {
+                width += fontProvider.getShadowOffset() * this.getGlyphSpacing();
             }
-
         }
 
         return (int)width;
     }
 
     public float getCharWidth(char chr) {
+        if (chr == FORMATTING_CHAR) { return -1; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-            return 4 * getWhitespaceScale();
+            return 4 * this.getWhitespaceScale();
         }
 
         FontProvider fp;
@@ -622,6 +625,6 @@ public class BatchingFontRenderer {
             fp = FontProviderUnicode.get();
         }
 
-        return fp.getXAdvance(chr) * getGlyphScaleX();
+        return fp.getXAdvance(chr) * this.getGlyphScaleX();
     }
 }

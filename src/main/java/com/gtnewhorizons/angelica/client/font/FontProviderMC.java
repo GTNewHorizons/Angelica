@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
+import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.util.ResourceLocation;
-
-import java.util.Arrays;
 
 public final class FontProviderMC implements FontProvider {
 
@@ -23,32 +22,27 @@ public final class FontProviderMC implements FontProvider {
         return (isSGA ? InstLoader.instanceSGA : InstLoader.instance);
     }
 
-    private static final short[] MCFONT_ASCII_LUT = new short[512];
+    private static final Char2ShortOpenHashMap MCFONT_ASCII_MAP = new Char2ShortOpenHashMap();
     ResourceLocation locationFontTexture = null;
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
     public int[] charWidth;
 
     static {
-        Arrays.fill(MCFONT_ASCII_LUT, (short) -1);
         for (short i = 0; i < MCFONT_CHARS.length(); i++) {
-            char ch = MCFONT_CHARS.charAt(i);
-            if (ch < MCFONT_ASCII_LUT.length) {
-                MCFONT_ASCII_LUT[ch] = i;
-            }
+            MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i);
         }
     }
 
     public int lookupMcFontPosition(char ch) {
-        if (ch < MCFONT_ASCII_LUT.length) {
-            return MCFONT_ASCII_LUT[ch];
-        } else {
-            return -1;
+        if (isGlyphAvailable(ch)) {
+            return MCFONT_ASCII_MAP.get(ch);
         }
+        return -1;
     }
 
     @Override
     public boolean isGlyphAvailable(char chr) {
-        return (chr < MCFONT_ASCII_LUT.length) && (MCFONT_ASCII_LUT[chr] != -1);
+        return MCFONT_ASCII_MAP.containsKey(chr);
     }
 
     public char getRandomReplacement(char chr){
