@@ -1,9 +1,11 @@
 #version 130
 
-varying vec4 color;
 uniform sampler2D sampler;
 uniform int aaMode;
 uniform float strength;
+
+varying vec4 color;
+varying vec4 tB;
 
 /*
 A rather nonstandard and hacky effect that approximates how MSAA works. There _may_ have been simpler means of
@@ -12,20 +14,23 @@ achieving the produced effects, but this appears to work without noticeable perf
 
 float totalWt;
 
-vec4 txSample(vec2 uv, float du, float dv, float factor) {
+float txSample(vec2 uv, float du, float dv, float factor) {
     float distSquared = sqrt(du * du + dv * dv);
     float weight = exp(-distSquared / 6);
     totalWt += weight;
     float finalU = uv.x + factor * du;
     float finalV = uv.y + factor * dv;
-    return weight * texture2D(sampler, vec2(finalU, finalV));
+    if (finalU < tB.x || finalU > tB.y || finalV < tB.z || finalV > tB.w) {
+        return 0;
+    }
+    return weight * texture2D(sampler, vec2(finalU, finalV)).a;
 }
 
 void main() {
     vec2 txSize = textureSize(sampler, 0).xy;
     vec2 texCoords = gl_TexCoord[0].st;
 
-    vec4 res = vec4(0);
+    float res = 0;
     float f = strength * fwidth(dot(texCoords, txSize)) / sqrt(txSize.x * txSize.x + txSize.y * txSize.y);
     totalWt = 0;
     if (aaMode == 1) {
@@ -52,7 +57,9 @@ void main() {
         res += txSample(texCoords, -7, -8, f);
     }
     res /= totalWt;
-    res.a *= 1.25;
 
-    gl_FragColor = res * color;
+    vec4 col = color;
+    col.a = res;
+
+    gl_FragColor = col;
 }
