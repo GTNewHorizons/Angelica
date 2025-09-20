@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
+import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -26,7 +27,7 @@ import java.util.Random;
  * @author eigenraven
  */
 @Mixin(FontRenderer.class)
-public abstract class MixinFontRenderer implements FontRendererAccessor {
+public abstract class MixinFontRenderer implements FontRendererAccessor, IFontParameters {
 
     @Shadow
     private boolean randomStyle;
@@ -199,7 +200,36 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
 
     @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
     public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue((int) angelica$getBatcher().getCharWidth(c));
+        cir.setReturnValue((int) angelica$getBatcher().getCharWidthFine(c));
     }
 
+    @Override
+    public float getGlyphScaleX() {
+        return angelica$getBatcher().getGlyphScaleX();
+    }
+
+    @Override
+    public float getGlyphScaleY() {
+        return angelica$getBatcher().getGlyphScaleY();
+    }
+
+    @Override
+    public float getGlyphSpacing() {
+        return angelica$getBatcher().getGlyphSpacing();
+    }
+
+    @Override
+    public float getWhitespaceScale() {
+        return angelica$getBatcher().getWhitespaceScale();
+    }
+
+    @Override
+    public float getShadowOffset() {
+        return angelica$getBatcher().getShadowOffset();
+    }
+
+    @Override
+    public float getCharWidthFine(char chr) {
+        return angelica$getBatcher().getCharWidthFine(chr);
+    }
 }
