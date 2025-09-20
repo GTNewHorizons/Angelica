@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -346,20 +347,24 @@ public class BatchingFontRenderer {
         return (what >= fromInclusive) && (what <= toInclusive);
     }
 
-    private float getGlyphScaleX() {
+    public float getGlyphScaleX() {
         return (this.isSGA ? 1 : FontConfig.glyphScaleX);
     }
 
-    private float getGlyphScaleY() {
+    public float getGlyphScaleY() {
         return (this.isSGA ? 1 : FontConfig.glyphScaleY);
     }
 
-    private float getGlyphSpacing() {
+    public float getGlyphSpacing() {
         return (this.isSGA ? 1 : FontConfig.glyphSpacing);
     }
 
-    private float getWhitespaceScale() {
+    public float getWhitespaceScale() {
         return (this.isSGA ? 1 : FontConfig.whitespaceScale);
+    }
+
+    public float getShadowOffset() {
+        return (this.isSGA ? 1 : FontConfig.fontShadowOffset);
     }
 
     private static final char FORMATTING_CHAR = 167; // §
@@ -494,7 +499,7 @@ public class BatchingFontRenderer {
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
-                final float shadowOffset = fontProvider.getShadowOffset() * getGlyphScaleX();
+                final float shadowOffset = fontProvider.getShadowOffset();
                 final ResourceLocation texture = fontProvider.getTexture(chr);
 
                 final int vtxId = vtxWriterIndex;
@@ -541,7 +546,7 @@ public class BatchingFontRenderer {
                 }
 
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
-                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) * getGlyphSpacing();
+                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
             }
@@ -569,43 +574,10 @@ public class BatchingFontRenderer {
     }
 
     public int getStringWidth(String text) {
-        if (text == null || text.isEmpty()) { return 0; }
-
-        float width = 0;
-        boolean curBold = false;
-
-        for (int i = 0; i < text.length(); ++i) {
-            char ch = text.charAt(i);
-            float charWidth = this.getCharWidth(ch);
-
-            if (charWidth < 0 && i < text.length() - 1) {
-                i++;
-                char fmtChar = Character.toLowerCase(text.charAt(i));
-
-                if (fmtChar == 'l' || fmtChar == 'L') {
-                    curBold = true;
-                } else {
-                    final boolean is09 = charInRange(fmtChar, '0', '9');
-                    final boolean isAF = charInRange(fmtChar, 'a', 'f');
-                    if (fmtChar == 'r' || is09 || isAF) {
-                        curBold = false;
-                    }
-                }
-
-                charWidth = 0;
-            }
-
-            width += charWidth * this.getGlyphSpacing();
-
-            if (curBold && charWidth > 0) {
-                width += fontProvider.getShadowOffset() * this.getGlyphSpacing();
-            }
-        }
-
-        return (int)width;
+        return FontRendering.getStringWidth(text, underlying);
     }
 
-    public float getCharWidth(char chr) {
+    public float getCharWidthFine(char chr) {
         if (chr == FORMATTING_CHAR) { return -1; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {

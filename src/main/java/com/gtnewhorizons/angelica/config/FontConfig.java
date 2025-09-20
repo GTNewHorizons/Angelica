@@ -37,9 +37,9 @@ public class FontConfig {
     @Config.RangeFloat(min = 0.1F, max = 3F)
     public static float whitespaceScale;
 
-    @Config.Comment("Glyph spacing multiplier.")
-    @Config.DefaultFloat(1F)
-    @Config.RangeFloat(min = 0.1F, max = 3F)
+    @Config.Comment("Adds extra spacing between glyphs.")
+    @Config.DefaultFloat(0F)
+    @Config.RangeFloat(min = -2F, max = 2F)
     public static float glyphSpacing;
 
     @Config.Comment("Controls font antialiasing. 0 = none, 1 = 4x MSAA, 2 = 16x MSAA.")

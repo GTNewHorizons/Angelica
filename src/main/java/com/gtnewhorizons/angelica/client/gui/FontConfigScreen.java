@@ -34,12 +34,13 @@ public class FontConfigScreen extends GuiScreen {
             }
         }
     }
+
     SliderClone.Option optFontQuality = new SliderClone.Option(12, 72, 12);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
     SliderClone.Option optGlyphScaleY = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optGlyphScaleX = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optWhitespaceScale = new SliderClone.Option(0.1f, 3, 0.05f);
-    SliderClone.Option optGlyphSpacing = new SliderClone.Option(0.1f, 3, 0.05f);
+    SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 12, 1);
 
@@ -59,13 +60,13 @@ public class FontConfigScreen extends GuiScreen {
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 40 - 11, 120, 20,
             optFontQuality, FontConfig.customFontQuality, this::setFontQuality, value -> I18n.format("options.angelica.fontconfig.font_quality", String.format("%2.0f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 60 - 15, 120, 20,
-            optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value, value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("%3.2f", value))));
+            optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value, value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 40 - 11, 120, 20,
-            optGlyphScaleY, FontConfig.glyphScaleY, value -> FontConfig.glyphScaleY = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_y", String.format("%3.2f", value))));
+            optGlyphScaleY, FontConfig.glyphScaleY, value -> FontConfig.glyphScaleY = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_y", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 60 - 15, 120, 20,
-            optGlyphScaleX, FontConfig.glyphScaleX, value -> FontConfig.glyphScaleX = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_x", String.format("%3.2f", value))));
+            optGlyphScaleX, FontConfig.glyphScaleX, value -> FontConfig.glyphScaleX = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_x", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 40 - 11, 120, 20,
-            optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value, value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("%3.2f", value))));
+            optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value, value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 60 - 15, 120, 20,
             optGlyphSpacing, FontConfig.glyphSpacing, value -> FontConfig.glyphSpacing = value, value -> I18n.format("options.angelica.fontconfig.glyph_spacing", String.format("%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 186, this.height - 40 - 11, 120, 20,
@@ -81,9 +82,9 @@ public class FontConfigScreen extends GuiScreen {
 
     private void applyChanges(boolean finalApply) {
         if (selectedFontListPos < 0) { return; }
+        FontConfig.customFontName = availableFonts[selectedFontListPos].getFontName();
         if (FontConfig.enableCustomFont) {
             FontProviderCustom.get().reloadFont(selectedFontListPos, finalApply);
-            FontConfig.customFontName = availableFonts[selectedFontListPos].getFontName();
         }
         if (finalApply) {
             ConfigurationManager.save(FontConfig.class);
@@ -102,6 +103,9 @@ public class FontConfigScreen extends GuiScreen {
 
     private void toggleCustomFont(IrisButton button) {
         FontConfig.enableCustomFont = !FontConfig.enableCustomFont;
+        if (FontConfig.enableCustomFont) {
+            applyChanges(false);
+        }
         button.displayString = FontConfig.enableCustomFont ?
             I18n.format("options.angelica.fontconfig.disable_custom_font") :
             I18n.format("options.angelica.fontconfig.enable_custom_font");
