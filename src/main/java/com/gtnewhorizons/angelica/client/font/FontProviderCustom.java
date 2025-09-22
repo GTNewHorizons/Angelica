@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.DefaultResourcePack;
 import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +27,15 @@ import java.util.List;
 import java.util.Objects;
 
 public final class FontProviderCustom implements FontProvider {
+
+    public static final Logger LOGGER = LogManager.getLogger("Angelica");
+    public static final String FONT_DIR = "fonts/custom/";
+    private static final int ATLAS_COUNT = 512;
+    private static final int ATLAS_SIZE = 128;
+    private final DefaultResourcePack fontResourcePack;
+    private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
+    private Font font;
+    private float currentFontQuality = FontConfig.customFontQuality;
 
     private FontProviderCustom() {
         Font[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
@@ -49,14 +59,9 @@ public final class FontProviderCustom implements FontProvider {
         font = availableFonts[fontPos].deriveFont(currentFontQuality);
 
         HashMap<String, File> packMap = new HashMap<>();
-        atlasGroupID = 0;
-        for (int j = 0; j < MAX_ATLAS_GROUPS; j++) {
-            for (int i = 0; i < ATLAS_COUNT; i++) {
-                packMap.put(getAtlasResourceName(i), new File(getAtlasFullPath(i)));
-            }
-            atlasGroupID++;
+        for (int i = 0; i < ATLAS_COUNT; i++) {
+            packMap.put(getAtlasResourceName(i), new File(getAtlasFullPath(i)));
         }
-        atlasGroupID = 0;
 
         fontResourcePack = new DefaultResourcePack(packMap);
         List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
@@ -66,20 +71,7 @@ public final class FontProviderCustom implements FontProvider {
     private static class InstLoader { static final FontProviderCustom instance = new FontProviderCustom(); }
     public static FontProviderCustom get() { return InstLoader.instance; }
 
-
-    public static Logger LOGGER = LogManager.getLogger("Angelica");
-
-    private final DefaultResourcePack fontResourcePack;
-    public static final String FONT_DIR = "fonts/custom/";
-    private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
-    private Font font;
-    private float currentFontQuality = FontConfig.customFontQuality;
-    private int atlasGroupID = 0;
-    private static final int MAX_ATLAS_GROUPS = 64;
-    private static final int ATLAS_COUNT = 64;
-    private static final int ATLAS_SIZE = 1024;
-
-    public void reloadFont(int fontID, boolean finalReload) {
+    public void reloadFont(int fontID) {
         currentFontQuality = FontConfig.customFontQuality;
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         font = ge.getAllFonts()[fontID].deriveFont(currentFontQuality);
@@ -92,16 +84,17 @@ public final class FontProviderCustom implements FontProvider {
                 }
             }
         }
-        atlasGroupID++;
-        if (finalReload || atlasGroupID == MAX_ATLAS_GROUPS) {
-            atlasGroupID = 0;
-            Minecraft.getMinecraft().refreshResources();
+
+        TextureManager tm = Minecraft.getMinecraft().getTextureManager();
+        for (int i = 0; i < ATLAS_COUNT; i++) {
+            tm.mapTextureObjects.remove(new ResourceLocation(getAtlasResourceName(i)));
         }
+
         fontAtlases = new FontAtlas[ATLAS_COUNT];
     }
 
     private String getAtlasFilename(int atlasId) {
-        return "p" + atlasId + "-" + atlasGroupID;
+        return "page" + atlasId;
     }
 
     private String getAtlasResourceName(int atlasId) {
@@ -190,7 +183,7 @@ public final class FontProviderCustom implements FontProvider {
             fm = g2d.getFontMetrics();
 
             int tileX = 0, tileY = 0; // position in atlas tiles
-            int imgX = 0; // position in pixels
+            int imgX = (int) separator; // position in pixels
 
             for (int i = 0; i < ATLAS_SIZE; i++) {
                 final char ch = (char)(i + ATLAS_SIZE * this.id);

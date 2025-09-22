@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSlot;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
+import org.lwjgl.input.Keyboard;
 
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
@@ -76,15 +77,15 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void onClose() {
-        this.mc.displayGuiScreen(parent);
         applyChanges(true);
+        this.mc.displayGuiScreen(parent);
     }
 
     private void applyChanges(boolean finalApply) {
         if (selectedFontListPos < 0) { return; }
         FontConfig.customFontName = availableFonts[selectedFontListPos].getFontName();
         if (FontConfig.enableCustomFont) {
-            FontProviderCustom.get().reloadFont(selectedFontListPos, finalApply);
+            FontProviderCustom.get().reloadFont(selectedFontListPos);
         }
         if (finalApply) {
             ConfigurationManager.save(FontConfig.class);
@@ -112,6 +113,7 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private int qualityLast = FontConfig.customFontQuality;
+
     private void setFontQuality(float quality) {
         FontConfig.customFontQuality = (int) quality;
         if (qualityLast != (int) quality) {
@@ -119,7 +121,6 @@ public class FontConfigScreen extends GuiScreen {
         }
         qualityLast = (int) quality;
     }
-
     private String fontAAModeFormat(float AAmode) {
         return switch ((int) AAmode) {
             case 2 -> I18n.format("options.angelica.fontconfig.aa_16x");
@@ -142,6 +143,13 @@ public class FontConfigScreen extends GuiScreen {
             if (guiButton instanceof IrisButton irisButton) {
                 irisButton.onPress();
             }
+        }
+    }
+
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) {
+        if (keyCode == Keyboard.KEY_ESCAPE) {
+            this.onClose();
         }
     }
 
