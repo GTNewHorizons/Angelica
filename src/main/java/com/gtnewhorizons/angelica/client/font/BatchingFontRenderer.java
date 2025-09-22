@@ -573,10 +573,6 @@ public class BatchingFontRenderer {
         return curX + (enableShadow ? 1.0f : 0.0f);
     }
 
-    public int getStringWidth(String text) {
-        return FontRendering.getStringWidth(text, underlying);
-    }
-
     public float getCharWidthFine(char chr) {
         if (chr == FORMATTING_CHAR) { return -1; }
 
