@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
