@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
@@ -35,16 +34,6 @@ import java.util.stream.Collectors;
  * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD
  */
 public final class AngelicaRedirector {
-    // TODO(Alexdoru) properly split this class in two because currently this class is doing
-    //  two very different things :
-    //  - redirect the GL calls to our GL manager class
-    //  - replace the block fields with a thread safe replacement (only if Sodium is enabled)
-
-    public AngelicaRedirector(boolean isObf) {
-        IS_OBF = isObf;
-    }
-
-    private final boolean IS_OBF;
 
     private static final boolean ASSERT_MAIN_THREAD = Boolean.getBoolean("angelica.assertMainThread");
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
@@ -56,47 +45,19 @@ public final class AngelicaRedirector {
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
     private static final String Project = "org/lwjgl/util/glu/Project";
-
-    private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String BlockPackage = "net/minecraft/block/Block";
-
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String MinecraftClient = "net.minecraft.client";
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
-    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
         "startGame", "func_71384_a",
         "initializeTextures", "func_77474_a"
     );
-    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
-        Pair.of("minX", "field_149759_B"),
-        Pair.of("minY", "field_149760_C"),
-        Pair.of("minZ", "field_149754_D"),
-        Pair.of("maxX", "field_149755_E"),
-        Pair.of("maxY", "field_149756_F"),
-        Pair.of("maxZ", "field_149757_G")
-    );
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final String[] VanillaBlockExclusions = {
-        "net/minecraft/block/IGrowable",
-        "net/minecraft/block/ITileEntityProvider",
-        "net/minecraft/block/BlockEventData",
-        "net/minecraft/block/BlockSourceImpl",
-        "net/minecraft/block/material/"
-    };
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
-
-    private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Block owners we *shouldn't* redirect because they shadow one of our fields
-    private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
-    private static final MethodHandle angelicaConfigSodiumEnabledGetter;
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -220,41 +181,6 @@ public final class AngelicaRedirector {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
-
-        try {
-            final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            angelicaConfigSodiumEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableSodium", boolean.class);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static boolean isSodiumEnabled() {
-        try {
-            return (boolean) angelicaConfigSodiumEnabledGetter.invokeExact();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private boolean isVanillaBlockSubclass(String className) {
-        if (className.startsWith(BlockPackage)) {
-            for (String exclusion : VanillaBlockExclusions) {
-                if (className.startsWith(exclusion)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private boolean isBlockSubclass(String className) {
-        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
-    }
-
-    private String getFieldName(Pair<String, String> fieldPair) {
-        return IS_OBF ? fieldPair.getRight() : fieldPair.getLeft();
     }
 
     public String[] getTransformerExclusions() {
@@ -274,30 +200,6 @@ public final class AngelicaRedirector {
     public boolean transformClassNode(String transformedName, ClassNode cn) {
         if (cn == null) {
             return false;
-        }
-
-        // Track subclasses of Block
-        if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
-            moddedBlockSubclasses.add(cn.name);
-            cstPoolParser.addString(cn.name);
-        }
-
-        // Check if this class shadows any fields of the parent class
-        if (moddedBlockSubclasses.contains(cn.name)) {
-            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
-            // superclass
-            boolean doWeShadow;
-            if (blockOwnerExclusions.contains(cn.superName)) {
-                doWeShadow = true;
-            } else {
-                // Check if we declare any known field names
-                doWeShadow = BlockBoundsFields.stream().anyMatch(pair ->
-                    cn.fields.stream().anyMatch(field -> field.name.equals(getFieldName(pair))));
-            }
-            if (doWeShadow) {
-                LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
-                blockOwnerExclusions.add(cn.name);
-            }
         }
 
         boolean changed = false;
@@ -358,42 +260,6 @@ public final class AngelicaRedirector {
                             mNode.name = redirects.get(mNode.name);
                             changed = true;
                             redirectInMethod = true;
-                        }
-                    }
-                } else if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
-                        Pair<String, String> fieldToRedirect = BlockBoundsFields.stream()
-                            .filter(pair -> fNode.name.equals(getFieldName(pair)))
-                            .findFirst()
-                            .orElse(null);
-                        if (fieldToRedirect != null) {
-                            if (LOG_SPAM) {
-                                LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
-                            }
-                            // Perform the redirect
-                            fNode.name = fieldToRedirect.getLeft(); // use unobfuscated name
-                            fNode.owner = ThreadedBlockData;
-                            // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                            if (node.getOpcode() == Opcodes.GETFIELD) {
-                                mn.instructions.insertBefore(fNode, getter);
-                            } else if (node.getOpcode() == Opcodes.PUTFIELD) {
-                                // FIXME: this code assumes doubles
-                                // Stack: Block, double
-                                final InsnList beforePut = new InsnList();
-                                beforePut.add(new InsnNode(Opcodes.DUP2_X1));
-                                // Stack: double, Block, double
-                                beforePut.add(new InsnNode(Opcodes.POP2));
-                                // Stack: double, Block
-                                beforePut.add(getter);
-                                // Stack: double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.DUP_X2));
-                                // Stack: ThreadedBlockData, double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.POP));
-                                // Stack: ThreadedBlockData, double
-                                mn.instructions.insertBefore(fNode, beforePut);
-                            }
-                            changed = true;
                         }
                     }
                 }
