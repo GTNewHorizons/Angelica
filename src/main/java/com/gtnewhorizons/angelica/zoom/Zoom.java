@@ -8,24 +8,29 @@ import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.MathHelper;
-import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
 public class Zoom {
-
-    @Getter
-    private static float zoom = 4.0F;
-    @Getter
-    private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
 
     public static final float ZOOM_MIN = 1.0F;
     public static final float ZOOM_MAX = 64.0F;
     public static final float ZOOM_STEP = 1.2F;
+    public static final float ZOOM_DEFAULT = 4.0F;
 
-    private static boolean lastSmoothCameraState = false;
+    @Getter
+    private static float zoom = ZOOM_DEFAULT;
+    @Getter
+    private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
+
+    private static boolean zoomEnabled = false;
 
     public static void init() {
         ClientRegistry.registerKeyBinding(zoomKey);
         FMLCommonHandler.instance().bus().register(new Zoom());
+    }
+
+    public static boolean isZoomedIn() {
+        return zoomEnabled;
     }
 
     public static void modifyZoom(int eventDWheel) {
@@ -33,21 +38,43 @@ public class Zoom {
         zoom = MathHelper.clamp_float((float) (zoom * Math.pow(ZOOM_STEP, Integer.signum(eventDWheel))), ZOOM_MIN, ZOOM_MAX);
     }
 
+    private static void resetMouseFilters(Minecraft mc) {
+        ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
+        ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
+    }
+
+    public static void resetZoom() {
+        final Minecraft mc = Minecraft.getMinecraft();
+
+        zoomEnabled = false;
+        zoom = ZOOM_DEFAULT;
+        resetMouseFilters(mc);
+    }
+
+    private void handleKeyEvent() {
+        if (zoomKey.getKeyCode() == 0) return;
+
+        final Minecraft mc = Minecraft.getMinecraft();
+        if (mc.currentScreen != null) return;
+
+        if (zoomKey.getIsKeyPressed()) {
+            zoomEnabled = true;
+        } else if (zoomEnabled) {
+            resetZoom();
+        }
+    }
+
     @SubscribeEvent
     public void onKeyPress(InputEvent.KeyInputEvent e) {
-        final int keyCode = zoomKey.getKeyCode();
-        if (keyCode == 0 || Keyboard.getEventKey() != keyCode || Keyboard.isRepeatEvent()) return;
-        final Minecraft mc = Minecraft.getMinecraft();
-        if (Keyboard.getEventKeyState()) {
-            lastSmoothCameraState = mc.gameSettings.smoothCamera;
-            mc.gameSettings.smoothCamera = true;
-        } else {
-            zoom = 4.0F;
-            if (mc.gameSettings.smoothCamera != lastSmoothCameraState) {
-                ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
-                ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
-            }
-            mc.gameSettings.smoothCamera = lastSmoothCameraState;
+        handleKeyEvent();
+    }
+
+    @SubscribeEvent
+    public void onMouseKeyPress(InputEvent.MouseInputEvent e) {
+        // MouseInputEvent is also fired on mouse movement, which we don't care about, only mouse button presses, so
+        // ensure that before any further key processing.
+        if (Mouse.getEventButton() >= 0) {
+            handleKeyEvent();
         }
     }
 }
