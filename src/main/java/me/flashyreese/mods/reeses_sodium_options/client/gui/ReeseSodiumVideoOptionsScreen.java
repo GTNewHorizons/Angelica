@@ -1,5 +1,6 @@
 package me.flashyreese.mods.reeses_sodium_options.client.gui;
 
+import com.gtnewhorizons.angelica.client.gui.FontConfigScreen;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
@@ -96,25 +97,35 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         this.applyButton = new FlatButtonWidget(applyButtonDim, "Apply", this::applyChanges);
         this.closeButton = new FlatButtonWidget(closeButtonDim, "Close", this::onClose);
 
-        Dim2i searchTextFieldDim = new Dim2i(tabFrameDim.getOriginX(), tabFrameDim.getOriginY() - 26, tabFrameDim.getWidth(), 20);
 
 
 
         basicFrameBuilder = this.parentBasicFrameBuilder(basicFrameDim, tabFrameDim);
 
-        if(AngelicaConfig.enableIris) {
+        int cumulativeXShift = 0;
+
+        if (AngelicaConfig.enableIris) {
             //int size = this.client.textRenderer.getWidth(new TranslatableText(IrisApi.getInstance().getMainScreenLanguageKey()));
             final String irisText = I18n.format(IrisApi.getInstance().getMainScreenLanguageKey());
             final int size = this.mc.fontRenderer.getStringWidth(irisText);
             final Dim2i shaderPackButtonDim = new Dim2i(tabFrameDim.getLimitX() - size - 10, tabFrameDim.getOriginY() - 26, 10 + size, 20);
+            cumulativeXShift += size + 12;
 
-            searchTextFieldDim = new Dim2i(tabFrameDim.getOriginX(), tabFrameDim.getOriginY() - 26, tabFrameDim.getWidth() - (tabFrameDim.getLimitX() - shaderPackButtonDim.getOriginX()) - 2, 20);
-
-            //FlatButtonWidget shaderPackButton = new FlatButtonWidget(shaderPackButtonDim, new TranslatableText(IrisApi.getInstance().getMainScreenLanguageKey()), () -> this.client.setScreen((Screen) IrisApi.getInstance().openMainIrisScreenObj(this)));
             final FlatButtonWidget shaderPackButton = new FlatButtonWidget(shaderPackButtonDim, irisText, () -> mc.displayGuiScreen(new ShaderPackScreen(this)));
             basicFrameBuilder.addChild(dim -> shaderPackButton);
         }
 
+        if (AngelicaConfig.enableFontRenderer) {
+            final String fontConfigText = I18n.format("options.angelica.fontconfig");
+            final int size = this.mc.fontRenderer.getStringWidth(fontConfigText);
+            final Dim2i fontConfigButtonDim = new Dim2i(tabFrameDim.getLimitX() - size - 12 - cumulativeXShift, tabFrameDim.getOriginY() - 26, 12 + size, 20);
+            cumulativeXShift += size + 14;
+
+            final FlatButtonWidget fontConfigButton = new FlatButtonWidget(fontConfigButtonDim, fontConfigText, () -> mc.displayGuiScreen(new FontConfigScreen(this)));
+            basicFrameBuilder.addChild(dim -> fontConfigButton);
+        }
+
+        Dim2i searchTextFieldDim = new Dim2i(tabFrameDim.getOriginX(), tabFrameDim.getOriginY() - 26, tabFrameDim.getWidth() - cumulativeXShift, 20);
         this.searchTextField = new SearchTextFieldComponent(searchTextFieldDim, this.pages, tabFrameSelectedTab,
                 tabFrameScrollBarOffset, optionPageScrollBarOffset, tabFrameDim.getHeight(), this, lastSearch, lastSearchIndex);
 

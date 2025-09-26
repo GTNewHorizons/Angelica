@@ -1,26 +1,28 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
-
+import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import jss.util.RandomXoshiro256StarStar;
-import net.minecraft.client.Minecraft;
+import net.coderbot.iris.gl.program.Program;
+import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
+import org.apache.commons.io.IOUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -44,32 +46,33 @@ public class BatchingFontRenderer {
     private int[] colorCode;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
-    private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
+    /** The font provider instance currently in use. */
+    private FontProvider fontProvider;
 
-    /** The full list of characters present in the default Minecraft font, excluding the Unicode font */
-    @SuppressWarnings("UnnecessaryUnicodeEscape")
-    private static final String MCFONT_CHARS = "\u00c0\u00c1\u00c2\u00c8\u00ca\u00cb\u00cd\u00d3\u00d4\u00d5\u00da\u00df\u00e3\u00f5\u011f\u0130\u0131\u0152\u0153\u015e\u015f\u0174\u0175\u017e\u0207\u0000\u0000\u0000\u0000\u0000\u0000\u0000 !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u2302\u00c7\u00fc\u00e9\u00e2\u00e4\u00e0\u00e5\u00e7\u00ea\u00eb\u00e8\u00ef\u00ee\u00ec\u00c4\u00c5\u00c9\u00e6\u00c6\u00f4\u00f6\u00f2\u00fb\u00f9\u00ff\u00d6\u00dc\u00f8\u00a3\u00d8\u00d7\u0192\u00e1\u00ed\u00f3\u00fa\u00f1\u00d1\u00aa\u00ba\u00bf\u00ae\u00ac\u00bd\u00bc\u00a1\u00ab\u00bb\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255d\u255c\u255b\u2510\u2514\u2534\u252c\u251c\u2500\u253c\u255e\u255f\u255a\u2554\u2569\u2566\u2560\u2550\u256c\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256b\u256a\u2518\u250c\u2588\u2584\u258c\u2590\u2580\u03b1\u03b2\u0393\u03c0\u03a3\u03c3\u03bc\u03c4\u03a6\u0398\u03a9\u03b4\u221e\u2205\u2208\u2229\u2261\u00b1\u2265\u2264\u2320\u2321\u00f7\u2248\u00b0\u2219\u00b7\u221a\u207f\u00b2\u25a0\u0000";
+    private int fontShaderId;
+    private int AAMode;
+    private int AAStrength;
+    private int texBoundAttrLocation;
 
-    private static final short[] MCFONT_ASCII_LUT = new short[512];
-    private static final Char2ShortOpenHashMap MCFONT_UNI_LUT = new Char2ShortOpenHashMap();
+    private final boolean isSGA;
 
-    static {
-        Arrays.fill(MCFONT_ASCII_LUT, (short) -1);
-        for (short i = 0; i < MCFONT_CHARS.length(); i++) {
-            char ch = MCFONT_CHARS.charAt(i);
-            if (ch < MCFONT_ASCII_LUT.length) {
-                MCFONT_ASCII_LUT[ch] = i;
-            } else {
-                MCFONT_UNI_LUT.put(ch, i);
+    private static class FontAAShader {
+
+        private static Program fontShader = null;
+        public static Program getProgram() {
+            if (fontShader == null) {
+                String vsh, fsh;
+                try {
+                    fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.fsh"))), StandardCharsets.UTF_8);
+                    vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.vsh"))), StandardCharsets.UTF_8);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                ProgramBuilder builder = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0));
+                fontShader = builder.build();
             }
-        }
-    }
-
-    public static int lookupMcFontPosition(char ch) {
-        if (ch < MCFONT_ASCII_LUT.length) {
-            return MCFONT_ASCII_LUT[ch];
-        } else {
-            return MCFONT_UNI_LUT.getOrDefault(ch, (short) -1);
+            return fontShader;
         }
     }
 
@@ -85,6 +88,18 @@ public class BatchingFontRenderer {
         for (int i = 0; i < 64; i++) {
             batchCommandPool.add(new FontDrawCmd());
         }
+
+        this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
+
+        FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
+        FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
+        FontProviderUnicode.get().glyphWidth = this.glyphWidth;
+
+        //noinspection deprecation
+        fontShaderId = FontAAShader.getProgram().getProgramId();
+        AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
+        AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
+        texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
     }
 
     // === Batched rendering
@@ -100,17 +115,19 @@ public class BatchingFontRenderer {
     private ByteBuffer batchVtxColors = memAlloc(INITIAL_BATCH_SIZE * 4);
     private FloatBuffer batchVtxTexCoords = memAllocFloat(INITIAL_BATCH_SIZE * 2);
     private IntBuffer batchIndices = memAllocInt(INITIAL_BATCH_SIZE / 2 * 3);
+    private FloatBuffer batchVtxTexBounds = memAllocFloat(INITIAL_BATCH_SIZE * 4);
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
     /**  */
-    private void pushVtx(float x, float y, int rgba, float u, float v) {
+    private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
         final int oldCap = batchVtxPositions.capacity() / 2;
         if (vtxWriterIndex >= oldCap) {
             final int newCap = oldCap * 2;
             batchVtxPositions = memRealloc(batchVtxPositions, newCap * 2);
             batchVtxColors = memRealloc(batchVtxColors, newCap * 4);
             batchVtxTexCoords = memRealloc(batchVtxTexCoords, newCap * 2);
+            batchVtxTexBounds = memRealloc(batchVtxTexBounds, newCap * 4);
             final int oldIdxCap = batchIndices.capacity();
             final int newIdxCap = oldIdxCap * 2;
             batchIndices = memRealloc(batchIndices, newIdxCap);
@@ -127,15 +144,19 @@ public class BatchingFontRenderer {
         batchVtxColors.put(idx4 + 3, (byte) ((rgba >> 24) & 0xFF));
         batchVtxTexCoords.put(idx2, u);
         batchVtxTexCoords.put(idx2 + 1, v);
+        batchVtxTexBounds.put(idx4, uMin);
+        batchVtxTexBounds.put(idx4 + 1, uMax);
+        batchVtxTexBounds.put(idx4 + 2, vMin);
+        batchVtxTexBounds.put(idx4 + 3, vMax);
         vtxWriterIndex++;
     }
 
     private void pushUntexRect(float x, float y, float w, float h, int rgba) {
         final int vtxId = vtxWriterIndex;
-        pushVtx(x, y, rgba, 0, 0);
-        pushVtx(x, y + h, rgba, 0, 0);
-        pushVtx(x + w, y, rgba, 0, 0);
-        pushVtx(x + w, y + h, rgba, 0, 0);
+        pushVtx(x, y, rgba, 0, 0, 0, 0, 0, 0);
+        pushVtx(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
+        pushVtx(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
+        pushVtx(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
         pushQuadIdx(vtxId);
     }
 
@@ -257,6 +278,8 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
+        GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
+        GL20.glEnableVertexAttribArray(texBoundAttrLocation);
         GL11.glTexCoordPointer(2, 0, batchVtxTexCoords);
         GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 0, batchVtxColors);
@@ -285,25 +308,21 @@ public class BatchingFontRenderer {
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
 
-            Minecraft mc = Minecraft.getMinecraft();
-            int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
-            boolean shouldApplyFilter = cmd.isUnicode && scaleFactor % 2 != 0;
-
-            if (shouldApplyFilter) {
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            if (FontConfig.fontAAMode != 0) {
+                FontAAShader.getProgram().use();
+                GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
+                GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
             }
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
-
-            if (shouldApplyFilter) {
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            if (FontConfig.fontAAMode != 0) {
+                Program.unbind();
             }
         }
 
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
         GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
+        GL20.glDisableVertexAttribArray(texBoundAttrLocation);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
@@ -327,17 +346,24 @@ public class BatchingFontRenderer {
         return (what >= fromInclusive) && (what <= toInclusive);
     }
 
-    private ResourceLocation getUnicodePageLocation(int page) {
-        final ResourceLocation lookup = unicodePageLocations[page];
-        if (lookup == null) {
-            final ResourceLocation rl = new ResourceLocation(String.format(
-                "textures/font/unicode_page_%02x.png",
-                page));
-            unicodePageLocations[page] = rl;
-            return rl;
-        } else {
-            return lookup;
-        }
+    public float getGlyphScaleX() {
+        return this.isSGA ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect));
+    }
+
+    public float getGlyphScaleY() {
+        return this.isSGA ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect));
+    }
+
+    public float getGlyphSpacing() {
+        return (this.isSGA ? 1 : FontConfig.glyphSpacing);
+    }
+
+    public float getWhitespaceScale() {
+        return (this.isSGA ? 1 : FontConfig.whitespaceScale);
+    }
+
+    public float getShadowOffset() {
+        return (this.isSGA ? 1 : FontConfig.fontShadowOffset);
     }
 
     private static final char FORMATTING_CHAR = 167; // §
@@ -349,6 +375,9 @@ public class BatchingFontRenderer {
             return anchorX + (enableShadow ? 1.0f : 0.0f);
         }
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
+
+        FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
+        FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
         this.beginBatch();
         float curX = anchorX;
@@ -441,141 +470,82 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                int lutIndex = lookupMcFontPosition(chr);
-                if (curRandom && lutIndex != -1) {
-                    int randomReplacementIndex;
-                    do {
-                        randomReplacementIndex = fontRandom.nextInt(this.charWidth.length);
-                    } while (this.charWidth[lutIndex] != this.charWidth[randomReplacementIndex]);
-
-                    lutIndex = randomReplacementIndex;
-                    chr = MCFONT_CHARS.charAt(lutIndex);
+                if (!this.isSGA && FontConfig.enableCustomFont) {
+                    fontProvider = FontProviderCustom.get();
+                } else if (unicodeFlag) {
+                    fontProvider = FontProviderUnicode.get();
+                } else {
+                    fontProvider = FontProviderMC.get(this.isSGA);
+                }
+                if (curRandom) {
+                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                }
+                boolean charAvailable = fontProvider.isGlyphAvailable(chr);
+                if (!charAvailable) {
+                    fontProvider = FontProviderUnicode.get();
                 }
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4;
+                    curX += 4 * this.getWhitespaceScale();
                     continue;
                 }
 
-                final float uStart;
-                final float vStart;
-                final float xAdvance;
-                final float glyphW;
-                final float uSz;
-                final float vSz;
+                final float uStart = fontProvider.getUStart(chr);
+                final float vStart = fontProvider.getVStart(chr);
+                final float xAdvance = fontProvider.getXAdvance(chr) * getGlyphScaleX();
+                final float glyphW = fontProvider.getGlyphW(chr) * getGlyphScaleX();
+                final float uSz = fontProvider.getUSize(chr);
+                final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
-                final float shadowOffset;
-                final ResourceLocation texture;
-
-                if (lutIndex == -1 || unicodeFlag) {
-                    if (glyphWidth[chr] == 0) {
-                        continue;
-                    }
-                    // Draw unicode char
-                    shadowOffset = AngelicaConfig.shadowOffsetFontUC;
-                    final int uniPage = chr / 256;
-                    texture = getUnicodePageLocation(uniPage);
-                    final int startColumn = this.glyphWidth[chr] >>> 4;
-                    final int endColumn = this.glyphWidth[chr] & 15;
-                    final float startColumnF = (float) startColumn;
-                    final float endColumnF = (float) (endColumn + 1);
-                    uStart = ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
-                    vStart = ((float) ((chr & 255) / 16 * 16) + 0.21f) / 256.0f;
-                    final float chrWidth = endColumnF - startColumnF - 0.02F;
-                    glyphW = chrWidth / 2.0f + 1.0f;
-                    xAdvance = (endColumnF - startColumnF) / 2.0F + 1.0F;
-                    uSz = (chrWidth - 0.42f) / 256.0f;
-                    vSz = (16.0f - 0.42f) / 256.0f;
-
-                } else {
-                    // Draw "ASCII" char
-                    shadowOffset = 1.0F;
-                    uStart = ((lutIndex % 16) * 8) / 128.0F;
-                    vStart = (float) ((lutIndex / 16) * 8) / 128.0F;
-                    xAdvance = this.charWidth[lutIndex];
-                    if (xAdvance == 0) {
-                        continue;
-                    }
-                    glyphW = xAdvance - 0.01F;
-                    uSz = (glyphW - 1.0F) / 128.0F;
-                    vSz = 7.99F / 128.0F;
-                    texture = locationFontTexture;
-                }
+                final float shadowOffset = fontProvider.getShadowOffset();
+                final ResourceLocation texture = fontProvider.getTexture(chr);
 
                 final int vtxId = vtxWriterIndex;
                 final int idxId = idxWriterIndex;
 
                 int vtxCount = 0;
 
+                float heightNorth = anchorY + 7.99F * (0.5f - getGlyphScaleY() / 2);
+                float heightSouth = 7.99F * getGlyphScaleY();
+
                 if (enableShadow) {
-                    pushVtx(curX + itOff + shadowOffset, anchorY + shadowOffset, curShadowColor, uStart, vStart);
-                    pushVtx(
-                        curX - itOff + shadowOffset,
-                        anchorY + 7.99F + shadowOffset,
-                        curShadowColor,
-                        uStart,
-                        vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset,
-                        anchorY + shadowOffset,
-                        curShadowColor,
-                        uStart + uSz,
-                        vStart);
-                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset,
-                        anchorY + 7.99F + shadowOffset,
-                        curShadowColor,
-                        uStart + uSz,
-                        vStart + vSz);
+                    pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
 
                     if (curBold) {
                         final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushVtx(curX + itOff + shadowOffset2, anchorY + shadowOffset, curShadowColor, uStart, vStart);
-                        pushVtx(
-                            curX - itOff + shadowOffset2,
-                            anchorY + 7.99F + shadowOffset,
-                            curShadowColor,
-                            uStart,
-                            vStart + vSz);
-                        pushVtx(
-                            curX + glyphW - 1.0F + itOff + shadowOffset2,
-                            anchorY + shadowOffset,
-                            curShadowColor,
-                            uStart + uSz,
-                            vStart);
-                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2,
-                            anchorY + 7.99F + shadowOffset,
-                            curShadowColor,
-                            uStart + uSz,
-                            vStart + vSz);
+                        pushVtx(curX + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                         pushQuadIdx(vtxId + vtxCount);
                         vtxCount += 4;
                     }
                 }
 
-                pushVtx(curX + itOff, anchorY, curColor, uStart, vStart);
-                pushVtx(curX - itOff, anchorY + 7.99F, curColor, uStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F + itOff, anchorY, curColor, uStart + uSz, vStart);
-                pushVtx(curX + glyphW - 1.0F - itOff, anchorY + 7.99F, curColor, uStart + uSz, vStart + vSz);
+                pushVtx(curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                 pushQuadIdx(vtxId + vtxCount);
                 vtxCount += 4;
 
                 if (curBold) {
-                    pushVtx(shadowOffset + curX + itOff, anchorY, curColor, uStart, vStart);
-                    pushVtx(shadowOffset + curX - itOff, anchorY + 7.99F, curColor, uStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, anchorY, curColor, uStart + uSz, vStart);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff,
-                        anchorY + 7.99F,
-                        curColor,
-                        uStart + uSz,
-                        vStart + vSz);
+                    pushVtx(shadowOffset + curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
                 }
 
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
-                curX += xAdvance + (curBold ? shadowOffset : 0.0f);
+                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
             }
@@ -602,4 +572,26 @@ public class BatchingFontRenderer {
         return curX + (enableShadow ? 1.0f : 0.0f);
     }
 
+    public float getCharWidthFine(char chr) {
+        if (chr == FORMATTING_CHAR) { return -1; }
+
+        if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
+            return 4 * this.getWhitespaceScale();
+        }
+
+        FontProvider fp;
+        if (!this.isSGA && FontConfig.enableCustomFont) {
+            fp = FontProviderCustom.get();
+        } else if (underlying.getUnicodeFlag()) {
+            fp = FontProviderUnicode.get();
+        } else {
+            fp = FontProviderMC.get(this.isSGA);
+        }
+        boolean charAvailable = fp.isGlyphAvailable(chr);
+        if (!charAvailable) {
+            fp = FontProviderUnicode.get();
+        }
+
+        return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
 }
