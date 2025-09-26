@@ -59,6 +59,7 @@ public class ShadowRenderer {
     public static final FloatBuffer MODELVIEW_BUFFER = BufferUtils.createFloatBuffer(16);
 	public static final Matrix4f PROJECTION = new Matrix4f();
 	public static List<TileEntity> visibleTileEntities;
+	public static List<TileEntity> globalTileEntities;
 	public static boolean ACTIVE = false;
 	private final float halfPlaneLength;
 	private final float renderDistanceMultiplier;
@@ -460,6 +461,7 @@ public class ShadowRenderer {
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
         GL11.glLoadMatrix(MODELVIEW_BUFFER);
+		
 		for (TileEntity tileEntity : visibleTileEntities) {
 			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
                 continue;
@@ -468,6 +470,15 @@ public class ShadowRenderer {
 
 			shadowTileEntities++;
 		}
+		for (TileEntity tileEntity : globalTileEntities) {
+			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
+				continue;
+			}
+			renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
+			
+			shadowTileEntities++;
+		}
+		
         GLStateManager.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
@@ -492,6 +503,7 @@ public class ShadowRenderer {
 //		levelRenderer.setRenderBuffers(buffers);
 
 		visibleTileEntities = new ArrayList<>();
+		globalTileEntities  = new ArrayList<>();
 
 		// Create our camera
 		final MatrixStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
