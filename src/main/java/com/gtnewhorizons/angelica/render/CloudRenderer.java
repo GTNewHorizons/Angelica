@@ -242,7 +242,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
         final int cloudQualitySetting = cloudGraphicsQuality == GraphicsQualityOff.FANCY
             || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics ? 2 : 1;
-        final boolean newEnabled = mc.gameSettings.shouldRenderClouds()
+        final boolean newEnabled = cloudGraphicsQuality != GraphicsQualityOff.OFF
+            && mc.gameSettings.shouldRenderClouds()
             && mc.theWorld != null
             && mc.theWorld.provider.isSurfaceWorld();
         final int targetDistance = Math.max(mc.gameSettings.renderDistanceChunks, (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
