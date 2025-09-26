@@ -23,6 +23,8 @@ public class MixinLocale {
     // storage
     @Shadow Map<String, String> field_135032_a;
 
+    @Shadow private boolean field_135029_d;
+
     @Unique
     private static final List<String> languageCodes = new ArrayList<>();
 
@@ -79,9 +81,10 @@ public class MixinLocale {
         new LinkedList<>(definitions).descendingIterator().forEachRemaining(languageCodes::add);
     }
 
-    @Inject(method = "isUnicode", at = @At("HEAD"), cancellable = true)
-    private void iris$isUnicode(CallbackInfoReturnable<Boolean> cir) {
-        cir.setReturnValue(false);
+    @Inject(method = "checkUnicode", at = @At("HEAD"), cancellable = true)
+    private void iris$checkUnicode(CallbackInfo ci) {
+        this.field_135029_d = false;
+        ci.cancel();
     }
 
 }
