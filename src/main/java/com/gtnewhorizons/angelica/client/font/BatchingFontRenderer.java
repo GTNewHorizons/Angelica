@@ -347,11 +347,11 @@ public class BatchingFontRenderer {
     }
 
     public float getGlyphScaleX() {
-        return (this.isSGA ? 1 : FontConfig.glyphScaleX);
+        return this.isSGA ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphScaleY() {
-        return (this.isSGA ? 1 : FontConfig.glyphScaleY);
+        return this.isSGA ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphSpacing() {

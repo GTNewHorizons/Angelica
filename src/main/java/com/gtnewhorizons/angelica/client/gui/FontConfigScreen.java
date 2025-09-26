@@ -36,10 +36,10 @@ public class FontConfigScreen extends GuiScreen {
         }
     }
 
-    SliderClone.Option optFontQuality = new SliderClone.Option(12, 72, 12);
+    SliderClone.Option optFontQuality = new SliderClone.Option(12, 96, 12);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
-    SliderClone.Option optGlyphScaleY = new SliderClone.Option(0.1f, 3, 0.05f);
-    SliderClone.Option optGlyphScaleX = new SliderClone.Option(0.1f, 3, 0.05f);
+    SliderClone.Option optGlyphAspect = new SliderClone.Option(-1, 1, 0.05f);
+    SliderClone.Option optGlyphScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optWhitespaceScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
@@ -63,9 +63,9 @@ public class FontConfigScreen extends GuiScreen {
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 60 - 15, 120, 20,
             optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value, value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 40 - 11, 120, 20,
-            optGlyphScaleY, FontConfig.glyphScaleY, value -> FontConfig.glyphScaleY = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_y", String.format("x%3.2f", value))));
+            optGlyphAspect, FontConfig.glyphAspect, value -> FontConfig.glyphAspect = value, value -> I18n.format("options.angelica.fontconfig.glyph_aspect", String.format("%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 60 - 15, 120, 20,
-            optGlyphScaleX, FontConfig.glyphScaleX, value -> FontConfig.glyphScaleX = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale_x", String.format("x%3.2f", value))));
+            optGlyphScale, FontConfig.glyphScale, value -> FontConfig.glyphScale = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 40 - 11, 120, 20,
             optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value, value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("x%3.2f", value))));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 60 - 15, 120, 20,
