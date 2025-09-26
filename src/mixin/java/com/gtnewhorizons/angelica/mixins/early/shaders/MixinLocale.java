@@ -79,4 +79,9 @@ public class MixinLocale {
         new LinkedList<>(definitions).descendingIterator().forEachRemaining(languageCodes::add);
     }
 
+    @Inject(method = "isUnicode", at = @At("HEAD"), cancellable = true)
+    private void iris$isUnicode(CallbackInfoReturnable<Boolean> cir) {
+        cir.setReturnValue(false);
+    }
+
 }
