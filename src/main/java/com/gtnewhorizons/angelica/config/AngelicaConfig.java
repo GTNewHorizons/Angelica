@@ -198,6 +198,8 @@ public class AngelicaConfig {
     @Config.DefaultStringList({
             "gregtech.common.blocks.BlockOres",
             "shukaro.artifice.block.world.BlockOre",
+            "bartworks.system.material.BWMetaGeneratedOres",
+            "gtPlusPlus.core.block.base.BlockBaseOre",
     })
     public static String[] blockCrackFixRenderPassWhitelist;
 }
