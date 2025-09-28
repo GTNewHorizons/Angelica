@@ -315,7 +315,7 @@ public class ClientProxy extends CommonProxy {
             }
 
             // force reset zoom when a GUI is opened
-            if (event.gui != null) Zoom.resetZoom();
+            if (AngelicaConfig.enableZoom && event.gui != null) Zoom.resetZoom();
         }
     }
 
