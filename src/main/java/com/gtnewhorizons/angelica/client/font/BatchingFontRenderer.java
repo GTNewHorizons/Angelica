@@ -416,7 +416,7 @@ public class BatchingFontRenderer {
 
                     if (curUnderline && underlineStartX != underlineEndX) {
                         final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, 1.0f, curColor);
+                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, getGlyphScaleY(), curColor);
                         pushDrawCmd(ulIdx, 6, null, false);
                         underlineStartX = underlineEndX;
                     }
@@ -426,7 +426,7 @@ public class BatchingFontRenderer {
                             strikethroughStartX,
                             strikethroughY,
                             strikethroughEndX - strikethroughStartX,
-                            1.0f,
+                            getGlyphScaleY(),
                             curColor);
                         pushDrawCmd(ulIdx, 6, null, false);
                         strikethroughStartX = strikethroughEndX;
