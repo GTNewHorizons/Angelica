@@ -398,10 +398,13 @@ public class BatchingFontRenderer {
             boolean curStrikethrough = false;
             boolean curUnderline = false;
 
-            final float underlineY = anchorY + underlying.FONT_HEIGHT - 1.0f;
+            final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - getGlyphScaleY() / 2);
+            final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * getGlyphScaleY();
+
+            final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * getGlyphScaleY();
             float underlineStartX = 0.0f;
             float underlineEndX = 0.0f;
-            final float strikethroughY = anchorY + (float) (underlying.FONT_HEIGHT / 2) - 1.0F;
+            final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * getGlyphScaleY();
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
@@ -497,9 +500,6 @@ public class BatchingFontRenderer {
 
                 int vtxCount = 0;
 
-                float heightNorth = anchorY + 7.99F * (0.5f - getGlyphScaleY() / 2);
-                float heightSouth = 7.99F * getGlyphScaleY();
-
                 if (enableShadow) {
                     pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
@@ -543,7 +543,7 @@ public class BatchingFontRenderer {
 
             if (curUnderline && underlineStartX != underlineEndX) {
                 final int ulIdx = idxWriterIndex;
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, 1.0f, curColor);
+                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, getGlyphScaleY(), curColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
@@ -552,7 +552,7 @@ public class BatchingFontRenderer {
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
-                    1.0f,
+                    getGlyphScaleY(),
                     curColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
