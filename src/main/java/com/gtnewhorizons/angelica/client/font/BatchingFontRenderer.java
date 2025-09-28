@@ -470,20 +470,11 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                if (!this.isSGA && FontConfig.enableCustomFont) {
-                    fontProvider = FontProviderCustom.get();
-                } else if (unicodeFlag) {
-                    fontProvider = FontProviderUnicode.get();
-                } else {
-                    fontProvider = FontProviderMC.get(this.isSGA);
-                }
                 if (curRandom) {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
-                boolean charAvailable = fontProvider.isGlyphAvailable(chr);
-                if (!charAvailable) {
-                    fontProvider = FontProviderUnicode.get();
-                }
+
+                fontProvider = FontStrategist.getFontProvider(chr, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
@@ -579,18 +570,7 @@ public class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        FontProvider fp;
-        if (!this.isSGA && FontConfig.enableCustomFont) {
-            fp = FontProviderCustom.get();
-        } else if (underlying.getUnicodeFlag()) {
-            fp = FontProviderUnicode.get();
-        } else {
-            fp = FontProviderMC.get(this.isSGA);
-        }
-        boolean charAvailable = fp.isGlyphAvailable(chr);
-        if (!charAvailable) {
-            fp = FontProviderUnicode.get();
-        }
+        FontProvider fp = FontStrategist.getFontProvider(chr, isSGA, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
     }

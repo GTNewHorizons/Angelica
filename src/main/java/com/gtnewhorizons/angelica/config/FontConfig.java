@@ -4,20 +4,24 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 
 @Config(modid = "angelica", category = "customfont")
 public class FontConfig {
-    @Config.Comment("Whether or not to use a custom font when drawing text.")
+    @Config.Comment("Whether or not to use custom fonts when drawing text.")
     @Config.DefaultBoolean(false)
     public static boolean enableCustomFont;
 
-    @Config.Comment("Name of the custom font in use. Best not to set it from here.")
+    @Config.Comment("Name of the primary custom font. Best not to set it from here.")
     @Config.DefaultString("(none)")
-    public static String customFontName;
+    public static String customFontNamePrimary;
 
-    @Config.Comment("The quality at which the custom font is rendered, making it less pixelated but increasing memory usage.")
+    @Config.Comment("Name of the fallback custom font. Best not to set it from here.")
+    @Config.DefaultString("(none)")
+    public static String customFontNameFallback;
+
+    @Config.Comment("The quality at which the custom fonts are rendered, making them less pixelated but increasing memory usage.")
     @Config.DefaultInt(36)
     @Config.RangeInt(min = 12, max = 96)
     public static int customFontQuality;
 
-    @Config.Comment("Controls the distance at which the font's shadow is drawn")
+    @Config.Comment("Controls the distance at which the font's shadow is drawn.")
     @Config.DefaultFloat(1F)
     @Config.RangeFloat(min = 0F, max = 2F)
     public static float fontShadowOffset;

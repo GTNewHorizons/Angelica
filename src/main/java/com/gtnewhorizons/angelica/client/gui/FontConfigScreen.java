@@ -2,36 +2,52 @@ package com.gtnewhorizons.angelica.client.gui;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
-import com.gtnewhorizons.angelica.client.font.FontProviderCustom;
+import com.gtnewhorizons.angelica.client.font.FontStrategist;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import net.coderbot.iris.gui.element.widget.IrisButton;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSlot;
+import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
 import org.lwjgl.input.Keyboard;
 
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class FontConfigScreen extends GuiScreen {
 
     private final GuiScreen parent;
     private final String title;
+    private final String searchPrompt;
+    private final Font[] availableFonts;
+    private String currentPrimaryFontName;
+    private String currentFallbackFontName;
     private FontList fontList;
-    private int selectedFontListPos = -1;
-    private static Font[] availableFonts;
+    private int selectedPrimaryFontListPos = -1;
+    private int selectedFallbackFontListPos = -1;
+    private ArrayList<Font> displayedFonts;
+    private GuiTextField searchBox;
 
     public FontConfigScreen(GuiScreen parent) {
         this.title = I18n.format("options.angelica.fontconfig.title");
+        this.searchPrompt = I18n.format("options.angelica.fontconfig.searchprompt");
         this.parent = parent;
-        availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        this.currentPrimaryFontName = FontConfig.customFontNamePrimary;
+        this.currentFallbackFontName = FontConfig.customFontNameFallback;
+        this.availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        this.displayedFonts = new ArrayList<>(Arrays.asList(availableFonts));
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontName, availableFonts[i].getFontName())) {
-                selectedFontListPos = i;
-                break;
+            if (Objects.equals(this.currentPrimaryFontName, availableFonts[i].getFontName())) {
+                selectedPrimaryFontListPos = i;
+            }
+            if (Objects.equals(this.currentFallbackFontName, availableFonts[i].getFontName())) {
+                selectedFallbackFontListPos = i;
             }
         }
     }
@@ -46,6 +62,9 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 12, 1);
 
     public void initGui() {
+        Keyboard.enableRepeatEvents(true);
+        searchBox = new GuiTextField(this.fontRendererObj, this.width / 2 - 120, 24, 240, 20);
+        searchBox.setMaxStringLength(64);
         fontList = new FontList();
         initButtons();
     }
@@ -82,11 +101,18 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void applyChanges(boolean finalApply) {
-        if (selectedFontListPos < 0) { return; }
-        FontConfig.customFontName = availableFonts[selectedFontListPos].getFontName();
-        if (FontConfig.enableCustomFont) {
-            FontProviderCustom.get().reloadFont(selectedFontListPos);
+        int pos;
+        pos = selectedPrimaryFontListPos;
+        if (pos >= 0 && pos < displayedFonts.size()) {
+            FontConfig.customFontNamePrimary = displayedFonts.get(pos).getFontName();
         }
+        pos = selectedFallbackFontListPos;
+        if (pos >= 0 && pos < displayedFonts.size()) {
+            FontConfig.customFontNameFallback = displayedFonts.get(pos).getFontName();
+        }
+
+        FontStrategist.reloadCustomFontProviders();
+
         if (finalApply) {
             ConfigurationManager.save(FontConfig.class);
         }
@@ -98,6 +124,8 @@ public class FontConfigScreen extends GuiScreen {
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
+        selectedPrimaryFontListPos = -1;
+        selectedFallbackFontListPos = -1;
         super.buttonList.clear();
         this.initButtons();
     }
@@ -133,7 +161,16 @@ public class FontConfigScreen extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float delta) {
         super.drawDefaultBackground();
         fontList.drawScreen(mouseX, mouseY, delta);
+        searchBox.drawTextBox();
+        // I bet you thought this was drawn inside the search box, not on top of it.
+        if (!this.searchBox.isFocused() && this.searchBox.getText().isEmpty()) {
+            this.drawCenteredString(this.fontRendererObj, this.searchPrompt,
+                this.searchBox.xPosition + this.fontRendererObj.getStringWidth(this.searchPrompt) / 2 + 4,
+                this.searchBox.yPosition + this.searchBox.height / 2 - 4, 0xFFFFFF);
+        }
         drawCenteredString(this.fontRendererObj, this.title, (int) (this.width * 0.5), 8, 0xFFFFFF);
+        drawCenteredString(this.fontRendererObj, I18n.format("options.angelica.fontconfig.currentfonts",
+            FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback), (int) (this.width * 0.5), this.height - 92, 0xFFFFFF);
         super.drawScreen(mouseX, mouseY, delta);
     }
 
@@ -148,49 +185,104 @@ public class FontConfigScreen extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) {
+        if (this.searchBox.isFocused()) {
+            if (keyCode == Keyboard.KEY_ESCAPE) {
+                this.searchBox.setFocused(false);
+            }
+            this.searchBox.textboxKeyTyped(typedChar, keyCode);
+            this.displayedFonts = filterFonts(this.searchBox.getText().toLowerCase());
+        }
         if (keyCode == Keyboard.KEY_ESCAPE) {
             this.onClose();
         }
     }
 
+    @Override
+    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        super.mouseClicked(mouseX, mouseY, mouseButton);
+        this.searchBox.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    @Override
+    public void updateScreen() {
+        this.searchBox.updateCursorCounter();
+    }
+
+    // this could be more efficient, but it's good enough as is
+    private ArrayList<Font> filterFonts(String search) {
+        ArrayList<Font> results;
+        if (search == null || search.isEmpty()) {
+            results = new ArrayList<>(Arrays.asList(availableFonts));
+        } else {
+            results = Arrays.stream(availableFonts).filter((font -> font.getFontName().toLowerCase().contains(search))).collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        selectedPrimaryFontListPos = -1;
+        selectedFallbackFontListPos = -1;
+        for (int i = 0; i < results.size(); i++) {
+            if (Objects.equals(currentPrimaryFontName, results.get(i).getFontName())) {
+                selectedPrimaryFontListPos = i;
+            }
+            if (Objects.equals(currentFallbackFontName, results.get(i).getFontName())) {
+                selectedFallbackFontListPos = i;
+            }
+        }
+        return results;
+    }
+
     class FontList extends GuiSlot {
 
         public FontList() {
-            super(FontConfigScreen.this.mc, FontConfigScreen.this.width, FontConfigScreen.this.height, 32, FontConfigScreen.this.height - 75 - 4, 18);
+            super(FontConfigScreen.this.mc, FontConfigScreen.this.width, FontConfigScreen.this.height, 52, FontConfigScreen.this.height - 100, 18);
         }
 
-        protected int getSize() {
-            return availableFonts.length;
-        }
-
-        /**
-         * The element in the slot that was clicked, boolean for whether it was double clicked or not
-         */
-        protected void elementClicked(int p_148144_1_, boolean p_148144_2_, int p_148144_3_, int p_148144_4_) {
-            selectedFontListPos = p_148144_1_;
+        protected void elementClicked(int index, boolean doubleClicked, int mouseX, int mouseY) {
+            if (!doubleClicked) {
+                selectedPrimaryFontListPos = index;
+                currentPrimaryFontName = displayedFonts.get(index).getFontName();
+            } else {
+                selectedFallbackFontListPos = index;
+                currentFallbackFontName = displayedFonts.get(index).getFontName();
+            }
             applyChanges(false);
         }
 
-        /**
-         * Returns true if the element passed in is currently selected
-         */
-        protected boolean isSelected(int p_148131_1_) {
-            return (p_148131_1_ == selectedFontListPos);
+        protected boolean isSelected(int index) {
+            return (index == selectedPrimaryFontListPos || index == selectedFallbackFontListPos);
         }
 
-        /**
-         * Return the height of the content being scrolled
-         */
+        protected int getSize() {
+            return displayedFonts.size();
+        }
+
+        @Override
         protected int getContentHeight() {
             return this.getSize() * 18;
+        }
+
+        @Override
+        protected int getScrollBarX() {
+            return this.width * 11 / 12 - 5;
+        }
+
+        @Override
+        public int getListWidth() {
+            return this.width * 2 / 3;
         }
 
         protected void drawBackground() {
             drawDefaultBackground();
         }
 
-        protected void drawSlot(int p_148126_1_, int p_148126_2_, int p_148126_3_, int p_148126_4_, Tessellator p_148126_5_, int p_148126_6_, int p_148126_7_) {
-            drawCenteredString(fontRendererObj, availableFonts[p_148126_1_].getFontName(), this.width / 2, p_148126_3_ + 1, 16777215);
+        protected void drawSlot(int index, int x, int y, int p_148126_4_, Tessellator tessellator, int p_148126_6_, int p_148126_7_) {
+            int color = 0xffffff;
+            if (index == selectedPrimaryFontListPos) {
+                color &= 0xffff55;
+            }
+            if (index == selectedFallbackFontListPos) {
+                color &= 0x55ffff;
+            }
+            drawCenteredString(fontRendererObj, displayedFonts.get(index).getFontName(), this.width / 2, y + 1, color);
         }
     }
 }

@@ -2,11 +2,10 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
+import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.resources.DefaultResourcePack;
 import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,22 +21,22 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 
 public final class FontProviderCustom implements FontProvider {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
     public static final String FONT_DIR = "fonts/custom/";
-    private static final int ATLAS_COUNT = 512;
+    static final int ATLAS_COUNT = 512;
     private static final int ATLAS_SIZE = 128;
-    private final DefaultResourcePack fontResourcePack;
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
+    @Setter
     private Font font;
     private float currentFontQuality = FontConfig.customFontQuality;
+    private byte id; // 0 - primary font, 1 - fallback font
 
-    private FontProviderCustom() {
+    private FontProviderCustom(byte id) {
+        this.id = id;
         Font[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
         if (availableFonts.length == 0) {
             LOGGER.fatal("There seem to be no fonts available on this system! Disabling custom font and throwing an exception in an attempt to restore the session.");
@@ -45,38 +44,42 @@ public final class FontProviderCustom implements FontProvider {
             ConfigurationManager.save(FontConfig.class);
             throw new RuntimeException();
         }
+        String myFontName = switch (this.id) {
+            case 0 -> FontConfig.customFontNamePrimary;
+            case 1 -> FontConfig.customFontNameFallback;
+            default -> null;
+        };
+        if (Objects.equals(myFontName, "(none)")) {
+            font = null;
+            return;
+        }
         int fontPos = -1;
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(myFontName, availableFonts[i].getFontName())) {
                 fontPos = i;
                 break;
             }
         }
         if (fontPos == -1) {
-            LOGGER.info("Could not find previously set font \"{}\". Selecting the first available font.", FontConfig.customFontName);
-            fontPos = 0;
+            LOGGER.info("Could not find previously set font \"{}\". ", myFontName);
+            font = null;
+            return;
         }
         font = availableFonts[fontPos].deriveFont(currentFontQuality);
-
-        HashMap<String, File> packMap = new HashMap<>();
-        for (int i = 0; i < ATLAS_COUNT; i++) {
-            packMap.put(getAtlasResourceName(i), new File(getAtlasFullPath(i)));
-        }
-
-        fontResourcePack = new DefaultResourcePack(packMap);
-        List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
-        defaultResourcePacks.add(fontResourcePack);
-        Minecraft.getMinecraft().refreshResources();
     }
-    private static class InstLoader { static final FontProviderCustom instance = new FontProviderCustom(); }
-    public static FontProviderCustom get() { return InstLoader.instance; }
+    private static class InstLoader {
+        static final FontProviderCustom instance0 = new FontProviderCustom((byte)0);
+        static final FontProviderCustom instance1 = new FontProviderCustom((byte)1);
+    }
+    public static FontProviderCustom getPrimary() { return InstLoader.instance0; }
+    public static FontProviderCustom getFallback() { return InstLoader.instance1; }
 
     public void reloadFont(int fontID) {
         currentFontQuality = FontConfig.customFontQuality;
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         font = ge.getAllFonts()[fontID].deriveFont(currentFontQuality);
 
-        File[] files = new File(FONT_DIR).listFiles();
+        File[] files = new File(getFontDir()).listFiles();
         if (files != null) {
             for (File f : files) {
                 if (!Files.isSymbolicLink(f.toPath())) {
@@ -93,17 +96,22 @@ public final class FontProviderCustom implements FontProvider {
         fontAtlases = new FontAtlas[ATLAS_COUNT];
     }
 
+    private String getFontDir() {
+        return FONT_DIR + "f" + this.id + "/";
+    }
+
     private String getAtlasFilename(int atlasId) {
-        return "page" + atlasId;
+        return "f" + this.id + "p" + atlasId;
     }
 
-    private String getAtlasResourceName(int atlasId) {
-        return "minecraft:custom_font" + getAtlasFilename(atlasId);
+    String getAtlasResourceName(int atlasId) {
+        return "minecraft:angelica_c" + getAtlasFilename(atlasId);
     }
 
-    private String getAtlasFullPath(int atlasId) {
-        return FONT_DIR + getAtlasFilename(atlasId) + ".png";
+    String getAtlasFullPath(int atlasId) {
+        return getFontDir() + getAtlasFilename(atlasId) + ".png";
     }
+
     @Value
     private class GlyphData {
         float uStart;
@@ -119,7 +127,6 @@ public final class FontProviderCustom implements FontProvider {
         GlyphData[] glyphData = new GlyphData[ATLAS_SIZE];
         private ResourceLocation texture;
         private final int id;
-
 
         FontAtlas(int id) {
             this.id = id;
@@ -211,7 +218,7 @@ public final class FontProviderCustom implements FontProvider {
             g2d.dispose();
             try {
                 LOGGER.info("writing custom font atlas texture ({}x{} px) to {}", imageWidth, imageHeight, getAtlasFullPath(this.id));
-                Files.createDirectories(Paths.get(FONT_DIR));
+                Files.createDirectories(Paths.get(getFontDir()));
                 ImageIO.write(image, "png", new File(getAtlasFullPath(this.id)));
             } catch (IOException e) {
                 e.printStackTrace();
@@ -233,6 +240,7 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public boolean isGlyphAvailable(char chr) {
+        if (font == null) { return false; }
         return font.canDisplay(chr);
     }
 
