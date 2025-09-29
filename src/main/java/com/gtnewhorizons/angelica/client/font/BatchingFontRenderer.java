@@ -284,21 +284,7 @@ public class BatchingFontRenderer {
             }
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
-
-            Minecraft mc = Minecraft.getMinecraft();
-            int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
-            boolean shouldApplyFilter = cmd.isUnicode && scaleFactor % 2 != 0;
-
-            if (shouldApplyFilter) {
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            }
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
-
-            if (shouldApplyFilter) {
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            }
         }
 
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
