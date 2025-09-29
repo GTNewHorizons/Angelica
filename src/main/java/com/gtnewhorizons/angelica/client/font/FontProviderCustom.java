@@ -133,7 +133,7 @@ public final class FontProviderCustom implements FontProvider {
         }
 
         void construct(Font font) {
-            float separator = currentFontQuality / 1.5f;
+            float separator = currentFontQuality / 3f;
 
             BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = image.createGraphics();
@@ -152,7 +152,7 @@ public final class FontProviderCustom implements FontProvider {
             if (actualChars == 0) {
                 return;
             }
-            final int atlasTilesX = (int) Math.ceil(Math.sqrt(actualChars) * 1.25f);
+            final int atlasTilesX = (int) Math.ceil(Math.sqrt(actualChars) * 1.5f);
             final int atlasTilesY = (int) Math.ceil((double) actualChars / atlasTilesX);
             LOGGER.info("constructing custom font atlas (ID {}) of nominal size {} chars, actual: {}, {} rows by {} columns",
                 this.id, ATLAS_SIZE, actualChars, atlasTilesX, atlasTilesY);
@@ -173,6 +173,7 @@ public final class FontProviderCustom implements FontProvider {
             maxRowWidth = Math.max(maxRowWidth, width);
 
             final int lineHeight = fm.getHeight();
+            final float desc = fm.getDescent();
 
             final int imageWidth = (int) (maxRowWidth + separator);
             final int imageHeight = (int) ((separator + lineHeight) * atlasTilesY + separator);
@@ -204,13 +205,14 @@ public final class FontProviderCustom implements FontProvider {
 
                 final int charWidth = fm.charWidth(ch);
                 final float charAspectRatio = (float) charWidth / lineHeight;
-                g2d.drawString(Character.toString(ch), imgX, (lineHeight + separator) * (tileY + 1) - separator);
-                final float uStart = (float) imgX / imageWidth;
-                final float vStart = ((lineHeight + separator) * (tileY + 0.5f) - separator) / imageHeight;
-                final float xAdvance = charAspectRatio * 8;
+                final float inset = currentFontQuality / 16;
+                g2d.drawString(Character.toString(ch), imgX, (lineHeight + separator) * (tileY + 1) - desc);
+                final float uStart = (float) (imgX - inset * charAspectRatio) / imageWidth;
+                final float vStart = ((lineHeight + separator) * (tileY + 1) - lineHeight - inset) / imageHeight;
+                final float xAdvance = charAspectRatio * 8 * charWidth / (charWidth + 2 * inset * charAspectRatio);
                 final float glyphW = charAspectRatio * 8 + 1;
-                final float uSz = (float) charWidth / imageWidth;
-                final float vSz = (float) lineHeight / imageHeight;
+                final float uSz = (float) (charWidth + 2 * inset * charAspectRatio) / imageWidth;
+                final float vSz = (float) (lineHeight + 2 * inset) / imageHeight;
                 glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
                 imgX += (int) (charWidth + separator);
                 tileX++;

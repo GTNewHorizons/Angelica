@@ -32,7 +32,7 @@ void main() {
     if (texCoords.s != 0 || texCoords.t != 0) {
         float res = 0;
         vec2 txSize = textureSize(sampler, 0).xy;
-        float f = strength * fwidth(dot(texCoords, txSize)) / sqrt(txSize.x * txSize.x + txSize.y * txSize.y);
+        float f = strength * fwidth(dot(texCoords, txSize)) / length(txSize);
         totalWt = 0;
         if (aaMode == 1) {
             res += txSample(texCoords,  2,  6, f);

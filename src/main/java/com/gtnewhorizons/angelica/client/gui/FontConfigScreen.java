@@ -126,15 +126,14 @@ public class FontConfigScreen extends GuiScreen {
         }
         selectedPrimaryFontListPos = -1;
         selectedFallbackFontListPos = -1;
+        FontStrategist.customFontInUse = false;
         super.buttonList.clear();
         this.initButtons();
     }
 
     private void toggleCustomFont(IrisButton button) {
         FontConfig.enableCustomFont = !FontConfig.enableCustomFont;
-        if (FontConfig.enableCustomFont) {
-            applyChanges(false);
-        }
+        applyChanges(false);
         button.displayString = FontConfig.enableCustomFont ?
             I18n.format("options.angelica.fontconfig.disable_custom_font") :
             I18n.format("options.angelica.fontconfig.enable_custom_font");
