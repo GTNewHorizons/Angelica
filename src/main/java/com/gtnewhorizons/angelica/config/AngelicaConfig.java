@@ -182,7 +182,7 @@ public class AngelicaConfig {
     })
     @Config.RangeDouble(min = 0,
             max = 0.005)
-    @Config.DefaultDouble(0.001)
+    @Config.DefaultDouble(0.0005)
     public static double blockCrackFixEpsilon;
     
     @Config.Comment("Block classes that have bugs when rendering with the crack fix can be put here to avoid manipulating them")
