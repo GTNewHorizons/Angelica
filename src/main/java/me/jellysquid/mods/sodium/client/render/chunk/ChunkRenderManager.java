@@ -352,12 +352,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private void addEntitiesToRenderLists(ChunkRenderContainer<T> render) {
         Collection<TileEntity> tileEntities = render.getData().getTileEntities();
-
-        if (!tileEntities.isEmpty()) {
-            this.visibleTileEntities.addAll(tileEntities);
-        }
+        this.visibleTileEntities.addAll(tileEntities);
     }
-
+    
     public ChunkRenderContainer<T> getRender(int x, int y, int z) {
         ChunkRenderColumn<T> column = this.columns.get(ChunkPos.toLong(x, z));
 

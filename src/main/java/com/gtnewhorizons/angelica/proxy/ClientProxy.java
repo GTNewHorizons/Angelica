@@ -308,9 +308,14 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
-        if (!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
-            gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
-            LOGGER.info("The game loaded in {} seconds.", gameStartTime);
+        if (!event.isCanceled()) {
+            if (event.gui instanceof GuiMainMenu && gameStartTime == -1 ) {
+                gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
+                LOGGER.info("The game loaded in {} seconds.", gameStartTime);
+            }
+
+            // force reset zoom when a GUI is opened
+            if (AngelicaConfig.enableZoom && event.gui != null) Zoom.resetZoom();
         }
     }
 

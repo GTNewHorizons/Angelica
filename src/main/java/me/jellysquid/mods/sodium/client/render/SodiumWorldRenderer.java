@@ -259,6 +259,7 @@ public class SodiumWorldRenderer {
         if(AngelicaConfig.enableIris) {
             if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                 ShadowRenderer.visibleTileEntities.addAll(this.chunkRenderManager.getVisibleTileEntities());
+                ShadowRenderer.globalTileEntities.addAll(this.globalTileEntities);
             }
         }
     }
@@ -376,7 +377,7 @@ public class SodiumWorldRenderer {
             }
         }
     }
-
+    
     public void renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
         for (TileEntity tileEntity : this.chunkRenderManager.getVisibleTileEntities()) {
@@ -390,7 +391,7 @@ public class SodiumWorldRenderer {
 
     public void onChunkRenderUpdated(int x, int y, int z, ChunkRenderData meshBefore, ChunkRenderData meshAfter) {
         ListUtil.updateList(this.globalTileEntities, meshBefore.getGlobalTileEntities(), meshAfter.getGlobalTileEntities());
-
+        
         this.chunkRenderManager.onChunkRenderUpdates(x, y, z, meshAfter);
     }
 
