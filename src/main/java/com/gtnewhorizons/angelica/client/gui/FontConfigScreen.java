@@ -17,6 +17,7 @@ import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -77,22 +78,40 @@ public class FontConfigScreen extends GuiScreen {
             I18n.format("options.angelica.fontconfig.reset_values"), this::resetValues));
         this.buttonList.add(new IrisButton(this.width / 2 - 81 + 165, this.height - 20 - 7, 162, 20,
             I18n.format("gui.done"), button -> this.onClose()));
+
+        // might refactor later, feeling too lazy at the moment
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 40 - 11, 120, 20,
-            optFontQuality, FontConfig.customFontQuality, this::setFontQuality, value -> I18n.format("options.angelica.fontconfig.font_quality", String.format("%2.0f", value))));
+            optFontQuality, FontConfig.customFontQuality, this::setFontQuality,
+            value -> I18n.format("options.angelica.fontconfig.font_quality", String.format("%2.0f", value)),
+            "options.angelica.fontconfig.font_quality.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 60 - 15, 120, 20,
-            optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value, value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("x%3.2f", value))));
+            optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value,
+            value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("x%3.2f", value)),
+            "options.angelica.fontconfig.shadow_offset.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 40 - 11, 120, 20,
-            optGlyphAspect, FontConfig.glyphAspect, value -> FontConfig.glyphAspect = value, value -> I18n.format("options.angelica.fontconfig.glyph_aspect", String.format("%3.2f", value))));
+            optGlyphAspect, FontConfig.glyphAspect, value -> FontConfig.glyphAspect = value,
+            value -> I18n.format("options.angelica.fontconfig.glyph_aspect", String.format("%3.2f", value)),
+            "options.angelica.fontconfig.glyph_aspect.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 60 - 15, 120, 20,
-            optGlyphScale, FontConfig.glyphScale, value -> FontConfig.glyphScale = value, value -> I18n.format("options.angelica.fontconfig.glyph_scale", String.format("x%3.2f", value))));
+            optGlyphScale, FontConfig.glyphScale, value -> FontConfig.glyphScale = value,
+            value -> I18n.format("options.angelica.fontconfig.glyph_scale", String.format("x%3.2f", value)),
+            "options.angelica.fontconfig.glyph_scale.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 40 - 11, 120, 20,
-            optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value, value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("x%3.2f", value))));
+            optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value,
+            value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("x%3.2f", value)),
+            "options.angelica.fontconfig.whitespace_scale.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 60 - 15, 120, 20,
-            optGlyphSpacing, FontConfig.glyphSpacing, value -> FontConfig.glyphSpacing = value, value -> I18n.format("options.angelica.fontconfig.glyph_spacing", String.format("%3.2f", value))));
+            optGlyphSpacing, FontConfig.glyphSpacing, value -> FontConfig.glyphSpacing = value,
+            value -> I18n.format("options.angelica.fontconfig.glyph_spacing", String.format("%3.2f", value)),
+            "options.angelica.fontconfig.glyph_spacing.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 186, this.height - 40 - 11, 120, 20,
-            optFontAAStrength, FontConfig.fontAAStrength, value -> FontConfig.fontAAStrength = value.intValue(), value -> I18n.format("options.angelica.fontconfig.font_aa_strength", String.format("%.0f", value))));
+            optFontAAStrength, FontConfig.fontAAStrength, value -> FontConfig.fontAAStrength = value.intValue(),
+            value -> I18n.format("options.angelica.fontconfig.font_aa_strength", String.format("%.0f", value)),
+            "options.angelica.fontconfig.font_aa_strength.tooltip"));
         this.buttonList.add(new SliderClone( this.width / 2 - 60 + 186, this.height - 60 - 15, 120, 20,
-            optFontAAMode, FontConfig.fontAAMode, value -> FontConfig.fontAAMode = value.intValue(), this::fontAAModeFormat));
+            optFontAAMode, FontConfig.fontAAMode, value -> FontConfig.fontAAMode = value.intValue(),
+            this::fontAAModeFormat,
+            "options.angelica.fontconfig.aamode.tooltip"));
     }
 
     private void onClose() {
@@ -148,14 +167,18 @@ public class FontConfigScreen extends GuiScreen {
         }
         qualityLast = (int) quality;
     }
+
     private String fontAAModeFormat(float AAmode) {
         return switch ((int) AAmode) {
-            case 2 -> I18n.format("options.angelica.fontconfig.aa_16x");
-            case 1 -> I18n.format("options.angelica.fontconfig.aa_4x");
-            default -> I18n.format("options.angelica.fontconfig.aa_none");
+            case 2 -> I18n.format("options.angelica.fontconfig.aamode.aa_16x");
+            case 1 -> I18n.format("options.angelica.fontconfig.aamode.aa_4x");
+            default -> I18n.format("options.angelica.fontconfig.aamode.aa_none");
         };
     }
 
+    private float lastMouseX = 0;
+    private float lastMouseY = 0;
+    private long lastStillTime = 0;
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         super.drawDefaultBackground();
@@ -171,6 +194,33 @@ public class FontConfigScreen extends GuiScreen {
         drawCenteredString(this.fontRendererObj, I18n.format("options.angelica.fontconfig.currentfonts",
             FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback), (int) (this.width * 0.5), this.height - 92, 0xFFFFFF);
         super.drawScreen(mouseX, mouseY, delta);
+
+        for (GuiButton guiButton : buttonList) {
+            if (!(guiButton instanceof SliderClone slider)) { continue; }
+            final int top = slider.yPosition;
+            final int bot = slider.yPosition + slider.height;
+            final int left = slider.xPosition;
+            final int right = slider.xPosition + slider.width;
+            if (mouseY < top || mouseY >= bot || mouseX < left || mouseX >= right) { continue; }
+            if (mouseX == lastMouseX && mouseY == lastMouseY) {
+                if (lastStillTime == 0) {
+                    lastStillTime = System.currentTimeMillis();
+                }
+                if (lastStillTime + 500L < System.currentTimeMillis()) {
+                    displayTooltip(mouseX, mouseY, slider.tooltipKey);
+                }
+            } else {
+                lastStillTime = 0;
+            }
+            break;
+        }
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+    }
+
+    private void displayTooltip(int x, int y, String langKey) {
+        List<String> lines = this.fontRendererObj.listFormattedStringToWidth(I18n.format(langKey), this.width / 2);
+        this.drawHoveringText(lines, x, y, this.fontRendererObj);
     }
 
     @Override

@@ -16,7 +16,7 @@ public class FontConfig {
     @Config.DefaultString("(none)")
     public static String customFontNameFallback;
 
-    @Config.Comment("The quality at which the custom fonts are rendered, making them less pixelated but increasing memory usage.")
+    @Config.Comment("The quality at which custom fonts are rendered, making them less pixelated but increasing memory usage.")
     @Config.DefaultInt(30)
     @Config.RangeInt(min = 6, max = 60)
     public static int customFontQuality;

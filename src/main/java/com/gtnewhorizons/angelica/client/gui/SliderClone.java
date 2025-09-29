@@ -11,6 +11,7 @@ import java.util.function.Function;
 public class SliderClone extends GuiButton {
 
     private float sliderPercentage;
+    public final String tooltipKey;
     public boolean mouseDragging;
     private Option option;
     private Consumer<Float> valueSetter;
@@ -31,13 +32,14 @@ public class SliderClone extends GuiButton {
         }
     }
 
-    public SliderClone(int x, int y, int width, int height, Option option, float initialValue, Consumer<Float> setter, Function<Float, String> formatter) {
+    public SliderClone(int x, int y, int width, int height, Option option, float initialValue, Consumer<Float> setter, Function<Float, String> formatter, String tooltipKey) {
         super(0, x, y, width, height, "");
         this.option = option;
         this.sliderPercentage = option.normalize(initialValue);
         this.displayString = formatter.apply(initialValue);
         this.valueSetter = setter;
         this.displayStringFormatter = formatter;
+        this.tooltipKey = tooltipKey;
     }
 
     /**
