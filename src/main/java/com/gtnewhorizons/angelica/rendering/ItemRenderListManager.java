@@ -53,7 +53,7 @@ public class ItemRenderListManager {
     );
     private static final Timer timer = Minecraft.getMinecraft().timer;
     // 50 seconds
-    private static final int TICKS_ALIVE = 10_000;
+    private static final int TICKS_CACHED = 10_000;
 
     public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
@@ -65,23 +65,23 @@ public class ItemRenderListManager {
         }
 
         if (!vboCache.isEmpty()) {
-            final ItemProp oldest = vboCache.firstKey();
-            final CachedVBO oldestVBO = vboCache.get(oldest);
-            final long time = timer.elapsedTicks - TICKS_ALIVE;
+            final ItemProp oldestProp = vboCache.firstKey();
+            final CachedVBO oldestVBO = vboCache.get(oldestProp);
+            final long time = timer.elapsedTicks - TICKS_CACHED;
             if (time > oldestVBO.lastUsed) {
                 // Clear the cache and use the first unused VertexBuffer and ItemProp
                 vbo = vboCache.removeFirst();
                 while (!vboCache.isEmpty() && time > vboCache.get(vboCache.firstKey()).lastUsed) {
                     vboCache.removeFirst().delete();
                 }
-                oldest.set(prop);
-                vboCache.put(oldest, vbo);
+                oldestProp.set(prop);
+                vboCache.put(oldestProp, vbo);
             } else {
                 if (vboCache.size() >= AngelicaConfig.itemRendererCacheSize) {
 
                     vbo = vboCache.removeFirst();
-                    oldest.set(prop);
-                    vboCache.put(oldest, vbo);
+                    oldestProp.set(prop);
+                    vboCache.put(oldestProp, vbo);
                 } else {
                     vbo = new CachedVBO();
                     vboCache.put(new ItemProp(prop), vbo);

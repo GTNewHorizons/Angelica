@@ -88,7 +88,7 @@ public enum Mixins implements IMixins {
         .addClientMixins("angelica.optimizations.MixinRenderGlobal_ItemRenderDist")
         .setApplyIf(() -> AngelicaConfig.dynamicItemRenderDistance)),
 
-    ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimized item rendering by caching them inside a VBO")
+    ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimizes in-world item rendering")
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
