@@ -25,87 +25,165 @@
 
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import lombok.AccessLevel;
+import it.unimi.dsi.fastutil.HashCommon;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.val;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Timer;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
-import net.minecraft.client.renderer.GLAllocation;
-import net.minecraft.client.resources.IResourceManager;
-import net.minecraft.client.resources.IResourceManagerReloadListener;
-
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class ItemRenderListManager implements IResourceManagerReloadListener {
-    public static final ItemRenderListManager INSTANCE = new ItemRenderListManager();
+public class ItemRenderListManager {
+    // Least used element is at position 0. This is in theory slightly faster.
+    private static final Object2ObjectLinkedOpenHashMap<ItemProp, CachedVBO> vboCache = new Object2ObjectLinkedOpenHashMap<>(64);
+    private static final ItemProp prop = new ItemProp();
+    // Formula: (widthSubdivisions * 2 + heightSubdivisions * 2 + 2) * 4 * vertexSize
+    // Using 256 as both variables due to enchants.
+    private static ByteBuffer quadBuffer = BufferUtils.createByteBuffer(
+        (1026 * DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize()) << 2
+    );
+    private static final Timer timer = Minecraft.getMinecraft().timer;
+    // 50 seconds
+    private static final int TICKS_ALIVE = 10_000;
 
-    private final Map<ItemProp, Integer> theMap = new HashMap<>();
-    private final List<ItemProp> propList = new ArrayList<>();
-    private final ItemProp prop = new ItemProp();
-    private int list = 0;
+    public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
+        prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
 
-    public boolean pre(float a, float b, float c, float d, int e, int f, float g) {
-        prop.set(a, b, c, d, e, f, g);
-        if (theMap.containsKey(prop)) {
-            val list = theMap.get(prop);
-            propList.add(propList.remove(propList.indexOf(prop)));
-            GL11.glCallList(list);
-            return true;
-        } else {
-            if (propList.size() >= AngelicaConfig.itemRendererDisplayListCacheSize) {
-                val oldProp = propList.remove(0);
-                GLAllocation.deleteDisplayLists(theMap.remove(oldProp));
+        CachedVBO vbo = vboCache.getAndMoveToLast(prop);
+        if (vbo != null) {
+            vbo.render();
+            return null;
+        }
+
+        if (!vboCache.isEmpty()) {
+            final ItemProp oldest = vboCache.firstKey();
+            final CachedVBO oldestVBO = vboCache.get(oldest);
+            final long time = timer.elapsedTicks - TICKS_ALIVE;
+            if (time > oldestVBO.lastUsed) {
+                // Clear the cache and use the first unused VertexBuffer and ItemProp
+                vbo = vboCache.removeFirst();
+                while (!vboCache.isEmpty() && time > vboCache.get(vboCache.firstKey()).lastUsed) {
+                    vboCache.removeFirst().delete();
+                }
+                oldest.set(prop);
+                vboCache.put(oldest, vbo);
+            } else {
+                if (vboCache.size() >= AngelicaConfig.itemRendererCacheSize) {
+
+                    vbo = vboCache.removeFirst();
+                    oldest.set(prop);
+                    vboCache.put(oldest, vbo);
+                } else {
+                    vbo = new CachedVBO();
+                    vboCache.put(new ItemProp(prop), vbo);
+                }
             }
-            list = GLAllocation.generateDisplayLists(1);
-            val newProp = new ItemProp(prop);
-            theMap.put(newProp, list);
-            propList.add(newProp);
-            GL11.glNewList(list, GL11.GL_COMPILE);
-            return false;
+        } else {
+            vbo = new CachedVBO();
+            vboCache.put(new ItemProp(prop), vbo);
+        }
+
+        TessellatorManager.startCapturing();
+        vbo.bind();
+
+        return vbo.vertexBuffer;
+    }
+
+    public static void post(CapturingTessellator tessellator, VertexBuffer vbo) {
+        final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
+        final int size = quads.size();
+
+        final int needed = (DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize() * size) << 2;
+        if (quadBuffer.capacity() < needed) {
+            quadBuffer = BufferUtils.createByteBuffer(HashCommon.nextPowerOfTwo(needed));
+        }
+
+        for (int i = 0; i < size; i++) {
+            DefaultVertexFormat.POSITION_TEXTURE_NORMAL.writeQuad(quads.get(i), quadBuffer);
+        }
+
+        quadBuffer.flip();
+        vbo.upload(quadBuffer);
+        // Reset for later use
+        quadBuffer.clear();
+
+        tessellator.clearQuads();
+        vbo.render();
+    }
+
+    private static final class CachedVBO {
+        private VertexBuffer vertexBuffer;
+        private int lastUsed;
+
+        public CachedVBO() {
+            this.vertexBuffer = new VertexBuffer(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
+        }
+
+        public void render() {
+            vertexBuffer.render();
+            lastUsed = timer.elapsedTicks;
+        }
+
+        public void bind() {
+            vertexBuffer.bind();
+            lastUsed = timer.elapsedTicks;
+        }
+
+        public void delete() {
+            vertexBuffer.close();
+            vertexBuffer = null;
         }
     }
 
-    public void post() {
-        GL11.glEndList();
-        GL11.glCallList(list);
-    }
-
-    @Override
-    public void onResourceManagerReload(IResourceManager p_110549_1_) {
-        propList.clear();
-        theMap.forEach((key, value) -> GLAllocation.deleteDisplayLists(value));
-        theMap.clear();
-    }
-
-    @NoArgsConstructor
     @Data
-    public class ItemProp {
-        private float a;
-        private float b;
-        private float c;
-        private float d;
-        private int e;
-        private int f;
-        private float g;
+    private static final class ItemProp {
+        private float minU;
+        private float minV;
+        private float maxU;
+        private float maxV;
+        private int widthSubdivisions;
+        private int heightSubdivisions;
+        private float thickness;
+
+        public ItemProp() {
+
+        }
 
         public ItemProp(ItemProp old) {
-            set(old.a, old.b, old.c, old.d, old.e, old.f, old.g);
+            set(
+                old.minU, old.minV,
+                old.maxU, old.maxV,
+                old.widthSubdivisions, old.heightSubdivisions,
+                old.thickness
+            );
         }
 
-        public void set(float a, float b, float c, float d, int e, int f, float g) {
-            this.a = a;
-            this.b = b;
-            this.c = c;
-            this.d = d;
-            this.e = e;
-            this.f = f;
-            this.g = g;
+        public void set(ItemProp other) {
+            set(
+                other.minU, other.minV,
+                other.maxU, other.maxV,
+                other.widthSubdivisions, other.heightSubdivisions,
+                other.thickness
+            );
+        }
+
+        public void set(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
+            this.minU = minU;
+            this.minV = minV;
+            this.maxU = maxU;
+            this.maxV = maxV;
+            this.widthSubdivisions = widthSubdivisions;
+            this.heightSubdivisions = heightSubdivisions;
+            this.thickness = thickness;
         }
     }
 }
