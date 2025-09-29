@@ -200,6 +200,7 @@ public class FontConfigScreen extends GuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         super.mouseClicked(mouseX, mouseY, mouseButton);
         this.searchBox.mouseClicked(mouseX, mouseY, mouseButton);
+        this.fontList.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
@@ -235,8 +236,26 @@ public class FontConfigScreen extends GuiScreen {
             super(FontConfigScreen.this.mc, FontConfigScreen.this.width, FontConfigScreen.this.height, 52, FontConfigScreen.this.height - 100, 18);
         }
 
-        protected void elementClicked(int index, boolean doubleClicked, int mouseX, int mouseY) {
-            if (!doubleClicked) {
+        private void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+            if (mouseY < this.top || mouseY > this.bottom) { return; }
+
+            int listLeftBound = this.width / 2 - this.getListWidth() / 2;
+            int listRightBound = this.width / 2 + this.getListWidth() / 2;
+            if (mouseX < listLeftBound || mouseX > listRightBound) { return; }
+
+            int mousePosInList = mouseY - this.top - this.headerPadding + (int)this.amountScrolled - 4;
+            int slotIndex = mousePosInList / this.slotHeight;
+            if (slotIndex < 0 || slotIndex >= this.getSize()) { return; }
+
+            if (mouseButton == 0) {
+                onElemClicked(slotIndex, false);
+            } else if (mouseButton == 1) {
+                onElemClicked(slotIndex, true);
+            }
+        }
+
+        protected void onElemClicked(int index, boolean rightClick) {
+            if (!rightClick) {
                 selectedPrimaryFontListPos = index;
                 currentPrimaryFontName = displayedFonts.get(index).getFontName();
             } else {
@@ -268,6 +287,9 @@ public class FontConfigScreen extends GuiScreen {
         public int getListWidth() {
             return this.width * 2 / 3;
         }
+
+        // see onElemClicked for the proper version that supports right-clicking
+        protected void elementClicked(int index, boolean doubleClicked, int mouseX, int mouseY) {}
 
         protected void drawBackground() {
             drawDefaultBackground();
