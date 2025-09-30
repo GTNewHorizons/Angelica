@@ -27,13 +27,13 @@ public final class FontProviderCustom implements FontProvider {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
     public static final String FONT_DIR = "fonts/custom/";
+    static final int ATLAS_SIZE = 128;
     static final int ATLAS_COUNT = 512;
-    private static final int ATLAS_SIZE = 128;
+    private final byte id; // 0 - primary font, 1 - fallback font
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
+    private float currentFontQuality = FontConfig.customFontQuality;
     @Setter
     private Font font;
-    private float currentFontQuality = FontConfig.customFontQuality;
-    private byte id; // 0 - primary font, 1 - fallback font
 
     private FontProviderCustom(byte id) {
         this.id = id;
@@ -243,7 +243,7 @@ public final class FontProviderCustom implements FontProvider {
     @Override
     public boolean isGlyphAvailable(char chr) {
         if (font == null) { return false; }
-        return font.canDisplay(chr);
+        return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
     }
 
     @Override

@@ -33,8 +33,6 @@ public class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */
     protected FontRenderer underlying;
-    /** Cached locations for each unicode page atlas */
-    private final ResourceLocation[] unicodePageLocations;
     /** Array of width of all the characters in default.png */
     protected int[] charWidth = new int[256];
     /** Array of the start/end column (in upper/lower nibble) for every glyph in the /font directory. */
@@ -46,13 +44,10 @@ public class BatchingFontRenderer {
     private int[] colorCode;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
-    /** The font provider instance currently in use. */
-    private FontProvider fontProvider;
 
-    private int fontShaderId;
-    private int AAMode;
-    private int AAStrength;
-    private int texBoundAttrLocation;
+    private final int AAMode;
+    private final int AAStrength;
+    private final int texBoundAttrLocation;
 
     private final boolean isSGA;
 
@@ -76,10 +71,9 @@ public class BatchingFontRenderer {
         }
     }
 
-    public BatchingFontRenderer(FontRenderer underlying, ResourceLocation[] unicodePageLocations, int[] charWidth,
-        byte[] glyphWidth, int[] colorCode, ResourceLocation locationFontTexture) {
+    public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, byte[] glyphWidth,
+                                int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
-        this.unicodePageLocations = unicodePageLocations;
         this.charWidth = charWidth;
         this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
@@ -96,7 +90,7 @@ public class BatchingFontRenderer {
         FontProviderUnicode.get().glyphWidth = this.glyphWidth;
 
         //noinspection deprecation
-        fontShaderId = FontAAShader.getProgram().getProgramId();
+        int fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
         texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
@@ -477,7 +471,7 @@ public class BatchingFontRenderer {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
 
-                fontProvider = FontStrategist.getFontProvider(chr, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
+                FontProvider fontProvider = FontStrategist.getFontProvider(chr, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {

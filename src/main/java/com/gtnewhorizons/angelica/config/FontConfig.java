@@ -18,7 +18,7 @@ public class FontConfig {
 
     @Config.Comment("The quality at which custom fonts are rendered, making them less pixelated but increasing memory usage.")
     @Config.DefaultInt(30)
-    @Config.RangeInt(min = 6, max = 60)
+    @Config.RangeInt(min = 6, max = 72)
     public static int customFontQuality;
 
     @Config.Comment("Controls the distance at which the font's shadow is drawn.")

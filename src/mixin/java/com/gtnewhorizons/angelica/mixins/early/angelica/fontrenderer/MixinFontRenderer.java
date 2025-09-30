@@ -120,7 +120,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
-        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, unicodePageLocations, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture);
+        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture);
     }
 
     @Unique

@@ -53,7 +53,7 @@ public class FontConfigScreen extends GuiScreen {
         }
     }
 
-    SliderClone.Option optFontQuality = new SliderClone.Option(6, 60, 6);
+    SliderClone.Option optFontQuality = new SliderClone.Option(6, 72, 6);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
     SliderClone.Option optGlyphAspect = new SliderClone.Option(-1, 1, 0.05f);
     SliderClone.Option optGlyphScale = new SliderClone.Option(0.1f, 3, 0.05f);
