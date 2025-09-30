@@ -36,7 +36,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.Timer;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -53,51 +52,49 @@ public class ItemRenderListManager {
         (1026 * DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize()) << 2
     );
 
-    // 50 seconds
-    private static final int TICKS_CACHED = 10_000;
-    private static final Timer timer = Minecraft.getMinecraft().timer;
+    // 1 minute
+    private static final int EXPIRY_TICKS = 1_200;
+    private static int smallestExpiry;
 
     private static final ItemProp prop = new ItemProp();
 
     public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
 
-        CachedVBO vbo = vboCache.getAndMoveToLast(prop);
-        if (vbo != null) {
-            vbo.render();
-            return null;
+        if (!vboCache.isEmpty()) {
+
+            final CachedVBO vbo = vboCache.getAndMoveToLast(prop);
+
+            if (vbo != null) {
+                final int time = getElapsedTicks();
+                vbo.render(time);
+
+                // Prevent constant map lookups by only storing the expiry of the least recently used entry
+                if (time > smallestExpiry && time > vboCache.get(vboCache.firstKey()).expiry) {
+                    vboCache.removeFirst().delete();
+                    if (!vboCache.isEmpty()) {
+                        smallestExpiry = vboCache.get(vboCache.firstKey()).expiry + 20;
+                    }
+                }
+
+                return null;
+            }
         }
 
-        if (!vboCache.isEmpty()) {
+        final CachedVBO vbo;
+        if (vboCache.size() >= AngelicaConfig.itemRendererCacheSize) {
             final ItemProp oldestProp = vboCache.firstKey();
-            final CachedVBO oldestVBO = vboCache.get(oldestProp);
-            final long time = timer.elapsedTicks - TICKS_CACHED;
-            if (time > oldestVBO.lastUsed) {
-                // Clear the cache and use the first unused VertexBuffer and ItemProp
-                vbo = vboCache.removeFirst();
-                while (!vboCache.isEmpty() && time > vboCache.get(vboCache.firstKey()).lastUsed) {
-                    vboCache.removeFirst().delete();
-                }
-                oldestProp.set(prop);
-                vboCache.put(oldestProp, vbo);
-            } else {
-                if (vboCache.size() >= AngelicaConfig.itemRendererCacheSize) {
-
-                    vbo = vboCache.removeFirst();
-                    oldestProp.set(prop);
-                    vboCache.put(oldestProp, vbo);
-                } else {
-                    vbo = new CachedVBO();
-                    vboCache.put(new ItemProp(prop), vbo);
-                }
-            }
+            vbo = vboCache.removeFirst();
+            oldestProp.set(prop);
+            vboCache.put(oldestProp, vbo);
         } else {
             vbo = new CachedVBO();
             vboCache.put(new ItemProp(prop), vbo);
         }
 
+        vbo.expiry = getElapsedTicks() + EXPIRY_TICKS;
+
         TessellatorManager.startCapturing();
-        vbo.bind();
 
         return vbo.vertexBuffer;
     }
@@ -123,25 +120,24 @@ public class ItemRenderListManager {
         vbo.render();
     }
 
+    private static int getElapsedTicks() {
+        return Minecraft.getMinecraft().thePlayer.ticksExisted;
+    }
+
     private static final class CachedVBO {
         private VertexBuffer vertexBuffer;
-        private int lastUsed;
+        private int expiry;
 
         public CachedVBO() {
             this.vertexBuffer = new VertexBuffer(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
         }
 
-        public void render() {
+        private void render(int elapsedTicks) {
             vertexBuffer.render();
-            lastUsed = timer.elapsedTicks;
+            expiry = elapsedTicks + EXPIRY_TICKS;
         }
 
-        public void bind() {
-            vertexBuffer.bind();
-            lastUsed = timer.elapsedTicks;
-        }
-
-        public void delete() {
+        private void delete() {
             vertexBuffer.close();
             vertexBuffer = null;
         }
