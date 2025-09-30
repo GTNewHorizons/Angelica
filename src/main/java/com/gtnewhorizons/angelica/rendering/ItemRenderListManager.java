@@ -70,7 +70,7 @@ public class ItemRenderListManager {
                 vbo.render(time);
 
                 // Prevent constant map lookups by only storing the expiry of the least recently used entry
-                if (time > smallestExpiry && time > vboCache.get(vboCache.firstKey()).expiry) {
+                if (time > smallestExpiry && time > (smallestExpiry = (vboCache.get(vboCache.firstKey()).expiry + 20))) {
                     vboCache.removeFirst().delete();
                     if (!vboCache.isEmpty()) {
                         smallestExpiry = vboCache.get(vboCache.firstKey()).expiry + 20;
