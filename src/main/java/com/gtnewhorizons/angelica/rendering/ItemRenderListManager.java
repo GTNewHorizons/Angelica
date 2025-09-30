@@ -34,6 +34,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Timer;
 import org.lwjgl.BufferUtils;
@@ -45,15 +46,18 @@ import java.util.List;
 public class ItemRenderListManager {
     // Least used element is at position 0. This is in theory slightly faster.
     private static final Object2ObjectLinkedOpenHashMap<ItemProp, CachedVBO> vboCache = new Object2ObjectLinkedOpenHashMap<>(64);
-    private static final ItemProp prop = new ItemProp();
+
     // Formula: (widthSubdivisions * 2 + heightSubdivisions * 2 + 2) * 4 * vertexSize
-    // Using 256 as both variables due to enchants.
+    // Using 256 as both variables due to enchants, to prevent later re-allocations.
     private static ByteBuffer quadBuffer = BufferUtils.createByteBuffer(
         (1026 * DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize()) << 2
     );
-    private static final Timer timer = Minecraft.getMinecraft().timer;
+
     // 50 seconds
     private static final int TICKS_CACHED = 10_000;
+    private static final Timer timer = Minecraft.getMinecraft().timer;
+
+    private static final ItemProp prop = new ItemProp();
 
     public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
@@ -113,7 +117,6 @@ public class ItemRenderListManager {
 
         quadBuffer.flip();
         vbo.upload(quadBuffer);
-        // Reset for later use
         quadBuffer.clear();
 
         tessellator.clearQuads();
@@ -144,6 +147,7 @@ public class ItemRenderListManager {
         }
     }
 
+    @NoArgsConstructor
     @Data
     private static final class ItemProp {
         private float minU;
@@ -153,10 +157,6 @@ public class ItemRenderListManager {
         private int widthSubdivisions;
         private int heightSubdivisions;
         private float thickness;
-
-        public ItemProp() {
-
-        }
 
         public ItemProp(ItemProp old) {
             set(
