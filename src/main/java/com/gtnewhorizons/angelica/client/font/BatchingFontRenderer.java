@@ -48,6 +48,7 @@ public class BatchingFontRenderer {
     private final int AAMode;
     private final int AAStrength;
     private final int texBoundAttrLocation;
+    private final int fontShaderId;
 
     private final boolean isSGA;
 
@@ -90,7 +91,7 @@ public class BatchingFontRenderer {
         FontProviderUnicode.get().glyphWidth = this.glyphWidth;
 
         //noinspection deprecation
-        int fontShaderId = FontAAShader.getProgram().getProgramId();
+        fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
         texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
@@ -303,13 +304,13 @@ public class BatchingFontRenderer {
             batchIndices.position(cmd.startVtx);
 
             if (FontConfig.fontAAMode != 0) {
-                FontAAShader.getProgram().use();
+                GL20.glUseProgram(fontShaderId);
                 GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
                 GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
             }
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
             if (FontConfig.fontAAMode != 0) {
-                Program.unbind();
+                GL20.glUseProgram(0);
             }
         }
 
