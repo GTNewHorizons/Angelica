@@ -273,8 +273,13 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
-        GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
-        GL20.glEnableVertexAttribArray(texBoundAttrLocation);
+        if (FontConfig.fontAAMode != 0) {
+            GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
+            GL20.glEnableVertexAttribArray(texBoundAttrLocation);
+            GL20.glUseProgram(fontShaderId);
+            GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
+            GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+        }
         GL11.glTexCoordPointer(2, 0, batchVtxTexCoords);
         GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 0, batchVtxColors);
@@ -303,21 +308,16 @@ public class BatchingFontRenderer {
             batchIndices.limit(cmd.startVtx + cmd.idxCount);
             batchIndices.position(cmd.startVtx);
 
-            if (FontConfig.fontAAMode != 0) {
-                GL20.glUseProgram(fontShaderId);
-                GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
-                GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
-            }
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
-            if (FontConfig.fontAAMode != 0) {
-                GL20.glUseProgram(0);
-            }
+        }
+        if (FontConfig.fontAAMode != 0) {
+            GL20.glUseProgram(0);
+            GL20.glDisableVertexAttribArray(texBoundAttrLocation);
         }
 
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
         GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
-        GL20.glDisableVertexAttribArray(texBoundAttrLocation);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
@@ -393,13 +393,14 @@ public class BatchingFontRenderer {
             boolean curStrikethrough = false;
             boolean curUnderline = false;
 
-            final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - getGlyphScaleY() / 2);
-            final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * getGlyphScaleY();
+            final float glyphScaleY = getGlyphScaleY();
+            final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
+            final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
 
-            final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * getGlyphScaleY();
+            final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
             float underlineStartX = 0.0f;
             float underlineEndX = 0.0f;
-            final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * getGlyphScaleY();
+            final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
@@ -411,7 +412,7 @@ public class BatchingFontRenderer {
 
                     if (curUnderline && underlineStartX != underlineEndX) {
                         final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, getGlyphScaleY(), curColor);
+                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
                         pushDrawCmd(ulIdx, 6, null, false);
                         underlineStartX = underlineEndX;
                     }
@@ -421,7 +422,7 @@ public class BatchingFontRenderer {
                             strikethroughStartX,
                             strikethroughY,
                             strikethroughEndX - strikethroughStartX,
-                            getGlyphScaleY(),
+                            glyphScaleY,
                             curColor);
                         pushDrawCmd(ulIdx, 6, null, false);
                         strikethroughStartX = strikethroughEndX;
@@ -538,7 +539,7 @@ public class BatchingFontRenderer {
 
             if (curUnderline && underlineStartX != underlineEndX) {
                 final int ulIdx = idxWriterIndex;
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, getGlyphScaleY(), curColor);
+                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
@@ -547,7 +548,7 @@ public class BatchingFontRenderer {
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
-                    getGlyphScaleY(),
+                    glyphScaleY,
                     curColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
