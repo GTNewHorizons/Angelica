@@ -5,7 +5,9 @@ import com.gtnewhorizons.angelica.config.FontConfig;
 import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Objects;
 
 public final class FontProviderCustom implements FontProvider {
@@ -89,8 +92,14 @@ public final class FontProviderCustom implements FontProvider {
         }
 
         TextureManager tm = Minecraft.getMinecraft().getTextureManager();
+        Map mapTextureObjects = tm.mapTextureObjects;
         for (int i = 0; i < ATLAS_COUNT; i++) {
-            tm.mapTextureObjects.remove(new ResourceLocation(getAtlasResourceName(i)));
+            ResourceLocation key = new ResourceLocation(getAtlasResourceName(i));
+            if (mapTextureObjects.containsKey(key)) {
+                ITextureObject obj = (ITextureObject) mapTextureObjects.get(key);
+                TextureUtil.deleteTexture(obj.getGlTextureId());
+                mapTextureObjects.remove(key);
+            }
         }
 
         fontAtlases = new FontAtlas[ATLAS_COUNT];
