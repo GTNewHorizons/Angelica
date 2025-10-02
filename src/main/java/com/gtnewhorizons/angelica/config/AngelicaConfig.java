@@ -87,6 +87,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 
+    @Config.Comment("OffSet fonts shadows draw")
+    @Config.DefaultFloat(0.5F)
+    @Config.RangeFloat(min = 0.5F, max = 1F)
+    public static float shadowOffsetFontUC;
+
     @Config.Comment("Enable Dynamic Lights")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -143,15 +148,15 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableZoom;
 
-    @Config.Comment("Optimizes in-world item rendering [Experimental]")
-    @Config.DefaultBoolean(false)
+    @Config.Comment("Optimizes in-world item rendering")
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
-    public static boolean optimizeInWorldItemRendering_WIP;
+    public static boolean optimizeInWorldItemRendering;
 
-    @Config.Comment("Max amount of display lists to cache for optimized item rendering. Higher number will use more VRAM")
-    @Config.DefaultInt(256)
-    @Config.RangeInt(min = 64, max = 1024)
-    public static int itemRendererDisplayListCacheSize;
+    @Config.Comment("Upper limit for the amount of VBO's to cache for optimized item rendering. Higher number can potentially use more VRAM.")
+    @Config.DefaultInt(512)
+    @Config.RangeInt(min = 256, max = 1024)
+    public static int itemRendererCacheSize;
 
     @Config.Comment("Render distance for the spinning mob inside mod spawners")
     @Config.DefaultDouble(16D)
