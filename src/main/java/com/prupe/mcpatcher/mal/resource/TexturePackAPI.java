@@ -312,13 +312,15 @@ public class TexturePackAPI {
         TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
         if (textureManager != null) {
             @SuppressWarnings("unchecked")
-            Set<Map.Entry<ResourceLocation, ITextureObject>> entrySet = textureManager.mapTextureObjects.entrySet();
-            for (Map.Entry<ResourceLocation, ITextureObject> entry : new HashSet<>(entrySet)) {
-                ResourceLocation resource = entry.getKey();
+            Map.Entry<ResourceLocation, ITextureObject>[] arr = (Map.Entry<ResourceLocation, ITextureObject>[])
+                textureManager.mapTextureObjects.entrySet().toArray(new Map.Entry[0]);
+            for (Map.Entry<ResourceLocation, ITextureObject> entry : arr) {
                 ITextureObject texture = entry.getValue();
-                if (texture instanceof SimpleTexture && !(texture instanceof ThreadDownloadImageData)
-                    && !TexturePackAPI.hasResource(resource)) {
-                    unloadTexture(resource);
+                if (texture instanceof SimpleTexture && !(texture instanceof ThreadDownloadImageData)) {
+                    ResourceLocation resource = entry.getKey();
+                    if (!TexturePackAPI.hasResource(resource)) {
+                        unloadTexture(resource);
+                    }
                 }
             }
         }
