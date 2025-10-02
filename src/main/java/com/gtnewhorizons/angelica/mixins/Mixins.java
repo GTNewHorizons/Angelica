@@ -94,10 +94,10 @@ public enum Mixins implements IMixins {
         .addClientMixins("angelica.optimizations.MixinRenderGlobal_ItemRenderDist")
         .setApplyIf(() -> AngelicaConfig.dynamicItemRenderDistance)),
 
-    ANGELICA_ITEM_DISPLAY_LIST_OPTIMIZATION(new MixinBuilder("Optimized item rendering by wrapping them with display lists")
+    ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimizes in-world item rendering")
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
-        .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering_WIP)),
+        .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
 
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
