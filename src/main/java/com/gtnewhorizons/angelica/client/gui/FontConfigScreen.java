@@ -60,7 +60,7 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optWhitespaceScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
-    SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 12, 1);
+    SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
 
     public void initGui() {
         Keyboard.enableRepeatEvents(true);
