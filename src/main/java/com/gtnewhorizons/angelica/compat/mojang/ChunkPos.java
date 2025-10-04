@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.chunk.Chunk;
 
 // See if we can merge/mixin/extend ChunkCoordIntPair?
 public class ChunkPos {
@@ -24,6 +26,10 @@ public class ChunkPos {
         this.z = (int)(pos >> 32);
     }
 
+    public static ChunkPos of(Chunk chunk) {
+        return new ChunkPos(chunk.xPosition, chunk.zPosition);
+    }
+
     public static int getPackedX(long pos) {
         return (int)(pos & INT_MASK);
     }
@@ -38,6 +44,18 @@ public class ChunkPos {
 
     public static long toLong(int x, int z) {
         return (long)x & 4294967295L | ((long)z & 4294967295L) << 32;
+    }
+
+    public int getRegionX() {
+        return this.x >> 5;
+    }
+
+    public int getRegionZ() {
+        return this.z >> 5;
+    }
+
+    public ChunkCoordIntPair toChunkCoord() {
+        return new ChunkCoordIntPair(this.x, this.z);
     }
 
     @Override

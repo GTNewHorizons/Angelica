@@ -49,6 +49,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableDistantHorizons;
 
+    @Config.Comment("Enable Chunkbert [Bobby port]")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableChunkbert;
+
     @Config.Comment("Distant Horizons chunk updates per tick")
     @Config.DefaultInt(5)
     public static int distantHorizonsChunkUpdatesPerTick;

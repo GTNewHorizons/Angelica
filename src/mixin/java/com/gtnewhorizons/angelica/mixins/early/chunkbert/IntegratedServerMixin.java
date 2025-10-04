@@ -1,4 +1,4 @@
-package com.embeddedt.chunkbert.mixin;
+package com.gtnewhorizons.angelica.mixins.early.chunkbert;
 
 import com.embeddedt.chunkbert.ChunkbertConfig;
 import net.minecraft.client.settings.GameSettings;

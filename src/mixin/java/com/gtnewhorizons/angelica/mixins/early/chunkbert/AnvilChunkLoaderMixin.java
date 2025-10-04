@@ -1,15 +1,20 @@
-package com.embeddedt.chunkbert.mixin;
+package com.gtnewhorizons.angelica.mixins.early.chunkbert;
 
 import com.embeddedt.chunkbert.ext.AnvilChunkLoaderExt;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(AnvilChunkLoader.class)
-public class AnvilChunkLoaderMixin implements AnvilChunkLoaderExt {
+public abstract class AnvilChunkLoaderMixin implements AnvilChunkLoaderExt {
+    @Unique
     private boolean chunkbert$loadTes = true;
 
     @Override

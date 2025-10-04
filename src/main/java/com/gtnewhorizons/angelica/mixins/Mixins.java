@@ -231,6 +231,18 @@ public enum Mixins implements IMixins {
             )
     ),
 
+    CHUNKBERT(new MixinBuilder("Chunkbert")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableChunkbert)
+        .addClientMixins(
+            "chunkbert.AnvilChunkLoaderMixin",
+            "chunkbert.ChunkProviderClientMixin",
+            "chunkbert.IntegratedServerMixin",
+            "chunkbert.MinecraftMixin",
+            "chunkbert.NetHandlerPlayClientMixin"
+        )
+    ),
+
     HUD_CACHING(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableHudCaching)

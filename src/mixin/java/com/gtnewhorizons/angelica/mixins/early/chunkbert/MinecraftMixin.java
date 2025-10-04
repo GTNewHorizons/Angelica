@@ -1,4 +1,4 @@
-package com.embeddedt.chunkbert.mixin;
+package com.gtnewhorizons.angelica.mixins.early.chunkbert;
 
 import com.embeddedt.chunkbert.FakeChunkManager;
 import com.embeddedt.chunkbert.ext.IChunkProviderClient;
@@ -17,23 +17,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MinecraftMixin {
     @Final
     @Shadow
-    public Profiler profiler;
+    public Profiler mcProfiler;
 
-    @Shadow public WorldClient world;
+    @Shadow public WorldClient theWorld;
 
     @Shadow public GameSettings gameSettings;
 
     @Inject(method = "runGameLoop", at = @At(value = "CONSTANT", args = "stringValue=tick"))
     private void bobbyUpdate(CallbackInfo ci) {
-        if (world == null) {
+        if (theWorld == null) {
             return;
         }
-        FakeChunkManager bobbyChunkManager = ((IChunkProviderClient) world.getChunkProvider()).getBobbyChunkManager();
+        FakeChunkManager bobbyChunkManager = ((IChunkProviderClient) theWorld.getChunkProvider()).chunkbert$getChunkManager();
         if (bobbyChunkManager == null) {
             return;
         }
 
-        profiler.startSection("bobbyUpdate");
+        mcProfiler.startSection("bobbyUpdate");
 
         int maxFps = gameSettings.limitFramerate;
         long frameTime = 1_000_000_000 / (maxFps == GameSettings.Options.FRAMERATE_LIMIT.getValueMax() ? 120 : maxFps);
@@ -42,6 +42,6 @@ public class MinecraftMixin {
         long timeLimit = (System.nanoTime() / 1000000L) + frameBudget;
         bobbyChunkManager.update(() -> (System.nanoTime() / 1000000L) < timeLimit);
 
-        profiler.endSection();
+        mcProfiler.endSection();
     }
 }

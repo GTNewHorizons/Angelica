@@ -1,6 +1,6 @@
 package com.embeddedt.chunkbert;
 
-import com.embeddedt.chunkbert.ChunkbertConfig;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import it.unimi.dsi.fastutil.longs.Long2LongMap;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
@@ -15,8 +15,6 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.integrated.IntegratedServer;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.DimensionType;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.storage.ISaveFormat;
 import net.minecraft.world.storage.ISaveHandler;
@@ -61,22 +59,19 @@ public class FakeChunkManager {
     private static final ExecutorService loadExecutor = Executors.newFixedThreadPool(8, new DefaultThreadFactory("bobby-loading", true));
     private final Long2ObjectMap<LoadingJob> loadingJobs = new Long2ObjectOpenHashMap<>();
 
-    public static final int UNLOAD_DELAY_SECS = 60;
-
     public FakeChunkManager(WorldClient world, ChunkProviderClient clientChunkManager) {
         this.world = world;
         this.clientChunkManager = clientChunkManager;
 
         long seedHash = 123456; //((BiomeAccessAccessor) world.getBiomeAccess()).getSeed();
-        DimensionType worldKey = world.provider.getDimensionType();
-        Path storagePath = client.gameDir
+        Path storagePath = client.mcDataDir
                 .toPath()
                 .resolve(".bobby")
                 .resolve(getCurrentWorldOrServerName())
                 .resolve(seedHash + "")
-                .resolve(worldKey.getName());
+                .resolve("DIM" + world.provider.dimensionId);
 
-        storage = FakeChunkStorage.getFor(storagePath.toFile(), null);
+        storage = FakeChunkStorage.getFor(storagePath.toFile());
 
         FakeChunkStorage fallbackStorage = null;
         ISaveFormat levelStorage = client.getSaveLoader();
@@ -86,13 +81,13 @@ public class FakeChunkManager {
             if(world.provider.getSaveFolder() != null)
                 worldDirectory = new File(worldDirectory, world.provider.getSaveFolder());
             File regionDirectory = new File(worldDirectory, "region");
-            fallbackStorage = FakeChunkStorage.getFor(regionDirectory, null);
+            fallbackStorage = FakeChunkStorage.getFor(regionDirectory);
         }
         this.fallbackStorage = fallbackStorage;
     }
 
     public Chunk getChunk(int x, int z) {
-        return fakeChunks.get(ChunkPos.asLong(x, z));
+        return fakeChunks.get(ChunkPos.toLong(x, z));
     }
 
     public FakeChunkStorage getStorage() {
@@ -103,12 +98,12 @@ public class FakeChunkManager {
         // Once a minute, force chunks to disk
         if (++ticksSinceLastSave > 20 * 60) {
             // completeAll is blocking, so we run it on the io pool
-            ThreadedFileIOBase.getThreadedIOInstance().queueIO(storage::writeNextIO);
+            ThreadedFileIOBase.threadedIOInstance.queueIO(storage::writeNextIO);
 
             ticksSinceLastSave = 0;
         }
 
-        EntityPlayerSP player = client.player;
+        EntityPlayerSP player = client.thePlayer;
         if (player == null) {
             return;
         }
@@ -129,7 +124,7 @@ public class FakeChunkManager {
                     boolean zOutsideNew = z < newCenterZ - newViewDistance || z > newCenterZ + newViewDistance;
                     if (xOutsideNew || zOutsideNew) {
                         cancelLoad(x, z);
-                        long chunkPos = ChunkPos.asLong(x, z);
+                        long chunkPos = ChunkPos.toLong(x, z);
                         toBeUnloaded.put(chunkPos, time);
                         unloadQueue.add(new ImmutablePair<>(chunkPos, time));
                     }
@@ -142,14 +137,14 @@ public class FakeChunkManager {
                 for (int z = newCenterZ - newViewDistance; z <= newCenterZ + newViewDistance; z++) {
                     boolean zOutsideOld = z < oldCenterZ - oldViewDistance || z > oldCenterZ + oldViewDistance;
                     if (xOutsideOld || zOutsideOld) {
-                        long chunkPos = ChunkPos.asLong(x, z);
+                        long chunkPos = ChunkPos.toLong(x, z);
 
                         // We want this chunk, so don't unload it if it's still here
                         toBeUnloaded.remove(chunkPos);
                         // Not removing it from [unloadQueue], we check [toBeUnloaded] when we poll it.
 
                         // If there already is a chunk loaded, there's nothing to do
-                        if (clientChunkManager.getLoadedChunk(x, z) != null) {
+                        if (clientChunkManager.chunkMapping.containsItem(chunkPos)) {
                             continue;
                         }
 
@@ -218,9 +213,9 @@ public class FakeChunkManager {
             // Done loading
             loadingJobsIter.remove();
 
-            client.profiler.startSection("loadFakeChunk");
+            client.mcProfiler.startSection("loadFakeChunk");
             loadingJob.complete();
-            client.profiler.endSection();
+            client.mcProfiler.endSection();
 
             if (!shouldKeepTicking.getAsBoolean()) {
                 break;
@@ -258,19 +253,19 @@ public class FakeChunkManager {
     }
 
     protected void load(int x, int z, Chunk chunk) {
-        fakeChunks.put(ChunkPos.asLong(x, z), chunk);
+        fakeChunks.put(ChunkPos.toLong(x, z), chunk);
 
         world.markBlockRangeForRenderUpdate(x * 16, 0, z * 16, x * 16 + 15, 256, z * 16 + 15);
     }
 
     public boolean unload(int x, int z, boolean willBeReplaced) {
         cancelLoad(x, z);
-        Chunk chunk = fakeChunks.remove(ChunkPos.asLong(x, z));
+        Chunk chunk = fakeChunks.remove(ChunkPos.toLong(x, z));
         if (chunk != null) {
+            chunk.onChunkUnload();
             /* TODO fix lighting */
 
-            world.loadedTileEntityList.removeAll(chunk.getTileEntityMap().values());
-            world.tickableTileEntities.removeAll(chunk.getTileEntityMap().values());
+            world.loadedTileEntityList.removeAll(chunk.chunkTileEntityMap.values());
 
             return true;
         }
@@ -278,7 +273,7 @@ public class FakeChunkManager {
     }
 
     private void cancelLoad(int x, int z) {
-        LoadingJob loadingJob = loadingJobs.remove(ChunkPos.asLong(x, z));
+        LoadingJob loadingJob = loadingJobs.remove(ChunkPos.toLong(x, z));
         if (loadingJob != null) {
             loadingJob.cancelled = true;
         }
@@ -290,13 +285,9 @@ public class FakeChunkManager {
             return integratedServer.getWorldName();
         }
 
-        ServerData serverInfo = client.getCurrentServerData();
+        ServerData serverInfo = client.func_147104_D();
         if (serverInfo != null) {
             return serverInfo.serverIP.replace(':', '_');
-        }
-
-        if (client.isConnectedToRealms()) {
-            return "realms";
         }
 
         return "unknown";

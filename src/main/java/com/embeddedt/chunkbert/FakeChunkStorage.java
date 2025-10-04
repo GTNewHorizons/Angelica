@@ -1,15 +1,10 @@
 package com.embeddedt.chunkbert;
 
 import com.embeddedt.chunkbert.ext.AnvilChunkLoaderExt;
-import com.embeddedt.chunkbert.mixin.AnvilChunkLoaderAccessor;
-import net.minecraft.client.Minecraft;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.datafix.DataFixer;
-import net.minecraft.util.datafix.FixTypes;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.biome.BiomeProvider;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 import net.minecraft.world.chunk.storage.RegionFileCache;
@@ -20,13 +15,13 @@ import java.io.IOException;
 import java.util.function.Supplier;
 
 public class FakeChunkStorage extends AnvilChunkLoader {
-    public FakeChunkStorage(File file, DataFixer fixer) {
-        super(file, fixer);
+    public FakeChunkStorage(File file) {
+        super(file);
         if(ChunkbertConfig.noBlockEntities)
             ((AnvilChunkLoaderExt)this).chunkbert$setLoadsTileEntities(false);
     }
-    public static FakeChunkStorage getFor(File file, BiomeProvider provider) {
-        return new FakeChunkStorage(file, Minecraft.getMinecraft().getDataFixer());
+    public static FakeChunkStorage getFor(File file) {
+        return new FakeChunkStorage(file);
     }
     public NBTTagCompound loadTag(ChunkPos pos) throws IOException {
         NBTTagCompound compound;
@@ -37,7 +32,7 @@ public class FakeChunkStorage extends AnvilChunkLoader {
             return null;
         }
 
-        compound = Minecraft.getMinecraft().getDataFixer().process(FixTypes.CHUNK, CompressedStreamTools.read(datainputstream));
+        compound = CompressedStreamTools.read(datainputstream);
         datainputstream.close(); // Forge: close stream after use
         return compound;
     }
@@ -58,11 +53,11 @@ public class FakeChunkStorage extends AnvilChunkLoader {
         NBTTagCompound nbttagcompound1 = new NBTTagCompound();
         nbttagcompound.setTag("Level", nbttagcompound1);
         nbttagcompound.setInteger("DataVersion", 1343);
-        net.minecraftforge.fml.common.FMLCommonHandler.instance().getDataFixer().writeVersionData(nbttagcompound);
-        ((AnvilChunkLoaderAccessor)this).invokeWriteChunkToNBT(chunk, chunk.getWorld(), nbttagcompound1);
+
+        this.writeChunkToNBT(chunk, chunk.worldObj, nbttagcompound1);
         return nbttagcompound;
     }
     public void save(ChunkPos pos, NBTTagCompound compound) {
-        this.addChunkToPending(pos, compound);
+        this.addChunkToPending(pos.toChunkCoord(), compound);
     }
 }
