@@ -31,10 +31,11 @@ public class MixinTileEntityRendererDispatcher {
      * @author embeddedt
      * @reason CHM doesn't allow putting null values
      */
+    @SuppressWarnings("unchecked")
     @Redirect(method = "getSpecialRendererByClass", at = @At(value = "INVOKE", target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"))
-    private Object skipPuttingNullRenderer(Map instance, Object key, Object value) {
+    private Object skipPuttingNullRenderer(Map<Class<? extends TileEntity>, TileEntitySpecialRenderer> instance, Object key, Object value) {
         if(value != null && key != null) {
-            return instance.put(key, value);
+            return instance.put((Class<? extends TileEntity>) key, (TileEntitySpecialRenderer) value);
         } else {
             return null;
         }

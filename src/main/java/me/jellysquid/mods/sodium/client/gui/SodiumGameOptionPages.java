@@ -19,6 +19,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
@@ -36,6 +37,7 @@ import java.util.List;
 public class SodiumGameOptionPages {
     private static final SodiumOptionsStorage sodiumOpts = new SodiumOptionsStorage();
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
+    private static final AngelicaOptionsStorage angelicaOpts = new AngelicaOptionsStorage();
 
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
@@ -87,6 +89,7 @@ public class SodiumGameOptionPages {
             .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
             .add(Settings.MODE_STARS.option)
             .add(Settings.TOTAL_STARS.option)
+            .add(Settings.FOG_DISABLE.option)
             .add(Settings.FOG_NEAR_DISTANCE.option)
             .add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
@@ -125,6 +128,15 @@ public class SodiumGameOptionPages {
                             }
                         }, (opts) -> opts.fullScreen)
                         .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                    .setName(I18n.format("options.angelica.sleepbeforeswap"))
+                    .setTooltip(I18n.format("options.angelica.sleepbeforeswap.tooltip"))
+                    .setControl(TickBoxControl::new)
+                    .setBinding((opts, value) -> {
+                        AngelicaConfig.sleepBeforeSwap = value;
+                    }, opts -> AngelicaConfig.sleepBeforeSwap)
+                    .setImpact(OptionImpact.VARIES)
+                    .build())
                 .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                         .setName(I18n.format("options.vsync"))
                         .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
@@ -153,6 +165,24 @@ public class SodiumGameOptionPages {
                 .add(Settings.DYNAMIC_FOV.option)
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
+                .add(
+                    OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.droppedItemLimit"))
+                        .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
+                        .setControl(option -> new SliderControl(option, 32, 2048, 32, ControlValueFormatter.droppedItemLimitLimit()))
+                        .setBinding((options, value) -> AngelicaConfig.droppedItemLimit = value, options -> AngelicaConfig.droppedItemLimit)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .build()
+                )
+                .add(
+                    OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.mobSpawnerRenderDistance"))
+                        .setTooltip(I18n.format("options.angelica.mobSpawnerRenderDistance.tooltip"))
+                        .setControl(option -> new SliderControl(option, 16, 64, 1, ControlValueFormatter.number()))
+                        .setBinding((options, value) -> AngelicaConfig.mobSpawnerRenderDistance = value, options -> (int) AngelicaConfig.mobSpawnerRenderDistance)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .build()
+                )
                 .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
@@ -167,8 +197,10 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.graphics_quality.tooltip"))
                         .setControl(option -> new CyclingControl<>(option, GraphicsMode.class))
                         .setBinding(
-                                (opts, value) -> { opts.fancyGraphics = value.isFancy();
-                                    SettingsManager.graphicsUpdated(); },
+                                (opts, value) -> {
+                                    opts.fancyGraphics = value.isFancy();
+                                    SettingsManager.graphicsUpdated();
+                                    },
                                 opts -> GraphicsMode.fromBoolean(opts.fancyGraphics))
                         .setImpact(OptionImpact.HIGH)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
@@ -232,6 +264,7 @@ public class SodiumGameOptionPages {
                 .add(Settings.MODE_SHADOWS.option)
                 .add(Settings.MODE_VIGNETTE.option)
                 .add(Settings.DYNAMIC_LIGHTS.option, AngelicaConfig.enableDynamicLights)
+                .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, AngelicaConfig.enableDynamicLights)
                 .build());
 
 
@@ -246,7 +279,7 @@ public class SodiumGameOptionPages {
                         .build())
                 .build());
         groups.add(OptionGroup.createBuilder()
-            .add(Settings.MODE_GLINT_INV.option)
+        .add(Settings.MODE_GLINT_INV.option)
             .add(Settings.MODE_GLINT_WORLD.option)
             .build());
 
@@ -359,6 +392,17 @@ public class SodiumGameOptionPages {
                         .build()
                 )
                 .build());
+
+        groups.add(OptionGroup.createBuilder()
+            .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                .setName(I18n.format("options.angelica.itemdisplaylistcount"))
+                .setTooltip(I18n.format("options.angelica.itemdisplaylistcount.tooltip"))
+                .setControl(o -> new SliderControl(o, 256, 1024, 16, ControlValueFormatter.number()))
+                .setImpact(OptionImpact.MEDIUM)
+                .setBinding((opts, value) -> AngelicaConfig.itemRendererCacheSize = value, options -> AngelicaConfig.itemRendererCacheSize)
+                .build()
+            )
+            .build());
 
         groups.add(OptionGroup.createBuilder()
                 .add(Settings.MODE_GUI_BACKGROUND.option)

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica;
 
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
@@ -14,8 +15,13 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         modid = "angelica",
         name = "Angelica",
         version = Tags.VERSION,
-        dependencies = " before:lwjgl3ify@[1.5.3,);" + " after:hodgepodge@[2.4.4,);" + " after:CodeChickenCore@[1.2.0,);"
-                     + " after:archaicfix@[0.7.0,);" + " required-after:gtnhlib@[0.4.2,);",
+        dependencies = """
+            required-after:gtnhlib@[0.6.6,);\
+            before:lwjgl3ify@[1.5.3,);\
+            after:hodgepodge@[2.4.4,);\
+            after:CodeChickenCore@[1.2.0,);\
+            after:archaicfix@[0.7.0,);\
+            """,
         acceptedMinecraftVersions = "[1.7.10]",
         acceptableRemoteVersions = "*",
         guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
@@ -27,10 +33,13 @@ public class AngelicaMod {
 
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
 
+    public static BlockError blockError;
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();
         proxy.preInit(event);
+        blockError = new BlockError();
     }
 
     @Mod.EventHandler

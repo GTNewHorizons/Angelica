@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.late.client.extrautils;
 
-import com.rwtema.extrautils.block.render.FakeRenderBlocks;
 import com.rwtema.extrautils.block.render.FakeRenderEtherealBlocks;
 import com.rwtema.extrautils.block.render.RenderBlockConnectedTextures;
 import com.rwtema.extrautils.block.render.RenderBlockConnectedTexturesEthereal;
@@ -23,6 +22,7 @@ public abstract class MixinRenderBlockConnectedTexturesEthereal extends RenderBl
      *          works for this system means overwriting this function to use our new non-static
      *          FakeRenderEtherealBlocks field is about the only way to do it.
      */
+    @Override
     @Overwrite(remap = false)
     public boolean renderWorldBlock(IBlockAccess world, int x, int y, int z, Block block, int modelId, RenderBlocks renderer) {
         if (renderer.hasOverrideBlockTexture())
@@ -34,8 +34,8 @@ public abstract class MixinRenderBlockConnectedTexturesEthereal extends RenderBl
         getFakeRender().setRenderBoundsFromBlock(block);
         boolean render = getFakeRender().renderStandardBlock(block, x, y, z);
         newFakeRenderEthereal.setWorld(renderer.blockAccess);
-        newFakeRenderEthereal.curBlock = fakeRender.curBlock;
-        newFakeRenderEthereal.curMeta = fakeRender.curMeta;
+        newFakeRenderEthereal.curBlock = getFakeRender().curBlock;
+        newFakeRenderEthereal.curMeta = getFakeRender().curMeta;
         double h = 0.05D;
         newFakeRenderEthereal.setRenderBounds(h, h, h, 1.0D - h, 1.0D - h, 1.0D - h);
         render &= newFakeRenderEthereal.renderStandardBlock(block, x, y, z);

@@ -4,7 +4,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
-
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.world.WorldProvider;
@@ -12,9 +11,8 @@ import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
-
-import org.lwjgl.opengl.GL11;
 
 @Mixin(EntityRenderer.class)
 abstract public class MixinEntityRenderer {
@@ -47,7 +45,7 @@ abstract public class MixinEntityRenderer {
         return ((boolean)Settings.VOID_FOG.option.getStore()) ? original.call(provider) : false;
     }
 
-    @Redirect(
+    @ModifyArg(
         method = "setupFog",
         at = @At(
             value = "INVOKE",
@@ -56,8 +54,24 @@ abstract public class MixinEntityRenderer {
             remap = false
         )
     )
-    private void notFine$nearFogDistance(int mode, float value) {
-        GL11.glFogf(mode, farPlaneDistance * (int)Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F);
+    private float notFine$nearFogDistance(float value) {
+        // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
+        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 15;
+        return farPlaneDistance * (int) Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F;
+    }
+
+    @ModifyArg(
+        method = "setupFog(IF)V",
+        at = @At(
+            value = "INVOKE",
+            target = "Lorg/lwjgl/opengl/GL11;glFogf(IF)V",
+            ordinal = 15,
+            remap = false
+        )
+    )
+    private float notFine$replaceFarFogDistance(float value) {
+        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 16;
+        return value;
     }
 
     @Redirect(

@@ -30,7 +30,6 @@ import java.nio.IntBuffer;
 public class RenderSystem {
     private static final Logger LOGGER = LogManager.getLogger("RenderSystem");
 	private static DSAAccess dsaState;
-	private static boolean hasMultibind;
 	private static boolean supportsCompute;
 
     private RenderSystem() {}
@@ -41,7 +40,6 @@ public class RenderSystem {
                 dsaState = new DSACore();
                 LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
-            hasMultibind = GLStateManager.capabilities.OpenGL45;
 
         } catch (NoSuchFieldError ignored) {}
         try {
@@ -54,10 +52,6 @@ public class RenderSystem {
             dsaState = new DSAUnsupported();
             LOGGER.info("No DSA support detected, falling back to legacy OpenGL.");
         }
-
-        try {
-            hasMultibind |= GLStateManager.capabilities.GL_ARB_multi_bind;
-        } catch (NoSuchFieldError ignored) {}
 
 		supportsCompute = supportsCompute();
 	}
@@ -102,6 +96,8 @@ public class RenderSystem {
 	public static void uniform3f(int location, float v0, float v1, float v2) {
         GL20.glUniform3f(location, v0, v1, v2);
 	}
+
+    public static void uniform3i(int location, int v0, int v1, int v2) { GL20.glUniform3i(location, v0, v1, v2); }
 
 	public static void uniform4f(int location, float v0, float v1, float v2, float v3) {
         GL20.glUniform4f(location, v0, v1, v2, v3);
@@ -239,7 +235,7 @@ public class RenderSystem {
 		dsaState.bindTextureToUnit(unit, texture);
 	}
 
-    public static FloatBuffer PROJECTION_MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
+    public static final FloatBuffer PROJECTION_MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     public static void setupProjectionMatrix(Matrix4f matrix) {
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glPushMatrix();

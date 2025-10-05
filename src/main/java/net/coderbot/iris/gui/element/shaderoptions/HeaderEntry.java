@@ -58,6 +58,7 @@ public class HeaderEntry extends BaseEntry {
         this.text = text;
     }
 
+    @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
         // Draw dividing line
         //			fill(x - 3, (y + slotHeight) - 2, x + slotWidth, (y + slotHeight) - 1, 0x66BEBEBE);
@@ -101,11 +102,17 @@ public class HeaderEntry extends BaseEntry {
         ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(font, text, x - (font.getStringWidth(text) + 10), y - 16));
     }
 
+    @Override
     public boolean mouseClicked(int mouseX, int mouseY, int button) {
         final boolean backButtonResult = backButton != null && backButton.mouseClicked(mouseX, mouseY, button);
         final boolean utilButtonResult = utilityButtons.mouseClicked(mouseX, mouseY, button);
 
         return backButtonResult || utilButtonResult;
+    }
+
+    @Override
+    public boolean mouseReleased(int mouseX, int mouseY, int button) {
+        return false;
     }
 
     private boolean backButtonClicked(IrisElementRow.TextButtonElement button) {

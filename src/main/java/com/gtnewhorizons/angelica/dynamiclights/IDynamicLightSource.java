@@ -73,13 +73,6 @@ public interface IDynamicLightSource {
      */
     void angelica$dynamicLightTick();
 
-    /**
-     * Returns whether this dynamic light source should update.
-     *
-     * @return {@code true} if this dynamic light source should update, else {@code false}
-     */
-    boolean angelica$shouldUpdateDynamicLight();
-
     boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer);
 
     void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer);

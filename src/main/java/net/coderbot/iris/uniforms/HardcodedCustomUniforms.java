@@ -1,10 +1,12 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.player.EntityPlayer;
 import org.joml.Math;
 import org.joml.Vector3d;
@@ -157,7 +159,8 @@ public class HardcodedCustomUniforms {
 	}
 
 	private static int getWorldDayTime() {
-        return (int) (Minecraft.getMinecraft().theWorld.getWorldTime() % 24000L);
+        final WorldClient world = Minecraft.getMinecraft().theWorld;
+        return (int) ((AngelicaConfig.useTotalWorldTime ? world.getTotalWorldTime() : world.getWorldTime()) % 24000L);
 //		Level level = Minecraft.getMinecraft().theWorld;
 //		long  timeOfDay = level.getDayTime();
 //		long dayTime = ((DimensionTypeAccessor) level.dimensionType()).getFixedTime().orElse(timeOfDay % 24000L);
@@ -196,10 +199,6 @@ public class HardcodedCustomUniforms {
 	private static float getBlindFactor() {
 		float blindFactorSqrt = (float) Math.clamp(0.0, 1.0, CommonUniforms.getBlindness() * 2.0 - 1.0);
 		return blindFactorSqrt * blindFactorSqrt;
-	}
-
-	private static float frac(float value) {
-		return java.lang.Math.abs(value % 1);
 	}
 
 	private static float getAdjTime() {

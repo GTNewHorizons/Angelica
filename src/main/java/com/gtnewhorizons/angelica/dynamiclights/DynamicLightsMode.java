@@ -7,7 +7,8 @@ public enum DynamicLightsMode
     OFF("Off", 0),
     FASTEST("Fastest", 500),
     FAST("Fast", 250),
-    FANCY("Fancy", 0);
+    FANCY("Fancy", 50),
+    REALTIME("Realtime", 0);
 
     private final String name;
     private final int delay;

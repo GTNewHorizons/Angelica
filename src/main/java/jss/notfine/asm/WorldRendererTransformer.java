@@ -2,6 +2,7 @@ package jss.notfine.asm;
 
 import static jss.notfine.asm.ASMUtils.matchesNodeSequence;
 
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
 
 import org.apache.logging.log4j.LogManager;
@@ -26,9 +27,10 @@ public class WorldRendererTransformer implements IClassTransformer {
 
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         if ("net.minecraft.client.renderer.WorldRenderer".equals(transformedName)) {
-            return patchWorldRenderer(basicClass);
+            final byte[] bytes = patchWorldRenderer(basicClass);
+            AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
+            return bytes;
         }
-
         return basicClass;
     }
 

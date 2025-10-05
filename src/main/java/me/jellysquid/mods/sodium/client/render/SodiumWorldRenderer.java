@@ -1,15 +1,12 @@
 package me.jellysquid.mods.sodium.client.render;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import jss.notfine.core.SettingsManager;
 import lombok.Getter;
@@ -24,10 +21,11 @@ import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.Multidra
 import me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot.ChunkRenderBackendOneshot;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.DefaultModelVertexFormats;
+import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTracker;
+import me.jellysquid.mods.sodium.client.render.chunk.map.ChunkTrackerHolder;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheShared;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -59,7 +57,7 @@ import java.util.Set;
 /**
  * Provides an extension to vanilla's {@link WorldRenderer}.
  */
-public class SodiumWorldRenderer implements ChunkStatusListener {
+public class SodiumWorldRenderer {
     private static SodiumWorldRenderer instance;
 
     private final Minecraft client;
@@ -74,7 +72,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
 
     private boolean useEntityCulling;
 
-    private final LongSet loadedChunkPositions = new LongOpenHashSet();
     private final Set<TileEntity> globalTileEntities = new ObjectOpenHashSet<>();
 
 
@@ -155,7 +152,6 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             this.chunkRenderBackend = null;
         }
 
-        this.loadedChunkPositions.clear();
         this.globalTileEntities.clear();
 
         this.world = null;
@@ -193,6 +189,8 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
      */
     public void updateChunks(Camera camera, Frustrum frustum, boolean hasForcedFrustum, int frame, boolean spectator) {
         this.frustum = frustum;
+
+        this.processChunkEvents();
 
         this.useEntityCulling = SodiumClientMod.options().advanced.useEntityCulling;
 
@@ -261,14 +259,24 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         if(AngelicaConfig.enableIris) {
             if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                 ShadowRenderer.visibleTileEntities.addAll(this.chunkRenderManager.getVisibleTileEntities());
+                ShadowRenderer.globalTileEntities.addAll(this.globalTileEntities);
             }
         }
+    }
+
+    private void processChunkEvents() {
+        var tracker = ChunkTrackerHolder.get(this.world);
+        tracker.forEachEvent(this.chunkRenderManager::onChunkAdded, this.chunkRenderManager::onChunkRemoved);
     }
 
     /**
      * Performs a render pass for the given {@link RenderLayer} and draws all visible chunks for it.
      */
     public void drawChunkLayer(BlockRenderPass pass, MatrixStack matrixStack, double x, double y, double z) {
+        // This fix a long-standing issue with culling state leaking because of mods,
+        // or other factors as having clouds disabled.
+        GLStateManager.enableCull();
+
         if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already
         // pass.startDrawing();
@@ -320,7 +328,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         this.chunkRenderBackend.createShaders(device);
 
         this.chunkRenderManager = new ChunkRenderManager<>(this, this.chunkRenderBackend, this.world, this.renderDistance);
-        this.chunkRenderManager.restoreChunks(this.loadedChunkPositions);
+
+        var tracker = ChunkTrackerHolder.get(this.world);
+        ChunkTracker.forEachChunk(tracker.getReadyChunks(), this.chunkRenderManager::onChunkAdded);
     }
 
     private static ChunkRenderBackend<?> createChunkRenderBackend(RenderDevice device, SodiumGameOptions options, ChunkVertexType vertexFormat) {
@@ -334,7 +344,11 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
     }
 
     private boolean checkBEVisibility(TileEntity entity) {
-        return frustum.isBoundingBoxInFrustum(entity.getRenderBoundingBox());
+        var aabb = entity.getRenderBoundingBox();
+        if (aabb == TileEntity.INFINITE_EXTENT_AABB) {
+            return true;
+        }
+        return frustum.isBoundingBoxInFrustum(aabb);
     }
 
     private void renderTE(TileEntity tileEntity, int pass, float partialTicks) {
@@ -363,7 +377,7 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
             }
         }
     }
-
+    
     public void renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
         for (TileEntity tileEntity : this.chunkRenderManager.getVisibleTileEntities()) {
@@ -375,21 +389,9 @@ public class SodiumWorldRenderer implements ChunkStatusListener {
         }
     }
 
-    @Override
-    public void onChunkAdded(int x, int z) {
-        this.loadedChunkPositions.add(ChunkPos.toLong(x, z));
-        this.chunkRenderManager.onChunkAdded(x, z);
-    }
-
-    @Override
-    public void onChunkRemoved(int x, int z) {
-        this.loadedChunkPositions.remove(ChunkPos.toLong(x, z));
-        this.chunkRenderManager.onChunkRemoved(x, z);
-    }
-
     public void onChunkRenderUpdated(int x, int y, int z, ChunkRenderData meshBefore, ChunkRenderData meshAfter) {
         ListUtil.updateList(this.globalTileEntities, meshBefore.getGlobalTileEntities(), meshAfter.getGlobalTileEntities());
-
+        
         this.chunkRenderManager.onChunkRenderUpdates(x, y, z, meshAfter);
     }
 

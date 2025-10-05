@@ -52,6 +52,7 @@ public abstract class MixinEntityDropParticleFX extends EntityFX {
      * @author Mist475 (adapted from Paul Rupe)
      * @reason Inject would be too inefficient
      */
+    @Override
     @SuppressWarnings("DuplicatedCode")
     @Overwrite
     public void onUpdate() {

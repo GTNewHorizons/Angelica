@@ -1,12 +1,18 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
 import com.google.common.base.Objects;
-import com.gtnewhorizon.gtnhlib.client.model.ModelLoader;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.debug.F3Direction;
+import com.gtnewhorizons.angelica.debug.FrametimeGraph;
+import com.gtnewhorizons.angelica.debug.TPSGraph;
+import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
@@ -15,6 +21,7 @@ import com.gtnewhorizons.angelica.models.VanillaModels;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
+import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -25,6 +32,9 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
@@ -37,6 +47,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -52,17 +63,11 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.input.Keyboard;
 
-import java.lang.management.ManagementFactory;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
-
-
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
-
 public class ClientProxy extends CommonProxy {
 
     final Minecraft mc = Minecraft.getMinecraft();
-    private static boolean baked = false;
+    final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    final TPSGraph tpsGraph = new TPSGraph();
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -83,11 +88,9 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableSodium) {
             // Register all blocks. Because blockids are unique to a world, this must be done each load
-            GameData.getBlockRegistry().forEach(o -> {
-
-                final Block b = (Block) o;
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, true, true);
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(b, false, true);
+            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
             });
         }
     }
@@ -100,8 +103,7 @@ public class ClientProxy extends CommonProxy {
 
         if (AngelicaConfig.enableHudCaching) {
             FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
-            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE); // TODO remove debug stuff, unused registration}
-            HUDCaching.registerKeyBindings();
+            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE);
         }
         if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
@@ -134,7 +136,7 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica Keybinds");
+        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         VanillaModels.init();
@@ -142,13 +144,16 @@ public class ClientProxy extends CommonProxy {
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
         }
+        if (AngelicaConfig.enableZoom) {
+            Zoom.init();
+        }
     }
 
     private boolean wasGLSMKeyPressed;
 
     @SubscribeEvent
     public void onKeypress(TickEvent.ClientTickEvent event) {
-        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && Keyboard.isKeyDown(glsmKeyBinding.getKeyCode());
+        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && GameSettings.isKeyDown(glsmKeyBinding);
         if (isPressed && !wasGLSMKeyPressed) {
             OpenGLDebugging.checkGLSM();
         }
@@ -159,7 +164,7 @@ public class ClientProxy extends CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
 
-        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && AngelicaConfig.fixLotrSodiumCompat) {
+        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && CompatConfig.fixLotr) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
@@ -169,9 +174,6 @@ public class ClientProxy extends CommonProxy {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
-
-        Minecraft.getMinecraft().refreshResources();
-        ModelLoader.loadModels();
     }
 
     float lastIntegratedTickTime;
@@ -188,25 +190,37 @@ public class ClientProxy extends CommonProxy {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRenderOverlay(RenderGameOverlayEvent.Pre event) {
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo) return;
+        if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
+            F3Direction.renderWorldDirectionsEvent(mc, event);
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.size() < 1) return;
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
+
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
             IntegratedServer srv = mc.getIntegratedServer();
 
             if (srv != null) {
                 String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
-                event.left.add(1, s);
+                event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
+
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            if (!event.right.isEmpty() && Objects.firstNonNull(event.right.get(event.right.size() - 1), "").length() > 0) event.right.add("");
+            if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
             Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
+
         if (DynamicLights.isEnabled()) {
             var builder = new StringBuilder("Dynamic Light Sources: ");
             DynamicLights dl = DynamicLights.get();
@@ -214,6 +228,7 @@ public class ClientProxy extends CommonProxy {
 
             event.right.add(builder.toString());
         }
+
         if (AngelicaConfig.modernizeF3Screen) {
             boolean hasReplacedXYZ = false;
             for (int i = 0; i < event.left.size() - 3; i++) {
@@ -254,6 +269,8 @@ public class ClientProxy extends CommonProxy {
                 }
             }
             event.setCanceled(true);
+            // TODO don't cancel the event and render here,
+            //  instead mixin into the vanilla code and add a background to it
             /* render ourselves for modern background */
             FontRenderer fontrenderer = mc.fontRenderer;
             int fontColor = 0xe0e0e0;
@@ -276,6 +293,14 @@ public class ClientProxy extends CommonProxy {
                 Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
                 fontrenderer.drawString(msg, strX, strY, fontColor);
             }
+
+            // Draw a frametime graph
+            if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
+                frametimeGraph.render();
+                if (Minecraft.getMinecraft().isSingleplayer()) {
+                    tpsGraph.render();
+                }
+            }
         }
     }
 
@@ -283,9 +308,14 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
-        if (!event.isCanceled() && event.gui instanceof GuiMainMenu && gameStartTime == -1) {
-            gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
-            LOGGER.info("The game loaded in " + gameStartTime + " seconds.");
+        if (!event.isCanceled()) {
+            if (event.gui instanceof GuiMainMenu && gameStartTime == -1 ) {
+                gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
+                LOGGER.info("The game loaded in {} seconds.", gameStartTime);
+            }
+
+            // force reset zoom when a GUI is opened
+            if (AngelicaConfig.enableZoom && event.gui != null) Zoom.resetZoom();
         }
     }
 
@@ -302,11 +332,6 @@ public class ClientProxy extends CommonProxy {
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
-
-        if (!baked) {
-            ModelLoader.bakeModels();
-            baked = true;
-        }
     }
 
     // This is a bit of a hack to prevent the FOV from being modified by other mods
@@ -315,5 +340,15 @@ public class ClientProxy extends CommonProxy {
         if (!(boolean) Settings.DYNAMIC_FOV.option.getStore()) {
             event.newfov = 1.0F;
         }
+    }
+
+    @Override
+    public void putFrametime(long time) {
+        frametimeGraph.putSample(time);
+    }
+
+    @Override
+    public void putTicktime(long time) {
+        tpsGraph.putSample(time);
     }
 }

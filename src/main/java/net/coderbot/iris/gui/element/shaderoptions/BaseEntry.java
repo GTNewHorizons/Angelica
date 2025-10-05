@@ -12,6 +12,7 @@ public abstract class BaseEntry {
     }
 
     public abstract boolean mouseClicked(int mouseX, int mouseY, int button);
+    public abstract boolean mouseReleased(int mouseX, int mouseY, int button);
 
 
     public abstract void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver);

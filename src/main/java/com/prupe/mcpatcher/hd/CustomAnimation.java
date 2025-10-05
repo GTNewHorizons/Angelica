@@ -28,7 +28,7 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.EXTENDED_HD, "Animation");
 
-    private static final boolean enable = MCPatcherForgeConfig.instance().animations;
+    private static final boolean enable = MCPatcherForgeConfig.ExtendedHD.animations;
     private static final Set<PropertiesFile> pending = new HashSet<>();
     private static final List<CustomAnimation> animations = new ArrayList<>();
 

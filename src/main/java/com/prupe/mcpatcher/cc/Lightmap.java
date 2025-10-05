@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.potion.Potion;
@@ -24,7 +25,7 @@ public final class Lightmap {
     private static final int HEIGHT_WITHOUT_NIGHTVISION = 2 * LIGHTMAP_SIZE;
     private static final int HEIGHT_WITH_NIGHTVISION = 4 * LIGHTMAP_SIZE;
 
-    private static final boolean useLightmaps = MCPatcherForgeConfig.instance().ccLightmaps;
+    private static final boolean useLightmaps = MCPatcherForgeConfig.CustomColors.lightmaps;
 
     private static final Map<Integer, Lightmap> lightmaps = new HashMap<>();
 
@@ -83,9 +84,8 @@ public final class Lightmap {
     }
 
     private float getNightVisionStrength(EntityRenderer renderer, float n) {
-
         if (Minecraft.getMinecraft().thePlayer.isPotionActive(Potion.nightVision)) {
-            return renderer.getNightVisionBrightness(Minecraft.getMinecraft().thePlayer, n);
+            return ((EntityRendererAccessor) renderer).invokeGetNightVisionBrightness(Minecraft.getMinecraft().thePlayer, n);
         }
         return 0.0f;
     }

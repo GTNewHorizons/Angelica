@@ -47,7 +47,8 @@ public class TabFrame extends AbstractFrame {
         this.tabSectionSelectedTab = tabSectionSelectedTab;
 
         if (this.tabSectionSelectedTab.get() != null) {
-            this.selectedTab = this.tabs.stream().filter(tab -> tab.getTitle().equals(this.tabSectionSelectedTab.get())).findAny().get();
+            Optional<Tab<?>> possibleLastTab = this.tabs.stream().filter(tab -> tab.getTitle().equals(this.tabSectionSelectedTab.get())).findAny();
+            possibleLastTab.ifPresent(tab -> this.selectedTab = tab);
         }
 
         this.buildFrame();

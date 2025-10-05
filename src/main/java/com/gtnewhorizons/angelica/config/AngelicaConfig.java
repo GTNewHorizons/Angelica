@@ -33,12 +33,12 @@ public class AngelicaConfig {
     public static boolean enableTestBlocks;
 
     @Config.Comment("Enable Iris Shaders [Requires Sodium]")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableIris;
 
     @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableMCPatcherForgeFeatures;
 
@@ -107,28 +107,63 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeTextureLoading;
 
-    @Config.Comment("Fix thread-safety in lotrs rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixLotrSodiumCompat;
-
-    @Config.Comment("Fix thread-safety in Extra Utilities rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixExtraUtilsSodiumCompat;
-
-    @Config.Comment("Fix thread-safety issues in MineFactory Reloaded")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean fixMineFactoryReloadedSodiumCompat;
-
     @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixFluidRendererCheckingBlockAgain;
 
+    @Config.Comment("Dynamically modifies the render distance of dropped items entities to preserve performance."
+                  + " It starts reducing the render distance when exceeding the threshold set below.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean dynamicItemRenderDistance;
+
+    @Config.Comment("Max amount of dropped item rendered")
+    @Config.DefaultInt(256)
+    @Config.RangeInt(min = 32, max = 2048)
+    public static int droppedItemLimit;
+
+    @Config.Comment("Use total world time instead of normal world time. Allows most shader animations to play when "
+                  + "doDaylightCycle is off, but causes shader animations to desync from time of day.")
+    @Config.DefaultBoolean(false)
+    public static boolean useTotalWorldTime;
+
     @Config.Comment("Enable Debug Logging")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableDebugLogging;
+
+    @Config.Comment("Enables PBR atlas dumping")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable PBR Debug")
+    public static boolean enablePBRDebug;
+
+    @Config.Comment("Enable Zoom")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableZoom;
+
+    @Config.Comment("Optimizes in-world item rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeInWorldItemRendering;
+
+    @Config.Comment("Upper limit for the amount of VBO's to cache for optimized item rendering. Higher number can potentially use more VRAM.")
+    @Config.DefaultInt(512)
+    @Config.RangeInt(min = 256, max = 1024)
+    public static int itemRendererCacheSize;
+
+    @Config.Comment("Render distance for the spinning mob inside mod spawners")
+    @Config.DefaultDouble(16D)
+    @Config.RangeDouble(min = 16D, max = 64D)
+    public static double mobSpawnerRenderDistance;
+
+    @Config.Comment("Switches to an alternate FPS limiter that gives more stable frametimes, in exchange for slightly " +
+        "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
+    @Config.DefaultBoolean(false)
+    public static boolean sleepBeforeSwap;
+
+    @Config.Comment("Allows unicode languages to use an odd gui scale")
+    @Config.DefaultBoolean(true)
+    public static boolean removeUnicodeEvenScaling;
 }

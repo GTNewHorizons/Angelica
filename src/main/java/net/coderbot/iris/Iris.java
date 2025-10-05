@@ -1,13 +1,17 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
-import com.mojang.realmsclient.gui.ChatFormatting;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -24,7 +28,9 @@ import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
+import net.coderbot.iris.sodium.block_context.BlockContextHolder;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -32,6 +38,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.input.Keyboard;
 
@@ -306,7 +313,8 @@ public class Iris {
             return false;
         }
 
-        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map) properties)
+        @SuppressWarnings("unchecked")
+        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map<?, ?>) properties)
             .orElse(new HashMap<>());
 
         changedConfigs.putAll(shaderPackOptionQueue);
@@ -537,7 +545,7 @@ public class Iris {
         if (level != null) {
             if (level.provider == null) return DimensionId.OVERWORLD;
 
-            if ((level.provider.isHellWorld || level.provider.hasNoSky) || level.provider.dimensionId == -1) {
+            if (level.provider.isHellWorld || level.provider.dimensionId == -1) {
                 return DimensionId.NETHER;
             } else if (level.provider.dimensionId == 1) {
                 return DimensionId.END;
@@ -595,18 +603,18 @@ public class Iris {
     }
 
     public static String getFormattedVersion() {
-        final ChatFormatting color;
+        final EnumChatFormatting color;
         String version = getVersion();
 
         if (version.endsWith("-development-environment")) {
-            color = ChatFormatting.GOLD;
+            color = EnumChatFormatting.GOLD;
             version = version.replace("-development-environment", " (Development Environment)");
         } else if (version.endsWith("-dirty") || version.contains("unknown") || version.endsWith("-nogit")) {
-            color = ChatFormatting.RED;
+            color = EnumChatFormatting.RED;
         } else if (version.contains("+rev.")) {
-            color = ChatFormatting.LIGHT_PURPLE;
+            color = EnumChatFormatting.LIGHT_PURPLE;
         } else {
-            color = ChatFormatting.GREEN;
+            color = EnumChatFormatting.GREEN;
         }
 
         return color + version;
@@ -637,5 +645,37 @@ public class Iris {
         ClientRegistry.registerKeyBinding(reloadKeybind);
         ClientRegistry.registerKeyBinding(toggleShadersKeybind);
         ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
+    }
+
+    static BlockContextHolder contextHolder;
+
+    private static int getShaderMaterialOverrideId(Block block, int meta) {
+        if (contextHolder == null) {
+            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            if (blockMatches == null) {
+                return -1;
+            }
+            contextHolder = new BlockContextHolder(blockMatches);
+
+        }
+        contextHolder.set(block, (short) block.getRenderType());
+        return contextHolder.blockId;
+    }
+
+    public static void setShaderMaterialOverride(Block block, int meta) {
+        if (!AngelicaConfig.enableIris)
+            return;
+
+        int blockId = getShaderMaterialOverrideId(block, meta);
+
+        if (TessellatorManager.get() instanceof CapturingTessellator tess)
+            tess.setShaderBlockId(blockId);
+    }
+
+    public static void resetShaderMaterialOverride() {
+        if (!AngelicaConfig.enableIris)
+            return;
+        if (TessellatorManager.get() instanceof CapturingTessellator tess)
+            tess.setShaderBlockId(-1);
     }
 }

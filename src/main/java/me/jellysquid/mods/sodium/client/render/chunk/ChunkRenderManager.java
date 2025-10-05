@@ -35,6 +35,7 @@ import me.jellysquid.mods.sodium.client.world.ChunkStatusListener;
 import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
+import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -47,7 +48,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 
-public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener {
+public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener, SwappableChunkRenderManager {
     /**
      * The maximum distance a chunk can be from the player's camera in order to be eligible for blocking updates.
      */
@@ -122,8 +123,6 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private boolean dirtySwap;
 
-    private static final ObjectArrayFIFOQueue<?> EMPTY_QUEUE = new ObjectArrayFIFOQueue<>();
-
     private static final ThreadLocal<BlockRenderPass> threadLocalRenderPass = ThreadLocal.withInitial(() -> BlockRenderPass.CUTOUT_MIPPED);
     public static int getWorldRenderPass() {
         return threadLocalRenderPass.get().ordinal();
@@ -132,6 +131,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         threadLocalRenderPass.set(pass);
     }
 
+    @SuppressWarnings("unchecked")
     public ChunkRenderManager(SodiumWorldRenderer renderer, ChunkRenderBackend<T> backend, WorldClient world, int renderDistance) {
         this.backend = backend;
         this.renderer = renderer;
@@ -211,6 +211,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
                 for(Object o : this.renders.getElements()) {
                     if(o == null)
                         continue;
+                    @SuppressWarnings("unchecked")
                     ChunkRenderContainer<T> render = (ChunkRenderContainer<T>)o;
                     if(render.getData().isEmpty())
                         continue;
@@ -249,7 +250,11 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void addChunk(ChunkRenderContainer<T> render) {
-        final boolean canRebuild = AngelicaConfig.enableIris ? !ShadowRenderingState.areShadowsCurrentlyBeingRendered() : render.canRebuild();
+        boolean canRebuild = render.canRebuild();
+
+        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            canRebuild = false;
+        }
 
         if (render.needsRebuild() && canRebuild) {
             if (!this.alwaysDeferChunkUpdates && render.needsImportantRebuild()) {
@@ -347,12 +352,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
     private void addEntitiesToRenderLists(ChunkRenderContainer<T> render) {
         Collection<TileEntity> tileEntities = render.getData().getTileEntities();
-
-        if (!tileEntities.isEmpty()) {
-            this.visibleTileEntities.addAll(tileEntities);
-        }
+        this.visibleTileEntities.addAll(tileEntities);
     }
-
+    
     public ChunkRenderContainer<T> getRender(int x, int y, int z) {
         ChunkRenderColumn<T> column = this.columns.get(ChunkPos.toLong(x, z));
 
@@ -366,9 +368,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private void reset() {
         if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.rebuildQueue.clear();
         if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.importantRebuildQueue.clear();
-
-
-        this.sortQueue.clear();
+        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.sortQueue.clear();
 
         this.visibleTileEntities.clear();
 
@@ -549,25 +549,39 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
                 continue;
             }
 
-            // Do not allow distant chunks to block rendering
-            if (this.alwaysDeferChunkUpdates || !this.isChunkPrioritized(render)) {
-                this.builder.deferRebuild(render);
-            } else {
-                futures.add(this.builder.scheduleRebuildTaskAsync(render));
-            }
+            CompletableFuture<ChunkBuildResult<T>> futureTask = this.builder.scheduleRebuildTaskAsync(render);
 
-            this.dirty = true;
-            submitted++;
-            // Limit quantity of updates submitted if we are deferring all important builds
-            if (this.alwaysDeferChunkUpdates && submitted >= budget)
-                break;
+            if (futureTask != null) {
+                this.dirty = true;
+
+                // Do not allow distant chunks to block rendering
+                if (this.alwaysDeferChunkUpdates || !this.isChunkPrioritized(render)) {
+                    this.builder.handleCompletion(futureTask);
+                } else {
+                    futures.add(futureTask);
+                }
+
+                submitted++;
+                // Limit quantity of updates submitted if we are deferring all important builds
+                if (this.alwaysDeferChunkUpdates && submitted >= budget)
+                    break;
+            } else {
+                // Immediately submit empty data to the queue and do not count this against the budget
+                this.builder.enqueueUpload(new ChunkBuildResult<>(render, ChunkRenderData.EMPTY));
+            }
         }
 
         while (submitted < budget && !this.rebuildQueue.isEmpty()) {
             ChunkRenderContainer<T> render = this.rebuildQueue.dequeue();
 
-            this.builder.deferRebuild(render);
-            submitted++;
+            CompletableFuture<ChunkBuildResult<T>> futureTask = this.builder.scheduleRebuildTaskAsync(render);
+            if(futureTask != null) {
+                this.builder.handleCompletion(futureTask);
+                submitted++;
+            } else {
+                // Immediately submit empty data to the queue and do not count this against the budget
+                this.builder.enqueueUpload(new ChunkBuildResult<>(render, ChunkRenderData.EMPTY));
+            }
         }
 
         // always do at least one sort

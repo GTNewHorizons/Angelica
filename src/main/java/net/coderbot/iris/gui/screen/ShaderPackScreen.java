@@ -1,5 +1,6 @@
 package net.coderbot.iris.gui.screen;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
@@ -21,8 +22,8 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.Sys;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.GL11;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -66,7 +67,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     private boolean optionMenuOpen = false;
 
     private boolean dropChanges = false;
-    private static final String development = "Development Environment";
     private String developmentComponent;
     private String updateComponent;
 
@@ -92,6 +92,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
+        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        
         if(dirty) {
             dirty = false;
             this.initGui();
@@ -109,6 +111,12 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             } else {
                 this.shaderPackList.drawScreen(mouseX, mouseY, delta);
             }
+        }
+
+        if (hoveredElement != null) {
+            hoveredElementCommentTimer++;
+        } else {
+            hoveredElementCommentTimer = 0;
         }
 
         final float previousHoverTimer = this.guiButtonHoverTimer;
@@ -134,8 +142,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             if (this.isDisplayingComment()) {
                 // Determine panel height and position
                 final int panelHeight = Math.max(50, 18 + (this.hoveredElementCommentBody.size() * 10));
-                final int x = (int) (0.5 * this.width) - 157;
-                final int y = this.height - (panelHeight + 4);
+                int x = mouseX + 5;
+                if (x + 314 >= (this.width - 4)) x = this.width - (318);
+                int y = mouseY + 8;
+                if (y + panelHeight >= (this.height - 4)) y = this.height - (panelHeight + 4);
                 // Draw panel
                 GuiUtil.drawPanel(x, y, COMMENT_PANEL_WIDTH, panelHeight);
                 // Draw text
@@ -161,6 +171,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         } else {
             this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 10, 0xFFFFFF);
         }
+        
+        GLStateManager.glPopAttrib();
     }
 
     @Override
@@ -227,10 +239,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         }
 
         if (inWorld) {
-            final String showOrHide = this.guiHidden
-                ? I18n.format("options.iris.gui.show")
-                : I18n.format("options.iris.gui.hide");
-
             final float endOfLastButton = this.width / 2.0f + 154.0f;
             final float freeSpace = this.width - endOfLastButton;
             final int x;
@@ -312,7 +320,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         if (Iris.getCurrentPack().isPresent()) {
             final ShaderPack currentPack = Iris.getCurrentPack().get();
 
-            this.navigation = new NavigationController(currentPack.getMenuContainer());
+            this.navigation = new NavigationController();
 
             if (this.shaderOptionList != null) {
                 this.shaderOptionList.applyShaderPack(currentPack);
@@ -373,6 +381,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     public void applyChanges() {
         final ShaderPackEntry entry = this.shaderPackList.getSelected();
+
+        if (entry == null) return;
 
         this.shaderPackList.setApplied(entry);
 

@@ -32,11 +32,13 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.Fluid;
 
 import java.util.List;
 import java.util.Random;
 
 public class BlockRenderer {
+    private static final BlockPos POS_ZERO = new BlockPos(0, 0, 0);
 
     private final Random random = new XoRoShiRoRandom();
 
@@ -49,7 +51,6 @@ public class BlockRenderer {
     private final LightPipelineProvider lighters;
     private final BlockOcclusionCache occlusionCache;
 
-    private Object Quad;
     private final ObjectPooler<QuadView> quadPool = new ObjectPooler<>(Quad::new);
     // TODO: Use modern model API, and store them here
 
@@ -62,13 +63,54 @@ public class BlockRenderer {
         this.occlusionCache = new BlockOcclusionCache();
     }
 
+    public boolean renderFluidLogged(Fluid fluid, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
+        if (fluid == null) {
+            return false;
+        }
+        Block block = fluid.getBlock();
+        if (block == null) {
+            return false;
+        }
+
+        boolean rendered = false;
+
+        try {
+            final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
+            final LightPipeline lighter = this.lighters.getLighter(mode);
+
+            TessellatorManager.startCapturing();
+            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            tess.startDrawingQuads();
+            // Use setTranslation rather than setOffset so that the float data written to the internal buffer
+            // is done in subchunk-relative coordinates
+            tess.setOffset(POS_ZERO);
+            tess.setTranslation(-pos.x, -pos.y, -pos.z);
+            renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+            final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
+            tess.resetOffset();
+
+            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                this.random.setSeed(seed);
+                this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
+            }
+
+            if (!quads.isEmpty()) rendered = true;
+        } finally {
+            TessellatorManager.cleanup();
+        }
+
+        return rendered;
+
+    }
+
     public boolean renderModel(IBlockAccess world, RenderBlocks renderBlocks, Block block, int meta, BlockPos pos, ChunkModelBuffers buffers, boolean cull, long seed) {
         final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
         final LightPipeline lighter = this.lighters.getLighter(mode);
 
+        boolean rendered = false;
+
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
-        boolean rendered = false;
         final QuadProvider model = ((ModeledBlock) block).getModel();
 
         if (model != null) {
@@ -97,9 +139,10 @@ public class BlockRenderer {
                 TessellatorManager.startCapturing();
                 final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
                 tess.startDrawingQuads();
-                // RenderBlocks adds the subchunk-relative coordinates as the offset, cancel it out here
-
-                tess.setOffset(pos);
+                // Use setTranslation rather than setOffset so that the float data written to the internal buffer
+                // is done in subchunk-relative coordinates
+                tess.setOffset(POS_ZERO);
+                tess.setTranslation(-pos.x, -pos.y, -pos.z);
                 renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
                 final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
                 tess.resetOffset();
@@ -149,6 +192,7 @@ public class BlockRenderer {
 
         final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orient(light.br) : ModelQuadOrientation.NORMAL;
 
+        int shaderBlockId = quad.getShaderBlockId();
         for (int dstIndex = 0; dstIndex < 4; dstIndex++) {
             final int srcIndex = order.getVertexIndex(dstIndex);
 
@@ -172,7 +216,7 @@ public class BlockRenderer {
             final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]) :
                 (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
-            sink.writeQuad(x, y, z, color, u, v, lm);
+            sink.writeQuad(x, y, z, color, u, v, lm, shaderBlockId);
         }
 
         final TextureAtlasSprite sprite = quad.rubidium$getSprite();
@@ -181,13 +225,7 @@ public class BlockRenderer {
             renderData.addSprite(sprite);
         }
     }
-    private LightMode getLightingMode(Block block) {
-        if (this.useAmbientOcclusion && block.getAmbientOcclusionLightValue() != 1.0F && block.getLightValue() == 0) {
-            return LightMode.SMOOTH;
-        } else {
-            return LightMode.FLAT;
-        }
-    }
+
     public static class Flags {
         boolean hasTexture;
         public boolean hasBrightness;

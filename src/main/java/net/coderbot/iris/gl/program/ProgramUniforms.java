@@ -1,7 +1,17 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.function.Supplier;
+
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
@@ -11,19 +21,13 @@ import net.coderbot.iris.gl.uniform.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
-
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalInt;
 
 public class ProgramUniforms {
 	private static ProgramUniforms active;
@@ -52,8 +56,11 @@ public class ProgramUniforms {
 	}
 
 	private static long getCurrentTick() {
-		if (Minecraft.getMinecraft().theWorld != null) {
-			return Minecraft.getMinecraft().theWorld.getWorldTime();
+        final WorldClient world = Minecraft.getMinecraft().theWorld;
+		if (world != null) {
+            return AngelicaConfig.useTotalWorldTime
+                ? world.getTotalWorldTime()
+                : world.getWorldTime();
 		} else {
 			return 0L;
 		}
@@ -144,9 +151,6 @@ public class ProgramUniforms {
 		@Override
 		public Builder addUniform(UniformUpdateFrequency updateFrequency, Uniform uniform) {
 			Objects.requireNonNull(uniform);
-            if(uniform == null) {
-                throw new NullPointerException("uniform");
-            }
 
 			switch (updateFrequency) {
 				case ONCE:
@@ -171,8 +175,7 @@ public class ProgramUniforms {
 				return OptionalInt.empty();
 			}
 
-			// TODO: Temporary hack until custom uniforms are merged.
-			if ((!locations.containsKey(id) && !uniformNames.containsKey(name)) || name.equals("framemod8")) {
+			if ((!locations.containsKey(id) && !uniformNames.containsKey(name))) {
 				locations.put(id, name);
 				uniformNames.put(name, type);
 			} else {
@@ -239,12 +242,6 @@ public class ProgramUniforms {
 					continue;
 				}
 
-				// TODO: This is an absolutely horrific hack, but is needed until custom uniforms work.
-				if ("framemod8".equals(name) && expected == UniformType.FLOAT && provided == UniformType.INT) {
-					SystemTimeUniforms.addFloatFrameMod8Uniform(this);
-					provided = UniformType.FLOAT;
-				}
-
 				if (provided != null && provided != expected) {
 					String expectedName;
 
@@ -282,7 +279,7 @@ public class ProgramUniforms {
 			return this;
 		}
 
-		@Override
+        @Override
 		public UniformHolder externallyManagedUniform(String name, UniformType type) {
 			externalUniformNames.put(name, type);
 

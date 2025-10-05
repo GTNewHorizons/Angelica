@@ -140,6 +140,14 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         return true;
     }
 
+    @Unique
+    private void iris$beginTranslucents(WorldRenderingPipeline pipeline, Camera camera) {
+        pipeline.beginHand();
+        HandRenderer.INSTANCE.renderSolid(camera.getPartialTicks(), camera, mc.renderGlobal, pipeline);
+        mc.mcProfiler.endStartSection("iris_pre_translucent");
+        pipeline.beginTranslucents();
+    }
+
     /**
      * @author Sodium
      * @reason Redirect to our renderer
@@ -154,14 +162,13 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             if(pass == 0) {
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
             } else if(pass == 1) {
-                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
 
-                // iris$beginTranslucents
-                pipeline.beginHand();
-                HandRenderer.INSTANCE.renderSolid(null /*poseStack*/, (float) partialTicks, camera, mc.renderGlobal, pipeline);
-                mc.mcProfiler.endStartSection("iris_pre_translucent");
-                pipeline.beginTranslucents();
+                if (!ShadowRenderer.ACTIVE) {
+                    iris$beginTranslucents(pipeline, camera);
+                }
+
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 this.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             }
         }

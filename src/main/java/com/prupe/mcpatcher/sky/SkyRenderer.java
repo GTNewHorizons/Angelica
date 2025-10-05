@@ -28,9 +28,9 @@ public class SkyRenderer {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.BETTER_SKIES);
 
-    private static final boolean enable = MCPatcherForgeConfig.instance().skybox;
-    private static final boolean unloadTextures = MCPatcherForgeConfig.instance().unloadTextures;
-    public static final double horizonHeight = MCPatcherForgeConfig.instance().horizon;
+    private static final boolean enable = MCPatcherForgeConfig.BetterSkies.skybox;
+    private static final boolean unloadTextures = MCPatcherForgeConfig.BetterSkies.unloadTextures;
+    public static final double horizonHeight = MCPatcherForgeConfig.BetterSkies.horizon;
 
     private static double worldTime;
     private static float celestialAngle;
@@ -427,13 +427,13 @@ public class SkyRenderer {
         private static void drawTile(int tile) {
             double tileX = (tile % 3) / 3.0;
             double tileY = (tile / 3) / 2.0;
-            Tessellator.instance.startDrawingQuads();
-            Tessellator.instance.addVertexWithUV(-SKY_DISTANCE, -SKY_DISTANCE, -SKY_DISTANCE, tileX, tileY);
-            Tessellator.instance.addVertexWithUV(-SKY_DISTANCE, -SKY_DISTANCE, SKY_DISTANCE, tileX, tileY + 0.5);
-            Tessellator.instance
-                .addVertexWithUV(SKY_DISTANCE, -SKY_DISTANCE, SKY_DISTANCE, tileX + 1.0 / 3.0, tileY + 0.5);
-            Tessellator.instance.addVertexWithUV(SKY_DISTANCE, -SKY_DISTANCE, -SKY_DISTANCE, tileX + 1.0 / 3.0, tileY);
-            Tessellator.instance.draw();
+            final Tessellator tess = Tessellator.instance;
+            tess.startDrawingQuads();
+            tess.addVertexWithUV(-SKY_DISTANCE, -SKY_DISTANCE, -SKY_DISTANCE, tileX, tileY);
+            tess.addVertexWithUV(-SKY_DISTANCE, -SKY_DISTANCE, SKY_DISTANCE, tileX, tileY + 0.5);
+            tess.addVertexWithUV(SKY_DISTANCE, -SKY_DISTANCE, SKY_DISTANCE, tileX + 1.0 / 3.0, tileY + 0.5);
+            tess.addVertexWithUV(SKY_DISTANCE, -SKY_DISTANCE, -SKY_DISTANCE, tileX + 1.0 / 3.0, tileY);
+            tess.draw();
         }
 
         void setBlendingMethod(float brightness) {

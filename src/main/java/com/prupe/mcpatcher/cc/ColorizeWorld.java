@@ -26,7 +26,7 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 public class ColorizeWorld {
 
-    private static final int fogBlendRadius = MCPatcherForgeConfig.instance().fogBlendRadius;
+    private static final int fogBlendRadius = MCPatcherForgeConfig.CustomColors.fogBlendRadius;
 
     private static final ResourceLocation UNDERWATERCOLOR = TexturePackAPI
         .newMCPatcherResourceLocation("colormap/underwater.png");

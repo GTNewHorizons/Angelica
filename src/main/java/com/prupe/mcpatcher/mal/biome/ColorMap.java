@@ -25,14 +25,13 @@ abstract public class ColorMap implements IColorMap {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CUSTOM_COLORS);
 
-    public static final boolean useSwampColors = MCPatcherForgeConfig.instance().swampColors;
+    public static final boolean useSwampColors = MCPatcherForgeConfig.CustomColors.swampColors;
 
     private static final int FIXED = 0;
     private static final int TEMPERATURE_HUMIDITY = 1;
     private static final int BIOME_HEIGHT = 2;
 
     private static final int COLORMAP_WIDTH = 256;
-    private static final int COLORMAP_HEIGHT = 256;
 
     public static final String BLOCK_COLORMAP_DIR = TexturePackAPI.MCPATCHER_SUBDIR + "colormap/blocks";
     public static final List<ResourceLocation> unusedPNGs = new ArrayList<>();
@@ -165,7 +164,7 @@ abstract public class ColorMap implements IColorMap {
         unusedPNGs.clear();
         defaultColorMapFormat = TEMPERATURE_HUMIDITY;
         defaultFlipY = false;
-        defaultYVariance = MCPatcherForgeConfig.instance().yVariance;
+        defaultYVariance = MCPatcherForgeConfig.CustomColors.yVariance;
     }
 
     public static void reloadColorMapSettings(PropertiesFile properties) {

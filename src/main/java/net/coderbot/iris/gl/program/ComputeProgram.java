@@ -19,7 +19,7 @@ public final class ComputeProgram extends GlResource {
 	private Vector3i absoluteWorkGroups;
 	private Vector2f relativeWorkGroups;
 //	private int[] localSize;
-    private IntBuffer localSizeBuffer;
+    private final IntBuffer localSizeBuffer;
 	private float cachedWidth;
 	private float cachedHeight;
 	private Vector3i cachedWorkGroups;
@@ -57,12 +57,15 @@ public final class ComputeProgram extends GlResource {
 		return cachedWorkGroups;
 	}
 
-	public void dispatch(float width, float height) {
-		GL20.glUseProgram(getGlId());
-		uniforms.update();
-		samplers.update();
-		images.update();
+    public void use() {
+        GL20.glUseProgram(getGlId());
 
+        uniforms.update();
+        samplers.update();
+        images.update();
+    }
+
+	public void dispatch(float width, float height) {
 		if (!Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::allowConcurrentCompute).orElse(false)) {
 			RenderSystem.memoryBarrier(40);
 		}
@@ -75,7 +78,8 @@ public final class ComputeProgram extends GlResource {
 		GL20.glUseProgram(0);
 	}
 
-	public void destroyInternal() {
+	@Override
+    public void destroyInternal() {
 		GL20.glDeleteProgram(getGlId());
 	}
 

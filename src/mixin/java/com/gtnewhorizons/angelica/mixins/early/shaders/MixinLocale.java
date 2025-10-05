@@ -23,6 +23,8 @@ public class MixinLocale {
     // storage
     @Shadow Map<String, String> field_135032_a;
 
+    @Shadow private boolean field_135029_d;
+
     @Unique
     private static final List<String> languageCodes = new ArrayList<>();
 
@@ -77,6 +79,12 @@ public class MixinLocale {
 
         // Reverse order due to how minecraft has English and then the primary language in the language definitions list
         new LinkedList<>(definitions).descendingIterator().forEachRemaining(languageCodes::add);
+    }
+
+    @Inject(method = "checkUnicode", at = @At("HEAD"), cancellable = true)
+    private void iris$checkUnicode(CallbackInfo ci) {
+        this.field_135029_d = false;
+        ci.cancel();
     }
 
 }

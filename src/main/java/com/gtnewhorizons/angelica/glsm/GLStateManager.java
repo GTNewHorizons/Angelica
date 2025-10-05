@@ -26,6 +26,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -35,6 +36,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
@@ -65,11 +67,16 @@ import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
 import java.lang.Math;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.AbstractMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
@@ -133,10 +140,20 @@ public class GLStateManager {
     @Getter protected static final MaterialStateStack frontMaterial = new MaterialStateStack(GL11.GL_FRONT);
     @Getter protected static final MaterialStateStack backMaterial = new MaterialStateStack(GL11.GL_BACK);
 
+    private static final MethodHandle MAT4_STACK_CURR_DEPTH;
+
     static {
         for (int i = 0; i < lightStates.length; i ++) {
             lightStates[i] = new BooleanStateStack(GL11.GL_LIGHT0 + i);
             lightDataStates[i] = new LightStateStack(GL11.GL_LIGHT0 + i);
+        }
+
+        try {
+            Field curr = ReflectionHelper.findField(Matrix4fStack.class, "curr");
+            curr.setAccessible(true);
+            MAT4_STACK_CURR_DEPTH = MethodHandles.lookup().unreflectGetter(curr);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -149,11 +166,18 @@ public class GLStateManager {
         while(!attribs.isEmpty()) {
             attribs.popInt();
         }
-        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            IStateStack<?> stack = stacks.get(i);
+
             while(!stack.isEmpty()) {
                 stack.pop();
             }
         }
+
         modelViewMatrix.clear();
         projectionMatrix.clear();
     }
@@ -172,6 +196,7 @@ public class GLStateManager {
     @Setter @Getter private static boolean runningSplash = true;
 
     private static int glListMode = 0;
+    private static int glListNesting = 0;
     private static int glListId = -1;
     private static final Map<IStateStack<?>, ISettableState<?>> glListStates = new Object2ObjectArrayMap<>();
     private static final Int2ObjectMap<Set<Map.Entry<IStateStack<?>, ISettableState<?>>>> glListChanges = new Int2ObjectOpenHashMap<>();
@@ -179,6 +204,9 @@ public class GLStateManager {
 
 
     public static class GLFeatureSet extends IntOpenHashSet {
+
+        private static final long serialVersionUID = 8558779940775721010L;
+
         public GLFeatureSet addFeature(int feature) {
             super.add(feature);
             return this;
@@ -397,6 +425,11 @@ public class GLStateManager {
         }
     }
 
+    @SneakyThrows
+    public static int getMatrixStackDepth(Matrix4fStack stack) {
+        return (int) MAT4_STACK_CURR_DEPTH.invokeExact(stack);
+    }
+
     public static int glGetInteger(int pname) {
         if(shouldBypassCache()) {
             return GL11.glGetInteger(pname);
@@ -416,6 +449,8 @@ public class GLStateManager {
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
+            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
+            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
 
             default -> GL11.glGetInteger(pname);
         };
@@ -828,6 +863,16 @@ public class GLStateManager {
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     }
 
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
+        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : (IntBuffer) null);
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -959,16 +1004,50 @@ public class GLStateManager {
         glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
     }
 
-    public static void glDrawArrays(int mode, int first, int count) {
-        // Iris -- TODO: This doesn't seem to work and is related to matchPass()
-        if(AngelicaConfig.enableIris) {
+    public static void trySyncProgram() {
+        if (AngelicaConfig.enableIris) {
             Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
         }
-        GL11.glDrawArrays(mode, first, count);
+    }
+
+    public static void glBegin(int mode) {
+        trySyncProgram();
+        GL11.glBegin(mode);
+    }
+
+    public static void glDrawElements(int mode, ByteBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, IntBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, ShortBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices);
+    }
+
+    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
+    }
+
+    public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
+        trySyncProgram();
+        GL11.glDrawElements(mode, count, type, indices);
     }
 
     public static void glDrawBuffer(int mode) {
+        trySyncProgram();
         GL11.glDrawBuffer(mode);
+    }
+
+    public static void glDrawArrays(int mode, int first, int count) {
+        trySyncProgram();
+        GL11.glDrawArrays(mode, first, count);
     }
 
     public static void glLogicOp(int opcode) {
@@ -1173,21 +1252,35 @@ public class GLStateManager {
 
     public static void glNewList(int list, int mode) {
         if(glListMode > 0) {
-            throw new RuntimeException("glNewList called inside of a display list!");
+            glListNesting += 1;
+            return;
         }
+
         glListId = list;
         glListMode = mode;
         GL11.glNewList(list, mode);
-        for(IStateStack<?> stack : Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS)) {
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            IStateStack<?> stack = stacks.get(i);
+
             // Feature Stack, copy of current feature state
             glListStates.put(stack, (ISettableState<?>) ((ISettableState<?>)stack).copy());
         }
+
         if(glListMode == GL11.GL_COMPILE) {
             pushState(GL11.GL_ALL_ATTRIB_BITS);
         }
     }
 
     public static void glEndList() {
+        if (glListNesting > 0) {
+            glListNesting -= 1;
+            return;
+        }
+
         if(glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
@@ -1219,6 +1312,7 @@ public class GLStateManager {
         if(list < 0) {
             VBOManager.get(list).render();
         } else {
+            trySyncProgram();
             GL11.glCallList(list);
             if(glListChanges.containsKey(list)) {
                 for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
@@ -1231,15 +1325,23 @@ public class GLStateManager {
 
     public static void pushState(int mask) {
         attribs.push(mask);
-        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
-            stack.push();
-        }
 
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            stacks.get(i).push();
+        }
     }
+
     public static void popState() {
         final int mask = attribs.popInt();
-        for(IStateStack<?> stack : Feature.maskToFeatures(mask)) {
-            stack.pop();
+
+        List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
+        int size = stacks.size();
+
+        for(int i = 0; i < size; i++) {
+            stacks.get(i).pop();
         }
     }
 

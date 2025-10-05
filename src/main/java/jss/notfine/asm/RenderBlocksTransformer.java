@@ -2,6 +2,7 @@ package jss.notfine.asm;
 
 import static jss.notfine.asm.ASMUtils.matchesNodeSequence;
 
+import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -32,9 +33,10 @@ public class RenderBlocksTransformer implements IClassTransformer {
 
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         if ("net.minecraft.client.renderer.RenderBlocks".equals(transformedName)) {
-            return patchRenderBlocks(basicClass);
+            final byte[] bytes = patchRenderBlocks(basicClass);
+            AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
+            return bytes;
         }
-
         return basicClass;
     }
 

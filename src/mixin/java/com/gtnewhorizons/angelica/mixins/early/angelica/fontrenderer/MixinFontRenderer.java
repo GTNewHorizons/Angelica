@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
+import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -10,13 +11,14 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.Constant;
 
 import java.util.Random;
 
@@ -25,7 +27,7 @@ import java.util.Random;
  * @author eigenraven
  */
 @Mixin(FontRenderer.class)
-public abstract class MixinFontRenderer implements FontRendererAccessor {
+public abstract class MixinFontRenderer implements FontRendererAccessor, IFontParameters {
 
     @Shadow
     private boolean randomStyle;
@@ -118,7 +120,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
-        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, unicodePageLocations, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture, this.renderEngine);
+        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture);
     }
 
     @Unique
@@ -186,4 +188,43 @@ public abstract class MixinFontRenderer implements FontRendererAccessor {
     @Override
     public void angelica$bindTexture(ResourceLocation location) { this.bindTexture(location); }
 
+    @ModifyConstant(method = "getCharWidth", constant = @Constant(intValue = 7))
+    private int angelica$maxCharWidth(int original) {
+        return Integer.MAX_VALUE;
+    }
+
+    @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
+    public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {
+        cir.setReturnValue((int) angelica$getBatcher().getCharWidthFine(c));
+    }
+
+    @Override
+    public float getGlyphScaleX() {
+        return angelica$getBatcher().getGlyphScaleX();
+    }
+
+    @Override
+    public float getGlyphScaleY() {
+        return angelica$getBatcher().getGlyphScaleY();
+    }
+
+    @Override
+    public float getGlyphSpacing() {
+        return angelica$getBatcher().getGlyphSpacing();
+    }
+
+    @Override
+    public float getWhitespaceScale() {
+        return angelica$getBatcher().getWhitespaceScale();
+    }
+
+    @Override
+    public float getShadowOffset() {
+        return angelica$getBatcher().getShadowOffset();
+    }
+
+    @Override
+    public float getCharWidthFine(char chr) {
+        return angelica$getBatcher().getCharWidthFine(chr);
+    }
 }

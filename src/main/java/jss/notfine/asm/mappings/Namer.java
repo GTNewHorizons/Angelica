@@ -50,9 +50,6 @@ public class Namer {
         final boolean obfuscated = !(Boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
         AngelicaTweaker.LOGGER.info("Environment obfuscated: {}", obfuscated);
         if (obfuscated) {
-            // due to mixin bug we can't use sortingIndex meaning we will run too early to use srg
-            // new NamerSrg().setNames();
-            //TODO: check if this is still the case in Angelica
             new NamerObf().setNames();
         } else {
             new NamerMcp().setNames();

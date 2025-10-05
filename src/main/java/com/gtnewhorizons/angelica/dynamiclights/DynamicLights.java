@@ -6,19 +6,18 @@ import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import mods.battlegear2.api.core.IBattlePlayer;
-import mods.battlegear2.api.core.IInventoryPlayerBattle;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -28,7 +27,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import xonin.backhand.api.core.BackhandUtils;
 
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -37,6 +35,7 @@ import java.util.function.Predicate;
 public class DynamicLights {
     private static DynamicLights instance;
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
+    public static boolean ShaderForce = false;
 
     private static final double MAX_RADIUS = 7.75;
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
@@ -52,7 +51,11 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return AngelicaConfig.enableDynamicLights && Mode.isEnabled() && !IrisApi.getInstance().isShaderPackInUse();
+        return AngelicaConfig.enableDynamicLights &&
+            Mode.isEnabled() &&
+            // if shader force is enabled then true
+            // if not, then true when shaders are not in use
+            (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
     }
 
     /**
@@ -65,7 +68,7 @@ public class DynamicLights {
             return;
 
         long now = System.currentTimeMillis();
-        if (now >= this.lastUpdate + 50) {
+        if (now >= this.lastUpdate + Mode.getDelay()) {
             this.lastUpdate = now;
             this.lastUpdateCount = 0;
 
@@ -373,13 +376,13 @@ public class DynamicLights {
                 player instanceof IBattlePlayer battlePlayer &&
                 battlePlayer.battlegear2$isBattlemode()
             ) {
-                ItemStack offhand = ((IInventoryPlayerBattle) player.inventory).battlegear2$getCurrentOffhandWeapon();
+                ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
                 if (offhand != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
                 }
             }
             else if (ModStatus.isBackhandLoaded && living instanceof EntityPlayer player){
-                ItemStack offhand = BackhandUtils.getOffhandItem(player);
+                ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
                 if (offhand != null) {
                     luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
                 }

@@ -1,18 +1,18 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import lombok.Getter;
-import net.coderbot.iris.Iris;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import javax.imageio.ImageIO;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import lombok.Getter;
+import net.coderbot.iris.Iris;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 // TBD
 public class NativeImage extends BufferedImage {
@@ -59,13 +59,20 @@ public class NativeImage extends BufferedImage {
 
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
-        IntBuffer buffer = BufferUtils.createIntBuffer(size);
-        int[] data = new int[size];
 
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-        buffer.get(data);
-        setRGB(0, 0, width, height, data, 0, width);
+        final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
+
+        try {
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+
+            int[] data = new int[size];
+            buffer.get(data);
+            setRGB(0, 0, width, height, data, 0, width);
+        } finally {
+            MemoryUtilities.memFree(buffer);
+        }
     }
+
     public void writeToFile(File file) throws IOException{
         try {
             ImageIO.write(this, "png", file);
@@ -103,18 +110,15 @@ public class NativeImage extends BufferedImage {
 
 
     public enum Format {
-        RGBA(4, GL11.GL_RGBA, BufferedImage.TYPE_INT_ARGB),
-        RGB(3, GL11.GL_RGB, BufferedImage.TYPE_INT_RGB);
+        RGBA(4, GL11.GL_RGBA),
+        RGB(3, GL11.GL_RGB);
 
         private final int components;
         private final int glFormat;
-        private final int imageType;
 
-
-        Format(int components, int glFormat, int imageType) {
+        Format(int components, int glFormat) {
             this.components = components;
             this.glFormat = glFormat;
-            this.imageType = imageType;
         }
     }
 

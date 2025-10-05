@@ -1,12 +1,10 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import lombok.Setter;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 

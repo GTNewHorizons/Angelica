@@ -8,6 +8,13 @@ repositories {
             includeGroup 'com.falsepattern'
         }
     }
+    maven {
+        name = 'mega'
+        url = 'https://mvn.falsepattern.com/gtmega_releases/'
+        content {
+            includeGroup 'mega'
+        }
+    }
     exclusiveContent {
         forRepository {
             ivy {
@@ -23,6 +30,13 @@ repositories {
         }
         filter {
             includeGroup('CoreTweaks')
+        }
+    }
+    maven {
+        name = 'taumc'
+        url = 'https://maven.taumc.org/releases'
+        content {
+            includeGroup 'org.taumc'
         }
     }
     mavenLocal()
