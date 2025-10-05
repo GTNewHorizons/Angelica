@@ -21,7 +21,7 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
     if (finalU < tB.x || finalU > tB.y || finalV < tB.z || finalV > tB.w) {
-        return 0;
+        return 0.0f;
     }
     return weight * texture2D(sampler, vec2(finalU, finalV)).a;
 }
