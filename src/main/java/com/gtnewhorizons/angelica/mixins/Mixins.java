@@ -576,7 +576,7 @@ public enum Mixins implements IMixins {
     ),
     //End from NotFine
 
-    QPR(new MixinBuilder("Adds a QuadProvider field to blocks without populating it")
+    QPR(new MixinBuilder("Adds a BakedModel field to blocks without populating it")
         .setPhase(Phase.EARLY)
         .addClientMixins(
             "angelica.models.MixinBlock",

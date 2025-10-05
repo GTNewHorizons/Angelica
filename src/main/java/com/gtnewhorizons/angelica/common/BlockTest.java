@@ -1,11 +1,8 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadProvider;
+import com.gtnewhorizon.gtnhlib.client.model.ModelISBRH;
 import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
-import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
-import lombok.Getter;
-import lombok.Setter;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
@@ -13,22 +10,14 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
-import static com.gtnewhorizons.angelica.models.VanillaModels.LECTERN;
-
-public class BlockTest extends Block implements ModeledBlock {
-
-    @Getter
-    @Setter
-    private QuadProvider model;
+/// Unline {@link BlockError}, this *is* registered on both sides. It's intended to test functionality in a SP
+/// development environment.
+public class BlockTest extends Block {
 
     public BlockTest() {
-
-        super(Material.rock);
-        this.setBlockTextureName("missingno");
-        this.setModel((world, pos, block, meta, dir, random, color, quadPool) -> {
-            if (meta < 2 || meta > 5) meta = 2;
-            return LECTERN.models[meta - 2].getQuads(world, pos, block, meta, dir, random, color, quadPool);
-        });
+        super(Material.wood);
+        setHardness(0.7f);
+        setBlockTextureName("missingno");
     }
 
     @Override
@@ -56,5 +45,10 @@ public class BlockTest extends Block implements ModeledBlock {
 
         // Face the placed side
         return side;
+    }
+
+    @Override
+    public int getRenderType() {
+        return ModelISBRH.MODEL_ISBRH.JSON_ISBRH_ID;
     }
 }
