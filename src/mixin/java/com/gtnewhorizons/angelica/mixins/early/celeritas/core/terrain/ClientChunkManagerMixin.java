@@ -13,6 +13,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/**
+ * Not applied if Chunkbert (Bobby) is enabled.
+ * @see com.gtnewhorizons.angelica.mixins.early.chunkbert.ChunkProviderClientMixin
+ */
 @Mixin(ChunkProviderClient.class)
 public abstract class ClientChunkManagerMixin {
     @Shadow

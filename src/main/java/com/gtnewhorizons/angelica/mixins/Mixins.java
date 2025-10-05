@@ -155,7 +155,6 @@ public enum Mixins implements IMixins {
                 ,"celeritas.core.terrain.WorldClientMixin"
                 ,"celeritas.core.terrain.TessellatorMixin"
                 ,"celeritas.core.terrain.RenderGlobalMixin"
-                ,"celeritas.core.terrain.ClientChunkManagerMixin"
                 ,"celeritas.core.biome_blending.BlockLiquidMixin"
                 ,"celeritas.core.biome_blending.BlockLeavesMixin"
                 ,"celeritas.core.biome_blending.BlockGrassMixin"
@@ -164,6 +163,14 @@ public enum Mixins implements IMixins {
                 ,"celeritas.features.mipmaps.TextureUtilMixin"
                 ,"celeritas.features.textures.TextureAtlasSpriteMixin"
                 ,"celeritas.features.textures.TextureAtlasMixin"
+        )
+    ),
+
+    CELERITAS_NO_CHUNKBERT(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas && !AngelicaConfig.enableChunkbert)
+        .addClientMixins(
+            "celeritas.core.terrain.ClientChunkManagerMixin"
         )
     ),
 
