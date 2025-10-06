@@ -21,6 +21,8 @@ import net.minecraft.world.storage.ISaveHandler;
 import net.minecraft.world.storage.ThreadedFileIOBase;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.embeddedt.embeddium.impl.render.chunk.map.ChunkStatus;
+import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTrackerHolder;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -254,6 +256,7 @@ public class FakeChunkManager {
 
     protected void load(int x, int z, Chunk chunk) {
         fakeChunks.put(ChunkPos.toLong(x, z), chunk);
+        ChunkTrackerHolder.get(chunk.worldObj).onChunkStatusAdded(x, z, ChunkStatus.FLAG_ALL);
 
         world.markBlockRangeForRenderUpdate(x * 16, 0, z * 16, x * 16 + 15, 256, z * 16 + 15);
     }
@@ -266,6 +269,10 @@ public class FakeChunkManager {
             /* TODO fix lighting */
 
             world.loadedTileEntityList.removeAll(chunk.chunkTileEntityMap.values());
+            
+            if (!willBeReplaced) {
+                ChunkTrackerHolder.get(chunk.worldObj).onChunkStatusRemoved(x, z, ChunkStatus.FLAG_ALL);
+            }
 
             return true;
         }
