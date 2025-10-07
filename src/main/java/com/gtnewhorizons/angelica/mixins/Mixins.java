@@ -575,13 +575,6 @@ public enum Mixins implements IMixins {
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine
-
-    QPR(new MixinBuilder("Adds a BakedModel field to blocks without populating it")
-        .setPhase(Phase.EARLY)
-        .addClientMixins(
-            "angelica.models.MixinBlock",
-            "angelica.models.MixinBlockOldLeaf")),
-
     ;
 
     private final MixinBuilder builder;

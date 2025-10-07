@@ -1,7 +1,9 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import com.gtnewhorizon.gtnhlib.block.BlockState;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.client.model.BakedModel;
+import com.gtnewhorizon.gtnhlib.client.model.ModelISBRH;
+import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
@@ -10,7 +12,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQ
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
 import com.gtnewhorizon.gtnhlib.util.ObjectPooler;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ModeledBlock;
 import java.util.List;
 import java.util.Random;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
@@ -48,7 +49,6 @@ public class BlockRenderer {
     private final BlockOcclusionCache occlusionCache;
 
     private final ObjectPooler<ModelQuad> quadPool = new ObjectPooler<>(ModelQuad::new);
-    // TODO: Use modern model API, and store them here
 
 
     public BlockRenderer(LightPipelineProvider lighters) {
@@ -107,10 +107,9 @@ public class BlockRenderer {
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
-        final BakedModel model = ((ModeledBlock) block).getModel();
-
-        if (model != null) {
-
+        if (block.getRenderType() == ModelISBRH.JSON_ISBRH_ID) {
+            final var state = new BlockState(block, meta);
+            final var model = ModelRegistry.getBakedModel(state);
             final int color = model.getColor(world, pos.x, pos.y, pos.z, block, meta, random);
 
             for (var dir : ModelQuadFacing.DIRECTIONS) {
