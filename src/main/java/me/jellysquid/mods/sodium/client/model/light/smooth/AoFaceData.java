@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
-import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
-import net.minecraftforge.common.util.ForgeDirection;
-
+import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.getLightMap;
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackAO;
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackFO;
 import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.unpackOP;
-import static me.jellysquid.mods.sodium.client.model.light.cache.ArrayLightDataCache.getLightMap;
+
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
+import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 
 class AoFaceData {
     public final int[] lm = new int[4];
@@ -18,7 +18,7 @@ class AoFaceData {
 
     private int flags;
 
-    public void initLightData(LightDataAccess cache, BlockPos pos, ForgeDirection direction, boolean offset) {
+    public void initLightData(LightDataAccess cache, BlockPos pos, ModelQuadFacing direction, boolean offset) {
         final int x = pos.x;
         final int y = pos.y;
         final int z = pos.z;
@@ -28,9 +28,9 @@ class AoFaceData {
         final int adjZ;
 
         if (offset) {
-            adjX = x + direction.offsetX;
-            adjY = y + direction.offsetY;
-            adjZ = z + direction.offsetZ;
+            adjX = x + direction.getStepX();
+            adjY = y + direction.getStepY();
+            adjZ = z + direction.getStepZ();
         } else {
             adjX = x;
             adjY = y;
@@ -50,7 +50,7 @@ class AoFaceData {
 
         final float caao = unpackAO(adjWord);
 
-        ForgeDirection[] faces = AoNeighborInfo.get(direction).faces;
+        var faces = AoNeighborInfo.get(direction).faces;
 
         final long e0 = cache.get(adjX, adjY, adjZ, faces[0]);
         final int e0lm = getLightMap(e0);

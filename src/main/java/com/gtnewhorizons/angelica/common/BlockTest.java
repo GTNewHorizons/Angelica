@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.common;
 
 import com.gtnewhorizon.gtnhlib.client.model.ModelISBRH;
-import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
 import com.gtnewhorizons.angelica.utils.AssetLoader;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -39,7 +38,7 @@ public class BlockTest extends Block {
     public int onBlockPlaced(@NotNull World worldIn, int x, int y, int z, int side, float subX, float subY, float subZ, int meta) {
 
         // Face NORTH if placed up or down
-        final ForgeDirection s = DirectionUtil.ALL_DIRECTIONS[side];
+        final var s = ForgeDirection.getOrientation(side);
         if (s == ForgeDirection.UP || s == ForgeDirection.DOWN)
             return 2;
 

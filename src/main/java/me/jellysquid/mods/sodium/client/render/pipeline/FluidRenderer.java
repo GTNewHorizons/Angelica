@@ -1,14 +1,18 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.HORIZONTAL_DIRECTIONS;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_Y;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Y;
+import static org.joml.Math.lerp;
+
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuad;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuadView;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuadViewMutable;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFlags;
-import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
-import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFlags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import java.util.Arrays;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -29,10 +33,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
-import java.util.Arrays;
-
-import static org.joml.Math.lerp;
-
 public class FluidRenderer {
 	private static final float EPSILON = 0.001f;
     private final LightPipelineProvider lpp;
@@ -51,7 +51,7 @@ public class FluidRenderer {
         int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
 
         for (int i = 0; i < 4; i++) {
-            this.quad.setNormal(i, normal);
+            this.quad.setForgeNormal(i, normal);
         }
 
         this.lpp = lpp;
@@ -69,8 +69,8 @@ public class FluidRenderer {
         return tmp;
     }
 
-    private boolean isSideExposed(IBlockAccess world, int x, int y, int z, ForgeDirection dir, float height) {
-        BlockPos pos = this.scratchPos.set(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
+    private boolean isSideExposed(IBlockAccess world, int x, int y, int z, ModelQuadFacing dir, float height) {
+        BlockPos pos = this.scratchPos.set(x + dir.getStepX(), y + dir.getStepY(), z + dir.getStepZ());
         Block block = world.getBlock(pos.x, pos.y, pos.z);
 
         if (block.getMaterial().isOpaque()) {
@@ -79,7 +79,7 @@ public class FluidRenderer {
             // Hoist these checks to avoid allocating the shape below
             if (renderAsFullCube) {
                 // The top face always be inset, so if the shape above is a full cube it can't possibly occlude
-                return dir == ForgeDirection.UP;
+                return dir == POS_Y;
             } else {
                 return true;
             }
@@ -102,7 +102,7 @@ public class FluidRenderer {
         // Check for occluded sides; if everything is occluded, don't render
         boolean sfUp = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.UP, fluid);
         boolean sfDown = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.DOWN, fluid) ||
-                !this.isSideExposed(world, posX, posY, posZ, ForgeDirection.DOWN, 0.8888889F);
+                !this.isSideExposed(world, posX, posY, posZ, NEG_Y, 0.8888889F);
         boolean sfNorth = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.NORTH, fluid);
         boolean sfSouth = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.SOUTH, fluid);
         boolean sfWest = this.isFluidOccluded(world, posX, posY, posZ, ForgeDirection.WEST, fluid);
@@ -142,7 +142,7 @@ public class FluidRenderer {
 
         quad.setFlags(0);
 
-        if (!sfUp && this.isSideExposed(world, posX, posY, posZ, ForgeDirection.UP, Math.min(Math.min(h1, h2), Math.min(h3, h4)))) {
+        if (!sfUp && this.isSideExposed(world, posX, posY, posZ, POS_Y, Math.min(Math.min(h1, h2), Math.min(h3, h4)))) {
             h1 -= 0.001F;
             h2 -= 0.001F;
             h3 -= 0.001F;
@@ -157,7 +157,7 @@ public class FluidRenderer {
 
             if (velocity.x == 0.0D && velocity.z == 0.0D) {
                 sprite = sprites[0];
-                facing = ModelQuadFacing.UP;
+                facing = ModelQuadFacing.POS_Y;
                 u1 = sprite.getInterpolatedU(0.0D);
                 v1 = sprite.getInterpolatedV(0.0D);
                 u2 = u1;
@@ -204,7 +204,7 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, h3, 1.0F, u3, v3);
             this.setVertex(quad, 3, 1.0F, h4, 0.0f, u4, v4);
 
-            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.UP, 1.0F, hc, slice);
+            this.calculateQuadColors(quad, pos, lighter, POS_Y, 1.0F, hc, slice);
             this.flushQuad(buffers, quad, facing, false);
 
             if (WorldUtil.method_15756(slice, this.scratchPos.set(posX, posY + 1, posZ), fluid)) {
@@ -213,7 +213,7 @@ public class FluidRenderer {
                 this.setVertex(quad, 1, 1.0F, h3, 1.0F, u3, v3);
                 this.setVertex(quad, 0, 1.0F, h4, 0.0f, u4, v4);
 
-                this.flushQuad(buffers, quad, ModelQuadFacing.DOWN, true);
+                this.flushQuad(buffers, quad, ModelQuadFacing.NEG_Y, true);
             }
 
             rendered = true;
@@ -233,15 +233,15 @@ public class FluidRenderer {
             this.setVertex(quad, 2, 1.0F, yOffset, 0.0f, maxU, minV);
             this.setVertex(quad, 3, 1.0F, yOffset, 1.0F, maxU, maxV);
 
-            this.calculateQuadColors(quad, pos, lighter, ForgeDirection.DOWN, 1.0F, hc, slice);
-            this.flushQuad(buffers, quad, ModelQuadFacing.DOWN, false);
+            this.calculateQuadColors(quad, pos, lighter, NEG_Y, 1.0F, hc, slice);
+            this.flushQuad(buffers, quad, ModelQuadFacing.NEG_Y, false);
 
             rendered = true;
         }
 
         quad.setFlags(ModelQuadFlags.IS_ALIGNED);
 
-        for (ForgeDirection dir : DirectionUtil.HORIZONTAL_DIRECTIONS) {
+        for (var facing : HORIZONTAL_DIRECTIONS) {
             float c1;
             float c2;
             float x1;
@@ -249,8 +249,8 @@ public class FluidRenderer {
             float x2;
             float z2;
 
-            switch (dir) {
-                case NORTH:
+            switch (facing) {
+                case NEG_Z:
                     if (sfNorth) {
                         continue;
                     }
@@ -262,7 +262,7 @@ public class FluidRenderer {
                     z1 = 0.001f;
                     z2 = z1;
                     break;
-                case SOUTH:
+                case POS_Z:
                     if (sfSouth) {
                         continue;
                     }
@@ -274,7 +274,7 @@ public class FluidRenderer {
                     z1 = 0.999f;
                     z2 = z1;
                     break;
-                case WEST:
+                case NEG_X:
                     if (sfWest) {
                         continue;
                     }
@@ -286,7 +286,7 @@ public class FluidRenderer {
                     z1 = 1.0F;
                     z2 = 0.0f;
                     break;
-                case EAST:
+                case POS_X:
                     if (sfEast) {
                         continue;
                     }
@@ -302,10 +302,10 @@ public class FluidRenderer {
                     continue;
             }
 
-            if (this.isSideExposed(world, posX, posY, posZ, dir, Math.max(c1, c2))) {
-                int adjX = posX + dir.offsetX;
-                int adjY = posY + dir.offsetY;
-                int adjZ = posZ + dir.offsetZ;
+            if (this.isSideExposed(world, posX, posY, posZ, facing, Math.max(c1, c2))) {
+                int adjX = posX + facing.getStepX();
+                int adjY = posY + facing.getStepY();
+                int adjZ = posZ + facing.getStepZ();
 
                 TextureAtlasSprite sprite = sprites[1];
                 TextureAtlasSprite oSprite = sprites[2];
@@ -333,11 +333,9 @@ public class FluidRenderer {
                 this.setVertex(quad, 2, x1, yOffset, z1, u1, v3);
                 this.setVertex(quad, 3, x1, c1, z1, u1, v1);
 
-                float br = dir.offsetZ != 0 ? 0.8F : 0.6F;
+                float br = facing.getStepZ() != 0 ? 0.8F : 0.6F;
 
-                ModelQuadFacing facing = ModelQuadFacing.fromDirection(dir);
-
-                this.calculateQuadColors(quad, pos, lighter, dir, br, hc, slice);
+                this.calculateQuadColors(quad, pos, lighter, facing, br, hc, slice);
                 this.flushQuad(buffers, quad, facing, false);
 
                 if (sprite != oSprite) {
@@ -356,7 +354,7 @@ public class FluidRenderer {
         return rendered;
     }
 
-    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ForgeDirection dir, float brightness, boolean colorized, WorldSlice slice) {
+    private void calculateQuadColors(ModelQuadView quad, BlockPos pos, LightPipeline lighter, ModelQuadFacing dir, float brightness, boolean colorized, WorldSlice slice) {
         QuadLightData light = this.quadLightData;
         lighter.calculate(quad, pos, light, null, dir, false);
 
@@ -410,7 +408,7 @@ public class FluidRenderer {
             vertexIdx += lightOrder;
         }
 
-        TextureAtlasSprite sprite = quad.rubidium$getSprite();
+        TextureAtlasSprite sprite = (TextureAtlasSprite) quad.celeritas$getSprite();
 
         if (sprite != null) {
             buffers.getRenderData().addSprite(sprite);

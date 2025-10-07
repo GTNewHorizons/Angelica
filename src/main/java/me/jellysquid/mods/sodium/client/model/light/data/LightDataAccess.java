@@ -1,11 +1,11 @@
 package me.jellysquid.mods.sodium.client.model.light.data;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import me.jellysquid.mods.sodium.client.util.StateUtil;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.minecraft.block.Block;
-import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * The light data cache is used to make accessing the light data and occlusion properties of blocks cheaper. The data
@@ -26,15 +26,15 @@ public abstract class LightDataAccess {
     public static final ThreadLocal<BlockPos> DynamicLightsPos = ThreadLocal.withInitial(BlockPos::new);
     protected WorldSlice world;
 
-    public long get(int x, int y, int z, ForgeDirection d1, ForgeDirection d2) {
-        return this.get(x + d1.offsetX + d2.offsetX, y + d1.offsetY + d2.offsetY, z + d1.offsetZ + d2.offsetZ);
+    public long get(int x, int y, int z, ModelQuadFacing d1, ModelQuadFacing d2) {
+        return this.get(x + d1.getStepX() + d2.getStepX(), y + d1.getStepY() + d2.getStepY(), z + d1.getStepZ() + d2.getStepZ());
     }
 
-    public long get(int x, int y, int z, ForgeDirection dir) {
-        return this.get(x + dir.offsetX, y + dir.offsetY, z + dir.offsetZ);
+    public long get(int x, int y, int z, ModelQuadFacing dir) {
+        return this.get(x + dir.getStepX(), y + dir.getStepY(), z + dir.getStepZ());
     }
 
-    public long get(BlockPos pos, ForgeDirection dir) {
+    public long get(BlockPos pos, ModelQuadFacing dir) {
         return this.get(pos.x, pos.y, pos.z, dir);
     }
 
