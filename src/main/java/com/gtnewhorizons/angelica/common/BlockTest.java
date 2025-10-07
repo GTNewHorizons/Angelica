@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.common;
 
-import com.gtnewhorizon.gtnhlib.client.model.ModelISBRH;
-import com.gtnewhorizons.angelica.utils.AssetLoader;
+import static com.gtnewhorizon.gtnhlib.client.model.ModelISBRH.JSON_ISBRH_ID;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
@@ -24,13 +23,6 @@ public class BlockTest extends Block {
         return false;
     }
 
-    @Override
-    public void registerBlockIcons(IIconRegister reg) {
-        for (String s : AssetLoader.testTexs) {
-            reg.registerIcon(s);
-        }
-    }
-
     /**
      * Called when a block is placed using its ItemBlock. Args: World, X, Y, Z, side, hitX, hitY, hitZ, block metadata
      */
@@ -48,6 +40,6 @@ public class BlockTest extends Block {
 
     @Override
     public int getRenderType() {
-        return ModelISBRH.MODEL_ISBRH.JSON_ISBRH_ID;
+        return JSON_ISBRH_ID;
     }
 }

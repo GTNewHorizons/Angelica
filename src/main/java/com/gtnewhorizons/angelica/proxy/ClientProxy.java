@@ -12,15 +12,14 @@ import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
-import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.models.VanillaModels;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
-import com.gtnewhorizons.angelica.utils.AssetLoader;
 import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -75,8 +74,6 @@ public class ClientProxy extends CommonProxy {
 
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
-        AssetLoader.load();
     }
 
     @SubscribeEvent
