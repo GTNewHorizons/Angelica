@@ -1,17 +1,24 @@
 package me.jellysquid.mods.sodium.client.model.light.smooth;
 
-import net.minecraftforge.common.util.ForgeDirection;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_X;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_Y;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_Z;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_X;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Y;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Z;
+
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 
 /**
  * The neighbor information for each face of a block, used when performing smooth lighting in order to calculate
  * the occlusion of each corner.
  */
 enum AoNeighborInfo {
-    DOWN(new ForgeDirection[] { ForgeDirection.WEST, ForgeDirection.EAST, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.5F) {
+    EAST(new ModelQuadFacing[] { NEG_Y, POS_Y, NEG_Z, POS_Z }, 0.6F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
-            final float v = 1.0f - x;
+            final float v = 1.0f - y;
 
             out[0] = v * u;
             out[1] = v * (1.0f - u);
@@ -21,23 +28,23 @@ enum AoNeighborInfo {
 
         @Override
         public void mapCorners(int[] lm0, float[] ao0, int[] lm1, float[] ao1) {
-            lm1[0] = lm0[0];
-            lm1[1] = lm0[1];
-            lm1[2] = lm0[2];
-            lm1[3] = lm0[3];
+            lm1[1] = lm0[0];
+            lm1[2] = lm0[1];
+            lm1[3] = lm0[2];
+            lm1[0] = lm0[3];
 
-            ao1[0] = ao0[0];
-            ao1[1] = ao0[1];
-            ao1[2] = ao0[2];
-            ao1[3] = ao0[3];
+            ao1[1] = ao0[0];
+            ao1[2] = ao0[1];
+            ao1[3] = ao0[2];
+            ao1[0] = ao0[3];
         }
 
         @Override
         public float getDepth(float x, float y, float z) {
-            return y;
+            return 1.0f - x;
         }
     },
-    UP(new ForgeDirection[] { ForgeDirection.EAST, ForgeDirection.WEST, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 1.0F) {
+    UP(new ModelQuadFacing[] { POS_X, NEG_X, NEG_Z, POS_Z }, 1.0F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -67,37 +74,7 @@ enum AoNeighborInfo {
             return 1.0f - y;
         }
     },
-    NORTH(new ForgeDirection[] { ForgeDirection.UP, ForgeDirection.DOWN, ForgeDirection.EAST, ForgeDirection.WEST }, 0.8F) {
-        @Override
-        public void calculateCornerWeights(float x, float y, float z, float[] out) {
-            final float u = 1.0f - x;
-            final float v = y;
-
-            out[0] = v * u;
-            out[1] = v * (1.0f - u);
-            out[2] = (1.0f - v) * (1.0f - u);
-            out[3] = (1.0f - v) * u;
-        }
-
-        @Override
-        public void mapCorners(int[] lm0, float[] ao0, int[] lm1, float[] ao1) {
-            lm1[3] = lm0[0];
-            lm1[0] = lm0[1];
-            lm1[1] = lm0[2];
-            lm1[2] = lm0[3];
-
-            ao1[3] = ao0[0];
-            ao1[0] = ao0[1];
-            ao1[1] = ao0[2];
-            ao1[2] = ao0[3];
-        }
-
-        @Override
-        public float getDepth(float x, float y, float z) {
-            return z;
-        }
-    },
-    SOUTH(new ForgeDirection[] { ForgeDirection.WEST, ForgeDirection.EAST, ForgeDirection.DOWN, ForgeDirection.UP }, 0.8F) {
+    SOUTH(new ModelQuadFacing[] { NEG_X, POS_X, NEG_Y, POS_Y }, 0.8F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = y;
@@ -127,7 +104,7 @@ enum AoNeighborInfo {
             return 1.0f - z;
         }
     },
-    WEST(new ForgeDirection[] { ForgeDirection.UP, ForgeDirection.DOWN, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.6F) {
+    WEST(new ModelQuadFacing[] { POS_Y, NEG_Y, NEG_Z, POS_Z }, 0.6F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
@@ -157,11 +134,11 @@ enum AoNeighborInfo {
             return x;
         }
     },
-    EAST(new ForgeDirection[] { ForgeDirection.DOWN, ForgeDirection.UP, ForgeDirection.NORTH, ForgeDirection.SOUTH }, 0.6F) {
+    DOWN(new ModelQuadFacing[] { NEG_X, POS_X, NEG_Z, POS_Z }, 0.5F) {
         @Override
         public void calculateCornerWeights(float x, float y, float z, float[] out) {
             final float u = z;
-            final float v = 1.0f - y;
+            final float v = 1.0f - x;
 
             out[0] = v * u;
             out[1] = v * (1.0f - u);
@@ -171,20 +148,50 @@ enum AoNeighborInfo {
 
         @Override
         public void mapCorners(int[] lm0, float[] ao0, int[] lm1, float[] ao1) {
-            lm1[1] = lm0[0];
-            lm1[2] = lm0[1];
-            lm1[3] = lm0[2];
-            lm1[0] = lm0[3];
+            lm1[0] = lm0[0];
+            lm1[1] = lm0[1];
+            lm1[2] = lm0[2];
+            lm1[3] = lm0[3];
 
-            ao1[1] = ao0[0];
-            ao1[2] = ao0[1];
-            ao1[3] = ao0[2];
-            ao1[0] = ao0[3];
+            ao1[0] = ao0[0];
+            ao1[1] = ao0[1];
+            ao1[2] = ao0[2];
+            ao1[3] = ao0[3];
         }
 
         @Override
         public float getDepth(float x, float y, float z) {
-            return 1.0f - x;
+            return y;
+        }
+    },
+    NORTH(new ModelQuadFacing[] { POS_Y, NEG_Y, POS_X, NEG_X }, 0.8F) {
+        @Override
+        public void calculateCornerWeights(float x, float y, float z, float[] out) {
+            final float u = 1.0f - x;
+            final float v = y;
+
+            out[0] = v * u;
+            out[1] = v * (1.0f - u);
+            out[2] = (1.0f - v) * (1.0f - u);
+            out[3] = (1.0f - v) * u;
+        }
+
+        @Override
+        public void mapCorners(int[] lm0, float[] ao0, int[] lm1, float[] ao1) {
+            lm1[3] = lm0[0];
+            lm1[0] = lm0[1];
+            lm1[1] = lm0[2];
+            lm1[2] = lm0[3];
+
+            ao1[3] = ao0[0];
+            ao1[0] = ao0[1];
+            ao1[1] = ao0[2];
+            ao1[2] = ao0[3];
+        }
+
+        @Override
+        public float getDepth(float x, float y, float z) {
+            return z;
         }
     };
 
@@ -192,7 +199,7 @@ enum AoNeighborInfo {
      * The direction of each corner block from this face, which can be retrieved by offsetting the position of the origin
      * block by the direction vector.
      */
-    public final ForgeDirection[] faces;
+    public final ModelQuadFacing[] faces;
 
     /**
      * The constant brightness modifier for this face. This data exists to emulate the results of the OpenGL lighting
@@ -200,7 +207,7 @@ enum AoNeighborInfo {
      */
     public final float strength;
 
-    AoNeighborInfo(ForgeDirection[] directions, float strength) {
+    AoNeighborInfo(ModelQuadFacing[] directions, float strength) {
         this.faces = directions;
         this.strength = strength;
     }
@@ -243,7 +250,7 @@ enum AoNeighborInfo {
     /**
      * @return Returns the {@link AoNeighborInfo} which corresponds with the specified direction
      */
-    public static AoNeighborInfo get(ForgeDirection direction) {
+    public static AoNeighborInfo get(ModelQuadFacing direction) {
         return VALUES[direction.ordinal()];
     }
 }
