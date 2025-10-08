@@ -8,6 +8,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Z;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The neighbor information for each face of a block, used when performing smooth lighting in order to calculate
@@ -250,7 +251,7 @@ enum AoNeighborInfo {
     /**
      * @return Returns the {@link AoNeighborInfo} which corresponds with the specified direction
      */
-    public static AoNeighborInfo get(ModelQuadFacing direction) {
+    public static AoNeighborInfo get(@NotNull ModelQuadFacing direction) {
         return VALUES[direction.ordinal()];
     }
 }

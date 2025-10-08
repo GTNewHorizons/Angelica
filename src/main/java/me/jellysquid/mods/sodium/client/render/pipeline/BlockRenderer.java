@@ -1,16 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.pipeline;
 
-import com.gtnewhorizon.gtnhlib.block.BlockState;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.client.model.ModelISBRH;
-import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
-import com.gtnewhorizon.gtnhlib.util.ObjectPooler;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.List;
 import java.util.Random;
@@ -22,7 +17,6 @@ import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.render.occlusion.BlockOcclusionCache;
 import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
@@ -46,9 +40,6 @@ public class BlockRenderer {
     private boolean useSeparateAo;
 
     private final LightPipelineProvider lighters;
-    private final BlockOcclusionCache occlusionCache;
-
-    private final ObjectPooler<ModelQuad> quadPool = new ObjectPooler<>(ModelQuad::new);
 
 
     public BlockRenderer(LightPipelineProvider lighters) {
@@ -56,7 +47,6 @@ public class BlockRenderer {
         // TODO: Sodium - AO Setting
         this.useAmbientOcclusion = Minecraft.getMinecraft().gameSettings.ambientOcclusion > 0;
         this.useSodiumAO = SodiumClientMod.options().quality.useSodiumAO;
-        this.occlusionCache = new BlockOcclusionCache();
     }
 
     public boolean renderFluidLogged(Fluid fluid, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
@@ -107,50 +97,26 @@ public class BlockRenderer {
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
-        if (block.getRenderType() == ModelISBRH.JSON_ISBRH_ID) {
-            final var state = new BlockState(block, meta);
-            final var model = ModelRegistry.getBakedModel(state);
-            final int color = model.getColor(world, pos.x, pos.y, pos.z, block, meta, random);
+        try {
+            TessellatorManager.startCapturing();
+            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            tess.startDrawingQuads();
+            // Use setTranslation rather than setOffset so that the float data written to the internal buffer
+            // is done in subchunk-relative coordinates
+            tess.setOffset(POS_ZERO);
+            tess.setTranslation(-pos.x, -pos.y, -pos.z);
+            renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
+            final var quads = TessellatorManager.stopCapturingToPooledQuads();
+            tess.resetOffset();
 
-            for (var dir : ModelQuadFacing.DIRECTIONS) {
-
+            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                List<ModelQuadView> quads;
-
-                if (!cull || this.occlusionCache.shouldDrawSide(block, meta, world, pos, dir)) {
-                    quads = model.getQuads(world, pos.x, pos.y, pos.z, block, meta, dir, random, color, this.quadPool::getInstance);
-                    if (quads.isEmpty()) continue;
-
-                    this.renderQuadList(pos, lighter, buffers, quads, dir, true);
-                    rendered = true;
-
-                    if (model.isDynamic())
-                        for (var q : quads) this.quadPool.releaseInstance((ModelQuad) q);
-                }
+                this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
             }
-        } else {
 
-            try {
-                TessellatorManager.startCapturing();
-                final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
-                tess.startDrawingQuads();
-                // Use setTranslation rather than setOffset so that the float data written to the internal buffer
-                // is done in subchunk-relative coordinates
-                tess.setOffset(POS_ZERO);
-                tess.setTranslation(-pos.x, -pos.y, -pos.z);
-                renderBlocks.renderBlockByRenderType(block, pos.x, pos.y, pos.z);
-                final var quads = TessellatorManager.stopCapturingToPooledQuads();
-                tess.resetOffset();
-
-                for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
-                    this.random.setSeed(seed);
-                    this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
-                }
-
-                if (!quads.isEmpty()) rendered = true;
-            } finally {
-                TessellatorManager.cleanup();
-            }
+            if (!quads.isEmpty()) rendered = true;
+        } finally {
+            TessellatorManager.cleanup();
         }
 
         return rendered;
