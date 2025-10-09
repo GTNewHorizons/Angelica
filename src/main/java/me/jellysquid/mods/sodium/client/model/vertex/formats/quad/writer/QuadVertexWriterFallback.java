@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
-import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 
 
@@ -20,7 +20,7 @@ public class QuadVertexWriterFallback extends VertexWriterFallback implements Qu
         consumer.texture(u, v);
         consumer.overlay(overlay);
         consumer.light(light);
-        consumer.normal(Norm3b.unpackX(normal), Norm3b.unpackY(normal), Norm3b.unpackZ(normal));
+        consumer.normal(NormI8.unpackX(normal), NormI8.unpackY(normal), NormI8.unpackZ(normal));
         consumer.next();
     }
 }

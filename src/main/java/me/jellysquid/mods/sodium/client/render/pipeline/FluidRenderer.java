@@ -6,6 +6,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties
 import static org.joml.Math.lerp;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
@@ -19,7 +20,6 @@ import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.Norm3b;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
@@ -48,7 +48,7 @@ public class FluidRenderer {
     private final TextureAtlasSprite missingTex = Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite("minecraft:missing");
 
     public FluidRenderer(LightPipelineProvider lpp) {
-        int normal = Norm3b.pack(0.0f, 1.0f, 0.0f);
+        int normal = NormI8.pack(0.0f, 1.0f, 0.0f);
 
         for (int i = 0; i < 4; i++) {
             this.quad.setForgeNormal(i, normal);

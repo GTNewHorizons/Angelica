@@ -185,7 +185,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                                     ChunkRenderManager.setWorldRenderPass(pass);
                                     if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(fluid.getBlock(), ExtendedDataHelper.FLUID_RENDER_TYPE);
 
-                                    cache.getBlockRenderer().renderFluidLogged(fluid, renderBlocks, pos, buffers.get(pass), seed);
+                                    cache.getBlockRenderer().renderFluidLogged(cache.getWorldSlice(), fluid, renderBlocks, pos, buffers.get(pass), seed);
                                 }
                             }
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {

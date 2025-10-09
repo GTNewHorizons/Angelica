@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.List;
 import java.util.Random;
@@ -17,7 +18,6 @@ import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.ModelQuadUtil;
 import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -49,7 +49,7 @@ public class BlockRenderer {
         this.useSodiumAO = SodiumClientMod.options().quality.useSodiumAO;
     }
 
-    public boolean renderFluidLogged(Fluid fluid, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
+    public boolean renderFluidLogged(IBlockAccess world, Fluid fluid, RenderBlocks renderBlocks, BlockPos pos, ChunkModelBuffers buffers, long seed) {
         if (fluid == null) {
             return false;
         }
@@ -59,6 +59,7 @@ public class BlockRenderer {
         }
 
         boolean rendered = false;
+        final int emitted = block.getLightValue(world, pos.x, pos.y, pos.z);
 
         try {
             final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
@@ -77,7 +78,7 @@ public class BlockRenderer {
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
+                this.renderQuadList(pos, lighter, emitted, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
             }
 
             if (!quads.isEmpty()) rendered = true;
@@ -96,6 +97,7 @@ public class BlockRenderer {
         boolean rendered = false;
 
         this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
+        final int emitted = block.getLightValue(world, pos.x, pos.y, pos.z);
 
         try {
             TessellatorManager.startCapturing();
@@ -111,7 +113,7 @@ public class BlockRenderer {
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 this.random.setSeed(seed);
-                this.renderQuadList(pos, lighter, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
+                this.renderQuadList(pos, lighter, emitted, buffers, quads, facing, (this.useAmbientOcclusion && this.useSodiumAO));
             }
 
             if (!quads.isEmpty()) rendered = true;
@@ -122,7 +124,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(BlockPos pos, LightPipeline lighter, ChunkModelBuffers buffers, List<ModelQuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+    private void renderQuadList(BlockPos pos, LightPipeline lighter, int emitted, ChunkModelBuffers buffers, List<ModelQuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
 
@@ -141,13 +143,13 @@ public class BlockRenderer {
             if (useSodiumLight || this.useSeparateAo)
                 lighter.calculate(quad, pos, light, facing, quad.getLightFace(), quad.hasAmbientOcclusion());
 
-            this.renderQuad(sink, quad, light, renderData, useSodiumLight);
+            this.renderQuad(sink, quad, emitted, light, renderData, useSodiumLight);
         }
 
         sink.flush();
     }
 
-    private void renderQuad(ModelVertexSink sink, ModelQuadView quad, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
+    private void renderQuad(ModelVertexSink sink, ModelQuadView quad, int emitted, QuadLightData light, ChunkRenderData.Builder renderData, boolean useSodiumLight) {
 
         final ModelQuadOrientation order = (useSodiumLight || this.useSeparateAo) ? ModelQuadOrientation.orientByBrightness(light.br, light.lm) : ModelQuadOrientation.NORMAL;
 
@@ -172,7 +174,7 @@ public class BlockRenderer {
             final float u = quad.getTexU(srcIndex);
             final float v = quad.getTexV(srcIndex);
 
-            final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), light.lm[srcIndex]) :
+            final int lm = (useSeparateAo) ? ModelQuadUtil.mergeBakedLight(quad.getLight(srcIndex), emitted, light.lm[srcIndex]) :
                 (useSodiumLight) ? light.lm[srcIndex] : quad.getLight(srcIndex);
 
             sink.writeQuad(x, y, z, color, u, v, lm, shaderBlockId);
