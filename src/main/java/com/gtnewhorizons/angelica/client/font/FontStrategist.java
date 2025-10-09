@@ -26,7 +26,7 @@ public class FontStrategist {
     public static boolean customFontInUse;
 
     static {
-        // get available fonts without duplicates (200 copies of dialog.plain need not apply)
+        // get available fonts without duplicates (250 copies of dialog.plain need not apply)
         Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
         HashMap<String, Font> fontSet = new HashMap<>();
         HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
@@ -42,13 +42,14 @@ public class FontStrategist {
 
         if (!duplicates.isEmpty()) {
             StringBuilder sb = new StringBuilder(duplicates.size() + " duplicate font(s) found in the list reported by Java: ");
-            for (Iterator<String> iter = duplicates.iterator(); iter.hasNext(); ) {
+            for (Iterator<String> iter = duplicates.stream().distinct().iterator(); iter.hasNext(); ) {
                 String dupe = iter.next();
                 sb.append(duplicates.count(dupe)).append("x ").append(dupe);
                 if (iter.hasNext()) {
                     sb.append(", ");
                 }
             }
+            sb.append(". Some fonts may be missing from the font selection menu.");
             LOGGER.warn(sb.toString());
         }
 
