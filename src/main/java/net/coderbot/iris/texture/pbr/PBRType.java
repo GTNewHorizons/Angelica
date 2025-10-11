@@ -27,7 +27,7 @@ public enum PBRType {
 	}
 
 	public ResourceLocation appendToFileLocation(ResourceLocation location) {
-		String path = location.getResourcePath();
+		String path = location.getResourcePath().replace(':', '/');
 		String newPath;
 		int extensionIndex = FilenameUtils.indexOfExtension(path);
 		if (extensionIndex != -1) {
