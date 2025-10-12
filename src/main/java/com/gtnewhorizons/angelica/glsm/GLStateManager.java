@@ -131,6 +131,7 @@ public class GLStateManager {
     @Getter protected static final Color4Stack color = new Color4Stack();
     @Getter protected static final Color4Stack clearColor = new Color4Stack(new Color4(0.0F, 0.0F, 0.0F, 0.0F));
     @Getter protected static final ColorMaskStack colorMask = new ColorMaskStack();
+    @Getter protected static IntegerStateStack drawBuffer; // Initialized in preInit() based on driver default
     @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
     @Getter protected static final BooleanStateStack alphaTest = new BooleanStateStack(GL11.GL_ALPHA_TEST);
@@ -315,6 +316,10 @@ public class GLStateManager {
             // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
         }
+
+        // Initialize GL_DRAW_BUFFER based on vendor
+        // Intel integrated graphics defaults to GL_FRONT (single-buffered), others use GL_BACK (double-buffered)
+        drawBuffer = new IntegerStateStack(INTEL ? GL11.GL_FRONT : GL11.GL_BACK);
     }
 
     public static void init() {

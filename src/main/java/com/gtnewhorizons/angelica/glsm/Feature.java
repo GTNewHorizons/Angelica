@@ -67,7 +67,7 @@ public class Feature {
             // Blending equation
             , GLStateManager.colorLogicOpState // GL_COLOR_LOGIC_OP enable bit
             , GLStateManager.ditherState // GL_DITHER enable bit
-            // GL_DRAW_BUFFER setting
+            , GLStateManager.drawBuffer // GL_DRAW_BUFFER setting
             , GLStateManager.indexLogicOpState // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
             , GLStateManager.colorMask   // Color-mode and index-mode writemasks
