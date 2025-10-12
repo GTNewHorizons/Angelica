@@ -49,6 +49,7 @@ public class FinalPassRenderer {
 	@Nullable
 	private final Pass finalPass;
 	private final ImmutableList<SwapPass> swapPasses;
+	private final ImmutableSet<Integer> flippedBuffers;
 	private final GlFramebuffer baseline;
 	private final GlFramebuffer colorHolder;
 	private int lastColorTextureId;
@@ -72,6 +73,7 @@ public class FinalPassRenderer {
 
 		this.noiseTexture = noiseTexture;
 		this.renderTargets = renderTargets;
+		this.flippedBuffers = flippedBuffers;
         this.customUniforms = customUniforms;
 		this.finalPass = pack.getCompositeFinal().map(source -> {
 			Pass pass = new Pass();
@@ -101,10 +103,18 @@ public class FinalPassRenderer {
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
 		// This works for the most part, but it's not perfect. A better approach would be creating secondary
 		// framebuffers for every other frame, but that would be a lot more complex...
-		ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
+		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
 
+		// BUG FIX: Swap logic was backwards - original code copied ALT→MAIN for flipped buffers,
+		// but flipped buffers just wrote to MAIN, so this destroyed fresh data (breaking TAA).
+		// Fixed: For flipped buffers, copy MAIN→ALT to preserve data for next frame's ping-pong.
 		flippedBuffers.forEach(i -> {
 			int target = i;
+
+			// Skip buffer 6 (material mask) - gbuffers always write to MAIN, never flipped
+			if (target == 6) {
+				return;
+			}
 
 			if (buffersToBeCleared.contains(target)) {
 				return;
@@ -115,10 +125,9 @@ public class FinalPassRenderer {
 			swap.target = target;
 			swap.width = target1.getWidth();
 			swap.height = target1.getHeight();
-			swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
-			// NB: This is handled in RenderTargets now.
-			//swap.from.readBuffer(target);
-			swap.targetTexture = renderTargets.get(target).getMainTexture();
+			// Read from MAIN (where flipped buffers just wrote), write to ALT
+			swap.from = renderTargets.createColorFramebuffer(flippedBuffers, new int[] {target});
+			swap.targetTexture = renderTargets.get(target).getAltTexture();
 
 			swapPasses.add(swap);
 		});
@@ -266,10 +275,11 @@ public class FinalPassRenderer {
 		for (SwapPass swapPass : swapPasses) {
 			RenderTarget target = renderTargets.get(swapPass.target);
 			renderTargets.destroyFramebuffer(swapPass.from);
-			swapPass.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {swapPass.target});
+			// BUG FIX: Must match constructor logic - read from MAIN, write to ALT for flipped buffers
+			swapPass.from = renderTargets.createColorFramebuffer(flippedBuffers, new int[] {swapPass.target});
 			swapPass.width = target.getWidth();
 			swapPass.height = target.getHeight();
-			swapPass.targetTexture = target.getMainTexture();
+			swapPass.targetTexture = target.getAltTexture();
 		}
 	}
 
