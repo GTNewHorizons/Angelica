@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.util.GLBit;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
@@ -14,6 +16,7 @@ import org.lwjgl.opengl.GL20;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyNotDefaultState;
@@ -21,6 +24,18 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @ExtendWith(AngelicaExtension.class)
 class GLSM_PushPop_UnitTest {
+
+    @BeforeEach
+    void setUp() {
+        // Reset GL state before each test to ensure clean starting point
+        resetGLState();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Reset GL state after each test to prevent contamination
+        resetGLState();
+    }
 
     public static final boolean[] BOOLEAN_ARRAY_4_TRUE = { true, true, true, true };
     public static final boolean[] BOOLEAN_ARRAY_4_FALSE = { false, false, false, false };
@@ -110,10 +125,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_POINT_5, "Current Color - (Not) Reset"); // This does not get reset
         verifyState(GL11.GL_COLOR_WRITEMASK, BOOLEAN_ARRAY_4_TRUE, "Color Write Mask - Reset");
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, FLOAT_ARRAY_4_0, "Color Clear Value - Reset");
-
-        // Reset State
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
     }
 
     @Test
@@ -244,6 +255,7 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_POLYGON_OFFSET_POINT, "Polygon Offset Point", false));
         bits.add(new GLBit(GL11.GL_POLYGON_SMOOTH, "Polygon Smooth", false));
         bits.add(new GLBit(GL11.GL_POLYGON_STIPPLE, "Polygon Stipple", false));
+        bits.add(new GLBit(GL12.GL_RESCALE_NORMAL, "Rescale Normal", false));
         bits.add(new GLBit(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE, "Sample Alpha To Coverage", false));
         bits.add(new GLBit(GL13.GL_SAMPLE_ALPHA_TO_ONE, "Sample Alpha To One", false));
         bits.add(new GLBit(GL13.GL_SAMPLE_COVERAGE, "Sample Coverage", false));
@@ -270,17 +282,7 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPopAttrib();
 
-        //glEnable(GL_COLOR_MATERIAL) changes the material color state when it is triggered. We need to reset that
-        //here to not mess up the default state for other tests. We're not resetting with glPush/PopAttrib because
-        //we're specifically trying to test GL_ENABLE_BIT here.
-        FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
-        floatBuffer.put(0.2F).put(0.2F).put(0.2F).put(1.0F).flip();
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, floatBuffer);
-        floatBuffer.put(0.8F).put(0.8F).put(0.8F).put(1.0F).flip();
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, floatBuffer);
-
         bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
-
     }
 
     @Test
