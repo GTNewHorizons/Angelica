@@ -12,7 +12,20 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
     protected int pointer;
 
     public BooleanStateStack(int glCap) {
+        // Most booleans default to false
+        this(glCap, false);
+    }
+
+    /**
+     * Create a BooleanStateStack with a custom initial state.
+     * Useful for GL states that default to true (e.g., GL_DITHER, GL_MULTISAMPLE).
+     *
+     * @param glCap GL capability constant
+     * @param initialState initial enabled state
+     */
+    public BooleanStateStack(int glCap, boolean initialState) {
         super(glCap);
+        this.enabled = initialState;
         stack = new BooleanState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new BooleanState(glCap);

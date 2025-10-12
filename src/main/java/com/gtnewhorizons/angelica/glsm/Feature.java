@@ -43,6 +43,20 @@ public class Feature {
     }
 
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
+
+    /**
+     * Helper method to add all texture gen states (S, T, R, Q) for all texture units to a collection.
+     * Used by both GL_ENABLE_BIT and GL_TEXTURE_BIT.
+     */
+    private static void addTextureGenStates(Set<IStateStack<?>> collection) {
+        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            collection.add(GLStateManager.textures.getTexGenSStates(i));
+            collection.add(GLStateManager.textures.getTexGenTStates(i));
+            collection.add(GLStateManager.textures.getTexGenRStates(i));
+            collection.add(GLStateManager.textures.getTexGenQStates(i));
+        }
+    }
+
     static {
         attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
               GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
@@ -51,10 +65,10 @@ public class Feature {
             , GLStateManager.blendState // Blending source and destination functions
             // Constant blend color
             // Blending equation
-            // GL_DITHER enable bit
+            , GLStateManager.colorLogicOpState // GL_COLOR_LOGIC_OP enable bit
+            , GLStateManager.ditherState // GL_DITHER enable bit
             // GL_DRAW_BUFFER setting
-            // GL_COLOR_LOGIC_OP enable bit
-            // GL_INDEX_LOGIC_OP enable bit
+            , GLStateManager.indexLogicOpState // GL_INDEX_LOGIC_OP enable bit
             // Logic op function
             , GLStateManager.colorMask   // Color-mode and index-mode writemasks
             , GLStateManager.clearColor  // Color-mode and index-mode clear values
@@ -80,14 +94,15 @@ public class Feature {
 
         final HashSet<IStateStack<?>> enableBits = new HashSet<>(ImmutableSet.of(
               GLStateManager.alphaTest // GL_ALPHA_TEST flag
-            // GL_AUTO_NORMAL flag
+            , GLStateManager.autoNormalState // GL_AUTO_NORMAL flag
             , GLStateManager.blendMode // GL_BLEND flag
-            // Enable bits for the user-definable clipping planes
+            , GLStateManager.colorLogicOpState // GL_COLOR_LOGIC_OP flag
             , GLStateManager.colorMaterial // GL_COLOR_MATERIAL
             , GLStateManager.cullState // GL_CULL_FACE flag
             , GLStateManager.depthTest // GL_DEPTH_TEST flag
-            // GL_DITHER flag
+            , GLStateManager.ditherState // GL_DITHER flag
             , GLStateManager.fogMode // GL_FOG flag
+            , GLStateManager.indexLogicOpState // GL_INDEX_LOGIC_OP flag
             , GLStateManager.lightStates[0] // GL_LIGHT0
             , GLStateManager.lightStates[1] // GL_LIGHT1
             , GLStateManager.lightStates[2] // GL_LIGHT2
@@ -97,35 +112,56 @@ public class Feature {
             , GLStateManager.lightStates[6] // GL_LIGHT6
             , GLStateManager.lightStates[7] // GL_LIGHT7
             , GLStateManager.lightingState // GL_LIGHTING flag
-            // GL_LINE_SMOOTH flag
-            // GL_LINE_STIPPLE flag
-            // GL_INDEX_LOGIC_OP flag
-            // GL_COLOR_LOGIC_OP flag
-            // GL_MAP1_x where x is a map type
-            // GL_MAP2_x where x is a map type
-            // GL_MULTISAMPLE flag
-            // GL_NORMALIZE flag
-            // GL_POINT_SMOOTH flag
-            // GL_POLYGON_OFFSET_LINE flag
-            // GL_POLYGON_OFFSET_FILL flag
-            // GL_POLYGON_OFFSET_POINT flag
-            // GL_POLYGON_SMOOTH flag
-            // GL_POLYGON_STIPPLE flag
-            // GL_SAMPLE_ALPHA_TO_COVERAGE flag
-            // GL_SAMPLE_ALPHA_TO_ONE flag
-            // GL_SAMPLE_COVERAGE flag
+            , GLStateManager.lineSmoothState // GL_LINE_SMOOTH flag
+            , GLStateManager.lineStippleState // GL_LINE_STIPPLE flag
+            , GLStateManager.map1Color4State // GL_MAP1_COLOR_4
+            , GLStateManager.map1IndexState // GL_MAP1_INDEX
+            , GLStateManager.map1NormalState // GL_MAP1_NORMAL
+            , GLStateManager.map1TextureCoord1State // GL_MAP1_TEXTURE_COORD_1
+            , GLStateManager.map1TextureCoord2State // GL_MAP1_TEXTURE_COORD_2
+            , GLStateManager.map1TextureCoord3State // GL_MAP1_TEXTURE_COORD_3
+            , GLStateManager.map1TextureCoord4State // GL_MAP1_TEXTURE_COORD_4
+            , GLStateManager.map1Vertex3State // GL_MAP1_VERTEX_3
+            , GLStateManager.map1Vertex4State // GL_MAP1_VERTEX_4
+            , GLStateManager.map2Color4State // GL_MAP2_COLOR_4
+            , GLStateManager.map2IndexState // GL_MAP2_INDEX
+            , GLStateManager.map2NormalState // GL_MAP2_NORMAL
+            , GLStateManager.map2TextureCoord1State // GL_MAP2_TEXTURE_COORD_1
+            , GLStateManager.map2TextureCoord2State // GL_MAP2_TEXTURE_COORD_2
+            , GLStateManager.map2TextureCoord3State // GL_MAP2_TEXTURE_COORD_3
+            , GLStateManager.map2TextureCoord4State // GL_MAP2_TEXTURE_COORD_4
+            , GLStateManager.map2Vertex3State // GL_MAP2_VERTEX_3
+            , GLStateManager.map2Vertex4State // GL_MAP2_VERTEX_4
+            , GLStateManager.multisampleState // GL_MULTISAMPLE flag
+            , GLStateManager.normalizeState // GL_NORMALIZE flag
+            , GLStateManager.pointSmoothState // GL_POINT_SMOOTH flag
+            , GLStateManager.polygonOffsetPointState // GL_POLYGON_OFFSET_POINT flag
+            , GLStateManager.polygonOffsetLineState // GL_POLYGON_OFFSET_LINE flag
+            , GLStateManager.polygonOffsetFillState // GL_POLYGON_OFFSET_FILL flag
+            , GLStateManager.polygonSmoothState // GL_POLYGON_SMOOTH flag
+            , GLStateManager.polygonStippleState // GL_POLYGON_STIPPLE flag
+            , GLStateManager.rescaleNormalState // GL_RESCALE_NORMAL flag
+            , GLStateManager.sampleAlphaToCoverageState // GL_SAMPLE_ALPHA_TO_COVERAGE flag
+            , GLStateManager.sampleAlphaToOneState // GL_SAMPLE_ALPHA_TO_ONE flag
+            , GLStateManager.sampleCoverageState // GL_SAMPLE_COVERAGE flag
             , GLStateManager.scissorTest  // GL_SCISSOR_TEST flag
-            // GL_STENCIL_TEST flag
-            // GL_TEXTURE_1D flag
-            // GL_TEXTURE_2D flag - Below
-            // GL_TEXTURE_3D flag
-            // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
+            , GLStateManager.stencilTest // GL_STENCIL_TEST flag
         ));
 
-        // GL_TEXTURE_2D flag
-        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            enableBits.add(GLStateManager.textures.getTextureUnitStates(i));
+        // Enable bits for the user-definable clipping planes
+        for(int i = 0; i < GLStateManager.clipPlaneStates.length; i++) {
+            enableBits.add(GLStateManager.clipPlaneStates[i]);
         }
+
+        // GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D flags
+        for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
+            enableBits.add(GLStateManager.textures.getTexture1DStates(i));
+            enableBits.add(GLStateManager.textures.getTextureUnitStates(i));
+            enableBits.add(GLStateManager.textures.getTexture3DStates(i));
+        }
+
+        // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
+        addTextureGenStates(enableBits);
 
         attribToFeatures.put(GL11.GL_ENABLE_BIT, enableBits);
         attribToFeatures.put(GL11.GL_EVAL_BIT, ImmutableSet.of(
@@ -268,13 +304,16 @@ public class Feature {
 //            textureAttribs.add(GLStateManager.textures.getInfo(i))
         }
 
+        // Enable bits GL_TEXTURE_GEN_x where x is S, T, R, or Q
+        addTextureGenStates(textureAttribs);
+
         attribToFeatures.put(GL11.GL_TEXTURE_BIT, textureAttribs);
 
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
             // Coefficients of the six clipping planes
             // Enable bits for the user-definable clipping planes
               GLStateManager.matrixMode
-            // GL_NORMALIZE flag
+            , GLStateManager.normalizeState // GL_NORMALIZE flag
             , GLStateManager.rescaleNormalState // GL_RESCALE_NORMAL flag
         ));
         attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
