@@ -175,7 +175,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
-        final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
+        final int depthTextureId = ((IRenderTargetExt)main).iris$getDepthTextureId();
 		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
@@ -911,7 +911,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
-        final int depthTextureId = ((IRenderTargetExt)main).getIris$depthTextureId();
+        final int depthTextureId = ((IRenderTargetExt)main).iris$getDepthTextureId();
 		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
