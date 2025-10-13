@@ -81,6 +81,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
 
+import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
+import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
+import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
+import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 /**
@@ -109,10 +113,7 @@ public class GLStateManager {
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
-    @Getter protected static boolean NVIDIA;
-    @Getter protected static boolean AMD;
-    @Getter protected static boolean INTEL;
-    @Getter protected static boolean MESA;
+    @Getter private static Vendor VENDOR;
 
     // This setting varies depending on driver, so it gets queried at runtime
     public static final int DEFAULT_DRAW_BUFFER = GL11.glGetInteger(GL11.GL_DRAW_BUFFER);
@@ -310,12 +311,9 @@ public class GLStateManager {
             .addFeature(GL11.GL_VIEWPORT);
 
         String glVendor = GL11.glGetString(GL11.GL_VENDOR);
-        NVIDIA = glVendor.toLowerCase().contains("nvidia");
-        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
-        INTEL = glVendor.toLowerCase().contains("intel");
-        MESA = glVendor.toLowerCase().contains("mesa");
+        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
 
-        if(AMD) {
+        if (vendorIsAMD()) {
             // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
         }
@@ -2139,6 +2137,20 @@ public class GLStateManager {
         }
     }
 
+    public static boolean vendorIsAMD() {
+        return VENDOR == AMD;
+    }
 
+    public static boolean vendorIsIntel() {
+        return VENDOR == INTEL;
+    }
+
+    public static boolean vendorIsMesa() {
+        return VENDOR == MESA;
+    }
+
+    public static boolean vendorIsNVIDIA() {
+        return VENDOR == NVIDIA;
+    }
 
 }
