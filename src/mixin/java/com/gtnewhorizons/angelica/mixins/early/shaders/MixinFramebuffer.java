@@ -51,7 +51,7 @@ public class MixinFramebuffer implements IRenderTargetExt {
         return iris$depthTextureId;
     }
 
-    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", ordinal = 0), require = 1)
+    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0), require = 1)
     private void iris$deleteDepthBuffer(CallbackInfo ci) {
         if(this.iris$depthTextureId > -1 ) {
             GLStateManager.glDeleteTextures(this.iris$depthTextureId);
@@ -60,7 +60,7 @@ public class MixinFramebuffer implements IRenderTargetExt {
     }
 
     // Prevent the creation of a depth buffer, it will get replaced by a depth texture.
-    @Redirect(method = "createFramebuffer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/shader/Framebuffer;useDepth:Z", shift = At.Shift.BEFORE))
+    @Redirect(method = "createFramebuffer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/shader/Framebuffer;useDepth:Z"))
     private boolean iris$noopDepthBuffer(Framebuffer instance) {
         return false;
     }
