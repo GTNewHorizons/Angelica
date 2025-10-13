@@ -319,7 +319,7 @@ public class GLStateManager {
 
         // Initialize GL_DRAW_BUFFER based on vendor
         // Intel integrated graphics defaults to GL_FRONT (single-buffered), others use GL_BACK (double-buffered)
-        drawBuffer = new IntegerStateStack(INTEL ? GL11.GL_FRONT : GL11.GL_BACK);
+        drawBuffer = new IntegerStateStack(INTEL ? GL11.GL_BACK_LEFT : GL11.GL_BACK);
     }
 
     public static void init() {
