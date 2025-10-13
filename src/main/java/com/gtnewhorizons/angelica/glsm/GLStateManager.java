@@ -311,7 +311,7 @@ public class GLStateManager {
             .addFeature(GL11.GL_VIEWPORT);
 
         String glVendor = GL11.glGetString(GL11.GL_VENDOR);
-        VENDOR = Vendor.getVendor(glVendor);
+        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
 
         if (vendorIsAMD()) {
             // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
