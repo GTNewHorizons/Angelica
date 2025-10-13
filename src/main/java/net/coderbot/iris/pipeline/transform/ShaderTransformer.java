@@ -222,6 +222,10 @@ public class ShaderTransformer {
         for (var entry : types.entrySet()) {
             String formattedShader = getFormattedShader(entry.getValue(), prepatched.get(entry.getKey()));
 
+            // Restore identifiers that were temporarily renamed to dodge GLSL reserved keywords.
+            formattedShader = formattedShader.replace("iris_renamed_texture", "texture");
+            formattedShader = formattedShader.replace("iris_renamed_sample", "sample");
+
             // Please don't mind the entire rest of this loop basically, we're doing awful fragile regex on the transformed
             // shader output to do things that I can't figure out with AST because I'm bad at it
 
