@@ -60,7 +60,7 @@ public class MixinFramebuffer implements IRenderTargetExt {
     }
 
     // Prevent the creation of a depth buffer, it will get replaced by a depth texture.
-    @Redirect(method = "createFramebuffer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/shader/Framebuffer;useDepth:Z"))
+    @Redirect(method = "createFramebuffer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/shader/Framebuffer;useDepth:Z", shift = At.Shift.BEFORE))
     private boolean iris$noopDepthBuffer(Framebuffer instance) {
         return false;
     }
