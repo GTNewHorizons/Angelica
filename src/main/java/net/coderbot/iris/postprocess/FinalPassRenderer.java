@@ -105,14 +105,21 @@ public class FinalPassRenderer {
 		// framebuffers for every other frame, but that would be a lot more complex...
 		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
 
-		// BUG FIX: Swap logic was backwards - original code copied ALT→MAIN for flipped buffers,
-		// but flipped buffers just wrote to MAIN, so this destroyed fresh data (breaking TAA).
-		// Fixed: For flipped buffers, copy MAIN→ALT to preserve data for next frame's ping-pong.
-		flippedBuffers.forEach(i -> {
-			int target = i;
+		// BUG FIX: Swap passes are only needed for NON-flipped buffers that might flip in the future.
+		// Flipped buffers use ping-pong mechanism - no swap needed.
+		// Original code created swaps for ALL flippedAtLeastOnce buffers and copied ALT→MAIN,
+		// which destroyed fresh data in MAIN for currently-flipped buffers (breaking TAA).
+		// Fixed: Only create swaps for buffers that are in flippedAtLeastOnce but NOT currently flipped.
+		flippedAtLeastOnce.forEach(i -> {
+			final int target = i;
 
 			// Skip buffer 6 (material mask) - gbuffers always write to MAIN, never flipped
 			if (target == 6) {
+				return;
+			}
+
+			// Skip buffers that are currently flipped - they use ping-pong, no swap needed
+			if (flippedBuffers.contains(target)) {
 				return;
 			}
 
@@ -120,14 +127,14 @@ public class FinalPassRenderer {
 				return;
 			}
 
-			SwapPass swap = new SwapPass();
-			RenderTarget target1 = renderTargets.get(target);
+			final SwapPass swap = new SwapPass();
+			final RenderTarget target1 = renderTargets.get(target);
 			swap.target = target;
 			swap.width = target1.getWidth();
 			swap.height = target1.getHeight();
-			// Read from MAIN (where flipped buffers just wrote), write to ALT
-			swap.from = renderTargets.createColorFramebuffer(flippedBuffers, new int[] {target});
-			swap.targetTexture = renderTargets.get(target).getAltTexture();
+			// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
+			swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
+			swap.targetTexture = renderTargets.get(target).getMainTexture();
 
 			swapPasses.add(swap);
 		});
@@ -273,18 +280,19 @@ public class FinalPassRenderer {
 
 	public void recalculateSwapPassSize() {
 		for (SwapPass swapPass : swapPasses) {
-			RenderTarget target = renderTargets.get(swapPass.target);
+			final RenderTarget target = renderTargets.get(swapPass.target);
 			renderTargets.destroyFramebuffer(swapPass.from);
-			// BUG FIX: Must match constructor logic - read from MAIN, write to ALT for flipped buffers
-			swapPass.from = renderTargets.createColorFramebuffer(flippedBuffers, new int[] {swapPass.target});
+			// Match constructor logic - swap passes are only for non-flipped buffers
+			// Copy ALT→MAIN to preserve data written to ALT
+			swapPass.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {swapPass.target});
 			swapPass.width = target.getWidth();
 			swapPass.height = target.getHeight();
-			swapPass.targetTexture = target.getAltTexture();
+			swapPass.targetTexture = target.getMainTexture();
 		}
 	}
 
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
-		int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
+		final int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
 
 		// TODO: Only generate the mipmap if a valid mipmap hasn't been generated or if we've written to the buffer
 		// (since the last mipmap was generated)
@@ -329,13 +337,13 @@ public class FinalPassRenderer {
 			source.getVertexSource().orElseThrow(NullPointerException::new),
 			source.getGeometrySource().orElse(null),
 			source.getFragmentSource().orElseThrow(NullPointerException::new));
-		String vertex = transformed.get(PatchShaderType.VERTEX);
-		String geometry = transformed.get(PatchShaderType.GEOMETRY);
-		String fragment = transformed.get(PatchShaderType.FRAGMENT);
+		final String vertex = transformed.get(PatchShaderType.VERTEX);
+		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
+		final String fragment = transformed.get(PatchShaderType.FRAGMENT);
 		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, fragment);
 
 		Objects.requireNonNull(flipped);
-		ProgramBuilder builder;
+		final ProgramBuilder builder;
 
 		try {
 			builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
@@ -347,7 +355,7 @@ public class FinalPassRenderer {
 
         this.customUniforms.assignTo(builder);
 
-		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
+		final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
 		CommonUniforms.addDynamicUniforms(builder);
 		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true);
@@ -371,15 +379,15 @@ public class FinalPassRenderer {
 	}
 
 	private ComputeProgram[] createComputes(ComputeSource[] compute, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
-		ComputeProgram[] programs = new ComputeProgram[compute.length];
+		final ComputeProgram[] programs = new ComputeProgram[compute.length];
 		for (int i = 0; i < programs.length; i++) {
-			ComputeSource source = compute[i];
+			final ComputeSource source = compute[i];
 			if (source == null || !source.getSource().isPresent()) {
 				continue;
 			} else {
 				// TODO: Properly handle empty shaders
 				Objects.requireNonNull(flipped);
-				ProgramBuilder builder;
+				final ProgramBuilder builder;
 
 				try {
 					builder = ProgramBuilder.beginCompute(source.getName(), source.getSource().orElse(null), IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
