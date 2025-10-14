@@ -52,7 +52,7 @@ public class FontConfig {
     public static int fontAAMode;
 
     @Config.Comment("Affects font antialiasing sample spacing. Higher values increase blur.")
-    @Config.DefaultInt(5)
+    @Config.DefaultInt(7)
     @Config.RangeInt(min = 1, max = 24)
     public static int fontAAStrength;
 }

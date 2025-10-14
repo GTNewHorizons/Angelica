@@ -14,7 +14,6 @@ import net.minecraft.client.resources.I18n;
 import org.lwjgl.input.Keyboard;
 
 import java.awt.Font;
-import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -23,10 +22,10 @@ import java.util.stream.Collectors;
 
 public class FontConfigScreen extends GuiScreen {
 
+    private static final Font[] availableFonts = FontStrategist.getAvailableFonts();
     private final GuiScreen parent;
     private final String title;
     private final String searchPrompt;
-    private final Font[] availableFonts;
     private String currentPrimaryFontName;
     private String currentFallbackFontName;
     private FontList fontList;
@@ -41,7 +40,6 @@ public class FontConfigScreen extends GuiScreen {
         this.parent = parent;
         this.currentPrimaryFontName = FontConfig.customFontNamePrimary;
         this.currentFallbackFontName = FontConfig.customFontNameFallback;
-        this.availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
         this.displayedFonts = new ArrayList<>(Arrays.asList(availableFonts));
         for (int i = 0; i < availableFonts.length; i++) {
             if (Objects.equals(this.currentPrimaryFontName, availableFonts[i].getFontName())) {

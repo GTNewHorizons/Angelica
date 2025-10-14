@@ -258,6 +258,7 @@ public class BatchingFontRenderer {
         }
     }
 
+    int lastActiveProgram;
     int fontAAModeLast = -1;
     int fontAAStrengthLast = -1;
     private void flushBatch() {
@@ -278,7 +279,8 @@ public class BatchingFontRenderer {
         if (FontConfig.fontAAMode != 0) {
             GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
             GL20.glEnableVertexAttribArray(texBoundAttrLocation);
-            GL20.glUseProgram(fontShaderId);
+            lastActiveProgram = GLStateManager.getActiveProgram();
+            GLStateManager.glUseProgram(fontShaderId);
             if (FontConfig.fontAAMode != fontAAModeLast) {
                 fontAAModeLast = FontConfig.fontAAMode;
                 GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
@@ -319,7 +321,7 @@ public class BatchingFontRenderer {
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
         }
         if (FontConfig.fontAAMode != 0) {
-            GL20.glUseProgram(0);
+            GLStateManager.glUseProgram(lastActiveProgram);
             GL20.glDisableVertexAttribArray(texBoundAttrLocation);
         }
 
