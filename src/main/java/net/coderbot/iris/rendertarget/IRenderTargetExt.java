@@ -5,6 +5,5 @@ public interface IRenderTargetExt {
 
     int iris$getColorBufferVersion();
 
-    public boolean getIris$useDepth();
-    public int getIris$depthTextureId();
+    int iris$getDepthTextureId();
 }

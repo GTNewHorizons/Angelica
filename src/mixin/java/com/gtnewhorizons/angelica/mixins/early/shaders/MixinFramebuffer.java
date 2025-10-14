@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import lombok.Getter;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
@@ -11,20 +10,22 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.nio.IntBuffer;
 
 @Mixin(Framebuffer.class)
-public abstract class MixinFramebuffer implements IRenderTargetExt {
-    private int iris$depthBufferVersion;
+public class MixinFramebuffer implements IRenderTargetExt {
 
-    private int iris$colorBufferVersion;
+    @Unique private int iris$depthBufferVersion;
 
-    @Getter public boolean iris$useDepth;
-    @Getter public int iris$depthTextureId = -1;
+    @Unique private int iris$colorBufferVersion;
+
+    @Unique public int iris$depthTextureId = -1;
 
     @Shadow public boolean useDepth;
 
@@ -45,16 +46,12 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
         return iris$colorBufferVersion;
     }
 
-    // Use a depth texture instead of a depth drawScreen buffer
-    @Inject(method="Lnet/minecraft/client/shader/Framebuffer;createBindFramebuffer(II)V", at=@At(value="HEAD"))
-    private void iris$useDepthTexture(int width, int height, CallbackInfo ci) {
-        if(this.useDepth) {
-            this.useDepth = false;
-            this.iris$useDepth = true;
-        }
+    @Override
+    public int iris$getDepthTextureId() {
+        return iris$depthTextureId;
     }
 
-    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0))
+    @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0), require = 1)
     private void iris$deleteDepthBuffer(CallbackInfo ci) {
         if(this.iris$depthTextureId > -1 ) {
             GLStateManager.glDeleteTextures(this.iris$depthTextureId);
@@ -62,19 +59,17 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
         }
     }
 
-    @Inject(method="createFramebuffer(II)V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;useDepth:Z", shift=At.Shift.BEFORE, ordinal = 0))
-    private void iris$createDepthTextureID(int width, int height, CallbackInfo ci) {
-        if (this.iris$useDepth) {
-            this.iris$depthTextureId = GL11.glGenTextures();
-        }
+    // Prevent the creation of a depth buffer, it will get replaced by a depth texture.
+    @Redirect(method = "createFramebuffer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/shader/Framebuffer;useDepth:Z"))
+    private boolean iris$noopDepthBuffer(Framebuffer instance) {
+        return false;
     }
 
-    @Inject(method="createFramebuffer(II)V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;useDepth:Z", shift=At.Shift.BEFORE, ordinal = 1))
+    // Uses a depth texture instead of a depth buffer
+    @Inject(method = "createFramebuffer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/shader/Framebuffer;framebufferClear()V", shift = At.Shift.BEFORE, ordinal = 1), require = 1)
     private void iris$createDepthTexture(int width, int height, CallbackInfo ci) {
-        if(this.iris$useDepth) {
-            if(this.iris$depthTextureId == -1) {
-                this.iris$depthTextureId = GL11.glGenTextures();
-            }
+        if(this.useDepth) {
+            this.iris$depthTextureId = GL11.glGenTextures();
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.iris$depthTextureId);
 
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
@@ -82,14 +77,15 @@ public abstract class MixinFramebuffer implements IRenderTargetExt {
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, 0);
-            if (MinecraftForgeClient.getStencilBits() != 0) {
+            final boolean stencil = MinecraftForgeClient.getStencilBits() != 0;
+            if (stencil) {
                 GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH24_STENCIL8, width, height, 0, GL30.GL_DEPTH_STENCIL, GL30.GL_UNSIGNED_INT_24_8, (IntBuffer) null);
             } else {
                 GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
             }
-            OpenGlHelper.func_153188_a/*glFramebufferTexture2D*/(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
-            if (MinecraftForgeClient.getStencilBits() != 0) {
-                OpenGlHelper.func_153188_a/*glFramebufferTexture2D*/(GL30.GL_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
+            OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
+            if (stencil) {
+                OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
             }
         }
     }
