@@ -25,36 +25,31 @@
 
 package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.rendering.ItemRenderListManager;
-import lombok.SneakyThrows;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.renderer.ItemRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.client.renderer.Tessellator;
 
 @Mixin(ItemRenderer.class)
 public abstract class MixinItemRenderer {
-    @SneakyThrows
-    @Inject(method = "renderItemIn2D",
-        at = @At("HEAD"),
-        cancellable = true,
-        require = 1)
-    private static void leFunnyRenderListStart(Tessellator tess, float a, float b, float c, float d, int e, int f, float g, CallbackInfo ci) {
-        if (ItemRenderListManager.INSTANCE.pre(a, b, c, d, e, f, g)) {
-            ci.cancel();
-        }
-    }
 
-    @Inject(method = "renderItemIn2D",
-        at = @At("RETURN"),
-        require = 1)
-    private static void leFunnyRenderListEnd(Tessellator tess, float a, float b, float c, float d, int e, int f, float g, CallbackInfo ci) {
-        ItemRenderListManager.INSTANCE.post();
+    @WrapMethod(method = "renderItemIn2D")
+    private static void angelica$cacheItem(Tessellator tessellator, float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness, Operation<Void> original) {
+        final VertexBuffer vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
+        if (vbo != null) {
+            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            original.call(tess, minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
+            ItemRenderListManager.post(tess, vbo);
+        }
     }
 
     @Redirect(method = "renderItemIn2D",

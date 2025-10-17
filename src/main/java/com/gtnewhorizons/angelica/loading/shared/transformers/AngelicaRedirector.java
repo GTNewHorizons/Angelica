@@ -55,7 +55,7 @@ public final class AngelicaRedirector {
         "initializeTextures", "func_77474_a"
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 

@@ -7,6 +7,7 @@ import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -57,6 +58,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
+            ConfigurationManager.registerConfig(FontConfig.class);
             MCPatcherForgeConfig.registerConfig();
             final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
             final Configuration config = ctx.getConfiguration();
