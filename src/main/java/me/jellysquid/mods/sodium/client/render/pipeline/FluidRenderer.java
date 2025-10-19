@@ -6,6 +6,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties
 import static org.joml.Math.lerp;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorARGB;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorMixer;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
@@ -21,7 +22,6 @@ import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
