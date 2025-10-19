@@ -6,6 +6,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties
 import static org.joml.Math.lerp;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorMixer;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
@@ -20,7 +21,6 @@ import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.color.ColorARGB;
 import me.jellysquid.mods.sodium.client.world.WorldSlice;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -370,7 +370,7 @@ public class FluidRenderer {
                 color &= 0x00FFFFFF;
                 color |= ((int) (ao * 255.0f)) << 24;
             } else {
-                color = ColorABGR.mul(color, ao);
+                color = ColorMixer.mulSingleWithoutAlpha(color, (int)(ao * 255));
             }
             this.quadColors[i] = color;
         }

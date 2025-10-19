@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
 
 import me.jellysquid.mods.sodium.client.model.vertex.VanillaVertexTypes;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;

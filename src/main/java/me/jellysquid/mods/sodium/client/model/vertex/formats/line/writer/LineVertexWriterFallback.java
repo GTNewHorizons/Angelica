@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.line.writer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.line.LineVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 
 
 public class LineVertexWriterFallback extends VertexWriterFallback implements LineVertexSink {

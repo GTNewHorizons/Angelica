@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.quad.writer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 
 
 public class QuadVertexWriterFallback extends VertexWriterFallback implements QuadVertexSink {

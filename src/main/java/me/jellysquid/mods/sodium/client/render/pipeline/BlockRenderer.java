@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.render.pipeline;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorMixer;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
@@ -18,7 +19,6 @@ import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.render.chunk.compile.buffers.ChunkModelBuffers;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 import me.jellysquid.mods.sodium.client.util.rand.XoRoShiRoRandom;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -168,7 +168,7 @@ public class BlockRenderer {
                 color |= ((int) (ao * 255.0f)) << 24;
             } else {
 
-                color = (useSodiumLight) ? ColorABGR.mul(quad.getColor(srcIndex), light.br[srcIndex]) : quad.getColor(srcIndex);
+                color = (useSodiumLight) ? ColorMixer.mulSingleWithoutAlpha(quad.getColor(srcIndex), (int)(light.br[srcIndex] * 255)) : quad.getColor(srcIndex);
             }
 
             final float u = quad.getTexU(srcIndex);
