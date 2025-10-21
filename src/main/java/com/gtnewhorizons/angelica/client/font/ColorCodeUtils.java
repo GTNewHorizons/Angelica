@@ -33,11 +33,14 @@ public class ColorCodeUtils {
 
     /**
      * Check if a character represents a traditional Minecraft formatting code (0-9, a-f, k-o, r)
+     * Also includes custom codes: g (rainbow), h (dinnerbone)
      */
     public static boolean isFormattingCode(char c) {
         char lower = Character.toLowerCase(c);
         return (lower >= '0' && lower <= '9')
             || (lower >= 'a' && lower <= 'f')
+            || lower == 'g' // rainbow
+            || lower == 'h' // dinnerbone
             || (lower >= 'k' && lower <= 'o')
             || lower == 'r';
     }
@@ -165,5 +168,50 @@ public class ColorCodeUtils {
      */
     public static int calculateShadowColor(int rgb) {
         return (rgb & 0xFCFCFC) >> 2;
+    }
+
+    /**
+     * Convert HSV (Hue, Saturation, Value) color to RGB.
+     *
+     * @param hue Hue in degrees (0-360)
+     * @param saturation Saturation (0.0-1.0)
+     * @param value Value/Brightness (0.0-1.0)
+     * @return RGB color as integer (0xRRGGBB)
+     */
+    public static int hsvToRgb(float hue, float saturation, float value) {
+        // Normalize hue to 0-360 range
+        hue = hue % 360.0f;
+        if (hue < 0) hue += 360.0f;
+
+        // If saturation is 0, it's grayscale
+        if (saturation == 0) {
+            int gray = (int) (value * 255);
+            return (gray << 16) | (gray << 8) | gray;
+        }
+
+        // Calculate which sector (0-5) of the color wheel we're in
+        float h = hue / 60.0f;
+        int sector = (int) Math.floor(h);
+        float fractionalSector = h - sector;
+
+        float p = value * (1.0f - saturation);
+        float q = value * (1.0f - saturation * fractionalSector);
+        float t = value * (1.0f - saturation * (1.0f - fractionalSector));
+
+        float r, g, b;
+        switch (sector) {
+            case 0:  r = value; g = t;     b = p;     break;
+            case 1:  r = q;     g = value; b = p;     break;
+            case 2:  r = p;     g = value; b = t;     break;
+            case 3:  r = p;     g = q;     b = value; break;
+            case 4:  r = t;     g = p;     b = value; break;
+            default: r = value; g = p;     b = q;     break; // sector 5
+        }
+
+        int red = (int) (r * 255);
+        int green = (int) (g * 255);
+        int blue = (int) (b * 255);
+
+        return (red << 16) | (green << 8) | blue;
     }
 }

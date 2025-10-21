@@ -402,6 +402,9 @@ public class BatchingFontRenderer {
             boolean curBold = false;
             boolean curStrikethrough = false;
             boolean curUnderline = false;
+            boolean curRainbow = false;
+            boolean curDinnerbone = false;
+            int rainbowIndex = 0;
             final IntArrayList colorStack = new IntArrayList();
             final IntArrayList shadowStack = new IntArrayList();
 
@@ -463,6 +466,7 @@ public class BatchingFontRenderer {
                         curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                         curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
                         curRandom = false;
+                        curRainbow = false;
                         processedRgbOrTag = true; // Prevent traditional &X from overwriting
 
                         if (!rawMode) {
@@ -499,6 +503,7 @@ public class BatchingFontRenderer {
                                 curShadowColor = shadowColor;
                             }
                             curRandom = false;
+                            curRainbow = false;
                             processedRgbOrTag = true;
 
                             if (!rawMode) {
@@ -530,6 +535,7 @@ public class BatchingFontRenderer {
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
                             curRandom = false;
+                            curRainbow = false;
                             processedRgbOrTag = true;
 
                             if (!rawMode) {
@@ -573,6 +579,7 @@ public class BatchingFontRenderer {
                             // Only reset random flag, preserve bold/italic/underline/strikethrough
                             // This allows &l&6 (bold gold) patterns to work
                             curRandom = false;
+                            curRainbow = false;
 
                             final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
                             final int rgb = this.colorCode[colorIdx];
@@ -593,12 +600,22 @@ public class BatchingFontRenderer {
                             underlineEndX = underlineStartX;
                         } else if (fmtCode == 'o') {
                             curItalic = true;
+                        } else if (fmtCode == 'g') {
+                            // Rainbow effect - cycles through all hues
+                            curRainbow = true;
+                            rainbowIndex = 0;
+                        } else if (fmtCode == 'h') {
+                            // Dinnerbone effect - renders text upside-down
+                            curDinnerbone = true;
                         } else if (fmtCode == 'r') {
                             curRandom = false;
                             curBold = false;
                             curStrikethrough = false;
                             curUnderline = false;
                             curItalic = false;
+                            curRainbow = false;
+                            curDinnerbone = false;
+                            rainbowIndex = 0;
                             curColor = color;
                             curShadowColor = shadowColor;
                         }
@@ -635,42 +652,59 @@ public class BatchingFontRenderer {
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final ResourceLocation texture = fontProvider.getTexture(chr);
 
+                // Apply rainbow color if enabled
+                if (curRainbow) {
+                    float hue = (rainbowIndex * 15.0f) % 360.0f;
+                    int rainbowRgb = ColorCodeUtils.hsvToRgb(hue, 1.0f, 1.0f);
+                    curColor = (curColor & 0xFF000000) | (rainbowRgb & 0x00FFFFFF);
+                    curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rainbowRgb);
+                    rainbowIndex++;
+                }
+
+                // Calculate V coordinates with dinnerbone flipping (flip texture only, keep Y position)
+                final float yTop = heightNorth;
+                final float yBottom = heightNorth + heightSouth;
+                final float vTop = curDinnerbone ? vStart + vSz : vStart;
+                final float vBottom = curDinnerbone ? vStart : vStart + vSz;
+                final float itOffTop = itOff;
+                final float itOffBottom = -itOff;
+
                 final int vtxId = vtxWriterIndex;
                 final int idxId = idxWriterIndex;
 
                 int vtxCount = 0;
 
                 if (enableShadow) {
-                    pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + itOffTop + shadowOffset, yTop + shadowOffset, curShadowColor, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + itOffBottom + shadowOffset, yBottom + shadowOffset, curShadowColor, uStart, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F + itOffTop + shadowOffset, yTop + shadowOffset, curShadowColor, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F + itOffBottom + shadowOffset, yBottom + shadowOffset, curShadowColor, uStart + uSz, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
 
                     if (curBold) {
                         final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushVtx(curX + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + itOffTop + shadowOffset2, yTop + shadowOffset, curShadowColor, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + itOffBottom + shadowOffset2, yBottom + shadowOffset, curShadowColor, uStart, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F + itOffTop + shadowOffset2, yTop + shadowOffset, curShadowColor, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F + itOffBottom + shadowOffset2, yBottom + shadowOffset, curShadowColor, uStart + uSz, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
                         pushQuadIdx(vtxId + vtxCount);
                         vtxCount += 4;
                     }
                 }
 
-                pushVtx(curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + itOffTop, yTop, curColor, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + itOffBottom, yBottom, curColor, uStart, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F + itOffTop, yTop, curColor, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F + itOffBottom, yBottom, curColor, uStart + uSz, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
                 pushQuadIdx(vtxId + vtxCount);
                 vtxCount += 4;
 
                 if (curBold) {
-                    pushVtx(shadowOffset + curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + itOffTop, yTop, curColor, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + itOffBottom, yBottom, curColor, uStart, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOffTop, yTop, curColor, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOffBottom, yBottom, curColor, uStart + uSz, vBottom, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
                 }
