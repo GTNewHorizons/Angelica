@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -393,6 +394,7 @@ public class BatchingFontRenderer {
             }
             final int stringEnd = stringOffset + stringLength;
 
+            final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
             int curColor = color;
             int curShadowColor = shadowColor;
             boolean curItalic = false;
@@ -400,6 +402,8 @@ public class BatchingFontRenderer {
             boolean curBold = false;
             boolean curStrikethrough = false;
             boolean curUnderline = false;
+            final IntArrayList colorStack = new IntArrayList();
+            final IntArrayList shadowStack = new IntArrayList();
 
             final float glyphScaleY = getGlyphScaleY();
             final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
@@ -411,73 +415,205 @@ public class BatchingFontRenderer {
             final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
+            int rawTokenSkip = 0;
 
             for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
                 char chr = string.charAt(charIdx);
-                if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
-                    final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
-                    charIdx++;
+                boolean processedRgbOrTag = false;
 
-                    if (curUnderline && underlineStartX != underlineEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        underlineStartX = underlineEndX;
+                if (rawMode) {
+                    if (rawTokenSkip > 0) {
+                        rawTokenSkip--;
+                    } else {
+                        int tokenLen = ColorCodeUtils.detectColorCodeLengthIgnoringRaw(string, charIdx);
+                        if (tokenLen > 0) {
+                            float highlightWidth = angelica$measureLiteralWidth(string, charIdx, tokenLen, stringEnd, unicodeFlag, curBold);
+                            if (highlightWidth > 0.0f) {
+                                final int hlIdx = idxWriterIndex;
+                                pushUntexRect(curX, heightNorth - 1.0f, highlightWidth, heightSouth + 2.0f, angelica$getTokenHighlightColor(string, charIdx));
+                                pushDrawCmd(hlIdx, 6, null, false);
+                            }
+                            rawTokenSkip = Math.max(tokenLen - 1, 0);
+                        }
                     }
-                    if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(
-                            strikethroughStartX,
-                            strikethroughY,
-                            strikethroughEndX - strikethroughStartX,
-                            glyphScaleY,
-                            curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        strikethroughStartX = strikethroughEndX;
-                    }
-
-                    final boolean is09 = charInRange(fmtCode, '0', '9');
-                    final boolean isAF = charInRange(fmtCode, 'a', 'f');
-                    if (is09 || isAF) {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-
-                        final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
-                        final int rgb = this.colorCode[colorIdx];
-                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                        final int shadowRgb = this.colorCode[colorIdx + 16];
-                        curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                    } else if (fmtCode == 'k') {
-                        curRandom = true;
-                    } else if (fmtCode == 'l') {
-                        curBold = true;
-                    } else if (fmtCode == 'm') {
-                        curStrikethrough = true;
-                        strikethroughStartX = curX - 1.0f;
-                        strikethroughEndX = strikethroughStartX;
-                    } else if (fmtCode == 'n') {
-                        curUnderline = true;
-                        underlineStartX = curX - 1.0f;
-                        underlineEndX = underlineStartX;
-                    } else if (fmtCode == 'o') {
-                        curItalic = true;
-                    } else if (fmtCode == 'r') {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-                        curColor = color;
-                        curShadowColor = shadowColor;
-                    }
-
-                    continue;
                 }
 
-                if (curRandom) {
+                // Check for RGB color codes FIRST (before traditional § codes)
+                // Format: &RRGGBB (ampersand followed by 6 hex digits)
+                if (chr == '&' && (charIdx + 6) < stringEnd) {
+                    final int rgb = ColorCodeUtils.parseHexColor(string, charIdx + 1);
+                    if (rgb != -1) {
+                        // Valid RGB color code found
+                        if (curUnderline && underlineStartX != underlineEndX) {
+                            final int ulIdx = idxWriterIndex;
+                            pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                            pushDrawCmd(ulIdx, 6, null, false);
+                            underlineStartX = underlineEndX;
+                        }
+                        if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                            final int ulIdx = idxWriterIndex;
+                            pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
+                            pushDrawCmd(ulIdx, 6, null, false);
+                            strikethroughStartX = strikethroughEndX;
+                        }
+
+                        // Apply RGB color (preserve formatting state to allow &l&FFxxxx patterns)
+                        colorStack.clear();
+                        shadowStack.clear();
+                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                        curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+                        curRandom = false;
+                        processedRgbOrTag = true; // Prevent traditional &X from overwriting
+
+                        if (!rawMode) {
+                            charIdx += 6; // Skip the 6 hex digits
+                            continue;
+                        }
+                    }
+                }
+
+                // Format: <RRGGBB> (opening tag) or </RRGGBB> (closing tag)
+                if (chr == '<') {
+                    // Check for closing tag </RRGGBB>
+                    if ((charIdx + 9) <= stringEnd && string.charAt(charIdx + 1) == '/' && string.charAt(charIdx + 8) == '>') {
+                        if (ColorCodeUtils.isValidHexString(string, charIdx + 2)) {
+                            // Valid closing tag - reset to original color
+                            if (curUnderline && underlineStartX != underlineEndX) {
+                                final int ulIdx = idxWriterIndex;
+                                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                                pushDrawCmd(ulIdx, 6, null, false);
+                                underlineStartX = underlineEndX;
+                            }
+                            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                                final int ulIdx = idxWriterIndex;
+                                pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
+                                pushDrawCmd(ulIdx, 6, null, false);
+                                strikethroughStartX = strikethroughEndX;
+                            }
+
+                            if (!colorStack.isEmpty()) {
+                                curColor = colorStack.removeInt(colorStack.size() - 1);
+                                curShadowColor = shadowStack.removeInt(shadowStack.size() - 1);
+                            } else {
+                                curColor = color;
+                                curShadowColor = shadowColor;
+                            }
+                            curRandom = false;
+                            processedRgbOrTag = true;
+
+                            if (!rawMode) {
+                                charIdx += 8; // Skip </RRGGBB> (9 chars total, but loop will increment)
+                                continue;
+                            }
+                        }
+                    }
+                    // Check for opening tag <RRGGBB>
+                    else if ((charIdx + 8) <= stringEnd && string.charAt(charIdx + 7) == '>') {
+                        final int rgb = ColorCodeUtils.parseHexColor(string, charIdx + 1);
+                        if (rgb != -1) {
+                            // Valid opening tag
+                            if (curUnderline && underlineStartX != underlineEndX) {
+                                final int ulIdx = idxWriterIndex;
+                                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                                pushDrawCmd(ulIdx, 6, null, false);
+                                underlineStartX = underlineEndX;
+                            }
+                            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                                final int ulIdx = idxWriterIndex;
+                                pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
+                                pushDrawCmd(ulIdx, 6, null, false);
+                                strikethroughStartX = strikethroughEndX;
+                            }
+
+                            colorStack.add(curColor);
+                            shadowStack.add(curShadowColor);
+                            curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                            curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+                            curRandom = false;
+                            processedRgbOrTag = true;
+
+                            if (!rawMode) {
+                                charIdx += 7; // Skip <RRGGBB> (8 chars total, but loop will increment)
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // Traditional & formatting codes (only if we didn't process RGB/tag code)
+                if (!processedRgbOrTag && (chr == FORMATTING_CHAR || chr == '&') && (charIdx + 1) < stringEnd) {
+                    final char nextChar = string.charAt(charIdx + 1);
+                    final char fmtCode = Character.toLowerCase(nextChar);
+                    if (chr == '&' && !ColorCodeUtils.isFormattingCode(nextChar)) {
+                        // Not a formatting alias, treat as literal '&'
+                    } else {
+                        charIdx++;
+
+                        if (curUnderline && underlineStartX != underlineEndX) {
+                            final int ulIdx = idxWriterIndex;
+                            pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                            pushDrawCmd(ulIdx, 6, null, false);
+                            underlineStartX = underlineEndX;
+                        }
+                        if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                            final int ulIdx = idxWriterIndex;
+                            pushUntexRect(
+                                strikethroughStartX,
+                                strikethroughY,
+                                strikethroughEndX - strikethroughStartX,
+                                glyphScaleY,
+                                curColor);
+                            pushDrawCmd(ulIdx, 6, null, false);
+                            strikethroughStartX = strikethroughEndX;
+                        }
+
+                        final boolean is09 = charInRange(fmtCode, '0', '9');
+                        final boolean isAF = charInRange(fmtCode, 'a', 'f');
+                        if (is09 || isAF) {
+                            // Only reset random flag, preserve bold/italic/underline/strikethrough
+                            // This allows &l&6 (bold gold) patterns to work
+                            curRandom = false;
+
+                            final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
+                            final int rgb = this.colorCode[colorIdx];
+                            curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                            final int shadowRgb = this.colorCode[colorIdx + 16];
+                            curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
+                        } else if (fmtCode == 'k') {
+                            curRandom = true;
+                        } else if (fmtCode == 'l') {
+                            curBold = true;
+                        } else if (fmtCode == 'm') {
+                            curStrikethrough = true;
+                            strikethroughStartX = curX - 1.0f;
+                            strikethroughEndX = strikethroughStartX;
+                        } else if (fmtCode == 'n') {
+                            curUnderline = true;
+                            underlineStartX = curX - 1.0f;
+                            underlineEndX = underlineStartX;
+                        } else if (fmtCode == 'o') {
+                            curItalic = true;
+                        } else if (fmtCode == 'r') {
+                            curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
+                            curColor = color;
+                            curShadowColor = shadowColor;
+                        }
+
+                        if (!rawMode) {
+                            continue;
+                        } else {
+                            // In raw mode, we still applied the formatting but need to back up charIdx
+                            // so we render the formatting character
+                            charIdx--;
+                        }
+                    }
+                }
+
+                if (!rawMode && curRandom) {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
 
@@ -567,8 +703,66 @@ public class BatchingFontRenderer {
         return curX + (enableShadow ? 1.0f : 0.0f);
     }
 
+    private float angelica$measureLiteralWidth(CharSequence string, int start, int tokenLength, int stringEnd, boolean unicodeFlag, boolean initialBoldState) {
+        float width = 0.0f;
+        boolean isBold = initialBoldState;
+        final int limit = Math.min(start + tokenLength, stringEnd);
+
+        for (int i = start; i < limit; i++) {
+            char ch = string.charAt(i);
+
+            // Check if this character is the start of a formatting code that affects bold
+            if ((ch == '&' || ch == FORMATTING_CHAR) && i + 1 < limit) {
+                char nextChar = string.charAt(i + 1);
+                char fmtCode = Character.toLowerCase(nextChar);
+
+                // Check if it's a valid formatting code
+                if (ch == '&' && !ColorCodeUtils.isFormattingCode(nextChar)) {
+                    // Not a valid formatting code, continue
+                } else if (fmtCode == 'l') {
+                    isBold = true;
+                } else if (fmtCode == 'r') {
+                    isBold = false;
+                } else if ((fmtCode >= '0' && fmtCode <= '9') || (fmtCode >= 'a' && fmtCode <= 'f')) {
+                    // In Angelica, color codes don't reset bold (preserves formatting)
+                    // So we keep isBold unchanged
+                }
+            }
+
+            FontProvider provider = FontStrategist.getFontProvider(ch, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
+            float xAdvance = provider.getXAdvance(ch) * getGlyphScaleX();
+            width += xAdvance;
+            if (isBold) {
+                width += this.getShadowOffset();
+            }
+            width += getGlyphSpacing();
+        }
+        return width;
+    }
+
+    private int angelica$getTokenHighlightColor(CharSequence string, int index) {
+        char c = string.charAt(index);
+        if (c == FORMATTING_CHAR || (c == '&' && index + 1 < string.length() && ColorCodeUtils.isFormattingCode(string.charAt(index + 1)))) {
+            return 0x304080FF;
+        }
+        if (c == '&') {
+            return 0x3039C86F;
+        }
+        if (c == '<') {
+            if (index + 1 < string.length() && string.charAt(index + 1) == '/') {
+                return 0x30FF8C5A;
+            }
+            return 0x305A8CFF;
+        }
+        return 0x30222222;
+    }
+
     public float getCharWidthFine(char chr) {
-        if (chr == FORMATTING_CHAR) { return -1; }
+        if (chr == FORMATTING_CHAR && !AngelicaFontRenderContext.isRawTextRendering()) { return -1; }
+
+        // Note: We DO NOT return -1 for & or < here anymore
+        // Width calculation is handled properly in getStringWidthWithRgb()
+        // This allows & and < to render normally when they're not part of valid color codes
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
             return 4 * this.getWhitespaceScale();
@@ -577,5 +771,57 @@ public class BatchingFontRenderer {
         FontProvider fp = FontStrategist.getFontProvider(chr, isSGA, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    /**
+     * Calculate the width of a string, properly handling RGB color codes.
+     * This method correctly skips over:
+     * - Traditional § codes (2 chars)
+     * - &RRGGBB format (7 chars)
+     * - <RRGGBB> format (9 chars)
+     * - </RRGGBB> format (10 chars)
+     *
+     * @param str The string to measure
+     * @return The width in pixels
+     */
+    public float getStringWidthWithRgb(CharSequence str) {
+        if (str == null || str.length() == 0) {
+            return 0.0f;
+        }
+
+        float width = 0.0f;
+        boolean isBold = false;
+        final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
+
+        for (int i = 0; i < str.length(); i++) {
+            int codeLen = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, i);
+            if (codeLen > 0) {
+                // Check if this is a bold formatting code
+                if (codeLen == 2 && i + 1 < str.length()) {
+                    char fmt = Character.toLowerCase(str.charAt(i + 1));
+                    if (fmt == 'l') {
+                        isBold = true;
+                    } else if (fmt == 'r') {
+                        isBold = false;
+                    } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                        isBold = false; // Color codes reset bold
+                    }
+                }
+
+                i += codeLen - 1; // Skip the color code (minus 1 because loop will increment)
+                continue;
+            }
+
+            char c = str.charAt(i);
+            float charWidth = getCharWidthFine(c);
+            if (charWidth > 0) {
+                width += charWidth;
+                if (isBold) {
+                    width += this.getShadowOffset(); // Bold adds extra width
+                }
+            }
+        }
+
+        return width;
     }
 }
