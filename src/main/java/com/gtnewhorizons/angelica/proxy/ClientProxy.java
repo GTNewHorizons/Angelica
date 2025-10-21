@@ -17,7 +17,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
-import com.gtnewhorizons.angelica.models.VanillaModels;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.zoom.Zoom;
@@ -135,8 +134,6 @@ public class ClientProxy extends CommonProxy {
 
         glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
-
-        VanillaModels.init();
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
