@@ -35,6 +35,24 @@ public class StandardMacros {
 		defines.add(new StringPair(key, value));
 	}
 
+    private static String makeAngelicaVersion()
+    {
+        String[] parts = Tags.VERSION.split("[.-]");
+        int major = Integer.parseInt(parts[0]);
+        int minor = Integer.parseInt(parts[1]);
+        int patch = Integer.parseInt(parts[2]);
+        int sub = 0;
+
+        // Handle optional prerelease (like beta62)
+        if (parts.length > 3) {
+            String pre = parts[3];
+            String num = pre.replaceAll("\\D+", ""); // remove all non-digits
+            if (!num.isEmpty())
+                sub = Integer.parseInt(num);
+        }
+        return String.format("%d%02d%02d%03d", major, minor, patch, sub);
+    }
+
 	public static Iterable<StringPair> createStandardEnvironmentDefines() {
 		ArrayList<StringPair> standardDefines = new ArrayList<>();
 
@@ -54,7 +72,7 @@ public class StandardMacros {
 		define(standardDefines, "MC_RENDER_QUALITY", "1.0");
 		define(standardDefines, "MC_SHADOW_QUALITY", "1.0");
         define(standardDefines, "IS_ANGELICA");
-        define(standardDefines, "ANGELICA_VERSION", Tags.VERSION);
+        define(standardDefines, "ANGELICA_VERSION", makeAngelicaVersion());
 		define(standardDefines, "MC_HAND_DEPTH", Float.toString(HandRenderer.DEPTH));
 
 		TextureFormat textureFormat = TextureFormatLoader.getFormat();

@@ -16,7 +16,6 @@ import javax.imageio.ImageIO;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -40,7 +39,7 @@ public final class FontProviderCustom implements FontProvider {
 
     private FontProviderCustom(byte id) {
         this.id = id;
-        Font[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        Font[] availableFonts = FontStrategist.getAvailableFonts();
         if (availableFonts.length == 0) {
             LOGGER.fatal("There seem to be no fonts available on this system! Disabling custom font and throwing an exception in an attempt to restore the session.");
             FontConfig.enableCustomFont = false;
@@ -79,8 +78,7 @@ public final class FontProviderCustom implements FontProvider {
 
     public void reloadFont(int fontID) {
         currentFontQuality = FontConfig.customFontQuality;
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        font = ge.getAllFonts()[fontID].deriveFont(currentFontQuality);
+        font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
 
         File[] files = new File(getFontDir()).listFiles();
         if (files != null) {
