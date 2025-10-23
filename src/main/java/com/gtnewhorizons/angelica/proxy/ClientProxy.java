@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 import com.google.common.base.Objects;
+import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -73,6 +75,8 @@ public class ClientProxy extends CommonProxy {
 
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
+
+        ModelRegistry.registerModid(MOD_ID);
     }
 
     @SubscribeEvent

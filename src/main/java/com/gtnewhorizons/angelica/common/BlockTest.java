@@ -15,7 +15,6 @@ public class BlockTest extends Block {
     public BlockTest() {
         super(Material.wood);
         setHardness(0.7f);
-        setBlockTextureName("missingno");
     }
 
     @Override
