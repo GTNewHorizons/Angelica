@@ -467,8 +467,16 @@ public class BatchingFontRenderer {
                         shadowStack.clear();
                         curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                         curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                        // reset styles on color change (vanilla behavior)
                         curRandom = false;
+                        curBold = false;
+                        curStrikethrough = false;
+                        curUnderline = false;
+                        curItalic = false;
                         curRainbow = false;
+                        curDinnerbone = false;
+
                         processedRgbOrTag = true; // Prevent traditional &X from overwriting
 
                         if (!rawMode) {
@@ -536,8 +544,16 @@ public class BatchingFontRenderer {
                             shadowStack.add(curShadowColor);
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                            // reset styles on color change
                             curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
                             curRainbow = false;
+                            curDinnerbone = false;
+
                             processedRgbOrTag = true;
 
                             if (!rawMode) {
@@ -578,16 +594,20 @@ public class BatchingFontRenderer {
                         final boolean is09 = charInRange(fmtCode, '0', '9');
                         final boolean isAF = charInRange(fmtCode, 'a', 'f');
                         if (is09 || isAF) {
-                            // Only reset random flag, preserve bold/italic/underline/strikethrough
-                            // This allows &l&6 (bold gold) patterns to work
-                            curRandom = false;
-                            curRainbow = false;
-
                             final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
                             final int rgb = this.colorCode[colorIdx];
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             final int shadowRgb = this.colorCode[colorIdx + 16];
                             curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
+
+                            // vanilla resets styles on color
+                            curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
+                            curRainbow = false;
+                            curDinnerbone = false;
                         } else if (fmtCode == 'k') {
                             curRandom = true;
                         } else if (fmtCode == 'l') {
@@ -855,6 +875,7 @@ public class BatchingFontRenderer {
                 if (isBold) {
                     width += this.getShadowOffset(); // Bold adds extra width
                 }
+                width += getGlyphSpacing();
             }
         }
 
