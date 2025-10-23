@@ -56,9 +56,6 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.34") { transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
-    // Use modern models+textures to inject BakedModels
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.5:dev')
-
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
     api("com.github.GTNewHorizons:GTNHLib:0.6.40:dev")
