@@ -47,7 +47,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         }
 
         set(stack[--pointer]);
-        if (GLStateManager.isAMD() && glCap == GL11.GL_BLEND) {
+        if (GLStateManager.vendorIsAMD() && glCap == GL11.GL_BLEND) {
             setEnabled(enabled);
         }
         return this;

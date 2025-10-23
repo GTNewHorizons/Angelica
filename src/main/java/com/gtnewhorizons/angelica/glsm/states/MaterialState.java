@@ -124,7 +124,7 @@ public class MaterialState implements ISettableState<MaterialState> {
         // glMaterial specifically for GL_COLOR_INDEXES. Other drivers do not do this.
         // This probably breaks things but who knows, GLSM is setup to track to what the
         // driver is doing for it right now.
-        if (GLStateManager.isNVIDIA()) {
+        if (GLStateManager.vendorIsNVIDIA()) {
             vector3f.set(newBuffer.get(0), newBuffer.get(2), newBuffer.get(1));
         } else {
             vector3f.set(newBuffer);
