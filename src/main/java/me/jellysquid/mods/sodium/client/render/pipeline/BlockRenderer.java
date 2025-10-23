@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorMixer;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
@@ -124,7 +125,7 @@ public class BlockRenderer {
         return rendered;
     }
 
-    private void renderQuadList(BlockPos pos, LightPipeline lighter, int emitted, ChunkModelBuffers buffers, List<ModelQuadView> quads, ModelQuadFacing facing, boolean useSodiumLight) {
+    private void renderQuadList(BlockPos pos, LightPipeline lighter, int emitted, ChunkModelBuffers buffers, List<ModelQuadViewMutable> quads, ModelQuadFacing facing, boolean useSodiumLight) {
         final ModelVertexSink sink = buffers.getSink(facing);
         sink.ensureCapacity(quads.size() * 4);
 
