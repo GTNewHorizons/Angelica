@@ -9,8 +9,7 @@ import net.minecraft.client.resources.DefaultResourcePack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
+import java.awt.*;
 import java.io.File;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -84,8 +83,8 @@ public class FontStrategist {
     }
 
     /**
-     Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether or not
-     SGA is on, if a font can even display a character in the first place, etc.
+     * Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether or not
+     * SGA is on, if a font can even display a character in the first place, etc.
      */
     public static FontProvider getFontProvider(char chr, boolean isSGA, boolean customFontEnabled, boolean forceUnicode) {
         if (isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
@@ -94,9 +93,13 @@ public class FontStrategist {
         if (customFontEnabled) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
+            if (fp.isGlyphAvailable(chr)) {
+                return fp;
+            }
             fp = FontProviderCustom.getFallback();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
+            if (fp.isGlyphAvailable(chr)) {
+                return fp;
+            }
             return FontProviderUnicode.get();
         } else {
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
@@ -121,7 +124,9 @@ public class FontStrategist {
                 FontProviderCustom.getFallback().reloadFont(i);
                 fallbackFontFound = true;
             }
-            if (primaryFontFound && fallbackFontFound) { break; }
+            if (primaryFontFound && fallbackFontFound) {
+                break;
+            }
         }
         customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
     }

@@ -62,6 +62,7 @@ public class ColorCodeUtils {
 
     /**
      * Parse a 6-digit hexadecimal string to an RGB integer (0xRRGGBB)
+     *
      * @param hex String containing exactly 6 hex digits
      * @return RGB value as integer, or -1 if invalid
      */
@@ -78,7 +79,8 @@ public class ColorCodeUtils {
 
     /**
      * Parse 6 hex characters from a CharSequence starting at position
-     * @param str The string to parse
+     *
+     * @param str   The string to parse
      * @param start Starting position
      * @return RGB value as integer, or -1 if invalid
      */
@@ -100,11 +102,11 @@ public class ColorCodeUtils {
      * @param str The string to check
      * @param pos Position to check
      * @return Length of color code:
-     *         - 7 for &RRGGBB format (& + 6 hex)
-     *         - 9 for <RRGGBB> format (< + 6 hex + >)
-     *         - 10 for </RRGGBB> format (</ + 6 hex + >)
-     *         - 2 for §X format (handled elsewhere, but counted here)
-     *         - 0 for no color code
+     * - 7 for &RRGGBB format (& + 6 hex)
+     * - 9 for <RRGGBB> format (< + 6 hex + >)
+     * - 10 for </RRGGBB> format (</ + 6 hex + >)
+     * - 2 for §X format (handled elsewhere, but counted here)
+     * - 0 for no color code
      */
     public static int detectColorCodeLength(CharSequence str, int pos) {
         return detectColorCodeLengthInternal(str, pos, AngelicaFontRenderContext.isRawTextRendering());
@@ -173,9 +175,9 @@ public class ColorCodeUtils {
     /**
      * Convert HSV (Hue, Saturation, Value) color to RGB.
      *
-     * @param hue Hue in degrees (0-360)
+     * @param hue        Hue in degrees (0-360)
      * @param saturation Saturation (0.0-1.0)
-     * @param value Value/Brightness (0.0-1.0)
+     * @param value      Value/Brightness (0.0-1.0)
      * @return RGB color as integer (0xRRGGBB)
      */
     public static int hsvToRgb(float hue, float saturation, float value) {
@@ -200,12 +202,36 @@ public class ColorCodeUtils {
 
         float r, g, b;
         switch (sector) {
-            case 0:  r = value; g = t;     b = p;     break;
-            case 1:  r = q;     g = value; b = p;     break;
-            case 2:  r = p;     g = value; b = t;     break;
-            case 3:  r = p;     g = q;     b = value; break;
-            case 4:  r = t;     g = p;     b = value; break;
-            default: r = value; g = p;     b = q;     break; // sector 5
+            case 0:
+                r = value;
+                g = t;
+                b = p;
+                break;
+            case 1:
+                r = q;
+                g = value;
+                b = p;
+                break;
+            case 2:
+                r = p;
+                g = value;
+                b = t;
+                break;
+            case 3:
+                r = p;
+                g = q;
+                b = value;
+                break;
+            case 4:
+                r = t;
+                g = p;
+                b = value;
+                break;
+            default:
+                r = value;
+                g = p;
+                b = q;
+                break; // sector 5
         }
 
         int red = (int) (r * 255);
