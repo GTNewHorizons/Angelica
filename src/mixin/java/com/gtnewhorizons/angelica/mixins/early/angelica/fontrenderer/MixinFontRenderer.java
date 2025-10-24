@@ -267,13 +267,13 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         boolean isBold = false;
 
         for (int i = 0; i < length; ) {
-            // Hard line break: stop at '\n'
+            // Hard line break
             if (str.charAt(i) == '\n') {
                 cir.setReturnValue(i);
                 return;
             }
 
-            // Color/format code
+            // STRICT color/format token
             final int codeLen = com.gtnewhorizons.angelica.client.font.ColorCodeUtils.detectColorCodeLength(str, i);
             if (codeLen > 0) {
                 if (codeLen == 2 && i + 1 < length) {
@@ -281,29 +281,39 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                     if (fmt == 'l') {
                         isBold = true;
                     } else if (fmt == 'r' || (fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
-                        // vanilla resets styles on color code
                         isBold = false;
                     }
                 }
                 i += codeLen;
-                lastSafePosition = i; // never break inside codes
+                lastSafePosition = i; // never break inside tokens
                 continue;
             }
 
             // Normal char
             final char c = str.charAt(i);
             if (c == ' ')
-                lastSpace = i; // word wrap point
+                lastSpace = i;
 
             float charW = batcher.getCharWidthFine(c);
             if (charW < 0) charW = 0;
 
             float next = currentWidth + charW;
             if (isBold && charW > 0) next += batcher.getShadowOffset();
-            next += batcher.getGlyphSpacing();
+
+            // Add spacing only if another visible glyph follows on this line
+            boolean nextVisibleSameLine = false;
+            int j = i + 1;
+            while (j < length) {
+                char cj = str.charAt(j);
+                if (cj == '\n') break;
+                int n2 = com.gtnewhorizons.angelica.client.font.ColorCodeUtils.detectColorCodeLength(str, j); // STRICT
+                if (n2 > 0) { j += n2; continue; }
+                if (batcher.getCharWidthFine(cj) > 0) nextVisibleSameLine = true;
+                break;
+            }
+            if (nextVisibleSameLine) next += batcher.getGlyphSpacing();
 
             if (next > maxWidth) {
-                // Prefer last space, then last safe position, else here
                 int bp = (lastSpace >= 0 ? lastSpace : lastSafePosition);
                 if (bp <= 0) bp = i;
                 cir.setReturnValue(bp);
@@ -333,7 +343,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         final BatchingFontRenderer batcher = angelica$getBatcher();
 
         if (!reverse) {
-            // Forward: reuse sizeStringToWidth index
+            // Forward: reuse sizeStringToWidth index (now STRICT)
             CallbackInfoReturnable<Integer> idxCir = new CallbackInfoReturnable<>("angelica$sizeStringToWidth", true);
             angelica$sizeStringToWidthRgbAware(text, width, idxCir);
             int idx = idxCir.getReturnValue();
@@ -342,7 +352,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             return;
         }
 
-        // Reverse: trim from the end, stop at newline, include spacing/bold
+        // Reverse: trim from the end, stop at newline, include spacing/bold.
+        // IMPORTANT: do NOT treat partial <RGB as zero-width here.
         final int length = text.length();
         float currentWidth = 0.0f;
         int firstSafePosition = length;
@@ -351,13 +362,13 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         for (int i = length - 1; i >= 0; ) {
             final char c = text.charAt(i);
 
-            // Hard line break (reverse): return from char after '\n'
+            // Stop at explicit newline
             if (c == '\n') {
                 cir.setReturnValue(text.substring(i + 1));
                 return;
             }
 
-            // Simple reverse RGB &RRGGBB skip
+            // Reverse skip for &RRGGBB (easy to detect backwards)
             if (i >= 6 && text.charAt(i - 6) == '&') {
                 boolean validHex = true;
                 for (int j = i - 5; j <= i; j++) {
@@ -372,13 +383,11 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 }
             }
 
-            // Reverse scan: basic §X formatting impacts bold
+            // Reverse scan: basic §/& formatting impacts bold (STRICT for alias)
             if ((c == 167 || c == '&') && i + 1 < length) {
-                char fmt = Character.toLowerCase(text.charAt(i + 1));
-                if (c == '&' && !com.gtnewhorizons.angelica.client.font.ColorCodeUtils.isFormattingCode(text.charAt(i + 1))) {
-                    // literal '&'
-                } else {
-                    // we’re seeing the code second char first (reverse), so just toggle states safely:
+                char next = text.charAt(i + 1);
+                if (!(c == '&' && !com.gtnewhorizons.angelica.client.font.ColorCodeUtils.isFormattingCode(next))) {
+                    char fmt = Character.toLowerCase(next);
                     if (fmt == 'l') isBold = true;
                     else if (fmt == 'r' || (fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) isBold = false;
                     i--; // step over the pair
@@ -386,6 +395,10 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                     continue;
                 }
             }
+
+            // NOTE: We DO NOT special-case partial "<RGB" here.
+            // Only fully-formed tags were zero-width going forward,
+            // so partials must behave like literal text while typing.
 
             float charW = batcher.getCharWidthFine(c);
             if (charW < 0) charW = 0;
@@ -485,7 +498,9 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                     styleCodes.setLength(0);
                 } else if (codeLen == 9 && firstChar == '<') {
                     // <RRGGBB> - push current colour (if any) then apply new colour
-                    colorStack.push(currentColorCode);
+                    if (currentColorCode != null) {
+                        colorStack.push(currentColorCode);
+                    }
                     currentColorCode = code;
                     styleCodes.setLength(0);
                 } else if (codeLen == 10 && firstChar == '<') {

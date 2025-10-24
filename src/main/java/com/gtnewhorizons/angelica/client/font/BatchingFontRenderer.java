@@ -934,13 +934,13 @@ public class BatchingFontRenderer {
             char ch = str.charAt(i);
 
             if (ch == '\n') {
-                if (width > maxWidth)
-                    maxWidth = width;
+                if (width > maxWidth) maxWidth = width;
                 width = 0.0f;
-                isBold = false; // matches vanilla behavior for width calc across lines
+                isBold = false; // vanilla-style reset across lines
                 continue;
             }
 
+            // STRICT: only fully-formed color/format codes are zero-width
             int codeLen = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, i);
             if (codeLen > 0) {
                 if (codeLen == 2 && i + 1 < str.length()) {
@@ -951,20 +951,30 @@ public class BatchingFontRenderer {
                         isBold = false;
                     }
                 }
-                i += codeLen - 1; // skip entire code (loop will ++)
+                i += codeLen - 1; // skip whole token
                 continue;
             }
 
             float charW = getCharWidthFine(ch);
             if (charW > 0) {
                 width += charW;
-                if (isBold)
-                    width += this.getShadowOffset();
-                width += getGlyphSpacing();
+                if (isBold) width += this.getShadowOffset();
+
+                // Add spacing only if a visible glyph follows on the same line
+                boolean nextVisibleSameLine = false;
+                int j = i + 1;
+                while (j < str.length()) {
+                    char cj = str.charAt(j);
+                    if (cj == '\n') break;
+                    int n2 = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, j); // STRICT
+                    if (n2 > 0) { j += n2; continue; }
+                    if (getCharWidthFine(cj) > 0) nextVisibleSameLine = true;
+                    break;
+                }
+                if (nextVisibleSameLine) width += getGlyphSpacing();
             }
         }
 
         return Math.max(width, maxWidth);
     }
-
 }

@@ -103,8 +103,8 @@ public class ColorCodeUtils {
      * @param pos Position to check
      * @return Length of color code:
      * - 7 for &RRGGBB format (& + 6 hex)
-     * - 9 for <RRGGBB> format (< + 6 hex + >)
-     * - 10 for </RRGGBB> format (</ + 6 hex + >)
+     * - 8 for <RRGGBB> format (< + 6 hex + >)
+     * - 9 for </RRGGBB> format (</ + 6 hex + >)
      * - 2 for §X format (handled elsewhere, but counted here)
      * - 0 for no color code
      */
@@ -117,45 +117,45 @@ public class ColorCodeUtils {
     }
 
     private static int detectColorCodeLengthInternal(CharSequence str, int pos, boolean skipDueToRaw) {
-        if (str == null || pos < 0 || pos >= str.length()) {
+        if (str == null || pos < 0 || pos >= str.length())
             return 0;
-        }
 
-        if (skipDueToRaw) {
+        if (skipDueToRaw)
             return 0;
-        }
 
+        final int len = str.length();
         char c = str.charAt(pos);
 
-        // Check for §X format (traditional Minecraft)
-        if (c == 167 && pos + 1 < str.length()) { // 167 is §
+        // §x (traditional)
+        if (c == 167 && pos + 1 < len) {
             return 2;
         }
 
-        // Check for &RRGGBB format
-        if (c == '&' && pos + 7 <= str.length()) {
+        // &RRGGBB
+        if (c == '&' && pos + 7 <= len) {
             if (isValidHexString(str, pos + 1)) {
-                return 7;
+                return 7; // & + 6 hex
             }
         }
 
-        // Check for &X format (traditional formatting alias)
-        if (c == '&' && pos + 1 < str.length() && isFormattingCode(str.charAt(pos + 1))) {
+        // &x (alias for traditional formatting)
+        if (c == '&' && pos + 1 < len && isFormattingCode(str.charAt(pos + 1))) {
             return 2;
         }
 
-        // Check for </RRGGBB> format (closing tag)
-        if (c == '<' && pos + 9 <= str.length() && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>') {
-            if (isValidHexString(str, pos + 2)) {
-                return 10;
-            }
+        // </RRGGBB>  -> 9 chars total
+        // indices: pos:'<', pos+1:'/', pos+2..pos+7: 6 hex, pos+8:'>'
+        if (c == '<' && pos + 9 <= len && pos + 8 < len
+            && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>'
+            && isValidHexString(str, pos + 2)) {
+            return 9;
         }
 
-        // Check for <RRGGBB> format (opening tag)
-        if (c == '<' && pos + 8 <= str.length() && str.charAt(pos + 7) == '>') {
-            if (isValidHexString(str, pos + 1)) {
-                return 9;
-            }
+        // <RRGGBB>   -> 8 chars total
+        // indices: pos:'<', pos+1..pos+6: 6 hex, pos+7:'>'
+        if (c == '<' && pos + 8 <= len && pos + 7 < len
+            && str.charAt(pos + 7) == '>' && isValidHexString(str, pos + 1)) {
+            return 8;
         }
 
         return 0;
