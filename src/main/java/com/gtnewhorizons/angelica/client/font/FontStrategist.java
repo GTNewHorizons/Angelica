@@ -85,13 +85,13 @@ public class FontStrategist {
 
     /**
      Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether or not
-     SGA is on, if a font can even display a character in the first place, etc.
+     SGA is on, if we're in a splash screen, if a font can even display a character in the first place, etc.
      */
-    public static FontProvider getFontProvider(char chr, boolean isSGA, boolean customFontEnabled, boolean forceUnicode) {
-        if (isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
+    public static FontProvider getFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
+        if (me.isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
             return FontProviderMC.get(true);
         }
-        if (customFontEnabled) {
+        if (customFontEnabled && !me.isSplash) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
             if (fp.isGlyphAvailable(chr)) { return fp; }
