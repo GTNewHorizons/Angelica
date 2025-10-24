@@ -87,8 +87,8 @@ public class BatchingFontRenderer {
         }
 
         this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
-        // noinspection deprecation
-        this.isSplash = underlying instanceof SplashProgress.SplashFontRenderer;
+
+        this.isSplash = isSplashFontRendererActive(underlying);
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
@@ -99,6 +99,19 @@ public class BatchingFontRenderer {
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
         texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
+    }
+
+    private static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {
+        // noinspection deprecation
+        boolean active = fontRenderer instanceof SplashProgress.SplashFontRenderer;
+
+        try {
+            Class<?> customSplashClass = Class.forName("gkappa.modernsplash.CustomSplash$SplashFontRenderer");
+            active = active || customSplashClass.isInstance(fontRenderer);
+        } catch (ClassNotFoundException ignored) {
+        }
+
+        return active;
     }
 
     // === Batched rendering
