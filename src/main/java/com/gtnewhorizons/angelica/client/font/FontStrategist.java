@@ -9,7 +9,8 @@ import net.minecraft.client.resources.DefaultResourcePack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.awt.*;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.util.Comparator;
 import java.util.HashMap;

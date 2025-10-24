@@ -778,9 +778,9 @@ public class BatchingFontRenderer {
 
                     if (styleBold) {
                         final float shadowDxBold = shadowDx + boldDx; // not 2 * boldDx
-                        pushVtx(x0 + italicOffset + shadowDxBold, yTop + shadowDx,    currentShadow, u0,         vTop,    u0, u0 + uSize, v0, v0 + vSize);
-                        pushVtx(x0 - italicOffset + shadowDxBold, yBottom + shadowDx, currentShadow, u0,         vBottom, u0, u0 + uSize, v0, v0 + vSize);
-                        pushVtx(x1 + italicOffset + shadowDxBold, yTop + shadowDx,    currentShadow, u0 + uSize, vTop,    u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x0 + italicOffset + shadowDxBold, yTop + shadowDx, currentShadow, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x0 - italicOffset + shadowDxBold, yBottom + shadowDx, currentShadow, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x1 + italicOffset + shadowDxBold, yTop + shadowDx, currentShadow, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
                         pushVtx(x1 - italicOffset + shadowDxBold, yBottom + shadowDx, currentShadow, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
                         pushQuadIdx(vStart + pushedQuads * 4);
                         pushedQuads++;
@@ -796,9 +796,9 @@ public class BatchingFontRenderer {
                 pushedQuads++;
 
                 if (styleBold) {
-                    pushVtx(boldDx + x0 + italicOffset, yTop,    currentColor, u0,         vTop,    u0, u0 + uSize, v0, v0 + vSize);
-                    pushVtx(boldDx + x0 - italicOffset, yBottom, currentColor, u0,         vBottom, u0, u0 + uSize, v0, v0 + vSize);
-                    pushVtx(boldDx + x1 + italicOffset, yTop,    currentColor, u0 + uSize, vTop,    u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x0 + italicOffset, yTop, currentColor, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x0 - italicOffset, yBottom, currentColor, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x1 + italicOffset, yTop, currentColor, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
                     pushVtx(boldDx + x1 - italicOffset, yBottom, currentColor, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
                     pushQuadIdx(vStart + pushedQuads * 4);
                     pushedQuads++;
@@ -967,7 +967,10 @@ public class BatchingFontRenderer {
                     char cj = str.charAt(j);
                     if (cj == '\n') break;
                     int n2 = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, j); // STRICT
-                    if (n2 > 0) { j += n2; continue; }
+                    if (n2 > 0) {
+                        j += n2;
+                        continue;
+                    }
                     if (getCharWidthFine(cj) > 0) nextVisibleSameLine = true;
                     break;
                 }
