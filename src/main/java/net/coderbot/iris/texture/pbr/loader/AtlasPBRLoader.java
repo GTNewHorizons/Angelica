@@ -103,7 +103,11 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             NativeImage nativeImage = NativeImage.read(resource.getInputStream());
             AnimationMetadataSection animationMetadata = (AnimationMetadataSection) resource.getMetadata("animation");
             if (animationMetadata == null) {
-                animationMetadata = new AnimationMetadataSection(Lists.newArrayList(), -1, -1, -1);
+                final IResource resourceOriginal = resourceManager.getResource(imageLocation);
+                animationMetadata = (AnimationMetadataSection) resourceOriginal.getMetadata("animation");
+                if (animationMetadata == null) {
+                    animationMetadata = new AnimationMetadataSection(Lists.newArrayList(), -1, -1, -1);
+                }
             }
 
             final Pair<Integer, Integer> frameSize = this.getFrameSize(nativeImage.getWidth(), nativeImage.getHeight(), animationMetadata);
