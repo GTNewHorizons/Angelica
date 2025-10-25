@@ -22,7 +22,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -31,18 +34,26 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
  */
 public class BatchingFontRenderer {
 
-    /** The underlying FontRenderer object that's being accelerated */
+    /**
+     * The underlying FontRenderer object that's being accelerated
+     */
     protected FontRenderer underlying;
-    /** Array of width of all the characters in default.png */
+    /**
+     * Array of width of all the characters in default.png
+     */
     protected int[] charWidth = new int[256];
-    /** Array of the start/end column (in upper/lower nibble) for every glyph in the /font directory. */
+    /**
+     * Array of the start/end column (in upper/lower nibble) for every glyph in the /font directory.
+     */
     protected byte[] glyphWidth;
     /**
      * Array of RGB triplets defining the 16 standard chat colors followed by 16 darker version of the same colors for
      * drop shadows.
      */
     private int[] colorCode;
-    /** Location of the primary font atlas to bind. */
+    /**
+     * Location of the primary font atlas to bind.
+     */
     protected final ResourceLocation locationFontTexture;
 
     private final int AAMode;
@@ -55,6 +66,7 @@ public class BatchingFontRenderer {
     private static class FontAAShader {
 
         private static Program fontShader = null;
+
         public static Program getProgram() {
             if (fontShader == null) {
                 String vsh, fsh;
@@ -114,7 +126,9 @@ public class BatchingFontRenderer {
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
-    /**  */
+    /**
+     *
+     */
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
         final int oldCap = batchVtxPositions.capacity() / 2;
         if (vtxWriterIndex >= oldCap) {
@@ -261,6 +275,7 @@ public class BatchingFontRenderer {
     int lastActiveProgram;
     int fontAAModeLast = -1;
     int fontAAStrengthLast = -1;
+
     private void flushBatch() {
         // Sort&Draw
         batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
@@ -330,10 +345,10 @@ public class BatchingFontRenderer {
         GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
 
         if (isTextureEnabledBefore) {
-        	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         }
         if (textureChanged) {
-        	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
         // Clear for the next batch
@@ -373,204 +388,518 @@ public class BatchingFontRenderer {
 
     private static final char FORMATTING_CHAR = 167; // §
 
-    public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
-        final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
-        // noinspection SizeReplaceableByIsEmpty
-        if (string == null || string.length() == 0) {
-            return anchorX + (enableShadow ? 1.0f : 0.0f);
-        }
-        final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
+    public float drawString(
+        final float startX,
+        final float startY,
+        final int baseColorARGB,
+        final boolean drawShadow,
+        final boolean unicodeFlag,
+        final CharSequence text,
+        int textOffset,
+        int textLen
+    ) {
+        // Fast exits
+        if (text == null || text.length() == 0) return startX + (drawShadow ? 1.0f : 0.0f);
 
+        // Shadow color computed like vanilla
+        final int baseShadowARGB = (baseColorARGB & 0xFCFCFC) >> 2 | (baseColorARGB & 0xFF000000);
+
+        // Inform providers of current font assets (vanilla atlas vs unicode pages)
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
-        this.beginBatch();
-        float curX = anchorX;
+        // Clamp the slice we’ll draw
+        final int totalLen = text.length();
+        textOffset = MathHelper.clamp_int(textOffset, 0, totalLen);
+        textLen = MathHelper.clamp_int(textLen, 0, totalLen - textOffset);
+        if (textLen <= 0) return 0;
+
+        // Per-line vertical metrics (derived from vanilla FONT_HEIGHT + Angelica scaling)
+        final float scaleY = getGlyphScaleY();
+        final float lineHeight = (underlying.FONT_HEIGHT - 1.0f) * scaleY;
+        final float ascentY = startY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - scaleY / 2.0f); // top of glyphs
+        final float underlineYOffset = (underlying.FONT_HEIGHT - 1.0f) * scaleY;
+        final float strikethroughYOffset = ((underlying.FONT_HEIGHT / 2.0f) - 1.0f) * scaleY;
+        final float lineAdvance = underlying.FONT_HEIGHT; // vertical step between lines (vanilla baseline distance)
+
+        // Dynamic drawing state
+        float penX = startX;
+        float lineYOffset = 0.0f;       // how far we’ve moved down from the first line
+
+        int currentColor = baseColorARGB;
+        int currentShadow = baseShadowARGB;
+        boolean styleItalic = false;
+        boolean styleRandom = false;
+        boolean styleBold = false;
+        boolean styleStrike = false;
+        boolean styleUnder = false;
+        boolean styleRainbow = false;
+        boolean styleFlip = false;   // dinnerbone
+
+        final float boldDx = getShadowOffset();
+
+        int rainbowStep = 0;
+
+        // For nested RGB tag colors (<RRGGBB> ... </RRGGBB>)
+        final it.unimi.dsi.fastutil.ints.IntArrayList colorStack = new it.unimi.dsi.fastutil.ints.IntArrayList();
+        final it.unimi.dsi.fastutil.ints.IntArrayList shadowStack = new it.unimi.dsi.fastutil.ints.IntArrayList();
+
+        // Underline / strikethrough segments on the current line
+        float underlineStartX = 0.0f, underlineEndX = 0.0f;
+        float strikeStartX = 0.0f, strikeEndX = 0.0f;
+
+        // Editor “raw mode” highlighting support (unchanged behavior)
+        final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
+        int rawTokenSkip = 0;
+
+        beginBatch();
         try {
-            final int totalStringLength = string.length();
-            stringOffset = MathHelper.clamp_int(stringOffset, 0, totalStringLength);
-            stringLength = MathHelper.clamp_int(stringLength, 0, totalStringLength - stringOffset);
-            if (stringLength <= 0) {
-                return 0;
-            }
-            final int stringEnd = stringOffset + stringLength;
+            final int end = textOffset + textLen;
 
-            int curColor = color;
-            int curShadowColor = shadowColor;
-            boolean curItalic = false;
-            boolean curRandom = false;
-            boolean curBold = false;
-            boolean curStrikethrough = false;
-            boolean curUnderline = false;
+            for (int i = textOffset; i < end; i++) {
+                char ch = text.charAt(i);
 
-            final float glyphScaleY = getGlyphScaleY();
-            final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
-            final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
-
-            final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
-            float underlineStartX = 0.0f;
-            float underlineEndX = 0.0f;
-            final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
-            float strikethroughStartX = 0.0f;
-            float strikethroughEndX = 0.0f;
-
-            for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
-                char chr = string.charAt(charIdx);
-                if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
-                    final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
-                    charIdx++;
-
-                    if (curUnderline && underlineStartX != underlineEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        underlineStartX = underlineEndX;
+                // 1) Hard line break
+                if (ch == '\n') {
+                    // Flush underline/strike for this line
+                    if (styleUnder && underlineStartX != underlineEndX) {
+                        final int idx = idxWriterIndex;
+                        pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                            underlineEndX - underlineStartX, scaleY, currentColor);
+                        pushDrawCmd(idx, 6, null, false);
+                        underlineStartX = underlineEndX = penX;
                     }
-                    if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(
-                            strikethroughStartX,
-                            strikethroughY,
-                            strikethroughEndX - strikethroughStartX,
-                            glyphScaleY,
-                            curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        strikethroughStartX = strikethroughEndX;
+                    if (styleStrike && strikeStartX != strikeEndX) {
+                        final int idx = idxWriterIndex;
+                        pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                            strikeEndX - strikeStartX, scaleY, currentColor);
+                        pushDrawCmd(idx, 6, null, false);
+                        strikeStartX = strikeEndX = penX;
                     }
 
-                    final boolean is09 = charInRange(fmtCode, '0', '9');
-                    final boolean isAF = charInRange(fmtCode, 'a', 'f');
-                    if (is09 || isAF) {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-
-                        final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
-                        final int rgb = this.colorCode[colorIdx];
-                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                        final int shadowRgb = this.colorCode[colorIdx + 16];
-                        curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                    } else if (fmtCode == 'k') {
-                        curRandom = true;
-                    } else if (fmtCode == 'l') {
-                        curBold = true;
-                    } else if (fmtCode == 'm') {
-                        curStrikethrough = true;
-                        strikethroughStartX = curX - 1.0f;
-                        strikethroughEndX = strikethroughStartX;
-                    } else if (fmtCode == 'n') {
-                        curUnderline = true;
-                        underlineStartX = curX - 1.0f;
-                        underlineEndX = underlineStartX;
-                    } else if (fmtCode == 'o') {
-                        curItalic = true;
-                    } else if (fmtCode == 'r') {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-                        curColor = color;
-                        curShadowColor = shadowColor;
-                    }
-
+                    // Move pen to next line
+                    lineYOffset += lineAdvance;
+                    penX = startX;
                     continue;
                 }
 
-                if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
-                }
-
-                FontProvider fontProvider = FontStrategist.getFontProvider(chr, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
-
-                // Check ASCII space, NBSP, NNBSP
-                if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4 * this.getWhitespaceScale();
-                    continue;
-                }
-
-                final float uStart = fontProvider.getUStart(chr);
-                final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * getGlyphScaleX();
-                final float glyphW = fontProvider.getGlyphW(chr) * getGlyphScaleX();
-                final float uSz = fontProvider.getUSize(chr);
-                final float vSz = fontProvider.getVSize(chr);
-                final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
-                final float shadowOffset = fontProvider.getShadowOffset();
-                final ResourceLocation texture = fontProvider.getTexture(chr);
-
-                final int vtxId = vtxWriterIndex;
-                final int idxId = idxWriterIndex;
-
-                int vtxCount = 0;
-
-                if (enableShadow) {
-                    pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushQuadIdx(vtxId + vtxCount);
-                    vtxCount += 4;
-
-                    if (curBold) {
-                        final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushVtx(curX + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushQuadIdx(vtxId + vtxCount);
-                        vtxCount += 4;
+                // 2) Raw-mode token highlight (unchanged, just renamed vars)
+                if (rawMode) {
+                    if (rawTokenSkip > 0) {
+                        rawTokenSkip--;
+                    } else {
+                        int tokenLen = ColorCodeUtils.detectColorCodeLengthIgnoringRaw(text, i);
+                        if (tokenLen > 0) {
+                            float tokenW = angelica$measureLiteralWidth(text, i, tokenLen, end, unicodeFlag, styleBold);
+                            if (tokenW > 0) {
+                                final int idx = idxWriterIndex;
+                                pushUntexRect(penX, ascentY + lineYOffset - 1.0f,
+                                    tokenW, lineHeight + 2.0f,
+                                    angelica$getTokenHighlightColor(text, i));
+                                pushDrawCmd(idx, 6, null, false);
+                            }
+                            rawTokenSkip = Math.max(tokenLen - 1, 0);
+                        }
                     }
                 }
 
-                pushVtx(curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushQuadIdx(vtxId + vtxCount);
-                vtxCount += 4;
+                // 3) RGB and formatting codes
+                boolean consumedFormatting = false;
 
-                if (curBold) {
-                    pushVtx(shadowOffset + curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushQuadIdx(vtxId + vtxCount);
-                    vtxCount += 4;
+                // 3a) &RRGGBB
+                if (ch == '&' && (i + 6) < end) {
+                    final int rgb = ColorCodeUtils.parseHexColor(text, i + 1);
+                    if (rgb != -1) {
+                        // Close any active underline/strike segments before changing color
+                        if (styleUnder && underlineStartX != underlineEndX) {
+                            final int idx = idxWriterIndex;
+                            pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                                underlineEndX - underlineStartX, scaleY, currentColor);
+                            pushDrawCmd(idx, 6, null, false);
+                            underlineStartX = underlineEndX;
+                        }
+                        if (styleStrike && strikeStartX != strikeEndX) {
+                            final int idx = idxWriterIndex;
+                            pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                                strikeEndX - strikeStartX, scaleY, currentColor);
+                            pushDrawCmd(idx, 6, null, false);
+                            strikeStartX = strikeEndX;
+                        }
+
+                        // Apply new color and reset styles (vanilla behavior on color change)
+                        colorStack.clear();
+                        shadowStack.clear();
+                        currentColor = (currentColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                        currentShadow = (currentShadow & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                        styleRandom = false;
+                        styleBold = false;
+                        styleStrike = false;
+                        styleUnder = false;
+                        styleItalic = false;
+                        styleRainbow = false;
+                        styleFlip = false;
+
+                        consumedFormatting = true;
+                        if (!rawMode) {
+                            i += 6;
+                            continue;
+                        }
+                    }
                 }
 
-                pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
-                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
-                underlineEndX = curX;
-                strikethroughEndX = curX;
+                // 3b) <RRGGBB> or </RRGGBB>
+                if (!consumedFormatting && ch == '<') {
+                    // Close tag: </RRGGBB>
+                    if ((i + 9) <= end && text.charAt(i + 1) == '/' && text.charAt(i + 8) == '>') {
+                        if (ColorCodeUtils.isValidHexString(text, i + 2)) {
+                            if (styleUnder && underlineStartX != underlineEndX) {
+                                final int idx = idxWriterIndex;
+                                pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                                    underlineEndX - underlineStartX, scaleY, currentColor);
+                                pushDrawCmd(idx, 6, null, false);
+                                underlineStartX = underlineEndX;
+                            }
+                            if (styleStrike && strikeStartX != strikeEndX) {
+                                final int idx = idxWriterIndex;
+                                pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                                    strikeEndX - strikeStartX, scaleY, currentColor);
+                                pushDrawCmd(idx, 6, null, false);
+                                strikeStartX = strikeEndX;
+                            }
+
+                            if (!colorStack.isEmpty()) {
+                                currentColor = colorStack.removeInt(colorStack.size() - 1);
+                                currentShadow = shadowStack.removeInt(shadowStack.size() - 1);
+                            } else {
+                                currentColor = baseColorARGB;
+                                currentShadow = baseShadowARGB;
+                            }
+                            styleRandom = false;
+                            styleRainbow = false;
+                            consumedFormatting = true;
+
+                            if (!rawMode) {
+                                i += 8;
+                                continue;
+                            }
+                        }
+                    }
+                    // Open tag: <RRGGBB>
+                    else if ((i + 8) <= end && text.charAt(i + 7) == '>') {
+                        final int rgb = ColorCodeUtils.parseHexColor(text, i + 1);
+                        if (rgb != -1) {
+                            if (styleUnder && underlineStartX != underlineEndX) {
+                                final int idx = idxWriterIndex;
+                                pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                                    underlineEndX - underlineStartX, scaleY, currentColor);
+                                pushDrawCmd(idx, 6, null, false);
+                                underlineStartX = underlineEndX;
+                            }
+                            if (styleStrike && strikeStartX != strikeEndX) {
+                                final int idx = idxWriterIndex;
+                                pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                                    strikeEndX - strikeStartX, scaleY, currentColor);
+                                pushDrawCmd(idx, 6, null, false);
+                                strikeStartX = strikeEndX;
+                            }
+
+                            colorStack.add(currentColor);
+                            shadowStack.add(currentShadow);
+                            currentColor = (currentColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                            currentShadow = (currentShadow & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                            // Vanilla resets styles on color change
+                            styleRandom = false;
+                            styleBold = false;
+                            styleStrike = false;
+                            styleUnder = false;
+                            styleItalic = false;
+                            styleRainbow = false;
+                            styleFlip = false;
+
+                            consumedFormatting = true;
+                            if (!rawMode) {
+                                i += 7;
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // 3c) Traditional (§) or alias (&) formatting codes
+                if (!consumedFormatting && (ch == FORMATTING_CHAR || ch == '&') && (i + 1) < end) {
+                    final char next = text.charAt(i + 1);
+                    final char fmt = Character.toLowerCase(next);
+
+                    // treat '&' as literal unless it's a valid formatting code
+                    if (ch == '&' && !ColorCodeUtils.isFormattingCode(next)) {
+                        // fall-through to render literal '&'
+                    } else {
+                        i++; // consume code
+
+                        // before changing styles, flush current underline/strike segments
+                        if (styleUnder && underlineStartX != underlineEndX) {
+                            final int idx = idxWriterIndex;
+                            pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                                underlineEndX - underlineStartX, scaleY, currentColor);
+                            pushDrawCmd(idx, 6, null, false);
+                            underlineStartX = underlineEndX;
+                        }
+                        if (styleStrike && strikeStartX != strikeEndX) {
+                            final int idx = idxWriterIndex;
+                            pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                                strikeEndX - strikeStartX, scaleY, currentColor);
+                            pushDrawCmd(idx, 6, null, false);
+                            strikeStartX = strikeEndX;
+                        }
+
+                        final boolean is09 = (fmt >= '0' && fmt <= '9');
+                        final boolean isAF = (fmt >= 'a' && fmt <= 'f');
+
+                        if (is09 || isAF) {
+                            // Vanilla: color sets RGB and resets all styles
+                            final int colorIdx = is09 ? (fmt - '0') : (fmt - 'a' + 10);
+                            currentColor = (currentColor & 0xFF000000) | (this.colorCode[colorIdx] & 0x00FFFFFF);
+                            currentShadow = (currentShadow & 0xFF000000) | (this.colorCode[colorIdx + 16] & 0x00FFFFFF);
+
+                            styleRandom = false;
+                            styleBold = false;
+                            styleStrike = false;
+                            styleUnder = false;
+                            styleItalic = false;
+                            styleRainbow = false;
+                            styleFlip = false;
+                        } else if (fmt == 'k') {
+                            styleRandom = true;
+                        } else if (fmt == 'l') {
+                            styleBold = true;
+                        } else if (fmt == 'm') {
+                            styleStrike = true;
+                            strikeStartX = penX - 1.0f;
+                            strikeEndX = strikeStartX;
+                        } else if (fmt == 'n') {
+                            styleUnder = true;
+                            underlineStartX = penX - 1.0f;
+                            underlineEndX = underlineStartX;
+                        } else if (fmt == 'o') {
+                            styleItalic = true;
+                        } else if (fmt == 'g') {
+                            styleRainbow = true;
+                            rainbowStep = 0;
+                        } else if (fmt == 'h') {
+                            styleFlip = true;
+                        } else if (fmt == 'r') {
+                            styleRandom = false;
+                            styleBold = false;
+                            styleStrike = false;
+                            styleUnder = false;
+                            styleItalic = false;
+                            styleRainbow = false;
+                            styleFlip = false;
+                            rainbowStep = 0;
+                            currentColor = baseColorARGB;
+                            currentShadow = baseShadowARGB;
+                        }
+
+                        if (!rawMode) {
+                            continue; // formatting consumed
+                        } else {
+                            i--; // in rawMode we still draw the code char itself
+                        }
+                    }
+                }
+
+                // 4) Random obfuscation (after formatting has been applied)
+                if (!rawMode && styleRandom) {
+                    ch = FontProviderMC.get(this.isSGA).getRandomReplacement(ch);
+                }
+
+                // 5) Space (ASCII / NBSP / NNBSP) → just advance penX
+                if (ch == ' ' || ch == '\u00A0' || ch == '\u202F') {
+                    final float spaceAdvance = 4 * getWhitespaceScale()
+                        + (styleBold ? boldDx : 0.0f)
+                        + getGlyphSpacing();
+                    penX += spaceAdvance;
+
+                    // keep underline/strike segment ends in sync with caret movement
+                    if (styleUnder)
+                        underlineEndX = penX;
+                    if (styleStrike)
+                        strikeEndX = penX;
+                    continue;
+                }
+
+                // 6) Lookup glyph metrics/texture and push quads
+                final FontProvider fp = FontStrategist.getFontProvider(ch, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
+
+                // Rainbow (per glyph)
+                if (styleRainbow) {
+                    float hue = (rainbowStep * 15.0f) % 360.0f;
+                    int rgb = ColorCodeUtils.hsvToRgb(hue, 1.0f, 1.0f);
+                    currentColor = (currentColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                    currentShadow = (currentShadow & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+                    rainbowStep++;
+                }
+
+                final float u0 = fp.getUStart(ch);
+                final float v0 = fp.getVStart(ch);
+                final float uSize = fp.getUSize(ch);
+                final float vSize = fp.getVSize(ch);
+                final float advX = fp.getXAdvance(ch) * getGlyphScaleX();
+                final float gw = fp.getGlyphW(ch) * getGlyphScaleX();
+                final float italicOffset = styleItalic ? 1.0f : 0.0f;
+                final float shadowDx = fp.getShadowOffset();
+                final ResourceLocation tex = fp.getTexture(ch);
+
+                // Current baseline for this line
+                final float yTop = ascentY + lineYOffset;
+                final float yBottom = yTop + lineHeight;
+
+                // Texture V flip for dinnerbone (flip texture only, not geometry Y)
+                final float vTop = styleFlip ? (v0 + vSize) : v0;
+                final float vBottom = styleFlip ? v0 : (v0 + vSize);
+
+                final float x0 = penX;
+                final float x1 = penX + gw - 1.0f;
+
+                // push vertices (shadow → normal → bold offset)
+                final int vStart = vtxWriterIndex;
+                final int iStart = idxWriterIndex;
+                int pushedQuads = 0;
+
+                if (drawShadow) {
+                    pushVtx(x0 + italicOffset + shadowDx, yTop + shadowDx, currentShadow, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(x0 - italicOffset + shadowDx, yBottom + shadowDx, currentShadow, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(x1 + italicOffset + shadowDx, yTop + shadowDx, currentShadow, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(x1 - italicOffset + shadowDx, yBottom + shadowDx, currentShadow, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                    pushQuadIdx(vStart + pushedQuads * 4);
+                    pushedQuads++;
+
+                    if (styleBold) {
+                        final float shadowDxBold = shadowDx + boldDx; // not 2 * boldDx
+                        pushVtx(x0 + italicOffset + shadowDxBold, yTop + shadowDx, currentShadow, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x0 - italicOffset + shadowDxBold, yBottom + shadowDx, currentShadow, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x1 + italicOffset + shadowDxBold, yTop + shadowDx, currentShadow, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                        pushVtx(x1 - italicOffset + shadowDxBold, yBottom + shadowDx, currentShadow, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                        pushQuadIdx(vStart + pushedQuads * 4);
+                        pushedQuads++;
+                    }
+                }
+
+                // Normal glyph
+                pushVtx(x0 + italicOffset, yTop, currentColor, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                pushVtx(x0 - italicOffset, yBottom, currentColor, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                pushVtx(x1 + italicOffset, yTop, currentColor, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                pushVtx(x1 - italicOffset, yBottom, currentColor, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                pushQuadIdx(vStart + pushedQuads * 4);
+                pushedQuads++;
+
+                if (styleBold) {
+                    pushVtx(boldDx + x0 + italicOffset, yTop, currentColor, u0, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x0 - italicOffset, yBottom, currentColor, u0, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x1 + italicOffset, yTop, currentColor, u0 + uSize, vTop, u0, u0 + uSize, v0, v0 + vSize);
+                    pushVtx(boldDx + x1 - italicOffset, yBottom, currentColor, u0 + uSize, vBottom, u0, u0 + uSize, v0, v0 + vSize);
+                    pushQuadIdx(vStart + pushedQuads * 4);
+                    pushedQuads++;
+                }
+
+                // Record draw for this glyph batch
+                pushDrawCmd(iStart, pushedQuads * 6, tex, ch > 255);
+
+                // Advance caret (include spacing; bold adds an extra shadow offset like vanilla)
+                penX += (advX + (styleBold ? boldDx : 0.0f)) + getGlyphSpacing();
+
+                // Keep decoration extents in sync with caret
+                underlineEndX = penX;
+                strikeEndX = penX;
             }
 
-            if (curUnderline && underlineStartX != underlineEndX) {
-                final int ulIdx = idxWriterIndex;
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                pushDrawCmd(ulIdx, 6, null, false);
+            // 7) Flush remaining underline/strike on the last line
+            if (styleUnder && underlineStartX != underlineEndX) {
+                final int idx = idxWriterIndex;
+                pushUntexRect(underlineStartX, ascentY + lineYOffset + underlineYOffset,
+                    underlineEndX - underlineStartX, scaleY, currentColor);
+                pushDrawCmd(idx, 6, null, false);
             }
-            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                final int ulIdx = idxWriterIndex;
-                pushUntexRect(
-                    strikethroughStartX,
-                    strikethroughY,
-                    strikethroughEndX - strikethroughStartX,
-                    glyphScaleY,
-                    curColor);
-                pushDrawCmd(ulIdx, 6, null, false);
+            if (styleStrike && strikeStartX != strikeEndX) {
+                final int idx = idxWriterIndex;
+                pushUntexRect(strikeStartX, ascentY + lineYOffset + strikethroughYOffset,
+                    strikeEndX - strikeStartX, scaleY, currentColor);
+                pushDrawCmd(idx, 6, null, false);
             }
 
         } finally {
-            this.endBatch();
+            endBatch();
         }
-        return curX + (enableShadow ? 1.0f : 0.0f);
+
+        // Return the final pen position (matches vanilla’s “right edge”), with +1 if shadow was drawn.
+        return penX + (drawShadow ? 1.0f : 0.0f);
+    }
+
+
+    private float angelica$measureLiteralWidth(CharSequence string, int start, int tokenLength, int stringEnd, boolean unicodeFlag, boolean initialBoldState) {
+        float width = 0.0f;
+        boolean isBold = initialBoldState;
+        final int limit = Math.min(start + tokenLength, stringEnd);
+
+        for (int i = start; i < limit; i++) {
+            char ch = string.charAt(i);
+
+            // Check if this character is the start of a formatting code that affects bold
+            if ((ch == '&' || ch == FORMATTING_CHAR) && i + 1 < limit) {
+                char nextChar = string.charAt(i + 1);
+                char fmtCode = Character.toLowerCase(nextChar);
+
+                // Check if it's a valid formatting code
+                if (ch == '&' && !ColorCodeUtils.isFormattingCode(nextChar)) {
+                    // Not a valid formatting code, continue
+                } else if (fmtCode == 'l') {
+                    isBold = true;
+                } else if (fmtCode == 'r') {
+                    isBold = false;
+                } else if ((fmtCode >= '0' && fmtCode <= '9') || (fmtCode >= 'a' && fmtCode <= 'f')) {
+                    // In Angelica, color codes don't reset bold (preserves formatting)
+                    // So we keep isBold unchanged
+                }
+            }
+
+            FontProvider provider = FontStrategist.getFontProvider(ch, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
+            float xAdvance = provider.getXAdvance(ch) * getGlyphScaleX();
+            width += xAdvance;
+            if (isBold) {
+                width += this.getShadowOffset();
+            }
+            width += getGlyphSpacing();
+        }
+        return width;
+    }
+
+    private int angelica$getTokenHighlightColor(CharSequence string, int index) {
+        char c = string.charAt(index);
+        if (c == FORMATTING_CHAR || (c == '&' && index + 1 < string.length() && ColorCodeUtils.isFormattingCode(string.charAt(index + 1)))) {
+            return 0x304080FF;
+        }
+        if (c == '&') {
+            return 0x3039C86F;
+        }
+        if (c == '<') {
+            if (index + 1 < string.length() && string.charAt(index + 1) == '/') {
+                return 0x30FF8C5A;
+            }
+            return 0x305A8CFF;
+        }
+        return 0x30222222;
     }
 
     public float getCharWidthFine(char chr) {
-        if (chr == FORMATTING_CHAR) { return -1; }
+        if (chr == FORMATTING_CHAR && !AngelicaFontRenderContext.isRawTextRendering()) {
+            return -1;
+        }
+
+        // Note: We DO NOT return -1 for & or < here anymore
+        // Width calculation is handled properly in getStringWidthWithRgb()
+        // This allows & and < to render normally when they're not part of valid color codes
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
             return 4 * this.getWhitespaceScale();
@@ -579,5 +908,76 @@ public class BatchingFontRenderer {
         FontProvider fp = FontStrategist.getFontProvider(chr, isSGA, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    /**
+     * Calculate the width of a string, properly handling RGB color codes.
+     * This method correctly skips over:
+     * - Traditional § codes (2 chars)
+     * - &RRGGBB format (7 chars)
+     * - <RRGGBB> format (9 chars)
+     * - </RRGGBB> format (10 chars)
+     *
+     * @param str The string to measure
+     * @return The width in pixels
+     */
+    public float getStringWidthWithRgb(CharSequence str) {
+        if (str == null || str.length() == 0) {
+            return 0.0f;
+        }
+
+        float width = 0.0f, maxWidth = 0.0f;
+        boolean isBold = false;
+        final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
+
+        for (int i = 0; i < str.length(); i++) {
+            char ch = str.charAt(i);
+
+            if (ch == '\n') {
+                if (width > maxWidth) maxWidth = width;
+                width = 0.0f;
+                isBold = false; // vanilla-style reset across lines
+                continue;
+            }
+
+            // STRICT: only fully-formed color/format codes are zero-width
+            int codeLen = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, i);
+            if (codeLen > 0) {
+                if (codeLen == 2 && i + 1 < str.length()) {
+                    char fmt = Character.toLowerCase(str.charAt(i + 1));
+                    if (fmt == 'l') {
+                        isBold = true;
+                    } else if (fmt == 'r' || (fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                        isBold = false;
+                    }
+                }
+                i += codeLen - 1; // skip whole token
+                continue;
+            }
+
+            float charW = getCharWidthFine(ch);
+            if (charW > 0) {
+                width += charW;
+                if (isBold) width += this.getShadowOffset();
+
+                // Add spacing only if a visible glyph follows on the same line
+                boolean nextVisibleSameLine = false;
+                int j = i + 1;
+                while (j < str.length()) {
+                    char cj = str.charAt(j);
+                    if (cj == '\n') break;
+                    int n2 = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, j); // STRICT
+                    if (n2 > 0) {
+                        j += n2;
+                        continue;
+                    }
+                    if (getCharWidthFine(cj) > 0) nextVisibleSameLine = true;
+                    break;
+                }
+                if (nextVisibleSameLine) width += getGlyphSpacing();
+            }
+        }
+
+        return Math.max(width, maxWidth);
     }
 }

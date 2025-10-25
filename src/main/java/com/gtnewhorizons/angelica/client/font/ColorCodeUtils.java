@@ -1,0 +1,243 @@
+package com.gtnewhorizons.angelica.client.font;
+
+/**
+ * Utility class for parsing RGB color codes in text.
+ * Supports multiple formats:
+ * - Traditional: §0-9a-f (handled elsewhere)
+ * - Ampersand: &RRGGBB (6 hex digits)
+ * - Tag style: <RRGGBB>text</RRGGBB>
+ */
+public class ColorCodeUtils {
+
+    /**
+     * Check if a character is a valid hexadecimal digit (0-9, a-f, A-F)
+     */
+    public static boolean isValidHexChar(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
+    /**
+     * Check if a string contains exactly 6 valid hexadecimal characters
+     */
+    public static boolean isValidHexString(String hex) {
+        if (hex == null || hex.length() != 6) {
+            return false;
+        }
+        for (int i = 0; i < 6; i++) {
+            if (!isValidHexChar(hex.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if a character represents a traditional Minecraft formatting code (0-9, a-f, k-o, r)
+     * Also includes custom codes: g (rainbow), h (dinnerbone)
+     */
+    public static boolean isFormattingCode(char c) {
+        char lower = Character.toLowerCase(c);
+        return (lower >= '0' && lower <= '9')
+            || (lower >= 'a' && lower <= 'f')
+            || lower == 'g' // rainbow
+            || lower == 'h' // dinnerbone
+            || (lower >= 'k' && lower <= 'o')
+            || lower == 'r';
+    }
+
+    /**
+     * Check if 6 characters starting at position are valid hex
+     */
+    public static boolean isValidHexString(CharSequence str, int start) {
+        if (str == null || start < 0 || start + 6 > str.length()) {
+            return false;
+        }
+        for (int i = 0; i < 6; i++) {
+            if (!isValidHexChar(str.charAt(start + i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Parse a 6-digit hexadecimal string to an RGB integer (0xRRGGBB)
+     *
+     * @param hex String containing exactly 6 hex digits
+     * @return RGB value as integer, or -1 if invalid
+     */
+    public static int parseHexColor(String hex) {
+        if (!isValidHexString(hex)) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(hex, 16) & 0x00FFFFFF;
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Parse 6 hex characters from a CharSequence starting at position
+     *
+     * @param str   The string to parse
+     * @param start Starting position
+     * @return RGB value as integer, or -1 if invalid
+     */
+    public static int parseHexColor(CharSequence str, int start) {
+        if (!isValidHexString(str, start)) {
+            return -1;
+        }
+        try {
+            String hex = str.subSequence(start, start + 6).toString();
+            return Integer.parseInt(hex, 16) & 0x00FFFFFF;
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Detect the length of a color code starting at position, or 0 if none.
+     *
+     * @param str The string to check
+     * @param pos Position to check
+     * @return Length of color code:
+     * - 7 for &RRGGBB format (& + 6 hex)
+     * - 8 for <RRGGBB> format (< + 6 hex + >)
+     * - 9 for </RRGGBB> format (</ + 6 hex + >)
+     * - 2 for §X format (handled elsewhere, but counted here)
+     * - 0 for no color code
+     */
+    public static int detectColorCodeLength(CharSequence str, int pos) {
+        return detectColorCodeLengthInternal(str, pos, AngelicaFontRenderContext.isRawTextRendering());
+    }
+
+    public static int detectColorCodeLengthIgnoringRaw(CharSequence str, int pos) {
+        return detectColorCodeLengthInternal(str, pos, false);
+    }
+
+    private static int detectColorCodeLengthInternal(CharSequence str, int pos, boolean skipDueToRaw) {
+        if (str == null || pos < 0 || pos >= str.length())
+            return 0;
+
+        if (skipDueToRaw)
+            return 0;
+
+        final int len = str.length();
+        char c = str.charAt(pos);
+
+        // §x (traditional)
+        if (c == 167 && pos + 1 < len) {
+            return 2;
+        }
+
+        // &RRGGBB
+        if (c == '&' && pos + 7 <= len) {
+            if (isValidHexString(str, pos + 1)) {
+                return 7; // & + 6 hex
+            }
+        }
+
+        // &x (alias for traditional formatting)
+        if (c == '&' && pos + 1 < len && isFormattingCode(str.charAt(pos + 1))) {
+            return 2;
+        }
+
+        // </RRGGBB>  -> 9 chars total
+        // indices: pos:'<', pos+1:'/', pos+2..pos+7: 6 hex, pos+8:'>'
+        if (c == '<' && pos + 9 <= len && pos + 8 < len
+            && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>'
+            && isValidHexString(str, pos + 2)) {
+            return 9;
+        }
+
+        // <RRGGBB>   -> 8 chars total
+        // indices: pos:'<', pos+1..pos+6: 6 hex, pos+7:'>'
+        if (c == '<' && pos + 8 <= len && pos + 7 < len
+            && str.charAt(pos + 7) == '>' && isValidHexString(str, pos + 1)) {
+            return 8;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Calculate the shadow color for a given RGB color.
+     * Shadow is typically darker (divided by 4 per component).
+     *
+     * @param rgb The base RGB color (0xRRGGBB)
+     * @return Shadow RGB color (0xRRGGBB)
+     */
+    public static int calculateShadowColor(int rgb) {
+        return (rgb & 0xFCFCFC) >> 2;
+    }
+
+    /**
+     * Convert HSV (Hue, Saturation, Value) color to RGB.
+     *
+     * @param hue        Hue in degrees (0-360)
+     * @param saturation Saturation (0.0-1.0)
+     * @param value      Value/Brightness (0.0-1.0)
+     * @return RGB color as integer (0xRRGGBB)
+     */
+    public static int hsvToRgb(float hue, float saturation, float value) {
+        // Normalize hue to 0-360 range
+        hue = hue % 360.0f;
+        if (hue < 0) hue += 360.0f;
+
+        // If saturation is 0, it's grayscale
+        if (saturation == 0) {
+            int gray = (int) (value * 255);
+            return (gray << 16) | (gray << 8) | gray;
+        }
+
+        // Calculate which sector (0-5) of the color wheel we're in
+        float h = hue / 60.0f;
+        int sector = (int) Math.floor(h);
+        float fractionalSector = h - sector;
+
+        float p = value * (1.0f - saturation);
+        float q = value * (1.0f - saturation * fractionalSector);
+        float t = value * (1.0f - saturation * (1.0f - fractionalSector));
+
+        float r, g, b;
+        switch (sector) {
+            case 0:
+                r = value;
+                g = t;
+                b = p;
+                break;
+            case 1:
+                r = q;
+                g = value;
+                b = p;
+                break;
+            case 2:
+                r = p;
+                g = value;
+                b = t;
+                break;
+            case 3:
+                r = p;
+                g = q;
+                b = value;
+                break;
+            case 4:
+                r = t;
+                g = p;
+                b = value;
+                break;
+            default:
+                r = value;
+                g = p;
+                b = q;
+                break; // sector 5
+        }
+
+        int red = (int) (r * 255);
+        int green = (int) (g * 255);
+        int blue = (int) (b * 255);
+
+        return (red << 16) | (green << 8) | blue;
+    }
+}

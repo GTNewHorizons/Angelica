@@ -8,6 +8,8 @@ import java.util.Set;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 
+import com.gtnewhorizons.angelica.client.font.AngelicaFontRenderContext;
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
@@ -178,10 +180,75 @@ public class FontUtils {
         float totalWidth = 0.0f;
         if (s != null) {
             boolean isLink = false;
+            final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
             for (int i = 0; i < s.length(); i++) {
                 char c = s.charAt(i);
+
+                // Check for RGB color codes first (&RRGGBB, <RRGGBB>, </RRGGBB>)
+                // These need to be skipped entirely for width calculation
+                if (!rawMode && c == '&' && i + 6 < s.length()) {
+                    // Check for &RRGGBB format
+                    boolean validHex = true;
+                    for (int j = 1; j <= 6; j++) {
+                        char hexChar = s.charAt(i + j);
+                        if (!((hexChar >= '0' && hexChar <= '9') ||
+                              (hexChar >= 'a' && hexChar <= 'f') ||
+                              (hexChar >= 'A' && hexChar <= 'F'))) {
+                            validHex = false;
+                            break;
+                        }
+                    }
+                    if (validHex) {
+                        i += 6; // Skip the entire &RRGGBB code
+                        continue;
+                    }
+                } else if (!rawMode && c == '<' && i + 9 <= s.length() && s.charAt(i + 1) == '/' && s.charAt(i + 8) == '>') {
+                    // Check for </RRGGBB> format
+                    boolean validHex = true;
+                    for (int j = 2; j <= 7; j++) {
+                        char hexChar = s.charAt(i + j);
+                        if (!((hexChar >= '0' && hexChar <= '9') ||
+                              (hexChar >= 'a' && hexChar <= 'f') ||
+                              (hexChar >= 'A' && hexChar <= 'F'))) {
+                            validHex = false;
+                            break;
+                        }
+                    }
+                    if (validHex) {
+                        i += 8; // Skip the entire </RRGGBB> tag
+                        continue;
+                    }
+                } else if (!rawMode && c == '<' && i + 8 <= s.length() && s.charAt(i + 7) == '>') {
+                    // Check for <RRGGBB> format
+                    boolean validHex = true;
+                    for (int j = 1; j <= 6; j++) {
+                        char hexChar = s.charAt(i + j);
+                        if (!((hexChar >= '0' && hexChar <= '9') ||
+                              (hexChar >= 'a' && hexChar <= 'f') ||
+                              (hexChar >= 'A' && hexChar <= 'F'))) {
+                            validHex = false;
+                            break;
+                        }
+                    }
+                    if (validHex) {
+                        i += 7; // Skip the entire <RRGGBB> tag
+                        continue;
+                    }
+                } else if (!rawMode && c == '&' && i < s.length() - 1 && ColorCodeUtils.isFormattingCode(s.charAt(i + 1))) {
+                    char fmt = Character.toLowerCase(s.charAt(++i));
+                    if (fmt == 'l') {
+                        isLink = true;
+                    } else if (fmt == 'r') {
+                        isLink = false;
+                    } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                        isLink = false;
+                    }
+                    continue;
+                }
+
+                // Handle traditional & formatting codes
                 float cWidth = getCharWidthf(fontRenderer, c);
-                if (cWidth < 0.0f && i < s.length() - 1) {
+                if (!rawMode && cWidth < 0.0f && i < s.length() - 1) {
                     i++;
                     c = s.charAt(i);
                     if (c == 'l' || c == 'L') {
