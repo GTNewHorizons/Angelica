@@ -21,18 +21,20 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
     if (finalU < tB.x || finalU > tB.y || finalV < tB.z || finalV > tB.w) {
-        return 0;
+        return 0.0f;
     }
     return weight * texture2D(sampler, vec2(finalU, finalV)).a;
 }
 
 void main() {
     vec2 texCoords = gl_TexCoord[0].st;
+    vec2 texScaled = texCoords * strength;
     vec4 col = color;
+    float original_alpha = col.a;
     if (texCoords.s != 0 || texCoords.t != 0) {
         float res = 0;
-        float fu = strength * fwidth(texCoords.x);
-        float fv = strength * fwidth(texCoords.y);
+        float fu = abs(dFdx(texScaled.x)) + abs(dFdy(texScaled.x));
+        float fv = abs(dFdx(texScaled.y)) + abs(dFdy(texScaled.y));
         totalWt = 0;
         if (aaMode == 1) {
             res += txSample(texCoords,  2,  6, fu, fv);
@@ -58,7 +60,7 @@ void main() {
             res += txSample(texCoords, -7, -8, fu, fv);
         }
         res /= totalWt;
-        col.a = res;
+        col.a = original_alpha * res;
     }
 
     gl_FragColor = col;

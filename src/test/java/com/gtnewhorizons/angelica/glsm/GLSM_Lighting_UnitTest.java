@@ -295,7 +295,7 @@ public class GLSM_Lighting_UnitTest {
         GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
         newf4b(0.8F, 0.6F, 0.4F, 0.0F);
         GLStateManager.glMaterial(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, f4b);
-        if (GLStateManager.isNVIDIA()) {
+        if (GLStateManager.vendorIsNVIDIA()) {
             verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.4F, 0.6F}, "");
         } else {
             verifyMaterialState(GL11.GL_FRONT, GL11.GL_COLOR_INDEXES, new float[]{0.8F, 0.6F, 0.4F}, "");
