@@ -1,8 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import java.nio.ByteBuffer;
+import java.util.Map;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
@@ -23,9 +25,6 @@ import net.coderbot.iris.sodium.block_context.ChunkBuildBuffersExt;
 import net.coderbot.iris.sodium.block_context.ContextAwareVertexWriter;
 import net.minecraft.block.Block;
 import org.lwjgl.BufferUtils;
-
-import java.nio.ByteBuffer;
-import java.util.Map;
 
 /**
  * A collection of temporary buffers for each worker thread which will be used to build chunk meshes for given render

@@ -1,13 +1,13 @@
 package me.jellysquid.mods.sodium.client.world;
 
-import java.util.Arrays;
-
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import cpw.mods.fml.common.Optional;
+import java.util.Arrays;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.world.cloned.ChunkRenderContext;
 import me.jellysquid.mods.sodium.client.world.cloned.ClonedChunkSection;
@@ -19,7 +19,6 @@ import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.EnumSkyBlock;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -464,17 +463,17 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         return z << TABLE_BITS | x;
     }
 
-    // Modern checks if the sky is darkened, which only happens in the nether. However, I think 1.7.10's hasNoSky is
-    // close enough.
-    public float getBrightness(ForgeDirection direction, boolean shaded) {
+    /// Modern checks if the sky is darkened, which only happens in the nether. However, I think 1.7.10's hasNoSky is
+    /// close enough.
+    public float getBrightness(ModelQuadFacing direction, boolean shaded) {
 
         if (!shaded) {
             return world.provider.hasNoSky ? 0.9f : 1.0f;
         }
         return switch (direction) {
-            case DOWN -> 0.5f;
-            case UP -> 1.0f;
-            case NORTH, SOUTH -> 0.8f;
+            case NEG_Y -> 0.5f;
+            case POS_Y -> 1.0f;
+            case NEG_Z, POS_Z -> 0.8f;
             default -> 0.6f;
         };
     }

@@ -1,11 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
-import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
-import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
-
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import java.util.EnumMap;
 import java.util.Map;
+import me.jellysquid.mods.sodium.client.gl.buffer.VertexData;
+import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
 
 public class ChunkMeshData {
     public static final ChunkMeshData EMPTY = new ChunkMeshData();

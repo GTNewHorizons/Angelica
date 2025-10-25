@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.vertex.formats.particle.writer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizons.angelica.compat.toremove.VertexConsumer;
 import me.jellysquid.mods.sodium.client.model.vertex.fallback.VertexWriterFallback;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.particle.ParticleVertexSink;
-import me.jellysquid.mods.sodium.client.util.color.ColorABGR;
 
 
 public class ParticleVertexWriterFallback extends VertexWriterFallback implements ParticleVertexSink {
