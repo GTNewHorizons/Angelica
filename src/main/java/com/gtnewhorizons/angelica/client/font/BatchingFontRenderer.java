@@ -114,6 +114,9 @@ public class BatchingFontRenderer {
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
+    private int blendSrcRGB = GL11.GL_SRC_ALPHA;
+    private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
+
     /**  */
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
         final int oldCap = batchVtxPositions.capacity() / 2;
@@ -273,7 +276,7 @@ public class BatchingFontRenderer {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
         if (FontConfig.fontAAMode != 0) {
@@ -579,5 +582,15 @@ public class BatchingFontRenderer {
         FontProvider fp = FontStrategist.getFontProvider(chr, isSGA, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    public void overrideBlendFunc(int srcRgb, int dstRgb) {
+        blendSrcRGB = srcRgb;
+        blendDstRGB = dstRgb;
+    }
+
+    public void resetBlendFunc() {
+        blendSrcRGB = GL11.GL_SRC_ALPHA;
+        blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 }
