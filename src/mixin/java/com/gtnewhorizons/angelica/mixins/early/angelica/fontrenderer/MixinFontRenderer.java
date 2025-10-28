@@ -1,13 +1,15 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
+import com.gtnewhorizons.angelica.client.font.AngelicaFontRenderContext;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
+import com.gtnewhorizons.angelica.client.font.FormattedTextMetrics;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.settings.GameSettings;
-import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
@@ -21,7 +23,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Constant;
 
-import java.util.ArrayDeque;
 import java.util.Random;
 
 /**
@@ -121,7 +122,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
-        boolean unicodeMode, CallbackInfo ci) {
+                                        boolean unicodeMode, CallbackInfo ci) {
         angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.glyphWidth, this.colorCode, this.locationFontTexture);
     }
 
@@ -178,9 +179,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             this.posX = (float)x;
             this.posY = (float)y;
-
-            float adv = angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());
-            return MathHelper.ceiling_float_int(adv);
+            return (int) angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());
         }
     }
 
@@ -199,8 +198,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
     public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {
-        float w = angelica$getBatcher().getCharWidthFine(c);
-        cir.setReturnValue(MathHelper.ceiling_float_int(w));
+        cir.setReturnValue((int) angelica$getBatcher().getCharWidthFine(c));
     }
 
     /**
@@ -214,7 +212,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             cir.setReturnValue(0);
             return;
         }
-        cir.setReturnValue(MathHelper.ceiling_float_int(angelica$getBatcher().getStringWidthWithRgb(text)));
+        cir.setReturnValue((int) angelica$getBatcher().getStringWidthWithRgb(text));
     }
 
     @Override
@@ -249,84 +247,23 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     /**
      * Intercept sizeStringToWidth to properly handle RGB color codes.
-     * This method finds the substring that fits within the given width.
+     * This method finds the split index that fits within the given width.
      * Without this, RGB codes can be split across lines in chat/text wrapping.
      */
     @Inject(method = "sizeStringToWidth", at = @At("HEAD"), cancellable = true)
     public void angelica$sizeStringToWidthRgbAware(String str, int maxWidth, CallbackInfoReturnable<Integer> cir) {
-        if (str == null || str.isEmpty()) {
-            cir.setReturnValue(0);
-            return;
+        cir.setReturnValue(angelica$computeSizeStringToWidthIndex(str, maxWidth));
+    }
+
+    @Unique
+    private int angelica$computeSizeStringToWidthIndex(String str, int maxWidth) {
+        if (str == null || str.isEmpty() || maxWidth <= 0) {
+            return 0;
         }
 
-        final BatchingFontRenderer batcher = angelica$getBatcher();
-        final int length = str.length();
-        float currentWidth = 0.0f;
-        int lastSafePosition = 0; // after full color code / normal char
-        int lastSpace = -1;       // word wrap fallback
-        boolean isBold = false;
-
-        for (int i = 0; i < length; ) {
-            // Hard line break
-            if (str.charAt(i) == '\n') {
-                cir.setReturnValue(i);
-                return;
-            }
-
-            // STRICT color/format token
-            final int codeLen = com.gtnewhorizons.angelica.client.font.ColorCodeUtils.detectColorCodeLength(str, i);
-            if (codeLen > 0) {
-                if (codeLen == 2 && i + 1 < length) {
-                    final char fmt = Character.toLowerCase(str.charAt(i + 1));
-                    if (fmt == 'l') {
-                        isBold = true;
-                    } else if (fmt == 'r' || (fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
-                        isBold = false;
-                    }
-                }
-                i += codeLen;
-                lastSafePosition = i; // never break inside tokens
-                continue;
-            }
-
-            // Normal char
-            final char c = str.charAt(i);
-            if (c == ' ')
-                lastSpace = i;
-
-            float charW = batcher.getCharWidthFine(c);
-            if (charW < 0) charW = 0;
-
-            float next = currentWidth + charW;
-            if (isBold && charW > 0) next += batcher.getShadowOffset();
-
-            // Add spacing only if another visible glyph follows on this line
-            boolean nextVisibleSameLine = false;
-            int j = i + 1;
-            while (j < length) {
-                char cj = str.charAt(j);
-                if (cj == '\n') break;
-                int n2 = com.gtnewhorizons.angelica.client.font.ColorCodeUtils.detectColorCodeLength(str, j); // STRICT
-                if (n2 > 0) { j += n2; continue; }
-                if (batcher.getCharWidthFine(cj) > 0) nextVisibleSameLine = true;
-                break;
-            }
-            if (nextVisibleSameLine) next += batcher.getGlyphSpacing();
-
-            if (next > maxWidth) {
-                int bp = (lastSpace >= 0 ? lastSpace : lastSafePosition);
-                if (bp <= 0) bp = i;
-                cir.setReturnValue(bp);
-                return;
-            }
-
-            currentWidth = next;
-            i++;
-            lastSafePosition = i;
-        }
-
-        // Entire string fits
-        cir.setReturnValue(length);
+        return FormattedTextMetrics.computeLineBreakIndex(str, maxWidth,
+            AngelicaFontRenderContext.isRawTextRendering(), angelica$getBatcher()::getCharWidthFine,
+            angelica$getBatcher().getGlyphSpacing(), angelica$getBatcher().getShadowOffset());
     }
 
     /**
@@ -340,84 +277,73 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             return;
         }
 
-        final BatchingFontRenderer batcher = angelica$getBatcher();
-
         if (!reverse) {
-            // Forward: reuse sizeStringToWidth index (now STRICT)
-            CallbackInfoReturnable<Integer> idxCir = new CallbackInfoReturnable<>("angelica$sizeStringToWidth", true);
-            angelica$sizeStringToWidthRgbAware(text, width, idxCir);
-            int idx = idxCir.getReturnValue();
-            idx = Math.min(Math.max(idx, 0), text.length());
-            cir.setReturnValue(text.substring(0, idx));
+            // Forward direction - reuse sizeStringToWidth logic
+            int endIndex = angelica$computeSizeStringToWidthIndex(text, width);
+            cir.setReturnValue(text.substring(0, Math.min(endIndex, text.length())));
             return;
         }
 
-        // Reverse: trim from the end, stop at newline, include spacing/bold.
-        // IMPORTANT: do NOT treat partial <RGB as zero-width here.
-        final int length = text.length();
+        // Reverse direction - trim from the end
+        int length = text.length();
         float currentWidth = 0.0f;
         int firstSafePosition = length;
         boolean isBold = false;
 
         for (int i = length - 1; i >= 0; ) {
-            final char c = text.charAt(i);
+            // Check for color codes (need to scan backwards carefully)
+            // For reverse, we'll be less aggressive and just avoid breaking simple cases
+            char c = text.charAt(i);
 
-            // Stop at explicit newline
+            // Check if we're at the end of an RGB code
+            if (i >= 6 && (c == '5' || c == 'F' || c == 'f' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+                // Might be end of &RRGGBB, check backwards
+                if (i >= 6 && text.charAt(i - 6) == '&') {
+                    boolean validHex = true;
+                    for (int j = i - 5; j <= i; j++) {
+                        char hexChar = text.charAt(j);
+                        if (!ColorCodeUtils.isValidHexChar(hexChar)) {
+                            validHex = false;
+                            break;
+                        }
+                    }
+                    if (validHex) {
+                        // Skip the entire &RRGGBB
+                        i -= 7;
+                        firstSafePosition = i + 1;
+                        continue;
+                    }
+                }
+            }
+
             if (c == '\n') {
                 cir.setReturnValue(text.substring(i + 1));
                 return;
             }
 
-            // Reverse skip for &RRGGBB (easy to detect backwards)
-            if (i >= 6 && text.charAt(i - 6) == '&') {
-                boolean validHex = true;
-                for (int j = i - 5; j <= i; j++) {
-                    if (!com.gtnewhorizons.angelica.client.font.ColorCodeUtils.isValidHexChar(text.charAt(j))) {
-                        validHex = false; break;
-                    }
-                }
-                if (validHex) {
-                    i -= 7;
-                    firstSafePosition = i + 1;
-                    continue;
-                }
+            float charWidth = angelica$getBatcher().getCharWidthFine(c);
+
+            if (charWidth < 0) {
+                charWidth = 0;
             }
 
-            // Reverse scan: basic §/& formatting impacts bold (STRICT for alias)
-            if ((c == 167 || c == '&') && i + 1 < length) {
-                char next = text.charAt(i + 1);
-                if (!(c == '&' && !com.gtnewhorizons.angelica.client.font.ColorCodeUtils.isFormattingCode(next))) {
-                    char fmt = Character.toLowerCase(next);
-                    if (fmt == 'l') isBold = true;
-                    else if (fmt == 'r' || (fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) isBold = false;
-                    i--; // step over the pair
-                    firstSafePosition = i + 1;
-                    continue;
-                }
+            float nextWidth = currentWidth + charWidth;
+            if (isBold && charWidth > 0) {
+                nextWidth += angelica$getBatcher().getShadowOffset();
             }
 
-            // NOTE: We DO NOT special-case partial "<RGB" here.
-            // Only fully-formed tags were zero-width going forward,
-            // so partials must behave like literal text while typing.
-
-            float charW = batcher.getCharWidthFine(c);
-            if (charW < 0) charW = 0;
-
-            float next = currentWidth + charW;
-            if (isBold && charW > 0) next += batcher.getShadowOffset();
-            next += batcher.getGlyphSpacing();
-
-            if (next > width) {
+            if (nextWidth > width) {
+                // Would exceed width - return string from first safe position
                 cir.setReturnValue(text.substring(firstSafePosition));
                 return;
             }
 
-            currentWidth = next;
+            currentWidth = nextWidth;
             i--;
             firstSafePosition = i + 1;
         }
 
-        // Entire string fits from start
+        // Entire string fits
         cir.setReturnValue(text);
     }
 
@@ -448,6 +374,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             cir.setReturnValue("");
             return;
         }
+
         cir.setReturnValue(angelica$wrapFormattedStringToWidth(str, wrapWidth));
     }
 
@@ -457,89 +384,24 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
      */
     @Unique
     private String angelica$wrapFormattedStringToWidth(String str, int wrapWidth) {
-        CallbackInfoReturnable<Integer> cir = new CallbackInfoReturnable<>("angelica$sizeStringToWidth", true);
-        angelica$sizeStringToWidthRgbAware(str, wrapWidth, cir);
-        final int breakPoint = Math.max(0, Math.min(cir.getReturnValue(), str.length()));
+        int breakPoint = angelica$computeSizeStringToWidthIndex(str, wrapWidth);
 
-        if (str.length() <= breakPoint) {
-            return str; // Everything fits
+        if (breakPoint >= str.length()) {
+            // Everything fits
+            return str;
         } else {
-            final String firstPart = str.substring(0, breakPoint);
-            final char charAtBreak = str.charAt(breakPoint);
-            final boolean isSpaceOrNewline = (charAtBreak == ' ' || charAtBreak == '\n');
+            // Need to wrap
+            String firstPart = str.substring(0, breakPoint);
+            char charAtBreak = str.charAt(breakPoint);
+            boolean isSpaceOrNewline = charAtBreak == ' ' || charAtBreak == '\n';
 
-            final String formattingCodes = angelica$extractFormatFromString(firstPart);
-            final String remainder = formattingCodes + str.substring(breakPoint + (isSpaceOrNewline ? 1 : 0));
+            // Extract formatting codes from first part and prepend to remainder
+            String formattingCodes = ColorCodeUtils.extractFormatFromString(firstPart);
+            String remainder = formattingCodes + str.substring(breakPoint + (isSpaceOrNewline ? 1 : 0));
+
+            // Recurse on remainder
             return firstPart + "\n" + angelica$wrapFormattedStringToWidth(remainder, wrapWidth);
         }
-    }
-
-    /**
-     * RGB-aware version of vanilla's getFormatFromString.
-     * Extracts active formatting codes from a string (RGB colors + traditional formatting).
-     */
-    @Unique
-    private static String angelica$extractFormatFromString(String str) {
-        String currentColorCode = null;
-        StringBuilder styleCodes = new StringBuilder();
-        ArrayDeque<String> colorStack = new ArrayDeque<>();
-
-        for (int i = 0; i < str.length(); ) {
-            int codeLen = com.gtnewhorizons.angelica.client.font.ColorCodeUtils.detectColorCodeLengthIgnoringRaw(str, i);
-
-            if (codeLen > 0) {
-                char firstChar = str.charAt(i);
-                String code = str.substring(i, i + codeLen);
-
-                if (codeLen == 7 && firstChar == '&') {
-                    // &RRGGBB - inline RGB colour, clears prior colour stack
-                    currentColorCode = code;
-                    colorStack.clear();
-                    styleCodes.setLength(0);
-                } else if (codeLen == 9 && firstChar == '<') {
-                    // <RRGGBB> - push current colour (if any) then apply new colour
-                    if (currentColorCode != null) {
-                        colorStack.push(currentColorCode);
-                    }
-                    currentColorCode = code;
-                    styleCodes.setLength(0);
-                } else if (codeLen == 10 && firstChar == '<') {
-                    // </RRGGBB> - pop back to previous colour (or none)
-                    currentColorCode = colorStack.isEmpty() ? null : colorStack.pop();
-                    styleCodes.setLength(0);
-                } else if (codeLen == 2) {
-                    // Traditional formatting code
-                    char fmt = Character.toLowerCase(str.charAt(i + 1));
-
-                    if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
-                        currentColorCode = code;
-                        colorStack.clear();
-                        styleCodes.setLength(0);
-                    } else if (fmt == 'r') {
-                        currentColorCode = null;
-                        colorStack.clear();
-                        styleCodes.setLength(0);
-                    } else if (fmt == 'l' || fmt == 'o' || fmt == 'n' || fmt == 'm' || fmt == 'k') {
-                        styleCodes.append(code);
-                    }
-                }
-
-                i += codeLen;
-                continue;
-            }
-
-            i++;
-        }
-
-        StringBuilder result = new StringBuilder();
-        if (currentColorCode != null) {
-            result.append(currentColorCode);
-        }
-        if (styleCodes.length() > 0) {
-            result.append(styleCodes);
-        }
-
-        return result.toString();
     }
 
     @Inject(method = "getFormatFromString", at = @At("HEAD"), cancellable = true)
@@ -549,6 +411,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             return;
         }
 
-        cir.setReturnValue(angelica$extractFormatFromString(text));
+        cir.setReturnValue(ColorCodeUtils.extractFormatFromString(text));
     }
 }

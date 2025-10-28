@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import java.util.ArrayDeque;
+
 /**
  * Utility class for parsing RGB color codes in text.
  * Supports multiple formats:
@@ -62,7 +64,6 @@ public class ColorCodeUtils {
 
     /**
      * Parse a 6-digit hexadecimal string to an RGB integer (0xRRGGBB)
-     *
      * @param hex String containing exactly 6 hex digits
      * @return RGB value as integer, or -1 if invalid
      */
@@ -79,8 +80,7 @@ public class ColorCodeUtils {
 
     /**
      * Parse 6 hex characters from a CharSequence starting at position
-     *
-     * @param str   The string to parse
+     * @param str The string to parse
      * @param start Starting position
      * @return RGB value as integer, or -1 if invalid
      */
@@ -102,11 +102,11 @@ public class ColorCodeUtils {
      * @param str The string to check
      * @param pos Position to check
      * @return Length of color code:
-     * - 7 for &RRGGBB format (& + 6 hex)
-     * - 8 for <RRGGBB> format (< + 6 hex + >)
-     * - 9 for </RRGGBB> format (</ + 6 hex + >)
-     * - 2 for §X format (handled elsewhere, but counted here)
-     * - 0 for no color code
+     *         - 7 for &RRGGBB format (& + 6 hex)
+     *         - 8 for <RRGGBB> format (< + 6 hex + >)
+     *         - 9 for </RRGGBB> format (</ + 6 hex + >)
+     *         - 2 for §X format (handled elsewhere, but counted here)
+     *         - 0 for no color code
      */
     public static int detectColorCodeLength(CharSequence str, int pos) {
         return detectColorCodeLengthInternal(str, pos, AngelicaFontRenderContext.isRawTextRendering());
@@ -117,45 +117,45 @@ public class ColorCodeUtils {
     }
 
     private static int detectColorCodeLengthInternal(CharSequence str, int pos, boolean skipDueToRaw) {
-        if (str == null || pos < 0 || pos >= str.length())
+        if (str == null || pos < 0 || pos >= str.length()) {
             return 0;
+        }
 
-        if (skipDueToRaw)
+        if (skipDueToRaw) {
             return 0;
+        }
 
-        final int len = str.length();
         char c = str.charAt(pos);
 
-        // §x (traditional)
-        if (c == 167 && pos + 1 < len) {
+        // Check for §X format (traditional Minecraft)
+        if (c == 167 && pos + 1 < str.length()) { // 167 is §
             return 2;
         }
 
-        // &RRGGBB
-        if (c == '&' && pos + 7 <= len) {
+        // Check for &RRGGBB format
+        if (c == '&' && pos + 7 <= str.length()) {
             if (isValidHexString(str, pos + 1)) {
-                return 7; // & + 6 hex
+                return 7;
             }
         }
 
-        // &x (alias for traditional formatting)
-        if (c == '&' && pos + 1 < len && isFormattingCode(str.charAt(pos + 1))) {
+        // Check for &X format (traditional formatting alias)
+        if (c == '&' && pos + 1 < str.length() && isFormattingCode(str.charAt(pos + 1))) {
             return 2;
         }
 
-        // </RRGGBB>  -> 9 chars total
-        // indices: pos:'<', pos+1:'/', pos+2..pos+7: 6 hex, pos+8:'>'
-        if (c == '<' && pos + 9 <= len && pos + 8 < len
-            && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>'
-            && isValidHexString(str, pos + 2)) {
-            return 9;
+        // Check for </RRGGBB> format (closing tag)
+        if (c == '<' && pos + 9 <= str.length() && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>') {
+            if (isValidHexString(str, pos + 2)) {
+                return 9;
+            }
         }
 
-        // <RRGGBB>   -> 8 chars total
-        // indices: pos:'<', pos+1..pos+6: 6 hex, pos+7:'>'
-        if (c == '<' && pos + 8 <= len && pos + 7 < len
-            && str.charAt(pos + 7) == '>' && isValidHexString(str, pos + 1)) {
-            return 8;
+        // Check for <RRGGBB> format (opening tag)
+        if (c == '<' && pos + 8 <= str.length() && str.charAt(pos + 7) == '>') {
+            if (isValidHexString(str, pos + 1)) {
+                return 8;
+            }
         }
 
         return 0;
@@ -175,9 +175,9 @@ public class ColorCodeUtils {
     /**
      * Convert HSV (Hue, Saturation, Value) color to RGB.
      *
-     * @param hue        Hue in degrees (0-360)
+     * @param hue Hue in degrees (0-360)
      * @param saturation Saturation (0.0-1.0)
-     * @param value      Value/Brightness (0.0-1.0)
+     * @param value Value/Brightness (0.0-1.0)
      * @return RGB color as integer (0xRRGGBB)
      */
     public static int hsvToRgb(float hue, float saturation, float value) {
@@ -202,36 +202,12 @@ public class ColorCodeUtils {
 
         float r, g, b;
         switch (sector) {
-            case 0:
-                r = value;
-                g = t;
-                b = p;
-                break;
-            case 1:
-                r = q;
-                g = value;
-                b = p;
-                break;
-            case 2:
-                r = p;
-                g = value;
-                b = t;
-                break;
-            case 3:
-                r = p;
-                g = q;
-                b = value;
-                break;
-            case 4:
-                r = t;
-                g = p;
-                b = value;
-                break;
-            default:
-                r = value;
-                g = p;
-                b = q;
-                break; // sector 5
+            case 0:  r = value; g = t;     b = p;     break;
+            case 1:  r = q;     g = value; b = p;     break;
+            case 2:  r = p;     g = value; b = t;     break;
+            case 3:  r = p;     g = q;     b = value; break;
+            case 4:  r = t;     g = p;     b = value; break;
+            default: r = value; g = p;     b = q;     break; // sector 5
         }
 
         int red = (int) (r * 255);
@@ -239,5 +215,98 @@ public class ColorCodeUtils {
         int blue = (int) (b * 255);
 
         return (red << 16) | (green << 8) | blue;
+    }
+
+    /**
+     * Extract the currently active formatting codes from {@code str}.
+     *
+     * @param str The formatted string.
+     * @return A string containing the colour code (if any) followed by active style codes.
+     */
+    public static String extractFormatFromString(String str) {
+        if (str == null || str.isEmpty()) {
+            return "";
+        }
+
+        String currentColorCode = null;
+        StringBuilder styleCodes = new StringBuilder();
+        ArrayDeque<String> colorStack = new ArrayDeque<>();
+
+        for (int i = 0; i < str.length(); ) {
+            int codeLen = detectColorCodeLengthIgnoringRaw(str, i);
+
+            if (codeLen > 0) {
+                char firstChar = str.charAt(i);
+                String code = str.substring(i, i + codeLen);
+
+                if (codeLen == 7 && firstChar == '&') {
+                    currentColorCode = code;
+                    colorStack.clear();
+                    styleCodes.setLength(0);
+                } else if (codeLen == 8 && firstChar == '<') {
+                    colorStack.push(currentColorCode);
+                    currentColorCode = code;
+                    styleCodes.setLength(0);
+                } else if (codeLen == 9 && firstChar == '<') {
+                    currentColorCode = colorStack.isEmpty() ? null : colorStack.pop();
+                    styleCodes.setLength(0);
+                } else if (codeLen == 2) {
+                    char fmt = Character.toLowerCase(str.charAt(i + 1));
+
+                    if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                        currentColorCode = code;
+                        colorStack.clear();
+                        styleCodes.setLength(0);
+                    } else if (fmt == 'r') {
+                        currentColorCode = null;
+                        colorStack.clear();
+                        styleCodes.setLength(0);
+                    } else if (fmt == 'l' || fmt == 'o' || fmt == 'n' || fmt == 'm' || fmt == 'k') {
+                        styleCodes.append(code);
+                    }
+                }
+
+                i += codeLen;
+                continue;
+            }
+
+            i++;
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (currentColorCode != null) {
+            result.append(currentColorCode);
+        }
+        if (styleCodes.length() > 0) {
+            result.append(styleCodes);
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Remove all recognised colour/formatting codes from {@code input}.
+     *
+     * @param input Text that may contain formatting codes.
+     * @return The input with all colour codes removed, or {@code null} if the input was {@code null}.
+     */
+    public static String stripColorCodes(CharSequence input) {
+        if (input == null) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder(input.length());
+        for (int index = 0; index < input.length(); ) {
+            int codeLen = detectColorCodeLengthIgnoringRaw(input, index);
+            if (codeLen > 0) {
+                index += codeLen;
+                continue;
+            }
+
+            builder.append(input.charAt(index));
+            index++;
+        }
+
+        return builder.toString();
     }
 }
