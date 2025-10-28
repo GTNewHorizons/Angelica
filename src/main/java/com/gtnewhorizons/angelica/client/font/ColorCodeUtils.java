@@ -244,7 +244,9 @@ public class ColorCodeUtils {
                     colorStack.clear();
                     styleCodes.setLength(0);
                 } else if (codeLen == 8 && firstChar == '<') {
-                    colorStack.push(currentColorCode);
+                    if (currentColorCode != null) {
+                        colorStack.push(currentColorCode);
+                    }
                     currentColorCode = code;
                     styleCodes.setLength(0);
                 } else if (codeLen == 9 && firstChar == '<') {
