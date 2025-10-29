@@ -8,6 +8,8 @@ import java.util.Set;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 
+import com.gtnewhorizons.angelica.client.font.AngelicaFontRenderContext;
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
@@ -85,7 +87,7 @@ public class FontUtils {
     }
 
     public static float[] computeCharWidthsf(FontRenderer fontRenderer, ResourceLocation filename, BufferedImage image,
-        int[] rgb, int[] charWidth) {
+                                             int[] rgb, int[] charWidth) {
         float[] charWidthf = new float[charWidth.length];
         if (!((FontRendererExpansion) fontRenderer).getIsHD()) {
             for (int i = 0; i < charWidth.length; i++) {
@@ -178,10 +180,29 @@ public class FontUtils {
         float totalWidth = 0.0f;
         if (s != null) {
             boolean isLink = false;
-            for (int i = 0; i < s.length(); i++) {
+            final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
+            for (int i = 0; i < s.length(); ) {
+                if (!rawMode) {
+                    int codeLen = ColorCodeUtils.detectColorCodeLength(s, i);
+                    if (codeLen > 0) {
+                        if (codeLen == 2 && i + 1 < s.length()) {
+                            char fmt = Character.toLowerCase(s.charAt(i + 1));
+                            if (fmt == 'l') {
+                                isLink = true;
+                            } else if (fmt == 'r') {
+                                isLink = false;
+                            } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                                isLink = false;
+                            }
+                        }
+                        i += codeLen;
+                        continue;
+                    }
+                }
+
                 char c = s.charAt(i);
                 float cWidth = getCharWidthf(fontRenderer, c);
-                if (cWidth < 0.0f && i < s.length() - 1) {
+                if (!rawMode && cWidth < 0.0f && i < s.length() - 1) {
                     i++;
                     c = s.charAt(i);
                     if (c == 'l' || c == 'L') {
@@ -195,6 +216,7 @@ public class FontUtils {
                 if (isLink) {
                     totalWidth++;
                 }
+                i++;
             }
         }
         return totalWidth;

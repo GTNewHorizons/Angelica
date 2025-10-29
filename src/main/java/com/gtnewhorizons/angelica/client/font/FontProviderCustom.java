@@ -69,12 +69,19 @@ public final class FontProviderCustom implements FontProvider {
         }
         font = availableFonts[fontPos].deriveFont(currentFontQuality);
     }
+
     private static class InstLoader {
-        static final FontProviderCustom instance0 = new FontProviderCustom((byte)0);
-        static final FontProviderCustom instance1 = new FontProviderCustom((byte)1);
+        static final FontProviderCustom instance0 = new FontProviderCustom((byte) 0);
+        static final FontProviderCustom instance1 = new FontProviderCustom((byte) 1);
     }
-    public static FontProviderCustom getPrimary() { return InstLoader.instance0; }
-    public static FontProviderCustom getFallback() { return InstLoader.instance1; }
+
+    public static FontProviderCustom getPrimary() {
+        return InstLoader.instance0;
+    }
+
+    public static FontProviderCustom getFallback() {
+        return InstLoader.instance1;
+    }
 
     public void reloadFont(int fontID) {
         currentFontQuality = FontConfig.customFontQuality;
@@ -150,7 +157,7 @@ public final class FontProviderCustom implements FontProvider {
             int width = 0;
             int actualChars = 0;
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) {
                     width += (int) (separator + fm.charWidth(ch));
                     actualChars++;
@@ -171,7 +178,7 @@ public final class FontProviderCustom implements FontProvider {
                     maxRowWidth = Math.max(maxRowWidth, width);
                     width = 0;
                 }
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) {
                     width += (int) (separator + fm.charWidth(ch));
                     actualChars++;
@@ -201,8 +208,10 @@ public final class FontProviderCustom implements FontProvider {
             int imgX = (int) separator; // position in pixels
 
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
-                if (!font.canDisplay(ch)) { continue; }
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
+                if (!font.canDisplay(ch)) {
+                    continue;
+                }
 
                 if (tileX >= atlasTilesX) {
                     tileX = 0;
@@ -249,7 +258,9 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public boolean isGlyphAvailable(char chr) {
-        if (font == null) { return false; }
+        if (font == null) {
+            return false;
+        }
         return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
     }
 
