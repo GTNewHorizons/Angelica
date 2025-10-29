@@ -113,11 +113,6 @@ public class FinalPassRenderer {
 		flippedAtLeastOnce.forEach(i -> {
 			final int target = i;
 
-			// Skip buffer 6 (material mask) - gbuffers always write to MAIN, never flipped
-			if (target == 6) {
-				return;
-			}
-
 			// Skip buffers that are currently flipped - they use ping-pong, no swap needed
 			if (flippedBuffers.contains(target)) {
 				return;
