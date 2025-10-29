@@ -223,6 +223,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         boolean hasForcedFrustum = false;
         boolean spectator = isSpectatorMode();
         Camera camera = new Camera(mc.renderViewEntity, partialTicks);
+        frustum.setPosition(camera.getPos().x, camera.getPos().y, camera.getPos().z);
 
         try {
             this.renderer.updateChunks(camera, frustum, hasForcedFrustum, sodium$frame++, spectator);
