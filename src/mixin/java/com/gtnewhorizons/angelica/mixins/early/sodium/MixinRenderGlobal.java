@@ -136,7 +136,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public boolean updateRenderers(EntityLivingBase e, boolean b){
-        AngelicaRenderQueue.processTasks(1);
+        final int BUDGET_NS = 5 * 1000 * 1000;
+        long startTime = System.nanoTime();
+        for (;;) {
+            int tasksRan = AngelicaRenderQueue.processTasks(1);
+            if (tasksRan == 0)
+                break;
+            long elapsedTime = System.nanoTime() - startTime;
+            if (elapsedTime > BUDGET_NS)
+                break;
+        }
         return true;
     }
 
