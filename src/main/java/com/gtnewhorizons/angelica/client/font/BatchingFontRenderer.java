@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -86,6 +87,8 @@ public class BatchingFontRenderer {
         }
 
         this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
+        // noinspection deprecation
+        this.isSplash = underlying instanceof SplashProgress.SplashFontRenderer;
 
         this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
 
@@ -116,6 +119,9 @@ public class BatchingFontRenderer {
     private FloatBuffer batchVtxTexBounds = memAllocFloat(INITIAL_BATCH_SIZE * 4);
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
+
+    private int blendSrcRGB = GL11.GL_SRC_ALPHA;
+    private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
     /**  */
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
@@ -276,7 +282,7 @@ public class BatchingFontRenderer {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
         if (FontConfig.fontAAMode != 0) {
@@ -586,5 +592,15 @@ public class BatchingFontRenderer {
         FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    public void overrideBlendFunc(int srcRgb, int dstRgb) {
+        blendSrcRGB = srcRgb;
+        blendDstRGB = dstRgb;
+    }
+
+    public void resetBlendFunc() {
+        blendSrcRGB = GL11.GL_SRC_ALPHA;
+        blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 }
