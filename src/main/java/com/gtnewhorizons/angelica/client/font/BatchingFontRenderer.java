@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -88,7 +87,7 @@ public class BatchingFontRenderer {
 
         this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
 
-        this.isSplash = isSplashFontRendererActive(underlying);
+        this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
@@ -99,19 +98,6 @@ public class BatchingFontRenderer {
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
         texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
-    }
-
-    private static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {
-        // noinspection deprecation
-        boolean active = fontRenderer instanceof SplashProgress.SplashFontRenderer;
-
-        try {
-            Class<?> customSplashClass = Class.forName("gkappa.modernsplash.CustomSplash$SplashFontRenderer");
-            active = active || customSplashClass.isInstance(fontRenderer);
-        } catch (ClassNotFoundException ignored) {
-        }
-
-        return active;
     }
 
     // === Batched rendering
