@@ -87,8 +87,7 @@ public class BatchingFontRenderer {
         }
 
         this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
-        // noinspection deprecation
-        this.isSplash = underlying instanceof SplashProgress.SplashFontRenderer;
+        this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;

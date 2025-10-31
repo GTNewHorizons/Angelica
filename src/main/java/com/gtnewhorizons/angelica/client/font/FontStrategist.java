@@ -3,8 +3,10 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
+import cpw.mods.fml.client.SplashProgress;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.resources.DefaultResourcePack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -124,5 +126,18 @@ public class FontStrategist {
             if (primaryFontFound && fallbackFontFound) { break; }
         }
         customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
+    }
+
+    public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {
+        // noinspection deprecation
+        boolean active = fontRenderer instanceof SplashProgress.SplashFontRenderer;
+
+        try {
+            Class<?> customSplashClass = Class.forName("gkappa.modernsplash.CustomSplash$SplashFontRenderer");
+            active = active || customSplashClass.isInstance(fontRenderer);
+        } catch (ClassNotFoundException ignored) {
+        }
+
+        return active;
     }
 }
