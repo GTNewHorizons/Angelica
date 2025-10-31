@@ -26,13 +26,14 @@ public class GLSM_VAO_UnitTest {
     void testVAOPreservesStates() {
         boolean vertexStateEnabled = GL11.glIsEnabled(GL11.GL_VERTEX_ARRAY);
 
-        int defaultVertexSize = 2;
-        int defaultVertexType = GL11.GL_FLOAT;
-        int defaultVertexStride = 2 * 4;
+        // Stride = vertexSize * byte size of the type (= 4 for both GL_FLOAT and GL_INT)
+        final int defaultVertexSize = 2;
+        final int defaultVertexType = GL11.GL_FLOAT;
+        final int defaultVertexStride = defaultVertexSize * 4;
 
-        int vaoVertexSize = 4;
-        int vaoVertexType = GL11.GL_INT;
-        int vaoVertexStride = 4 * 4;
+        final int vaoVertexSize = 4;
+        final int vaoVertexType = GL11.GL_INT;
+        final int vaoVertexStride = vaoVertexSize * 4;
 
         // Set the vertex attrib to a defined state
         int vbo = GL15.glGenBuffers();
