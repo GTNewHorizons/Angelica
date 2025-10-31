@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.util.math;
 
-import me.jellysquid.mods.sodium.client.util.Norm3b;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -21,14 +21,14 @@ public class MatrixUtil {
     public static int transformPackedNormal(int norm, Matrix3f matrix) {
         Matrix3fExtended mat = MatrixUtil.getExtendedMatrix(matrix);
 
-        float normX1 = Norm3b.unpackX(norm);
-        float normY1 = Norm3b.unpackY(norm);
-        float normZ1 = Norm3b.unpackZ(norm);
+        float normX1 = NormI8.unpackX(norm);
+        float normY1 = NormI8.unpackY(norm);
+        float normZ1 = NormI8.unpackZ(norm);
 
         float normX2 = mat.transformVecX(normX1, normY1, normZ1);
         float normY2 = mat.transformVecY(normX1, normY1, normZ1);
         float normZ2 = mat.transformVecZ(normX1, normY1, normZ1);
 
-        return Norm3b.pack(normX2, normY2, normZ2);
+        return NormI8.pack(normX2, normY2, normZ2);
     }
 }

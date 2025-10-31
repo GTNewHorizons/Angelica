@@ -27,20 +27,17 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.QuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import java.nio.ByteBuffer;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
-
-import java.nio.ByteBuffer;
-import java.util.List;
 
 public class ItemRenderListManager {
     // Least used element is at position 0. This is in theory slightly faster.
@@ -100,7 +97,7 @@ public class ItemRenderListManager {
     }
 
     public static void post(CapturingTessellator tessellator, VertexBuffer vbo) {
-        final List<QuadView> quads = TessellatorManager.stopCapturingToPooledQuads();
+        final var quads = TessellatorManager.stopCapturingToPooledQuads();
         final int size = quads.size();
 
         final int needed = (DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize() * size) << 2;

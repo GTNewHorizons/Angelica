@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.occlusion;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
-import net.minecraftforge.common.util.ForgeDirection;
 
 public class BlockOcclusionCache {
     private static final byte UNCACHED_VALUE = (byte) 127;
@@ -25,12 +25,12 @@ public class BlockOcclusionCache {
      * @param facing The facing direction of the side to check
      * @return True if the block side facing {@param dir} is not occluded, otherwise false
      */
-    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPos pos, ForgeDirection facing) {
-        if (facing == ForgeDirection.UNKNOWN)
+    public boolean shouldDrawSide(Block block, int meta, IBlockAccess view, BlockPos pos, ModelQuadFacing facing) {
+        if (facing == ModelQuadFacing.UNASSIGNED)
             return true;
 
         final BlockPos adjPos = this.cpos;
-        adjPos.set(pos.getX() + facing.offsetX, pos.getY() + facing.offsetY, pos.getZ() + facing.offsetZ);
+        adjPos.set(pos.getX() + facing.getStepX(), pos.getY() + facing.getStepY(), pos.getZ() + facing.getStepZ());
 
         final Block adjState = view.getBlock(adjPos.x, adjPos.y, adjPos.z);
 
