@@ -28,11 +28,11 @@ public class GLSM_VAO_UnitTest {
 
         int defaultVertexSize = 2;
         int defaultVertexType = GL11.GL_FLOAT;
-        int defaultVertexStride = 0;
+        int defaultVertexStride = 2 * 4;
 
         int vaoVertexSize = 4;
         int vaoVertexType = GL11.GL_INT;
-        int vaoVertexStride = 1;
+        int vaoVertexStride = 4 * 4;
 
         // Set the vertex attrib to a defined state
         int vbo = GL15.glGenBuffers();
