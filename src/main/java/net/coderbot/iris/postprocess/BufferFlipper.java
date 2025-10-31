@@ -13,13 +13,6 @@ public class BufferFlipper {
 	}
 
 	public void flip(int target) {
-		// colortex6 carries material/mask data that the gbuffer populates every frame.
-		// If we allow it to flip, the alternate texture remains empty and later copy-back
-		// wipes the fresh mask, breaking TAA mask lookups (notably on foliage/transparents).
-		if (target == 6) {
-			return;
-		}
-
 		if (!flippedBuffers.remove(target)) {
 			// If the target wasn't in the set, add it to the set.
 			flippedBuffers.add(target);
