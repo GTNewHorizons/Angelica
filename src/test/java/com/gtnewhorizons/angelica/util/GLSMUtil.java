@@ -254,4 +254,13 @@ public class GLSMUtil {
         // Reset draw buffer
         GLStateManager.glDrawBuffer(GLStateManager.DEFAULT_DRAW_BUFFER);
     }
+
+
+    public static void setClientState(int glCap, boolean state) {
+        if (state) {
+            GL11.glEnableClientState(glCap);
+        } else {
+            GL11.glDisableClientState(glCap);
+        }
+    }
 }
