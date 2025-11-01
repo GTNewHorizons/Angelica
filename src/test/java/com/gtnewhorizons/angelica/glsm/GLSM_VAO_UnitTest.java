@@ -20,7 +20,6 @@ public class GLSM_VAO_UnitTest {
     void testDefaultStates() {
         verifyState(GL30.GL_VERTEX_ARRAY_BINDING, 0, "GL_VERTEX_ARRAY_BINDING Initial State");
         verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "GL_CLIENT_ACTIVE_TEXTURE Initial State");
-        verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "GL_CLIENT_ACTIVE_TEXTURE Initial State");
         testClientStates();
     }
 
@@ -40,7 +39,6 @@ public class GLSM_VAO_UnitTest {
 
         GL13.glClientActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "GL_CLIENT_ACTIVE_TEXTURE - Setup");
-
 
         // Set the vertex attrib to a defined state
         int vbo = GL15.glGenBuffers();
