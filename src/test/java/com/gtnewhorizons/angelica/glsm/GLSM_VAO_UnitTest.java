@@ -47,7 +47,7 @@ public class GLSM_VAO_UnitTest {
         GL11.glVertexPointer(defaultVertexSize, defaultVertexType, defaultVertexStride, 0);
 
         GLSMUtil.setClientState(GL11.GL_NORMAL_ARRAY, true);
-        verifyState(GL11.GL_NORMAL_ARRAY, true, "GL_NORMAL_ARRAY - Setup");
+        verifyState(GL11.GL_NORMAL_ARRAY, true, "GL_NORMAL_ARRAY - Enabled");
 
         verifyState(GL11.GL_VERTEX_ARRAY_SIZE, defaultVertexSize, "GL_VERTEX_ARRAY_SIZE - Setup");
         verifyState(GL11.GL_VERTEX_ARRAY_TYPE, defaultVertexType, "GL_VERTEX_ARRAY_TYPE - Setup");
@@ -73,7 +73,7 @@ public class GLSM_VAO_UnitTest {
         testClientStates();
 
         GLSMUtil.setClientState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled);
-        verifyState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled, "GL_VERTEX_ARRAY - Set");
+        verifyState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled, "GL_VERTEX_ARRAY - Enabled");
 
         GL11.glVertexPointer(vaoVertexSize, vaoVertexType, vaoVertexStride, 0);
 
