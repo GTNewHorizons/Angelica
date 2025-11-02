@@ -32,6 +32,7 @@ public abstract class ChunkRenderBuildTask<T extends ChunkGraphicsState> {
     public abstract ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers,
                                                      CancellationSource cancellationSource);
 
+    public boolean willRenderInMainThread(ChunkRenderCacheLocal cache) { return false; };
     /**
      * Called on the main render thread when the task's execution returns. The implementation should release any
      * resources it's still holding onto at this point.
