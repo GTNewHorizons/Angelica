@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -50,7 +51,8 @@ public class BatchingFontRenderer {
     private final int texBoundAttrLocation;
     private final int fontShaderId;
 
-    private final boolean isSGA;
+    final boolean isSGA;
+    final boolean isSplash;
 
     private static class FontAAShader {
 
@@ -85,6 +87,7 @@ public class BatchingFontRenderer {
         }
 
         this.isSGA = Objects.equals(this.locationFontTexture.getResourcePath(), "textures/font/ascii_sga.png");
+        this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
@@ -113,6 +116,9 @@ public class BatchingFontRenderer {
     private FloatBuffer batchVtxTexBounds = memAllocFloat(INITIAL_BATCH_SIZE * 4);
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
+
+    private int blendSrcRGB = GL11.GL_SRC_ALPHA;
+    private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
     /**  */
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
@@ -273,7 +279,7 @@ public class BatchingFontRenderer {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
         GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
         if (FontConfig.fontAAMode != 0) {
@@ -351,24 +357,28 @@ public class BatchingFontRenderer {
         return (what >= fromInclusive) && (what <= toInclusive);
     }
 
+    public boolean forceDefaults() {
+        return this.isSGA || this.isSplash;
+    }
+
     public float getGlyphScaleX() {
-        return this.isSGA ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
+        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
     }
 
     public float getGlyphScaleY() {
-        return this.isSGA ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
+        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
     }
 
     public float getGlyphSpacing() {
-        return (this.isSGA ? 1 : FontConfig.glyphSpacing);
+        return forceDefaults() ? 0 : FontConfig.glyphSpacing;
     }
 
     public float getWhitespaceScale() {
-        return (this.isSGA ? 1 : FontConfig.whitespaceScale);
+        return forceDefaults() ? 1 : FontConfig.whitespaceScale;
     }
 
     public float getShadowOffset() {
-        return (this.isSGA ? 1 : FontConfig.fontShadowOffset);
+        return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
     }
 
     private static final char FORMATTING_CHAR = 167; // §
@@ -483,7 +493,7 @@ public class BatchingFontRenderer {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
 
-                FontProvider fontProvider = FontStrategist.getFontProvider(chr, this.isSGA, FontConfig.enableCustomFont, unicodeFlag);
+                FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
@@ -576,8 +586,18 @@ public class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        FontProvider fp = FontStrategist.getFontProvider(chr, isSGA, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    public void overrideBlendFunc(int srcRgb, int dstRgb) {
+        blendSrcRGB = srcRgb;
+        blendDstRGB = dstRgb;
+    }
+
+    public void resetBlendFunc() {
+        blendSrcRGB = GL11.GL_SRC_ALPHA;
+        blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 }
