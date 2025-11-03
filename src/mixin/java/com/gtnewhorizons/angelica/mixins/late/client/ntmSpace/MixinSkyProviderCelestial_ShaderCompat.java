@@ -107,11 +107,11 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	 *  <p>
 	 *  - [All Shaders] Some celestial bodies appear as heavily (70-90%) translucent
 	 * <p> 
-	 * - [Complementary 5/6.x] Stars render on top of celestial bodies; not behind them
+	 * - [Complementary 5.5/6.x] Stars render on top of celestial bodies; not behind them
 	 * <p> 
-	 * - [Complementary 5.x] Celestial bodies have incorrect colors near the sun
+	 * - [Complementary 5.5.x] Celestial bodies have incorrect colors near the sun
 	 * <p> 
-	 * - [Complementary 6.x] Celestial bodies don't render at all far from the sun
+	 * - [Complementary 5.6.x] Celestial bodies don't render at all far from the sun
 	 */
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", ordinal = 5))
 	private void iris$celestials$renderInDefaultProgram(CallbackInfo ci, @Share("celestials$previousProgram") LocalIntRef celestials$previousProgram) {
