@@ -32,7 +32,14 @@ public abstract class MixinRenderGlobal {
             return (boolean)Settings.MODE_SKY.option.getStore();
         }
     }
-
+    
+    @WrapWithCondition(
+            method = "renderSky(F)V",
+            at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", ordinal = 3, remap = false))
+    private boolean conditionalDisableHorizon(int i) {
+        return !(boolean)Settings.HORIZON_DISABLE.option.getStore();
+    }
+    
     @WrapWithCondition(
         method = "renderSky(F)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/IRenderHandler;render(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V", remap = false))
