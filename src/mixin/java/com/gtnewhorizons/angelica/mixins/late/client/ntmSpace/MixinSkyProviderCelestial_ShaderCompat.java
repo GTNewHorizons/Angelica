@@ -116,8 +116,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", ordinal = 5))
 	private void iris$celestials$renderInDefaultProgram(CallbackInfo ci, @Share("celestials$previousProgram") LocalIntRef celestials$previousProgram) {
 		celestials$previousProgram.set(GLStateManager.getActiveProgram());
-		if(IrisApi.getInstance().isShaderPackInUse())
-			GLStateManager.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 	
 	/**
@@ -135,8 +134,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", ordinal = 0))
 	private void iris$ringsBack$renderInDefaultProgram(CallbackInfo ci, @Share("ringsBack$previousProgram") LocalIntRef ringsBack$previousProgram) {
 		ringsBack$previousProgram.set(GLStateManager.getActiveProgram());
-		if(IrisApi.getInstance().isShaderPackInUse())
-			GLStateManager.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 	
 	/**
@@ -154,8 +152,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", ordinal = 11))
 	private void iris$ringsFront$renderInDefaultProgram(CallbackInfo ci, @Share("ringsFront$previousProgram") LocalIntRef ringsFront$previousProgram) {
 		ringsFront$previousProgram.set(GLStateManager.getActiveProgram());
-		if(IrisApi.getInstance().isShaderPackInUse())
-			GLStateManager.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 	
 	/**
