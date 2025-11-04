@@ -3,8 +3,10 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
+import cpw.mods.fml.client.SplashProgress;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.resources.DefaultResourcePack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -85,13 +87,13 @@ public class FontStrategist {
 
     /**
      Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether or not
-     SGA is on, if a font can even display a character in the first place, etc.
+     SGA is on, if we're in a splash screen, if a font can even display a character in the first place, etc.
      */
-    public static FontProvider getFontProvider(char chr, boolean isSGA, boolean customFontEnabled, boolean forceUnicode) {
-        if (isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
+    public static FontProvider getFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
+        if (me.isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
             return FontProviderMC.get(true);
         }
-        if (customFontEnabled) {
+        if (customFontEnabled && !me.isSplash) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
             if (fp.isGlyphAvailable(chr)) { return fp; }
@@ -124,5 +126,18 @@ public class FontStrategist {
             if (primaryFontFound && fallbackFontFound) { break; }
         }
         customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
+    }
+
+    public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {
+        // noinspection deprecation
+        boolean active = fontRenderer instanceof SplashProgress.SplashFontRenderer;
+
+        try {
+            Class<?> customSplashClass = Class.forName("gkappa.modernsplash.CustomSplash$SplashFontRenderer");
+            active = active || customSplashClass.isInstance(fontRenderer);
+        } catch (ClassNotFoundException ignored) {
+        }
+
+        return active;
     }
 }

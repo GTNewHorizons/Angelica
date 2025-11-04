@@ -98,6 +98,8 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
+    // For testing alternative splash screens, can be sourced from https://github.com/MalTeeez/ModernSplash/releases
+    //runtimeOnly(rfg.deobf(files("dependencies/modernsplash-1.7.10-1.2.2-dev.jar")))
 
     // Hodgepodge
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
