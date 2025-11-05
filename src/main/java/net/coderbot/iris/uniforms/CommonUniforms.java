@@ -211,7 +211,7 @@ public final class CommonUniforms {
 	static float getBlindness() {
         final EntityLivingBase cameraEntity = client.renderViewEntity;
 
-        if (cameraEntity instanceof EntityLiving livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
+        if (cameraEntity instanceof EntityPlayer livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
             final PotionEffect blindness = livingEntity.getActivePotionEffect(Potion.blindness);
 
 			if (blindness != null) {
