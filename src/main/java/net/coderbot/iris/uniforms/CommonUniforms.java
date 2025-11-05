@@ -163,15 +163,14 @@ public final class CommonUniforms {
         }
 
         BiomeGenBase biome = getBiome();
+        float temp = biome.getFloatTemperature(MathHelper.floor_double(client.thePlayer.posX), MathHelper.floor_double(client.thePlayer.posY), MathHelper.floor_double(client.thePlayer.posZ));
+
         if (!biome.enableRain && !biome.enableSnow) {
             return 0;
-        } else if (biome.temperature >= 0.15F && biome.enableRain) {
+        } else if (temp > 0.15F) {
             return 1;
-        } else if (biome.temperature < 0.15F && biome.enableSnow) {
-            return 2;
         } else {
-            // This calculation seems like one of the above cases should always happen, but we should have a default if somehow it doesn't.
-            return 0;
+            return 2;
         }
     }
 
