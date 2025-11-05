@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
@@ -53,7 +54,11 @@ public final class CommonUniforms {
         IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
         IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
         MatrixUniforms.addMatrixUniforms(uniforms, directives);
-        HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+
+        if (AngelicaConfig.enableHardcodedCustomUniforms) {
+            HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+        }
+
         CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
     }
 
