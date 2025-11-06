@@ -4,38 +4,27 @@ import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexArrayBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.event.world.WorldEvent;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
-
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.shader.Framebuffer;
 import net.minecraftforge.client.GuiIngameForge;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import org.lwjgl.opengl.GL11;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
-
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 // See LICENSE-HUDCaching.md for license information.
 
@@ -189,6 +178,9 @@ public class HUDCaching {
         if (quadWidth != width || quadHeight != height) {
             quadWidth = width;
             quadHeight = height;
+            if (quadVAO != null) {
+                quadVAO.close();
+            }
             quadVAO = rebuildVAO(width, height);
         }
         GLStateManager.disableDepthTest();
