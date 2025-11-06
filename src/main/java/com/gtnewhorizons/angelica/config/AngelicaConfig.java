@@ -166,4 +166,8 @@ public class AngelicaConfig {
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
+
+    @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
+    @Config.DefaultBoolean(false)
+    public static boolean enableHardcodedCustomUniforms;
 }

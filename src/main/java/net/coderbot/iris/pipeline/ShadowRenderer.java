@@ -44,7 +44,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
 import org.joml.Matrix4f;
-import org.joml.Vector3d;
+import org.joml.Vector3dc;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
@@ -141,11 +141,11 @@ public class ShadowRenderer {
 
 	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Determine the camera position
-		final Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
-		final double cameraX = cameraPos.x;
-		final double cameraY = cameraPos.y;
-		final double cameraZ = cameraPos.z;
+		final double cameraX = cameraPos.x();
+		final double cameraY = cameraPos.y();
+		final double cameraZ = cameraPos.z();
 
 		// Set up our modelview matrix stack
 		final MatrixStack modelView = new MatrixStack();
@@ -461,7 +461,7 @@ public class ShadowRenderer {
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
         GL11.glLoadMatrix(MODELVIEW_BUFFER);
-		
+
 		for (TileEntity tileEntity : visibleTileEntities) {
 			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
                 continue;
@@ -475,10 +475,10 @@ public class ShadowRenderer {
 				continue;
 			}
 			renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
-			
+
 			shadowTileEntities++;
 		}
-		
+
         GLStateManager.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
@@ -530,7 +530,7 @@ public class ShadowRenderer {
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
 
 		// Determine the player camera position
-		final Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
 		final double cameraX = cameraPos.x();
 		final double cameraY = cameraPos.y();
