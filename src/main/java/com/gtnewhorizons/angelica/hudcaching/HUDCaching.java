@@ -46,6 +46,10 @@ public class HUDCaching {
     private static boolean dirty = true;
     private static long nextHudRefresh;
 
+    private static VertexBuffer quadVAO;
+    private static float quadWidth;
+    private static float quadHeight;
+
     public static boolean renderingCacheOverride;
 
     /*
@@ -64,20 +68,10 @@ public class HUDCaching {
     private final static RenderGameOverlayEvent fakeTextEvent = new RenderGameOverlayEvent.Text(new RenderGameOverlayEvent(0, null, 0, 0), null, null);
     private final static RenderGameOverlayEvent.Post fakePostEvent = new RenderGameOverlayEvent.Post(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
-    public static final HUDCaching INSTANCE = new HUDCaching();
-
-    private HUDCaching() {}
-
-    // highest so it runs before the GLSM load event
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onJoinWorld(WorldEvent.Load event) {
-        if (event.world.isRemote && framebuffer == null) {
-            LOGGER.info("World loaded - Initializing HUDCaching");
-            framebuffer = new SharedDepthFramebuffer(0);
-        }
+    public static void init() {
+        framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
 
-    @SuppressWarnings("unused")
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
@@ -168,12 +162,11 @@ public class HUDCaching {
         }
 
         // render cached frame
-        Tessellator tessellator = TessellatorManager.get();
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         framebuffer.bindFramebufferTexture();
-        drawTexturedRect(tessellator, (float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
+        drawTexturedRect((float) resolution.getScaledWidth_double(), (float) resolution.getScaledHeight_double());
 
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         mc.getTextureManager().bindTexture(Gui.icons);
@@ -192,16 +185,28 @@ public class HUDCaching {
         GLStateManager.disableBlend();
     }
 
-    private static void drawTexturedRect(Tessellator tessellator, float width, float height) {
+    private static void drawTexturedRect(float width, float height) {
+        if (quadWidth != width || quadHeight != height) {
+            quadWidth = width;
+            quadHeight = height;
+            quadVAO = rebuildVAO(width, height);
+        }
         GLStateManager.disableDepthTest();
         GLStateManager.enableTexture();
+        quadVAO.render();
+        GLStateManager.enableDepthTest();
+    }
+
+
+    private static VertexBuffer rebuildVAO(float width, float height) {
+        final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
         tessellator.startDrawingQuads();
         tessellator.addVertexWithUV(0, height, 0.0, 0, 0);
         tessellator.addVertexWithUV(width, height, 0.0, 1, 0);
         tessellator.addVertexWithUV(width, 0, 0.0, 1, 1);
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
-        GLStateManager.enableDepthTest();
+        return TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE);
     }
 
     public static void disableHoloInventory() {
