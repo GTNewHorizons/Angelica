@@ -291,6 +291,7 @@ public class ProgramUniforms {
         return switch(type) {
             case GL11.GL_FLOAT -> "float";
             case GL11.GL_INT -> "int";
+            case GL20.GL_BOOL -> "bool";
             case GL20.GL_FLOAT_MAT4 -> "mat4";
             case GL20.GL_FLOAT_VEC4 -> "vec4";
             case GL20.GL_FLOAT_MAT3 -> "mat3";
@@ -316,6 +317,7 @@ public class ProgramUniforms {
         return switch (type) {
             case GL11.GL_FLOAT -> UniformType.FLOAT;
             case GL11.GL_INT -> UniformType.INT;
+            case GL20.GL_BOOL -> UniformType.BOOL;
             case GL20.GL_FLOAT_MAT4 -> UniformType.MAT4;
             case GL20.GL_FLOAT_VEC4 -> UniformType.VEC4;
             case GL20.GL_INT_VEC4 -> UniformType.VEC4I;

@@ -111,7 +111,7 @@ public final class CommonUniforms {
 
         uniforms
             .uniform1f(ONCE, "darknessFactor", () -> 0.0F) // This is PER_FRAME in modern, it is an effect added by The Warden. We're just setting to 0 because 1.7.10 doesn't have it.
-            .uniform1f(ONCE, "darknessLightFactor", () -> 1.0F) // Warden darkness effect light factor - 1.7.10 doesn't have it, so full light (no darkness)
+            .uniform1f(ONCE, "darknessLightFactor", () -> 0.0F) // Warden darkness current light factor - 1.7.10 doesn't have it so hardcode to 0
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)

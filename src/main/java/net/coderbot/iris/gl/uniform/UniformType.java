@@ -2,6 +2,7 @@ package net.coderbot.iris.gl.uniform;
 
 public enum UniformType {
 	INT,
+	BOOL,
 	FLOAT,
 	MAT4,
 	VEC2,

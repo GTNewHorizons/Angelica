@@ -16,7 +16,8 @@ public abstract class Type {
 	public static final Primitive[] AllPrimitives = {Type.Boolean, Type.Int, Type.Float};
 
 	public static UniformType convert(Type type) {
-		if (type == Type.Int || type == Type.Boolean) return UniformType.INT;
+		if (type == Type.Int) return UniformType.INT;
+		else if (type == Type.Boolean) return UniformType.BOOL;
 		else if (type == Type.Float) return UniformType.FLOAT;
 		else if (type == VectorType.VEC2) return UniformType.VEC2;
 		else if (type == VectorType.VEC3) return UniformType.VEC3;
