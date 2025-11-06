@@ -12,6 +12,18 @@ public class ExternallyManagedUniforms {
 		addMat4(uniformHolder, "iris_ModelViewMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
 		addMat4(uniformHolder, "iris_NormalMatrix");
+
+		// Modern biome uniforms that are version-gated in shader packs (MC 1.16+)
+		addFloat(uniformHolder, "inNetherWastes");
+		addFloat(uniformHolder, "inCrimsonForest");
+		addFloat(uniformHolder, "inWarpedForest");
+		addFloat(uniformHolder, "inBasaltDeltas");
+		addFloat(uniformHolder, "inSoulValley");
+		addFloat(uniformHolder, "inPaleGarden");
+		addFloat(uniformHolder, "inLushCave");
+
+		// Other version-gated or optional uniforms
+		uniformHolder.externallyManagedUniform("heavyFog", UniformType.BOOL);
 	}
 
 	public static void addExternallyManagedUniforms116(UniformHolder uniformHolder) {

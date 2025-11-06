@@ -65,6 +65,7 @@ public final class CommonUniforms {
 
 	// Needs to use a LocationalUniformHolder as we need it for the common uniforms
 	public static void addDynamicUniforms(DynamicUniformHolder uniforms) {
+		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms);
 

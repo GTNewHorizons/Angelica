@@ -318,6 +318,17 @@ public class StandardMacros {
 			}
 		}
 
+		// Modern biomes that don't exist in 1.7.10 - add dummy IDs that will never match
+		// This allows shader expressions to parse without errors while always evaluating to false/0
+		// Using negative IDs to avoid conflicts with actual biome IDs
+		defines.put("BIOME_NETHER_WASTES", "-1000");
+		defines.put("BIOME_SOUL_SAND_VALLEY", "-1001");
+		defines.put("BIOME_CRIMSON_FOREST", "-1002");
+		defines.put("BIOME_WARPED_FOREST", "-1003");
+		defines.put("BIOME_BASALT_DELTAS", "-1004");
+		defines.put("BIOME_LUSH_CAVES", "-1005");
+		defines.put("BIOME_PALE_GARDEN", "-1006");
+
 		return defines;
 	}
 }
