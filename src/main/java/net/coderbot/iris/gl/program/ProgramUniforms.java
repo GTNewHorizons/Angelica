@@ -203,43 +203,45 @@ public class ProgramUniforms {
 				final int size = sizeType.get(0);
 				final int type = sizeType.get(1);
 
-				UniformType provided = uniformNames.get(name);
+				final UniformType provided = uniformNames.get(name);
                 final UniformType expected = getExpectedType(type);
 
-				if (provided == null && !name.startsWith("gl_")) {
-                    final String typeName = getTypeName(type);
+				if(AngelicaConfig.enableHardcodedCustomUniforms) {
+					// Legacy Checks from hardcoded custom uniforms
+					if (provided == null && !name.startsWith("gl_")) {
+						final String typeName = getTypeName(type);
 
-					if (isSampler(type) || isImage(type)) {
-						// don't print a warning, samplers and images are managed elsewhere.
-						// TODO: Detect unsupported samplers/images?
-						continue;
-					}
+						if (isSampler(type) || isImage(type)) {
+							// don't print a warning, samplers and images are managed elsewhere.
+							continue;
+						}
 
-                    final UniformType externalProvided = externalUniformNames.get(name);
+						final UniformType externalProvided = externalUniformNames.get(name);
 
-					if (externalProvided != null) {
-						if (externalProvided != expected) {
-							String expectedName;
+						if (externalProvided != null) {
+							if (externalProvided != expected) {
+								final String expectedName;
 
-							if (expected != null) {
-								expectedName = expected.toString();
-							} else {
-								expectedName = "(unsupported type: " + getTypeName(type) + ")";
+								if (expected != null) {
+									expectedName = expected.toString();
+								} else {
+									expectedName = "(unsupported type: " + getTypeName(type) + ")";
+								}
+
+								Iris.logger.error("[" + this.name + "] Wrong uniform type for externally-managed uniform " + name + ": " + externalProvided + " is provided but the program expects " + expectedName + ".");
 							}
 
-							Iris.logger.error("[" + this.name + "] Wrong uniform type for externally-managed uniform " + name + ": " + externalProvided + " is provided but the program expects " + expectedName + ".");
+							continue;
+						}
+
+						if (size == 1) {
+							Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + typeName + " " + name);
+						} else {
+							Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + name + " of size " + size + " and type " + typeName);
 						}
 
 						continue;
 					}
-
-					if (size == 1) {
-						Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + typeName + " " + name);
-					} else {
-						Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + name + " of size " + size + " and type " + typeName);
-					}
-
-					continue;
 				}
 
 				if (provided != null && provided != expected) {
