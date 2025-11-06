@@ -3,11 +3,13 @@ package net.coderbot.iris.gl.shader;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Loader;
+import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
+import net.coderbot.iris.uniforms.VanillaBiomeList;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -88,6 +90,9 @@ public class StandardMacros {
 			define(standardDefines, irisDefine);
 		}
 
+		getBiomeCategoryDefines().forEach((category, ordinal) -> define(standardDefines, category, ordinal));
+		getVanillaBiomeDefines().forEach((biome, id) -> define(standardDefines, biome, id));
+
 		return ImmutableList.copyOf(standardDefines);
 	}
 
@@ -98,7 +103,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L696-L699">Optifine Doc</a>
 	 */
 	public static String getMcVersion() {
-		final String version = Loader.MC_VERSION;;
+		final String version = Loader.MC_VERSION;
 
 		String[] splitVersion = version.split("\\.");
 
@@ -117,10 +122,10 @@ public class StandardMacros {
 		}
 
 		if (minor.length() == 1) {
-			minor = 0 + minor;
+			minor = "0" + minor;
 		}
 		if (bugfix.length() == 1) {
-			bugfix = 0 + bugfix;
+			bugfix = "0" + bugfix;
 		}
 
 		return major + minor + bugfix;
@@ -280,6 +285,38 @@ public class StandardMacros {
 		List<String> defines = new ArrayList<>();
 		// All Iris-exclusive uniforms should have a corresponding definition here. Example:
 		// defines.add("MC_UNIFORM_DRAGON_DEATH_PROGRESS");
+
+		return defines;
+	}
+
+	/**
+	 * Returns biome category defines for use in shaders.
+	 * Generates #define CAT_<CATEGORY_NAME> <ordinal> for each BiomeCategories enum value.
+	 *
+	 * @return Map of biome category defines and their ordinal values
+	 */
+	public static Map<String, String> getBiomeCategoryDefines() {
+		Map<String, String> defines = new HashMap<>();
+		for (BiomeCategories category : BiomeCategories.values()) {
+			defines.put("CAT_" + category.name(), String.valueOf(category.ordinal()));
+		}
+		return defines;
+	}
+
+	/**
+	 * Returns vanilla biome ID defines for use in shaders.
+	 * Generates #define BIOME_<BIOME_NAME> <biomeID> for all vanilla biomes.
+	 *
+	 * @return Map of vanilla biome defines and their IDs
+	 */
+	public static Map<String, String> getVanillaBiomeDefines() {
+		final Map<String, String> defines = new HashMap<>();
+
+		for (VanillaBiomeList.BiomeEntry entry : VanillaBiomeList.getVanillaBiomes()) {
+			if (entry.biome != null) {
+				defines.put("BIOME_" + entry.name, String.valueOf(entry.biome.biomeID));
+			}
+		}
 
 		return defines;
 	}

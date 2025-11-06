@@ -5,12 +5,23 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.effect.EntityLightningBolt;
 import org.joml.Math;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 import org.joml.Vector4f;
 
+import java.util.List;
+
 public class IrisExclusiveUniforms {
+	// Reusable vectors to avoid allocations every frame
+	private static final Vector3d eyePositionCache = new Vector3d();
+	private static final Vector3d relativeEyePositionCache = new Vector3d();
+	private static final Vector4f lightningBoltPositionCache = new Vector4f();
+	private static final Vector4f ZERO_VECTOR_4f = new Vector4f(0, 0, 0, 0);
+
 	public static void addIrisExclusiveUniforms(UniformHolder uniforms) {
 		WorldInfoUniforms.addWorldInfoUniforms(uniforms);
 
@@ -25,19 +36,8 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform1b(UniformUpdateFrequency.PER_FRAME, "firstPersonCamera", IrisExclusiveUniforms::isFirstPersonCamera);
 		uniforms.uniform1b(UniformUpdateFrequency.PER_TICK, "isSpectator", IrisExclusiveUniforms::isSpectator);
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "eyePosition", IrisExclusiveUniforms::getEyePosition);
-        // TODO: Iris Shaders
-//		Vector4f zero = new Vector4f(0, 0, 0, 0);
-//		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", () -> {
-//			if (Minecraft.getMinecraft().theWorld != null) {
-//				return StreamSupport.stream(Minecraft.getMinecraft().theWorld.entitiesForRendering().spliterator(), false).filter(bolt -> bolt instanceof LightningBolt).findAny().map(bolt -> {
-//					Vector3d unshiftedCameraPosition = CameraUniforms.getUnshiftedCameraPosition();
-//					Vec3 vec3 = bolt.getPosition(Minecraft.getMinecraft().getDeltaFrameTime());
-//					return new Vector4f((float) (vec3.x - unshiftedCameraPosition.x), (float) (vec3.y - unshiftedCameraPosition.y), (float) (vec3.z - unshiftedCameraPosition.z), 1);
-//				}).orElse(zero);
-//			} else {
-//				return zero;
-//			}
-//		});
+		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "relativeEyePosition", IrisExclusiveUniforms::getRelativeEyePosition);
+		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", IrisExclusiveUniforms::getLightningBoltPosition);
 	}
 
 	private static float getThunderStrength() {
@@ -99,10 +99,36 @@ public class IrisExclusiveUniforms {
 	}
 
 	private static Vector3d getEyePosition() {
-//		Objects.requireNonNull(Minecraft.getMinecraft().getCameraEntity());
-//		return new Vector3d(Minecraft.getMinecraft().getCameraEntity().getX(), Minecraft.getMinecraft().getCameraEntity().getEyeY(), Minecraft.getMinecraft().getCameraEntity().getZ());
         final EntityLivingBase eye = Minecraft.getMinecraft().renderViewEntity;
-        return new Vector3d(eye.posX, eye.posY, eye.posZ);
+        return eyePositionCache.set(eye.posX, eye.posY + eye.getEyeHeight(), eye.posZ);
+	}
+
+	private static Vector3d getRelativeEyePosition() {
+		// relativeEyePosition = cameraPosition - eyePosition
+		// This gives the offset between where the camera is rendering from and where the player's eyes actually are
+		// - First-person: Usually (0, 0, 0) since camera is at player's eyes
+		// - Third-person: The vector from player's eyes to the camera behind them
+		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3d eyePos = getEyePosition();
+		return relativeEyePositionCache.set(cameraPos).sub(eyePos);
+	}
+
+	private static Vector4f getLightningBoltPosition() {
+		if (Minecraft.getMinecraft().theWorld != null) {
+			final List<Entity> weatherEffects = Minecraft.getMinecraft().theWorld.weatherEffects;
+			for (Entity entity : weatherEffects) {
+				if (entity instanceof EntityLightningBolt bolt) {
+                    final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+					return lightningBoltPositionCache.set(
+						(float)(bolt.posX - cameraPos.x()),
+						(float)(bolt.posY - cameraPos.y()),
+						(float)(bolt.posZ - cameraPos.z()),
+						1.0f
+					);
+				}
+			}
+		}
+		return ZERO_VECTOR_4f;
 	}
 
 	public static class WorldInfoUniforms {

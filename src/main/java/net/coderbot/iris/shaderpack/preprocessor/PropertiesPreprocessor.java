@@ -85,6 +85,10 @@ public class PropertiesPreprocessor {
 					// assume the line to be a comment, since in .properties files `#` also functions as a comment
 					// marker.
 					return line;
+				} else if (line.startsWith("uniform.")) {
+					// Custom uniform lines need macro expansion (e.g., CAT_DESERT -> 12)
+					// Don't wrap them with IRIS_PASSTHROUGH
+					return line;
 				} else {
 					// This is a hack to ensure that non-macro lines don't have any preprocessing applied...
 					// In properties files, we don't substitute #define values except on macro lines.
