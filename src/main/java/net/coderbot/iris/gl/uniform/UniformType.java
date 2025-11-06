@@ -4,6 +4,7 @@ public enum UniformType {
 	INT,
 	BOOL,
 	FLOAT,
+	MAT3,
 	MAT4,
 	VEC2,
 	VEC2I,

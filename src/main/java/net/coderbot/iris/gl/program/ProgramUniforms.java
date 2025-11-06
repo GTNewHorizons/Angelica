@@ -319,13 +319,13 @@ public class ProgramUniforms {
         return switch (type) {
             case GL11.GL_FLOAT -> UniformType.FLOAT;
             case GL11.GL_INT -> UniformType.INT;
-            case GL20.GL_BOOL -> UniformType.BOOL;
+            case GL20.GL_BOOL -> UniformType.INT;
             case GL20.GL_FLOAT_MAT4 -> UniformType.MAT4;
             case GL20.GL_FLOAT_VEC4 -> UniformType.VEC4;
             case GL20.GL_INT_VEC4 -> UniformType.VEC4I;
             case GL20.GL_FLOAT_VEC3 -> UniformType.VEC3;
-            case GL20.GL_FLOAT_MAT3 -> null;
-            case GL20.GL_INT_VEC3 -> null;
+            case GL20.GL_FLOAT_MAT3 -> UniformType.MAT3;
+            case GL20.GL_INT_VEC3 -> UniformType.VEC3I;
             case GL20.GL_FLOAT_MAT2 -> null;
             case GL20.GL_FLOAT_VEC2 -> UniformType.VEC2;
             case GL20.GL_INT_VEC2 -> UniformType.VEC2I;
