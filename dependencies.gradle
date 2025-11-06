@@ -49,19 +49,16 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.107")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.11")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
     compileOnly("org.projectlombok:lombok:1.18.34") { transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
-    // Use modern models+textures to inject QuadProviders
-    devOnlyNonPublishable('com.github.GTNewHorizons:TX-Loader:1.8.5:dev')
-
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:9.9.9.9:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.8.0:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
@@ -70,18 +67,18 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
-    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.7.90-GTNH:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.31-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.1.15-GTNH:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.2.2-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.13:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.13.54-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.14.6-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.8.9:dev")
 
-    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.7.8:dev")
+    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.8.4:dev")
 
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.3:dev") { transitive = false }
 
