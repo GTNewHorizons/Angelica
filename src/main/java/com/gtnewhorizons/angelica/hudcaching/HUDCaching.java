@@ -1,6 +1,12 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexArrayBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -36,7 +42,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 public class HUDCaching {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public static Framebuffer framebuffer;
+    public static SharedDepthFramebuffer framebuffer;
     private static boolean dirty = true;
     private static long nextHudRefresh;
 
@@ -65,10 +71,9 @@ public class HUDCaching {
     // highest so it runs before the GLSM load event
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onJoinWorld(WorldEvent.Load event) {
-        if (event.world.isRemote){
+        if (event.world.isRemote && framebuffer == null) {
             LOGGER.info("World loaded - Initializing HUDCaching");
-            HUDCaching.framebuffer = new Framebuffer(0, 0, true);
-            HUDCaching.framebuffer.setFramebufferColor(0, 0, 0, 0);
+            framebuffer = new SharedDepthFramebuffer(0);
         }
     }
 
@@ -79,7 +84,7 @@ public class HUDCaching {
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
 
-        if (!OpenGlHelper.isFramebufferEnabled() || framebuffer == null) {
+        if (!OpenGlHelper.isFramebufferEnabled()) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
@@ -91,8 +96,11 @@ public class HUDCaching {
         if (dirty) {
             dirty = false;
             nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
-            resetFramebuffer(mc.displayWidth, mc.displayHeight);
-            framebuffer.bindFramebuffer(false);
+            if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
+                framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
+            } else {
+                framebuffer.clearBindFramebuffer();
+            }
             renderingCacheOverride = true;
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
@@ -184,31 +192,16 @@ public class HUDCaching {
         GLStateManager.disableBlend();
     }
 
-    private static void resetFramebuffer(int width, int height) {
-        if (framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
-            framebuffer.createBindFramebuffer(width, height);
-            framebuffer.setFramebufferFilter(GL11.GL_NEAREST);
-        } else {
-            framebuffer.framebufferClear();
-        }
-        // copy depth buffer from MC
-        OpenGlHelper.func_153171_g(GL30.GL_READ_FRAMEBUFFER, mc.getFramebuffer().framebufferObject);
-        OpenGlHelper.func_153171_g(GL30.GL_DRAW_FRAMEBUFFER, framebuffer.framebufferObject);
-        GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
-    }
-
     private static void drawTexturedRect(Tessellator tessellator, float width, float height) {
+        GLStateManager.disableDepthTest();
         GLStateManager.enableTexture();
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         tessellator.startDrawingQuads();
         tessellator.addVertexWithUV(0, height, 0.0, 0, 0);
         tessellator.addVertexWithUV(width, height, 0.0, 1, 0);
         tessellator.addVertexWithUV(width, 0, 0.0, 1, 1);
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLStateManager.enableDepthTest();
     }
 
     public static void disableHoloInventory() {
