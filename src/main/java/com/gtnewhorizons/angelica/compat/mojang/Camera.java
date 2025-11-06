@@ -61,6 +61,6 @@ public class Camera {
         blockPos.set(MathHelper.floor_double(camX), MathHelper.floor_double(camY), MathHelper.floor_double(camZ));
         pitch = entity.cameraPitch;
         yaw = entity.rotationYaw;
-        thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView == 1;
+        thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView > 0;
     }
 }
