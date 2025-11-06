@@ -1,9 +1,9 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -93,10 +93,7 @@ public class IrisExclusiveUniforms {
 	}
 
 	private static boolean isSpectator() {
-        final PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
-        if(controller == null)
-            return false;
-        return controller.currentGameType.getID() == 3;
+		return GameModeUtil.isSpectator();
 	}
 
 	private static Vector3d getEyePosition() {
@@ -105,13 +102,9 @@ public class IrisExclusiveUniforms {
 	}
 
 	private static Vector3d getRelativeEyePosition() {
-		// relativeEyePosition = cameraPosition - eyePosition
-		// This gives the offset between where the camera is rendering from and where the player's eyes actually are
-		// - First-person: Usually (0, 0, 0) since camera is at player's eyes
-		// - Third-person: The vector from player's eyes to the camera behind them
 		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 		final Vector3d eyePos = getEyePosition();
-		return relativeEyePositionCache.set(cameraPos).sub(eyePos);
+		return relativeEyePositionCache.set(eyePos).sub(cameraPos);
 	}
 
 	private static Vector4f getLightningBoltPosition() {
