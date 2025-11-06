@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;

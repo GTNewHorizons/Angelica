@@ -22,7 +22,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodiumFluidRendering;
 
-    @Config.Comment("Inject QuadProvider rendering into some vanilla blocks")
+    @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean injectQPRendering;
