@@ -62,6 +62,15 @@ public final class ResolvedText {
         return (flags[index] & FLAG_RANDOM) != 0;
     }
 
+    /**
+     * Returns the resolved characters as a {@link String}. This is primarily
+     * used by compatibility layers that need random access to the textual
+     * content after Angelica has applied HexText sanitization rules.
+     */
+    public String asString() {
+        return new String(characters);
+    }
+
     public static Builder builder(int initialCapacity) {
         return new Builder(initialCapacity);
     }

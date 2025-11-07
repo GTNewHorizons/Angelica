@@ -4,6 +4,9 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolver;
 import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolvers;
 import com.gtnewhorizons.angelica.client.font.color.ResolvedText;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextHighlightBridgeFactory;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextHighlighter;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -422,11 +425,27 @@ public class BatchingFontRenderer {
             float strikethroughEndX = 0.0f;
 
             final ResolvedText resolved = colorResolver.resolve(string, stringOffset, stringEnd, color, shadowColor);
+
+            HexTextHighlighter highlighter = HexTextHighlighter.NOOP;
+            CharSequence highlightText = null;
+            boolean highlightActive = false;
+            if (FontConfig.enableHexTextCompat && ModStatus.isHexTextLoaded) {
+                highlighter = HexTextHighlightBridgeFactory.create();
+                if (highlighter != HexTextHighlighter.NOOP) {
+                    highlightText = resolved.asString();
+                    highlightActive = highlighter.begin(underlying, highlightText, anchorX, anchorY);
+                }
+            }
+
             int lastColor = color;
             boolean lastUnderline = false;
             boolean lastStrikethrough = false;
 
             for (int entryIndex = 0; entryIndex < resolved.length(); entryIndex++) {
+                if (highlightActive) {
+                    highlighter.inspect(highlightText, entryIndex, curX);
+                }
+
                 char chr = resolved.charAt(entryIndex);
                 final boolean curRandom = resolved.isRandom(entryIndex);
                 final boolean curBold = resolved.isBold(entryIndex);
@@ -477,6 +496,9 @@ public class BatchingFontRenderer {
                     lastColor = curColor;
                     underlineEndX = curX;
                     strikethroughEndX = curX;
+                    if (highlightActive) {
+                        highlighter.advance(entryIndex + 1, curX);
+                    }
                     continue;
                 }
 
@@ -538,6 +560,10 @@ public class BatchingFontRenderer {
                 lastUnderline = curUnderline;
                 lastStrikethrough = curStrikethrough;
                 lastColor = curColor;
+
+                if (highlightActive) {
+                    highlighter.advance(entryIndex + 1, curX);
+                }
             }
 
             if (lastUnderline && underlineStartX != underlineEndX) {
@@ -554,6 +580,20 @@ public class BatchingFontRenderer {
                     glyphScaleY,
                     lastColor);
                 pushDrawCmd(ulIdx, 6, null, false);
+            }
+
+            if (highlightActive) {
+                highlighter.finish(resolved.length(), curX);
+                for (HexTextHighlighter.Highlight highlight : highlighter.highlights()) {
+                    if (highlight.width() <= 0.0f) {
+                        continue;
+                    }
+                    final int hlIdx = idxWriterIndex;
+                    float top = highlight.y() - 1.0f;
+                    float bottom = highlight.y() + underlying.FONT_HEIGHT;
+                    pushUntexRect(highlight.x(), top, highlight.width(), bottom - top, highlight.color());
+                    pushDrawCmd(hlIdx, 6, null, false);
+                }
             }
 
         } finally {
