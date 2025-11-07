@@ -61,8 +61,20 @@ final class HexTextColorResolver implements AngelicaColorResolver {
                 continue;
             }
 
-            builder.append(chr, state.color, state.shadowColor, state.bold, state.italic, state.underline,
-                state.strikethrough, state.random);
+            builder.append(
+                chr,
+                state.color,
+                state.shadowColor,
+                state.bold,
+                state.italic,
+                state.underline,
+                state.strikethrough,
+                state.random,
+                state.effects.flags(),
+                state.effects.rainbowAnchor(),
+                state.effects.baseColor()
+            );
+            state.incrementGlyphIndex();
         }
 
         return builder.build();
@@ -113,9 +125,26 @@ final class HexTextColorResolver implements AngelicaColorResolver {
                 case SET_ITALIC:
                     state.italic = instruction.enabled();
                     break;
+                case SET_RAINBOW:
+                    if (instruction.clearStack()) {
+                        state.clearStacks();
+                    }
+                    state.effects.resetDynamicEffects();
+                    state.effects.setRainbow(instruction.enabled(), state.glyphIndex, state.color);
+                    if (instruction.resetFormatting()) {
+                        state.resetFormattingFlags();
+                    }
+                    break;
+                case SET_DINNERBONE:
+                    state.effects.setDinnerbone(instruction.enabled());
+                    break;
+                case SET_IGNITE:
+                    state.effects.setIgnite(instruction.enabled(), state.color);
+                    break;
+                case SET_SHAKE:
+                    state.effects.setShake(instruction.enabled());
+                    break;
                 default:
-                    // Dynamic effects such as rainbow, ignite, dinnerbone and shake are not handled here because
-                    // the batching renderer operates on pre-baked vertices. We intentionally ignore them.
                     break;
             }
         }
@@ -126,6 +155,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
             if (clearStack) {
                 state.clearStacks();
             }
+            state.effects.resetDynamicEffects();
+            state.effects.updateBaseColor(state.color);
             return;
         }
         if (clearStack) {
@@ -137,6 +168,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         } else {
             state.shadowColor = (state.shadowAlphaMask | (rgb & 0x00FFFFFF));
         }
+        state.effects.resetDynamicEffects();
+        state.effects.updateBaseColor(state.color);
     }
 
     private void pushRgb(FormattingState state, int rgb) {
@@ -149,6 +182,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
                 state.shadowColor = (state.shadowAlphaMask | (rgb & 0x00FFFFFF));
             }
         }
+        state.effects.resetDynamicEffects();
+        state.effects.updateBaseColor(state.color);
     }
 
     private void applyVanillaPalette(FormattingState state, int paletteIndex) {
@@ -164,6 +199,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
             state.shadowColor = state.shadowAlphaMask | (vanillaFallback(clamped) & 0x00FFFFFF);
         }
         state.resetFormattingFlags();
+        state.effects.resetDynamicEffects();
+        state.effects.updateBaseColor(state.color);
     }
 
     private int vanillaFallback(int index) {
@@ -252,6 +289,7 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         final int shadowAlphaMask;
         final Deque<Integer> colorStack = new ArrayDeque<>();
         final Deque<Integer> shadowStack = new ArrayDeque<>();
+        final DynamicEffectState effects;
 
         int color;
         int shadowColor;
@@ -260,6 +298,7 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         boolean bold;
         boolean strikethrough;
         boolean underline;
+        int glyphIndex;
 
         FormattingState(int baseColor, int baseShadowColor) {
             this.baseColor = baseColor;
@@ -268,6 +307,7 @@ final class HexTextColorResolver implements AngelicaColorResolver {
             this.shadowAlphaMask = baseShadowColor & 0xFF000000;
             this.color = baseColor;
             this.shadowColor = baseShadowColor;
+            this.effects = new DynamicEffectState(baseColor);
         }
 
         void reset() {
@@ -275,6 +315,7 @@ final class HexTextColorResolver implements AngelicaColorResolver {
             color = baseColor;
             shadowColor = baseShadowColor;
             resetFormattingFlags();
+            effects.resetToBase(baseColor);
         }
 
         void resetFormattingFlags() {
@@ -288,16 +329,123 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         void clearStacks() {
             colorStack.clear();
             shadowStack.clear();
+            effects.clearStacks();
         }
 
         void pushColor() {
             colorStack.push(color);
             shadowStack.push(shadowColor);
+            effects.pushBaseColor();
         }
 
         void popColor() {
             color = colorStack.isEmpty() ? baseColor : colorStack.pop();
             shadowColor = shadowStack.isEmpty() ? baseShadowColor : shadowStack.pop();
+            effects.popBaseColor(color);
+        }
+
+        void incrementGlyphIndex() {
+            glyphIndex++;
+        }
+    }
+
+    private static final class DynamicEffectState {
+        private boolean rainbow;
+        private boolean dinnerbone;
+        private boolean ignite;
+        private boolean shake;
+        private int rainbowAnchor;
+        private int baseColor;
+        private final Deque<Integer> baseColorStack = new ArrayDeque<>();
+
+        DynamicEffectState(int baseColor) {
+            resetToBase(baseColor);
+        }
+
+        void resetDynamicEffects() {
+            rainbow = false;
+            dinnerbone = false;
+            ignite = false;
+            shake = false;
+            rainbowAnchor = 0;
+        }
+
+        void resetToBase(int color) {
+            baseColorStack.clear();
+            resetDynamicEffects();
+            updateBaseColor(color);
+        }
+
+        void updateBaseColor(int color) {
+            baseColor = color & 0x00FFFFFF;
+        }
+
+        void clearStacks() {
+            baseColorStack.clear();
+        }
+
+        void pushBaseColor() {
+            baseColorStack.push(baseColor);
+            resetDynamicEffects();
+        }
+
+        void popBaseColor(int fallback) {
+            resetDynamicEffects();
+            if (baseColorStack.isEmpty()) {
+                updateBaseColor(fallback);
+            } else {
+                baseColor = baseColorStack.pop();
+            }
+        }
+
+        void setRainbow(boolean enabled, int anchorIndex, int currentColor) {
+            rainbow = enabled;
+            if (enabled) {
+                rainbowAnchor = Math.max(0, anchorIndex);
+                updateBaseColor(currentColor);
+            } else {
+                rainbowAnchor = 0;
+            }
+        }
+
+        void setDinnerbone(boolean enabled) {
+            dinnerbone = enabled;
+        }
+
+        void setIgnite(boolean enabled, int currentColor) {
+            ignite = enabled;
+            if (enabled) {
+                updateBaseColor(currentColor);
+            }
+        }
+
+        void setShake(boolean enabled) {
+            shake = enabled;
+        }
+
+        byte flags() {
+            byte flagBits = 0;
+            if (rainbow) {
+                flagBits |= ResolvedText.EFFECT_RAINBOW;
+            }
+            if (dinnerbone) {
+                flagBits |= ResolvedText.EFFECT_DINNERBONE;
+            }
+            if (ignite) {
+                flagBits |= ResolvedText.EFFECT_IGNITE;
+            }
+            if (shake) {
+                flagBits |= ResolvedText.EFFECT_SHAKE;
+            }
+            return flagBits;
+        }
+
+        int baseColor() {
+            return baseColor;
+        }
+
+        int rainbowAnchor() {
+            return rainbowAnchor;
         }
     }
 }

@@ -7,6 +7,9 @@ import kamkeel.hextext.client.render.RenderTextData;
 import kamkeel.hextext.client.render.RenderTextProcessor;
 import kamkeel.hextext.client.render.TokenHighlightUtils;
 import kamkeel.hextext.common.util.ColorCodeUtils;
+import kamkeel.hextext.common.util.ColorMath;
+import kamkeel.hextext.common.util.TextEffectMath;
+import kamkeel.hextext.config.HexTextConfig;
 import net.minecraft.client.gui.FontRenderer;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -52,6 +55,17 @@ public final class HexTextCompat {
             ModStatus.LOGGER.warn("Failed to initialize HexText compatibility layer", t);
             return null;
         }
+    }
+
+    /**
+     * Returns a helper for computing HexText dynamic effect values.
+     */
+    public static EffectsHelper getEffectsHelper() {
+        return EffectsHelperHolder.INSTANCE;
+    }
+
+    public static int computeShadowColor(int rgb) {
+        return ColorCodeUtils.calculateShadowColor(rgb);
     }
 
     public interface Highlighter {
@@ -145,6 +159,19 @@ public final class HexTextCompat {
     public interface Bridge {
 
         PreparedText prepare(CharSequence text, boolean rawMode);
+    }
+
+    public interface EffectsHelper {
+
+        int computeRainbowColor(long now, int glyphIndex, int anchorIndex);
+
+        int computeIgniteColor(long now, int baseColor);
+
+        float computeShakeOffset(long now, int glyphIndex);
+
+        default boolean isOperational() {
+            return true;
+        }
     }
 
     public static final class PreparedText {
@@ -425,6 +452,68 @@ public final class HexTextCompat {
                 instruction.isEnabled(),
                 instruction.resetsFormatting()
             );
+        }
+    }
+
+    private static final class EffectsHelperHolder {
+        private static final EffectsHelper INSTANCE = create();
+
+        private static EffectsHelper create() {
+            try {
+                return new DirectEffectsHelper();
+            } catch (Throwable t) {
+                ModStatus.LOGGER.warn("Failed to initialize HexText dynamic effects", t);
+                return NOOP_EFFECTS_HELPER;
+            }
+        }
+    }
+
+    private static final EffectsHelper NOOP_EFFECTS_HELPER = new EffectsHelper() {
+        @Override
+        public int computeRainbowColor(long now, int glyphIndex, int anchorIndex) {
+            return 0;
+        }
+
+        @Override
+        public int computeIgniteColor(long now, int baseColor) {
+            return baseColor & 0x00FFFFFF;
+        }
+
+        @Override
+        public float computeShakeOffset(long now, int glyphIndex) {
+            return 0.0f;
+        }
+
+        @Override
+        public boolean isOperational() {
+            return false;
+        }
+    };
+
+    private static final class DirectEffectsHelper implements EffectsHelper {
+
+        private static final float RAINBOW_SPREAD = 12.0f;
+        private static final float SHAKE_VERTICAL_RANGE = 1.05f;
+        private static final long SHAKE_Y_SALT = 0xC6A4A7935BD1E995L;
+        private static final float IGNITE_MIN_FACTOR = 0.35f;
+
+        @Override
+        public int computeRainbowColor(long now, int glyphIndex, int anchorIndex) {
+            return TextEffectMath.computeRainbowColor(now, HexTextConfig.getRainbowSpeed(), glyphIndex, anchorIndex,
+                RAINBOW_SPREAD);
+        }
+
+        @Override
+        public int computeIgniteColor(long now, int baseColor) {
+            float brightness = TextEffectMath.computeIgniteBrightness(now, HexTextConfig.getIgniteInterval(),
+                IGNITE_MIN_FACTOR);
+            return ColorMath.scaleBrightness(baseColor, brightness);
+        }
+
+        @Override
+        public float computeShakeOffset(long now, int glyphIndex) {
+            long seed = TextEffectMath.computeShakeSeed(glyphIndex, now, HexTextConfig.getShakeInterval());
+            return TextEffectMath.computeShakeOffset(seed ^ SHAKE_Y_SALT, SHAKE_VERTICAL_RANGE);
         }
     }
 }

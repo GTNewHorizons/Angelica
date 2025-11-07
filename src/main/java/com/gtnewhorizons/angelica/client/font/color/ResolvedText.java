@@ -14,16 +14,28 @@ public final class ResolvedText {
     private static final byte FLAG_ITALIC = 1 << 3;
     private static final byte FLAG_RANDOM = 1 << 4;
 
+    static final byte EFFECT_RAINBOW = 1;
+    static final byte EFFECT_DINNERBONE = 1 << 1;
+    static final byte EFFECT_IGNITE = 1 << 2;
+    static final byte EFFECT_SHAKE = 1 << 3;
+
     private final char[] characters;
     private final int[] colors;
     private final int[] shadowColors;
     private final byte[] flags;
+    private final byte[] effectFlags;
+    private final int[] effectBaseColors;
+    private final int[] effectParameters;
 
-    private ResolvedText(char[] characters, int[] colors, int[] shadowColors, byte[] flags) {
+    private ResolvedText(char[] characters, int[] colors, int[] shadowColors, byte[] flags, byte[] effectFlags,
+                         int[] effectBaseColors, int[] effectParameters) {
         this.characters = characters;
         this.colors = colors;
         this.shadowColors = shadowColors;
         this.flags = flags;
+        this.effectFlags = effectFlags;
+        this.effectBaseColors = effectBaseColors;
+        this.effectParameters = effectParameters;
     }
 
     public int length() {
@@ -62,6 +74,34 @@ public final class ResolvedText {
         return (flags[index] & FLAG_RANDOM) != 0;
     }
 
+    public boolean hasDynamicEffects() {
+        return effectFlags.length > 0;
+    }
+
+    public boolean isRainbow(int index) {
+        return (effectFlags[index] & EFFECT_RAINBOW) != 0;
+    }
+
+    public boolean isDinnerbone(int index) {
+        return (effectFlags[index] & EFFECT_DINNERBONE) != 0;
+    }
+
+    public boolean isIgnite(int index) {
+        return (effectFlags[index] & EFFECT_IGNITE) != 0;
+    }
+
+    public boolean isShake(int index) {
+        return (effectFlags[index] & EFFECT_SHAKE) != 0;
+    }
+
+    public int effectBaseColorAt(int index) {
+        return effectBaseColors[index];
+    }
+
+    public int effectParameterAt(int index) {
+        return effectParameters[index];
+    }
+
     /**
      * Returns the resolved characters as a {@link String}. This is primarily
      * used by compatibility layers that need random access to the textual
@@ -81,6 +121,9 @@ public final class ResolvedText {
         private int[] colors;
         private int[] shadowColors;
         private byte[] flags;
+        private byte[] effectFlags;
+        private int[] effectBaseColors;
+        private int[] effectParameters;
         private int size;
 
         public Builder(int initialCapacity) {
@@ -89,10 +132,19 @@ public final class ResolvedText {
             this.colors = new int[cap];
             this.shadowColors = new int[cap];
             this.flags = new byte[cap];
+            this.effectFlags = new byte[cap];
+            this.effectBaseColors = new int[cap];
+            this.effectParameters = new int[cap];
         }
 
         public void append(char character, int color, int shadowColor, boolean bold, boolean italic,
                             boolean underline, boolean strikethrough, boolean random) {
+            append(character, color, shadowColor, bold, italic, underline, strikethrough, random, (byte) 0, 0, 0);
+        }
+
+        public void append(char character, int color, int shadowColor, boolean bold, boolean italic,
+                            boolean underline, boolean strikethrough, boolean random, byte dynFlags,
+                            int effectParameter, int effectBaseColor) {
             ensureCapacity(size + 1);
             characters[size] = character;
             colors[size] = color;
@@ -114,6 +166,9 @@ public final class ResolvedText {
                 flagBits |= FLAG_RANDOM;
             }
             flags[size] = flagBits;
+            effectFlags[size] = dynFlags;
+            effectParameters[size] = effectParameter;
+            effectBaseColors[size] = effectBaseColor;
             size++;
         }
 
@@ -129,11 +184,21 @@ public final class ResolvedText {
             colors = Arrays.copyOf(colors, newCap);
             shadowColors = Arrays.copyOf(shadowColors, newCap);
             flags = Arrays.copyOf(flags, newCap);
+            effectFlags = Arrays.copyOf(effectFlags, newCap);
+            effectBaseColors = Arrays.copyOf(effectBaseColors, newCap);
+            effectParameters = Arrays.copyOf(effectParameters, newCap);
         }
 
         public ResolvedText build() {
-            return new ResolvedText(Arrays.copyOf(characters, size), Arrays.copyOf(colors, size),
-                Arrays.copyOf(shadowColors, size), Arrays.copyOf(flags, size));
+            return new ResolvedText(
+                Arrays.copyOf(characters, size),
+                Arrays.copyOf(colors, size),
+                Arrays.copyOf(shadowColors, size),
+                Arrays.copyOf(flags, size),
+                Arrays.copyOf(effectFlags, size),
+                Arrays.copyOf(effectBaseColors, size),
+                Arrays.copyOf(effectParameters, size)
+            );
         }
     }
 }
