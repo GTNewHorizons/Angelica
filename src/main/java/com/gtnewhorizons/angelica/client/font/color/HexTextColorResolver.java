@@ -1,16 +1,17 @@
 package com.gtnewhorizons.angelica.client.font.color;
 
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Bridge;
+import com.gtnewhorizons.angelica.compat.hextext.render.CompatRenderInstruction;
+import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderData;
 import com.gtnewhorizons.angelica.config.FontConfig;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import kamkeel.hextext.client.render.FontRenderContext;
-import kamkeel.hextext.client.render.RenderInstruction;
-import kamkeel.hextext.client.render.RenderTextData;
 
 import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.FORMATTING_CHAR;
 
@@ -38,9 +39,9 @@ final class HexTextColorResolver implements AngelicaColorResolver {
 
         String segment = text.subSequence(safeStart, safeEnd).toString();
         boolean rawMode = FontRenderContext.isRawTextRendering();
-        RenderTextData prepared = bridge.prepare(segment, rawMode);
+        HexTextRenderData prepared = bridge.prepare(segment, rawMode);
         String sanitized = segment;
-        Map<Integer, List<RenderInstruction>> instructions = null;
+        Map<Integer, List<CompatRenderInstruction>> instructions = Collections.emptyMap();
         if (prepared != null) {
             if (prepared.shouldReplaceText() && prepared.getDisplayText() != null) {
                 sanitized = prepared.getDisplayText();
@@ -52,8 +53,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         FormattingState state = new FormattingState(baseColor, baseShadowColor);
 
         for (int index = 0; index < sanitized.length(); index++) {
-            if (instructions != null) {
-                List<RenderInstruction> bucket = instructions.get(index);
+            if (instructions != null && !instructions.isEmpty()) {
+                List<CompatRenderInstruction> bucket = instructions.get(index);
                 if (bucket != null) {
                     applyInstructions(state, bucket);
                 }
@@ -86,8 +87,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         return builder.build();
     }
 
-    private void applyInstructions(FormattingState state, List<RenderInstruction> instructions) {
-        for (RenderInstruction instruction : instructions) {
+    private void applyInstructions(FormattingState state, List<CompatRenderInstruction> instructions) {
+        for (CompatRenderInstruction instruction : instructions) {
             switch (instruction.getType()) {
                 case APPLY_RGB:
                     applyRgb(state, instruction.getRgb(), instruction.shouldClearStack());
