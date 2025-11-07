@@ -16,8 +16,8 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
 
     private final AngelicaRedirector inner;
 
-    public RFBAngelicaRedirector(boolean isObf) {
-        inner = new AngelicaRedirector(isObf);
+    public RFBAngelicaRedirector() {
+        inner = new AngelicaRedirector();
     }
 
     @Pattern("[a-z0-9-]+")

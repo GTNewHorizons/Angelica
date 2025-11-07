@@ -1,9 +1,9 @@
 package me.jellysquid.mods.sodium.client.model.light;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.ModelQuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
-import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * Light pipelines allow model quads for any location in the world to be lit using various backends, including fluids
@@ -18,5 +18,5 @@ public interface LightPipeline {
      * @param face The pre-computed facing vector of the quad
      * @param shade True if the block is shaded by ambient occlusion
      */
-	void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ForgeDirection cullFace, ForgeDirection face, boolean shade);
+	void calculate(ModelQuadView quad, BlockPos pos, QuadLightData out, ModelQuadFacing cullFace, ModelQuadFacing face, boolean shade);
 }

@@ -12,9 +12,9 @@ public class ExternallyManagedUniforms {
 		addMat4(uniformHolder, "iris_ModelViewMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
 		addMat4(uniformHolder, "iris_NormalMatrix");
-		// Exclusive to pre-1.19
-		addFloat(uniformHolder, "darknessFactor");
-		addFloat(uniformHolder, "darknessLightFactor");
+
+		// 1.21.6+
+		uniformHolder.externallyManagedUniform("heavyFog", UniformType.BOOL);
 	}
 
 	public static void addExternallyManagedUniforms116(UniformHolder uniformHolder) {

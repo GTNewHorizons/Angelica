@@ -15,7 +15,7 @@ public class AngelicaRedirectorTransformer implements IClassTransformer {
     private final String[] exclusions;
 
     public AngelicaRedirectorTransformer() {
-        inner = new AngelicaRedirector(AngelicaTweaker.isObfEnv());
+        inner = new AngelicaRedirector();
         exclusions = inner.getTransformerExclusions();
     }
 
