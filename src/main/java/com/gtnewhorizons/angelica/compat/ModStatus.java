@@ -33,6 +33,7 @@ public class ModStatus {
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isHexTextLoaded;
 
     public static void preInit(){
         isBackhandLoaded = Loader.isModLoaded("backhand");
@@ -53,6 +54,7 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
+        isHexTextLoaded = Loader.isModLoaded("hextext");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 

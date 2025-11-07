@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolver;
+import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolvers;
+import com.gtnewhorizons.angelica.client.font.color.ResolvedText;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -43,6 +46,7 @@ public class BatchingFontRenderer {
      * drop shadows.
      */
     private int[] colorCode;
+    private final AngelicaColorResolver colorResolver;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
 
@@ -81,6 +85,7 @@ public class BatchingFontRenderer {
         this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
         this.locationFontTexture = locationFontTexture;
+        this.colorResolver = AngelicaColorResolvers.create(this, this.colorCode);
 
         for (int i = 0; i < 64; i++) {
             batchCommandPool.add(new FontDrawCmd());
@@ -381,7 +386,7 @@ public class BatchingFontRenderer {
         return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
     }
 
-    private static final char FORMATTING_CHAR = 167; // §
+    public static final char FORMATTING_CHAR = 167; // §
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
         final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
@@ -405,14 +410,6 @@ public class BatchingFontRenderer {
             }
             final int stringEnd = stringOffset + stringLength;
 
-            int curColor = color;
-            int curShadowColor = shadowColor;
-            boolean curItalic = false;
-            boolean curRandom = false;
-            boolean curBold = false;
-            boolean curStrikethrough = false;
-            boolean curUnderline = false;
-
             final float glyphScaleY = getGlyphScaleY();
             final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
             final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
@@ -424,69 +421,46 @@ public class BatchingFontRenderer {
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
-            for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
-                char chr = string.charAt(charIdx);
-                if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
-                    final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
-                    charIdx++;
+            final ResolvedText resolved = colorResolver.resolve(string, stringOffset, stringEnd, color, shadowColor);
+            int lastColor = color;
+            boolean lastUnderline = false;
+            boolean lastStrikethrough = false;
 
-                    if (curUnderline && underlineStartX != underlineEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        underlineStartX = underlineEndX;
-                    }
-                    if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(
-                            strikethroughStartX,
-                            strikethroughY,
-                            strikethroughEndX - strikethroughStartX,
-                            glyphScaleY,
-                            curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        strikethroughStartX = strikethroughEndX;
-                    }
+            for (int entryIndex = 0; entryIndex < resolved.length(); entryIndex++) {
+                char chr = resolved.charAt(entryIndex);
+                final boolean curRandom = resolved.isRandom(entryIndex);
+                final boolean curBold = resolved.isBold(entryIndex);
+                final boolean curStrikethrough = resolved.isStrikethrough(entryIndex);
+                final boolean curUnderline = resolved.isUnderline(entryIndex);
+                final boolean curItalic = resolved.isItalic(entryIndex);
+                final int curColor = resolved.colorAt(entryIndex);
+                final int curShadowColor = resolved.shadowColorAt(entryIndex);
 
-                    final boolean is09 = charInRange(fmtCode, '0', '9');
-                    final boolean isAF = charInRange(fmtCode, 'a', 'f');
-                    if (is09 || isAF) {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
+                if (lastUnderline && !curUnderline && underlineStartX != underlineEndX) {
+                    final int ulIdx = idxWriterIndex;
+                    pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, lastColor);
+                    pushDrawCmd(ulIdx, 6, null, false);
+                    underlineStartX = underlineEndX;
+                }
+                if (lastStrikethrough && !curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                    final int ulIdx = idxWriterIndex;
+                    pushUntexRect(
+                        strikethroughStartX,
+                        strikethroughY,
+                        strikethroughEndX - strikethroughStartX,
+                        glyphScaleY,
+                        lastColor);
+                    pushDrawCmd(ulIdx, 6, null, false);
+                    strikethroughStartX = strikethroughEndX;
+                }
 
-                        final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
-                        final int rgb = this.colorCode[colorIdx];
-                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                        final int shadowRgb = this.colorCode[colorIdx + 16];
-                        curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                    } else if (fmtCode == 'k') {
-                        curRandom = true;
-                    } else if (fmtCode == 'l') {
-                        curBold = true;
-                    } else if (fmtCode == 'm') {
-                        curStrikethrough = true;
-                        strikethroughStartX = curX - 1.0f;
-                        strikethroughEndX = strikethroughStartX;
-                    } else if (fmtCode == 'n') {
-                        curUnderline = true;
-                        underlineStartX = curX - 1.0f;
-                        underlineEndX = underlineStartX;
-                    } else if (fmtCode == 'o') {
-                        curItalic = true;
-                    } else if (fmtCode == 'r') {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-                        curColor = color;
-                        curShadowColor = shadowColor;
-                    }
-
-                    continue;
+                if (curUnderline && !lastUnderline) {
+                    underlineStartX = curX - 1.0f;
+                    underlineEndX = underlineStartX;
+                }
+                if (curStrikethrough && !lastStrikethrough) {
+                    strikethroughStartX = curX - 1.0f;
+                    strikethroughEndX = strikethroughStartX;
                 }
 
                 if (curRandom) {
@@ -498,6 +472,11 @@ public class BatchingFontRenderer {
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
                     curX += 4 * this.getWhitespaceScale();
+                    lastUnderline = curUnderline;
+                    lastStrikethrough = curStrikethrough;
+                    lastColor = curColor;
+                    underlineEndX = curX;
+                    strikethroughEndX = curX;
                     continue;
                 }
 
@@ -555,21 +534,25 @@ public class BatchingFontRenderer {
                 curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
+
+                lastUnderline = curUnderline;
+                lastStrikethrough = curStrikethrough;
+                lastColor = curColor;
             }
 
-            if (curUnderline && underlineStartX != underlineEndX) {
+            if (lastUnderline && underlineStartX != underlineEndX) {
                 final int ulIdx = idxWriterIndex;
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, lastColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
-            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+            if (lastStrikethrough && strikethroughStartX != strikethroughEndX) {
                 final int ulIdx = idxWriterIndex;
                 pushUntexRect(
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
                     glyphScaleY,
-                    curColor);
+                    lastColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
 
