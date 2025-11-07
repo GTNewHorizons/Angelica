@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
+import com.gtnewhorizons.angelica.compat.iris.BiomeCategoryCache;
 import com.gtnewhorizons.angelica.utils.EventUtils;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.event.terraingen.BiomeEvent;
@@ -9,9 +10,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(BiomeGenBase.class)
-public class MixinBiomeGenBase {
-    private final ThreadLocal<BiomeEvent.GetWaterColor> waterColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetWaterColor((BiomeGenBase)(Object)this, 0));;
-    private final ThreadLocal<BiomeEvent.GetGrassColor> grassColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetGrassColor((BiomeGenBase)(Object)this, 0));;
+public class MixinBiomeGenBase implements BiomeCategoryCache {
+    @Unique
+    private int cachedBiomeCategory = -1;
+    private final ThreadLocal<BiomeEvent.GetWaterColor> waterColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetWaterColor((BiomeGenBase)(Object)this, 0));
+    private final ThreadLocal<BiomeEvent.GetGrassColor> grassColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetGrassColor((BiomeGenBase)(Object)this, 0));
     private final ThreadLocal<BiomeEvent.GetFoliageColor> foliageColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetFoliageColor((BiomeGenBase)(Object)this, 0));
 
     @Unique
@@ -40,5 +43,15 @@ public class MixinBiomeGenBase {
         BiomeEvent.GetFoliageColor event = foliageColorEventLocal.get();
         prepareEvent(event, original);
         return event;
+    }
+
+    @Override
+    public int iris$getCachedCategory() {
+        return cachedBiomeCategory;
+    }
+
+    @Override
+    public void iris$setCachedCategory(int category) {
+        this.cachedBiomeCategory = category;
     }
 }

@@ -22,7 +22,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodiumFluidRendering;
 
-    @Config.Comment("Inject QuadProvider rendering into some vanilla blocks")
+    @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean injectQPRendering;
@@ -166,4 +166,8 @@ public class AngelicaConfig {
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
+
+    @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
+    @Config.DefaultBoolean(false)
+    public static boolean enableHardcodedCustomUniforms;
 }

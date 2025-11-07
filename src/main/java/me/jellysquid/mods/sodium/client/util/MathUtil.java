@@ -24,7 +24,4 @@ public class MathUtil {
         return (a + b + 1) * (a + b) / 2 + b;
     }
 
-    public static boolean fuzzy_eq(float a, float b) {
-        return Math.abs(a - b) < 1e-5;
-    }
 }

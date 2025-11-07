@@ -276,6 +276,17 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
+    
+    NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
+            .setPhase(Phase.LATE)
+            .addRequiredMod(TargetedMod.NTM_SPACE)
+            .setApplyIf(() -> CompatConfig.tweakNTMSpace)
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_Tweaks")),
+    NTM_SPACE_SHADER_COMPAT(new MixinBuilder("Multiple shader fixes for NTM:Space")
+            .setPhase(Phase.LATE)
+            .addRequiredMod(TargetedMod.NTM_SPACE)
+            .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat")),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)
@@ -575,13 +586,6 @@ public enum Mixins implements IMixins {
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine
-
-    QPR(new MixinBuilder("Adds a QuadProvider field to blocks without populating it")
-        .setPhase(Phase.EARLY)
-        .addClientMixins(
-            "angelica.models.MixinBlock",
-            "angelica.models.MixinBlockOldLeaf")),
-
     ;
 
     private final MixinBuilder builder;

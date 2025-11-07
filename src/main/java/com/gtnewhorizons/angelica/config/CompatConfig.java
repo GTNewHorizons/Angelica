@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@Config(modid = "angelica", filename = "angelica-compat")
+@Config(modid = "angelica", filename = "angelica-compat", category = "compat")
 public class CompatConfig {
 
     @Config.Comment("Apply fixes to the LOTR mod")
@@ -44,4 +44,24 @@ public class CompatConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixSecurityCraft;
+    
+    @Config.Comment("Apply tweaks to NTM:Space")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean tweakNTMSpace;
+    
+    @Config.Comment("Apply fixes to NTM:Space")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixNTMSpace;
+    
+    @Config.Comment("Disables rendering of the planet below the player at high altitudes [Requires tweakNTMSpace]")
+    @Config.DefaultEnum("ShadersOnly")
+    public static altitudePlanetRendererState NTMSpace_disableAltitudePlanetRenderer;
+    public enum altitudePlanetRendererState {
+        Always,
+        ShadersOnly,
+        Never
+    }
+
 }

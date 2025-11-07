@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -26,7 +27,7 @@ public class HandRenderer {
     public static final float DEPTH = 0.125F;
 
     private void setupGlState(RenderGlobal gameRenderer, Camera camera, float tickDelta) {
-        Minecraft mc = Minecraft.getMinecraft();
+        final Minecraft mc = Minecraft.getMinecraft();
 
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glLoadIdentity();
@@ -72,8 +73,7 @@ public class HandRenderer {
                mc.gameSettings.thirdPersonView == 0 &&
                !camera.getEntity().isPlayerSleeping() &&
                !mc.gameSettings.hideGUI &&
-               // TODO: SPECTATOR
-               // mc.playerController.currentGameType
+               !GameModeUtil.isSpectator() &&
                !mc.playerController.enableEverythingIsScrewedUpMode();
     }
 
