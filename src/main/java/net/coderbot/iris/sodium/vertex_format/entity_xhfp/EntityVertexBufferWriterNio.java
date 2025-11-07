@@ -1,15 +1,14 @@
 package net.coderbot.iris.sodium.vertex_format.entity_xhfp;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
+import java.nio.ByteBuffer;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.glyph.GlyphVertexSink;
 import me.jellysquid.mods.sodium.client.model.vertex.formats.quad.QuadVertexSink;
-import me.jellysquid.mods.sodium.client.util.Norm3b;
 import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.coderbot.iris.vertices.NormalHelper;
 import org.joml.Vector3f;
-
-import java.nio.ByteBuffer;
 
 public class EntityVertexBufferWriterNio extends VertexBufferWriterNio implements QuadVertexSink, GlyphVertexSink {
 	private static final int STRIDE = IrisVertexFormats.ENTITY.getVertexSize();
@@ -75,9 +74,9 @@ public class EntityVertexBufferWriterNio extends VertexBufferWriterNio implement
 			normalZ = saveNormal.z;
 			normal = NormalHelper.packNormal(saveNormal, 0.0F);
 		} else {
-			normalX = Norm3b.unpackX(normal);
-			normalY = Norm3b.unpackY(normal);
-			normalZ = Norm3b.unpackZ(normal);
+			normalX = NormI8.unpackX(normal);
+			normalY = NormI8.unpackY(normal);
+			normalZ = NormI8.unpackZ(normal);
 		}
 
 		int tangent = NormalHelper.computeTangent(normalX, normalY, normalZ, quad);

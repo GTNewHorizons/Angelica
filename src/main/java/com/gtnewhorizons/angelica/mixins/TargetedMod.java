@@ -15,6 +15,7 @@ public enum TargetedMod implements ITargetMod {
     DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
     EXTRAUTILS(null, "ExtraUtilities"),
     MINEFACTORY_RELOADED(null, "MineFactoryReloaded"),
+    NTM_SPACE("com.hbm.dim.SolarSystem"),
     IC2("ic2.core.coremod.IC2core", "IC2"),
     NATURA(null, "Natura"),
     SECURITYCRAFT(null, "securitycraft"),
@@ -24,7 +25,10 @@ public enum TargetedMod implements ITargetMod {
     WITCHERY(null, "witchery");
 
     private final TargetModBuilder builder;
-
+    
+    TargetedMod(String targetClass) {
+        this.builder = new TargetModBuilder().setTargetClass(targetClass);
+    }
     TargetedMod(String coreModClass, String modId) {
         this.builder = new TargetModBuilder().setCoreModClass(coreModClass).setModId(modId);
     }

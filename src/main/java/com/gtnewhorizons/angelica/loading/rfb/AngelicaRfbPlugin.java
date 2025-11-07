@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading.rfb;
 
 import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBAngelicaRedirector;
+import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBSodiumBlockTransformer;
 import com.gtnewhorizons.retrofuturabootstrap.api.PluginContext;
 import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -25,7 +26,8 @@ public class AngelicaRfbPlugin implements RfbPlugin {
 
         final boolean isObf = RetroFuturaBootstrap.API.launchClassLoader().findClassMetadata("net.minecraft.world.World") == null;
         return new RfbClassTransformer[] {
-            new RFBAngelicaRedirector(isObf)
+            new RFBAngelicaRedirector(),
+            new RFBSodiumBlockTransformer(isObf)
         };
     }
 }

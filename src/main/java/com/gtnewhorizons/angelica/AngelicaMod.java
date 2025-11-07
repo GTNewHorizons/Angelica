@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica;
 
+import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
+
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
@@ -12,7 +14,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(
-        modid = "angelica",
+        modid = MOD_ID,
         name = "Angelica",
         version = Tags.VERSION,
         dependencies = """
@@ -26,6 +28,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         acceptableRemoteVersions = "*",
         guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
 public class AngelicaMod {
+    public static final String MOD_ID = "angelica";
+
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
 

@@ -1,14 +1,14 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 
 public class ChunkFaceFlags {
-    public static final int UP = of(ModelQuadFacing.UP);
-    public static final int DOWN = of(ModelQuadFacing.DOWN);
-    public static final int WEST = of(ModelQuadFacing.WEST);
-    public static final int EAST = of(ModelQuadFacing.EAST);
-    public static final int NORTH = of(ModelQuadFacing.NORTH);
-    public static final int SOUTH = of(ModelQuadFacing.SOUTH);
+    public static final int UP = of(ModelQuadFacing.POS_Y);
+    public static final int DOWN = of(ModelQuadFacing.NEG_Y);
+    public static final int WEST = of(ModelQuadFacing.NEG_X);
+    public static final int EAST = of(ModelQuadFacing.POS_X);
+    public static final int NORTH = of(ModelQuadFacing.NEG_Z);
+    public static final int SOUTH = of(ModelQuadFacing.POS_Z);
     public static final int UNASSIGNED = of(ModelQuadFacing.UNASSIGNED);
 
     public static final int ALL = all();

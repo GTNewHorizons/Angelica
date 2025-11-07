@@ -101,23 +101,23 @@ public class FinalPassRenderer {
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
 		// This works for the most part, but it's not perfect. A better approach would be creating secondary
 		// framebuffers for every other frame, but that would be a lot more complex...
-		ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
 
-		flippedBuffers.forEach(i -> {
-			int target = i;
+		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
+
+		flippedBuffers.forEach((i) -> {
+			final int target = i;
 
 			if (buffersToBeCleared.contains(target)) {
 				return;
 			}
 
-			SwapPass swap = new SwapPass();
-			RenderTarget target1 = renderTargets.get(target);
+			final SwapPass swap = new SwapPass();
+			final RenderTarget target1 = renderTargets.get(target);
 			swap.target = target;
 			swap.width = target1.getWidth();
 			swap.height = target1.getHeight();
+			// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
 			swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
-			// NB: This is handled in RenderTargets now.
-			//swap.from.readBuffer(target);
 			swap.targetTexture = renderTargets.get(target).getMainTexture();
 
 			swapPasses.add(swap);
@@ -264,8 +264,10 @@ public class FinalPassRenderer {
 
 	public void recalculateSwapPassSize() {
 		for (SwapPass swapPass : swapPasses) {
-			RenderTarget target = renderTargets.get(swapPass.target);
+			final RenderTarget target = renderTargets.get(swapPass.target);
 			renderTargets.destroyFramebuffer(swapPass.from);
+			// Match constructor logic - swap passes are only for non-flipped buffers
+			// Copy ALT→MAIN to preserve data written to ALT
 			swapPass.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {swapPass.target});
 			swapPass.width = target.getWidth();
 			swapPass.height = target.getHeight();
@@ -274,7 +276,7 @@ public class FinalPassRenderer {
 	}
 
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
-		int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
+		final int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
 
 		// TODO: Only generate the mipmap if a valid mipmap hasn't been generated or if we've written to the buffer
 		// (since the last mipmap was generated)
@@ -319,13 +321,13 @@ public class FinalPassRenderer {
 			source.getVertexSource().orElseThrow(NullPointerException::new),
 			source.getGeometrySource().orElse(null),
 			source.getFragmentSource().orElseThrow(NullPointerException::new));
-		String vertex = transformed.get(PatchShaderType.VERTEX);
-		String geometry = transformed.get(PatchShaderType.GEOMETRY);
-		String fragment = transformed.get(PatchShaderType.FRAGMENT);
+		final String vertex = transformed.get(PatchShaderType.VERTEX);
+		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
+		final String fragment = transformed.get(PatchShaderType.FRAGMENT);
 		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, fragment);
 
 		Objects.requireNonNull(flipped);
-		ProgramBuilder builder;
+		final ProgramBuilder builder;
 
 		try {
 			builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
@@ -337,7 +339,7 @@ public class FinalPassRenderer {
 
         this.customUniforms.assignTo(builder);
 
-		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
+		final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
 		CommonUniforms.addDynamicUniforms(builder);
 		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true);
@@ -361,15 +363,15 @@ public class FinalPassRenderer {
 	}
 
 	private ComputeProgram[] createComputes(ComputeSource[] compute, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
-		ComputeProgram[] programs = new ComputeProgram[compute.length];
+		final ComputeProgram[] programs = new ComputeProgram[compute.length];
 		for (int i = 0; i < programs.length; i++) {
-			ComputeSource source = compute[i];
+			final ComputeSource source = compute[i];
 			if (source == null || !source.getSource().isPresent()) {
 				continue;
 			} else {
 				// TODO: Properly handle empty shaders
 				Objects.requireNonNull(flipped);
-				ProgramBuilder builder;
+				final ProgramBuilder builder;
 
 				try {
 					builder = ProgramBuilder.beginCompute(source.getName(), source.getSource().orElse(null), IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);

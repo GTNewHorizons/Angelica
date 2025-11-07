@@ -22,7 +22,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableSodiumFluidRendering;
 
-    @Config.Comment("Inject QuadProvider rendering into some vanilla blocks")
+    @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean injectQPRendering;
@@ -86,11 +86,6 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
-
-    @Config.Comment("OffSet fonts shadows draw")
-    @Config.DefaultFloat(0.5F)
-    @Config.RangeFloat(min = 0.5F, max = 1F)
-    public static float shadowOffsetFontUC;
 
     @Config.Comment("Enable Dynamic Lights")
     @Config.DefaultBoolean(true)
@@ -206,4 +201,8 @@ public class AngelicaConfig {
             "gtPlusPlus.core.block.base.BlockBaseOre",
     })
     public static String[] blockCrackFixRenderPassWhitelist;
+
+    @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
+    @Config.DefaultBoolean(false)
+    public static boolean enableHardcodedCustomUniforms;
 }

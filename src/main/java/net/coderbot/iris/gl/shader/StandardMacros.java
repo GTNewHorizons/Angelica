@@ -3,11 +3,13 @@ package net.coderbot.iris.gl.shader;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
 import cpw.mods.fml.common.Loader;
+import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
+import net.coderbot.iris.uniforms.VanillaBiomeList;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -35,6 +37,24 @@ public class StandardMacros {
 		defines.add(new StringPair(key, value));
 	}
 
+    private static String makeAngelicaVersion()
+    {
+        String[] parts = Tags.VERSION.split("[.-]");
+        int major = Integer.parseInt(parts[0]);
+        int minor = Integer.parseInt(parts[1]);
+        int patch = Integer.parseInt(parts[2]);
+        int sub = 0;
+
+        // Handle optional prerelease (like beta62)
+        if (parts.length > 3) {
+            String pre = parts[3];
+            String num = pre.replaceAll("\\D+", ""); // remove all non-digits
+            if (!num.isEmpty())
+                sub = Integer.parseInt(num);
+        }
+        return String.format("%d%02d%02d%03d", major, minor, patch, sub);
+    }
+
 	public static Iterable<StringPair> createStandardEnvironmentDefines() {
 		ArrayList<StringPair> standardDefines = new ArrayList<>();
 
@@ -54,7 +74,7 @@ public class StandardMacros {
 		define(standardDefines, "MC_RENDER_QUALITY", "1.0");
 		define(standardDefines, "MC_SHADOW_QUALITY", "1.0");
         define(standardDefines, "IS_ANGELICA");
-        define(standardDefines, "ANGELICA_VERSION", Tags.VERSION);
+        define(standardDefines, "ANGELICA_VERSION", makeAngelicaVersion());
 		define(standardDefines, "MC_HAND_DEPTH", Float.toString(HandRenderer.DEPTH));
 
 		TextureFormat textureFormat = TextureFormatLoader.getFormat();
@@ -70,6 +90,9 @@ public class StandardMacros {
 			define(standardDefines, irisDefine);
 		}
 
+		getBiomeCategoryDefines().forEach((category, ordinal) -> define(standardDefines, category, ordinal));
+		getVanillaBiomeDefines().forEach((biome, id) -> define(standardDefines, biome, id));
+
 		return ImmutableList.copyOf(standardDefines);
 	}
 
@@ -80,7 +103,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L696-L699">Optifine Doc</a>
 	 */
 	public static String getMcVersion() {
-		final String version = Loader.MC_VERSION;;
+		final String version = Loader.MC_VERSION;
 
 		String[] splitVersion = version.split("\\.");
 
@@ -99,10 +122,10 @@ public class StandardMacros {
 		}
 
 		if (minor.length() == 1) {
-			minor = 0 + minor;
+			minor = "0" + minor;
 		}
 		if (bugfix.length() == 1) {
-			bugfix = 0 + bugfix;
+			bugfix = "0" + bugfix;
 		}
 
 		return major + minor + bugfix;
@@ -262,6 +285,49 @@ public class StandardMacros {
 		List<String> defines = new ArrayList<>();
 		// All Iris-exclusive uniforms should have a corresponding definition here. Example:
 		// defines.add("MC_UNIFORM_DRAGON_DEATH_PROGRESS");
+
+		return defines;
+	}
+
+	/**
+	 * Returns biome category defines for use in shaders.
+	 * Generates #define CAT_<CATEGORY_NAME> <ordinal> for each BiomeCategories enum value.
+	 *
+	 * @return Map of biome category defines and their ordinal values
+	 */
+	public static Map<String, String> getBiomeCategoryDefines() {
+		Map<String, String> defines = new HashMap<>();
+		for (BiomeCategories category : BiomeCategories.values()) {
+			defines.put("CAT_" + category.name(), String.valueOf(category.ordinal()));
+		}
+		return defines;
+	}
+
+	/**
+	 * Returns vanilla biome ID defines for use in shaders.
+	 * Generates #define BIOME_<BIOME_NAME> <biomeID> for all vanilla biomes.
+	 *
+	 * @return Map of vanilla biome defines and their IDs
+	 */
+	public static Map<String, String> getVanillaBiomeDefines() {
+		final Map<String, String> defines = new HashMap<>();
+
+		for (VanillaBiomeList.BiomeEntry entry : VanillaBiomeList.getVanillaBiomes()) {
+			if (entry.biome != null) {
+				defines.put("BIOME_" + entry.name, String.valueOf(entry.biome.biomeID));
+			}
+		}
+
+		// Modern biomes that don't exist in 1.7.10 - add dummy IDs that will never match
+		// This allows shader expressions to parse without errors while always evaluating to false/0
+		// Using negative IDs to avoid conflicts with actual biome IDs
+		defines.put("BIOME_NETHER_WASTES", "-1000");
+		defines.put("BIOME_SOUL_SAND_VALLEY", "-1001");
+		defines.put("BIOME_CRIMSON_FOREST", "-1002");
+		defines.put("BIOME_WARPED_FOREST", "-1003");
+		defines.put("BIOME_BASALT_DELTAS", "-1004");
+		defines.put("BIOME_LUSH_CAVES", "-1005");
+		defines.put("BIOME_PALE_GARDEN", "-1006");
 
 		return defines;
 	}

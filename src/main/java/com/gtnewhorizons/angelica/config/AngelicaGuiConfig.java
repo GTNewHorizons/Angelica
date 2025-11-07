@@ -6,6 +6,13 @@ import net.minecraft.client.gui.GuiScreen;
 
 public class AngelicaGuiConfig extends SimpleGuiConfig {
     public AngelicaGuiConfig(GuiScreen parent) throws ConfigException {
-        super(parent, AngelicaConfig.class, "angelica", "Angelica");
+        super(parent,
+            "angelica",
+            "Angelica",
+            true,
+            AngelicaConfig.class,
+            CompatConfig.class,
+            FontConfig.class
+        );
     }
 }

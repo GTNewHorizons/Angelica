@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
@@ -34,7 +35,7 @@ public class CameraUniforms {
 		return client.gameSettings.renderDistanceChunks * 16;
 	}
 
-	public static Vector3d getUnshiftedCameraPosition() {
+	public static Vector3dc getUnshiftedCameraPosition() {
         return RenderingState.INSTANCE.getCameraPosition();
 	}
 
@@ -59,8 +60,8 @@ public class CameraUniforms {
 		}
 
 		private void update() {
-			previousCameraPosition = currentCameraPosition;
-			currentCameraPosition = getUnshiftedCameraPosition().add(shift);
+			previousCameraPosition.set(currentCameraPosition);
+			currentCameraPosition.set(getUnshiftedCameraPosition()).add(shift);
 
 			updateShift();
 		}

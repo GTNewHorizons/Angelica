@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
@@ -19,7 +20,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.Potion;
@@ -33,6 +33,7 @@ import org.joml.Vector4i;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_TICK;
+import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 
 public final class CommonUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
@@ -49,16 +50,22 @@ public final class CommonUniforms {
         ViewportUniforms.addViewportUniforms(uniforms);
         WorldTimeUniforms.addWorldTimeUniforms(uniforms);
         SystemTimeUniforms.addSystemTimeUniforms(uniforms);
+		BiomeUniforms.addBiomeUniforms(uniforms);
         new CelestialUniforms(directives.getSunPathRotation()).addCelestialUniforms(uniforms);
         IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
         IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
         MatrixUniforms.addMatrixUniforms(uniforms, directives);
-        HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+
+        if (AngelicaConfig.enableHardcodedCustomUniforms) {
+            HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+        }
+
         CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
     }
 
 	// Needs to use a LocationalUniformHolder as we need it for the common uniforms
 	public static void addDynamicUniforms(DynamicUniformHolder uniforms) {
+		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms);
 
@@ -104,6 +111,8 @@ public final class CommonUniforms {
 		final SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
         uniforms
+            .uniform1f(ONCE, "darknessFactor", () -> 0.0F) // This is PER_FRAME in modern, it is an effect added by The Warden. We're just setting to 0 because 1.7.10 doesn't have it.
+            .uniform1f(ONCE, "darknessLightFactor", () -> 0.0F) // Warden darkness current light factor - 1.7.10 doesn't have it so hardcode to 0
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
@@ -140,7 +149,7 @@ public final class CommonUniforms {
         return (client.thePlayer != null &&  client.thePlayer.hurtTime > 0);
     }
 
-    private static boolean isInvisible() {
+	private static boolean isInvisible() {
         return (client.thePlayer != null &&  client.thePlayer.isInvisible());
     }
 
@@ -167,7 +176,7 @@ public final class CommonUniforms {
 	static float getBlindness() {
         final EntityLivingBase cameraEntity = client.renderViewEntity;
 
-        if (cameraEntity instanceof EntityLiving livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
+        if (cameraEntity instanceof EntityPlayer livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
             final PotionEffect blindness = livingEntity.getActivePotionEffect(Potion.blindness);
 
 			if (blindness != null) {

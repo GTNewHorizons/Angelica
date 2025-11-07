@@ -74,7 +74,7 @@ public class MipmapHelper {
         int mipmaps = useMipmapsForTexture(textureName) ? getMipmapLevels(width, height, 1) : 0;
         logger.finer("setupTexture(%s) %dx%d %d mipmaps", textureName, width, height, mipmaps);
         int magFilter = blur ? GL11.GL_LINEAR : GL11.GL_NEAREST;
-        int minFilter = mipmaps > 0 ? GL11.GL_NEAREST_MIPMAP_LINEAR : magFilter;
+        int minFilter = mipmaps > 0 ? GL11.GL_LINEAR_MIPMAP_LINEAR : magFilter;
         int wrap = clamp ? GL11.GL_CLAMP : GL11.GL_REPEAT;
         if (mipmaps > 0) {
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmaps);

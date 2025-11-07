@@ -81,8 +81,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntSupplier;
 
+import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
+import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
+import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
+import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
+/**
+ * OpenGL State Manager - Provides cached state tracking and management for OpenGL operations.
+ *
+ * <p><b>IMPORTANT INITIALIZATION ORDER:</b></p>
+ * <ul>
+ *   <li>This class performs GL queries in static initializers (MAX_CLIP_PLANES, MAX_TEXTURE_UNITS, etc.)</li>
+ *   <li>The class MUST NOT be loaded until after the GL context has been created and made current</li>
+ *   <li>Violating this requirement will cause crashes with "No current context" or return invalid values</li>
+ *   <li>Call {@link #preInit()} after GL context creation to initialize runtime state</li>
+ * </ul>
+ */
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
     public static ContextCapabilities capabilities;
@@ -94,13 +109,14 @@ public class GLStateManager {
     public static final int MAX_PROJECTION_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_PROJECTION_STACK_DEPTH);
     public static final int MAX_TEXTURE_STACK_DEPTH = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_STACK_DEPTH);
     public static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
+    public static final int MAX_CLIP_PLANES = GL11.glGetInteger(GL11.GL_MAX_CLIP_PLANES);
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
-    @Getter protected static boolean NVIDIA;
-    @Getter protected static boolean AMD;
-    @Getter protected static boolean INTEL;
-    @Getter protected static boolean MESA;
+    @Getter private static Vendor VENDOR;
+
+    // This setting varies depending on driver, so it gets queried at runtime
+    public static final int DEFAULT_DRAW_BUFFER = GL11.glGetInteger(GL11.GL_DRAW_BUFFER);
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
@@ -119,12 +135,58 @@ public class GLStateManager {
     @Getter protected static final Color4Stack color = new Color4Stack();
     @Getter protected static final Color4Stack clearColor = new Color4Stack(new Color4(0.0F, 0.0F, 0.0F, 0.0F));
     @Getter protected static final ColorMaskStack colorMask = new ColorMaskStack();
+    @Getter protected static final IntegerStateStack drawBuffer = new IntegerStateStack(DEFAULT_DRAW_BUFFER);
     @Getter protected static final BooleanStateStack cullState = new BooleanStateStack(GL11.GL_CULL_FACE);
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
     @Getter protected static final BooleanStateStack alphaTest = new BooleanStateStack(GL11.GL_ALPHA_TEST);
 
     @Getter protected static final BooleanStateStack lightingState = new BooleanStateStack(GL11.GL_LIGHTING);
     @Getter protected static final BooleanStateStack rescaleNormalState = new BooleanStateStack(GL12.GL_RESCALE_NORMAL);
+    @Getter protected static final BooleanStateStack normalizeState = new BooleanStateStack(GL11.GL_NORMALIZE);
+
+    // Additional enable bit states tracked by GL_ENABLE_BIT
+    @Getter protected static final BooleanStateStack ditherState = new BooleanStateStack(GL11.GL_DITHER, true); // Defaults to true per OpenGL spec
+    @Getter protected static final BooleanStateStack stencilTest = new BooleanStateStack(GL11.GL_STENCIL_TEST);
+    @Getter protected static final BooleanStateStack lineSmoothState = new BooleanStateStack(GL11.GL_LINE_SMOOTH);
+    @Getter protected static final BooleanStateStack lineStippleState = new BooleanStateStack(GL11.GL_LINE_STIPPLE);
+    @Getter protected static final BooleanStateStack pointSmoothState = new BooleanStateStack(GL11.GL_POINT_SMOOTH);
+    @Getter protected static final BooleanStateStack polygonSmoothState = new BooleanStateStack(GL11.GL_POLYGON_SMOOTH);
+    @Getter protected static final BooleanStateStack polygonStippleState = new BooleanStateStack(GL11.GL_POLYGON_STIPPLE);
+    @Getter protected static final BooleanStateStack multisampleState = new BooleanStateStack(GL13.GL_MULTISAMPLE, true); // Defaults to true per OpenGL spec
+    @Getter protected static final BooleanStateStack sampleAlphaToCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE);
+    @Getter protected static final BooleanStateStack sampleAlphaToOneState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_ONE);
+    @Getter protected static final BooleanStateStack sampleCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_COVERAGE);
+    @Getter protected static final BooleanStateStack colorLogicOpState = new BooleanStateStack(GL11.GL_COLOR_LOGIC_OP);
+    @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP);
+
+    // Polygon offset states
+    @Getter protected static final BooleanStateStack polygonOffsetPointState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_POINT);
+    @Getter protected static final BooleanStateStack polygonOffsetLineState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_LINE);
+    @Getter protected static final BooleanStateStack polygonOffsetFillState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_FILL);
+
+    // Evaluator states
+    @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL);
+    @Getter protected static final BooleanStateStack map1Color4State = new BooleanStateStack(GL11.GL_MAP1_COLOR_4);
+    @Getter protected static final BooleanStateStack map1IndexState = new BooleanStateStack(GL11.GL_MAP1_INDEX);
+    @Getter protected static final BooleanStateStack map1NormalState = new BooleanStateStack(GL11.GL_MAP1_NORMAL);
+    @Getter protected static final BooleanStateStack map1TextureCoord1State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_1);
+    @Getter protected static final BooleanStateStack map1TextureCoord2State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_2);
+    @Getter protected static final BooleanStateStack map1TextureCoord3State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_3);
+    @Getter protected static final BooleanStateStack map1TextureCoord4State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_4);
+    @Getter protected static final BooleanStateStack map1Vertex3State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_3);
+    @Getter protected static final BooleanStateStack map1Vertex4State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_4);
+    @Getter protected static final BooleanStateStack map2Color4State = new BooleanStateStack(GL11.GL_MAP2_COLOR_4);
+    @Getter protected static final BooleanStateStack map2IndexState = new BooleanStateStack(GL11.GL_MAP2_INDEX);
+    @Getter protected static final BooleanStateStack map2NormalState = new BooleanStateStack(GL11.GL_MAP2_NORMAL);
+    @Getter protected static final BooleanStateStack map2TextureCoord1State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_1);
+    @Getter protected static final BooleanStateStack map2TextureCoord2State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_2);
+    @Getter protected static final BooleanStateStack map2TextureCoord3State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_3);
+    @Getter protected static final BooleanStateStack map2TextureCoord4State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_4);
+    @Getter protected static final BooleanStateStack map2Vertex3State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_3);
+    @Getter protected static final BooleanStateStack map2Vertex4State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_4);
+
+    // Clip plane states
+    @Getter protected static final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[MAX_CLIP_PLANES];
 
     @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
@@ -148,8 +210,12 @@ public class GLStateManager {
             lightDataStates[i] = new LightStateStack(GL11.GL_LIGHT0 + i);
         }
 
+        for (int i = 0; i < MAX_CLIP_PLANES; i++) {
+            clipPlaneStates[i] = new BooleanStateStack(GL11.GL_CLIP_PLANE0 + i);
+        }
+
         try {
-            Field curr = ReflectionHelper.findField(Matrix4fStack.class, "curr");
+            final Field curr = ReflectionHelper.findField(Matrix4fStack.class, "curr");
             curr.setAccessible(true);
             MAT4_STACK_CURR_DEPTH = MethodHandles.lookup().unreflectGetter(curr);
         } catch (IllegalAccessException e) {
@@ -167,11 +233,11 @@ public class GLStateManager {
             attribs.popInt();
         }
 
-        List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
-        int size = stacks.size();
+        final List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
+        final int size = stacks.size();
 
         for(int i = 0; i < size; i++) {
-            IStateStack<?> stack = stacks.get(i);
+            final IStateStack<?> stack = stacks.get(i);
 
             while(!stack.isEmpty()) {
                 stack.pop();
@@ -245,16 +311,12 @@ public class GLStateManager {
             .addFeature(GL11.GL_VIEWPORT);
 
         String glVendor = GL11.glGetString(GL11.GL_VENDOR);
-        NVIDIA = glVendor.toLowerCase().contains("nvidia");
-        AMD = glVendor.toLowerCase().contains("ati") || glVendor.toLowerCase().contains("amd");
-        INTEL = glVendor.toLowerCase().contains("intel");
-        MESA = glVendor.toLowerCase().contains("mesa");
+        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
 
-        if(AMD) {
+        if (vendorIsAMD()) {
             // AMD Drivers seem to default to 0 for the matrix mode, so we need to set it to the default
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
         }
-
     }
 
     public static void init() {
@@ -300,12 +362,23 @@ public class GLStateManager {
 
     // LWJGL Overrides
     public static void glEnable(int cap) {
+        // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
+        if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
+            clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].enable();
+            return;
+        }
+
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> enableAlphaTest();
+            case GL11.GL_AUTO_NORMAL -> autoNormalState.enable();
             case GL11.GL_BLEND -> enableBlend();
+            case GL11.GL_COLOR_MATERIAL -> enableColorMaterial();
+            case GL11.GL_COLOR_LOGIC_OP -> colorLogicOpState.enable();
             case GL11.GL_CULL_FACE -> enableCull();
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
+            case GL11.GL_DITHER -> ditherState.enable();
             case GL11.GL_FOG -> enableFog();
+            case GL11.GL_INDEX_LOGIC_OP -> indexLogicOpState.enable();
             case GL11.GL_LIGHTING -> enableLighting();
             case GL11.GL_LIGHT0 -> enableLight(0);
             case GL11.GL_LIGHT1 -> enableLight(1);
@@ -315,21 +388,69 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> enableLight(5);
             case GL11.GL_LIGHT6 -> enableLight(6);
             case GL11.GL_LIGHT7 -> enableLight(7);
-            case GL11.GL_COLOR_MATERIAL -> enableColorMaterial();
-            case GL11.GL_SCISSOR_TEST -> enableScissorTest();
-            case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL11.GL_LINE_SMOOTH -> lineSmoothState.enable();
+            case GL11.GL_LINE_STIPPLE -> lineStippleState.enable();
+            case GL11.GL_MAP1_COLOR_4 -> map1Color4State.enable();
+            case GL11.GL_MAP1_INDEX -> map1IndexState.enable();
+            case GL11.GL_MAP1_NORMAL -> map1NormalState.enable();
+            case GL11.GL_MAP1_TEXTURE_COORD_1 -> map1TextureCoord1State.enable();
+            case GL11.GL_MAP1_TEXTURE_COORD_2 -> map1TextureCoord2State.enable();
+            case GL11.GL_MAP1_TEXTURE_COORD_3 -> map1TextureCoord3State.enable();
+            case GL11.GL_MAP1_TEXTURE_COORD_4 -> map1TextureCoord4State.enable();
+            case GL11.GL_MAP1_VERTEX_3 -> map1Vertex3State.enable();
+            case GL11.GL_MAP1_VERTEX_4 -> map1Vertex4State.enable();
+            case GL11.GL_MAP2_COLOR_4 -> map2Color4State.enable();
+            case GL11.GL_MAP2_INDEX -> map2IndexState.enable();
+            case GL11.GL_MAP2_NORMAL -> map2NormalState.enable();
+            case GL11.GL_MAP2_TEXTURE_COORD_1 -> map2TextureCoord1State.enable();
+            case GL11.GL_MAP2_TEXTURE_COORD_2 -> map2TextureCoord2State.enable();
+            case GL11.GL_MAP2_TEXTURE_COORD_3 -> map2TextureCoord3State.enable();
+            case GL11.GL_MAP2_TEXTURE_COORD_4 -> map2TextureCoord4State.enable();
+            case GL11.GL_MAP2_VERTEX_3 -> map2Vertex3State.enable();
+            case GL11.GL_MAP2_VERTEX_4 -> map2Vertex4State.enable();
+            case GL13.GL_MULTISAMPLE -> multisampleState.enable();
+            case GL11.GL_NORMALIZE -> normalizeState.enable();
+            case GL11.GL_POINT_SMOOTH -> pointSmoothState.enable();
+            case GL11.GL_POLYGON_OFFSET_POINT -> polygonOffsetPointState.enable();
+            case GL11.GL_POLYGON_OFFSET_LINE -> polygonOffsetLineState.enable();
+            case GL11.GL_POLYGON_OFFSET_FILL -> polygonOffsetFillState.enable();
+            case GL11.GL_POLYGON_SMOOTH -> polygonSmoothState.enable();
+            case GL11.GL_POLYGON_STIPPLE -> polygonStippleState.enable();
             case GL12.GL_RESCALE_NORMAL -> enableRescaleNormal();
+            case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> sampleAlphaToCoverageState.enable();
+            case GL13.GL_SAMPLE_ALPHA_TO_ONE -> sampleAlphaToOneState.enable();
+            case GL13.GL_SAMPLE_COVERAGE -> sampleCoverageState.enable();
+            case GL11.GL_SCISSOR_TEST -> enableScissorTest();
+            case GL11.GL_STENCIL_TEST -> stencilTest.enable();
+            case GL11.GL_TEXTURE_1D -> textures.getTexture1DStates(activeTextureUnit.getValue()).enable();
+            case GL11.GL_TEXTURE_2D -> enableTexture();
+            case GL12.GL_TEXTURE_3D -> textures.getTexture3DStates(activeTextureUnit.getValue()).enable();
+            case GL11.GL_TEXTURE_GEN_S -> textures.getTexGenSStates(activeTextureUnit.getValue()).enable();
+            case GL11.GL_TEXTURE_GEN_T -> textures.getTexGenTStates(activeTextureUnit.getValue()).enable();
+            case GL11.GL_TEXTURE_GEN_R -> textures.getTexGenRStates(activeTextureUnit.getValue()).enable();
+            case GL11.GL_TEXTURE_GEN_Q -> textures.getTexGenQStates(activeTextureUnit.getValue()).enable();
             default -> GL11.glEnable(cap);
         }
     }
 
     public static void glDisable(int cap) {
+        // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
+        if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
+            clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].disable();
+            return;
+        }
+
         switch (cap) {
             case GL11.GL_ALPHA_TEST -> disableAlphaTest();
+            case GL11.GL_AUTO_NORMAL -> autoNormalState.disable();
             case GL11.GL_BLEND -> disableBlend();
+            case GL11.GL_COLOR_MATERIAL -> disableColorMaterial();
+            case GL11.GL_COLOR_LOGIC_OP -> colorLogicOpState.disable();
             case GL11.GL_CULL_FACE -> disableCull();
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
+            case GL11.GL_DITHER -> ditherState.disable();
             case GL11.GL_FOG -> disableFog();
+            case GL11.GL_INDEX_LOGIC_OP -> indexLogicOpState.disable();
             case GL11.GL_LIGHTING -> disableLighting();
             case GL11.GL_LIGHT0 -> disableLight(0);
             case GL11.GL_LIGHT1 -> disableLight(1);
@@ -339,10 +460,47 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> disableLight(5);
             case GL11.GL_LIGHT6 -> disableLight(6);
             case GL11.GL_LIGHT7 -> disableLight(7);
-            case GL11.GL_COLOR_MATERIAL -> disableColorMaterial();
-            case GL11.GL_SCISSOR_TEST -> disableScissorTest();
-            case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL11.GL_LINE_SMOOTH -> lineSmoothState.disable();
+            case GL11.GL_LINE_STIPPLE -> lineStippleState.disable();
+            case GL11.GL_MAP1_COLOR_4 -> map1Color4State.disable();
+            case GL11.GL_MAP1_INDEX -> map1IndexState.disable();
+            case GL11.GL_MAP1_NORMAL -> map1NormalState.disable();
+            case GL11.GL_MAP1_TEXTURE_COORD_1 -> map1TextureCoord1State.disable();
+            case GL11.GL_MAP1_TEXTURE_COORD_2 -> map1TextureCoord2State.disable();
+            case GL11.GL_MAP1_TEXTURE_COORD_3 -> map1TextureCoord3State.disable();
+            case GL11.GL_MAP1_TEXTURE_COORD_4 -> map1TextureCoord4State.disable();
+            case GL11.GL_MAP1_VERTEX_3 -> map1Vertex3State.disable();
+            case GL11.GL_MAP1_VERTEX_4 -> map1Vertex4State.disable();
+            case GL11.GL_MAP2_COLOR_4 -> map2Color4State.disable();
+            case GL11.GL_MAP2_INDEX -> map2IndexState.disable();
+            case GL11.GL_MAP2_NORMAL -> map2NormalState.disable();
+            case GL11.GL_MAP2_TEXTURE_COORD_1 -> map2TextureCoord1State.disable();
+            case GL11.GL_MAP2_TEXTURE_COORD_2 -> map2TextureCoord2State.disable();
+            case GL11.GL_MAP2_TEXTURE_COORD_3 -> map2TextureCoord3State.disable();
+            case GL11.GL_MAP2_TEXTURE_COORD_4 -> map2TextureCoord4State.disable();
+            case GL11.GL_MAP2_VERTEX_3 -> map2Vertex3State.disable();
+            case GL11.GL_MAP2_VERTEX_4 -> map2Vertex4State.disable();
+            case GL13.GL_MULTISAMPLE -> multisampleState.disable();
+            case GL11.GL_NORMALIZE -> normalizeState.disable();
+            case GL11.GL_POINT_SMOOTH -> pointSmoothState.disable();
+            case GL11.GL_POLYGON_OFFSET_POINT -> polygonOffsetPointState.disable();
+            case GL11.GL_POLYGON_OFFSET_LINE -> polygonOffsetLineState.disable();
+            case GL11.GL_POLYGON_OFFSET_FILL -> polygonOffsetFillState.disable();
+            case GL11.GL_POLYGON_SMOOTH -> polygonSmoothState.disable();
+            case GL11.GL_POLYGON_STIPPLE -> polygonStippleState.disable();
             case GL12.GL_RESCALE_NORMAL -> disableRescaleNormal();
+            case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> sampleAlphaToCoverageState.disable();
+            case GL13.GL_SAMPLE_ALPHA_TO_ONE -> sampleAlphaToOneState.disable();
+            case GL13.GL_SAMPLE_COVERAGE -> sampleCoverageState.disable();
+            case GL11.GL_SCISSOR_TEST -> disableScissorTest();
+            case GL11.GL_STENCIL_TEST -> stencilTest.disable();
+            case GL11.GL_TEXTURE_1D -> textures.getTexture1DStates(activeTextureUnit.getValue()).disable();
+            case GL11.GL_TEXTURE_2D -> disableTexture();
+            case GL12.GL_TEXTURE_3D -> textures.getTexture3DStates(activeTextureUnit.getValue()).disable();
+            case GL11.GL_TEXTURE_GEN_S -> textures.getTexGenSStates(activeTextureUnit.getValue()).disable();
+            case GL11.GL_TEXTURE_GEN_T -> textures.getTexGenTStates(activeTextureUnit.getValue()).disable();
+            case GL11.GL_TEXTURE_GEN_R -> textures.getTexGenRStates(activeTextureUnit.getValue()).disable();
+            case GL11.GL_TEXTURE_GEN_Q -> textures.getTexGenQStates(activeTextureUnit.getValue()).disable();
             default -> GL11.glDisable(cap);
         }
     }
@@ -351,12 +509,22 @@ public class GLStateManager {
         if(shouldBypassCache()) {
             return GL11.glIsEnabled(cap);
         }
+        // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
+        if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
+            return clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].isEnabled();
+        }
+
         return switch (cap) {
             case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
+            case GL11.GL_AUTO_NORMAL -> autoNormalState.isEnabled();
             case GL11.GL_BLEND -> blendMode.isEnabled();
+            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
+            case GL11.GL_COLOR_LOGIC_OP -> colorLogicOpState.isEnabled();
             case GL11.GL_CULL_FACE -> cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
+            case GL11.GL_DITHER -> ditherState.isEnabled();
             case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_INDEX_LOGIC_OP -> indexLogicOpState.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
             case GL11.GL_LIGHT0 -> lightStates[0].isEnabled();
             case GL11.GL_LIGHT1 -> lightStates[1].isEnabled();
@@ -366,10 +534,47 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
             case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
             case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
-            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
-            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
-            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_LINE_SMOOTH -> lineSmoothState.isEnabled();
+            case GL11.GL_LINE_STIPPLE -> lineStippleState.isEnabled();
+            case GL11.GL_MAP1_COLOR_4 -> map1Color4State.isEnabled();
+            case GL11.GL_MAP1_INDEX -> map1IndexState.isEnabled();
+            case GL11.GL_MAP1_NORMAL -> map1NormalState.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_1 -> map1TextureCoord1State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_2 -> map1TextureCoord2State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_3 -> map1TextureCoord3State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_4 -> map1TextureCoord4State.isEnabled();
+            case GL11.GL_MAP1_VERTEX_3 -> map1Vertex3State.isEnabled();
+            case GL11.GL_MAP1_VERTEX_4 -> map1Vertex4State.isEnabled();
+            case GL11.GL_MAP2_COLOR_4 -> map2Color4State.isEnabled();
+            case GL11.GL_MAP2_INDEX -> map2IndexState.isEnabled();
+            case GL11.GL_MAP2_NORMAL -> map2NormalState.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_1 -> map2TextureCoord1State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_2 -> map2TextureCoord2State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_3 -> map2TextureCoord3State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_4 -> map2TextureCoord4State.isEnabled();
+            case GL11.GL_MAP2_VERTEX_3 -> map2Vertex3State.isEnabled();
+            case GL11.GL_MAP2_VERTEX_4 -> map2Vertex4State.isEnabled();
+            case GL13.GL_MULTISAMPLE -> multisampleState.isEnabled();
+            case GL11.GL_NORMALIZE -> normalizeState.isEnabled();
+            case GL11.GL_POINT_SMOOTH -> pointSmoothState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_POINT -> polygonOffsetPointState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_LINE -> polygonOffsetLineState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_FILL -> polygonOffsetFillState.isEnabled();
+            case GL11.GL_POLYGON_SMOOTH -> polygonSmoothState.isEnabled();
+            case GL11.GL_POLYGON_STIPPLE -> polygonStippleState.isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
+            case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> sampleAlphaToCoverageState.isEnabled();
+            case GL13.GL_SAMPLE_ALPHA_TO_ONE -> sampleAlphaToOneState.isEnabled();
+            case GL13.GL_SAMPLE_COVERAGE -> sampleCoverageState.isEnabled();
+            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_STENCIL_TEST -> stencilTest.isEnabled();
+            case GL11.GL_TEXTURE_1D -> textures.getTexture1DStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
+            case GL12.GL_TEXTURE_3D -> textures.getTexture3DStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_S -> textures.getTexGenSStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_T -> textures.getTexGenTStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_R -> textures.getTexGenRStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_Q -> textures.getTexGenQStates(activeTextureUnit.getValue()).isEnabled();
             default -> GL11.glIsEnabled(cap);
         };
     }
@@ -378,13 +583,23 @@ public class GLStateManager {
         if(shouldBypassCache()) {
             return GL11.glGetBoolean(pname);
         }
+        // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
+        if (pname >= GL11.GL_CLIP_PLANE0 && pname < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
+            return clipPlaneStates[pname - GL11.GL_CLIP_PLANE0].isEnabled();
+        }
+
         return switch (pname) {
             case GL11.GL_ALPHA_TEST -> alphaTest.isEnabled();
+            case GL11.GL_AUTO_NORMAL -> autoNormalState.isEnabled();
             case GL11.GL_BLEND -> blendMode.isEnabled();
+            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
+            case GL11.GL_COLOR_LOGIC_OP -> colorLogicOpState.isEnabled();
             case GL11.GL_CULL_FACE -> cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> depthTest.isEnabled();
             case GL11.GL_DEPTH_WRITEMASK -> depthState.isEnabled();
+            case GL11.GL_DITHER -> ditherState.isEnabled();
             case GL11.GL_FOG -> fogMode.isEnabled();
+            case GL11.GL_INDEX_LOGIC_OP -> indexLogicOpState.isEnabled();
             case GL11.GL_LIGHTING -> lightingState.isEnabled();
             case GL11.GL_LIGHT0 -> lightStates[0].isEnabled();
             case GL11.GL_LIGHT1 -> lightStates[1].isEnabled();
@@ -394,10 +609,47 @@ public class GLStateManager {
             case GL11.GL_LIGHT5 -> lightStates[5].isEnabled();
             case GL11.GL_LIGHT6 -> lightStates[6].isEnabled();
             case GL11.GL_LIGHT7 -> lightStates[7].isEnabled();
-            case GL11.GL_COLOR_MATERIAL -> colorMaterial.isEnabled();
-            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
-            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_LINE_SMOOTH -> lineSmoothState.isEnabled();
+            case GL11.GL_LINE_STIPPLE -> lineStippleState.isEnabled();
+            case GL11.GL_MAP1_COLOR_4 -> map1Color4State.isEnabled();
+            case GL11.GL_MAP1_INDEX -> map1IndexState.isEnabled();
+            case GL11.GL_MAP1_NORMAL -> map1NormalState.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_1 -> map1TextureCoord1State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_2 -> map1TextureCoord2State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_3 -> map1TextureCoord3State.isEnabled();
+            case GL11.GL_MAP1_TEXTURE_COORD_4 -> map1TextureCoord4State.isEnabled();
+            case GL11.GL_MAP1_VERTEX_3 -> map1Vertex3State.isEnabled();
+            case GL11.GL_MAP1_VERTEX_4 -> map1Vertex4State.isEnabled();
+            case GL11.GL_MAP2_COLOR_4 -> map2Color4State.isEnabled();
+            case GL11.GL_MAP2_INDEX -> map2IndexState.isEnabled();
+            case GL11.GL_MAP2_NORMAL -> map2NormalState.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_1 -> map2TextureCoord1State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_2 -> map2TextureCoord2State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_3 -> map2TextureCoord3State.isEnabled();
+            case GL11.GL_MAP2_TEXTURE_COORD_4 -> map2TextureCoord4State.isEnabled();
+            case GL11.GL_MAP2_VERTEX_3 -> map2Vertex3State.isEnabled();
+            case GL11.GL_MAP2_VERTEX_4 -> map2Vertex4State.isEnabled();
+            case GL13.GL_MULTISAMPLE -> multisampleState.isEnabled();
+            case GL11.GL_NORMALIZE -> normalizeState.isEnabled();
+            case GL11.GL_POINT_SMOOTH -> pointSmoothState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_POINT -> polygonOffsetPointState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_LINE -> polygonOffsetLineState.isEnabled();
+            case GL11.GL_POLYGON_OFFSET_FILL -> polygonOffsetFillState.isEnabled();
+            case GL11.GL_POLYGON_SMOOTH -> polygonSmoothState.isEnabled();
+            case GL11.GL_POLYGON_STIPPLE -> polygonStippleState.isEnabled();
             case GL12.GL_RESCALE_NORMAL -> rescaleNormalState.isEnabled();
+            case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> sampleAlphaToCoverageState.isEnabled();
+            case GL13.GL_SAMPLE_ALPHA_TO_ONE -> sampleAlphaToOneState.isEnabled();
+            case GL13.GL_SAMPLE_COVERAGE -> sampleCoverageState.isEnabled();
+            case GL11.GL_SCISSOR_TEST -> scissorTest.isEnabled();
+            case GL11.GL_STENCIL_TEST -> stencilTest.isEnabled();
+            case GL11.GL_TEXTURE_1D -> textures.getTexture1DStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_2D -> textures.getTextureUnitStates(activeTextureUnit.getValue()).isEnabled();
+            case GL12.GL_TEXTURE_3D -> textures.getTexture3DStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_S -> textures.getTexGenSStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_T -> textures.getTexGenTStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_R -> textures.getTexGenRStates(activeTextureUnit.getValue()).isEnabled();
+            case GL11.GL_TEXTURE_GEN_Q -> textures.getTexGenQStates(activeTextureUnit.getValue()).isEnabled();
             default -> GL11.glGetBoolean(pname);
         };
     }
@@ -997,7 +1249,7 @@ public class GLStateManager {
             i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR;
             j = GL11.GL_LINEAR;
         } else {
-            i = mipmap ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_NEAREST;
+            i = mipmap ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_NEAREST;
             j = GL11.GL_NEAREST;
         }
         glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, i);
@@ -1885,6 +2137,20 @@ public class GLStateManager {
         }
     }
 
+    public static boolean vendorIsAMD() {
+        return VENDOR == AMD;
+    }
 
+    public static boolean vendorIsIntel() {
+        return VENDOR == INTEL;
+    }
+
+    public static boolean vendorIsMesa() {
+        return VENDOR == MESA;
+    }
+
+    public static boolean vendorIsNVIDIA() {
+        return VENDOR == NVIDIA;
+    }
 
 }

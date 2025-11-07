@@ -7,7 +7,7 @@
 * It's a cute angle -mitchej123
 * It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons** 
+## **Beta Quality - Here there be Dragons**
 * Shaders - Beta
    * Complementary & BSL mostly function, but have some bugs
    * Sildurs, Seus, and any other shader probably doesn't work
@@ -15,7 +15,7 @@
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.19
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.6.20
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.7.0
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities
@@ -27,7 +27,6 @@
 
 # Known Incompatibilities
 * FalseTweaks - Not currently planned (Looking for volunteers) [Might work if you effectively disable most of the mod]
-* SmoothFont - Not currently planned (Looking for volunteers)
 * RPLE - Not currently planned (Looking for volunteers)
 * LiteLoader - Install [LiteloaderLoader](https://github.com/Midnight145/LiteloaderLoader)
 
@@ -42,6 +41,7 @@
 * [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 0.4.5 or above
 * CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
+* SmoothFont - Equivalent functionality added
 
 # Credits
 * ShadersMod
