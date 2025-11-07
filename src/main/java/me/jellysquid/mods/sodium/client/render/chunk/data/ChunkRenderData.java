@@ -1,17 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.data;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.quad.properties.ModelQuadFacing;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import lombok.Getter;
-import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
-import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.common.util.ForgeDirection;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -19,6 +12,12 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
+import me.jellysquid.mods.sodium.client.gl.util.BufferSlice;
+import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraftforge.common.util.ForgeDirection;
 
 /**
  * The render data for a chunk render container containing all the information about which meshes are attached, the

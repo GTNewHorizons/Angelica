@@ -1,6 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.util.DirectionUtil;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.HORIZONTAL_DIRECTIONS;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_X;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_Z;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_X;
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Z;
+
 import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkRenderColumn<T extends ChunkGraphicsState> {
@@ -48,7 +53,7 @@ public class ChunkRenderColumn<T extends ChunkGraphicsState> {
     }
 
     public boolean areNeighborsPresent() {
-        for (ForgeDirection dir : DirectionUtil.HORIZONTAL_DIRECTIONS) {
+        for (var dir : HORIZONTAL_DIRECTIONS) {
             ChunkRenderColumn<T> adj = this.adjacent[dir.ordinal()];
 
             if (adj == null) {
@@ -58,13 +63,13 @@ public class ChunkRenderColumn<T extends ChunkGraphicsState> {
             ForgeDirection corner;
 
             // Access the adjacent corner chunk from the neighbor in this direction
-            if (dir == ForgeDirection.NORTH) {
+            if (dir == NEG_Z) {
                 corner = ForgeDirection.EAST;
-            } else if (dir == ForgeDirection.SOUTH) {
+            } else if (dir == POS_Z) {
                 corner = ForgeDirection.WEST;
-            } else if (dir == ForgeDirection.WEST) {
+            } else if (dir == NEG_X) {
                 corner = ForgeDirection.NORTH;
-            } else if (dir == ForgeDirection.EAST) {
+            } else if (dir == POS_X) {
                 corner = ForgeDirection.SOUTH;
             } else {
                 continue;
