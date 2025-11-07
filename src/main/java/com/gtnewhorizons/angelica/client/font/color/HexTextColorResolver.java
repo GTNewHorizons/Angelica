@@ -1,16 +1,16 @@
 package com.gtnewhorizons.angelica.client.font.color;
 
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Bridge;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Instruction;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.PreparedText;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 import kamkeel.hextext.client.render.FontRenderContext;
+import kamkeel.hextext.client.render.RenderInstruction;
+import kamkeel.hextext.client.render.RenderTextData;
 
 import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.FORMATTING_CHAR;
 
@@ -38,16 +38,22 @@ final class HexTextColorResolver implements AngelicaColorResolver {
 
         String segment = text.subSequence(safeStart, safeEnd).toString();
         boolean rawMode = FontRenderContext.isRawTextRendering();
-        PreparedText prepared = bridge.prepare(segment, rawMode);
-        String sanitized = prepared.sanitizedText() != null ? prepared.sanitizedText() : segment;
-        Int2ObjectMap<List<Instruction>> instructions = prepared.instructions();
+        RenderTextData prepared = bridge.prepare(segment, rawMode);
+        String sanitized = segment;
+        Map<Integer, List<RenderInstruction>> instructions = null;
+        if (prepared != null) {
+            if (prepared.shouldReplaceText() && prepared.getDisplayText() != null) {
+                sanitized = prepared.getDisplayText();
+            }
+            instructions = prepared.getInstructions();
+        }
 
         ResolvedText.Builder builder = ResolvedText.builder(sanitized.length());
         FormattingState state = new FormattingState(baseColor, baseShadowColor);
 
         for (int index = 0; index < sanitized.length(); index++) {
             if (instructions != null) {
-                List<Instruction> bucket = instructions.get(index);
+                List<RenderInstruction> bucket = instructions.get(index);
                 if (bucket != null) {
                     applyInstructions(state, bucket);
                 }
@@ -80,24 +86,24 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         return builder.build();
     }
 
-    private void applyInstructions(FormattingState state, List<Instruction> instructions) {
-        for (Instruction instruction : instructions) {
-            switch (instruction.type()) {
+    private void applyInstructions(FormattingState state, List<RenderInstruction> instructions) {
+        for (RenderInstruction instruction : instructions) {
+            switch (instruction.getType()) {
                 case APPLY_RGB:
-                    applyRgb(state, instruction.rgb(), instruction.clearStack());
-                    if (instruction.resetFormatting()) {
+                    applyRgb(state, instruction.getRgb(), instruction.shouldClearStack());
+                    if (instruction.resetsFormatting()) {
                         state.resetFormattingFlags();
                     }
                     break;
                 case PUSH_RGB:
-                    pushRgb(state, instruction.rgb());
-                    if (instruction.resetFormatting()) {
+                    pushRgb(state, instruction.getRgb());
+                    if (instruction.resetsFormatting()) {
                         state.resetFormattingFlags();
                     }
                     break;
                 case POP_COLOR:
                     state.popColor();
-                    if (instruction.resetFormatting()) {
+                    if (instruction.resetsFormatting()) {
                         state.resetFormattingFlags();
                     }
                     break;
@@ -105,44 +111,44 @@ final class HexTextColorResolver implements AngelicaColorResolver {
                     state.reset();
                     break;
                 case APPLY_VANILLA_COLOR:
-                    applyVanillaPalette(state, instruction.parameter());
-                    if (instruction.resetFormatting()) {
+                    applyVanillaPalette(state, instruction.getParameter());
+                    if (instruction.resetsFormatting()) {
                         state.resetFormattingFlags();
                     }
                     break;
                 case SET_RANDOM:
-                    state.random = instruction.enabled();
+                    state.random = instruction.isEnabled();
                     break;
                 case SET_BOLD:
-                    state.bold = instruction.enabled();
+                    state.bold = instruction.isEnabled();
                     break;
                 case SET_STRIKETHROUGH:
-                    state.strikethrough = instruction.enabled();
+                    state.strikethrough = instruction.isEnabled();
                     break;
                 case SET_UNDERLINE:
-                    state.underline = instruction.enabled();
+                    state.underline = instruction.isEnabled();
                     break;
                 case SET_ITALIC:
-                    state.italic = instruction.enabled();
+                    state.italic = instruction.isEnabled();
                     break;
                 case SET_RAINBOW:
-                    if (instruction.clearStack()) {
+                    if (instruction.shouldClearStack()) {
                         state.clearStacks();
                     }
                     state.effects.resetDynamicEffects();
-                    state.effects.setRainbow(instruction.enabled(), state.glyphIndex, state.color);
-                    if (instruction.resetFormatting()) {
+                    state.effects.setRainbow(instruction.isEnabled(), state.glyphIndex, state.color);
+                    if (instruction.resetsFormatting()) {
                         state.resetFormattingFlags();
                     }
                     break;
                 case SET_DINNERBONE:
-                    state.effects.setDinnerbone(instruction.enabled());
+                    state.effects.setDinnerbone(instruction.isEnabled());
                     break;
                 case SET_IGNITE:
-                    state.effects.setIgnite(instruction.enabled(), state.color);
+                    state.effects.setIgnite(instruction.isEnabled(), state.color);
                     break;
                 case SET_SHAKE:
-                    state.effects.setShake(instruction.enabled());
+                    state.effects.setShake(instruction.isEnabled());
                     break;
                 default:
                     break;
