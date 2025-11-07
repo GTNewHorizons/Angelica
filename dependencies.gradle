@@ -102,6 +102,7 @@ dependencies {
         compileOnly(rfg.deobf(files(hexTextLocal)))
     } else {
         compileOnly("com.github.KAMKEEL:HexText:796abe4df2a0840429a1c75459349adb967f4f8c") { transitive = false }
+        // runtimeOnlyNonPublishable(rfg.deobf("com.github.KAMKEEL:HexText:796abe4df2a0840429a1c75459349adb967f4f8c")) { transitive = false }
     }
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
