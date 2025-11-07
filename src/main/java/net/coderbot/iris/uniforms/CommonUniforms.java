@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
@@ -24,7 +25,9 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
+import net.minecraft.world.biome.BiomeGenBase;
 import org.joml.Math;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
@@ -33,6 +36,7 @@ import org.joml.Vector4i;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_TICK;
+import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 
 public final class CommonUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
@@ -53,7 +57,11 @@ public final class CommonUniforms {
         IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
         IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
         MatrixUniforms.addMatrixUniforms(uniforms, directives);
-        HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+
+        if (AngelicaConfig.enableHardcodedCustomUniforms) {
+            HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
+        }
+
         CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
     }
 
@@ -104,6 +112,7 @@ public final class CommonUniforms {
 		final SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
         uniforms
+            .uniform1f(ONCE, "darknessFactor", () -> 0.0F) // This is PER_FRAME in modern, it is an effect added by The Warden. We're just setting to 0 because 1.7.10 doesn't have it.
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
@@ -128,7 +137,11 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
-			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor);
+			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor)
+
+            .uniform1i(PER_TICK, "biome_precipitation",  CommonUniforms::getBiomePrecipitation)
+            .uniform1f(PER_TICK, "rainfall", CommonUniforms::getBiomeRainfall)
+            .uniform1f(PER_TICK, "temperature", CommonUniforms::getBiomeTemperature);
 	}
 
     private static boolean isOnGround() {
@@ -138,6 +151,37 @@ public final class CommonUniforms {
     private static boolean isHurt() {
         // Do not use isHurt, that's not what we want!
         return (client.thePlayer != null &&  client.thePlayer.hurtTime > 0);
+    }
+
+    private static BiomeGenBase getBiome() {
+        return client.theWorld.getBiomeGenForCoords(MathHelper.floor_double(client.thePlayer.posX),  MathHelper.floor_double(client.thePlayer.posZ));
+    }
+
+    private static int getBiomePrecipitation() {
+        if (client.thePlayer == null || client.theWorld == null) {
+            return 0;
+        }
+
+        BiomeGenBase biome = getBiome();
+        float temp = biome.getFloatTemperature(MathHelper.floor_double(client.thePlayer.posX), MathHelper.floor_double(client.thePlayer.posY), MathHelper.floor_double(client.thePlayer.posZ));
+
+        if (!biome.enableRain && !biome.enableSnow) {
+            return 0;
+        } else if (temp > 0.15F) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
+    private static float getBiomeRainfall() {
+        if (client.thePlayer == null || client.theWorld == null) return 0.0F;
+        return getBiome().rainfall;
+    }
+
+    private static float getBiomeTemperature() {
+        if (client.thePlayer == null || client.theWorld == null) return 0.0F;
+        return getBiome().temperature;
     }
 
     private static boolean isInvisible() {
@@ -167,7 +211,7 @@ public final class CommonUniforms {
 	static float getBlindness() {
         final EntityLivingBase cameraEntity = client.renderViewEntity;
 
-        if (cameraEntity instanceof EntityLiving livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
+        if (cameraEntity instanceof EntityPlayer livingEntity && livingEntity.isPotionActive(Potion.blindness)) {
             final PotionEffect blindness = livingEntity.getActivePotionEffect(Potion.blindness);
 
 			if (blindness != null) {

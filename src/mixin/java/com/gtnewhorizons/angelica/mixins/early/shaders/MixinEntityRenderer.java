@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
@@ -21,7 +22,6 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.EntityLivingBase;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -55,6 +55,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().finalizeLevelRendering();
         pipeline.set(null);
         Program.unbind();
+        GLStateManager.glDepthMask(true);
     }
 
     @WrapOperation(method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
@@ -100,7 +101,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private void iris$beginWeatherAndwriteRainAndSnowToDepthBuffer(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.RAIN_SNOW);
         if (pipeline.get().shouldWriteRainAndSnowToDepthBuffer()) {
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthMask(true);
         }
     }
 
