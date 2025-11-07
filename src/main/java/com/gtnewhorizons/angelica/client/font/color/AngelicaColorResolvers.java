@@ -2,8 +2,8 @@ package com.gtnewhorizons.angelica.client.font.color;
 
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextBridge;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextBridgeFactory;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Bridge;
 import com.gtnewhorizons.angelica.config.FontConfig;
 
 public final class AngelicaColorResolvers {
@@ -17,7 +17,7 @@ public final class AngelicaColorResolvers {
         }
 
         if (ModStatus.isHexTextLoaded) {
-            HexTextBridge bridge = HexTextBridgeFactory.tryCreate();
+            Bridge bridge = HexTextCompat.tryCreateBridge();
             if (bridge != null) {
                 return new HexTextColorResolver(vanillaPalette, bridge);
             }

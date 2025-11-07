@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.client.font.color;
 
-import com.gtnewhorizons.angelica.compat.hextext.HexTextBridge;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextInstruction;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Bridge;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Instruction;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.PreparedText;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
@@ -9,14 +10,16 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
+import kamkeel.hextext.client.render.FontRenderContext;
+
 import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.FORMATTING_CHAR;
 
 final class HexTextColorResolver implements AngelicaColorResolver {
 
     private final int[] vanillaPalette;
-    private final HexTextBridge bridge;
+    private final Bridge bridge;
 
-    HexTextColorResolver(int[] vanillaPalette, HexTextBridge bridge) {
+    HexTextColorResolver(int[] vanillaPalette, Bridge bridge) {
         this.vanillaPalette = vanillaPalette;
         this.bridge = bridge;
     }
@@ -34,16 +37,17 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         }
 
         String segment = text.subSequence(safeStart, safeEnd).toString();
-        HexTextBridge.PreparedText prepared = bridge.prepare(segment);
+        boolean rawMode = FontRenderContext.isRawTextRendering();
+        PreparedText prepared = bridge.prepare(segment, rawMode);
         String sanitized = prepared.sanitizedText() != null ? prepared.sanitizedText() : segment;
-        Int2ObjectMap<List<HexTextInstruction>> instructions = prepared.instructions();
+        Int2ObjectMap<List<Instruction>> instructions = prepared.instructions();
 
         ResolvedText.Builder builder = ResolvedText.builder(sanitized.length());
         FormattingState state = new FormattingState(baseColor, baseShadowColor);
 
         for (int index = 0; index < sanitized.length(); index++) {
             if (instructions != null) {
-                List<HexTextInstruction> bucket = instructions.get(index);
+                List<Instruction> bucket = instructions.get(index);
                 if (bucket != null) {
                     applyInstructions(state, bucket);
                 }
@@ -64,8 +68,8 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         return builder.build();
     }
 
-    private void applyInstructions(FormattingState state, List<HexTextInstruction> instructions) {
-        for (HexTextInstruction instruction : instructions) {
+    private void applyInstructions(FormattingState state, List<Instruction> instructions) {
+        for (Instruction instruction : instructions) {
             switch (instruction.type()) {
                 case APPLY_RGB:
                     applyRgb(state, instruction.rgb(), instruction.clearStack());

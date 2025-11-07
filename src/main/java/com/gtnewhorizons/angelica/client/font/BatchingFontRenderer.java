@@ -5,8 +5,8 @@ import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolver;
 import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolvers;
 import com.gtnewhorizons.angelica.client.font.color.ResolvedText;
 import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextHighlightBridgeFactory;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextHighlighter;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Highlighter;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -426,12 +426,12 @@ public class BatchingFontRenderer {
 
             final ResolvedText resolved = colorResolver.resolve(string, stringOffset, stringEnd, color, shadowColor);
 
-            HexTextHighlighter highlighter = HexTextHighlighter.NOOP;
+            Highlighter highlighter = Highlighter.NOOP;
             CharSequence highlightText = null;
             boolean highlightActive = false;
             if (FontConfig.enableHexTextCompat && ModStatus.isHexTextLoaded) {
-                highlighter = HexTextHighlightBridgeFactory.create();
-                if (highlighter != HexTextHighlighter.NOOP) {
+                highlighter = HexTextCompat.createHighlighter();
+                if (highlighter != Highlighter.NOOP) {
                     highlightText = resolved.asString();
                     highlightActive = highlighter.begin(underlying, highlightText, anchorX, anchorY);
                 }
@@ -584,7 +584,7 @@ public class BatchingFontRenderer {
 
             if (highlightActive) {
                 highlighter.finish(resolved.length(), curX);
-                for (HexTextHighlighter.Highlight highlight : highlighter.highlights()) {
+                for (Highlighter.Highlight highlight : highlighter.highlights()) {
                     if (highlight.width() <= 0.0f) {
                         continue;
                     }
