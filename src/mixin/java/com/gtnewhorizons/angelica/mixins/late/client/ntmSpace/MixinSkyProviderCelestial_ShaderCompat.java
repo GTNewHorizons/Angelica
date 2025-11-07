@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.late.client.ntmSpace;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.hbm.dim.SkyProviderCelestial;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
@@ -9,9 +11,12 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.api.v0.IrisApi;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -24,6 +29,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(value = SkyProviderCelestial.class, priority = 100)
 public class MixinSkyProviderCelestial_ShaderCompat {
+	
+	@Unique
+	private static ResourceLocation GL_TEXTURE_2D_WORKAROUND = new ResourceLocation("angelica:textures/shaders_workaround.png"); /// Simple white 2x2 texture
 	
 	/// Fixes
 	
@@ -39,7 +47,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	}
 	
 	/**
-	 * Returns program before {@link #iris$sunset$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
+	 * Sets the program back before {@link #iris$sunset$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
 	 */
 	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V", shift = At.Shift.AFTER), remap = false)
 	public void iris$sunset$restorePreviousProgram(CallbackInfo ci, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
@@ -86,20 +94,49 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	}
 	
 	/**
-	 * Disables mixing of celestial bodies with the atmosphere with shaders enabled
-	 * <p>
-	 * Fixes multiple bugs when used with a forced default program
+	 * Disables {@link GL11#glDisable(int GL_TEXTURE_2D)} call
+	 * @see #iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)
 	 */
-	@Inject(method = "renderCelestials", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 10))
-	private void iris$celestials$disableAtmosphereBlend(CallbackInfo ci) {
-		if(IrisApi.getInstance().isShaderPackInUse())
-			Tessellator.instance.vertexCount = 0;
+	@WrapWithCondition(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 2), remap = false)
+	private boolean iris$atmosphereBlend$revertTextureDisable(int i) {
+		return false;
+	}
+	
+	/**
+	 * Disables {@link GL11#glEnable(int GL_TEXTURE_2D)} call
+	 * @see #iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)
+	 */
+	@WrapWithCondition(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", ordinal = 3), remap = false)
+	private boolean iris$atmosphereBlend$revertTextureEnable(int i) {
+		return false;
+	}
+	
+	/**
+	 * Forces atmosphere blend to render with the default program
+	 * <p> 
+	 * Sometimes shaders have serious visual issues if something is rendered with {@link GL11#glDisable(int GL_TEXTURE_2D)}
+	 * <p> 
+	 * Using {@link net.minecraft.client.renderer.texture.TextureManager#bindTexture(ResourceLocation GL_TEXTURE_2D_WORKAROUND)}, we achieve the same effect as {@link GL11#glDisable(int GL_TEXTURE_2D)}, except it works with shaders
+	 */
+	@Inject(method = "renderCelestials", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", ordinal = 10))
+	private void iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo ci, @Local(argsOnly = true) Minecraft mc, @Share("atmo$previousProgram") LocalIntRef atmo$previousProgram) {
+		atmo$previousProgram.set(GLStateManager.getActiveProgram());
+		GLStateManager.glUseProgram(0);
+		mc.getTextureManager().bindTexture(GL_TEXTURE_2D_WORKAROUND);
+	}
+	
+	/**
+	 * Sets the program back before {@link #iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)} call
+	 */
+	@Inject(method = "renderCelestials", at = @At(value="INVOKE", target="Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 10, shift = At.Shift.AFTER))
+	private void iris$atmosphereBlend$restorePreviousProgram(CallbackInfo ci, @Share("atmo$previousProgram") LocalIntRef atmo$previousProgram) {
+		GLStateManager.glUseProgram(atmo$previousProgram.get());
 	}
 	
 	/**
 	 * Forces celestial bodies to render with the default program
 	 * <p> 
-	 * Requires {@link #iris$celestials$disableAtmosphereBlend(CallbackInfo)}
+	 * Requires `iris$atmosphereBlend$.*`
 	 * <p> 
 	 * Fixes many bugs, such as:
 	 * <p> 
@@ -118,15 +155,15 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 		celestials$previousProgram.set(GLStateManager.getActiveProgram());
 		GLStateManager.glUseProgram(0);
 	}
-	
+
 	/**
-	 * Returns program before {@link #iris$celestials$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
+	 * Sets the program back before {@link #iris$celestials$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
 	 */
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 5, shift = At.Shift.AFTER))
 	private void iris$celestials$restorePreviousProgram(CallbackInfo ci, @Share("celestials$previousProgram") LocalIntRef celestials$previousProgram) {
 		GLStateManager.glUseProgram(celestials$previousProgram.get());
 	}
-	
+
 	/**
 	 * Forces celestial body ring (back) to render with the default program
 	 * @see #iris$celestials$renderInDefaultProgram(CallbackInfo, LocalIntRef) 
@@ -136,15 +173,15 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 		ringsBack$previousProgram.set(GLStateManager.getActiveProgram());
 		GLStateManager.glUseProgram(0);
 	}
-	
+
 	/**
-	 * Returns program before {@link #iris$ringsBack$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
+	 * Sets the program back before {@link #iris$ringsBack$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
 	 */
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 0, shift = At.Shift.AFTER))
 	private void iris$ringsBack$restorePreviousProgram(CallbackInfo ci, @Share("ringsBack$previousProgram") LocalIntRef ringsBack$previousProgram) {
 		GLStateManager.glUseProgram(ringsBack$previousProgram.get());
 	}
-	
+
 	/**
 	 * Forces celestial body ring (front) to render with the default program
 	 * @see #iris$celestials$renderInDefaultProgram(CallbackInfo, LocalIntRef)
@@ -154,9 +191,9 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 		ringsFront$previousProgram.set(GLStateManager.getActiveProgram());
 		GLStateManager.glUseProgram(0);
 	}
-	
+
 	/**
-	 * Returns program before {@link #iris$ringsFront$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
+	 * Sets the program back before {@link #iris$ringsFront$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
 	 */
 	@Inject(method = "renderCelestials", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 11, shift = At.Shift.AFTER))
 	private void iris$ringsFront$restorePreviousProgram(CallbackInfo ci, @Share("ringsFront$previousProgram") LocalIntRef ringsFront$previousProgram) {
@@ -198,5 +235,5 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	private void iris$setStarRenderStage(CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setPhase(WorldRenderingPhase.STARS));
 	}
-
+	
 }
