@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import kamkeel.hextext.client.render.TokenHighlight;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.Minecraft;
@@ -674,14 +675,14 @@ public class BatchingFontRenderer {
 
             if (highlightActive) {
                 highlighter.finish(resolved.length(), curX);
-                for (Highlighter.Highlight highlight : highlighter.highlights()) {
-                    if (highlight.width() <= 0.0f) {
+                for (TokenHighlight highlight : highlighter.highlights()) {
+                    if (highlight.width <= 0.0f) {
                         continue;
                     }
                     final int hlIdx = idxWriterIndex;
-                    float top = highlight.y() - 1.0f;
-                    float bottom = highlight.y() + underlying.FONT_HEIGHT;
-                    pushUntexRect(highlight.x(), top, highlight.width(), bottom - top, highlight.color());
+                    float top = highlight.y - 1.0f;
+                    float bottom = highlight.y + underlying.FONT_HEIGHT;
+                    pushUntexRect(highlight.x, top, highlight.width, bottom - top, highlight.color);
                     pushDrawCmd(hlIdx, 6, null, false);
                 }
             }

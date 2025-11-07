@@ -15,6 +15,13 @@ repositories {
             includeGroup 'mega'
         }
     }
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+        content {
+            includeGroup 'com.github.KAMKEEL'
+        }
+    }
     exclusiveContent {
         forRepository {
             ivy {
