@@ -77,7 +77,14 @@ public enum Mixins implements IMixins {
             , "angelica.dynamiclights.MixinItemRenderer"
         )
     ),
-
+    
+    ANGELICA_FIX_BLOCK_CRACK(
+            new MixinBuilder("Block corners and edges between chunks might have \"cracks\" in them. This option fixes it")
+                    .setPhase(Phase.EARLY)
+                    .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
+                    .addExcludedMod(TargetedMod.FALSETWEAKS)
+                    .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
+    
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
         new MixinBuilder("Fix RenderBlockFluid reading the block type from the world access multiple times")
             .setPhase(Phase.EARLY)
