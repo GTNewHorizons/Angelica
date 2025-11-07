@@ -46,10 +46,13 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
     private static final Logger LOGGER = LogManager.getLogger("ChunkBuilder");
 
     private final Deque<WrappedTask<T>> buildQueue = new ConcurrentLinkedDeque<>();
+    // special queue for tasks that will block until the main thread finalizes them
+    private final Deque<WrappedTask<T>> buildQueueKnownBlocking = new ConcurrentLinkedDeque<>();
     private final Deque<ChunkBuildResult<T>> uploadQueue = new ConcurrentLinkedDeque<>();
     private final Deque<Throwable> failureQueue = new ConcurrentLinkedDeque<>();
 
     private final Object jobNotifier = new Object();
+    private final Object jobNotifierKnownBlocking = new Object();
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final List<Thread> threads = new ArrayList<>();
@@ -60,6 +63,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
     private Vector3d cameraPosition = new Vector3d();
 
     private final int limitThreads;
+    private final int limitThreadsBlocking;
     private final ChunkVertexType vertexType;
     private final ChunkRenderBackend<T> backend;
 
@@ -67,6 +71,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         this.vertexType = vertexType;
         this.backend = backend;
         this.limitThreads = getThreadCount();
+        this.limitThreadsBlocking = this.limitThreads;
     }
 
     /**
@@ -74,7 +79,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * spawn more tasks than the budget allows, it will block until resources become available.
      */
     public int getSchedulingBudget() {
-        return Math.max(0, (this.limitThreads * TASK_QUEUE_LIMIT_PER_WORKER) - this.buildQueue.size());
+        return Math.max(0, (this.limitThreads * TASK_QUEUE_LIMIT_PER_WORKER) - this.buildQueue.size() - this.buildQueueKnownBlocking.size());
     }
 
     /**
@@ -96,9 +101,22 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             ChunkBuildBuffers buffers = new ChunkBuildBuffers(this.vertexType);
             ChunkRenderCacheLocal pipeline = new ChunkRenderCacheLocal(client, this.world);
 
-            WorkerRunnable worker = new WorkerRunnable(buffers, pipeline);
+            WorkerRunnable worker = new WorkerRunnable(i, buffers, pipeline, this.world, false);
 
             Thread thread = new Thread(worker, "Chunk Render Task Executor #" + i);
+            thread.setPriority(Math.max(0, Thread.NORM_PRIORITY - 2));
+            thread.start();
+
+            this.threads.add(thread);
+        }
+
+        for (int i = 0; i < this.limitThreadsBlocking; i++) {
+            ChunkBuildBuffers buffers = new ChunkBuildBuffers(this.vertexType);
+            ChunkRenderCacheLocal pipeline = new ChunkRenderCacheLocal(client, this.world);
+
+            WorkerRunnable worker = new WorkerRunnable(this.limitThreads + i, buffers, pipeline, this.world, true);
+
+            Thread thread = new Thread(worker, "Chunk Render Blocking Task Executor #" + i);
             thread.setPriority(Math.max(0, Thread.NORM_PRIORITY - 2));
             thread.start();
 
@@ -137,6 +155,9 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         synchronized (this.jobNotifier) {
             this.jobNotifier.notifyAll();
         }
+        synchronized (this.jobNotifierKnownBlocking) {
+            this.jobNotifierKnownBlocking.notifyAll();
+        }
 
         // Keep processing the main thread tasks so the workers don't block forever
         AngelicaRenderQueue.managedBlock(() -> !workersAlive());
@@ -159,7 +180,12 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
             job.future.cancel(true);
         }
 
+        for (WrappedTask<?> job : this.buildQueueKnownBlocking) {
+            job.future.cancel(true);
+        }
+
         this.buildQueue.clear();
+        this.buildQueueKnownBlocking.clear();
 
         this.world = null;
         this.sectionCache = null;
@@ -200,7 +226,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         if (this.uploadQueue.isEmpty()) {
             return false;
         }
-
+        
         this.backend.upload(RenderDevice.INSTANCE.createCommandList(), filterChunkBuilds(new DequeDrain<>(this.uploadQueue)));
 
         return true;
@@ -256,7 +282,7 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
      * @return True if the build queue is empty
      */
     public boolean isBuildQueueEmpty() {
-        return this.buildQueue.isEmpty();
+        return this.buildQueue.isEmpty() && this.buildQueueKnownBlocking.isEmpty();
     }
 
     /**
@@ -388,9 +414,18 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
         // caches between different CPU cores
         private final ChunkRenderCacheLocal cache;
 
-        public WorkerRunnable(ChunkBuildBuffers bufferCache, ChunkRenderCacheLocal cache) {
+        private final WorldClient world;
+
+        private final int i;
+
+        private final boolean allowBlocking;
+
+        public WorkerRunnable(int i, ChunkBuildBuffers bufferCache, ChunkRenderCacheLocal cache, WorldClient world, boolean allowBlocking) {
+            this.i = i;
             this.bufferCache = bufferCache;
             this.cache = cache;
+            this.world = world;
+            this.allowBlocking = allowBlocking;
         }
 
         @Override
@@ -401,6 +436,15 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
 
                 // If the job is null or no longer valid, keep searching for a task
                 if (job == null || job.isCancelled()) {
+                    continue;
+                }
+
+                // Relegate tasks that can block for an extended period of time to a separate threadpool.
+                if (!this.allowBlocking && job.task.willRenderInMainThread(this.cache)) {
+                    ChunkBuilder.this.buildQueueKnownBlocking.add(job);
+                    synchronized (ChunkBuilder.this.jobNotifierKnownBlocking) {
+                        ChunkBuilder.this.jobNotifierKnownBlocking.notify();
+                    }
                     continue;
                 }
 
@@ -435,18 +479,33 @@ public class ChunkBuilder<T extends ChunkGraphicsState> {
          * currently available, it will wait on {@link ChunkBuilder#jobNotifier} field until notified.
          */
         private WrappedTask<T> getNextJob() {
-            WrappedTask<T> job = ChunkBuilder.this.buildQueue.poll();
+            if (this.allowBlocking) {
+                WrappedTask<T> job = ChunkBuilder.this.buildQueueKnownBlocking.poll();
 
-            if (job == null) {
-                synchronized (ChunkBuilder.this.jobNotifier) {
-                    try {
-                        ChunkBuilder.this.jobNotifier.wait();
-                    } catch (InterruptedException ignored) {
+                if (job == null) {
+                    synchronized (ChunkBuilder.this.jobNotifierKnownBlocking) {
+                        try {
+                            ChunkBuilder.this.jobNotifierKnownBlocking.wait();
+                        } catch (InterruptedException ignored) {
+                        }
                     }
                 }
-            }
 
-            return job;
+                return job;
+            } else {
+                WrappedTask<T> job = ChunkBuilder.this.buildQueue.poll();
+
+                if (job == null) {
+                    synchronized (ChunkBuilder.this.jobNotifier) {
+                        try {
+                            ChunkBuilder.this.jobNotifier.wait();
+                        } catch (InterruptedException ignored) {
+                        }
+                    }
+                }
+
+                return job;
+            }
         }
     }
 
