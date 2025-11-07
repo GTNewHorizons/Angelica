@@ -82,6 +82,7 @@ public enum Mixins implements IMixins {
             new MixinBuilder("Block corners and edges between chunks might have \"cracks\" in them. This option fixes it")
                     .setPhase(Phase.EARLY)
                     .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
+                    .addExcludedMod(TargetedMod.FALSETWEAKS)
                     .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
     
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(

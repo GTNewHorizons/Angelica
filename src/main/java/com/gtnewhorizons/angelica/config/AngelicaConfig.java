@@ -166,31 +166,30 @@ public class AngelicaConfig {
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
-    
+
     @Config.Comment({"Block corners and edges between chunks might have \"cracks\" (various lines/dots) in them.",
             "While using \"Compact Vertex Format\" makes the situation even worse.",
             "This option fixes it.",
             "Requires texture reloading (F3 + T) after changing this option to take effect"})
     @Config.DefaultBoolean(true)
     public static boolean fixBlockCrack;
-    
+
     @Config.Comment({
             "The \"epsilon\" value for the fixBlockCrack option. ",
             "Set this a bit higher if you can still see lines/dots between solid blocks in dark areas.",
             "May cause intense flickering (z-fighting) between blocks if the value is too high"
     })
-    @Config.RangeDouble(min = 0,
-            max = 0.005)
-    @Config.DefaultDouble(0.0005)
+    @Config.RangeDouble(min = 0, max = 0.005)
+    @Config.DefaultDouble(0.001)
     public static double blockCrackFixEpsilon;
-    
+
     @Config.Comment("Block classes that have bugs when rendering with the fixBlockCrack can be put here to avoid manipulating them")
     @Config.DefaultStringList({
             "net.minecraft.block.BlockCauldron",
             "net.minecraft.block.BlockStairs"
     })
     public static String[] blockCrackFixBlacklist;
-    
+
     @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated.",
                      "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
     })
