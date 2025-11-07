@@ -1,6 +1,6 @@
-package com.gtnewhorizons.angelica.compat.hextext;
+package com.gtnewhorizons.angelica.compat.hextext.effects;
 
-import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.EffectsHelper;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
 import kamkeel.hextext.common.util.ColorMath;
 import kamkeel.hextext.common.util.TextEffectMath;
 import kamkeel.hextext.config.HexTextConfig;
@@ -8,12 +8,11 @@ import kamkeel.hextext.config.HexTextConfig;
 /**
  * Wrapper around HexText's dynamic text effect computations.
  */
-final class HexTextDynamicEffectsHelper implements EffectsHelper {
+public final class HexTextDynamicEffectsHelper implements HexTextCompat.EffectsHelper {
 
-    private static final float RAINBOW_SPREAD = 12.0f;
-    private static final float SHAKE_VERTICAL_RANGE = 1.05f;
-    private static final long SHAKE_Y_SALT = 0xC6A4A7935BD1E995L;
+    private static final float RAINBOW_SPREAD_DEGREES = 12.0f;
     private static final float IGNITE_MIN_FACTOR = 0.35f;
+    private static final float SHAKE_VERTICAL_RANGE = 1.05f;
 
     @Override
     public int computeRainbowColor(long now, int glyphIndex, int anchorIndex) {
@@ -22,7 +21,7 @@ final class HexTextDynamicEffectsHelper implements EffectsHelper {
             HexTextConfig.getRainbowSpeed(),
             glyphIndex,
             anchorIndex,
-            RAINBOW_SPREAD
+            RAINBOW_SPREAD_DEGREES
         );
     }
 
@@ -39,6 +38,6 @@ final class HexTextDynamicEffectsHelper implements EffectsHelper {
     @Override
     public float computeShakeOffset(long now, int glyphIndex) {
         long seed = TextEffectMath.computeShakeSeed(glyphIndex, now, HexTextConfig.getShakeInterval());
-        return TextEffectMath.computeShakeOffset(seed ^ SHAKE_Y_SALT, SHAKE_VERTICAL_RANGE);
+        return TextEffectMath.computeShakeOffset(seed, SHAKE_VERTICAL_RANGE);
     }
 }

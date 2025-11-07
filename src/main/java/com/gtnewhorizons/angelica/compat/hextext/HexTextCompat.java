@@ -1,12 +1,15 @@
 package com.gtnewhorizons.angelica.compat.hextext;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.hextext.effects.HexTextDynamicEffectsHelper;
+import com.gtnewhorizons.angelica.compat.hextext.highlight.HexTextTokenHighlighter;
+import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderBridge;
+import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderData;
 import java.util.Collections;
 import java.util.List;
 import kamkeel.hextext.client.render.FontRenderContext;
-import kamkeel.hextext.client.render.RenderTextData;
 import kamkeel.hextext.common.util.ColorCodeUtils;
-import kamkeel.hextext.client.render.TokenHighlight;
+import kamkeel.hextext.api.rendering.HighlightSpan;
 import net.minecraft.client.gui.FontRenderer;
 
 /**
@@ -80,7 +83,7 @@ public final class HexTextCompat {
         /**
          * Returns the highlights computed for the current session.
          */
-        List<TokenHighlight> highlights();
+        List<HighlightSpan> highlights();
 
         /**
          * A no-op implementation used when HexText is not available.
@@ -104,7 +107,7 @@ public final class HexTextCompat {
             }
 
             @Override
-            public List<TokenHighlight> highlights() {
+            public List<HighlightSpan> highlights() {
                 return Collections.emptyList();
             }
         };
@@ -112,7 +115,7 @@ public final class HexTextCompat {
 
     public interface Bridge {
 
-        RenderTextData prepare(CharSequence text, boolean rawMode);
+        HexTextRenderData prepare(CharSequence text, boolean rawMode);
     }
 
     public interface EffectsHelper {
