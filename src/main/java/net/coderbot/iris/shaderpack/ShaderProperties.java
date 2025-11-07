@@ -18,13 +18,17 @@ import net.coderbot.iris.gl.blending.BlendModeFunction;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendInformation;
 import net.coderbot.iris.gl.texture.TextureScaleOverride;
+import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
+import net.minecraft.client.Minecraft;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -97,6 +101,15 @@ public class ShaderProperties {
 	// TODO: Is there a better solution than having ShaderPack pass a root path to ShaderProperties to be able to read textures?
 	public ShaderProperties(String contents, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
         final String preprocessedContents = PropertiesPreprocessor.preprocessSource(contents, shaderPackOptions, environmentDefines);
+
+		if (PatchedShaderPrinter.prettyPrintShaders) {
+			try {
+				Files.write(Minecraft.getMinecraft().mcDataDir.toPath().resolve("preprocessed.properties"), preprocessedContents.getBytes(StandardCharsets.UTF_8));
+				Files.write(Minecraft.getMinecraft().mcDataDir.toPath().resolve("original.properties"), contents.getBytes(StandardCharsets.UTF_8));
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 
         final Properties preprocessed = new OrderBackedProperties();
         final Properties original = new OrderBackedProperties();
@@ -181,7 +194,7 @@ public class ShaderProperties {
 			});
 
 			handlePassDirective("alphaTest.", key, value, pass -> {
-				if ("off".equals(value)) {
+				if ("off".equals(value) || "false".equals(value)) {
 					alphaTestOverrides.put(pass, AlphaTestOverride.OFF);
 					return;
 				}
