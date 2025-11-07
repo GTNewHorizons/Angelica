@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
@@ -89,7 +90,7 @@ public class IrisExclusiveUniforms {
 
 	private static boolean isFirstPersonCamera() {
 		// If camera type is not explicitly third-person, assume it's first-person.
-        return (Minecraft.getMinecraft().gameSettings.thirdPersonView == 1);
+        return !Camera.INSTANCE.isThirdPerson();
 	}
 
 	private static boolean isSpectator() {

@@ -9,7 +9,7 @@ import net.minecraft.util.MathHelper;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
-import org.joml.Vector4f;
+import org.joml.Vector3f;
 
 /**
  * Singleton camera instance that tracks the current camera position and orientation.
@@ -20,7 +20,7 @@ public class Camera {
 
     private final Vector3d pos = new Vector3d();
     private final BlockPos blockPos = new BlockPos();
-    private final Vector4f offset = new Vector4f();
+    private final Vector3f offset = new Vector3f();
     private final Matrix4f inverseModelView = new Matrix4f();
 
     private float pitch;
@@ -42,25 +42,29 @@ public class Camera {
         this.partialTicks = partialTicks;
         this.entity = entity;
 
-        inverseModelView.set(RenderingState.INSTANCE.getModelViewMatrix()).invert();
-        offset.set(0, 0, 0, 1);
-        inverseModelView.transform(offset);
-
         // Entity position (interpolated, at feet level)
         final double entityX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks;
         final double entityY = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks;
         final double entityZ = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * partialTicks;
         final double eyeHeight = entity.getEyeHeight();
 
-        // Camera position in world space at eye level
-        final double camX = entityX + offset.x;
-        final double camY = entityY + eyeHeight + offset.y;
-        final double camZ = entityZ + offset.z;
+        thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView > 0;
+
+        final double camX, camY, camZ;
+        offset.set(0, 0, 0);
+
+        if (thirdPerson) {
+            // Third person: use inverse modelview to find camera offset
+            inverseModelView.set(RenderingState.INSTANCE.getModelViewMatrix()).invert();
+            inverseModelView.transformPosition(offset);
+        }
+        camX = entityX + offset.x;
+        camY = entityY + eyeHeight + offset.y;
+        camZ = entityZ + offset.z;
 
         pos.set(camX, camY, camZ);
         blockPos.set(MathHelper.floor_double(camX), MathHelper.floor_double(camY), MathHelper.floor_double(camZ));
         pitch = entity.cameraPitch;
         yaw = entity.rotationYaw;
-        thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView > 0;
     }
 }
