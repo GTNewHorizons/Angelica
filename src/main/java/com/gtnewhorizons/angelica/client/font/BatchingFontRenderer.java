@@ -11,7 +11,6 @@ import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Highlighter;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -432,23 +431,25 @@ public class BatchingFontRenderer {
             Highlighter highlighter = Highlighter.NOOP;
             CharSequence highlightText = null;
             boolean highlightActive = false;
+            EffectsHelper effectsHelper = null;
+            boolean hexTextCode = false;
+            long effectsTimestamp = 0L;
+            int visibleGlyphIndex = 0;
+
+            // Hex Text Compatibility Section
             if (FontConfig.enableHexTextCompat && ModStatus.isHexTextLoaded) {
                 highlighter = HexTextCompat.createHighlighter();
                 if (highlighter != Highlighter.NOOP) {
                     highlightText = resolved.asString();
                     highlightActive = highlighter.begin(underlying, highlightText, anchorX, anchorY);
                 }
-            }
 
-            EffectsHelper effectsHelper = null;
-            boolean effectsOperational = false;
-            long effectsTimestamp = 0L;
-            int visibleGlyphIndex = 0;
-            if (FontConfig.enableHexTextCompat && ModStatus.isHexTextLoaded && resolved.hasDynamicEffects()) {
-                effectsHelper = HexTextCompat.getEffectsHelper();
-                if (effectsHelper != null && effectsHelper.isOperational()) {
-                    effectsOperational = true;
-                    effectsTimestamp = Minecraft.getSystemTime();
+                if(resolved.hasDynamicEffects()) {
+                    effectsHelper = HexTextCompat.getEffectsHelper();
+                    if (effectsHelper != null && effectsHelper.isOperational()) {
+                        hexTextCode = true;
+                        effectsTimestamp = Minecraft.getSystemTime();
+                    }
                 }
             }
 
@@ -475,7 +476,7 @@ public class BatchingFontRenderer {
                 float shakeOffset = 0.0f;
                 boolean effectDinnerbone = false;
 
-                if (effectsOperational) {
+                if (hexTextCode) {
                     final boolean rainbowActive = resolved.isRainbow(entryIndex);
                     final boolean igniteActive = resolved.isIgnite(entryIndex);
                     final boolean shakeActive = resolved.isShake(entryIndex);
