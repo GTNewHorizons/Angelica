@@ -203,43 +203,45 @@ public class ProgramUniforms {
 				final int size = sizeType.get(0);
 				final int type = sizeType.get(1);
 
-				UniformType provided = uniformNames.get(name);
+				final UniformType provided = uniformNames.get(name);
                 final UniformType expected = getExpectedType(type);
 
-				if (provided == null && !name.startsWith("gl_")) {
-                    final String typeName = getTypeName(type);
+				if(AngelicaConfig.enableHardcodedCustomUniforms) {
+					// Legacy Checks from hardcoded custom uniforms
+					if (provided == null && !name.startsWith("gl_")) {
+						final String typeName = getTypeName(type);
 
-					if (isSampler(type) || isImage(type)) {
-						// don't print a warning, samplers and images are managed elsewhere.
-						// TODO: Detect unsupported samplers/images?
-						continue;
-					}
+						if (isSampler(type) || isImage(type)) {
+							// don't print a warning, samplers and images are managed elsewhere.
+							continue;
+						}
 
-                    final UniformType externalProvided = externalUniformNames.get(name);
+						final UniformType externalProvided = externalUniformNames.get(name);
 
-					if (externalProvided != null) {
-						if (externalProvided != expected) {
-							String expectedName;
+						if (externalProvided != null) {
+							if (externalProvided != expected) {
+								final String expectedName;
 
-							if (expected != null) {
-								expectedName = expected.toString();
-							} else {
-								expectedName = "(unsupported type: " + getTypeName(type) + ")";
+								if (expected != null) {
+									expectedName = expected.toString();
+								} else {
+									expectedName = "(unsupported type: " + getTypeName(type) + ")";
+								}
+
+								Iris.logger.error("[" + this.name + "] Wrong uniform type for externally-managed uniform " + name + ": " + externalProvided + " is provided but the program expects " + expectedName + ".");
 							}
 
-							Iris.logger.error("[" + this.name + "] Wrong uniform type for externally-managed uniform " + name + ": " + externalProvided + " is provided but the program expects " + expectedName + ".");
+							continue;
+						}
+
+						if (size == 1) {
+							Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + typeName + " " + name);
+						} else {
+							Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + name + " of size " + size + " and type " + typeName);
 						}
 
 						continue;
 					}
-
-					if (size == 1) {
-						Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + typeName + " " + name);
-					} else {
-						Iris.logger.warn("[" + this.name + "] Unsupported uniform: " + name + " of size " + size + " and type " + typeName);
-					}
-
-					continue;
 				}
 
 				if (provided != null && provided != expected) {
@@ -291,6 +293,7 @@ public class ProgramUniforms {
         return switch(type) {
             case GL11.GL_FLOAT -> "float";
             case GL11.GL_INT -> "int";
+            case GL20.GL_BOOL -> "bool";
             case GL20.GL_FLOAT_MAT4 -> "mat4";
             case GL20.GL_FLOAT_VEC4 -> "vec4";
             case GL20.GL_FLOAT_MAT3 -> "mat3";
@@ -316,12 +319,13 @@ public class ProgramUniforms {
         return switch (type) {
             case GL11.GL_FLOAT -> UniformType.FLOAT;
             case GL11.GL_INT -> UniformType.INT;
+            case GL20.GL_BOOL -> UniformType.INT;
             case GL20.GL_FLOAT_MAT4 -> UniformType.MAT4;
             case GL20.GL_FLOAT_VEC4 -> UniformType.VEC4;
             case GL20.GL_INT_VEC4 -> UniformType.VEC4I;
             case GL20.GL_FLOAT_VEC3 -> UniformType.VEC3;
-            case GL20.GL_FLOAT_MAT3 -> null;
-            case GL20.GL_INT_VEC3 -> null;
+            case GL20.GL_FLOAT_MAT3 -> UniformType.MAT3;
+            case GL20.GL_INT_VEC3 -> UniformType.VEC3I;
             case GL20.GL_FLOAT_MAT2 -> null;
             case GL20.GL_FLOAT_VEC2 -> UniformType.VEC2;
             case GL20.GL_INT_VEC2 -> UniformType.VEC2I;

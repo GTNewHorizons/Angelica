@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.minecraft.client.Minecraft;
@@ -19,15 +20,18 @@ public abstract class MixinEntityRenderer implements EntityRendererAccessor {
     @Invoker
     public abstract float invokeGetNightVisionBrightness(EntityPlayer entityPlayer, float partialTicks);
 
-    @Inject(method = "setupCameraTransform", at = @At(value = "TAIL"))
-    private void angelica$captureCameraMatrix(float partialTicks, int startTime, CallbackInfo ci) {
+    @Inject(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ActiveRenderInfo;updateRenderInfo(Lnet/minecraft/entity/player/EntityPlayer;Z)V", shift = At.Shift.AFTER))
+    private void angelica$captureCameraMatrix(float partialTicks, long finishTimeNano, CallbackInfo ci) {
         final Minecraft mc = Minecraft.getMinecraft();
         final EntityLivingBase viewEntity = mc.renderViewEntity;
 
+        Camera.INSTANCE.update(viewEntity, partialTicks);
+
+        // Set RenderingState to use the correct camera position
         RenderingState.INSTANCE.setCameraPosition(
-            viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * partialTicks,
-            viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks,
-            viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks
+            Camera.INSTANCE.getPos().x,
+            Camera.INSTANCE.getPos().y,
+            Camera.INSTANCE.getPos().z
         );
     }
 
