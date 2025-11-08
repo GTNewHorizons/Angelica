@@ -3,13 +3,14 @@ package com.gtnewhorizons.angelica.compat.hextext.render;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
+import kamkeel.hextext.api.rendering.RenderDirective;
+import kamkeel.hextext.api.rendering.RenderPlan;
+import kamkeel.hextext.api.rendering.TextRenderService;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import kamkeel.hextext.api.rendering.RenderDirective;
-import kamkeel.hextext.api.rendering.RenderPlan;
-import kamkeel.hextext.api.rendering.TextRenderService;
 
 /**
  * Bridges render preprocessing information from HexText to Angelica's colour resolver.

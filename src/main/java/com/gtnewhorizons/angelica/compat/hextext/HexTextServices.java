@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.compat.hextext;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import cpw.mods.fml.common.Loader;
-import java.util.regex.Pattern;
 import kamkeel.hextext.api.HexTextApi;
 import kamkeel.hextext.api.rendering.ColorService;
 import kamkeel.hextext.api.rendering.DynamicEffectService;
@@ -12,6 +11,8 @@ import kamkeel.hextext.api.rendering.TextRenderService;
 import kamkeel.hextext.api.rendering.TokenHighlightService;
 import kamkeel.hextext.api.text.TextFormatter;
 import net.minecraft.client.gui.FontRenderer;
+
+import java.util.regex.Pattern;
 
 /**
  * Centralised access to HexText's public API surface. All lookups are
@@ -24,7 +25,8 @@ public final class HexTextServices {
 
     private static volatile Bridge cachedBridge;
 
-    private HexTextServices() {}
+    private HexTextServices() {
+    }
 
     public static boolean isSupported() {
         return bridge().isSupported();

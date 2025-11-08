@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.compat.hextext.highlight;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import java.util.Collections;
-import java.util.List;
 import kamkeel.hextext.api.rendering.HighlightSpan;
 import kamkeel.hextext.api.rendering.RenderingEnvironmentService;
 import kamkeel.hextext.api.rendering.TokenHighlightService;
@@ -12,6 +10,9 @@ import kamkeel.hextext.api.rendering.TokenHighlightService.WidthProvider;
 import kamkeel.hextext.api.text.TextFormatter;
 import kamkeel.hextext.api.text.TextFormatter.FormattingEnvironment;
 import net.minecraft.client.gui.FontRenderer;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * HexText-backed implementation that mirrors the behaviour of the HexText font renderer token highlighter.

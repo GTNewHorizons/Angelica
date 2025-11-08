@@ -16,7 +16,7 @@ public final class HexTextRenderData {
     private final Map<Integer, List<CompatRenderInstruction>> instructions;
 
     public HexTextRenderData(boolean shouldReplaceText, String displayText,
-                              Map<Integer, List<CompatRenderInstruction>> instructions) {
+                             Map<Integer, List<CompatRenderInstruction>> instructions) {
         this.shouldReplaceText = shouldReplaceText;
         this.displayText = displayText == null ? "" : displayText;
         this.instructions = instructions == null ? Collections.emptyMap() : instructions;

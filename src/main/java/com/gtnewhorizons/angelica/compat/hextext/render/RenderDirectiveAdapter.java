@@ -10,7 +10,8 @@ import kamkeel.hextext.api.rendering.RenderDirective.InstructionType;
  */
 final class RenderDirectiveAdapter {
 
-    private RenderDirectiveAdapter() {}
+    private RenderDirectiveAdapter() {
+    }
 
     static CompatRenderInstruction adapt(RenderDirective directive) {
         if (directive == null) {

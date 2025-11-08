@@ -5,14 +5,14 @@ import com.gtnewhorizons.angelica.compat.hextext.effects.HexTextDynamicEffectsHe
 import com.gtnewhorizons.angelica.compat.hextext.highlight.HexTextTokenHighlighter;
 import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderBridge;
 import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderData;
-import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
-import java.util.Collections;
-import java.util.List;
 import kamkeel.hextext.api.rendering.ColorService;
 import kamkeel.hextext.api.rendering.RenderingEnvironmentService;
 import kamkeel.hextext.api.rendering.TokenHighlightService;
 import kamkeel.hextext.api.text.TextFormatter;
 import net.minecraft.client.gui.FontRenderer;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Consolidated HexText compatibility helpers for Angelica.
