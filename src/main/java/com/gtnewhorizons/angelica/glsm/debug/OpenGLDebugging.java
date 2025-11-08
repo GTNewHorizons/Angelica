@@ -520,9 +520,6 @@ public class OpenGLDebugging {
         int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
         int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
 
-
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
-
         BufferedImage bufferedimage = new BufferedImage(width, height, 1);
         final int[] pixelValues = ((DataBufferInt) bufferedimage.getRaster().getDataBuffer()).getData();
         IntBuffer pixelBuffer = BufferUtils.createIntBuffer(pixelValues.length);
