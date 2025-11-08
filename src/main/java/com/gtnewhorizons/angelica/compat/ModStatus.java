@@ -55,10 +55,6 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
-        isHexTextLoaded = Loader.isModLoaded("hextext");
-        if (isHexTextLoaded) {
-            isHexTextLoaded = HexTextServices.isApiCompatible();
-        }
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
         // remove compat with original release of BG2
@@ -75,6 +71,14 @@ public class ModStatus {
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
+        }
+    }
+
+    public static void init() {
+        // Hex Text API is initialized after Pre Init for Compatibility
+        isHexTextLoaded = Loader.isModLoaded("hextext");
+        if (isHexTextLoaded) {
+            isHexTextLoaded = HexTextServices.isApiCompatible();
         }
     }
 }
