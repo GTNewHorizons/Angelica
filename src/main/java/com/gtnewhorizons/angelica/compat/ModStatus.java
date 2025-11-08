@@ -56,9 +56,8 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
         isHexTextLoaded = Loader.isModLoaded("hextext");
-        if(isHexTextLoaded){
-            isHexTextLoaded
-            HexTextServices.reportDiagnostics();
+        if (isHexTextLoaded) {
+            isHexTextLoaded = HexTextServices.isApiCompatible();
         }
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
