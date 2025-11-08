@@ -9,6 +9,7 @@ import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.CommonUniforms;
+import net.coderbot.iris.uniforms.ExternallyManagedUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 
@@ -142,6 +143,8 @@ public class SodiumTerrainPipeline {
 
         CommonUniforms.addDynamicUniforms(uniforms);
         customUniforms.assignTo(uniforms);
+
+        ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
 
         BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
         return uniforms;

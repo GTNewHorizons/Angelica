@@ -4,6 +4,9 @@
   "package": "com.gtnewhorizons.angelica.mixins.early",
   "refmap": "mixins.angelica.refmap.json",
   "target": "@env(DEFAULT)",
+  "injectors":{
+    "maxShiftBy": 2
+  },
   "compatibilityLevel": "JAVA_8"
 }
 

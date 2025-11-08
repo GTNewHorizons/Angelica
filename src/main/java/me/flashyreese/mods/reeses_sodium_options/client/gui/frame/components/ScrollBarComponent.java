@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 public class ScrollBarComponent extends AbstractWidget {
 
-    protected static final int SCROLL_OFFSET = 6;
+    protected static final int SCROLL_OFFSET = 15;
 
     protected final Dim2i dim;
 
