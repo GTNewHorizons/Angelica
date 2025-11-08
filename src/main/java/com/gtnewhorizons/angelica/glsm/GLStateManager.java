@@ -357,7 +357,7 @@ public class GLStateManager {
     }
 
     public static boolean shouldBypassCache() {
-        return BYPASS_CACHE || glListMode != 0 || runningSplash ;
+        return BYPASS_CACHE || runningSplash;
     }
 
     // LWJGL Overrides
