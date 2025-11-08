@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
@@ -55,6 +56,7 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
         isHexTextLoaded = Loader.isModLoaded("hextext");
+        HexTextServices.reportDiagnostics();
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 

@@ -4,15 +4,14 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolver;
 import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolvers;
 import com.gtnewhorizons.angelica.client.font.color.ResolvedText;
-import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.EffectsHelper;
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Highlighter;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import kamkeel.hextext.api.rendering.HighlightSpan;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.Minecraft;
@@ -438,14 +437,15 @@ public class BatchingFontRenderer {
             int visibleGlyphIndex = 0;
 
             // Hex Text Compatibility Section
-            if (FontConfig.enableHexTextCompat && ModStatus.isHexTextLoaded) {
+            boolean hexTextCompatActive = FontConfig.enableHexTextCompat && HexTextServices.isSupported();
+            if (hexTextCompatActive) {
                 highlighter = HexTextCompat.createHighlighter();
                 if (highlighter != Highlighter.NOOP) {
                     highlightText = resolved.asString();
                     highlightActive = highlighter.begin(underlying, highlightText, anchorX, anchorY);
                 }
 
-                if(resolved.hasDynamicEffects()) {
+                if (resolved.hasDynamicEffects()) {
                     effectsHelper = HexTextCompat.getEffectsHelper();
                     if (effectsHelper != null && effectsHelper.isOperational()) {
                         hexTextCode = true;
@@ -675,7 +675,7 @@ public class BatchingFontRenderer {
 
             if (highlightActive) {
                 highlighter.finish(resolved.length(), curX);
-                for (HighlightSpan highlight : highlighter.highlights()) {
+                for (HexTextCompat.Highlight highlight : highlighter.highlights()) {
                     if (highlight.getWidth() <= 0.0f) {
                         continue;
                     }

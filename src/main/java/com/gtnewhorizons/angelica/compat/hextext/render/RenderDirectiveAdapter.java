@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.compat.hextext.render;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.hextext.render.CompatRenderInstruction.Type;
 import kamkeel.hextext.api.rendering.RenderDirective;
+import kamkeel.hextext.api.rendering.RenderDirective.InstructionType;
 
 /**
  * Converts HexText {@link RenderDirective} instances into Angelica-friendly instruction records.
@@ -31,22 +32,12 @@ final class RenderDirectiveAdapter {
         );
     }
 
-    private static Type mapType(RenderDirective.InstructionType type) {
-        if (type == null) {
+    private static Type mapType(InstructionType typeObject) {
+        if (typeObject == null) {
             return null;
         }
 
-        if (type instanceof Enum<?>) {
-            String name = ((Enum<?>) type).name();
-            try {
-                return Type.valueOf(name);
-            } catch (IllegalArgumentException iae) {
-                ModStatus.LOGGER.warn("Unknown HexText render directive: {}", name);
-                return null;
-            }
-        }
-
-        String fallback = type.toString();
+        String fallback = typeObject.toString();
         try {
             return Type.valueOf(fallback);
         } catch (IllegalArgumentException iae) {

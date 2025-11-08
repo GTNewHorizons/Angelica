@@ -6,11 +6,11 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.util.Collections;
 import java.util.List;
 import kamkeel.hextext.api.rendering.HighlightSpan;
+import kamkeel.hextext.api.rendering.RenderingEnvironmentService;
 import kamkeel.hextext.api.rendering.TokenHighlightService;
 import kamkeel.hextext.api.rendering.TokenHighlightService.WidthProvider;
 import kamkeel.hextext.api.text.TextFormatter;
 import kamkeel.hextext.api.text.TextFormatter.FormattingEnvironment;
-import kamkeel.hextext.client.render.FontRenderContext;
 import net.minecraft.client.gui.FontRenderer;
 
 /**
@@ -20,10 +20,11 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
 
     private static final char VANILLA_FORMATTING_CHAR = 167;
 
-    private final List<HighlightSpan> highlights = new ObjectArrayList<>();
+    private final List<HexTextCompat.Highlight> highlights = new ObjectArrayList<>();
+    private final RenderingEnvironmentService environmentService;
+    private final TokenHighlightService highlightService;
+    private final TextFormatter formatter;
 
-    private TokenHighlightService highlightService;
-    private TextFormatter formatter;
     private FormattingEnvironment environment;
     private WidthProvider widthProvider;
     private boolean rawMode;
@@ -31,25 +32,33 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
     private boolean active;
     private int skip;
 
+    public HexTextTokenHighlighter(
+        RenderingEnvironmentService environmentService,
+        TokenHighlightService highlightService,
+        TextFormatter formatter
+    ) {
+        this.environmentService = environmentService;
+        this.highlightService = highlightService;
+        this.formatter = formatter;
+    }
+
     @Override
     public boolean begin(FontRenderer renderer, CharSequence text, float posX, float posY) {
         highlights.clear();
-        highlightService = HexTextServices.tokenHighlighter();
-        formatter = HexTextServices.textFormatter();
         environment = null;
-        widthProvider = renderer == null ? null : new RendererWidthProvider(renderer);
+        widthProvider = renderer == null ? null : HexTextServices.createWidthProvider(renderer);
         skip = 0;
 
         if (renderer == null || text == null || text.length() == 0) {
             active = false;
             return false;
         }
-        if (highlightService == null || formatter == null) {
+        if (highlightService == null || formatter == null || environmentService == null) {
             active = false;
             return false;
         }
 
-        rawMode = FontRenderContext.isRawTextRendering();
+        rawMode = environmentService.isRawTextRendering();
         environment = formatter.captureEnvironment(rawMode);
         baseY = posY;
         active = true;
@@ -70,6 +79,11 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
             return;
         }
 
+        if (widthProvider == null) {
+            skip = Math.max(tokenLength - 1, 0);
+            return;
+        }
+
         char current = text.charAt(index);
         if (current != VANILLA_FORMATTING_CHAR) {
             int color = highlightService.getTokenHighlightColor(text, index);
@@ -77,7 +91,7 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
             if (width > 0.0f) {
                 HighlightSpan span = highlightService.createHighlight(currentX, baseY, width, color);
                 if (span != null) {
-                    highlights.add(span);
+                    highlights.add(new HexTextCompat.Highlight(span.getX(), span.getY(), span.getWidth(), span.getColor()));
                 }
             }
         }
@@ -95,7 +109,7 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
     }
 
     @Override
-    public List<HighlightSpan> highlights() {
+    public List<HexTextCompat.Highlight> highlights() {
         return active ? Collections.unmodifiableList(highlights) : highlights;
     }
 
@@ -105,21 +119,5 @@ public final class HexTextTokenHighlighter implements HexTextCompat.Highlighter 
             length = formatter.detectColorCodeLength(text, index, true, environment);
         }
         return length;
-    }
-
-    private static final class RendererWidthProvider implements WidthProvider {
-        private final FontRenderer renderer;
-
-        private RendererWidthProvider(FontRenderer renderer) {
-            this.renderer = renderer;
-        }
-
-        @Override
-        public int getStringWidth(String text) {
-            if (renderer == null || text == null) {
-                return 0;
-            }
-            return renderer.getStringWidth(text);
-        }
     }
 }

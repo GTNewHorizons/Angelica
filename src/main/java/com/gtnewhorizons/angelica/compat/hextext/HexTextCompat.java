@@ -5,11 +5,13 @@ import com.gtnewhorizons.angelica.compat.hextext.effects.HexTextDynamicEffectsHe
 import com.gtnewhorizons.angelica.compat.hextext.highlight.HexTextTokenHighlighter;
 import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderBridge;
 import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderData;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import java.util.Collections;
 import java.util.List;
-import kamkeel.hextext.client.render.FontRenderContext;
-import kamkeel.hextext.common.util.ColorCodeUtils;
-import kamkeel.hextext.api.rendering.HighlightSpan;
+import kamkeel.hextext.api.rendering.ColorService;
+import kamkeel.hextext.api.rendering.RenderingEnvironmentService;
+import kamkeel.hextext.api.rendering.TokenHighlightService;
+import kamkeel.hextext.api.text.TextFormatter;
 import net.minecraft.client.gui.FontRenderer;
 
 /**
@@ -24,11 +26,21 @@ public final class HexTextCompat {
      * Factory for a HexText-aware token highlighter.
      */
     public static Highlighter createHighlighter() {
-        if (!FontRenderContext.isRawTextRendering()) {
+        if (!HexTextServices.isSupported()) {
+            return Highlighter.NOOP;
+        }
+
+        RenderingEnvironmentService environmentService = HexTextServices.renderEnvironment();
+        TokenHighlightService highlightService = HexTextServices.tokenHighlighter();
+        TextFormatter formatter = HexTextServices.textFormatter();
+        if (environmentService == null
+            || highlightService == null
+            || formatter == null
+            || !environmentService.isRawTextRendering()) {
             return Highlighter.NOOP;
         }
         try {
-            return new HexTextTokenHighlighter();
+            return new HexTextTokenHighlighter(environmentService, highlightService, formatter);
         } catch (Throwable t) {
             ModStatus.LOGGER.warn("Failed to initialize HexText token highlighting", t);
             return Highlighter.NOOP;
@@ -39,6 +51,9 @@ public final class HexTextCompat {
      * Factory for the HexText render bridge used by the colour resolver.
      */
     public static Bridge tryCreateBridge() {
+        if (!HexTextServices.isSupported()) {
+            return null;
+        }
         try {
             return new HexTextRenderBridge();
         } catch (Throwable t) {
@@ -55,7 +70,11 @@ public final class HexTextCompat {
     }
 
     public static int computeShadowColor(int rgb) {
-        return ColorCodeUtils.calculateShadowColor(rgb);
+        ColorService colorService = HexTextServices.colorService();
+        if (colorService != null) {
+            return colorService.calculateShadowColor(rgb);
+        }
+        return (rgb & 0xFCFCFC) >> 2;
     }
 
     public interface Highlighter {
@@ -83,7 +102,7 @@ public final class HexTextCompat {
         /**
          * Returns the highlights computed for the current session.
          */
-        List<HighlightSpan> highlights();
+        List<Highlight> highlights();
 
         /**
          * A no-op implementation used when HexText is not available.
@@ -107,7 +126,7 @@ public final class HexTextCompat {
             }
 
             @Override
-            public List<HighlightSpan> highlights() {
+            public List<Highlight> highlights() {
                 return Collections.emptyList();
             }
         };
@@ -135,8 +154,12 @@ public final class HexTextCompat {
         private static final EffectsHelper INSTANCE = create();
 
         private static EffectsHelper create() {
+            if (!HexTextServices.isSupported()) {
+                return NOOP_EFFECTS_HELPER;
+            }
             try {
-                return new HexTextDynamicEffectsHelper();
+                EffectsHelper helper = new HexTextDynamicEffectsHelper(HexTextServices.dynamicEffects());
+                return helper.isOperational() ? helper : NOOP_EFFECTS_HELPER;
             } catch (Throwable t) {
                 ModStatus.LOGGER.warn("Failed to initialize HexText dynamic effects", t);
                 return NOOP_EFFECTS_HELPER;
@@ -165,4 +188,34 @@ public final class HexTextCompat {
             return false;
         }
     };
+
+    public static final class Highlight {
+        private final float x;
+        private final float y;
+        private final float width;
+        private final int color;
+
+        public Highlight(float x, float y, float width, int color) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.color = color;
+        }
+
+        public float getX() {
+            return x;
+        }
+
+        public float getY() {
+            return y;
+        }
+
+        public float getWidth() {
+            return width;
+        }
+
+        public int getColor() {
+            return color;
+        }
+    }
 }

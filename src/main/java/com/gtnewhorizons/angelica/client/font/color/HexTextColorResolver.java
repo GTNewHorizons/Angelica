@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font.color;
 
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Bridge;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import com.gtnewhorizons.angelica.compat.hextext.render.CompatRenderInstruction;
 import com.gtnewhorizons.angelica.compat.hextext.render.HexTextRenderData;
 import com.gtnewhorizons.angelica.config.FontConfig;
@@ -10,8 +11,6 @@ import java.util.Deque;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import kamkeel.hextext.client.render.FontRenderContext;
 
 import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.FORMATTING_CHAR;
 
@@ -38,7 +37,10 @@ final class HexTextColorResolver implements AngelicaColorResolver {
         }
 
         String segment = text.subSequence(safeStart, safeEnd).toString();
-        boolean rawMode = FontRenderContext.isRawTextRendering();
+        boolean rawMode = false;
+        if (HexTextServices.isSupported()) {
+            rawMode = HexTextServices.isRawTextRendering();
+        }
         HexTextRenderData prepared = bridge.prepare(segment, rawMode);
         String sanitized = segment;
         Map<Integer, List<CompatRenderInstruction>> instructions = Collections.emptyMap();
