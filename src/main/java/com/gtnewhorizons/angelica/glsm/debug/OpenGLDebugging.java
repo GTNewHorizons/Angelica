@@ -515,7 +515,7 @@ public class OpenGLDebugging {
     }
 
     public static void copyTexture(int textureID, File output) {
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
 
         int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
         int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
