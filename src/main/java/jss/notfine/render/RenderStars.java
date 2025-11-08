@@ -4,19 +4,30 @@ package jss.notfine.render;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.core.Settings;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.opengl.GL11;
 
 public class RenderStars {
 
     //private static final ResourceLocation locationStarsPng = new ResourceLocation("textures/colormap/stars.png");
 
     public static void reloadStarRenderList(RenderGlobal render) {
-        TessellatorManager.startCapturing();
-        renderStars();
-        VBOManager.registerVBO(render.starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+
+        if(AngelicaConfig.enableVBO) {
+            TessellatorManager.startCapturing();
+            renderStars();
+            VBOManager.registerVBO(render.starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+        } else {
+            GL11.glPushMatrix();
+            GL11.glNewList(render.starGLCallList, GL11.GL_COMPILE);
+            renderStars();
+            GL11.glEndList();
+            GL11.glPopMatrix();
+        }
     }
 
     public static void renderStars() {
