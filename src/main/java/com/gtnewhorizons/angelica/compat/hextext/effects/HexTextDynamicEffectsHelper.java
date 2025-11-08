@@ -1,43 +1,47 @@
 package com.gtnewhorizons.angelica.compat.hextext.effects;
 
 import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
-import kamkeel.hextext.common.util.ColorMath;
-import kamkeel.hextext.common.util.TextEffectMath;
-import kamkeel.hextext.config.HexTextConfig;
+import kamkeel.hextext.api.rendering.DynamicEffectService;
 
 /**
  * Wrapper around HexText's dynamic text effect computations.
  */
 public final class HexTextDynamicEffectsHelper implements HexTextCompat.EffectsHelper {
 
-    private static final float RAINBOW_SPREAD_DEGREES = 12.0f;
-    private static final float IGNITE_MIN_FACTOR = 0.35f;
-    private static final float SHAKE_VERTICAL_RANGE = 1.05f;
+    private final DynamicEffectService dynamicService;
+    private final boolean active;
+
+    public HexTextDynamicEffectsHelper(DynamicEffectService dynamicService) {
+        this.dynamicService = dynamicService;
+        this.active = dynamicService != null;
+    }
 
     @Override
     public int computeRainbowColor(long now, int glyphIndex, int anchorIndex) {
-        return TextEffectMath.computeRainbowColor(
-            now,
-            HexTextConfig.getRainbowSpeed(),
-            glyphIndex,
-            anchorIndex,
-            RAINBOW_SPREAD_DEGREES
-        );
+        if (!active) {
+            return 0;
+        }
+        return dynamicService.computeRainbowColor(now, glyphIndex, anchorIndex);
     }
 
     @Override
     public int computeIgniteColor(long now, int baseColor) {
-        float brightness = TextEffectMath.computeIgniteBrightness(
-            now,
-            HexTextConfig.getIgniteInterval(),
-            IGNITE_MIN_FACTOR
-        );
-        return ColorMath.scaleBrightness(baseColor, brightness);
+        if (!active) {
+            return baseColor & 0x00FFFFFF;
+        }
+        return dynamicService.computeIgniteColor(now, baseColor);
     }
 
     @Override
     public float computeShakeOffset(long now, int glyphIndex) {
-        long seed = TextEffectMath.computeShakeSeed(glyphIndex, now, HexTextConfig.getShakeInterval());
-        return TextEffectMath.computeShakeOffset(seed, SHAKE_VERTICAL_RANGE);
+        if (!active) {
+            return 0.0f;
+        }
+        return dynamicService.computeShakeOffset(now, glyphIndex);
+    }
+
+    @Override
+    public boolean isOperational() {
+        return active;
     }
 }

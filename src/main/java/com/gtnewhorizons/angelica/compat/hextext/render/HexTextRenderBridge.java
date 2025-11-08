@@ -26,27 +26,29 @@ public final class HexTextRenderBridge implements HexTextCompat.Bridge {
         }
 
         try {
-            RenderPlan plan = service.prepare(asString, rawMode);
+            RenderPlan plan = HexTextServices.prepare(service, asString, rawMode);
             if (plan == null) {
                 return new HexTextRenderData(false, asString, null);
             }
 
             String sanitized = asString;
-            if (plan.shouldReplaceText() && plan.getDisplayText() != null) {
-                sanitized = plan.getDisplayText();
+            boolean shouldReplace = plan.shouldReplaceText();
+            if (shouldReplace) {
+                String display = plan.getDisplayText();
+                if (display != null) {
+                    sanitized = display;
+                }
             }
 
             Map<Integer, List<CompatRenderInstruction>> instructions = convert(plan.getInstructions());
-            return new HexTextRenderData(plan.shouldReplaceText(), sanitized, instructions);
+            return new HexTextRenderData(shouldReplace, sanitized, instructions);
         } catch (Throwable t) {
             ModStatus.LOGGER.warn("Failed to query HexText render data", t);
             return new HexTextRenderData(false, asString, null);
         }
     }
 
-    private Map<Integer, List<CompatRenderInstruction>> convert(
-        Map<Integer, List<RenderDirective>> source
-    ) {
+    private Map<Integer, List<CompatRenderInstruction>> convert(Map<Integer, List<RenderDirective>> source) {
         if (source == null || source.isEmpty()) {
             return new HashMap<>();
         }
@@ -73,3 +75,4 @@ public final class HexTextRenderBridge implements HexTextCompat.Bridge {
         return converted;
     }
 }
+
