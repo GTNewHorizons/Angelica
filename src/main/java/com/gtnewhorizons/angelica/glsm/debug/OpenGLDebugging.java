@@ -1,5 +1,22 @@
 package com.gtnewhorizons.angelica.glsm.debug;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.util.ResourceLocation;
+import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,14 +25,6 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.apache.commons.io.FileUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.joml.Matrix4f;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
 
 // Adapted from https://github.com/makamys/CoreTweaks/blob/master/src/main/java/makamys/coretweaks/util/OpenGLDebugging.java;
 // originally from https://github.com/TheGreyGhost/MinecraftByExample/blob/1-8final/src/main/java/minecraftbyexample/usefultools/OpenGLdebugging.java
@@ -30,7 +39,7 @@ public class OpenGLDebugging {
     public static final String GL_GET_INTEGERV = "glGetIntegerv()";
     public static final String GL_GET_FLOATV = "glGetFloatv()";
 
-    public class GLproperty {
+    public static class GLproperty {
 
         public GLproperty(int glConstant, String name, String description, String category, String fetchCommand) {
             this.gLConstant = glConstant;
@@ -445,11 +454,12 @@ public class OpenGLDebugging {
         }
     }
 
-    public static void checkGLSM() {
+    public static String getGLSMErrorLog() {
+        StringBuilder error = new StringBuilder();
         boolean mismatch = false;
         for (int i = 0; i < instance.propertyList.length; ++i) {
             final GLproperty gLProperty = instance.propertyList[i];
-            if(gLProperty.fetchCommand.equals(GL_GET_FLOATV) && gLProperty.name.endsWith("_MATRIX")) {
+            if (gLProperty.fetchCommand.equals(GL_GET_FLOATV) && gLProperty.name.endsWith("_MATRIX")) {
                 final Matrix4f cached = gLProperty.getAsMatrix4f(true);
                 final Matrix4f uncached = gLProperty.getAsMatrix4f(false);
                 // Some precision issues due to RAD vs degrees, and translated (vs f)
@@ -461,14 +471,90 @@ public class OpenGLDebugging {
                 final String cached = gLProperty.getAsString(true);
                 final String uncached = gLProperty.getAsString(false);
                 if (!cached.equals(uncached)) {
-                    LOGGER.error("GLSM mismatch: " + gLProperty.name + " cached: " + cached + " uncached: " + uncached);
+                    error.append("GLSM mismatch: " + gLProperty.name + " cached: " + cached + " uncached: " + uncached);
+                    error.append('\n');
                     mismatch = true;
                 }
             }
         }
+        final TextureUnitArray textureUnits = GLStateManager.getTextures();
+        int currentActiveTexture = GLStateManager.getActiveTextureUnit();
+        for (int i = 0; i < textureUnits.textureMatricies.length; i++) {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
+            final boolean cached = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
+            final boolean uncached = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+            if (cached != uncached) {
+                error.append("GLSM mismatch: " + "GL_TEXTURE_2D" + " cached: " + cached + " uncached: " + uncached + ", texture unit: GL_TEXTURE" + i);
+                error.append('\n');
+                mismatch = true;
+            }
+        }
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + currentActiveTexture);
         if (!mismatch) {
+            return null;
+        }
+        return error.toString();
+    }
+
+    public static void checkGLSM() {
+        String output = getGLSMErrorLog();
+
+        if (output == null) {
             LOGGER.info("GLSM state matches!");
+        } else {
+            LOGGER.error(output);
         }
     }
+
+    public static void copyTexture(ResourceLocation resource, File output) {
+        Object object = Minecraft.getMinecraft().renderEngine.mapTextureObjects.get(resource);
+
+        if (object != null) {
+            copyTexture(((ITextureObject) object).getGlTextureId(), output);
+        }
+    }
+
+    public static void copyTexture(int textureID, File output) {
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
+
+        int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+
+
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
+
+        BufferedImage bufferedimage = new BufferedImage(width, height, 1);
+        final int[] pixelValues = ((DataBufferInt) bufferedimage.getRaster().getDataBuffer()).getData();
+        IntBuffer pixelBuffer = BufferUtils.createIntBuffer(pixelValues.length);
+        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
+        pixelBuffer.get(pixelValues);
+
+        // Flip texture
+        final int halfHeight = height / 2;
+        final int[] rowBuffer = new int[width];
+        for (int y = 0; y < halfHeight; y++) {
+            final int top = y * width;
+            final int bottom = (height - 1 - y) * width;
+
+            System.arraycopy(pixelValues, top, rowBuffer, 0, width);
+            System.arraycopy(pixelValues, bottom, pixelValues, top, width);
+            System.arraycopy(rowBuffer, 0, pixelValues, bottom, width);
+        }
+
+        File dir = output.getParentFile();
+        dir.mkdirs();
+        copyBufferedImageToFile(bufferedimage, output);
+        bufferedimage.flush();
+    }
+
+
+    private static void copyBufferedImageToFile(BufferedImage image, File file) {
+        try {
+            ImageIO.write(image, "png", file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

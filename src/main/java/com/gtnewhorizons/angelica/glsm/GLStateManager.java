@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.LightModelStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
+import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.ISettableState;
@@ -66,7 +67,6 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
-import java.lang.Math;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
@@ -357,7 +357,7 @@ public class GLStateManager {
     }
 
     public static boolean shouldBypassCache() {
-        return BYPASS_CACHE || runningSplash;
+        return BYPASS_CACHE || glListMode != 0 || runningSplash ;
     }
 
     // LWJGL Overrides
@@ -1513,8 +1513,8 @@ public class GLStateManager {
         GL11.glNewList(list, mode);
 
         List<IStateStack<?>> stacks = Feature.maskToFeatures(GL11.GL_ALL_ATTRIB_BITS);
-        int size = stacks.size();
-
+        final int size = stacks.size();
+        //noinspection ForLoopReplaceableByForEach
         for(int i = 0; i < size; i++) {
             IStateStack<?> stack = stacks.get(i);
 
@@ -1525,6 +1525,12 @@ public class GLStateManager {
         if(glListMode == GL11.GL_COMPILE) {
             pushState(GL11.GL_ALL_ATTRIB_BITS);
         }
+
+        // Band-aid fix to prevent color & texture leaks
+        color.setRed(-1);
+        color.setGreen(-1);
+        color.setBlue(-1);
+        textures.getTextureUnitBindings(getActiveTextureUnit()).setBinding(-1);
     }
 
     public static void glEndList() {
@@ -1540,12 +1546,33 @@ public class GLStateManager {
         final Set<Map.Entry<IStateStack<?>, ISettableState<?>>> changedStates = new ObjectArraySet<>();
         for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListStates.entrySet()) {
             // If the current stack state is different than the copy of the state at the start
-            if(!((ISettableState<?>)entry.getKey()).sameAs(entry.getValue())) {
+            if(!((ISettableState<?>)entry.getKey()).sameAs(entry.getValue())
+                && !(entry.getKey() instanceof TextureBinding)
+                && !(entry.getKey() instanceof Color4)) {
                 // Then we want to put into the change set the stack and the copy of the state now
                 changedStates.add(new AbstractMap.SimpleEntry<>(entry.getKey(), (ISettableState<?>) ((ISettableState<?>) entry.getKey()).copy()));
             }
         }
-        if(changedStates.size() != 0) {
+
+        final TextureBindingStack activeBinding = textures.getTextureUnitBindings(getActiveTextureUnit());
+        if (activeBinding.getBinding() != -1) {
+            changedStates.add(new AbstractMap.SimpleEntry<>(
+                activeBinding,
+                activeBinding.copy()
+            ));
+        } else {
+            activeBinding.set(glListStates.get(activeBinding));
+        }
+        if (color.getRed() != -1 || color.getGreen() != -1 || color.getBlue() != -1) {
+            changedStates.add(new AbstractMap.SimpleEntry<>(
+                color,
+                color.copy()
+            ));
+        } else {
+            color.set(glListStates.get(color));
+        }
+
+        if(!changedStates.isEmpty()) {
             glListChanges.put(glListId, changedStates);
         }
         if(glListMode == GL11.GL_COMPILE) {
@@ -1566,8 +1593,9 @@ public class GLStateManager {
         } else {
             trySyncProgram();
             GL11.glCallList(list);
-            if(glListChanges.containsKey(list)) {
-                for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : glListChanges.get(list)) {
+            final Set<Map.Entry<IStateStack<?>, ISettableState<?>>> changes = glListChanges.get(list);
+            if(changes != null) {
+                for(Map.Entry<IStateStack<?>, ISettableState<?>> entry : changes) {
                     // Set the stack to the cached state at the end of the call list compilation
                     ((ISettableState<?>)entry.getKey()).set(entry.getValue());
                 }
