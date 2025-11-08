@@ -97,9 +97,9 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
 
-    compileOnly("com.github.KAMKEEL:HexText:5435e64060b359f2630e481ce485369bee562614:dev") { transitive = false }
+    compileOnly(rfg.deobf("curse.maven:hex-text-1379870:7197368")) { transitive = false }
     // For Testing Only -- Hex Text
-    runtimeOnlyNonPublishable("com.github.KAMKEEL:HexText:5435e64060b359f2630e481ce485369bee562614:dev") { transitive = false }
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:hex-text-1379870:7197368")) { transitive = false }
 
     runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
     // For testing alternative splash screens, can be sourced from https://github.com/MalTeeez/ModernSplash/releases

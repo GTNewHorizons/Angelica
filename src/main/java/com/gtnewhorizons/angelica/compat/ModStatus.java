@@ -56,9 +56,10 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
         isHexTextLoaded = Loader.isModLoaded("hextext");
-        HexTextServices.init();
-        HexTextServices.reportDiagnostics();
-
+        if(isHexTextLoaded){
+            isHexTextLoaded
+            HexTextServices.reportDiagnostics();
+        }
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
         // remove compat with original release of BG2
