@@ -239,8 +239,8 @@ public class MixinRenderBlocks_CrackFix {
 	}
 	@Unique
 	private static Class<?>[] angelica$getCrackFixRenderPassWhitelist() {
-		if (angelica$currentCrackFixWhitelistArr != AngelicaConfig.blockCrackFixRenderPassWhitelist) {
-			angelica$currentCrackFixWhitelistArr = AngelicaConfig.blockCrackFixRenderPassWhitelist;
+		if (angelica$currentCrackFixWhitelistArr != AngelicaConfig.blockCrackFixRenderPassWhitelist_) {
+			angelica$currentCrackFixWhitelistArr = AngelicaConfig.blockCrackFixRenderPassWhitelist_;
 			angelica$currentCrackFixWhitelistClasses = Arrays.stream(angelica$currentCrackFixWhitelistArr).map((name) -> {
 				try {
 					return Class.forName(name);
