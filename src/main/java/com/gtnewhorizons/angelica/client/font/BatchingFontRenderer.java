@@ -269,8 +269,7 @@ public class BatchingFontRenderer {
     int fontAAModeLast = -1;
     int fontAAStrengthLast = -1;
     private void flushBatch() {
-        final int prevProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
-        final int prevClientActive = GL11.glGetInteger(GL13.GL_CLIENT_ACTIVE_TEXTURE);
+        final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         // Sort&Draw
         batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
@@ -311,12 +310,7 @@ public class BatchingFontRenderer {
         GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
         GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-        // Neutralize normals so shaderpack can't light glyphs like geometry
-        final boolean normalArrayWasEnabled = GL11.glIsEnabled(GL11.GL_NORMAL_ARRAY);
-        if (normalArrayWasEnabled) {
-            GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY);
-        }
-        // Set a sane constant normal for all glyph vertices
+        GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY);
         GL11.glNormal3f(0.0f, 0.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
@@ -326,21 +320,12 @@ public class BatchingFontRenderer {
             final FontDrawCmd cmd = cmdsData[i];
             if (!Objects.equals(lastTexture, cmd.texture)) {
                 if (lastTexture == null) {
-                    int savedActive = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-                    GL13.glActiveTexture(GL13.GL_TEXTURE0);
                     GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-                    GL13.glActiveTexture(savedActive);
                 } else if (cmd.texture == null) {
-                    int savedActive = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-                    GL13.glActiveTexture(GL13.GL_TEXTURE0);
                     GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-                    GL13.glActiveTexture(savedActive);
                 }
                 if (cmd.texture != null) {
-                    int savedActive = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-                    GL13.glActiveTexture(GL13.GL_TEXTURE0);
                     ((FontRendererAccessor) underlying).angelica$bindTexture(cmd.texture);
-                    GL13.glActiveTexture(savedActive);
                     textureChanged = true;
                 }
                 lastTexture = cmd.texture;
@@ -355,15 +340,9 @@ public class BatchingFontRenderer {
             GL20.glDisableVertexAttribArray(texBoundAttrLocation);
         }
 
-        // Restore NORMAL array state
-        if (normalArrayWasEnabled) {
-            GL11.glEnableClientState(GL11.GL_NORMAL_ARRAY);
-        }
-
         GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
         GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
-        GL13.glClientActiveTexture(prevClientActive);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
