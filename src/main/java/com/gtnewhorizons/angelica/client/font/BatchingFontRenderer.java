@@ -13,6 +13,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.IOUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 
 import java.io.IOException;
@@ -268,6 +269,8 @@ public class BatchingFontRenderer {
     int fontAAModeLast = -1;
     int fontAAStrengthLast = -1;
     private void flushBatch() {
+        final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+
         // Sort&Draw
         batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
 
@@ -282,10 +285,11 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
-        if (FontConfig.fontAAMode != 0) {
+        final boolean canUseAA = FontConfig.fontAAMode != 0 && prevProgram == 0;
+        if (canUseAA) {
             GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
             GL20.glEnableVertexAttribArray(texBoundAttrLocation);
-            lastActiveProgram = GLStateManager.getActiveProgram();
+            lastActiveProgram = prevProgram;
             GLStateManager.glUseProgram(fontShaderId);
             if (FontConfig.fontAAMode != fontAAModeLast) {
                 fontAAModeLast = FontConfig.fontAAMode;
@@ -296,6 +300,8 @@ public class BatchingFontRenderer {
                 GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
             }
         }
+
+        GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
         GL11.glTexCoordPointer(2, 0, batchVtxTexCoords);
         GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 0, batchVtxColors);
@@ -303,6 +309,9 @@ public class BatchingFontRenderer {
         GL11.glVertexPointer(2, 0, batchVtxPositions);
         GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
         GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+        GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY);
+        GL11.glNormal3f(0.0f, 0.0f, 1.0f);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
@@ -326,7 +335,7 @@ public class BatchingFontRenderer {
 
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
         }
-        if (FontConfig.fontAAMode != 0) {
+        if (canUseAA) {
             GLStateManager.glUseProgram(lastActiveProgram);
             GL20.glDisableVertexAttribArray(texBoundAttrLocation);
         }
