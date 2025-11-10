@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.sodium;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
@@ -20,7 +21,6 @@ import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
@@ -136,7 +136,16 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public boolean updateRenderers(EntityLivingBase e, boolean b){
-        AngelicaRenderQueue.processTasks(1);
+        final int BUDGET_NS = 5 * 1000 * 1000;
+        long startTime = System.nanoTime();
+        for (;;) {
+            int tasksRan = AngelicaRenderQueue.processTasks(1);
+            if (tasksRan == 0)
+                break;
+            long elapsedTime = System.nanoTime() - startTime;
+            if (elapsedTime > BUDGET_NS)
+                break;
+        }
         return true;
     }
 
@@ -162,10 +171,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             if(pass == 0) {
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
             } else if(pass == 1) {
-                final Camera camera = new Camera(mc.renderViewEntity, (float) partialTicks);
-
                 if (!ShadowRenderer.ACTIVE) {
-                    iris$beginTranslucents(pipeline, camera);
+                    iris$beginTranslucents(pipeline, Camera.INSTANCE);
                 }
 
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
@@ -204,10 +211,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     }
 
     private boolean isSpectatorMode() {
-        final PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
-        if(controller == null)
-            return false;
-        return controller.currentGameType.getID() == 3;
+        return GameModeUtil.isSpectator();
     }
 
     /**
@@ -222,11 +226,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final Frustrum frustum = (Frustrum) frustrum;
         boolean hasForcedFrustum = false;
         boolean spectator = isSpectatorMode();
-        Camera camera = new Camera(mc.renderViewEntity, partialTicks);
-        frustum.setPosition(camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        frustum.setPosition(Camera.INSTANCE.getPos().x, Camera.INSTANCE.getPos().y, Camera.INSTANCE.getPos().z);
 
         try {
-            this.renderer.updateChunks(camera, frustum, hasForcedFrustum, sodium$frame++, spectator);
+            this.renderer.updateChunks(Camera.INSTANCE, frustum, hasForcedFrustum, sodium$frame++, spectator);
         } finally {
             RenderDevice.exitManagedCode();
         }
