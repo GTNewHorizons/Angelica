@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.UniversalVAO;
+import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
 import org.junit.jupiter.api.Assertions;

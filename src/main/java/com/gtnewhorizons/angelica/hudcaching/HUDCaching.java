@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.hudcaching;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
@@ -57,9 +58,7 @@ public class HUDCaching {
     private final static RenderGameOverlayEvent.Post fakePostEvent = new RenderGameOverlayEvent.Post(new RenderGameOverlayEvent(0, null, 0, 0), RenderGameOverlayEvent.ElementType.HELMET);
 
     public static void init() {
-        framebuffer = new SharedDepthFramebuffer(
-            SharedDepthFramebuffer.isMinecraftStencilEnabled() ? SharedDepthFramebuffer.STENCIL_BUFFER : 0
-        );
+        framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
 
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
