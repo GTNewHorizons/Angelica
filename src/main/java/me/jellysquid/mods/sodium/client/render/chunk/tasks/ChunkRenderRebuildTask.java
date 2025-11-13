@@ -61,13 +61,15 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private final boolean translucencySorting;
 
+    private boolean hasMainThreadBlocks = false;
+    private boolean hasMainThreadBlocksComputed = false;
+
     public ChunkRenderRebuildTask(ChunkRenderContainer<T> render, ChunkRenderContext context, BlockPos offset) {
         this.render = render;
         this.offset = offset;
         this.context = context;
         this.camera = new Vector3d();
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
-
     }
 
     public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
@@ -122,6 +124,48 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         return canRender;
     }
 
+    public boolean willRenderInMainThread(ChunkRenderCacheLocal cache) {
+        if (hasMainThreadBlocksComputed)
+            return hasMainThreadBlocks;
+
+        final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
+        final ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
+        final ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
+
+        cache.init(this.context);
+
+        final WorldSlice slice = cache.getWorldSlice();
+
+        final int baseX = this.render.getOriginX();
+        final int baseY = this.render.getOriginY();
+        final int baseZ = this.render.getOriginZ();
+
+        final BlockPos pos = new BlockPos();
+
+        outer:
+        for (int relY = 0; relY < 16; relY++) {
+            for (int relZ = 0; relZ < 16; relZ++) {
+                for (int relX = 0; relX < 16; relX++) {
+                    final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+
+                    // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
+                    // can abuse it for all sorts of things
+                    if (block.getMaterial() == Material.air) {
+                        continue;
+                    }
+
+                    if (!rendersOffThread(block)) {
+                        hasMainThreadBlocks = true;
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        hasMainThreadBlocksComputed = true;
+        return hasMainThreadBlocks;
+    }
+
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
         final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
@@ -147,7 +191,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final BlockPos renderOffset = this.offset;
 
         final LongArrayFIFOQueue mainThreadBlocks = new LongArrayFIFOQueue();
-        boolean hasMainThreadBlocks = false;
 
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
@@ -242,6 +285,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         handleRenderBlocksTextures(renderBlocks, renderData);
 
+        hasMainThreadBlocksComputed = true;
         if(hasMainThreadBlocks) {
             // Render the other blocks on the main thread
             var future = CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData, mainThreadBlocks), AngelicaRenderQueue.executor());
@@ -350,6 +394,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             + camera
             + ", translucencySorting="
             + translucencySorting
+            + ", hasMainThreadBlocks="
+            + hasMainThreadBlocks
             + '}';
     }
 

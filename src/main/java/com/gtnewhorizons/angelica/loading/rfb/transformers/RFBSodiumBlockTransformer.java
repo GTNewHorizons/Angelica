@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
+import com.gtnewhorizons.angelica.loading.shared.transformers.SodiumBlockTransform;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -11,29 +11,28 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.jar.Manifest;
 
-/** RfbClassTransformer wrapper for {@link AngelicaRedirector} */
-public class RFBAngelicaRedirector implements RfbClassTransformer {
+public class RFBSodiumBlockTransformer implements RfbClassTransformer {
 
-    private final AngelicaRedirector inner;
+    private final SodiumBlockTransform inner;
 
-    public RFBAngelicaRedirector() {
-        inner = new AngelicaRedirector();
+    public RFBSodiumBlockTransformer(boolean isObf) {
+        inner = new SodiumBlockTransform(isObf);
     }
 
     @Pattern("[a-z0-9-]+")
     @Override
     public @NotNull String id() {
-        return "redirector";
+        return "sodiumblocktransform";
     }
 
     @Override
     public @NotNull String @Nullable [] sortAfter() {
-        return new String[] {"*", "mixin:mixin"};
+        return new String[]{"*", "mixin:mixin"};
     }
 
     @Override
     public @NotNull String @Nullable [] sortBefore() {
-        return new String[] {"lwjgl3ify:redirect"};
+        return new String[]{"lwjgl3ify:redirect"};
     }
 
     @Override
@@ -43,8 +42,8 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
 
     @Override
     public boolean shouldTransformClass(@NotNull ExtensibleClassLoader classLoader,
-        @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest, @NotNull String className,
-        @NotNull ClassNodeHandle classNode) {
+                                        @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest, @NotNull String className,
+                                        @NotNull ClassNodeHandle classNode) {
         if (!classNode.isPresent()) {
             return false;
         }
@@ -57,7 +56,7 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
 
     @Override
     public void transformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
-        @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
+                               @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
         final boolean changed = inner.transformClassNode(className, classNode.getNode());
         if (changed) {
             classNode.computeMaxs();

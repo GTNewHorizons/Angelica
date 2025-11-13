@@ -20,14 +20,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
-import net.minecraft.world.biome.BiomeGenBase;
 import org.joml.Math;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
@@ -53,6 +50,7 @@ public final class CommonUniforms {
         ViewportUniforms.addViewportUniforms(uniforms);
         WorldTimeUniforms.addWorldTimeUniforms(uniforms);
         SystemTimeUniforms.addSystemTimeUniforms(uniforms);
+		BiomeUniforms.addBiomeUniforms(uniforms);
         new CelestialUniforms(directives.getSunPathRotation()).addCelestialUniforms(uniforms);
         IrisExclusiveUniforms.addIrisExclusiveUniforms(uniforms);
         IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
@@ -67,6 +65,7 @@ public final class CommonUniforms {
 
 	// Needs to use a LocationalUniformHolder as we need it for the common uniforms
 	public static void addDynamicUniforms(DynamicUniformHolder uniforms) {
+		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms);
 
@@ -113,6 +112,7 @@ public final class CommonUniforms {
 
         uniforms
             .uniform1f(ONCE, "darknessFactor", () -> 0.0F) // This is PER_FRAME in modern, it is an effect added by The Warden. We're just setting to 0 because 1.7.10 doesn't have it.
+            .uniform1f(ONCE, "darknessLightFactor", () -> 0.0F) // Warden darkness current light factor - 1.7.10 doesn't have it so hardcode to 0
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
@@ -137,11 +137,7 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
-			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor)
-
-            .uniform1i(PER_TICK, "biome_precipitation",  CommonUniforms::getBiomePrecipitation)
-            .uniform1f(PER_TICK, "rainfall", CommonUniforms::getBiomeRainfall)
-            .uniform1f(PER_TICK, "temperature", CommonUniforms::getBiomeTemperature);
+			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor);
 	}
 
     private static boolean isOnGround() {
@@ -153,38 +149,7 @@ public final class CommonUniforms {
         return (client.thePlayer != null &&  client.thePlayer.hurtTime > 0);
     }
 
-    private static BiomeGenBase getBiome() {
-        return client.theWorld.getBiomeGenForCoords(MathHelper.floor_double(client.thePlayer.posX),  MathHelper.floor_double(client.thePlayer.posZ));
-    }
-
-    private static int getBiomePrecipitation() {
-        if (client.thePlayer == null || client.theWorld == null) {
-            return 0;
-        }
-
-        BiomeGenBase biome = getBiome();
-        float temp = biome.getFloatTemperature(MathHelper.floor_double(client.thePlayer.posX), MathHelper.floor_double(client.thePlayer.posY), MathHelper.floor_double(client.thePlayer.posZ));
-
-        if (!biome.enableRain && !biome.enableSnow) {
-            return 0;
-        } else if (temp > 0.15F) {
-            return 1;
-        } else {
-            return 2;
-        }
-    }
-
-    private static float getBiomeRainfall() {
-        if (client.thePlayer == null || client.theWorld == null) return 0.0F;
-        return getBiome().rainfall;
-    }
-
-    private static float getBiomeTemperature() {
-        if (client.thePlayer == null || client.theWorld == null) return 0.0F;
-        return getBiome().temperature;
-    }
-
-    private static boolean isInvisible() {
+	private static boolean isInvisible() {
         return (client.thePlayer != null &&  client.thePlayer.isInvisible());
     }
 
