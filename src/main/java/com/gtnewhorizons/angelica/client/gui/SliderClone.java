@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.client.gui;
 
 import lombok.AllArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.resources.I18n;
 import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
@@ -42,6 +45,48 @@ public class SliderClone extends GuiButton {
         this.displayStringFormatter = formatter;
         this.tooltipKey = tooltipKey;
     }
+
+    public static SliderCloneBuilder builder() {
+        return new SliderCloneBuilder();
+    }
+
+    @Accessors(fluent = true) @Setter
+    public static class SliderCloneBuilder {
+        private int x = 0, y = 0; // center position, not a corner
+        private int width = 120, height = 20;
+        private Option option;
+        private float initialValue;
+        private Consumer<Float> setter;
+        private String formatString = "%3.2f";
+        private String langKey;
+
+        // overrides: if null, these get set to default values
+        private String tooltipKey;
+        private Function<Float, String> formatter;
+
+        public SliderClone build() {
+            if (this.formatter == null) {
+                this.formatter = value -> I18n.format(this.langKey, String.format(this.formatString, value));
+            }
+
+            if (this.tooltipKey == null) {
+                this.tooltipKey = this.langKey + ".tooltip";
+            }
+
+            return new SliderClone(
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height,
+                this.option,
+                this.initialValue,
+                this.setter,
+                this.formatter,
+                this.tooltipKey
+            );
+        }
+    }
+
 
     /**
      * Returns 0 if the button is disabled, 1 if the mouse is NOT hovering over this button and 2 if it IS hovering over

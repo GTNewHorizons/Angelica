@@ -69,47 +69,102 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void initButtons() {
-        this.buttonList.add(new IrisButton(this.width / 2 - 81 - 165, this.height - 20 - 7, 162, 20,
+        final int halfWidth = this.width / 2;
+
+        this.buttonList.add(new IrisButton(halfWidth - 81 - 165, this.height - 20 - 7, 162, 20,
             FontConfig.enableCustomFont ? I18n.format("options.angelica.fontconfig.disable_custom_font") :
                 I18n.format("options.angelica.fontconfig.enable_custom_font"), this::toggleCustomFont));
-        this.buttonList.add(new IrisButton(this.width / 2 - 80, this.height - 20 - 7, 160, 20,
+        this.buttonList.add(new IrisButton(halfWidth - 80, this.height - 20 - 7, 160, 20,
             I18n.format("options.angelica.fontconfig.reset_values"), this::resetValues));
-        this.buttonList.add(new IrisButton(this.width / 2 - 81 + 165, this.height - 20 - 7, 162, 20,
+        this.buttonList.add(new IrisButton(halfWidth - 81 + 165, this.height - 20 - 7, 162, 20,
             I18n.format("gui.done"), button -> this.onClose()));
 
-        // might refactor later, feeling too lazy at the moment
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 40 - 11, 120, 20,
-            optFontQuality, FontConfig.customFontQuality, this::setFontQuality,
-            value -> I18n.format("options.angelica.fontconfig.font_quality", String.format("%2.0f", value)),
-            "options.angelica.fontconfig.font_quality.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 - 186, this.height - 60 - 15, 120, 20,
-            optShadowOffset, FontConfig.fontShadowOffset, value -> FontConfig.fontShadowOffset = value,
-            value -> I18n.format("options.angelica.fontconfig.shadow_offset", String.format("x%3.2f", value)),
-            "options.angelica.fontconfig.shadow_offset.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 40 - 11, 120, 20,
-            optGlyphAspect, FontConfig.glyphAspect, value -> FontConfig.glyphAspect = value,
-            value -> I18n.format("options.angelica.fontconfig.glyph_aspect", String.format("%3.2f", value)),
-            "options.angelica.fontconfig.glyph_aspect.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 - 62, this.height - 60 - 15, 120, 20,
-            optGlyphScale, FontConfig.glyphScale, value -> FontConfig.glyphScale = value,
-            value -> I18n.format("options.angelica.fontconfig.glyph_scale", String.format("x%3.2f", value)),
-            "options.angelica.fontconfig.glyph_scale.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 40 - 11, 120, 20,
-            optWhitespaceScale, FontConfig.whitespaceScale, value -> FontConfig.whitespaceScale = value,
-            value -> I18n.format("options.angelica.fontconfig.whitespace_scale", String.format("x%3.2f", value)),
-            "options.angelica.fontconfig.whitespace_scale.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 + 62, this.height - 60 - 15, 120, 20,
-            optGlyphSpacing, FontConfig.glyphSpacing, value -> FontConfig.glyphSpacing = value,
-            value -> I18n.format("options.angelica.fontconfig.glyph_spacing", String.format("%3.2f", value)),
-            "options.angelica.fontconfig.glyph_spacing.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 + 186, this.height - 40 - 11, 120, 20,
-            optFontAAStrength, FontConfig.fontAAStrength, value -> FontConfig.fontAAStrength = value.intValue(),
-            value -> I18n.format("options.angelica.fontconfig.font_aa_strength", String.format("%.0f", value)),
-            "options.angelica.fontconfig.font_aa_strength.tooltip"));
-        this.buttonList.add(new SliderClone( this.width / 2 - 60 + 186, this.height - 60 - 15, 120, 20,
-            optFontAAMode, FontConfig.fontAAMode, value -> FontConfig.fontAAMode = value.intValue(),
-            this::fontAAModeFormat,
-            "options.angelica.fontconfig.aamode.tooltip"));
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth - 180 - 6)
+                .y(this.height - 41)
+                .option(optFontQuality)
+                .initialValue(FontConfig.customFontQuality)
+                .setter(this::setFontQuality)
+                .langKey("options.angelica.fontconfig.font_quality")
+                .formatString("%2.0f")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth - 180 - 6)
+                .y(this.height - 65)
+                .option(optShadowOffset)
+                .initialValue(FontConfig.fontShadowOffset)
+                .setter(value -> FontConfig.fontShadowOffset = value)
+                .langKey("options.angelica.fontconfig.shadow_offset")
+                .formatString("x%3.2f")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth - 60 - 2)
+                .y(this.height - 41)
+                .option(optGlyphAspect)
+                .initialValue(FontConfig.glyphAspect)
+                .setter(value -> FontConfig.glyphAspect = value)
+                .langKey("options.angelica.fontconfig.glyph_aspect")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth - 60 - 2)
+                .y(this.height - 65)
+                .option(optGlyphScale)
+                .initialValue(FontConfig.glyphScale)
+                .setter(value -> FontConfig.glyphScale = value)
+                .langKey("options.angelica.fontconfig.glyph_scale")
+                .formatString("x%3.2f")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth + 60 + 2)
+                .y(this.height - 41)
+                .option(optWhitespaceScale)
+                .initialValue(FontConfig.whitespaceScale)
+                .setter(value -> FontConfig.whitespaceScale = value)
+                .langKey("options.angelica.fontconfig.whitespace_scale")
+                .formatString("x%3.2f")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth + 60 + 2)
+                .y(this.height - 65)
+                .option(optGlyphSpacing)
+                .initialValue(FontConfig.glyphSpacing)
+                .setter(value -> FontConfig.glyphSpacing = value)
+                .langKey("options.angelica.fontconfig.glyph_spacing")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth + 180 + 6)
+                .y(this.height - 41)
+                .option(optFontAAStrength)
+                .initialValue(FontConfig.fontAAStrength)
+                .setter(value -> FontConfig.fontAAStrength = value.intValue())
+                .langKey("options.angelica.fontconfig.font_aa_strength")
+                .formatString("%.0f")
+                .build()
+        );
+        this.buttonList.add(
+            new SliderClone.SliderCloneBuilder()
+                .x(halfWidth + 180 + 6)
+                .y(this.height - 65)
+                .option(optFontAAMode)
+                .initialValue(FontConfig.fontAAMode)
+                .setter(value -> FontConfig.fontAAMode = value.intValue())
+                .formatter(this::fontAAModeFormat)
+                .langKey("options.angelica.fontconfig.aamode")
+                .build()
+        );
     }
 
     private void onClose() {
