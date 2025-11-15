@@ -13,6 +13,7 @@ public enum TargetedMod implements ITargetMod {
     COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
     DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),
     DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
+    DRAGON_API("Reika.DragonAPI.Auxiliary.DragonAPIASMHandler", "DragonAPI"),
     EXTRAUTILS(null, "ExtraUtilities"),
     FALSETWEAKS("com.falsepattern.falsetweaks.asm.CoreLoadingPlugin", "falsetweaks"),
     MINEFACTORY_RELOADED(null, "MineFactoryReloaded"),
@@ -26,7 +27,7 @@ public enum TargetedMod implements ITargetMod {
     WITCHERY(null, "witchery");
 
     private final TargetModBuilder builder;
-    
+
     TargetedMod(String targetClass) {
         this.builder = new TargetModBuilder().setTargetClass(targetClass);
     }
