@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.compat;
 
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
@@ -33,6 +34,7 @@ public class ModStatus {
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isHexTextLoaded;
 
     public static void preInit(){
         isBackhandLoaded = Loader.isModLoaded("backhand");
@@ -53,7 +55,6 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
-
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
         // remove compat with original release of BG2
@@ -70,6 +71,14 @@ public class ModStatus {
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
+        }
+    }
+
+    public static void init() {
+        // Hex Text API is initialized after Pre Init for Compatibility
+        isHexTextLoaded = Loader.isModLoaded("hextext");
+        if (isHexTextLoaded) {
+            isHexTextLoaded = HexTextServices.isApiCompatible();
         }
     }
 }
