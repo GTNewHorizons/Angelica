@@ -77,14 +77,14 @@ public enum Mixins implements IMixins {
             , "angelica.dynamiclights.MixinItemRenderer"
         )
     ),
-    
+
     ANGELICA_FIX_BLOCK_CRACK(
             new MixinBuilder("Block corners and edges between chunks might have \"cracks\" in them. This option fixes it")
                     .setPhase(Phase.EARLY)
                     .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
                     .addExcludedMod(TargetedMod.FALSETWEAKS)
                     .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
-    
+
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
         new MixinBuilder("Fix RenderBlockFluid reading the block type from the world access multiple times")
             .setPhase(Phase.EARLY)
@@ -283,7 +283,7 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
-    
+
     NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
@@ -371,6 +371,7 @@ public enum Mixins implements IMixins {
     ),
     NOTFINE_NO_CUSTOM_ITEM_TEXTURES(new MixinBuilder()
         .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> !AngelicaConfig.enableMCPatcherForgeFeatures || !MCPatcherForgeConfig.CustomItemTextures.enabled)
         .addClientMixins(addPrefix("notfine.glint.",
             "MixinItemRenderer",
@@ -504,6 +505,7 @@ public enum Mixins implements IMixins {
     ),
     MCPATCHER_FORGE_CUSTOM_ITEM_TEXTURES(new MixinBuilder()
         .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.CustomItemTextures.enabled)
         .addClientMixins(addPrefix("mcpatcherforge.cit.",
             "client.renderer.entity.MixinRenderBiped",
