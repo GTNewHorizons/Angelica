@@ -49,7 +49,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.11")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
