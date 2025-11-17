@@ -16,7 +16,6 @@ import javax.imageio.ImageIO;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -40,7 +39,7 @@ public final class FontProviderCustom implements FontProvider {
 
     private FontProviderCustom(byte id) {
         this.id = id;
-        Font[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        Font[] availableFonts = FontStrategist.getAvailableFonts();
         if (availableFonts.length == 0) {
             LOGGER.fatal("There seem to be no fonts available on this system! Disabling custom font and throwing an exception in an attempt to restore the session.");
             FontConfig.enableCustomFont = false;
@@ -70,17 +69,23 @@ public final class FontProviderCustom implements FontProvider {
         }
         font = availableFonts[fontPos].deriveFont(currentFontQuality);
     }
+
     private static class InstLoader {
-        static final FontProviderCustom instance0 = new FontProviderCustom((byte)0);
-        static final FontProviderCustom instance1 = new FontProviderCustom((byte)1);
+        static final FontProviderCustom instance0 = new FontProviderCustom((byte) 0);
+        static final FontProviderCustom instance1 = new FontProviderCustom((byte) 1);
     }
-    public static FontProviderCustom getPrimary() { return InstLoader.instance0; }
-    public static FontProviderCustom getFallback() { return InstLoader.instance1; }
+
+    public static FontProviderCustom getPrimary() {
+        return InstLoader.instance0;
+    }
+
+    public static FontProviderCustom getFallback() {
+        return InstLoader.instance1;
+    }
 
     public void reloadFont(int fontID) {
         currentFontQuality = FontConfig.customFontQuality;
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        font = ge.getAllFonts()[fontID].deriveFont(currentFontQuality);
+        font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
 
         File[] files = new File(getFontDir()).listFiles();
         if (files != null) {
@@ -152,7 +157,7 @@ public final class FontProviderCustom implements FontProvider {
             int width = 0;
             int actualChars = 0;
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) {
                     width += (int) (separator + fm.charWidth(ch));
                     actualChars++;
@@ -173,7 +178,7 @@ public final class FontProviderCustom implements FontProvider {
                     maxRowWidth = Math.max(maxRowWidth, width);
                     width = 0;
                 }
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) {
                     width += (int) (separator + fm.charWidth(ch));
                     actualChars++;
@@ -203,8 +208,10 @@ public final class FontProviderCustom implements FontProvider {
             int imgX = (int) separator; // position in pixels
 
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
-                if (!font.canDisplay(ch)) { continue; }
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
+                if (!font.canDisplay(ch)) {
+                    continue;
+                }
 
                 if (tileX >= atlasTilesX) {
                     tileX = 0;
@@ -251,7 +258,9 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public boolean isGlyphAvailable(char chr) {
-        if (font == null) { return false; }
+        if (font == null) {
+            return false;
+        }
         return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
     }
 

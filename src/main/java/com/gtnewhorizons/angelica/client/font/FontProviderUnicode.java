@@ -5,9 +5,16 @@ import net.minecraft.util.ResourceLocation;
 
 public final class FontProviderUnicode implements FontProvider {
 
-    private FontProviderUnicode() {}
-    private static class InstLoader { static final FontProviderUnicode instance = new FontProviderUnicode(); }
-    public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
+    private FontProviderUnicode() {
+    }
+
+    private static class InstLoader {
+        static final FontProviderUnicode instance = new FontProviderUnicode();
+    }
+
+    public static FontProviderUnicode get() {
+        return FontProviderUnicode.InstLoader.instance;
+    }
 
     private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
     public byte[] glyphWidth;
@@ -37,7 +44,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getUStart(char chr) {
-        final float startColumnF = (float)(this.glyphWidth[chr] >>> 4);
+        final float startColumnF = (float) (this.glyphWidth[chr] >>> 4);
         return ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
     }
 

@@ -250,5 +250,8 @@ public class GLSMUtil {
         materialBuffer.clear();
         materialBuffer.put(0.8F).put(0.8F).put(0.8F).put(1.0F).flip();
         GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, materialBuffer);
+
+        // Reset draw buffer
+        GLStateManager.glDrawBuffer(GLStateManager.DEFAULT_DRAW_BUFFER);
     }
 }

@@ -259,6 +259,7 @@ public class BatchingFontRenderer {
         }
     }
 
+    int lastActiveProgram;
     int fontAAModeLast = -1;
     int fontAAStrengthLast = -1;
     private void flushBatch() {
@@ -279,7 +280,8 @@ public class BatchingFontRenderer {
         if (FontConfig.fontAAMode != 0) {
             GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
             GL20.glEnableVertexAttribArray(texBoundAttrLocation);
-            GL20.glUseProgram(fontShaderId);
+            lastActiveProgram = GLStateManager.getActiveProgram();
+            GLStateManager.glUseProgram(fontShaderId);
             if (FontConfig.fontAAMode != fontAAModeLast) {
                 fontAAModeLast = FontConfig.fontAAMode;
                 GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
@@ -320,7 +322,7 @@ public class BatchingFontRenderer {
             GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
         }
         if (FontConfig.fontAAMode != 0) {
-            GL20.glUseProgram(0);
+            GLStateManager.glUseProgram(lastActiveProgram);
             GL20.glDisableVertexAttribArray(texBoundAttrLocation);
         }
 
@@ -329,10 +331,10 @@ public class BatchingFontRenderer {
         GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
 
         if (isTextureEnabledBefore) {
-        	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         }
         if (textureChanged) {
-        	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
         // Clear for the next batch
@@ -373,7 +375,7 @@ public class BatchingFontRenderer {
     private static final char FORMATTING_CHAR = 167; // §
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
-        final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
+                            final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
             return anchorX + (enableShadow ? 1.0f : 0.0f);
@@ -465,8 +467,16 @@ public class BatchingFontRenderer {
                         shadowStack.clear();
                         curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                         curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                        // reset styles on color change (vanilla behavior)
                         curRandom = false;
+                        curBold = false;
+                        curStrikethrough = false;
+                        curUnderline = false;
+                        curItalic = false;
                         curRainbow = false;
+                        curDinnerbone = false;
+
                         processedRgbOrTag = true; // Prevent traditional &X from overwriting
 
                         if (!rawMode) {
@@ -534,8 +544,16 @@ public class BatchingFontRenderer {
                             shadowStack.add(curShadowColor);
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ColorCodeUtils.calculateShadowColor(rgb);
+
+                            // reset styles on color change
                             curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
                             curRainbow = false;
+                            curDinnerbone = false;
+
                             processedRgbOrTag = true;
 
                             if (!rawMode) {
@@ -576,16 +594,20 @@ public class BatchingFontRenderer {
                         final boolean is09 = charInRange(fmtCode, '0', '9');
                         final boolean isAF = charInRange(fmtCode, 'a', 'f');
                         if (is09 || isAF) {
-                            // Only reset random flag, preserve bold/italic/underline/strikethrough
-                            // This allows &l&6 (bold gold) patterns to work
-                            curRandom = false;
-                            curRainbow = false;
-
                             final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
                             final int rgb = this.colorCode[colorIdx];
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             final int shadowRgb = this.colorCode[colorIdx + 16];
                             curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
+
+                            // vanilla resets styles on color
+                            curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
+                            curRainbow = false;
+                            curDinnerbone = false;
                         } else if (fmtCode == 'k') {
                             curRandom = true;
                         } else if (fmtCode == 'l') {
@@ -812,8 +834,8 @@ public class BatchingFontRenderer {
      * This method correctly skips over:
      * - Traditional § codes (2 chars)
      * - &RRGGBB format (7 chars)
-     * - <RRGGBB> format (9 chars)
-     * - </RRGGBB> format (10 chars)
+     * - <RRGGBB> format (8 chars)
+     * - </RRGGBB> format (9 chars)
      *
      * @param str The string to measure
      * @return The width in pixels
@@ -823,39 +845,8 @@ public class BatchingFontRenderer {
             return 0.0f;
         }
 
-        float width = 0.0f;
-        boolean isBold = false;
         final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
-
-        for (int i = 0; i < str.length(); i++) {
-            int codeLen = rawMode ? 0 : ColorCodeUtils.detectColorCodeLength(str, i);
-            if (codeLen > 0) {
-                // Check if this is a bold formatting code
-                if (codeLen == 2 && i + 1 < str.length()) {
-                    char fmt = Character.toLowerCase(str.charAt(i + 1));
-                    if (fmt == 'l') {
-                        isBold = true;
-                    } else if (fmt == 'r') {
-                        isBold = false;
-                    } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
-                        isBold = false; // Color codes reset bold
-                    }
-                }
-
-                i += codeLen - 1; // Skip the color code (minus 1 because loop will increment)
-                continue;
-            }
-
-            char c = str.charAt(i);
-            float charWidth = getCharWidthFine(c);
-            if (charWidth > 0) {
-                width += charWidth;
-                if (isBold) {
-                    width += this.getShadowOffset(); // Bold adds extra width
-                }
-            }
-        }
-
-        return width;
+        return FormattedTextMetrics.calculateMaxLineWidth(str, rawMode, this::getCharWidthFine,
+            getGlyphSpacing(), this.getShadowOffset());
     }
 }

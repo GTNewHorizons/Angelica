@@ -39,8 +39,10 @@ public class Zoom {
     }
 
     private static void resetMouseFilters(Minecraft mc) {
-        ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
-        ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
+        if (mc.entityRenderer != null) {
+            ((IMouseFilterExt) mc.entityRenderer.mouseFilterXAxis).angelica$reset();
+            ((IMouseFilterExt) mc.entityRenderer.mouseFilterYAxis).angelica$reset();
+        }
     }
 
     public static void resetZoom() {

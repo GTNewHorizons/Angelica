@@ -87,7 +87,7 @@ public class FontUtils {
     }
 
     public static float[] computeCharWidthsf(FontRenderer fontRenderer, ResourceLocation filename, BufferedImage image,
-        int[] rgb, int[] charWidth) {
+                                             int[] rgb, int[] charWidth) {
         float[] charWidthf = new float[charWidth.length];
         if (!((FontRendererExpansion) fontRenderer).getIsHD()) {
             for (int i = 0; i < charWidth.length; i++) {
@@ -181,72 +181,26 @@ public class FontUtils {
         if (s != null) {
             boolean isLink = false;
             final boolean rawMode = AngelicaFontRenderContext.isRawTextRendering();
-            for (int i = 0; i < s.length(); i++) {
-                char c = s.charAt(i);
-
-                // Check for RGB color codes first (&RRGGBB, <RRGGBB>, </RRGGBB>)
-                // These need to be skipped entirely for width calculation
-                if (!rawMode && c == '&' && i + 6 < s.length()) {
-                    // Check for &RRGGBB format
-                    boolean validHex = true;
-                    for (int j = 1; j <= 6; j++) {
-                        char hexChar = s.charAt(i + j);
-                        if (!((hexChar >= '0' && hexChar <= '9') ||
-                              (hexChar >= 'a' && hexChar <= 'f') ||
-                              (hexChar >= 'A' && hexChar <= 'F'))) {
-                            validHex = false;
-                            break;
+            for (int i = 0; i < s.length(); ) {
+                if (!rawMode) {
+                    int codeLen = ColorCodeUtils.detectColorCodeLength(s, i);
+                    if (codeLen > 0) {
+                        if (codeLen == 2 && i + 1 < s.length()) {
+                            char fmt = Character.toLowerCase(s.charAt(i + 1));
+                            if (fmt == 'l') {
+                                isLink = true;
+                            } else if (fmt == 'r') {
+                                isLink = false;
+                            } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                                isLink = false;
+                            }
                         }
-                    }
-                    if (validHex) {
-                        i += 6; // Skip the entire &RRGGBB code
+                        i += codeLen;
                         continue;
                     }
-                } else if (!rawMode && c == '<' && i + 9 <= s.length() && s.charAt(i + 1) == '/' && s.charAt(i + 8) == '>') {
-                    // Check for </RRGGBB> format
-                    boolean validHex = true;
-                    for (int j = 2; j <= 7; j++) {
-                        char hexChar = s.charAt(i + j);
-                        if (!((hexChar >= '0' && hexChar <= '9') ||
-                              (hexChar >= 'a' && hexChar <= 'f') ||
-                              (hexChar >= 'A' && hexChar <= 'F'))) {
-                            validHex = false;
-                            break;
-                        }
-                    }
-                    if (validHex) {
-                        i += 8; // Skip the entire </RRGGBB> tag
-                        continue;
-                    }
-                } else if (!rawMode && c == '<' && i + 8 <= s.length() && s.charAt(i + 7) == '>') {
-                    // Check for <RRGGBB> format
-                    boolean validHex = true;
-                    for (int j = 1; j <= 6; j++) {
-                        char hexChar = s.charAt(i + j);
-                        if (!((hexChar >= '0' && hexChar <= '9') ||
-                              (hexChar >= 'a' && hexChar <= 'f') ||
-                              (hexChar >= 'A' && hexChar <= 'F'))) {
-                            validHex = false;
-                            break;
-                        }
-                    }
-                    if (validHex) {
-                        i += 7; // Skip the entire <RRGGBB> tag
-                        continue;
-                    }
-                } else if (!rawMode && c == '&' && i < s.length() - 1 && ColorCodeUtils.isFormattingCode(s.charAt(i + 1))) {
-                    char fmt = Character.toLowerCase(s.charAt(++i));
-                    if (fmt == 'l') {
-                        isLink = true;
-                    } else if (fmt == 'r') {
-                        isLink = false;
-                    } else if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
-                        isLink = false;
-                    }
-                    continue;
                 }
 
-                // Handle traditional & formatting codes
+                char c = s.charAt(i);
                 float cWidth = getCharWidthf(fontRenderer, c);
                 if (!rawMode && cWidth < 0.0f && i < s.length() - 1) {
                     i++;
@@ -262,6 +216,7 @@ public class FontUtils {
                 if (isLink) {
                     totalWidth++;
                 }
+                i++;
             }
         }
         return totalWidth;

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import java.util.ArrayDeque;
+
 /**
  * Utility class for parsing RGB color codes in text.
  * Supports multiple formats:
@@ -101,8 +103,8 @@ public class ColorCodeUtils {
      * @param pos Position to check
      * @return Length of color code:
      *         - 7 for &RRGGBB format (& + 6 hex)
-     *         - 9 for <RRGGBB> format (< + 6 hex + >)
-     *         - 10 for </RRGGBB> format (</ + 6 hex + >)
+     *         - 8 for <RRGGBB> format (< + 6 hex + >)
+     *         - 9 for </RRGGBB> format (</ + 6 hex + >)
      *         - 2 for §X format (handled elsewhere, but counted here)
      *         - 0 for no color code
      */
@@ -145,14 +147,14 @@ public class ColorCodeUtils {
         // Check for </RRGGBB> format (closing tag)
         if (c == '<' && pos + 9 <= str.length() && str.charAt(pos + 1) == '/' && str.charAt(pos + 8) == '>') {
             if (isValidHexString(str, pos + 2)) {
-                return 10;
+                return 9;
             }
         }
 
         // Check for <RRGGBB> format (opening tag)
         if (c == '<' && pos + 8 <= str.length() && str.charAt(pos + 7) == '>') {
             if (isValidHexString(str, pos + 1)) {
-                return 9;
+                return 8;
             }
         }
 
@@ -213,5 +215,100 @@ public class ColorCodeUtils {
         int blue = (int) (b * 255);
 
         return (red << 16) | (green << 8) | blue;
+    }
+
+    /**
+     * Extract the currently active formatting codes from {@code str}.
+     *
+     * @param str The formatted string.
+     * @return A string containing the colour code (if any) followed by active style codes.
+     */
+    public static String extractFormatFromString(String str) {
+        if (str == null || str.isEmpty()) {
+            return "";
+        }
+
+        String currentColorCode = null;
+        StringBuilder styleCodes = new StringBuilder();
+        ArrayDeque<String> colorStack = new ArrayDeque<>();
+
+        for (int i = 0; i < str.length(); ) {
+            int codeLen = detectColorCodeLengthIgnoringRaw(str, i);
+
+            if (codeLen > 0) {
+                char firstChar = str.charAt(i);
+                String code = str.substring(i, i + codeLen);
+
+                if (codeLen == 7 && firstChar == '&') {
+                    currentColorCode = code;
+                    colorStack.clear();
+                    styleCodes.setLength(0);
+                } else if (codeLen == 8 && firstChar == '<') {
+                    if (currentColorCode != null) {
+                        colorStack.push(currentColorCode);
+                    }
+                    currentColorCode = code;
+                    styleCodes.setLength(0);
+                } else if (codeLen == 9 && firstChar == '<') {
+                    currentColorCode = colorStack.isEmpty() ? null : colorStack.pop();
+                    styleCodes.setLength(0);
+                } else if (codeLen == 2) {
+                    char fmt = Character.toLowerCase(str.charAt(i + 1));
+
+                    if ((fmt >= '0' && fmt <= '9') || (fmt >= 'a' && fmt <= 'f')) {
+                        currentColorCode = code;
+                        colorStack.clear();
+                        styleCodes.setLength(0);
+                    } else if (fmt == 'r') {
+                        currentColorCode = null;
+                        colorStack.clear();
+                        styleCodes.setLength(0);
+                    } else if (fmt == 'l' || fmt == 'o' || fmt == 'n' || fmt == 'm' || fmt == 'k') {
+                        styleCodes.append(code);
+                    }
+                }
+
+                i += codeLen;
+                continue;
+            }
+
+            i++;
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (currentColorCode != null) {
+            result.append(currentColorCode);
+        }
+        if (styleCodes.length() > 0) {
+            result.append(styleCodes);
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Remove all recognised colour/formatting codes from {@code input}.
+     *
+     * @param input Text that may contain formatting codes.
+     * @return The input with all colour codes removed, or {@code null} if the input was {@code null}.
+     */
+    public static String stripColorCodes(CharSequence input) {
+        if (input == null) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder(input.length());
+        for (int index = 0; index < input.length(); ) {
+            int codeLen = detectColorCodeLengthIgnoringRaw(input, index);
+            if (codeLen > 0) {
+                index += codeLen;
+                continue;
+            }
+
+            builder.append(input.charAt(index));
+            index++;
+        }
+
+        return builder.toString();
     }
 }
