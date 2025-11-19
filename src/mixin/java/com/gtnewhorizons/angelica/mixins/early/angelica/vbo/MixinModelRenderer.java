@@ -27,6 +27,6 @@ public class MixinModelRenderer {
 
     @Redirect(method = "compileDisplayList", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEndList()V", remap = false))
     public void stopCapturingVBO() {
-        VBOManager.registerVBO(this.displayList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL));
+        VBOManager.registerVBO(this.displayList, TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL));
     }
 }

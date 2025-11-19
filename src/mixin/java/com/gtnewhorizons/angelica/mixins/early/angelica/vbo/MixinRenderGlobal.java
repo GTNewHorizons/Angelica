@@ -43,13 +43,12 @@ public class MixinRenderGlobal {
     }
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 0), remap = false)
     public void finishStarsVBO() {
-        VBOManager.registerVBO(starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+        VBOManager.registerVBO(starGLCallList, TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION));
     }
 
     @Redirect(method="<init>", at = @At(value="FIELD", target="Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
     private Tessellator redirectTessellator() {
-        TessellatorManager.startCapturing();
-        return TessellatorManager.get();
+        return TessellatorManager.startCapturingAndGet();
     }
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 1), remap = false)
@@ -59,7 +58,7 @@ public class MixinRenderGlobal {
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 1), remap = false)
     public void finishSkyVBO() {
-        VBOManager.registerVBO(glSkyList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+        VBOManager.registerVBO(glSkyList, TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION));
     }
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glNewList(II)V", ordinal = 2), remap = false)
@@ -69,7 +68,7 @@ public class MixinRenderGlobal {
 
     @Redirect(method="<init>", at = @At(value="INVOKE", target="Lorg/lwjgl/opengl/GL11;glEndList()V", ordinal = 2), remap = false)
     public void finishSky2VBO() {
-        VBOManager.registerVBO(glSkyList2, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+        VBOManager.registerVBO(glSkyList2, TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION));
     }
 
     /**

@@ -25,6 +25,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.fluids.Fluid;
@@ -66,8 +67,7 @@ public class BlockRenderer {
             final LightMode mode = LightMode.SMOOTH; // TODO: this.getLightingMode(block); is what was previously used. The flat pipeline is busted and was only an optimization for very few blocks.
             final LightPipeline lighter = this.lighters.getLighter(mode);
 
-            TessellatorManager.startCapturing();
-            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            final CapturingTessellator tess = TessellatorManager.startCapturingAndGet();
             tess.startDrawingQuads();
             // Use setTranslation rather than setOffset so that the float data written to the internal buffer
             // is done in subchunk-relative coordinates
@@ -101,8 +101,7 @@ public class BlockRenderer {
         final int emitted = block.getLightValue(world, pos.x, pos.y, pos.z);
 
         try {
-            TessellatorManager.startCapturing();
-            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            final CapturingTessellator tess = TessellatorManager.startCapturingAndGet();
             tess.startDrawingQuads();
             // Use setTranslation rather than setOffset so that the float data written to the internal buffer
             // is done in subchunk-relative coordinates

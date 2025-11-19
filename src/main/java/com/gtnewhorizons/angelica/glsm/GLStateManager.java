@@ -1587,6 +1587,10 @@ public class GLStateManager {
 
     }
 
+    public static boolean isInDisplayList() {
+        return glListMode != 0;
+    }
+
     public static void glCallList(int list) {
         if(list < 0) {
             VBOManager.get(list).render();
