@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
@@ -21,7 +22,6 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.EntityLivingBase;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -49,12 +49,12 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V", remap = false))
     private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // TODO: Iris
-        final Camera camera = new Camera(mc.renderViewEntity, partialTicks);
-        HandRenderer.INSTANCE.renderTranslucent(partialTicks, camera, mc.renderGlobal, pipeline.get());
+        HandRenderer.INSTANCE.renderTranslucent(partialTicks, Camera.INSTANCE, mc.renderGlobal, pipeline.get());
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
         pipeline.get().finalizeLevelRendering();
         pipeline.set(null);
         Program.unbind();
+        GLStateManager.glDepthMask(true);
     }
 
     @WrapOperation(method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
@@ -66,8 +66,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V", shift = At.Shift.AFTER), method = "renderWorld(FJ)V")
     private void iris$beginEntities(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        final Camera camera = new Camera(mc.renderViewEntity, partialTicks);
-        pipeline.get().renderShadows((EntityRenderer) (Object) this, camera);
+        pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 
 
@@ -100,7 +99,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private void iris$beginWeatherAndwriteRainAndSnowToDepthBuffer(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.RAIN_SNOW);
         if (pipeline.get().shouldWriteRainAndSnowToDepthBuffer()) {
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthMask(true);
         }
     }
 

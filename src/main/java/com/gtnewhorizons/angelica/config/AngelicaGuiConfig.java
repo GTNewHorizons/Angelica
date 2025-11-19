@@ -11,6 +11,7 @@ public class AngelicaGuiConfig extends SimpleGuiConfig {
             "Angelica",
             true,
             AngelicaConfig.class,
+            CompatConfig.class,
             FontConfig.class
         );
     }

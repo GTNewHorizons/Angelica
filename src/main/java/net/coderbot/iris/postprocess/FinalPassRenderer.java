@@ -49,7 +49,6 @@ public class FinalPassRenderer {
 	@Nullable
 	private final Pass finalPass;
 	private final ImmutableList<SwapPass> swapPasses;
-	private final ImmutableSet<Integer> flippedBuffers;
 	private final GlFramebuffer baseline;
 	private final GlFramebuffer colorHolder;
 	private int lastColorTextureId;
@@ -73,7 +72,6 @@ public class FinalPassRenderer {
 
 		this.noiseTexture = noiseTexture;
 		this.renderTargets = renderTargets;
-		this.flippedBuffers = flippedBuffers;
         this.customUniforms = customUniforms;
 		this.finalPass = pack.getCompositeFinal().map(source -> {
 			Pass pass = new Pass();
@@ -103,25 +101,11 @@ public class FinalPassRenderer {
 		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
 		// This works for the most part, but it's not perfect. A better approach would be creating secondary
 		// framebuffers for every other frame, but that would be a lot more complex...
+
 		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
 
-		// BUG FIX: Swap passes are only needed for NON-flipped buffers that might flip in the future.
-		// Flipped buffers use ping-pong mechanism - no swap needed.
-		// Original code created swaps for ALL flippedAtLeastOnce buffers and copied ALT→MAIN,
-		// which destroyed fresh data in MAIN for currently-flipped buffers (breaking TAA).
-		// Fixed: Only create swaps for buffers that are in flippedAtLeastOnce but NOT currently flipped.
-		flippedAtLeastOnce.forEach(i -> {
+		flippedBuffers.forEach((i) -> {
 			final int target = i;
-
-			// Skip buffer 6 (material mask) - gbuffers always write to MAIN, never flipped
-			if (target == 6) {
-				return;
-			}
-
-			// Skip buffers that are currently flipped - they use ping-pong, no swap needed
-			if (flippedBuffers.contains(target)) {
-				return;
-			}
 
 			if (buffersToBeCleared.contains(target)) {
 				return;

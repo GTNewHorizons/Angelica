@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.tasks;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.client.renderer.util.WorldUtil;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
@@ -11,6 +10,9 @@ import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkGraphicsState;
 import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderContainer;
@@ -21,6 +23,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkMeshData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderBounds;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
+import me.jellysquid.mods.sodium.client.render.pipeline.WorldUtil;
 import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCacheLocal;
 import me.jellysquid.mods.sodium.client.util.MathUtil;
 import me.jellysquid.mods.sodium.client.util.task.CancellationSource;
@@ -40,10 +43,6 @@ import net.minecraft.util.IIcon;
 import net.minecraftforge.fluids.Fluid;
 import org.joml.Vector3d;
 
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
 /**
  * Rebuilds all the meshes of a chunk for each given render pass with non-occluded blocks. The result is then uploaded
  * to graphics memory on the main thread.
@@ -62,13 +61,15 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
     private final boolean translucencySorting;
 
+    private boolean hasMainThreadBlocks = false;
+    private boolean hasMainThreadBlocksComputed = false;
+
     public ChunkRenderRebuildTask(ChunkRenderContainer<T> render, ChunkRenderContext context, BlockPos offset) {
         this.render = render;
         this.offset = offset;
         this.context = context;
         this.camera = new Vector3d();
         this.translucencySorting = SodiumClientMod.options().advanced.translucencySorting;
-
     }
 
     public ChunkRenderRebuildTask<T> withCameraPosition(Vector3d camera) {
@@ -123,6 +124,48 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         return canRender;
     }
 
+    public boolean willRenderInMainThread(ChunkRenderCacheLocal cache) {
+        if (hasMainThreadBlocksComputed)
+            return hasMainThreadBlocks;
+
+        final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
+        final ChunkOcclusionDataBuilder occluder = new ChunkOcclusionDataBuilder();
+        final ChunkRenderBounds.Builder bounds = new ChunkRenderBounds.Builder();
+
+        cache.init(this.context);
+
+        final WorldSlice slice = cache.getWorldSlice();
+
+        final int baseX = this.render.getOriginX();
+        final int baseY = this.render.getOriginY();
+        final int baseZ = this.render.getOriginZ();
+
+        final BlockPos pos = new BlockPos();
+
+        outer:
+        for (int relY = 0; relY < 16; relY++) {
+            for (int relZ = 0; relZ < 16; relZ++) {
+                for (int relX = 0; relX < 16; relX++) {
+                    final Block block = slice.getBlockRelative(relX + 16, relY + 16, relZ + 16);
+
+                    // If the block is vanilla air, assume it renders nothing. Don't use isAir because mods
+                    // can abuse it for all sorts of things
+                    if (block.getMaterial() == Material.air) {
+                        continue;
+                    }
+
+                    if (!rendersOffThread(block)) {
+                        hasMainThreadBlocks = true;
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        hasMainThreadBlocksComputed = true;
+        return hasMainThreadBlocks;
+    }
+
     @Override
     public ChunkBuildResult<T> performBuild(ChunkRenderCacheLocal cache, ChunkBuildBuffers buffers, CancellationSource cancellationSource) {
         final ChunkRenderData.Builder renderData = new ChunkRenderData.Builder();
@@ -148,7 +191,6 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
         final BlockPos renderOffset = this.offset;
 
         final LongArrayFIFOQueue mainThreadBlocks = new LongArrayFIFOQueue();
-        boolean hasMainThreadBlocks = false;
 
         for (int relY = 0; relY < 16; relY++) {
             if (cancellationSource.isCancelled()) {
@@ -186,7 +228,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                                     ChunkRenderManager.setWorldRenderPass(pass);
                                     if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(fluid.getBlock(), ExtendedDataHelper.FLUID_RENDER_TYPE);
 
-                                    cache.getBlockRenderer().renderFluidLogged(fluid, renderBlocks, pos, buffers.get(pass), seed);
+                                    cache.getBlockRenderer().renderFluidLogged(cache.getWorldSlice(), fluid, renderBlocks, pos, buffers.get(pass), seed);
                                 }
                             }
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
@@ -243,6 +285,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
 
         handleRenderBlocksTextures(renderBlocks, renderData);
 
+        hasMainThreadBlocksComputed = true;
         if(hasMainThreadBlocks) {
             // Render the other blocks on the main thread
             var future = CompletableFuture.runAsync(() -> this.performMainBuild(cache, buffers, cancellationSource, bounds, renderData, mainThreadBlocks), AngelicaRenderQueue.executor());
@@ -351,6 +394,8 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             + camera
             + ", translucencySorting="
             + translucencySorting
+            + ", hasMainThreadBlocks="
+            + hasMainThreadBlocks
             + '}';
     }
 

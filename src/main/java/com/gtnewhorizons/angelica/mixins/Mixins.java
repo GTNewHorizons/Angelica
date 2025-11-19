@@ -79,6 +79,13 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_FIX_BLOCK_CRACK(
+            new MixinBuilder("Block corners and edges between chunks might have \"cracks\" in them. This option fixes it")
+                    .setPhase(Phase.EARLY)
+                    .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
+                    .addExcludedMod(TargetedMod.FALSETWEAKS)
+                    .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
+
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
         new MixinBuilder("Fix RenderBlockFluid reading the block type from the world access multiple times")
             .setPhase(Phase.EARLY)
@@ -278,6 +285,17 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
 
+    NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
+            .setPhase(Phase.LATE)
+            .addRequiredMod(TargetedMod.NTM_SPACE)
+            .setApplyIf(() -> CompatConfig.tweakNTMSpace)
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_Tweaks")),
+    NTM_SPACE_SHADER_COMPAT(new MixinBuilder("Multiple shader fixes for NTM:Space")
+            .setPhase(Phase.LATE)
+            .addRequiredMod(TargetedMod.NTM_SPACE)
+            .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat")),
+
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.CAMPFIRE_BACKPORT)
@@ -354,6 +372,7 @@ public enum Mixins implements IMixins {
     ),
     NOTFINE_NO_CUSTOM_ITEM_TEXTURES(new MixinBuilder()
         .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> !AngelicaConfig.enableMCPatcherForgeFeatures || !MCPatcherForgeConfig.CustomItemTextures.enabled)
         .addClientMixins(addPrefix("notfine.glint.",
             "MixinItemRenderer",
@@ -487,6 +506,7 @@ public enum Mixins implements IMixins {
     ),
     MCPATCHER_FORGE_CUSTOM_ITEM_TEXTURES(new MixinBuilder()
         .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.CustomItemTextures.enabled)
         .addClientMixins(addPrefix("mcpatcherforge.cit.",
             "client.renderer.entity.MixinRenderBiped",
@@ -576,13 +596,6 @@ public enum Mixins implements IMixins {
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine
-
-    QPR(new MixinBuilder("Adds a QuadProvider field to blocks without populating it")
-        .setPhase(Phase.EARLY)
-        .addClientMixins(
-            "angelica.models.MixinBlock",
-            "angelica.models.MixinBlockOldLeaf")),
-
     ;
 
     private final MixinBuilder builder;
