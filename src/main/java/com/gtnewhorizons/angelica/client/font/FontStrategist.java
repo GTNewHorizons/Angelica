@@ -96,9 +96,13 @@ public class FontStrategist {
         if (customFontEnabled && !me.isSplash) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
+            if (fp.isGlyphAvailable(chr)) {
+                return fp;
+            }
             fp = FontProviderCustom.getFallback();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
+            if (fp.isGlyphAvailable(chr)) {
+                return fp;
+            }
             return FontProviderUnicode.get();
         } else {
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
@@ -123,7 +127,9 @@ public class FontStrategist {
                 FontProviderCustom.getFallback().reloadFont(i);
                 fallbackFontFound = true;
             }
-            if (primaryFontFound && fallbackFontFound) { break; }
+            if (primaryFontFound && fallbackFontFound) {
+                break;
+            }
         }
         customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
     }
