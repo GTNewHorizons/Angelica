@@ -55,4 +55,16 @@ public class FontConfig {
     @Config.DefaultInt(7)
     @Config.RangeInt(min = 1, max = 24)
     public static int fontAAStrength;
+
+    @Config.Comment("Enable compatibility with HexText colour formatting.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableHexTextCompat;
+
+    @Config.Comment("Prefer HexText-provided RGB colours over the vanilla palette when available.")
+    @Config.DefaultBoolean(true)
+    public static boolean preferHexTextRGB;
+
+    @Config.Comment("Apply Angelica's shadow darkening to HexText RGB colours.")
+    @Config.DefaultBoolean(true)
+    public static boolean inheritAngelicaShadow;
 }

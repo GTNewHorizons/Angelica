@@ -1,13 +1,20 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolver;
+import com.gtnewhorizons.angelica.client.font.color.AngelicaColorResolvers;
+import com.gtnewhorizons.angelica.client.font.color.ResolvedText;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.EffectsHelper;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextCompat.Highlighter;
+import com.gtnewhorizons.angelica.compat.hextext.HexTextServices;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
@@ -23,6 +30,7 @@ import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
+
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
@@ -44,6 +52,7 @@ public class BatchingFontRenderer {
      * drop shadows.
      */
     private int[] colorCode;
+    private final AngelicaColorResolver colorResolver;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
 
@@ -82,6 +91,7 @@ public class BatchingFontRenderer {
         this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
         this.locationFontTexture = locationFontTexture;
+        this.colorResolver = AngelicaColorResolvers.create(this, this.colorCode);
 
         for (int i = 0; i < 64; i++) {
             batchCommandPool.add(new FontDrawCmd());
@@ -390,7 +400,7 @@ public class BatchingFontRenderer {
         return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
     }
 
-    private static final char FORMATTING_CHAR = 167; // §
+    public static final char FORMATTING_CHAR = 167; // §
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
         final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
@@ -414,14 +424,6 @@ public class BatchingFontRenderer {
             }
             final int stringEnd = stringOffset + stringLength;
 
-            int curColor = color;
-            int curShadowColor = shadowColor;
-            boolean curItalic = false;
-            boolean curRandom = false;
-            boolean curBold = false;
-            boolean curStrikethrough = false;
-            boolean curUnderline = false;
-
             final float glyphScaleY = getGlyphScaleY();
             final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
             final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
@@ -433,69 +435,113 @@ public class BatchingFontRenderer {
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
-            for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
-                char chr = string.charAt(charIdx);
-                if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
-                    final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
-                    charIdx++;
+            final ResolvedText resolved = colorResolver.resolve(string, stringOffset, stringEnd, color, shadowColor);
 
-                    if (curUnderline && underlineStartX != underlineEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        underlineStartX = underlineEndX;
+            Highlighter highlighter = Highlighter.NOOP;
+            CharSequence highlightText = null;
+            boolean highlightActive = false;
+            EffectsHelper effectsHelper = null;
+            boolean hexTextCode = false;
+            long effectsTimestamp = 0L;
+            int visibleGlyphIndex = 0;
+
+            // Hex Text Compatibility Section
+            boolean hexTextCompatActive = FontConfig.enableHexTextCompat && HexTextServices.isSupported();
+            if (hexTextCompatActive) {
+                highlighter = HexTextCompat.createHighlighter();
+                if (highlighter != Highlighter.NOOP) {
+                    highlightText = resolved.asString();
+                    highlightActive = highlighter.begin(underlying, highlightText, anchorX, anchorY);
+                }
+
+                if (resolved.hasDynamicEffects()) {
+                    effectsHelper = HexTextCompat.getEffectsHelper();
+                    if (effectsHelper != null && effectsHelper.isOperational()) {
+                        hexTextCode = true;
+                        effectsTimestamp = Minecraft.getSystemTime();
                     }
-                    if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        final int ulIdx = idxWriterIndex;
-                        pushUntexRect(
-                            strikethroughStartX,
-                            strikethroughY,
-                            strikethroughEndX - strikethroughStartX,
-                            glyphScaleY,
-                            curColor);
-                        pushDrawCmd(ulIdx, 6, null, false);
-                        strikethroughStartX = strikethroughEndX;
+                }
+            }
+
+            int lastColor = color;
+            boolean lastUnderline = false;
+            boolean lastStrikethrough = false;
+
+            for (int entryIndex = 0; entryIndex < resolved.length(); entryIndex++) {
+                if (highlightActive) {
+                    highlighter.inspect(highlightText, entryIndex, curX);
+                }
+
+                char chr = resolved.charAt(entryIndex);
+                final boolean curRandom = resolved.isRandom(entryIndex);
+                final boolean curBold = resolved.isBold(entryIndex);
+                final boolean curStrikethrough = resolved.isStrikethrough(entryIndex);
+                final boolean curUnderline = resolved.isUnderline(entryIndex);
+                final boolean curItalic = resolved.isItalic(entryIndex);
+                final int baseColorValue = resolved.colorAt(entryIndex);
+                final int baseShadowColorValue = resolved.shadowColorAt(entryIndex);
+
+                int glyphColor = baseColorValue;
+                int glyphShadowColor = baseShadowColorValue;
+                float shakeOffset = 0.0f;
+                boolean effectDinnerbone = false;
+
+                if (hexTextCode) {
+                    final boolean rainbowActive = resolved.isRainbow(entryIndex);
+                    final boolean igniteActive = resolved.isIgnite(entryIndex);
+                    final boolean shakeActive = resolved.isShake(entryIndex);
+                    effectDinnerbone = resolved.isDinnerbone(entryIndex);
+
+                    if (rainbowActive || igniteActive) {
+                        int effectBase = resolved.effectBaseColorAt(entryIndex) & 0x00FFFFFF;
+                        if (effectBase == 0) {
+                            effectBase = glyphColor & 0x00FFFFFF;
+                        }
+                        int dynamicRgb = effectBase;
+                        if (rainbowActive) {
+                            dynamicRgb = effectsHelper.computeRainbowColor(
+                                effectsTimestamp,
+                                visibleGlyphIndex,
+                                resolved.effectParameterAt(entryIndex)
+                            ) & 0x00FFFFFF;
+                        }
+                        if (igniteActive) {
+                            dynamicRgb = effectsHelper.computeIgniteColor(effectsTimestamp, dynamicRgb) & 0x00FFFFFF;
+                        }
+                        glyphColor = (glyphColor & 0xFF000000) | dynamicRgb;
+                        int shadowRgb = HexTextCompat.computeShadowColor(dynamicRgb) & 0x00FFFFFF;
+                        glyphShadowColor = (glyphShadowColor & 0xFF000000) | shadowRgb;
                     }
-
-                    final boolean is09 = charInRange(fmtCode, '0', '9');
-                    final boolean isAF = charInRange(fmtCode, 'a', 'f');
-                    if (is09 || isAF) {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-
-                        final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
-                        final int rgb = this.colorCode[colorIdx];
-                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                        final int shadowRgb = this.colorCode[colorIdx + 16];
-                        curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                    } else if (fmtCode == 'k') {
-                        curRandom = true;
-                    } else if (fmtCode == 'l') {
-                        curBold = true;
-                    } else if (fmtCode == 'm') {
-                        curStrikethrough = true;
-                        strikethroughStartX = curX - 1.0f;
-                        strikethroughEndX = strikethroughStartX;
-                    } else if (fmtCode == 'n') {
-                        curUnderline = true;
-                        underlineStartX = curX - 1.0f;
-                        underlineEndX = underlineStartX;
-                    } else if (fmtCode == 'o') {
-                        curItalic = true;
-                    } else if (fmtCode == 'r') {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-                        curColor = color;
-                        curShadowColor = shadowColor;
+                    if (shakeActive) {
+                        shakeOffset = effectsHelper.computeShakeOffset(effectsTimestamp, visibleGlyphIndex);
                     }
+                }
 
-                    continue;
+                if (lastUnderline && !curUnderline && underlineStartX != underlineEndX) {
+                    final int ulIdx = idxWriterIndex;
+                    pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, lastColor);
+                    pushDrawCmd(ulIdx, 6, null, false);
+                    underlineStartX = underlineEndX;
+                }
+                if (lastStrikethrough && !curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                    final int ulIdx = idxWriterIndex;
+                    pushUntexRect(
+                        strikethroughStartX,
+                        strikethroughY,
+                        strikethroughEndX - strikethroughStartX,
+                        glyphScaleY,
+                        lastColor);
+                    pushDrawCmd(ulIdx, 6, null, false);
+                    strikethroughStartX = strikethroughEndX;
+                }
+
+                if (curUnderline && !lastUnderline) {
+                    underlineStartX = curX - 1.0f;
+                    underlineEndX = underlineStartX;
+                }
+                if (curStrikethrough && !lastStrikethrough) {
+                    strikethroughStartX = curX - 1.0f;
+                    strikethroughEndX = strikethroughStartX;
                 }
 
                 if (curRandom) {
@@ -507,6 +553,15 @@ public class BatchingFontRenderer {
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
                     curX += 4 * this.getWhitespaceScale();
+                    lastUnderline = curUnderline;
+                    lastStrikethrough = curStrikethrough;
+                    lastColor = glyphColor;
+                    underlineEndX = curX;
+                    strikethroughEndX = curX;
+                    visibleGlyphIndex++;
+                    if (highlightActive) {
+                        highlighter.advance(entryIndex + 1, curX);
+                    }
                     continue;
                 }
 
@@ -525,37 +580,73 @@ public class BatchingFontRenderer {
 
                 int vtxCount = 0;
 
+                final float glyphHeight = Math.max(1.0f, heightSouth);
+                final float baselineOffset = Math.max(0.0f, underlying.FONT_HEIGHT - glyphHeight);
+                final float pivotY = (heightNorth + shakeOffset) + glyphHeight * 0.5f;
+
                 if (enableShadow) {
-                    pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + itOff + shadowOffset,
+                        applyVerticalEffects(heightNorth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX - itOff + shadowOffset,
+                        applyVerticalEffects(heightNorth + heightSouth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset,
+                        applyVerticalEffects(heightNorth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset,
+                        applyVerticalEffects(heightNorth + heightSouth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
 
                     if (curBold) {
                         final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushVtx(curX + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + itOff + shadowOffset2,
+                            applyVerticalEffects(heightNorth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                            glyphShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX - itOff + shadowOffset2,
+                            applyVerticalEffects(heightNorth + heightSouth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                            glyphShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2,
+                            applyVerticalEffects(heightNorth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                            glyphShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2,
+                            applyVerticalEffects(heightNorth + heightSouth + shadowOffset, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                            glyphShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                         pushQuadIdx(vtxId + vtxCount);
                         vtxCount += 4;
                     }
                 }
 
-                pushVtx(curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + itOff,
+                    applyVerticalEffects(heightNorth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                    glyphColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX - itOff,
+                    applyVerticalEffects(heightNorth + heightSouth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                    glyphColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F + itOff,
+                    applyVerticalEffects(heightNorth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                    glyphColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                pushVtx(curX + glyphW - 1.0F - itOff,
+                    applyVerticalEffects(heightNorth + heightSouth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                    glyphColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                 pushQuadIdx(vtxId + vtxCount);
                 vtxCount += 4;
 
                 if (curBold) {
-                    pushVtx(shadowOffset + curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + itOff,
+                        applyVerticalEffects(heightNorth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX - itOff,
+                        applyVerticalEffects(heightNorth + heightSouth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff,
+                        applyVerticalEffects(heightNorth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff,
+                        applyVerticalEffects(heightNorth + heightSouth, shakeOffset, effectDinnerbone, pivotY, baselineOffset),
+                        glyphColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
                     pushQuadIdx(vtxId + vtxCount);
                     vtxCount += 4;
                 }
@@ -564,22 +655,45 @@ public class BatchingFontRenderer {
                 curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
+
+                lastUnderline = curUnderline;
+                lastStrikethrough = curStrikethrough;
+                lastColor = glyphColor;
+                visibleGlyphIndex++;
+
+                if (highlightActive) {
+                    highlighter.advance(entryIndex + 1, curX);
+                }
             }
 
-            if (curUnderline && underlineStartX != underlineEndX) {
+            if (lastUnderline && underlineStartX != underlineEndX) {
                 final int ulIdx = idxWriterIndex;
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, lastColor);
                 pushDrawCmd(ulIdx, 6, null, false);
             }
-            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+            if (lastStrikethrough && strikethroughStartX != strikethroughEndX) {
                 final int ulIdx = idxWriterIndex;
                 pushUntexRect(
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
                     glyphScaleY,
-                    curColor);
+                    lastColor);
                 pushDrawCmd(ulIdx, 6, null, false);
+            }
+
+            if (highlightActive) {
+                highlighter.finish(resolved.length(), curX);
+                for (HexTextCompat.Highlight highlight : highlighter.highlights()) {
+                    if (highlight.getWidth() <= 0.0f) {
+                        continue;
+                    }
+                    final int hlIdx = idxWriterIndex;
+                    float top = highlight.getY() - 1.0f;
+                    float bottom = highlight.getY() + underlying.FONT_HEIGHT;
+                    pushUntexRect(highlight.getX(), top, highlight.getWidth(), bottom - top, highlight.getColor());
+                    pushDrawCmd(hlIdx, 6, null, false);
+                }
             }
 
         } finally {
@@ -608,5 +722,14 @@ public class BatchingFontRenderer {
     public void resetBlendFunc() {
         blendSrcRGB = GL11.GL_SRC_ALPHA;
         blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
+    }
+
+    private static float applyVerticalEffects(float originalY, float shakeOffset, boolean dinnerbone, float pivotY,
+                                              float baselineOffset) {
+        float adjusted = originalY + shakeOffset;
+        if (dinnerbone) {
+            adjusted = -adjusted + 2.0f * pivotY - baselineOffset;
+        }
+        return adjusted;
     }
 }
