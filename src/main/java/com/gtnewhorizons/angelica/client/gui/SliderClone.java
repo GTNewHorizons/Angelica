@@ -50,10 +50,15 @@ public class SliderClone extends GuiButton {
         return new SliderCloneBuilder();
     }
 
+    public void setCenterPosition(int x, int y) {
+        this.xPosition = x - this.width / 2;
+        this.yPosition = y - this.height / 2;
+    }
+
     @Accessors(fluent = true) @Setter
     public static class SliderCloneBuilder {
         private int x = 0, y = 0; // center position, not a corner
-        private int width = 120, height = 20;
+        private int width = 144, height = 20;
         private Option option;
         private float initialValue;
         private Consumer<Float> setter;
