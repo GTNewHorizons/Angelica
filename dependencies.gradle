@@ -49,7 +49,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.17")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
@@ -75,10 +75,10 @@ dependencies {
     devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.2.2-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.13:dev") { transitive = false }
     compileOnly(rfg.deobf('curse.maven:witchery-69673:2234410'))
-    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.14.12-GTNH:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:TinkersConstruct:1.14.6-GTNH:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Natura:2.8.9:dev")
 
-    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.8.9:dev")
+    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.8.4:dev")
 
     compileOnly("com.github.GTNewHorizons:Battlegear2:1.4.3:dev") { transitive = false }
 
