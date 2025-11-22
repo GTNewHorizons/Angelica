@@ -42,8 +42,14 @@ public class FontConfigScreen extends GuiScreen {
     private final int sliderWidth = 160;
     private final int sliderHeight = 20;
 
+    // need to save these separately
+    private IrisButton fwdButton;
+    private IrisButton backButton;
+
     SliderClone.Option optFontQuality = new SliderClone.Option(6, 72, 6);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
+    SliderClone.Option optShadowCopies = new SliderClone.Option(1, 8, 1);
+    SliderClone.Option optBoldCopies = new SliderClone.Option(1, 8, 1);
     SliderClone.Option optGlyphAspect = new SliderClone.Option(-1, 1, 0.05f);
     SliderClone.Option optGlyphScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optWhitespaceScale = new SliderClone.Option(0.1f, 3, 0.05f);
@@ -76,10 +82,38 @@ public class FontConfigScreen extends GuiScreen {
         fontList = new FontList();
         testArea = new GuiTextField(this.fontRendererObj, this.width * 5 / 6 - this.width / 7, 63 - 10, this.width * 2 / 7, 20);
         testArea.setMaxStringLength(512);
+        testArea.setText("&d&lHerobrine&r was &7&m&onot&r &nhere");
         initButtons();
     }
 
     private void initButtons() {
+        final int halfWidth = this.width / 2;
+        final int sliderSpacing = 4;
+
+        final int x1 = halfWidth - sliderWidth - sliderSpacing;
+        final int x2 = halfWidth;
+        final int x3 = halfWidth + sliderWidth + sliderSpacing;
+        final int y3 = this.height - 65 + 2 * (sliderHeight + sliderSpacing);
+
+        this.buttonList.add(new IrisButton(x1 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
+            FontConfig.enableCustomFont ? I18n.format("options.angelica.fontconfig.disable_custom_font") :
+                I18n.format("options.angelica.fontconfig.enable_custom_font"), this::toggleCustomFont));
+        this.buttonList.add(new IrisButton(x2 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
+            I18n.format("options.angelica.fontconfig.reset_values"), this::resetValues));
+        this.buttonList.add(new IrisButton(x3 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
+            I18n.format("gui.done"), button -> this.onClose()));
+
+        backButton = new IrisButton(halfWidth - 20 - 224, this.height - 89 - 10, 40, 20,
+            "<", button -> this.switchPage(-1));
+        fwdButton = new IrisButton(halfWidth - 20 + 224, this.height - 89 - 10, 40, 20,
+            ">", button -> this.switchPage(1));
+        this.buttonList.add(fwdButton);
+        this.buttonList.add(backButton);
+
+        initSliders();
+    }
+
+    private void initSliders() {
         ArrayList<SliderClone> sliders = new ArrayList<>();
 
         sliders.add(new SliderClone.SliderCloneBuilder()
@@ -124,6 +158,26 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
+            .option(optFontAAStrength)
+            .initialValue(FontConfig.fontAAStrength)
+            .setter(value -> FontConfig.fontAAStrength = value.intValue())
+            .langKey("options.angelica.fontconfig.font_aa_strength")
+            .formatString("%.0f")
+            .build()
+        );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
+            .option(optFontAAMode)
+            .initialValue(FontConfig.fontAAMode)
+            .setter(value -> FontConfig.fontAAMode = value.intValue())
+            .formatter(this::fontAAModeFormat)
+            .langKey("options.angelica.fontconfig.aamode")
+            .build()
+        );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
             .option(optWhitespaceScale)
             .initialValue(FontConfig.whitespaceScale)
             .setter(value -> FontConfig.whitespaceScale = value)
@@ -143,21 +197,21 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
-            .option(optFontAAStrength)
-            .initialValue(FontConfig.fontAAStrength)
-            .setter(value -> FontConfig.fontAAStrength = value.intValue())
-            .langKey("options.angelica.fontconfig.font_aa_strength")
+            .option(optShadowCopies)
+            .initialValue(FontConfig.shadowCopies)
+            .setter(value -> FontConfig.shadowCopies = value.intValue())
+            .langKey("options.angelica.fontconfig.shadow_copies")
             .formatString("%.0f")
             .build()
         );
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
-            .option(optFontAAMode)
-            .initialValue(FontConfig.fontAAMode)
-            .setter(value -> FontConfig.fontAAMode = value.intValue())
-            .formatter(this::fontAAModeFormat)
-            .langKey("options.angelica.fontconfig.aamode")
+            .option(optBoldCopies)
+            .initialValue(FontConfig.boldCopies)
+            .setter(value -> FontConfig.boldCopies = value.intValue())
+            .langKey("options.angelica.fontconfig.bold_copies")
+            .formatString("%.0f")
             .build()
         );
 
@@ -169,12 +223,15 @@ public class FontConfigScreen extends GuiScreen {
         final int x3 = halfWidth + sliderWidth + sliderSpacing;
         final int y1 = this.height - 65;
         final int y2 = this.height - 65 + sliderHeight + sliderSpacing;
-        final int y3 = this.height - 65 + 2 * (sliderHeight + sliderSpacing);
 
-        sliderPages = sliders.size() / 6;
-        displayedSliderPage = Math.min(displayedSliderPage, sliderPages);
-        final int start = 6 * displayedSliderPage;
-        final int end = Math.min(6 * (displayedSliderPage + 1), sliders.size());
+        this.sliderPages = sliders.size() / 6;
+        this.displayedSliderPage = Math.min(this.displayedSliderPage, this.sliderPages);
+
+        this.backButton.enabled = (this.displayedSliderPage != 0);
+        this.fwdButton.enabled = (this.displayedSliderPage != this.sliderPages);
+
+        final int start = 6 * this.displayedSliderPage;
+        final int end = Math.min(6 * (this.displayedSliderPage + 1), sliders.size());
         List<SliderClone> s = sliders.subList(start, end);
         try {
             s.get(0).setCenterPosition(x1, y1);
@@ -186,25 +243,7 @@ public class FontConfigScreen extends GuiScreen {
         } catch (IndexOutOfBoundsException ignored) {
             // we're on the last page and it has less than 6 sliders to display
         }
-        buttonList.addAll(s);
-
-
-        this.buttonList.add(new IrisButton(x1 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
-            FontConfig.enableCustomFont ? I18n.format("options.angelica.fontconfig.disable_custom_font") :
-                I18n.format("options.angelica.fontconfig.enable_custom_font"), this::toggleCustomFont));
-        this.buttonList.add(new IrisButton(x2 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
-            I18n.format("options.angelica.fontconfig.reset_values"), this::resetValues));
-        this.buttonList.add(new IrisButton(x3 - sliderWidth / 2, y3 - sliderHeight / 2, sliderWidth, sliderHeight,
-            I18n.format("gui.done"), button -> this.onClose()));
-
-        IrisButton back = new IrisButton(halfWidth - 20 - 224, this.height - 89 - 10, 40, 20,
-            "<", button -> this.switchPage(-1));
-        IrisButton fwd = new IrisButton(halfWidth - 20 + 224, this.height - 89 - 10, 40, 20,
-            ">", button -> this.switchPage(1));
-        back.enabled = (this.displayedSliderPage != 0);
-        fwd.enabled = (this.displayedSliderPage != this.sliderPages);
-        this.buttonList.add(back);
-        this.buttonList.add(fwd);
+        this.buttonList.addAll(s);
     }
 
     private void onClose() {
@@ -255,8 +294,8 @@ public class FontConfigScreen extends GuiScreen {
 
     private void switchPage(int offset) {
         this.displayedSliderPage = MathHelper.clamp_int(this.displayedSliderPage + offset, 0, this.sliderPages);
-        super.buttonList.clear();
-        this.initButtons();
+        this.buttonList.removeIf(guiButton -> guiButton instanceof SliderClone);
+        this.initSliders();
     }
 
     private int qualityLast = FontConfig.customFontQuality;
@@ -282,7 +321,7 @@ public class FontConfigScreen extends GuiScreen {
     private long lastStillTime = 0;
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
-        super.drawDefaultBackground();
+        drawBackground(0);
         fontList.drawScreen(mouseX, mouseY, delta);
         searchBox.drawTextBox();
         // I bet you thought this was drawn inside the search box, not on top of it.
@@ -481,7 +520,7 @@ public class FontConfigScreen extends GuiScreen {
         protected void elementClicked(int index, boolean doubleClicked, int mouseX, int mouseY) {}
 
         protected void drawBackground() {
-            drawDefaultBackground();
+            // do nothing, the font list doesn't occupy the entire screen
         }
 
         protected void drawSlot(int index, int x, int y, int p_148126_4_, Tessellator tessellator, int p_148126_6_, int p_148126_7_) {

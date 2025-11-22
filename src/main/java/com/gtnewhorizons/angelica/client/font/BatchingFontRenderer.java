@@ -527,30 +527,42 @@ public class BatchingFontRenderer {
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
+                final int shadowCopies = FontConfig.shadowCopies;
+                final int boldCopies = FontConfig.boldCopies;
                 final ResourceLocation texture = fontProvider.getTexture(chr);
-
-                final int vtxId = vtxWriterIndex;
                 final int idxId = idxWriterIndex;
 
-
                 if (enableShadow) {
-                    pushTexRect(curX + shadowOffset, heightNorth + shadowOffset, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                    for (int n = 1; n <= shadowCopies; n++) {
+                        final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
 
-                    if (curBold) {
-                        final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushTexRect(curX + shadowOffset2, heightNorth + shadowOffset, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        if (curBold) {
+                            pushTexRect(curX + 2.0f * shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        }
                     }
                 }
 
                 pushTexRect(curX, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
 
                 if (curBold) {
-                    pushTexRect(curX + shadowOffset, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                    for (int n = 1; n <= boldCopies; n++) {
+                        final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                    }
                 }
 
-                int vtxCount = 4;
-                if (enableShadow) { vtxCount *= 2; }
-                if (curBold) { vtxCount *= 2; }
+                /*
+                Vertex-per-char counts for different configurations
+                    default:        4
+                    shadow only:    4(1 + shadowCopies)
+                    bold only:      4(1 + boldCopies)
+                    both:           4(1 + 2 * shadowCopies + boldCopies)
+                 */
+                int charCount = 1;
+                if (enableShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
+                if (curBold) { charCount += boldCopies; }
+                final int vtxCount = 4 * charCount;
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
 
                 curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
