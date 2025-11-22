@@ -82,7 +82,7 @@ public class FontConfigScreen extends GuiScreen {
         fontList = new FontList();
         testArea = new GuiTextField(this.fontRendererObj, this.width * 5 / 6 - this.width / 7, 63 - 10, this.width * 2 / 7, 20);
         testArea.setMaxStringLength(512);
-        testArea.setText("&d&lHerobrine&r was &7&m&onot&r &nhere");
+        testArea.setText("&d&lHerobrine&r was &7&m&oNOT&r &nhere");
         initButtons();
     }
 
