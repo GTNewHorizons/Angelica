@@ -23,7 +23,6 @@ package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -60,7 +59,6 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final ResourceLocation texture = new ResourceLocation("textures/environment/clouds.png");
 
-    private int displayList = -1;
     private VertexBuffer vbo;
     private int cloudMode = -1;
     private int renderDistance = -1;
@@ -68,6 +66,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private int scaleMult = -1;
 
     private DynamicTexture COLOR_TEX = null;
+    private int texColor;
 
     private int texW;
     private int texH;
@@ -224,10 +223,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         vertices(tess);
 
-        if(displayList == -1) {
-            this.displayList = VBOManager.generateDisplayLists(1);
-        }
-        this.vbo = VBOManager.registerVBO(this.displayList, TessellatorManager.stopCapturingToVBO(FORMAT));
+        this.vbo = TessellatorManager.stopCapturingToVBO(FORMAT);
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.
@@ -305,7 +301,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         // Translate the texture.
         GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glTranslated(offU * PX_SIZE, offV * PX_SIZE, 0);
+        GLStateManager.glTranslatef(offU * PX_SIZE, offV * PX_SIZE, 0);
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         GLStateManager.disableCull();
@@ -328,15 +324,19 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             b = tempB;
         }
 
-        if (COLOR_TEX == null)
-            COLOR_TEX = new DynamicTexture(1, 1);
-
         // Apply a color multiplier through a texture upload if shaders aren't supported.
-        COLOR_TEX.getTextureData()[0] = 255 << 24
+        final int newColor = 0xFF000000
             | ((int) (r * 255)) << 16
             | ((int) (g * 255)) << 8
             | (int) (b * 255);
-        COLOR_TEX.updateDynamicTexture();
+        if (texColor != newColor) {
+            if (COLOR_TEX == null) {
+                COLOR_TEX = new DynamicTexture(1, 1);
+            }
+            COLOR_TEX.getTextureData()[0] = newColor;
+            COLOR_TEX.updateDynamicTexture();
+            texColor = newColor;
+        }
 
         GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
