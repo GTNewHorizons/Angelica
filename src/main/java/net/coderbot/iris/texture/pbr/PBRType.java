@@ -1,7 +1,7 @@
 package net.coderbot.iris.texture.pbr;
 
+import net.coderbot.iris.Iris;
 import net.minecraft.util.ResourceLocation;
-import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
@@ -32,13 +32,13 @@ public enum PBRType {
     public ResourceLocation appendToFileLocation(ResourceLocation location) {
         String domain = location.getResourceDomain();
         String path = location.getResourcePath();
-        String newPath;
 
         try {
             URI uri = new URI(null, null, path, null);
             String cleanPath = uri.getPath();
+            String newPath;
 
-            int extensionIndex = FilenameUtils.indexOfExtension(cleanPath);
+            int extensionIndex = safeIndexOfExtension(cleanPath);
             if (extensionIndex != -1) {
                 newPath = cleanPath.substring(0, extensionIndex) + suffix + cleanPath.substring(extensionIndex);
             } else {
@@ -48,17 +48,11 @@ public enum PBRType {
             URI newUri = new URI(null, null, newPath, null);
             newPath = newUri.getPath();
 
+            return new ResourceLocation(domain, newPath);
         } catch (URISyntaxException e) {
-            String fallback = path.replace(':', '/');
-            int extensionIndex = FilenameUtils.indexOfExtension(fallback);
-            if (extensionIndex != -1) {
-                newPath = fallback.substring(0, extensionIndex) + suffix + fallback.substring(extensionIndex);
-            } else {
-                newPath = fallback + suffix;
-            }
+            Iris.logger.error("Failed to append PBR suffix to resource location for " + path, e);
+            return location;
         }
-
-        return new ResourceLocation(domain, newPath);
     }
 
 	/**
@@ -76,4 +70,19 @@ public enum PBRType {
 		}
 		return null;
 	}
+
+    // Helper method to safely find the index of the file extension
+    // Using this to avoid issues with ':' in paths (any block with meta).
+    private static int safeIndexOfExtension(String input) {
+        if (input == null) return -1;
+
+        // Avoid dots in directory names or leading/trailing dots
+        int lastSlash = Math.max(input.lastIndexOf('/'), input.lastIndexOf('\\'));
+        int nameStart = lastSlash + 1;
+        int lastDot = input.lastIndexOf('.');
+        if (lastDot == -1 || lastDot <= nameStart || lastDot == input.length() - 1) {
+            return -1;
+        }
+        return lastDot;
+    }
 }
