@@ -141,6 +141,7 @@ options.angelica.fontconfig.currentfonts=Primary font: §e%s§r     Fallback fon
 options.angelica.fontconfig.searchprompt=§7§oSearch fonts...
 options.angelica.fontconfig.testareaprompt=§7§oTest area...
 options.angelica.fontconfig.testareainfo=Enter text below to see how it renders. Use & for formatting.
+options.angelica.fontconfig.testareaexample=&d&lHerobrine&r was &7&m&oNOT&r &nhere
 options.angelica.fontconfig.disable_custom_font=Disable Custom Font
 options.angelica.fontconfig.enable_custom_font=Enable Custom Font
 options.angelica.fontconfig.reset_values=Reset Values
