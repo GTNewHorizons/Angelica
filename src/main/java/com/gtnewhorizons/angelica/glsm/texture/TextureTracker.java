@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.texture;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -49,7 +48,7 @@ public class TextureTracker {
 			if (bindTextureListener != null) {
 				bindTextureListener.run();
 			}
-            if(AngelicaConfig.enableIris) {
+            if(Iris.enabled) {
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
                 if (pipeline != null) {
                     pipeline.onBindTexture(id);

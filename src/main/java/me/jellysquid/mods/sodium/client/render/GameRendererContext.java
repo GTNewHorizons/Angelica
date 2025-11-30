@@ -2,8 +2,8 @@ package me.jellysquid.mods.sodium.client.render;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import net.coderbot.iris.Iris;
 import java.nio.FloatBuffer;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import org.joml.Matrix4f;
@@ -18,7 +18,7 @@ public class GameRendererContext {
      */
     public static FloatBuffer getModelViewProjectionMatrix(MatrixStack.Entry matrices, MemoryStack stack) {
         final FloatBuffer bufModelViewProjection = stack.mallocFloat(16);
-        final Matrix4f projectionMatrix = (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) ? ShadowRenderingState.getShadowOrthoMatrix() : RenderingState.INSTANCE.getProjectionMatrix();
+        final Matrix4f projectionMatrix = (Iris.enabled && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) ? ShadowRenderingState.getShadowOrthoMatrix() : RenderingState.INSTANCE.getProjectionMatrix();
         final Matrix4f matrix = new Matrix4f(projectionMatrix);
         matrix.mul(matrices.getModel());
 

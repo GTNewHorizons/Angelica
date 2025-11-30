@@ -3,8 +3,8 @@ package me.jellysquid.mods.sodium.client.render.chunk;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import net.coderbot.iris.Iris;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -152,7 +152,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
         this.useBlockFaceCulling = SodiumClientMod.options().advanced.useBlockFaceCulling;
 
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             this.chunkRenderListsSwap = new ChunkRenderList[BlockRenderPass.COUNT];
             this.tickableChunksSwap = new ObjectArrayList<>();
             this.visibleTileEntitiesSwap = new ObjectArrayList<>();
@@ -252,7 +252,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     private void addChunk(ChunkRenderContainer<T> render) {
         boolean canRebuild = render.canRebuild();
 
-        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+        if (Iris.enabled && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
             canRebuild = false;
         }
 
@@ -307,7 +307,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private int computeVisibleFaces(ChunkRenderContainer<T> render) {
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             // TODO: Enable chunk face culling during the shadow pass
             if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                 return(ChunkFaceFlags.ALL);
@@ -366,9 +366,9 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     private void reset() {
-        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.rebuildQueue.clear();
-        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.importantRebuildQueue.clear();
-        if(!AngelicaConfig.enableIris || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.sortQueue.clear();
+        if(!Iris.enabled || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.rebuildQueue.clear();
+        if(!Iris.enabled || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.importantRebuildQueue.clear();
+        if(!Iris.enabled || !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) this.sortQueue.clear();
 
         this.visibleTileEntities.clear();
 
@@ -510,7 +510,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
 
         final RenderDevice device = RenderDevice.INSTANCE;
         final CommandList commandList = device.createCommandList();
-        if(AngelicaConfig.enableIris) this.backend.iris$begin(matrixStack, pass);
+        if(Iris.enabled) this.backend.iris$begin(matrixStack, pass);
         else this.backend.begin(matrixStack);
 
         // Ensure multidraw regions are ordered appropriately
@@ -534,7 +534,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
     }
 
     public void updateChunks() {
-        if (AngelicaConfig.enableIris && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) return;
+        if (Iris.enabled && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) return;
         this.builder.cleanupSectionCache();
 
         Deque<CompletableFuture<ChunkBuildResult<T>>> futures = new ArrayDeque<>();

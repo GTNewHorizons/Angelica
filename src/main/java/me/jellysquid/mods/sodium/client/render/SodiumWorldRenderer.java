@@ -3,8 +3,8 @@ package me.jellysquid.mods.sodium.client.render;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import net.coderbot.iris.Iris;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -169,7 +169,7 @@ public class SodiumWorldRenderer {
      */
     public void scheduleTerrainUpdate() {
         if (this.chunkRenderManager != null) {
-            if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
+            if(Iris.enabled) iris$ensureStateSwapped();
             this.chunkRenderManager.markDirty();
         }
     }
@@ -221,7 +221,7 @@ public class SodiumWorldRenderer {
         boolean dirty = pos.x != this.lastCameraX || pos.y != this.lastCameraY || pos.z != this.lastCameraZ ||
                 pitch != this.lastCameraPitch || yaw != this.lastCameraYaw || fogDistance != this.lastFogDistance || fov != this.lastFov;
 
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             iris$ensureStateSwapped();
             if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                 dirty = true;
@@ -256,7 +256,7 @@ public class SodiumWorldRenderer {
         profiler.endSection();
 
         SodiumGameOptions.EntityRenderDistance.setRenderDistanceMult(MathHelper.clamp_double((double) this.client.gameSettings.renderDistanceChunks / 8.0D, 1.0D, 2.5D) * (double) 1.0F * (SettingsManager.entityRenderScaleFactor));
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                 ShadowRenderer.visibleTileEntities.addAll(this.chunkRenderManager.getVisibleTileEntities());
                 ShadowRenderer.globalTileEntities.addAll(this.globalTileEntities);
@@ -277,7 +277,7 @@ public class SodiumWorldRenderer {
         // or other factors as having clouds disabled.
         GLStateManager.enableCull();
 
-        if(AngelicaConfig.enableIris) iris$ensureStateSwapped();
+        if(Iris.enabled) iris$ensureStateSwapped();
         // startDrawing/endDrawing are handled by 1.7 already
         // pass.startDrawing();
 
@@ -316,7 +316,7 @@ public class SodiumWorldRenderer {
 
         final ChunkVertexType vertexFormat;
 
-        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
+        if(Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
             vertexFormat = IrisModelVertexFormats.MODEL_VERTEX_XHFP;
         } else if (opts.advanced.useCompactVertexFormat) {
             vertexFormat = DefaultModelVertexFormats.MODEL_VERTEX_HFP;
@@ -356,7 +356,7 @@ public class SodiumWorldRenderer {
             return;
 
         try {
-            if(AngelicaConfig.enableIris) {
+            if(Iris.enabled) {
                 final Block block = tileEntity.getWorldObj().getBlock(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
                 CapturedRenderingState.INSTANCE.setCurrentBlockEntity(Block.getIdFromBlock(block));
                 GbufferPrograms.beginBlockEntities();
@@ -371,7 +371,7 @@ public class SodiumWorldRenderer {
             }
         }
         finally {
-            if(AngelicaConfig.enableIris) {
+            if(Iris.enabled) {
                 CapturedRenderingState.INSTANCE.setCurrentBlockEntity(-1);
                 GbufferPrograms.endBlockEntities();
             }

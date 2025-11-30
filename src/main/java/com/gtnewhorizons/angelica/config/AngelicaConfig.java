@@ -42,10 +42,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableMCPatcherForgeFeatures;
 
-    @Config.Comment("Replace some vanilla render paths with more optimized versions. Disable if you encounter mixin conflicts.")
+    @Config.Comment("Replace cloud renderer with a VBO version.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
-    public static boolean enableVBO;
+    public static boolean enableVBOClouds;
 
     @Config.Comment("Enable NotFine features")
     @Config.DefaultBoolean(true)

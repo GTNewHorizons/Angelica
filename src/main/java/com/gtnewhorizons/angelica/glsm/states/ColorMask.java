@@ -6,6 +6,13 @@ public class ColorMask implements ISettableState<ColorMask> {
     public boolean blue = true;
     public boolean alpha = true;
 
+    public void setAll(boolean red, boolean green, boolean blue, boolean alpha) {
+        this.red = red;
+        this.green = green;
+        this.blue = blue;
+        this.alpha = alpha;
+    }
+
     @Override
     public ColorMask set(ColorMask state) {
         this.red = state.red;

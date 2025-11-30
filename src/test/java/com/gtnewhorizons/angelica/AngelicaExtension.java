@@ -11,6 +11,10 @@ import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
 
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
@@ -34,9 +38,13 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
             final PixelFormat format = new PixelFormat().withDepthBits(24);
             Display.create(format);
 
+            // Set MainThread to the current test thread (the one with the GL context)
+            setMainThread(Thread.currentThread());
+
             // Warm-up State Manager features
             GLStateManager.preInit();
             GLStateManager.setRunningSplash(false); // So we don't bypass the cache
+            GLStateManager.markSplashComplete(); // Enable caching for tests
             GLStateManager.BYPASS_CACHE = false; // Just to be sure
             RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
@@ -47,6 +55,22 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
             System.out.println("OpenGL Vendor: " + glVendor);
             System.out.println("OpenGL Renderer: " + glRenderer);
             System.out.println("OpenGL Version: " + glVersion);
+        }
+    }
+
+    private static void setMainThread(Thread thread) {
+        try {
+            // Use Unsafe to set final static field - works on all Java versions
+            Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            Unsafe unsafe = (Unsafe) unsafeField.get(null);
+
+            Field mainThreadField = GLStateManager.class.getDeclaredField("MainThread");
+            Object base = unsafe.staticFieldBase(mainThreadField);
+            long offset = unsafe.staticFieldOffset(mainThreadField);
+            unsafe.putObject(base, offset, thread);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to set MainThread for tests", e);
         }
     }
 

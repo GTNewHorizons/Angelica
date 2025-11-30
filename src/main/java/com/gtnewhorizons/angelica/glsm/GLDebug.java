@@ -9,7 +9,11 @@ import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.ARBDebugOutputCallback;
+import org.lwjgl.opengl.EXTBlendColor;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.KHRDebug;
@@ -267,6 +271,273 @@ public final class GLDebug {
             case AMDDebugOutput.GL_DEBUG_SEVERITY_LOW_AMD -> "LOW";
             default -> String.format("Unknown [0x%X]", severity);
         };
+	}
+
+	public static String getMatrixModeName(int mode) {
+        return switch (mode) {
+            case GL11.GL_MODELVIEW -> "MODELVIEW";
+            case GL11.GL_PROJECTION -> "PROJECTION";
+            case GL11.GL_TEXTURE -> "TEXTURE";
+            case GL11.GL_COLOR -> "COLOR";
+            default -> String.format("0x%X", mode);
+        };
+	}
+
+	public static String getCapabilityName(int cap) {
+        return switch (cap) {
+            case GL11.GL_ALPHA_TEST -> "ALPHA_TEST";
+            case GL11.GL_BLEND -> "BLEND";
+            case GL11.GL_COLOR_MATERIAL -> "COLOR_MATERIAL";
+            case GL11.GL_CULL_FACE -> "CULL_FACE";
+            case GL11.GL_DEPTH_TEST -> "DEPTH_TEST";
+            case GL11.GL_FOG -> "FOG";
+            case GL11.GL_LIGHTING -> "LIGHTING";
+            case GL11.GL_LINE_SMOOTH -> "LINE_SMOOTH";
+            case GL11.GL_NORMALIZE -> "NORMALIZE";
+            case GL11.GL_POINT_SMOOTH -> "POINT_SMOOTH";
+            case GL11.GL_POLYGON_OFFSET_FILL -> "POLYGON_OFFSET_FILL";
+            case GL11.GL_POLYGON_OFFSET_LINE -> "POLYGON_OFFSET_LINE";
+            case GL11.GL_POLYGON_SMOOTH -> "POLYGON_SMOOTH";
+            case GL12.GL_RESCALE_NORMAL -> "RESCALE_NORMAL";
+            case GL11.GL_SCISSOR_TEST -> "SCISSOR_TEST";
+            case GL11.GL_STENCIL_TEST -> "STENCIL_TEST";
+            case GL11.GL_TEXTURE_1D -> "TEXTURE_1D";
+            case GL11.GL_TEXTURE_2D -> "TEXTURE_2D";
+            case GL11.GL_LIGHT0 -> "LIGHT0";
+            case GL11.GL_LIGHT1 -> "LIGHT1";
+            case GL11.GL_LIGHT2 -> "LIGHT2";
+            case GL11.GL_LIGHT3 -> "LIGHT3";
+            case GL11.GL_LIGHT4 -> "LIGHT4";
+            case GL11.GL_LIGHT5 -> "LIGHT5";
+            case GL11.GL_LIGHT6 -> "LIGHT6";
+            case GL11.GL_LIGHT7 -> "LIGHT7";
+            default -> String.format("0x%X", cap);
+        };
+	}
+
+	public static String getComparisonFuncName(int func) {
+        return switch (func) {
+            case GL11.GL_NEVER -> "NEVER";
+            case GL11.GL_LESS -> "LESS";
+            case GL11.GL_EQUAL -> "EQUAL";
+            case GL11.GL_LEQUAL -> "LEQUAL";
+            case GL11.GL_GREATER -> "GREATER";
+            case GL11.GL_NOTEQUAL -> "NOTEQUAL";
+            case GL11.GL_GEQUAL -> "GEQUAL";
+            case GL11.GL_ALWAYS -> "ALWAYS";
+            default -> String.format("0x%X", func);
+        };
+	}
+
+	public static String getBlendFactorName(int factor) {
+        return switch (factor) {
+            case GL11.GL_ZERO -> "ZERO";
+            case GL11.GL_ONE -> "ONE";
+            case GL11.GL_SRC_COLOR -> "SRC_COLOR";
+            case GL11.GL_ONE_MINUS_SRC_COLOR -> "ONE_MINUS_SRC_COLOR";
+            case GL11.GL_DST_COLOR -> "DST_COLOR";
+            case GL11.GL_ONE_MINUS_DST_COLOR -> "ONE_MINUS_DST_COLOR";
+            case GL11.GL_SRC_ALPHA -> "SRC_ALPHA";
+            case GL11.GL_ONE_MINUS_SRC_ALPHA -> "ONE_MINUS_SRC_ALPHA";
+            case GL11.GL_DST_ALPHA -> "DST_ALPHA";
+            case GL11.GL_ONE_MINUS_DST_ALPHA -> "ONE_MINUS_DST_ALPHA";
+            case EXTBlendColor.GL_CONSTANT_COLOR_EXT -> "CONSTANT_COLOR";
+            case EXTBlendColor.GL_ONE_MINUS_CONSTANT_COLOR_EXT -> "ONE_MINUS_CONSTANT_COLOR";
+            case EXTBlendColor.GL_CONSTANT_ALPHA_EXT -> "CONSTANT_ALPHA";
+            case EXTBlendColor.GL_ONE_MINUS_CONSTANT_ALPHA_EXT -> "ONE_MINUS_CONSTANT_ALPHA";
+            case GL11.GL_SRC_ALPHA_SATURATE -> "SRC_ALPHA_SATURATE";
+            default -> String.format("0x%X", factor);
+        };
+	}
+
+	public static String getShadeModelName(int mode) {
+        return switch (mode) {
+            case GL11.GL_FLAT -> "FLAT";
+            case GL11.GL_SMOOTH -> "SMOOTH";
+            default -> String.format("0x%X", mode);
+        };
+	}
+
+	public static String getTextureTargetName(int target) {
+        return switch (target) {
+            case GL11.GL_TEXTURE_1D -> "TEXTURE_1D";
+            case GL11.GL_TEXTURE_2D -> "TEXTURE_2D";
+            case GL12.GL_TEXTURE_3D -> "TEXTURE_3D";
+            case GL13.GL_TEXTURE_CUBE_MAP -> "TEXTURE_CUBE_MAP";
+            default -> String.format("0x%X", target);
+        };
+	}
+
+	public static String getTexturePnameName(int pname) {
+        return switch (pname) {
+            case GL11.GL_TEXTURE_MIN_FILTER -> "TEXTURE_MIN_FILTER";
+            case GL11.GL_TEXTURE_MAG_FILTER -> "TEXTURE_MAG_FILTER";
+            case GL11.GL_TEXTURE_WRAP_S -> "TEXTURE_WRAP_S";
+            case GL11.GL_TEXTURE_WRAP_T -> "TEXTURE_WRAP_T";
+            case GL12.GL_TEXTURE_WRAP_R -> "TEXTURE_WRAP_R";
+            case GL12.GL_TEXTURE_MIN_LOD -> "TEXTURE_MIN_LOD";
+            case GL12.GL_TEXTURE_MAX_LOD -> "TEXTURE_MAX_LOD";
+            case GL12.GL_TEXTURE_BASE_LEVEL -> "TEXTURE_BASE_LEVEL";
+            case GL12.GL_TEXTURE_MAX_LEVEL -> "TEXTURE_MAX_LEVEL";
+            case GL11.GL_TEXTURE_BORDER_COLOR -> "TEXTURE_BORDER_COLOR";
+            case GL11.GL_TEXTURE_PRIORITY -> "TEXTURE_PRIORITY";
+            case GL14.GL_TEXTURE_LOD_BIAS -> "TEXTURE_LOD_BIAS";
+            case GL14.GL_GENERATE_MIPMAP -> "GENERATE_MIPMAP";
+            default -> String.format("0x%X", pname);
+        };
+	}
+
+	public static String getTextureFormatName(int format) {
+        return switch (format) {
+            case GL11.GL_RED -> "RED";
+            case GL11.GL_GREEN -> "GREEN";
+            case GL11.GL_BLUE -> "BLUE";
+            case GL11.GL_ALPHA -> "ALPHA";
+            case GL11.GL_RGB -> "RGB";
+            case GL11.GL_RGBA -> "RGBA";
+            case GL11.GL_LUMINANCE -> "LUMINANCE";
+            case GL11.GL_LUMINANCE_ALPHA -> "LUMINANCE_ALPHA";
+            case GL12.GL_BGR -> "BGR";
+            case GL12.GL_BGRA -> "BGRA";
+            case GL11.GL_DEPTH_COMPONENT -> "DEPTH_COMPONENT";
+            case GL11.GL_STENCIL_INDEX -> "STENCIL_INDEX";
+            case GL30.GL_DEPTH_STENCIL -> "DEPTH_STENCIL";
+            // Internal formats
+            case GL11.GL_RGB8 -> "RGB8";
+            case GL11.GL_RGBA8 -> "RGBA8";
+            case GL11.GL_ALPHA8 -> "ALPHA8";
+            case GL11.GL_LUMINANCE8 -> "LUMINANCE8";
+            case GL11.GL_LUMINANCE8_ALPHA8 -> "LUMINANCE8_ALPHA8";
+            default -> String.format("0x%X", format);
+        };
+	}
+
+	public static String getDataTypeName(int type) {
+        return switch (type) {
+            case GL11.GL_UNSIGNED_BYTE -> "UNSIGNED_BYTE";
+            case GL11.GL_BYTE -> "BYTE";
+            case GL11.GL_UNSIGNED_SHORT -> "UNSIGNED_SHORT";
+            case GL11.GL_SHORT -> "SHORT";
+            case GL11.GL_UNSIGNED_INT -> "UNSIGNED_INT";
+            case GL11.GL_INT -> "INT";
+            case GL11.GL_FLOAT -> "FLOAT";
+            case GL11.GL_DOUBLE -> "DOUBLE";
+            case GL12.GL_UNSIGNED_BYTE_3_3_2 -> "UNSIGNED_BYTE_3_3_2";
+            case GL12.GL_UNSIGNED_SHORT_4_4_4_4 -> "UNSIGNED_SHORT_4_4_4_4";
+            case GL12.GL_UNSIGNED_SHORT_5_5_5_1 -> "UNSIGNED_SHORT_5_5_5_1";
+            case GL12.GL_UNSIGNED_INT_8_8_8_8 -> "UNSIGNED_INT_8_8_8_8";
+            case GL12.GL_UNSIGNED_INT_10_10_10_2 -> "UNSIGNED_INT_10_10_10_2";
+            default -> String.format("0x%X", type);
+        };
+	}
+
+	public static String getLightName(int light) {
+        return switch (light) {
+            case GL11.GL_LIGHT0 -> "LIGHT0";
+            case GL11.GL_LIGHT1 -> "LIGHT1";
+            case GL11.GL_LIGHT2 -> "LIGHT2";
+            case GL11.GL_LIGHT3 -> "LIGHT3";
+            case GL11.GL_LIGHT4 -> "LIGHT4";
+            case GL11.GL_LIGHT5 -> "LIGHT5";
+            case GL11.GL_LIGHT6 -> "LIGHT6";
+            case GL11.GL_LIGHT7 -> "LIGHT7";
+            default -> String.format("0x%X", light);
+        };
+	}
+
+	public static String getLightPnameName(int pname) {
+        return switch (pname) {
+            case GL11.GL_AMBIENT -> "AMBIENT";
+            case GL11.GL_DIFFUSE -> "DIFFUSE";
+            case GL11.GL_SPECULAR -> "SPECULAR";
+            case GL11.GL_POSITION -> "POSITION";
+            case GL11.GL_SPOT_DIRECTION -> "SPOT_DIRECTION";
+            case GL11.GL_SPOT_EXPONENT -> "SPOT_EXPONENT";
+            case GL11.GL_SPOT_CUTOFF -> "SPOT_CUTOFF";
+            case GL11.GL_CONSTANT_ATTENUATION -> "CONSTANT_ATTENUATION";
+            case GL11.GL_LINEAR_ATTENUATION -> "LINEAR_ATTENUATION";
+            case GL11.GL_QUADRATIC_ATTENUATION -> "QUADRATIC_ATTENUATION";
+            default -> String.format("0x%X", pname);
+        };
+	}
+
+	public static String getMaterialPnameName(int pname) {
+        return switch (pname) {
+            case GL11.GL_AMBIENT -> "AMBIENT";
+            case GL11.GL_DIFFUSE -> "DIFFUSE";
+            case GL11.GL_SPECULAR -> "SPECULAR";
+            case GL11.GL_EMISSION -> "EMISSION";
+            case GL11.GL_SHININESS -> "SHININESS";
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> "AMBIENT_AND_DIFFUSE";
+            case GL11.GL_COLOR_INDEXES -> "COLOR_INDEXES";
+            default -> String.format("0x%X", pname);
+        };
+	}
+
+	public static String getFaceName(int face) {
+        return switch (face) {
+            case GL11.GL_FRONT -> "FRONT";
+            case GL11.GL_BACK -> "BACK";
+            case GL11.GL_FRONT_AND_BACK -> "FRONT_AND_BACK";
+            default -> String.format("0x%X", face);
+        };
+	}
+
+	public static String getColorMaterialModeName(int mode) {
+        return switch (mode) {
+            case GL11.GL_AMBIENT -> "AMBIENT";
+            case GL11.GL_DIFFUSE -> "DIFFUSE";
+            case GL11.GL_SPECULAR -> "SPECULAR";
+            case GL11.GL_EMISSION -> "EMISSION";
+            case GL11.GL_AMBIENT_AND_DIFFUSE -> "AMBIENT_AND_DIFFUSE";
+            default -> String.format("0x%X", mode);
+        };
+	}
+
+	public static String getFogPnameName(int pname) {
+        return switch (pname) {
+            case GL11.GL_FOG_MODE -> "FOG_MODE";
+            case GL11.GL_FOG_DENSITY -> "FOG_DENSITY";
+            case GL11.GL_FOG_START -> "FOG_START";
+            case GL11.GL_FOG_END -> "FOG_END";
+            case GL11.GL_FOG_INDEX -> "FOG_INDEX";
+            case GL11.GL_FOG_COLOR -> "FOG_COLOR";
+            default -> String.format("0x%X", pname);
+        };
+	}
+
+	public static String getLightModelPnameName(int pname) {
+        return switch (pname) {
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> "LIGHT_MODEL_AMBIENT";
+            case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> "LIGHT_MODEL_LOCAL_VIEWER";
+            case GL11.GL_LIGHT_MODEL_TWO_SIDE -> "LIGHT_MODEL_TWO_SIDE";
+            case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> "LIGHT_MODEL_COLOR_CONTROL";
+            default -> String.format("0x%X", pname);
+        };
+	}
+
+	public static String getClearMaskString(int mask) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) {
+            sb.append("COLOR");
+            first = false;
+        }
+        if ((mask & GL11.GL_DEPTH_BUFFER_BIT) != 0) {
+            if (!first) sb.append("|");
+            sb.append("DEPTH");
+            first = false;
+        }
+        if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0) {
+            if (!first) sb.append("|");
+            sb.append("STENCIL");
+            first = false;
+        }
+        if ((mask & GL11.GL_ACCUM_BUFFER_BIT) != 0) {
+            if (!first) sb.append("|");
+            sb.append("ACCUM");
+        }
+        return sb.toString();
 	}
 
 	private static DebugState debugState;

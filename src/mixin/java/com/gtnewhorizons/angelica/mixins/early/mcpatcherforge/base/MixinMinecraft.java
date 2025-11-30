@@ -99,6 +99,7 @@ public abstract class MixinMinecraft {
 
     @Redirect(
         method = "loadScreen()V",
+        expect = 0,
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/texture/TextureManager;getDynamicTextureLocation(Ljava/lang/String;Lnet/minecraft/client/renderer/texture/DynamicTexture;)Lnet/minecraft/util/ResourceLocation;"))

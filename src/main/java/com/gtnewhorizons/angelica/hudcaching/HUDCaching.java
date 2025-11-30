@@ -14,6 +14,9 @@ import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
+import cpw.mods.fml.common.eventhandler.EventPriority;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -22,9 +25,12 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
+
+import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 // See LICENSE-HUDCaching.md for license information.
 
@@ -60,6 +66,30 @@ public class HUDCaching {
     public static void init() {
         framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
+
+    // highest so it runs before the GLSM load event
+    @SubscribeEvent(priority = EventPriority.HIGH)
+    public void onJoinWorld(WorldEvent.Load event) {
+        if (event.world.isRemote){
+            LOGGER.info("World loaded - Initializing HUDCaching");
+            final int framebufferWidth = Minecraft.getMinecraft().displayWidth;
+            final int framebufferHeight = Minecraft.getMinecraft().displayHeight;
+            HUDCaching.framebuffer = new SharedDepthFramebuffer(framebufferWidth, framebufferHeight, CustomFramebuffer.STENCIL_BUFFER);
+        }
+    }
+
+    @SubscribeEvent
+    public void onTick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+            final int framebufferWidth = Minecraft.getMinecraft().displayWidth;
+            final int framebufferHeight = Minecraft.getMinecraft().displayHeight;
+
+            if (framebuffer != null && (framebuffer.framebufferWidth != framebufferWidth || framebuffer.framebufferHeight != framebufferHeight)) {
+                framebuffer.createBindFramebuffer(framebufferWidth, framebufferHeight);
+            }
+        }
+    }
+
 
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {

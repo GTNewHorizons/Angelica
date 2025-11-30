@@ -1,7 +1,7 @@
 package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
@@ -148,7 +148,7 @@ public class NotFineGameOptionPages {
                 .build())
             .build());
 
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
                 .setName(I18n.format("options.iris.shadowDistance"))
                 .setTooltip(I18n.format("options.iris.shadowDistance.sodium_tooltip"))
@@ -190,8 +190,8 @@ public class NotFineGameOptionPages {
             .add(Settings.MODE_WATER.option)
             .add(Settings.DOWNFALL_DISTANCE.option)
             .add(Settings.MODE_VIGNETTE.option)
-            .add(Settings.DYNAMIC_LIGHTS.option, AngelicaConfig.enableDynamicLights)
-            .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, AngelicaConfig.enableDynamicLights)
+            .add(Settings.DYNAMIC_LIGHTS.option, DynamicLights.configEnabled)
+            .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, DynamicLights.configEnabled)
             .add(Settings.MODE_SHADOWS.option)
             .add(Settings.VOID_FOG.option)
             .add(Settings.MODE_DROPPED_ITEMS.option)

@@ -71,6 +71,9 @@ public class Iris {
 
     public static final IrisLogging logger = new IrisLogging(MODNAME);
 
+    // Cached at class load - config must be loaded before Iris. Do not change at runtime.
+    public static final boolean enabled = AngelicaConfig.enableIris;
+
     private static Path shaderpacksDirectory;
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
 
@@ -103,7 +106,9 @@ public class Iris {
     public static Iris INSTANCE = new Iris();
 
     private Iris() {
-        isDevelopmentEnvironment = (boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
+        // Guard against null blackboard in test environments
+        final Object deobfEnv = Launch.blackboard != null ? Launch.blackboard.get("fml.deobfuscatedEnvironment") : null;
+        isDevelopmentEnvironment = deobfEnv != null && (boolean) deobfEnv;
     }
 
     @SubscribeEvent
@@ -663,7 +668,7 @@ public class Iris {
     }
 
     public static void setShaderMaterialOverride(Block block, int meta) {
-        if (!AngelicaConfig.enableIris)
+        if (!enabled)
             return;
 
         int blockId = getShaderMaterialOverrideId(block, meta);
@@ -673,7 +678,7 @@ public class Iris {
     }
 
     public static void resetShaderMaterialOverride() {
-        if (!AngelicaConfig.enableIris)
+        if (!enabled)
             return;
         if (TessellatorManager.get() instanceof CapturingTessellator tess)
             tess.setShaderBlockId(-1);

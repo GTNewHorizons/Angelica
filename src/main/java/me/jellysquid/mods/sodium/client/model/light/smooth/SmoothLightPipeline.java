@@ -5,8 +5,8 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFlags;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
+import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -226,7 +226,7 @@ public class SmoothLightPipeline implements LightPipeline {
     }
 
     private void applySidedBrightness(QuadLightData out, ModelQuadFacing face, boolean shade) {
-        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading()) {
+        if(Iris.enabled && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading()) {
             return;
         }
 
