@@ -34,20 +34,6 @@ public interface DisplayListCommand {
     }
 
     /**
-     * Returns true if this command is a "barrier" that requires pending draws
-     * to be flushed before executing this command.
-     *
-     * <p>Barriers include commands that affect GL state stack (PushAttrib/PopAttrib)
-     * or that call other display lists (CallList). These need draws to be flushed
-     * before execution to ensure correct rendering order.</p>
-     *
-     * @return true if this command is a barrier requiring draw flush
-     */
-    default boolean isBarrier() {
-        return false;
-    }
-
-    /**
      * Returns true if this barrier command requires the MODELVIEW transform to be
      * synchronized with the accumulated state before execution.
      *

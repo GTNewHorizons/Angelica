@@ -16,11 +16,6 @@ public record PopAttribCmd() implements DisplayListCommand {
     }
 
     @Override
-    public boolean isBarrier() {
-        return true;  // Attribute stack operations require full state sync
-    }
-
-    @Override
     public boolean needsTransformSync() {
         return true;
     }

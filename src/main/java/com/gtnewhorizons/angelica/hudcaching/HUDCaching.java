@@ -14,9 +14,6 @@ import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -25,12 +22,9 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.event.world.WorldEvent;
 import org.lwjgl.opengl.GL11;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
-
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 // See LICENSE-HUDCaching.md for license information.
 
@@ -67,7 +61,7 @@ public class HUDCaching {
         framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
 
-     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
+    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);

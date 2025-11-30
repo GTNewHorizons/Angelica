@@ -17,11 +17,6 @@ public record PushAttribCmd(int mask) implements DisplayListCommand {
     }
 
     @Override
-    public boolean isBarrier() {
-        return true;  // Attribute stack operations require draws to be flushed
-    }
-
-    @Override
     public boolean needsTransformSync() {
         // Only need transform sync if we're pushing transform state.
         // GL_TRANSFORM_BIT includes the matrix mode and matrix stacks.

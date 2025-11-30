@@ -43,11 +43,6 @@ public record CallListCmd(int listId) implements DisplayListCommand {
     }
 
     @Override
-    public boolean isBarrier() {
-        return true;  // Nested list needs draws flushed before execution
-    }
-
-    @Override
     public boolean needsTransformSync() {
         return true;  // Nested list uses current GL matrix state
     }
