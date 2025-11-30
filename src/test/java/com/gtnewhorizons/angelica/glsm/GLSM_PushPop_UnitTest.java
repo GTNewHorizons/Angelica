@@ -516,4 +516,110 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Reset");
         verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Reset");
     }
+
+    // ==================== Lazy Copy-on-Write Tests ====================
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyAtBothLevels() {
+        // Test: modify same state at both depth levels
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first enable");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.disableBlend();
+        GLStateManager.enableLighting();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second push disable");
+        verifyIsEnabled(GL11.GL_LIGHTING, true, "Lighting - After enable at depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first pop (should restore to depth 1 value)");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After first pop (should restore to depth 1 value)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second pop (should restore to initial)");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After second pop (should restore to initial)");
+    }
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyOnlyAtInnerLevel() {
+        // Test: modify state only at depth 2, not at depth 1
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        // Don't modify blend at depth 1
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 1 (should restore)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should still be false)");
+    }
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyOnlyAtOuterLevel() {
+        // Test: modify state only at depth 1, not at depth 2
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 1");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        // Don't modify blend at depth 2
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 2 (unchanged)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1 (should still be true)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should restore to initial)");
+    }
+
+    @Test
+    void testMultipleModificationsAtSameDepth() {
+        // Test: multiple modifications to same state at same depth should only save once
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();  // First modification - should save false
+        GLStateManager.disableBlend(); // Second modification - should NOT save again
+        GLStateManager.enableBlend();  // Third modification - should NOT save again
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After multiple toggles");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop (should restore original false)");
+    }
+
+    @Test
+    void testTripleNestedPushPop() {
+        // Test: three levels of nesting
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.disableBlend();
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 3");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0");
+    }
 }

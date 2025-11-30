@@ -115,6 +115,7 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntSupplier;
 
@@ -180,6 +181,23 @@ public class GLStateManager {
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
+
+    // Lazy copy-on-write tracking: only iterate modified states during popState
+    @Getter private static int attribDepth = 0;
+    @SuppressWarnings("unchecked")
+    private static final List<IStateStack<?>>[] modifiedAtDepth = new List[MAX_ATTRIB_STACK_DEPTH];
+    static {
+        for (int i = 0; i < MAX_ATTRIB_STACK_DEPTH; i++) {
+            modifiedAtDepth[i] = new ArrayList<>();
+        }
+    }
+
+    /** Register a state stack as modified at the current depth (called from beforeModify). */
+    public static void registerModifiedState(IStateStack<?> stack) {
+        if (attribDepth > 0) {
+            modifiedAtDepth[attribDepth - 1].add(stack);
+        }
+    }
     protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
     protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
@@ -2077,24 +2095,39 @@ public class GLStateManager {
     }
 
     public static void pushState(int mask) {
+        if (attribDepth >= MAX_ATTRIB_STACK_DEPTH) {
+            throw new IllegalStateException("Attrib stack overflow: max depth " + MAX_ATTRIB_STACK_DEPTH + " reached");
+        }
         attribs.push(mask);
 
-        final List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
-        int size = stacks.size();
+        // Clear modified list for this depth level
+        modifiedAtDepth[attribDepth].clear();
+        attribDepth++;
 
-        for(int i = 0; i < size; i++) {
-            stacks.get(i).push();
+        // Only iterate non-boolean stacks - BooleanStateStack uses global depth tracking
+        // so pushDepth() is a no-op for them
+        final IStateStack<?>[] nonBooleanStacks = Feature.maskToNonBooleanStacks(mask);
+        for (IStateStack<?> stack : nonBooleanStacks) {
+            stack.pushDepth();
         }
     }
 
     public static void popState() {
         final int mask = attribs.popInt();
+        attribDepth--;
 
-        final List<IStateStack<?>> stacks = Feature.maskToFeatures(mask);
-        final int size = stacks.size();
+        // First: restore BooleanStateStack states that were actually modified (fast path)
+        // These use lazy copy-on-write with global depth tracking
+        final List<IStateStack<?>> modified = modifiedAtDepth[attribDepth];
+        for (int i = 0; i < modified.size(); i++) {
+            modified.get(i).popDepth();
+        }
+        modified.clear();
 
-        for(int i = 0; i < size; i++) {
-            stacks.get(i).pop();
+        // Second: restore non-boolean state stacks the traditional way
+        final IStateStack<?>[] nonBooleanStacks = Feature.maskToNonBooleanStacks(mask);
+        for (IStateStack<?> stack : nonBooleanStacks) {
+            stack.popDepth();
         }
     }
 

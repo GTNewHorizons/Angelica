@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
@@ -22,6 +23,7 @@ public class Feature {
         GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_TEXTURE_BIT, GL11.GL_TRANSFORM_BIT, GL11.GL_VIEWPORT_BIT };
 
     static final Int2ObjectMap<List<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
+    static final Int2ObjectMap<IStateStack<?>[]> maskToNonBooleanStacksMap = new Int2ObjectOpenHashMap<>();
 
     static List<IStateStack<?>> maskToFeatures(int mask) {
         if(maskToFeaturesMap.containsKey(mask)) {
@@ -40,6 +42,29 @@ public class Feature {
 
         maskToFeaturesMap.put(mask, asList);
         return asList;
+    }
+
+    /**
+     * Returns only non-BooleanStateStack instances for the given mask.
+     * These use traditional push/pop without global depth tracking.
+     */
+    static IStateStack<?>[] maskToNonBooleanStacks(int mask) {
+        IStateStack<?>[] cached = maskToNonBooleanStacksMap.get(mask);
+        if (cached != null) {
+            return cached;
+        }
+
+        final List<IStateStack<?>> all = maskToFeatures(mask);
+        final List<IStateStack<?>> nonBooleans = new ArrayList<>();
+        for (int i = 0; i < all.size(); i++) {
+            final IStateStack<?> stack = all.get(i);
+            if (!(stack instanceof BooleanStateStack)) {
+                nonBooleans.add(stack);
+            }
+        }
+        cached = nonBooleans.toArray(new IStateStack<?>[0]);
+        maskToNonBooleanStacksMap.put(mask, cached);
+        return cached;
     }
 
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
