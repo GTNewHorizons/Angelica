@@ -12,11 +12,9 @@ public class RenderStars {
     //private static final ResourceLocation locationStarsPng = new ResourceLocation("textures/colormap/stars.png");
 
     public static void reloadStarRenderList(RenderGlobal render) {
-        GL11.glPushMatrix();
         GL11.glNewList(render.starGLCallList, GL11.GL_COMPILE);
         renderStars();
         GL11.glEndList();
-        GL11.glPopMatrix();
     }
 
     public static void renderStars() {

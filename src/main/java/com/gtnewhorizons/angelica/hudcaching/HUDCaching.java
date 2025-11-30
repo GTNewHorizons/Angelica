@@ -67,31 +67,7 @@ public class HUDCaching {
         framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
 
-    // highest so it runs before the GLSM load event
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onJoinWorld(WorldEvent.Load event) {
-        if (event.world.isRemote){
-            LOGGER.info("World loaded - Initializing HUDCaching");
-            final int framebufferWidth = Minecraft.getMinecraft().displayWidth;
-            final int framebufferHeight = Minecraft.getMinecraft().displayHeight;
-            HUDCaching.framebuffer = new SharedDepthFramebuffer(framebufferWidth, framebufferHeight, CustomFramebuffer.STENCIL_BUFFER);
-        }
-    }
-
-    @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            final int framebufferWidth = Minecraft.getMinecraft().displayWidth;
-            final int framebufferHeight = Minecraft.getMinecraft().displayHeight;
-
-            if (framebuffer != null && (framebuffer.framebufferWidth != framebufferWidth || framebuffer.framebufferHeight != framebufferHeight)) {
-                framebuffer.createBindFramebuffer(framebufferWidth, framebufferHeight);
-            }
-        }
-    }
-
-
-    public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
+     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
