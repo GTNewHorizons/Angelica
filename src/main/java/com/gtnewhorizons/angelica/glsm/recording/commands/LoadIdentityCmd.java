@@ -24,6 +24,13 @@ public record LoadIdentityCmd(int matrixMode) implements DisplayListCommand {
     @Override
     public boolean handleOptimization(OptimizationContext ctx) {
         if (isModelView()) {
+            // Check if we're at an absolute matrix (after LoadMatrix)
+            // If so, we must emit LoadIdentity to actually reset GL state
+            if (ctx.checkAndClearAbsoluteMatrix()) {
+                ctx.emit(this);
+                ctx.loadIdentity();
+                return false;  // Already emitted
+            }
             ctx.loadIdentity();
             return false;  // Accumulated, don't emit
         }

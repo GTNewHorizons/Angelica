@@ -27,6 +27,7 @@ class TransformOptimizer {
     private final Matrix4f lastEmitted = new Matrix4f();  // Last emitted transform
     private final Deque<Matrix4f> stack = new ArrayDeque<>();  // For Push/Pop
     private final int listId;  // For logging
+    private boolean absoluteMatrixFlag = false;  // True after LoadMatrix, cleared by LoadIdentity emit
 
     TransformOptimizer(int listId) {
         this.listId = listId;
@@ -113,5 +114,24 @@ class TransformOptimizer {
      */
     boolean needsTransformForDraw(Matrix4f drawTransform) {
         return !drawTransform.equals(lastEmitted);
+    }
+
+    /**
+     * Mark that the GL matrix is at an absolute value (after LoadMatrix).
+     * Subsequent LoadIdentity commands must be emitted to actually reset GL to identity.
+     */
+    void markAbsoluteMatrix() {
+        absoluteMatrixFlag = true;
+    }
+
+    /**
+     * Check if the GL matrix is at an absolute value and clear the flag.
+     * Used by LoadIdentityCmd to determine if it needs to emit.
+     * @return true if LoadMatrix was called and not yet reset by LoadIdentity
+     */
+    boolean checkAndClearAbsoluteMatrix() {
+        boolean was = absoluteMatrixFlag;
+        absoluteMatrixFlag = false;
+        return was;
     }
 }

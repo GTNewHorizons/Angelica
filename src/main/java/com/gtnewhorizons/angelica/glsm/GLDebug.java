@@ -540,6 +540,37 @@ public final class GLDebug {
         return sb.toString();
 	}
 
+	public static String getCullFaceName(int mode) {
+        return switch (mode) {
+            case GL11.GL_FRONT -> "FRONT";
+            case GL11.GL_BACK -> "BACK";
+            case GL11.GL_FRONT_AND_BACK -> "FRONT_AND_BACK";
+            default -> String.format("0x%X", mode);
+        };
+	}
+
+	public static String getLogicOpName(int opcode) {
+        return switch (opcode) {
+            case GL11.GL_CLEAR -> "CLEAR";
+            case GL11.GL_AND -> "AND";
+            case GL11.GL_AND_REVERSE -> "AND_REVERSE";
+            case GL11.GL_COPY -> "COPY";
+            case GL11.GL_AND_INVERTED -> "AND_INVERTED";
+            case GL11.GL_NOOP -> "NOOP";
+            case GL11.GL_XOR -> "XOR";
+            case GL11.GL_OR -> "OR";
+            case GL11.GL_NOR -> "NOR";
+            case GL11.GL_EQUIV -> "EQUIV";
+            case GL11.GL_INVERT -> "INVERT";
+            case GL11.GL_OR_REVERSE -> "OR_REVERSE";
+            case GL11.GL_COPY_INVERTED -> "COPY_INVERTED";
+            case GL11.GL_OR_INVERTED -> "OR_INVERTED";
+            case GL11.GL_NAND -> "NAND";
+            case GL11.GL_SET -> "SET";
+            default -> String.format("0x%X", opcode);
+        };
+	}
+
 	private static DebugState debugState;
 
     private interface DebugState {

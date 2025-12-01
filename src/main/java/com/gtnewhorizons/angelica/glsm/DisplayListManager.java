@@ -297,6 +297,18 @@ public class DisplayListManager {
     }
 
     /**
+     * Reset the relative transform to identity during display list compilation.
+     * Called by GLStateManager.glLoadMatrix() - after loading an absolute matrix,
+     * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
+     */
+    public static void resetRelativeTransform() {
+        if (relativeTransform == null) {
+            return;
+        }
+        relativeTransform.identity();
+    }
+
+    /**
      * Check if a display list exists (has been compiled and stored).
      * Checks both DisplayListManager's cache and VBOManager for GTNHLib compatibility.
      *
@@ -823,6 +835,8 @@ public class DisplayListManager {
         @Override public void emitPendingTransform() { transformOpt.emitPendingTransform(output); }
         @Override public void emitTransformTo(Matrix4f target) { transformOpt.emitTransformTo(output, target); }
         @Override public void emit(DisplayListCommand cmd) { output.add(cmd); }
+        @Override public void markAbsoluteMatrix() { transformOpt.markAbsoluteMatrix(); }
+        @Override public boolean checkAndClearAbsoluteMatrix() { return transformOpt.checkAndClearAbsoluteMatrix(); }
     }
 
 

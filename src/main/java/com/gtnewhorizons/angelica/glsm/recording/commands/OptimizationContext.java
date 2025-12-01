@@ -27,4 +27,16 @@ public interface OptimizationContext {
 
     /** Add a command to the output list. */
     void emit(DisplayListCommand cmd);
+
+    /**
+     * Mark that the GL matrix is at an absolute value (after LoadMatrix).
+     * Subsequent LoadIdentity commands must be emitted to reset to identity.
+     */
+    void markAbsoluteMatrix();
+
+    /**
+     * Check if the GL matrix is at an absolute value and clear the flag.
+     * @return true if LoadMatrix was called and not yet reset by LoadIdentity
+     */
+    boolean checkAndClearAbsoluteMatrix();
 }

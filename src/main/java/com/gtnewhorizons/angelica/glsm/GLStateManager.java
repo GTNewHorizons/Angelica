@@ -28,9 +28,12 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.LightModelfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightModeliCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightiCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.CullFaceCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LineStippleCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LineWidthCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LoadIdentityCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.LoadMatrixCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.LogicOpCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MatrixModeCmd;
@@ -1878,7 +1881,8 @@ public class GLStateManager {
 
     public static void glLogicOp(int opcode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glLogicOp in display lists not yet implemented");
+            DisplayListManager.recordCommand(new LogicOpCmd(opcode));
+            return;
         }
         GL11.glLogicOp(opcode);
     }
@@ -2281,7 +2285,12 @@ public class GLStateManager {
 
     public static void glLoadMatrix(FloatBuffer m) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glLoadMatrix in display lists not yet implemented");
+            DisplayListManager.recordCommand(LoadMatrixCmd.create(m, matrixMode.getMode()));
+            // Reset relative transform for MODELVIEW - subsequent transforms are relative to loaded matrix
+            if (isModelViewMatrix()) {
+                DisplayListManager.resetRelativeTransform();
+            }
+            return;
         }
         if (isCachingEnabled()) getMatrixStack().set(m);
         GL11.glLoadMatrix(m);
@@ -2289,7 +2298,17 @@ public class GLStateManager {
 
     public static void glLoadMatrix(DoubleBuffer m) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glLoadMatrix in display lists not yet implemented");
+            // Convert double buffer to float buffer for recording
+            conversionMatrix4d.set(m);
+            m.rewind();
+            final Matrix4f floatMatrix = new Matrix4f();
+            floatMatrix.set(conversionMatrix4d);
+            DisplayListManager.recordCommand(LoadMatrixCmd.create(floatMatrix, matrixMode.getMode()));
+            // Reset relative transform for MODELVIEW - subsequent transforms are relative to loaded matrix
+            if (isModelViewMatrix()) {
+                DisplayListManager.resetRelativeTransform();
+            }
+            return;
         }
         if (isCachingEnabled()) {
             conversionMatrix4d.set(m);
@@ -3212,7 +3231,8 @@ public class GLStateManager {
     // State commands
     public static void glCullFace(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCullFace in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordCommand(new CullFaceCmd(mode));
+            return;
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || polygonState.getCullFaceMode() != mode) {

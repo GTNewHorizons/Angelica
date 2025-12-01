@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
+import com.gtnewhorizons.angelica.glsm.recording.commands.LoadMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PushMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PopMatrixCmd;
@@ -199,6 +200,8 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         assertEquals(expectedBuf.get(12), actualBuf.get(12), 0.0001f,
             "X translation should be 6.0 (1+5, inner transforms isolated)");
+
+        GLStateManager.glPopMatrix();  // Balance the push from line 185
     }
 
     @Test
@@ -515,5 +518,172 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         // The inner translate should be emitted between push and pop (or collapsed to residual)
         // At minimum, the structure should be valid
         assertTrue(popIndex > pushIndex, "PopMatrix should follow PushMatrix");
+    }
+
+    // ==================== LoadMatrix Tests ====================
+
+    @Test
+    void testLoadMatrixSetsAbsoluteTransform() {
+        // LoadMatrix should set an absolute matrix, not multiply
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        // First, apply a large transform
+        GLStateManager.glTranslatef(100.0f, 200.0f, 300.0f);
+
+        // Then load a specific matrix (should replace, not multiply)
+        Matrix4f loadedMatrix = new Matrix4f()
+            .translate(1.0f, 2.0f, 3.0f)
+            .rotate((float) Math.toRadians(45.0f), 0.0f, 1.0f, 0.0f);
+        FloatBuffer loadBuf = BufferUtils.createFloatBuffer(16);
+        loadedMatrix.get(loadBuf);
+        loadBuf.rewind();
+        GLStateManager.glLoadMatrix(loadBuf);
+
+        GLStateManager.glEndList();
+
+        // Verify the LoadMatrixCmd is present
+        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+        assertNotNull(compiled, "Display list should be compiled");
+
+        DisplayListCommand[] optimized = compiled.optimized();
+        long loadMatrixCount = Arrays.stream(optimized)
+            .filter(cmd -> cmd instanceof LoadMatrixCmd)
+            .count();
+
+        assertEquals(1, loadMatrixCount,
+            "Should have exactly 1 LoadMatrix command (can't be absorbed)");
+
+        // Verify behavioral correctness: matrix should equal the loaded matrix
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+
+        FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
+        loadedMatrix.get(expectedBuf);
+
+        for (int i = 0; i < 16; i++) {
+            assertEquals(expectedBuf.get(i), actualBuf.get(i), 0.0001f,
+                String.format("Matrix[%d] should match loaded matrix (not multiplied)", i));
+        }
+
+        GLStateManager.glPopMatrix();
+    }
+
+    @Test
+    void testLoadMatrixResetsRelativeTransform() {
+        // After LoadMatrix, subsequent transforms should be relative to the loaded matrix
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        // Load a rotation matrix
+        Matrix4f loadedMatrix = new Matrix4f()
+            .rotate((float) Math.toRadians(90.0f), 0.0f, 1.0f, 0.0f);
+        FloatBuffer loadBuf = BufferUtils.createFloatBuffer(16);
+        loadedMatrix.get(loadBuf);
+        loadBuf.rewind();
+        GLStateManager.glLoadMatrix(loadBuf);
+
+        // Then translate - this should be relative to the loaded matrix
+        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);
+
+        GLStateManager.glEndList();
+
+        // Verify behavioral correctness
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+
+        // Expected: loadedMatrix * translate(10,0,0)
+        Matrix4f expected = new Matrix4f(loadedMatrix).translate(10.0f, 0.0f, 0.0f);
+        FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
+        expected.get(expectedBuf);
+
+        for (int i = 0; i < 16; i++) {
+            assertEquals(expectedBuf.get(i), actualBuf.get(i), 0.0001f,
+                String.format("Matrix[%d] - transform after LoadMatrix should be relative to loaded matrix", i));
+        }
+
+        GLStateManager.glPopMatrix();
+    }
+
+    @Test
+    void testLoadMatrixThenLoadIdentity() {
+        // LoadMatrix followed by LoadIdentity should result in identity
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        // Load a complex matrix
+        Matrix4f loadedMatrix = new Matrix4f()
+            .translate(50.0f, 60.0f, 70.0f)
+            .rotate((float) Math.toRadians(45.0f), 1.0f, 1.0f, 0.0f);
+        FloatBuffer loadBuf = BufferUtils.createFloatBuffer(16);
+        loadedMatrix.get(loadBuf);
+        loadBuf.rewind();
+        GLStateManager.glLoadMatrix(loadBuf);
+
+        // Then reset to identity
+        GLStateManager.glLoadIdentity();
+
+        // Then apply a simple translate
+        GLStateManager.glTranslatef(1.0f, 2.0f, 3.0f);
+
+        GLStateManager.glEndList();
+
+        // Verify: final state should just be translate(1,2,3)
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+
+        assertEquals(1.0f, actualBuf.get(12), 0.0001f, "X should be 1.0");
+        assertEquals(2.0f, actualBuf.get(13), 0.0001f, "Y should be 2.0");
+        assertEquals(3.0f, actualBuf.get(14), 0.0001f, "Z should be 3.0");
+
+        GLStateManager.glPopMatrix();
+    }
+
+    @Test
+    void testMultipleLoadMatrixCalls() {
+        // Multiple LoadMatrix calls should each be recorded
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        // First load
+        Matrix4f matrix1 = new Matrix4f().translate(10.0f, 0.0f, 0.0f);
+        FloatBuffer buf1 = BufferUtils.createFloatBuffer(16);
+        matrix1.get(buf1);
+        buf1.rewind();
+        GLStateManager.glLoadMatrix(buf1);
+
+        // Second load (replaces first)
+        Matrix4f matrix2 = new Matrix4f().translate(0.0f, 20.0f, 0.0f);
+        FloatBuffer buf2 = BufferUtils.createFloatBuffer(16);
+        matrix2.get(buf2);
+        buf2.rewind();
+        GLStateManager.glLoadMatrix(buf2);
+
+        GLStateManager.glEndList();
+
+        // Verify: final state should be matrix2
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+
+        assertEquals(0.0f, actualBuf.get(12), 0.0001f, "X should be 0.0 (from second LoadMatrix)");
+        assertEquals(20.0f, actualBuf.get(13), 0.0001f, "Y should be 20.0 (from second LoadMatrix)");
+
+        GLStateManager.glPopMatrix();
     }
 }
