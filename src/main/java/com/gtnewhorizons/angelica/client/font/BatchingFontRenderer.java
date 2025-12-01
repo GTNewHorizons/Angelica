@@ -162,6 +162,15 @@ public class BatchingFontRenderer {
         pushQuadIdx(vtxId);
     }
 
+    private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
+        final int vtxId = vtxWriterIndex;
+        pushVtx(x + itOff, y, rgba, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff, y + h, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushQuadIdx(vtxId);
+    }
+
     private int pushQuadIdx(int startV) {
         final int idx = idxWriterIndex;
         batchIndices.put(idx, startV);
@@ -518,49 +527,44 @@ public class BatchingFontRenderer {
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
+                final int shadowCopies = FontConfig.shadowCopies;
+                final int boldCopies = FontConfig.boldCopies;
                 final ResourceLocation texture = fontProvider.getTexture(chr);
-
-                final int vtxId = vtxWriterIndex;
                 final int idxId = idxWriterIndex;
 
-                int vtxCount = 0;
-
                 if (enableShadow) {
-                    pushVtx(curX + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushQuadIdx(vtxId + vtxCount);
-                    vtxCount += 4;
+                    for (int n = 1; n <= shadowCopies; n++) {
+                        final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
 
-                    if (curBold) {
-                        final float shadowOffset2 = 2.0f * shadowOffset;
-                        pushVtx(curX + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F + itOff + shadowOffset2, heightNorth + shadowOffset, curShadowColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushVtx(curX + glyphW - 1.0F - itOff + shadowOffset2, heightNorth + heightSouth + shadowOffset, curShadowColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                        pushQuadIdx(vtxId + vtxCount);
-                        vtxCount += 4;
+                        if (curBold) {
+                            pushTexRect(curX + 2.0f * shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        }
                     }
                 }
 
-                pushVtx(curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushVtx(curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                pushQuadIdx(vtxId + vtxCount);
-                vtxCount += 4;
+                pushTexRect(curX, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
 
                 if (curBold) {
-                    pushVtx(shadowOffset + curX + itOff, heightNorth, curColor, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX - itOff, heightNorth + heightSouth, curColor, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F + itOff, heightNorth, curColor, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushVtx(shadowOffset + curX + glyphW - 1.0F - itOff, heightNorth + heightSouth, curColor, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-                    pushQuadIdx(vtxId + vtxCount);
-                    vtxCount += 4;
+                    for (int n = 1; n <= boldCopies; n++) {
+                        final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                    }
                 }
 
+                /*
+                Vertex-per-char counts for different configurations
+                    default:        4
+                    shadow only:    4(1 + shadowCopies)
+                    bold only:      4(1 + boldCopies)
+                    both:           4(1 + 2 * shadowCopies + boldCopies)
+                 */
+                int charCount = 1;
+                if (enableShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
+                if (curBold) { charCount += boldCopies; }
+                final int vtxCount = 4 * charCount;
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
+
                 curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
