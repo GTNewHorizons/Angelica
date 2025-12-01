@@ -52,17 +52,13 @@ public class HorizonRenderer {
 	}
 
 	private void rebuildBuffer() {
-		if (this.vertexBuffer != null) {
-			this.vertexBuffer.close();
-		}
-        TessellatorManager.startCapturing();
-        final CapturingTessellator tessellator = (CapturingTessellator) TessellatorManager.get();
+        final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
 
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
 
-        this.vertexBuffer = TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION);
+        this.vertexBuffer = TessellatorManager.stopCapturingToVAO(vertexBuffer, DefaultVertexFormat.POSITION);
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {
@@ -155,12 +151,9 @@ public class HorizonRenderer {
 			rebuildBuffer();
 		}
 
-		vertexBuffer.bind();
-        GL11.glVertexPointer(3, GL11.GL_FLOAT, 12, 0L);
-        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+		vertexBuffer.setupState();
 		vertexBuffer.draw(floatBuffer);
-		GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
-		vertexBuffer.unbind();
+		vertexBuffer.cleanupState();
 	}
 
 	public void destroy() {

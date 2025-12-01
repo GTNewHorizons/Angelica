@@ -5,6 +5,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -92,6 +93,9 @@ public class ClientProxy extends CommonProxy {
                 AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
                 AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
             });
+        }
+        if (!AngelicaConfig.enableVAO) {
+            VAOManager.disableVao();
         }
     }
 

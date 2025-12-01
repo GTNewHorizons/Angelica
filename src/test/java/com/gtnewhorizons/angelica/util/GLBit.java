@@ -24,7 +24,7 @@ public final class GLBit {
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (GLBit) obj;
+        GLBit that = (GLBit) obj;
         return Objects.equals(this.name, that.name) && this.glEnum == that.glEnum && this.initial == that.initial;
     }
 

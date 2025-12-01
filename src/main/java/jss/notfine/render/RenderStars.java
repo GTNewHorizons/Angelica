@@ -20,7 +20,7 @@ public class RenderStars {
         if(AngelicaConfig.enableVBO) {
             TessellatorManager.startCapturing();
             renderStars();
-            VBOManager.registerVBO(render.starGLCallList, TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION));
+            VBOManager.registerVBO(render.starGLCallList, TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION));
         } else {
             GL11.glPushMatrix();
             GL11.glNewList(render.starGLCallList, GL11.GL_COMPILE);
