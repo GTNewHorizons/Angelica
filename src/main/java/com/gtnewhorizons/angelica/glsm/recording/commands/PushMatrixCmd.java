@@ -24,7 +24,6 @@ public record PushMatrixCmd(int matrixMode) implements DisplayListCommand {
     @Override
     public boolean handleOptimization(OptimizationContext ctx) {
         if (isModelView()) {
-            ctx.flushBatcher();
             ctx.emitPendingTransform();
             ctx.pushTransform();
         }

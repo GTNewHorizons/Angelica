@@ -19,21 +19,6 @@ public interface DisplayListCommand {
     }
 
     /**
-     * Returns true if this command changes GL state in a way that requires
-     * pending draws to be flushed before executing this command.
-     * Examples: texture binding, blend state, depth state changes.
-     *
-     * <p>This is used by the display list optimizer to determine when to
-     * flush batched draws. Commands that return true will cause the batcher
-     * to emit any pending draws before this command is added to the output.</p>
-     *
-     * @return true if this command breaks draw batching
-     */
-    default boolean breaksBatch() {
-        return false;
-    }
-
-    /**
      * Returns true if this barrier command requires the MODELVIEW transform to be
      * synchronized with the accumulated state before execution.
      *
@@ -56,19 +41,15 @@ public interface DisplayListCommand {
      * <p>Commands override this to implement their optimization behavior:
      * <ul>
      *   <li>Matrix transforms: accumulate into the optimizer, return false</li>
-     *   <li>Push/Pop: flush batcher, update stack, return true to emit</li>
-     *   <li>Barriers: flush batcher and transforms, return true to emit</li>
-     *   <li>State changes: optionally flush batcher, return true to emit</li>
+     *   <li>Push/Pop: update stack, return true to emit</li>
+     *   <li>Barriers: emit pending transforms, return true to emit</li>
+     *   <li>State changes: return true to emit</li>
      * </ul>
      *
-     * @param ctx The optimization context providing access to transform/batcher state
+     * @param ctx The optimization context providing access to transform state
      * @return true if this command should be added to output, false if handled internally
      */
     default boolean handleOptimization(OptimizationContext ctx) {
-        // Default: flush if needed, then emit
-        if (breaksBatch()) {
-            ctx.flushBatcher();
-        }
         return true;
     }
 }

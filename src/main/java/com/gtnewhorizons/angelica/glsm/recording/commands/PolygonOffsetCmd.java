@@ -16,11 +16,6 @@ public record PolygonOffsetCmd(float factor, float units) implements DisplayList
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("PolygonOffset(%.4f, %.4f)", factor, units);
     }

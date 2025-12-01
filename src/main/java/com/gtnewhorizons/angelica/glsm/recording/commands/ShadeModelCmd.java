@@ -17,11 +17,6 @@ public record ShadeModelCmd(int mode) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Shading model affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return "ShadeModel(" + GLDebug.getShadeModelName(mode) + ")";
     }

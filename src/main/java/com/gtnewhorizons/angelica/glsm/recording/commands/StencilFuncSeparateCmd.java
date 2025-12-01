@@ -16,11 +16,6 @@ public record StencilFuncSeparateCmd(int face, int func, int ref, int mask) impl
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilFuncSeparate(0x%04X, 0x%04X, %d, 0x%08X)", face, func, ref, mask);
     }

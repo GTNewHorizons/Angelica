@@ -16,11 +16,6 @@ public record StencilOpCmd(int fail, int zfail, int zpass) implements DisplayLis
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilOp(0x%04X, 0x%04X, 0x%04X)", fail, zfail, zpass);
     }

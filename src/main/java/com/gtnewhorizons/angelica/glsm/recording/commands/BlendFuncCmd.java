@@ -31,11 +31,6 @@ public record BlendFuncCmd(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) i
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Blend state affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         if (srcRgb == srcAlpha && dstRgb == dstAlpha) {
             return String.format("BlendFunc(%s, %s)", GLDebug.getBlendFactorName(srcRgb), GLDebug.getBlendFactorName(dstRgb));

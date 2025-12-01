@@ -16,11 +16,6 @@ public record ColorMaskCmd(boolean red, boolean green, boolean blue, boolean alp
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Color mask affects rendering output
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("ColorMask(r=%s, g=%s, b=%s, a=%s)", red, green, blue, alpha);
     }

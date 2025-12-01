@@ -16,11 +16,6 @@ public record StencilOpSeparateCmd(int face, int sfail, int dpfail, int dppass) 
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilOpSeparate(0x%04X, 0x%04X, 0x%04X, 0x%04X)", face, sfail, dpfail, dppass);
     }

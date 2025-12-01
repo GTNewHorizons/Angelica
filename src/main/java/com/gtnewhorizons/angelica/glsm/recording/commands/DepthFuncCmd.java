@@ -17,11 +17,6 @@ public record DepthFuncCmd(int func) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Depth function affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return "DepthFunc(" + GLDebug.getComparisonFuncName(func) + ")";
     }

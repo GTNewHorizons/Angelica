@@ -17,11 +17,6 @@ public record BindTextureCmd(int target, int texture) implements DisplayListComm
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Texture changes affect all subsequent draws
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("BindTexture(%s, %d)", GLDebug.getTextureTargetName(target), texture);
     }

@@ -24,7 +24,6 @@ public record PopMatrixCmd(int matrixMode) implements DisplayListCommand {
     @Override
     public boolean handleOptimization(OptimizationContext ctx) {
         if (isModelView()) {
-            ctx.flushBatcher();
             ctx.popTransform();
         }
         return true;  // Always emit Pop

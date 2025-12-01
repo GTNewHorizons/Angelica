@@ -1,9 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DrawCommand;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DrawVBOCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PopMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PushMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ScaleCmd;
@@ -58,15 +59,17 @@ class RecordingDataStructuresTest {
         List<DisplayListCommand> commands = Arrays.asList(
             new PushMatrixCmd(GL11.GL_MODELVIEW),
             new ScaleCmd(2.0, 2.0, 2.0, GL11.GL_MODELVIEW),
-            new DrawVBOCmd(vbo, true),
+            new DrawRangeCmd(vbo, 0, 4, true),
             new PopMatrixCmd(GL11.GL_MODELVIEW)
         );
 
         // Create CompiledDisplayList with dual representation (both same for test)
-        CompiledDisplayList compiled = new CompiledDisplayList(commands, commands);
+        DisplayListCommand[] cmdArray = commands.toArray(new DisplayListCommand[0]);
+        VertexBuffer[] ownedVbos = new VertexBuffer[] { vbo };
+        CompiledDisplayList compiled = new CompiledDisplayList(cmdArray, cmdArray, ownedVbos);
 
-        assertEquals(4, compiled.optimized().size());
-        assertEquals(4, compiled.unoptimized().size());
+        assertEquals(4, compiled.optimized().length);
+        assertEquals(4, compiled.unoptimized().length);
         assertNotNull(compiled.getCommands());
 
         // Cleanup

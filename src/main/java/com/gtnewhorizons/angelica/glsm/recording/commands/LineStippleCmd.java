@@ -16,11 +16,6 @@ public record LineStippleCmd(int factor, short pattern) implements DisplayListCo
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("LineStipple(%d, 0x%04X)", factor, pattern & 0xFFFF);
     }

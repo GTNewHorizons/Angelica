@@ -16,11 +16,6 @@ public record UseProgramCmd(int program) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Shader change affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("UseProgram(%d)", program);
     }

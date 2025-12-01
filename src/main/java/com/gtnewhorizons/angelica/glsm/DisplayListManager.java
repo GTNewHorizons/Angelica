@@ -15,7 +15,7 @@ import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.CallListCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DrawVBOCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.OptimizationContext;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -32,8 +32,12 @@ import org.lwjgl.opengl.GL11;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Manages display list compilation, caching, and playback.
@@ -66,12 +70,14 @@ import java.util.List;
  * </ul>
  *
  * <h4>Batching Strategy</h4>
- * <p>The {@link DrawBatcher} merges consecutive draws that share the same vertex flags into
- * single VBOs. Transforms are handled separately via {@link TransformOptimizer}.</p>
+ * <p>Format-based batching: All draws with the same vertex format share a single VBO via
+ * {@link FormatBuffer}. Each draw's position within the VBO is tracked as a {@link DrawRange}.
+ * Consecutive draws with the same transform are merged into single ranges. Transforms are
+ * handled via delta-based emission using {@link TransformOptimizer}.</p>
  *
  * @see com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList
  * @see com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw
- * @see com.gtnewhorizons.angelica.glsm.recording.commands.DrawVBOCmd
+ * @see com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd
  */
 @UtilityClass
 public class DisplayListManager {
@@ -88,7 +94,7 @@ public class DisplayListManager {
         return currentRenderingList != -1;
     }
 
-    private static boolean isIdentity(Matrix4f m) {
+    static boolean isIdentity(Matrix4f m) {
         return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0;
     }
 
@@ -389,15 +395,24 @@ public class DisplayListManager {
         final boolean hasLineDraws = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
 
         if (hasCommands || hasDraws || hasLineDraws) {
-            // Build both versions using extracted functions
-            final List<DisplayListCommand> unoptimized = buildUnoptimizedDisplayList(
-                currentCommands != null ? currentCommands : new ArrayList<>(),
-                accumulatedDraws, accumulatedLineDraws, glListId);
-            final List<DisplayListCommand> optimized = buildOptimizedDisplayList(
-                currentCommands != null ? currentCommands : new ArrayList<>(),
-                accumulatedDraws, accumulatedLineDraws, glListId);
+            // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
+            final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers = compileFormatBasedVBOs(accumulatedDraws);
 
-            compiled = new CompiledDisplayList(optimized, unoptimized);
+            // Phase 2: Compile line VBO (shared by both paths)
+            final CompiledLineBuffer compiledLineBuffer = compileLineBuffer(accumulatedLineDraws);
+
+            // Collect all owned VBOs (quads + lines)
+            final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer);
+
+            final List<DisplayListCommand> cmds = currentCommands != null ? currentCommands : new ArrayList<>();
+
+            /* Phase 3: Build optimized commands (collapsed transforms, merged ranges) */
+            final DisplayListCommand[] optimized = buildOptimizedCommands(cmds, compiledQuadBuffers, compiledLineBuffer, glListId);
+
+            // Phase 4: Build unoptimized commands (original transforms, per-draw ranges)
+            final DisplayListCommand[] unoptimized = buildUnoptimizedCommands(cmds, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer);
+
+            compiled = new CompiledDisplayList(optimized, unoptimized, ownedVbos);
             displayListCache.put(glListId, compiled);
         } else {
             compiled = null;
@@ -496,49 +511,53 @@ public class DisplayListManager {
     }
 
     /**
-     * Build unoptimized display list: keeps all commands including matrix transforms.
-     * For nested display list calls where matrices need to compose with parent state.
+     * Build unoptimized command list using shared VBOs via DrawRangeCmd.
+     * Preserves original matrix commands for nested display list composition.
+     * Uses perDrawRanges from compiled buffers (1:1 with input draws).
+     *
+     * @param currentCommands Original matrix/state commands
+     * @param accumulatedDraws The accumulated draws (for ordering info)
+     * @param compiledQuadBuffers Pre-compiled format-based quad VBOs with perDrawRanges
+     * @param compiledLineBuffer Pre-compiled line VBO (may be null)
      */
-    private static List<DisplayListCommand> buildUnoptimizedDisplayList(
+    private static DisplayListCommand[] buildUnoptimizedCommands(
             List<DisplayListCommand> currentCommands,
             List<AccumulatedDraw> accumulatedDraws,
-            List<AccumulatedLineDraw> accumulatedLineDraws,
-            int glListId) {
+            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
+            CompiledLineBuffer compiledLineBuffer) {
 
         final boolean hasQuads = accumulatedDraws != null && !accumulatedDraws.isEmpty();
-        final boolean hasLines = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
+        final boolean hasLines = compiledLineBuffer != null;
 
-        if (!hasQuads && !hasLines) {
-            return new ArrayList<>(currentCommands);
+        if (!hasQuads && !hasLines && (currentCommands == null || currentCommands.isEmpty())) {
+            return new DisplayListCommand[0];
         }
 
-        final List<DisplayListCommand> unoptimized = new ArrayList<>(
-            currentCommands.size() + (hasQuads ? accumulatedDraws.size() : 0) + (hasLines ? accumulatedLineDraws.size() : 0));
+        // Build per-format draw counters to index into perDrawRanges
+        final Map<CapturingTessellator.Flags, int[]> perFormatDrawIndex = new HashMap<>();
+        for (var key : compiledQuadBuffers.keySet()) {
+            perFormatDrawIndex.put(key, new int[]{0});  // Mutable int holder
+        }
+
+        final List<DisplayListCommand> unoptimized = new ArrayList<>();
         int drawIndex = 0;
-        int lineDrawIndex = 0;
+        int lineRangeIndex = 0;
+        final DrawRange[] lineRanges = hasLines ? compiledLineBuffer.perDrawRanges() : null;
 
         // Insert draws at their recorded positions in the command stream
-        for (int i = 0; i < currentCommands.size(); i++) {
+        final int cmdCount = currentCommands != null ? currentCommands.size() : 0;
+        for (int i = 0; i < cmdCount; i++) {
             // Insert any quad draws that belong at this position
             while (hasQuads && drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
                 final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
-
-                // Compile untransformed quads - matrix commands in the list will apply transforms via GL stack
-                final VertexBuffer vao = compileQuads(draw.quads, draw.flags);
-                unoptimized.add(new DrawVBOCmd(vao, draw.flags.hasBrightness));
-
+                emitUnoptimizedQuadDraw(draw, compiledQuadBuffers, perFormatDrawIndex, unoptimized);
                 drawIndex++;
             }
 
-            // Insert any line draws that belong at this position
-            while (hasLines && lineDrawIndex < accumulatedLineDraws.size() && accumulatedLineDraws.get(lineDrawIndex).commandIndex == i) {
-                final AccumulatedLineDraw lineDraw = accumulatedLineDraws.get(lineDrawIndex);
-
-                // Compile lines - matrix commands in the list will apply transforms via GL stack
-                final VertexBuffer vao = compileLines(lineDraw.lines);
-                unoptimized.add(new DrawVBOCmd(vao, false));  // Lines don't use brightness
-
-                lineDrawIndex++;
+            // Insert any line draws that belong at this position (using shared line VBO)
+            while (hasLines && lineRangeIndex < lineRanges.length && lineRanges[lineRangeIndex].commandIndex() == i) {
+                final DrawRange range = lineRanges[lineRangeIndex++];
+                unoptimized.add(new DrawRangeCmd(compiledLineBuffer.vbo(), range.startVertex(), range.vertexCount(), false));
             }
 
             // Add the original command (including matrix commands for nested list composition)
@@ -548,20 +567,179 @@ public class DisplayListManager {
         // Insert any remaining quad draws at the end
         while (hasQuads && drawIndex < accumulatedDraws.size()) {
             final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
-            final VertexBuffer vao = compileQuads(draw.quads, draw.flags);
-            unoptimized.add(new DrawVBOCmd(vao, draw.flags.hasBrightness));
+            emitUnoptimizedQuadDraw(draw, compiledQuadBuffers, perFormatDrawIndex, unoptimized);
             drawIndex++;
         }
 
         // Insert any remaining line draws at the end
-        while (hasLines && lineDrawIndex < accumulatedLineDraws.size()) {
-            final AccumulatedLineDraw lineDraw = accumulatedLineDraws.get(lineDrawIndex);
-            final VertexBuffer vao = compileLines(lineDraw.lines);
-            unoptimized.add(new DrawVBOCmd(vao, false));
-            lineDrawIndex++;
+        while (hasLines && lineRangeIndex < lineRanges.length) {
+            final DrawRange range = lineRanges[lineRangeIndex++];
+            unoptimized.add(new DrawRangeCmd(compiledLineBuffer.vbo(), range.startVertex(), range.vertexCount(), false));
         }
 
-        return unoptimized;
+        return unoptimized.toArray(new DisplayListCommand[0]);
+    }
+
+    /**
+     * Emit a DrawRangeCmd for a quad draw in the unoptimized path.
+     * Uses perDrawRanges from the pre-compiled buffer for this format.
+     */
+    private static void emitUnoptimizedQuadDraw(
+            AccumulatedDraw draw,
+            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledBuffers,
+            Map<CapturingTessellator.Flags, int[]> perFormatDrawIndex,
+            List<DisplayListCommand> output) {
+
+        final CompiledFormatBuffer buffer = compiledBuffers.get(draw.flags);
+        final int[] indexHolder = perFormatDrawIndex.get(draw.flags);
+        final DrawRange range = buffer.perDrawRanges()[indexHolder[0]++];
+
+        output.add(new DrawRangeCmd(
+            buffer.vbo(),
+            range.startVertex(),
+            range.vertexCount(),
+            buffer.flags().hasBrightness
+        ));
+    }
+
+    /**
+     * Compile format-based VBOs from accumulated draws.
+     * Groups draws by vertex format and compiles each format's geometry into a single VBO.
+     * Both optimized and unoptimized paths share these VBOs.
+     *
+     * @param accumulatedDraws The accumulated draws to compile
+     * @return Map from format flags to compiled buffers (VBO + ranges)
+     */
+    private static Map<CapturingTessellator.Flags, CompiledFormatBuffer> compileFormatBasedVBOs(
+            List<AccumulatedDraw> accumulatedDraws) {
+        if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // Group draws by vertex format
+        final Map<CapturingTessellator.Flags, FormatBuffer> formatBuffers = new HashMap<>();
+        for (AccumulatedDraw draw : accumulatedDraws) {
+            formatBuffers.computeIfAbsent(draw.flags, FormatBuffer::new).addDraw(draw);
+        }
+
+        // Compile each format's geometry into a single VBO
+        final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiled = new HashMap<>();
+        for (var entry : formatBuffers.entrySet()) {
+            compiled.put(entry.getKey(), entry.getValue().finish());
+        }
+        return compiled;
+    }
+
+    /**
+     * Compile line draws into a shared VBO.
+     *
+     * @param lineDraws The accumulated line draws
+     * @return Compiled line buffer, or null if no lines
+     */
+    private static CompiledLineBuffer compileLineBuffer(List<AccumulatedLineDraw> lineDraws) {
+        if (lineDraws == null || lineDraws.isEmpty()) {
+            return null;
+        }
+
+        final LineBuffer buffer = new LineBuffer();
+        for (AccumulatedLineDraw draw : lineDraws) {
+            buffer.addDraw(draw);
+        }
+        return buffer.finish();
+    }
+
+    /**
+     * Extract owned VBOs from compiled buffers (quads + lines).
+     * These VBOs are shared by both optimized and unoptimized paths.
+     *
+     * @param compiledQuadBuffers The compiled quad format buffers
+     * @param compiledLineBuffer The compiled line buffer (may be null)
+     * @return Array of VBOs that need to be deleted when the display list is deleted
+     */
+    private static VertexBuffer[] extractOwnedVbos(
+            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
+            CompiledLineBuffer compiledLineBuffer) {
+        final List<VertexBuffer> vbos = new ArrayList<>();
+
+        // Add quad VBOs
+        for (CompiledFormatBuffer buffer : compiledQuadBuffers.values()) {
+            vbos.add(buffer.vbo());
+        }
+
+        // Add line VBO if present
+        if (compiledLineBuffer != null) {
+            vbos.add(compiledLineBuffer.vbo());
+        }
+
+        return vbos.toArray(new VertexBuffer[0]);
+    }
+
+    /**
+     * Build optimized command list using pre-compiled VBOs.
+     * Uses mergedRanges (consecutive same-transform draws combined) and collapses MODELVIEW transforms.
+     *
+     * @param currentCommands Original matrix/state commands
+     * @param compiledQuadBuffers Pre-compiled format-based quad VBOs
+     * @param compiledLineBuffer Pre-compiled line VBO (may be null)
+     * @param glListId Display list ID for logging
+     * @return Optimized command array
+     */
+    private static DisplayListCommand[] buildOptimizedCommands(
+            List<DisplayListCommand> currentCommands,
+            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
+            CompiledLineBuffer compiledLineBuffer,
+            int glListId) {
+
+        final List<DisplayListCommand> optimized = new ArrayList<>();
+        final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
+
+        // Collect all merged draw ranges (quads + lines) sorted by command index
+        final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
+
+        // Add quad ranges
+        for (CompiledFormatBuffer buffer : compiledQuadBuffers.values()) {
+            for (DrawRange range : buffer.mergedRanges()) {
+                allRanges.add(new DrawRangeWithBuffer(range, buffer.vbo(), buffer.flags().hasBrightness));
+            }
+        }
+
+        // Add line ranges
+        if (compiledLineBuffer != null) {
+            for (DrawRange range : compiledLineBuffer.mergedRanges()) {
+                allRanges.add(new DrawRangeWithBuffer(range, compiledLineBuffer.vbo(), false));
+            }
+        }
+
+        allRanges.sort(Comparator.comparingInt(r -> r.range().commandIndex()));
+
+        // Process command stream with interleaved draws
+        final OptimizationContextImpl ctx = new OptimizationContextImpl(transformOpt, optimized);
+
+        int rangeIndex = 0;
+        for (int i = 0; i < currentCommands.size(); i++) {
+            // Emit draw ranges (quads and lines) at this command position
+            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == i) {
+                emitDrawRange(allRanges.get(rangeIndex++), transformOpt, optimized);
+            }
+
+            // Process the original command
+            final DisplayListCommand cmd = currentCommands.get(i);
+            if (cmd.handleOptimization(ctx)) {
+                optimized.add(cmd);
+            }
+        }
+
+        // Emit remaining draw ranges at end of command stream
+        while (rangeIndex < allRanges.size()) {
+            emitDrawRange(allRanges.get(rangeIndex++), transformOpt, optimized);
+        }
+
+        // Emit residual transform to match expected GL state
+        if (!transformOpt.isIdentity()) {
+            transformOpt.emitPendingTransform(optimized);
+        }
+
+        return optimized.toArray(new DisplayListCommand[0]);
     }
 
     /**
@@ -578,105 +756,53 @@ public class DisplayListManager {
      * </ul>
      */
     // Package-private for testing
-    static List<DisplayListCommand> buildOptimizedDisplayList(
+    static OptimizedListResult buildOptimizedDisplayList(
             List<DisplayListCommand> currentCommands,
             List<AccumulatedDraw> accumulatedDraws,
             List<AccumulatedLineDraw> accumulatedLineDraws,
             int glListId) {
-        final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
-        final boolean hasLines = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
-        final List<DisplayListCommand> optimized = new ArrayList<>();
-        final DrawBatcher batcher = new DrawBatcher(glListId);
-        final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
-        final OptimizationContextImpl ctx = new OptimizationContextImpl(transformOpt, batcher, optimized);
+        // Compile quad VBOs
+        final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers = compileFormatBasedVBOs(accumulatedDraws);
 
-        int drawIndex = 0;
-        int lineDrawIndex = 0;
-        for (int i = 0; i < currentCommands.size(); i++) {
-            // Process quad draws at this command position
-            while (hasDraws && drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
-                processDraw(accumulatedDraws.get(drawIndex++), ctx);
-            }
-            // Process line draws at this command position (lines don't batch, just compile directly)
-            while (hasLines && lineDrawIndex < accumulatedLineDraws.size() && accumulatedLineDraws.get(lineDrawIndex).commandIndex == i) {
-                processLineDraw(accumulatedLineDraws.get(lineDrawIndex++), ctx);
-            }
-            final DisplayListCommand cmd = currentCommands.get(i);
-            if (cmd.handleOptimization(ctx)) {
-                optimized.add(cmd);
-            }
-        }
+        // Compile line VBO
+        final CompiledLineBuffer compiledLineBuffer = compileLineBuffer(accumulatedLineDraws);
 
-        // Process remaining quad draws at end of command stream
-        while (hasDraws && drawIndex < accumulatedDraws.size()) {
-            processDraw(accumulatedDraws.get(drawIndex++), ctx);
-        }
+        // Extract owned VBOs
+        final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer);
 
-        // Process remaining line draws at end of command stream
-        while (hasLines && lineDrawIndex < accumulatedLineDraws.size()) {
-            processLineDraw(accumulatedLineDraws.get(lineDrawIndex++), ctx);
-        }
+        // Build optimized commands using the new unified path
+        final DisplayListCommand[] optimized = buildOptimizedCommands(currentCommands, compiledQuadBuffers, compiledLineBuffer, glListId);
 
-        // Flush final batch
-        if (hasDraws || hasLines) {
-            batcher.flush(optimized);
-        }
-
-        // Emit residual transform to match expected GL state
-        if (!transformOpt.isIdentity()) {
-            transformOpt.emitPendingTransform(optimized);
-        }
-
-        return optimized;
+        return new OptimizedListResult(optimized, ownedVbos);
     }
 
     /**
-     * Process a single draw during optimization.
-     * Handles transform synchronization and batching.
+     * Emit a draw range command, synchronizing transforms as needed.
+     * Uses delta-based transform emission via TransformOptimizer.
      */
-    private static void processDraw(AccumulatedDraw draw, OptimizationContextImpl ctx) {
-        // Emit transform if this draw expects different state than what we've emitted
-        if (ctx.transformOpt.needsTransformForDraw(draw.transform)) {
-            ctx.batcher.flush(ctx.output);
-            ctx.transformOpt.emitTransformTo(ctx.output, draw.transform);
+    private static void emitDrawRange(DrawRangeWithBuffer drwb, TransformOptimizer transformOpt,
+                                       List<DisplayListCommand> output) {
+        final DrawRange range = drwb.range();
+
+        // Delta-based: only emit MultMatrix if transform differs from last emitted
+        if (transformOpt.needsTransformForDraw(range.transform())) {
+            transformOpt.emitTransformTo(output, range.transform());
         }
 
-        // Batch or flush-and-start-new-batch
-        if (ctx.batcher.canBatch(draw)) {
-            ctx.batcher.addToBatch(draw);
-        } else {
-            ctx.batcher.flush(ctx.output);
-            ctx.batcher.addToBatch(draw);
-        }
+        output.add(new DrawRangeCmd(
+            drwb.vbo(),
+            range.startVertex(),
+            range.vertexCount(),
+            drwb.hasBrightness()
+        ));
     }
 
     /**
-     * Process a single line draw during optimization.
-     * Lines don't batch because they're rare in practice (mostly debug overlays like Schematica)
-     * and batching would require tracking line-specific state (width, stipple) per batch.
-     */
-    private static void processLineDraw(AccumulatedLineDraw lineDraw, OptimizationContextImpl ctx) {
-        // Emit transform if needed (lines care about transforms too)
-        if (ctx.transformOpt.needsTransformForDraw(lineDraw.transform)) {
-            ctx.batcher.flush(ctx.output);
-            ctx.transformOpt.emitTransformTo(ctx.output, lineDraw.transform);
-        }
-
-        // Flush any pending quad batches before line draw
-        ctx.batcher.flush(ctx.output);
-
-        // Compile lines directly (no batching for lines)
-        final VertexBuffer vao = compileLines(lineDraw.lines);
-        ctx.output.add(new DrawVBOCmd(vao, false));
-    }
-
-    /**
-     * Implementation of OptimizationContext that wraps transform optimizer and batcher.
+     * Implementation of OptimizationContext that wraps transform optimizer.
      */
     @Desugar
     private record OptimizationContextImpl(
         TransformOptimizer transformOpt,
-        DrawBatcher batcher,
         List<DisplayListCommand> output
     ) implements OptimizationContext {
         @Override public Matrix4f getAccumulatedTransform() { return transformOpt.getAccumulated(); }
@@ -685,181 +811,9 @@ public class DisplayListManager {
         @Override public void popTransform() { transformOpt.popTransform(); }
         @Override public void emitPendingTransform() { transformOpt.emitPendingTransform(output); }
         @Override public void emitTransformTo(Matrix4f target) { transformOpt.emitTransformTo(output, target); }
-        @Override public void flushBatcher() { batcher.flush(output); }
-        @Override public Matrix4f getBatchTransform() { return batcher.getBatchTransform(); }
         @Override public void emit(DisplayListCommand cmd) { output.add(cmd); }
     }
 
-    /**
-     * Helper class for tracking and collapsing MODELVIEW transforms during optimization.
-     * Implements the transform accumulation and emission strategy:
-     * - accumulated: total relative transform (what GL matrix should be)
-     * - lastEmitted: what we've emitted (what GL matrix is)
-     * - stack: saved accumulated values at Push points
-     */
-    private static class TransformOptimizer {
-        private final Matrix4f accumulated = new Matrix4f();  // Current accumulated transform
-        private final Matrix4f lastEmitted = new Matrix4f();  // Last emitted transform
-        private final Deque<Matrix4f> stack = new ArrayDeque<>();  // For Push/Pop
-        private final int listId;  // For logging
-
-        TransformOptimizer(int listId) {
-            this.listId = listId;
-            accumulated.identity();
-            lastEmitted.identity();
-        }
-
-        Matrix4f getAccumulated() {
-            return accumulated;
-        }
-
-        void loadIdentity() {
-            accumulated.identity();
-        }
-
-        void pushTransform() {
-            stack.push(new Matrix4f(accumulated));
-        }
-
-        void popTransform() {
-            if (!stack.isEmpty()) {
-                final Matrix4f popped = stack.pop();
-                accumulated.set(popped);
-                // After Pop, GL state is restored to the pushed value so lastEmitted should also reflect this
-                lastEmitted.set(accumulated);
-            } else {
-                LOGGER.warn("[TransformOptimizer] list={} Pop with empty stack - resetting to identity", listId);
-                accumulated.identity();
-                lastEmitted.identity();
-            }
-        }
-
-        boolean isIdentity() {
-            return DisplayListManager.isIdentity(accumulated);
-        }
-
-        /**
-         * Check if there's a pending transform that hasn't been emitted yet.
-         */
-        boolean hasPendingTransform() {
-            return !accumulated.equals(lastEmitted);
-        }
-
-        /**
-         * Emit a MultMatrix command if accumulated differs from lastEmitted.
-         * Updates lastEmitted to match accumulated after emission.
-         */
-        void emitPendingTransform(List<DisplayListCommand> output) {
-            if (!accumulated.equals(lastEmitted)) {
-                emitTransformTo(output, accumulated);
-            }
-        }
-
-        /**
-         * Emit a MultMatrix command to make GL state match a target transform.
-         * Used when a draw expects a specific transform that may differ from accumulated.
-         * Updates lastEmitted to match target after emission.
-         *
-         * @param output The command list to emit to
-         * @param target The target transform to reach
-         */
-        void emitTransformTo(List<DisplayListCommand> output, Matrix4f target) {
-            if (target.equals(lastEmitted)) {
-                // Already at target - nothing to emit
-                return;
-            }
-
-            // Calculate delta: what we need to multiply to go from lastEmitted to target
-            // delta = inverse(lastEmitted) * target
-            // But for simplicity, if lastEmitted is identity, just emit target
-            if (DisplayListManager.isIdentity(lastEmitted)) {
-                // Simple case: just emit target
-                output.add(MultMatrixCmd.create(target, GL11.GL_MODELVIEW));
-            } else {
-                // Need to emit delta: inv(lastEmitted) * target
-                final Matrix4f delta = new Matrix4f(lastEmitted).invert().mul(target);
-                output.add(MultMatrixCmd.create(delta, GL11.GL_MODELVIEW));
-            }
-            lastEmitted.set(target);
-        }
-
-        /**
-         * Check if a draw's expected transform differs from what we've emitted.
-         */
-        boolean needsTransformForDraw(Matrix4f drawTransform) {
-            return !drawTransform.equals(lastEmitted);
-        }
-
-    }
-
-    /**
-     * Helper class for batching draws during optimized display list building.
-     * Batches consecutive draws with the same vertex flags AND same transform into a single VBO.
-     * Transforms are NOT baked - they're handled via collapsed MultMatrix commands.
-     *
-     * IMPORTANT: Draws can only be batched if they expect the SAME transform state.
-     * The draw.transform field records what GL matrix state was active when the draw was captured.
-     * Batching draws with different transforms would render them incorrectly.
-     */
-    private static class DrawBatcher {
-        List<ModelQuadViewMutable> currentBatch = null;
-        CapturingTessellator.Flags batchFlags = null;
-        Matrix4f batchTransform = null;  // Transform that draws in this batch expect
-        int batchDrawCount = 0;
-        final int listId;
-
-        DrawBatcher(int listId) {
-            this.listId = listId;
-        }
-
-        void flush(List<DisplayListCommand> outputList) {
-            if (currentBatch != null && !currentBatch.isEmpty()) {
-                // Compile without transform - vertices stay canonical
-                final VertexBuffer vbo = compileQuads(currentBatch, batchFlags);
-                outputList.add(new DrawVBOCmd(vbo, batchFlags.hasBrightness));
-
-                currentBatch = null;
-                batchFlags = null;
-                batchTransform = null;
-                batchDrawCount = 0;
-            }
-        }
-
-        /**
-         * Check if a draw can be batched with the current batch.
-         * Requires BOTH: same vertex flags AND same expected transform.
-         * Batching draws with different transforms would render incorrectly!
-         */
-        boolean canBatch(AccumulatedDraw draw) {
-            if (currentBatch == null) {
-                return false;
-            }
-            if (!batchFlags.equals(draw.flags)) {
-                return false;
-            }
-            // Draws captured at different transform states cannot be batched together.
-            return batchTransform.equals(draw.transform);
-        }
-
-        /**
-         * Get the transform that the current batch expects, or null if no batch.
-         */
-        Matrix4f getBatchTransform() {
-            return batchTransform;
-        }
-
-        void addToBatch(AccumulatedDraw draw) {
-            if (currentBatch == null) {
-                currentBatch = new ArrayList<>(draw.quads);
-                batchFlags = draw.flags;
-                batchTransform = new Matrix4f(draw.transform);  // Copy - draws may share matrix instances
-                batchDrawCount = 1;
-            } else {
-                currentBatch.addAll(draw.quads);
-                batchDrawCount++;
-            }
-        }
-    }
 
     /**
      * Selects the optimal VertexFormat from GTNHLib defaults based on actual attribute usage.
@@ -903,7 +857,7 @@ public class DisplayListManager {
      * @param flags The vertex attribute flags
      * @return The uploaded VertexBuffer
      */
-    private static VertexBuffer compileQuads(List<ModelQuadViewMutable> quads, CapturingTessellator.Flags flags) {
+   static VertexBuffer compileQuads(List<ModelQuadViewMutable> quads, CapturingTessellator.Flags flags) {
         // Select optimal predefined format from GTNHLib
         final VertexFormat format = selectOptimalFormat(flags);
 
@@ -917,31 +871,4 @@ public class DisplayListManager {
         return vao;
     }
 
-    /**
-     * Compile captured line vertices into a VertexBuffer (VAO or VBO).
-     * Lines use POSITION_COLOR format (x, y, z, color).
-     *
-     * @param lines The line vertices to compile (in pairs: vertex 0-1 = line 1, 2-3 = line 2, etc.)
-     * @return The uploaded VertexBuffer
-     */
-    private static VertexBuffer compileLines(List<ImmediateModeRecorder.LineVertex> lines) {
-        final VertexFormat format = DefaultVertexFormat.POSITION_COLOR;
-        final VertexBuffer vao = VAOManager.createVAO(format, GL11.GL_LINES);
-
-        // POSITION_COLOR format: 3 floats (12 bytes) + 4 bytes color = 16 bytes per vertex
-        final int vertexSize = format.getVertexSize();
-        final ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(vertexSize * lines.size());
-
-        for (ImmediateModeRecorder.LineVertex v : lines) {
-            buffer.putFloat(v.x);
-            buffer.putFloat(v.y);
-            buffer.putFloat(v.z);
-            buffer.putInt(v.color);
-        }
-        buffer.flip();
-
-        vao.upload(buffer);
-
-        return vao;
-    }
 }

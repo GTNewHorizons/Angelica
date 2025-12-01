@@ -16,11 +16,6 @@ public record PointSizeCmd(float size) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("PointSize(%.2f)", size);
     }

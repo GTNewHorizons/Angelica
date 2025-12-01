@@ -16,11 +16,6 @@ public record StencilMaskCmd(int mask) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Stencil mask affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilMask(0x%08X)", mask);
     }

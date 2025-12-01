@@ -25,12 +25,6 @@ public interface OptimizationContext {
     /** Emit a MultMatrix command to reach the target transform. */
     void emitTransformTo(Matrix4f target);
 
-    /** Flush any pending batched draws. */
-    void flushBatcher();
-
-    /** Get the transform that current batch expects, or null if no batch. */
-    Matrix4f getBatchTransform();
-
     /** Add a command to the output list. */
     void emit(DisplayListCommand cmd);
 }

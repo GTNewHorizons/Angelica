@@ -16,11 +16,6 @@ public record StencilFuncCmd(int func, int ref, int mask) implements DisplayList
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilFunc(0x%04X, %d, 0x%08X)", func, ref, mask);
     }

@@ -17,11 +17,6 @@ public record AlphaFuncCmd(int func, float ref) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Alpha test affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("AlphaFunc(%s, %.2f)", GLDebug.getComparisonFuncName(func), ref);
     }

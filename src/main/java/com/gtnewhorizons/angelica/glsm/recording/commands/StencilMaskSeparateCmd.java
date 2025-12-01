@@ -16,11 +16,6 @@ public record StencilMaskSeparateCmd(int face, int mask) implements DisplayListC
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("StencilMaskSeparate(0x%04X, 0x%08X)", face, mask);
     }

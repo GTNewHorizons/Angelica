@@ -16,11 +16,6 @@ public record ClearStencilCmd(int s) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("ClearStencil(%d)", s);
     }

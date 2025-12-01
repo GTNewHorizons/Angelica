@@ -16,11 +16,6 @@ public record ViewportCmd(int x, int y, int width, int height) implements Displa
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Viewport affects where draws appear
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("Viewport(%d, %d, %d, %d)", x, y, width, height);
     }

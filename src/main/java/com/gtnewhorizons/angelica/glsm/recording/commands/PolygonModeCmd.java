@@ -16,11 +16,6 @@ public record PolygonModeCmd(int face, int mode) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("PolygonMode(0x%04X, 0x%04X)", face, mode);
     }

@@ -16,11 +16,6 @@ public record LineWidthCmd(float width) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("LineWidth(%.2f)", width);
     }

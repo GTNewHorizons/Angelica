@@ -16,11 +16,6 @@ public record DepthMaskCmd(boolean flag) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Depth mask affects rendering
-    }
-
-    @Override
     public @NotNull String toString() {
         return String.format("DepthMask(%s)", flag);
     }

@@ -49,12 +49,6 @@ public record CallListCmd(int listId) implements DisplayListCommand {
 
     @Override
     public boolean handleOptimization(OptimizationContext ctx) {
-        // Emit transform for pending batch draws, then flush
-        final org.joml.Matrix4f batchTransform = ctx.getBatchTransform();
-        if (batchTransform != null) {
-            ctx.emitTransformTo(batchTransform);
-        }
-        ctx.flushBatcher();
         // Nested list needs current GL matrix state
         ctx.emitPendingTransform();
         return true;  // Emit this command

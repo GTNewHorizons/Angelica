@@ -25,11 +25,6 @@ public record PushAttribCmd(int mask) implements DisplayListCommand {
 
     @Override
     public boolean handleOptimization(OptimizationContext ctx) {
-        final org.joml.Matrix4f batchTransform = ctx.getBatchTransform();
-        if (batchTransform != null) {
-            ctx.emitTransformTo(batchTransform);
-        }
-        ctx.flushBatcher();
         if (needsTransformSync()) {
             ctx.emitPendingTransform();
         }

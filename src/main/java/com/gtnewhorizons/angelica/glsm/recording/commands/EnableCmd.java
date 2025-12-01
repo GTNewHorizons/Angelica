@@ -17,11 +17,6 @@ public record EnableCmd(int cap) implements DisplayListCommand {
     }
 
     @Override
-    public boolean breaksBatch() {
-        return true;  // Enable/disable affects rendering state
-    }
-
-    @Override
     public @NotNull String toString() {
         return "Enable(" + GLDebug.getCapabilityName(cap) + ")";
     }
