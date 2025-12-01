@@ -221,4 +221,45 @@ class GLSM_DisplayList_Nesting_Test {
         // Cleanup grandchild
         GLStateManager.glDeleteLists(grandchildList, 1);
     }
+
+    @Test
+    void testMismatchedPushPopInSeparateLists() {
+        // This test verifies that push and pop matrix operations can be split across separate display lists.
+        // This is a uncommon but technically valid per the spec.
+
+        // Get initial stack depth
+        int initialDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+
+        // Create a display list that only pushes the matrix
+        int matrixPushList = GL11.glGenLists(1);
+        GLStateManager.glNewList(matrixPushList, GL11.GL_COMPILE);
+        GLStateManager.glPushMatrix();
+        GLStateManager.glEndList();
+
+        // Create a display list that only pops the matrix
+        int matrixPopList = GL11.glGenLists(1);
+        GLStateManager.glNewList(matrixPopList, GL11.GL_COMPILE);
+        GLStateManager.glPopMatrix();
+        GLStateManager.glEndList();
+
+        // Verify initial stack depth hasn't changed after compilation
+        assertEquals(initialDepth, GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH), "Stack depth should be unchanged after compiling display lists");
+
+        // Call the push list - should increase stack depth
+        GLStateManager.glCallList(matrixPushList);
+        int depthAfterPush = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        assertEquals(initialDepth + 1, depthAfterPush, "Stack depth should increase by 1 after calling push list");
+
+        // Optionally do some operations here that would benefit from the pushed matrix
+        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
+
+        // Call the pop list - should restore stack depth
+        GLStateManager.glCallList(matrixPopList);
+        int depthAfterPop = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        assertEquals(initialDepth, depthAfterPop, "Stack depth should return to initial after calling pop list");
+
+        // Cleanup
+        GLStateManager.glDeleteLists(matrixPushList, 1);
+        GLStateManager.glDeleteLists(matrixPopList, 1);
+    }
 }
