@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.BindTextureCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BlendFuncCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ClearCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ClearColorCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.ClearStencilCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ColorCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ColorMaskCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ColorMaterialCmd;
@@ -27,6 +28,8 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.LightModelfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightModeliCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LightiCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.LineStippleCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.LineWidthCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.LoadIdentityCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialfCmd;
@@ -35,17 +38,27 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.NormalCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.OrthoCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PopAttribCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.PointSizeCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.PolygonModeCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.PolygonOffsetCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PopMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PushAttribCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.PushMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.RotateCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ScaleCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ShadeModelCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilFuncCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilFuncSeparateCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilMaskCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilMaskSeparateCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilOpCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.StencilOpSeparateCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexParameterfCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexParameteriCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexSubImage2DCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TranslateCmd;
+import com.gtnewhorizons.angelica.glsm.recording.commands.UseProgramCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.ViewportCmd;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
@@ -57,10 +70,15 @@ import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightModelStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.LineStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
+import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
+import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -201,6 +219,9 @@ public class GLStateManager {
     protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
     protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
+    // Client array state (not push/pop tracked, but needed for display list compilation)
+    @Getter private static final ClientArrayState clientArrayState = new ClientArrayState();
+
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
     @Getter protected static final BooleanStateStack blendMode = new BooleanStateStack(GL11.GL_BLEND);
@@ -237,10 +258,22 @@ public class GLStateManager {
     @Getter protected static final BooleanStateStack colorLogicOpState = new BooleanStateStack(GL11.GL_COLOR_LOGIC_OP);
     @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP);
 
-    // Polygon offset states
+    // Polygon offset states (enable bits)
     @Getter protected static final BooleanStateStack polygonOffsetPointState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_POINT);
     @Getter protected static final BooleanStateStack polygonOffsetLineState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_LINE);
     @Getter protected static final BooleanStateStack polygonOffsetFillState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_FILL);
+
+    // Line state (GL_LINE_BIT)
+    @Getter protected static final LineStateStack lineState = new LineStateStack();
+
+    // Point state (GL_POINT_BIT)
+    @Getter protected static final PointStateStack pointState = new PointStateStack();
+
+    // Polygon state (GL_POLYGON_BIT) - mode, offset values, cull face mode, front face
+    @Getter protected static final PolygonStateStack polygonState = new PolygonStateStack();
+
+    // Stencil state (GL_STENCIL_BUFFER_BIT)
+    @Getter protected static final StencilStateStack stencilState = new StencilStateStack();
 
     // Evaluator states
     @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL);
@@ -1537,6 +1570,9 @@ public class GLStateManager {
     }
 
     public static void enableTexture() {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordCommand(new EnableCmd(GL11.GL_TEXTURE_2D));
+        }
         final int textureUnit = getActiveTextureUnit();
         if (Iris.enabled) {
             // Iris
@@ -1557,6 +1593,9 @@ public class GLStateManager {
     }
 
     public static void disableTexture() {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordCommand(new DisableCmd(GL11.GL_TEXTURE_2D));
+        }
         final int textureUnit = getActiveTextureUnit();
         if (Iris.enabled) {
             // Iris
@@ -1771,10 +1810,70 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawArrays in display lists not yet implemented - if you see this, please report!");
+            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
+            if (recorder != null) {
+                final ImmediateModeRecorder.Result result = recorder.processDrawArrays(mode, first, count);
+                if (result != null) {
+                    DisplayListManager.addImmediateModeDraw(result);
+                }
+            }
+            return;
         }
         trySyncProgram();
         GL11.glDrawArrays(mode, first, count);
+    }
+
+    // Client array state interception methods (for glDrawArrays conversion)
+    // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
+
+    public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
+        clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
+        GL11.glVertexPointer(size, stride, pointer);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
+        clientArrayState.setVertexPointer(size, type, stride, pointer);
+        GL11.glVertexPointer(size, type, stride, pointer);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
+        // VBO offset - can't track buffer reference, clear it
+        clientArrayState.setVertexPointer(size, type, stride, null);
+        GL11.glVertexPointer(size, type, stride, pointer_buffer_offset);
+    }
+
+    public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
+        clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
+        GL11.glColorPointer(size, stride, pointer);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
+        clientArrayState.setColorPointer(size, type, stride, pointer);
+        GL11.glColorPointer(size, type, stride, pointer);
+    }
+
+    public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
+        final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
+        clientArrayState.setColorPointer(size, type, stride, pointer);
+        GL11.glColorPointer(size, unsigned, stride, pointer);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
+        // VBO offset - can't track buffer reference, clear it
+        clientArrayState.setColorPointer(size, type, stride, null);
+        GL11.glColorPointer(size, type, stride, pointer_buffer_offset);
+    }
+
+    public static void glEnableClientState(int cap) {
+        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
+        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
+        GL11.glEnableClientState(cap);
+    }
+
+    public static void glDisableClientState(int cap) {
+        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
+        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
+        GL11.glDisableClientState(cap);
     }
 
     public static void glLogicOp(int opcode) {
@@ -2980,7 +3079,8 @@ public class GLStateManager {
 
     public static void glUseProgram(int program) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glUseProgram in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordCommand(new UseProgramCmd(program));
+            return;
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || program != activeProgram) {
@@ -3018,10 +3118,19 @@ public class GLStateManager {
     }
 
     public static void glLineWidth(float width) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glLineWidth in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new LineWidthCmd(width));
         }
-        GL11.glLineWidth(width);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || lineState.getWidth() != width) {
+            if (caching) {
+                lineState.setWidth(width);
+            }
+            if (!recording) {
+                GL11.glLineWidth(width);
+            }
+        }
     }
 
     // Texture commands
@@ -3105,14 +3214,26 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glCullFace in display lists not yet implemented - if you see this, please report!");
         }
-        GL11.glCullFace(mode);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || polygonState.getCullFaceMode() != mode) {
+            if (caching) {
+                polygonState.setCullFaceMode(mode);
+            }
+            GL11.glCullFace(mode);
+        }
     }
 
     public static void glFrontFace(int mode) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glFrontFace in display lists not yet implemented - if you see this, please report!");
         }
-        GL11.glFrontFace(mode);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || polygonState.getFrontFace() != mode) {
+            if (caching) {
+                polygonState.setFrontFace(mode);
+            }
+            GL11.glFrontFace(mode);
+        }
     }
 
     public static void glHint(int target, int mode) {
@@ -3123,31 +3244,78 @@ public class GLStateManager {
     }
 
     public static void glLineStipple(int factor, short pattern) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glLineStipple in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new LineStippleCmd(factor, pattern));
         }
-        GL11.glLineStipple(factor, pattern);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || lineState.getStippleFactor() != factor || lineState.getStipplePattern() != pattern) {
+            if (caching) {
+                lineState.setStippleFactor(factor);
+                lineState.setStipplePattern(pattern);
+            }
+            if (!recording) {
+                GL11.glLineStipple(factor, pattern);
+            }
+        }
     }
 
     public static void glPointSize(float size) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPointSize in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new PointSizeCmd(size));
         }
-        GL11.glPointSize(size);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || pointState.getSize() != size) {
+            if (caching) {
+                pointState.setSize(size);
+            }
+            if (!recording) {
+                GL11.glPointSize(size);
+            }
+        }
     }
 
     public static void glPolygonMode(int face, int mode) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPolygonMode in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new PolygonModeCmd(face, mode));
         }
-        GL11.glPolygonMode(face, mode);
+        final boolean caching = isCachingEnabled();
+        final boolean needsUpdate;
+        if (face == GL11.GL_FRONT) {
+            needsUpdate = BYPASS_CACHE || !caching || polygonState.getFrontMode() != mode;
+            if (caching && needsUpdate) polygonState.setFrontMode(mode);
+        } else if (face == GL11.GL_BACK) {
+            needsUpdate = BYPASS_CACHE || !caching || polygonState.getBackMode() != mode;
+            if (caching && needsUpdate) polygonState.setBackMode(mode);
+        } else { // GL_FRONT_AND_BACK
+            needsUpdate = BYPASS_CACHE || !caching || polygonState.getFrontMode() != mode || polygonState.getBackMode() != mode;
+            if (caching && needsUpdate) {
+                polygonState.setFrontMode(mode);
+                polygonState.setBackMode(mode);
+            }
+        }
+        if (needsUpdate && !recording) {
+            GL11.glPolygonMode(face, mode);
+        }
     }
 
     public static void glPolygonOffset(float factor, float units) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPolygonOffset in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new PolygonOffsetCmd(factor, units));
         }
-        GL11.glPolygonOffset(factor, units);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || polygonState.getOffsetFactor() != factor || polygonState.getOffsetUnits() != units) {
+            if (caching) {
+                polygonState.setOffsetFactor(factor);
+                polygonState.setOffsetUnits(units);
+            }
+            if (!recording) {
+                GL11.glPolygonOffset(factor, units);
+            }
+        }
     }
 
     public static void glReadBuffer(int mode) {
@@ -3165,24 +3333,51 @@ public class GLStateManager {
     }
 
     public static void glStencilFunc(int func, int ref, int mask) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilFunc in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilFuncCmd(func, ref, mask));
         }
-        GL11.glStencilFunc(func, ref, mask);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || stencilState.getFuncFront() != func || stencilState.getRefFront() != ref || stencilState.getValueMaskFront() != mask) {
+            if (caching) {
+                stencilState.setFunc(func, ref, mask);
+            }
+            if (!recording) {
+                GL11.glStencilFunc(func, ref, mask);
+            }
+        }
     }
 
     public static void glStencilMask(int mask) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilMask in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilMaskCmd(mask));
         }
-        GL11.glStencilMask(mask);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || stencilState.getWriteMaskFront() != mask) {
+            if (caching) {
+                stencilState.setWriteMask(mask);
+            }
+            if (!recording) {
+                GL11.glStencilMask(mask);
+            }
+        }
     }
 
     public static void glStencilOp(int fail, int zfail, int zpass) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilOp in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilOpCmd(fail, zfail, zpass));
         }
-        GL11.glStencilOp(fail, zfail, zpass);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || stencilState.getFailOpFront() != fail || stencilState.getZFailOpFront() != zfail || stencilState.getZPassOpFront() != zpass) {
+            if (caching) {
+                stencilState.setOp(fail, zfail, zpass);
+            }
+            if (!recording) {
+                GL11.glStencilOp(fail, zfail, zpass);
+            }
+        }
     }
 
     public static void glPixelStorei(int pname, int param) {
@@ -3231,10 +3426,19 @@ public class GLStateManager {
 
     // Clear Commands
     public static void glClearStencil(int s) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glClearStencil in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new ClearStencilCmd(s));
         }
-        GL11.glClearStencil(s);
+        final boolean caching = isCachingEnabled();
+        if (BYPASS_CACHE || !caching || stencilState.getClearValue() != s) {
+            if (caching) {
+                stencilState.setClearValue(s);
+            }
+            if (!recording) {
+                GL11.glClearStencil(s);
+            }
+        }
     }
 
     // Draw Buffer Commands (GL 2.0+)
@@ -3255,24 +3459,101 @@ public class GLStateManager {
 
     // Stencil Separate Functions (GL 2.0+)
     public static void glStencilFuncSeparate(int face, int func, int ref, int mask) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilFuncSeparate in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilFuncSeparateCmd(face, func, ref, mask));
         }
-        GL20.glStencilFuncSeparate(face, func, ref, mask);
+        final boolean caching = isCachingEnabled();
+        boolean needsUpdate = BYPASS_CACHE || !caching;
+        if (!needsUpdate) {
+            if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                needsUpdate = stencilState.getFuncFront() != func || stencilState.getRefFront() != ref || stencilState.getValueMaskFront() != mask;
+            }
+            if (!needsUpdate && (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK)) {
+                needsUpdate = stencilState.getFuncBack() != func || stencilState.getRefBack() != ref || stencilState.getValueMaskBack() != mask;
+            }
+        }
+        if (needsUpdate) {
+            if (caching) {
+                if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setFuncFront(func);
+                    stencilState.setRefFront(ref);
+                    stencilState.setValueMaskFront(mask);
+                }
+                if (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setFuncBack(func);
+                    stencilState.setRefBack(ref);
+                    stencilState.setValueMaskBack(mask);
+                }
+            }
+            if (!recording) {
+                GL20.glStencilFuncSeparate(face, func, ref, mask);
+            }
+        }
     }
 
     public static void glStencilMaskSeparate(int face, int mask) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilMaskSeparate in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilMaskSeparateCmd(face, mask));
         }
-        GL20.glStencilMaskSeparate(face, mask);
+        final boolean caching = isCachingEnabled();
+        boolean needsUpdate = BYPASS_CACHE || !caching;
+        if (!needsUpdate) {
+            if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                needsUpdate = stencilState.getWriteMaskFront() != mask;
+            }
+            if (!needsUpdate && (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK)) {
+                needsUpdate = stencilState.getWriteMaskBack() != mask;
+            }
+        }
+        if (needsUpdate) {
+            if (caching) {
+                if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setWriteMaskFront(mask);
+                }
+                if (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setWriteMaskBack(mask);
+                }
+            }
+            if (!recording) {
+                GL20.glStencilMaskSeparate(face, mask);
+            }
+        }
     }
 
     public static void glStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glStencilOpSeparate in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordCommand(new StencilOpSeparateCmd(face, sfail, dpfail, dppass));
         }
-        GL20.glStencilOpSeparate(face, sfail, dpfail, dppass);
+        final boolean caching = isCachingEnabled();
+        boolean needsUpdate = BYPASS_CACHE || !caching;
+        if (!needsUpdate) {
+            if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                needsUpdate = stencilState.getFailOpFront() != sfail || stencilState.getZFailOpFront() != dpfail || stencilState.getZPassOpFront() != dppass;
+            }
+            if (!needsUpdate && (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK)) {
+                needsUpdate = stencilState.getFailOpBack() != sfail || stencilState.getZFailOpBack() != dpfail || stencilState.getZPassOpBack() != dppass;
+            }
+        }
+        if (needsUpdate) {
+            if (caching) {
+                if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setFailOpFront(sfail);
+                    stencilState.setZFailOpFront(dpfail);
+                    stencilState.setZPassOpFront(dppass);
+                }
+                if (face == GL11.GL_BACK || face == GL11.GL_FRONT_AND_BACK) {
+                    stencilState.setFailOpBack(sfail);
+                    stencilState.setZFailOpBack(dpfail);
+                    stencilState.setZPassOpBack(dppass);
+                }
+            }
+            if (!recording) {
+                GL20.glStencilOpSeparate(face, sfail, dpfail, dppass);
+            }
+        }
     }
 
     public static boolean vendorIsAMD() {

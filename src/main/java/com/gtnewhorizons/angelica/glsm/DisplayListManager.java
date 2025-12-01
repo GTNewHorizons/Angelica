@@ -10,6 +10,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
+import com.gtnewhorizons.angelica.glsm.recording.AccumulatedLineDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.CallListCmd;
@@ -27,7 +28,6 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
-
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -77,6 +77,17 @@ import java.util.List;
 public class DisplayListManager {
     private static final Logger LOGGER = LogManager.getLogger("DisplayListManager");
 
+    // Track which display list is currently being rendered
+    @Getter private static int currentRenderingList = -1;
+
+    /**
+     * Check if we're currently rendering a display list.
+     * Used by format overrides to avoid interfering with display list VBOs.
+     */
+    public static boolean isRenderingDisplayList() {
+        return currentRenderingList != -1;
+    }
+
     private static boolean isIdentity(Matrix4f m) {
         return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0;
     }
@@ -90,7 +101,8 @@ public class DisplayListManager {
     private static boolean tessellatorCompiling = false;  // Track if we started compiling
     private static List<DisplayListCommand> currentCommands = null;  // null when not recording
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
-    private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates draws for batching
+    private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
+    private static List<AccumulatedLineDraw> accumulatedLineDraws = null;  // Accumulates line draws
     private static Matrix4fStack relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
     @Getter private static ImmediateModeRecorder immediateModeRecorder = null;  // Records glBegin/glEnd/glVertex during compilation
 
@@ -110,6 +122,7 @@ public class DisplayListManager {
         int listMode,
         List<DisplayListCommand> commands,
         List<AccumulatedDraw> draws,
+        List<AccumulatedLineDraw> lineDraws,
         Matrix4fStack transform,
         boolean wasTessellatorCompiling,
         ImmediateModeRecorder immediateRecorder
@@ -160,19 +173,28 @@ public class DisplayListManager {
      * an AccumulatedDraw that will be interleaved correctly with other commands
      * during display list playback.
      *
-     * @param result The immediate mode result containing quads and flags
+     * @param result The immediate mode result containing quads, lines, and flags
      */
     public static void addImmediateModeDraw(ImmediateModeRecorder.Result result) {
-        if (accumulatedDraws == null || result == null || result.quads().isEmpty()) {
+        if (accumulatedDraws == null || result == null) {
             return;
         }
 
         // Get relative transform (changes since glNewList, not absolute matrix state)
         final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+        final int commandPosition = currentCommands != null ? currentCommands.size() : 0;
 
-        // Create AccumulatedDraw at current command position
-        final AccumulatedDraw draw = new AccumulatedDraw(result.quads(), currentTransform, result.flags(), currentCommands != null ? currentCommands.size() : 0);
-        accumulatedDraws.add(draw);
+        // Add quad draw if we have quads
+        if (!result.quads().isEmpty()) {
+            final AccumulatedDraw quadDraw = new AccumulatedDraw(result.quads(), currentTransform, result.flags(), commandPosition);
+            accumulatedDraws.add(quadDraw);
+        }
+
+        // Add line draw if we have lines
+        if (!result.lines().isEmpty()) {
+            final AccumulatedLineDraw lineDraw = new AccumulatedLineDraw(result.lines(), currentTransform, result.flags(), commandPosition);
+            accumulatedLineDraws.add(lineDraw);
+        }
     }
 
     /**
@@ -306,8 +328,8 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentCommands, accumulatedDraws, relativeTransform, tessellatorCompiling,
-                immediateModeRecorder
+                glListId, glListMode, currentCommands, accumulatedDraws, accumulatedLineDraws,
+                relativeTransform, tessellatorCompiling, immediateModeRecorder
             );
             compilationStack.push(parentContext);
         }
@@ -318,16 +340,14 @@ public class DisplayListManager {
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentCommands = new ArrayList<>(256);   // Typical display list command count
         accumulatedDraws = new ArrayList<>(64);   // Fewer draws than commands typically
+        accumulatedLineDraws = new ArrayList<>(16);  // Line draws are less common
         relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
         relativeTransform.identity();  // Track relative transforms from identity
         immediateModeRecorder = new ImmediateModeRecorder();  // For glBegin/glEnd/glVertex
 
         // Start compiling mode with per-draw callback (works for both root and nested lists now)
-        // Capture listId in final variable for lambda closure
-        final int capturedListId = list;
         TessellatorManager.setCompiling((quads, flags) -> {
             if (quads.isEmpty()) {
-                LOGGER.warn("[VBO Display List] Empty draw call in list={}", capturedListId);
                 return;
             }
 
@@ -366,11 +386,16 @@ public class DisplayListManager {
         // Create CompiledDisplayList with both unoptimized and optimized versions
         final boolean hasCommands = currentCommands != null && !currentCommands.isEmpty();
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
+        final boolean hasLineDraws = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
 
-        if (hasCommands || hasDraws) {
+        if (hasCommands || hasDraws || hasLineDraws) {
             // Build both versions using extracted functions
-            final List<DisplayListCommand> unoptimized = buildUnoptimizedDisplayList(currentCommands != null ? currentCommands : new ArrayList<>(), accumulatedDraws, glListId);
-            final List<DisplayListCommand> optimized = buildOptimizedDisplayList(currentCommands != null ? currentCommands : new ArrayList<>(), accumulatedDraws, glListId);
+            final List<DisplayListCommand> unoptimized = buildUnoptimizedDisplayList(
+                currentCommands != null ? currentCommands : new ArrayList<>(),
+                accumulatedDraws, accumulatedLineDraws, glListId);
+            final List<DisplayListCommand> optimized = buildOptimizedDisplayList(
+                currentCommands != null ? currentCommands : new ArrayList<>(),
+                accumulatedDraws, accumulatedLineDraws, glListId);
 
             compiled = new CompiledDisplayList(optimized, unoptimized);
             displayListCache.put(glListId, compiled);
@@ -387,6 +412,7 @@ public class DisplayListManager {
             glListMode = parentContext.listMode;
             currentCommands = parentContext.commands;
             accumulatedDraws = parentContext.draws;
+            accumulatedLineDraws = parentContext.lineDraws;
             relativeTransform = parentContext.transform;
             tessellatorCompiling = parentContext.wasTessellatorCompiling;
             immediateModeRecorder = parentContext.immediateRecorder;
@@ -398,6 +424,7 @@ public class DisplayListManager {
             currentCommands = null;
             recordingThread = null;
             accumulatedDraws = null;
+            accumulatedLineDraws = null;
             relativeTransform = null;
             immediateModeRecorder = null;
             glListId = -1;
@@ -431,7 +458,10 @@ public class DisplayListManager {
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
             GLStateManager.trySyncProgram();
+            final int prevList = currentRenderingList;
+            currentRenderingList = list;
             compiled.render();
+            currentRenderingList = prevList;
             return;
         }
 
@@ -441,13 +471,11 @@ public class DisplayListManager {
             final VertexBuffer vbo = VBOManager.get(list);
             if (vbo != null) {
                 vbo.render();
-            } else {
-                LOGGER.warn("[VBO Playback] VBO not found for list={} (was it deleted or never created?)", list);
             }
             // Per OpenGL spec: if list is undefined, glCallList has no effect
-            // Entity models use lazy compilation, so list may not exist yet
         } else {
-            // Positive IDs may be real GL display lists
+            // Positive IDs - fall back to native GL display lists
+            // This happens for lists allocated but never compiled via glNewList
             GLStateManager.trySyncProgram();
             GL11.glCallList(list);
         }
@@ -471,38 +499,66 @@ public class DisplayListManager {
      * Build unoptimized display list: keeps all commands including matrix transforms.
      * For nested display list calls where matrices need to compose with parent state.
      */
-    private static List<DisplayListCommand> buildUnoptimizedDisplayList(List<DisplayListCommand> currentCommands, List<AccumulatedDraw> accumulatedDraws, int glListId) {
+    private static List<DisplayListCommand> buildUnoptimizedDisplayList(
+            List<DisplayListCommand> currentCommands,
+            List<AccumulatedDraw> accumulatedDraws,
+            List<AccumulatedLineDraw> accumulatedLineDraws,
+            int glListId) {
 
-        if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
+        final boolean hasQuads = accumulatedDraws != null && !accumulatedDraws.isEmpty();
+        final boolean hasLines = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
+
+        if (!hasQuads && !hasLines) {
             return new ArrayList<>(currentCommands);
         }
 
-        final List<DisplayListCommand> unoptimized = new ArrayList<>(currentCommands.size() + accumulatedDraws.size());
+        final List<DisplayListCommand> unoptimized = new ArrayList<>(
+            currentCommands.size() + (hasQuads ? accumulatedDraws.size() : 0) + (hasLines ? accumulatedLineDraws.size() : 0));
         int drawIndex = 0;
+        int lineDrawIndex = 0;
 
         // Insert draws at their recorded positions in the command stream
         for (int i = 0; i < currentCommands.size(); i++) {
-            // Insert any draws that belong at this position
-            while (drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
+            // Insert any quad draws that belong at this position
+            while (hasQuads && drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
                 final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
 
                 // Compile untransformed quads - matrix commands in the list will apply transforms via GL stack
-                final VertexBuffer vbo = compileQuads(draw.quads, draw.flags);
-                unoptimized.add(new DrawVBOCmd(vbo, draw.flags.hasBrightness));
+                final VertexBuffer vao = compileQuads(draw.quads, draw.flags);
+                unoptimized.add(new DrawVBOCmd(vao, draw.flags.hasBrightness));
 
                 drawIndex++;
+            }
+
+            // Insert any line draws that belong at this position
+            while (hasLines && lineDrawIndex < accumulatedLineDraws.size() && accumulatedLineDraws.get(lineDrawIndex).commandIndex == i) {
+                final AccumulatedLineDraw lineDraw = accumulatedLineDraws.get(lineDrawIndex);
+
+                // Compile lines - matrix commands in the list will apply transforms via GL stack
+                final VertexBuffer vao = compileLines(lineDraw.lines);
+                unoptimized.add(new DrawVBOCmd(vao, false));  // Lines don't use brightness
+
+                lineDrawIndex++;
             }
 
             // Add the original command (including matrix commands for nested list composition)
             unoptimized.add(currentCommands.get(i));
         }
 
-        // Insert any remaining draws at the end
-        while (drawIndex < accumulatedDraws.size()) {
+        // Insert any remaining quad draws at the end
+        while (hasQuads && drawIndex < accumulatedDraws.size()) {
             final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
-            final VertexBuffer vbo = compileQuads(draw.quads, draw.flags);
-            unoptimized.add(new DrawVBOCmd(vbo, draw.flags.hasBrightness));
+            final VertexBuffer vao = compileQuads(draw.quads, draw.flags);
+            unoptimized.add(new DrawVBOCmd(vao, draw.flags.hasBrightness));
             drawIndex++;
+        }
+
+        // Insert any remaining line draws at the end
+        while (hasLines && lineDrawIndex < accumulatedLineDraws.size()) {
+            final AccumulatedLineDraw lineDraw = accumulatedLineDraws.get(lineDrawIndex);
+            final VertexBuffer vao = compileLines(lineDraw.lines);
+            unoptimized.add(new DrawVBOCmd(vao, false));
+            lineDrawIndex++;
         }
 
         return unoptimized;
@@ -522,18 +578,28 @@ public class DisplayListManager {
      * </ul>
      */
     // Package-private for testing
-    static List<DisplayListCommand> buildOptimizedDisplayList(List<DisplayListCommand> currentCommands, List<AccumulatedDraw> accumulatedDraws, int glListId) {
+    static List<DisplayListCommand> buildOptimizedDisplayList(
+            List<DisplayListCommand> currentCommands,
+            List<AccumulatedDraw> accumulatedDraws,
+            List<AccumulatedLineDraw> accumulatedLineDraws,
+            int glListId) {
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
+        final boolean hasLines = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
         final List<DisplayListCommand> optimized = new ArrayList<>();
         final DrawBatcher batcher = new DrawBatcher(glListId);
         final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
         final OptimizationContextImpl ctx = new OptimizationContextImpl(transformOpt, batcher, optimized);
 
         int drawIndex = 0;
+        int lineDrawIndex = 0;
         for (int i = 0; i < currentCommands.size(); i++) {
-            // Process draws at this command position
+            // Process quad draws at this command position
             while (hasDraws && drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
                 processDraw(accumulatedDraws.get(drawIndex++), ctx);
+            }
+            // Process line draws at this command position (lines don't batch, just compile directly)
+            while (hasLines && lineDrawIndex < accumulatedLineDraws.size() && accumulatedLineDraws.get(lineDrawIndex).commandIndex == i) {
+                processLineDraw(accumulatedLineDraws.get(lineDrawIndex++), ctx);
             }
             final DisplayListCommand cmd = currentCommands.get(i);
             if (cmd.handleOptimization(ctx)) {
@@ -541,13 +607,18 @@ public class DisplayListManager {
             }
         }
 
-        // Process remaining draws at end of command stream
+        // Process remaining quad draws at end of command stream
         while (hasDraws && drawIndex < accumulatedDraws.size()) {
             processDraw(accumulatedDraws.get(drawIndex++), ctx);
         }
 
+        // Process remaining line draws at end of command stream
+        while (hasLines && lineDrawIndex < accumulatedLineDraws.size()) {
+            processLineDraw(accumulatedLineDraws.get(lineDrawIndex++), ctx);
+        }
+
         // Flush final batch
-        if (hasDraws) {
+        if (hasDraws || hasLines) {
             batcher.flush(optimized);
         }
 
@@ -577,6 +648,26 @@ public class DisplayListManager {
             ctx.batcher.flush(ctx.output);
             ctx.batcher.addToBatch(draw);
         }
+    }
+
+    /**
+     * Process a single line draw during optimization.
+     * Lines don't batch because they're rare in practice (mostly debug overlays like Schematica)
+     * and batching would require tracking line-specific state (width, stipple) per batch.
+     */
+    private static void processLineDraw(AccumulatedLineDraw lineDraw, OptimizationContextImpl ctx) {
+        // Emit transform if needed (lines care about transforms too)
+        if (ctx.transformOpt.needsTransformForDraw(lineDraw.transform)) {
+            ctx.batcher.flush(ctx.output);
+            ctx.transformOpt.emitTransformTo(ctx.output, lineDraw.transform);
+        }
+
+        // Flush any pending quad batches before line draw
+        ctx.batcher.flush(ctx.output);
+
+        // Compile lines directly (no batching for lines)
+        final VertexBuffer vao = compileLines(lineDraw.lines);
+        ctx.output.add(new DrawVBOCmd(vao, false));
     }
 
     /**
@@ -820,6 +911,34 @@ public class DisplayListManager {
         final VertexBuffer vao = VAOManager.createVAO(format, GL11.GL_QUADS);
 
         final ByteBuffer buffer = CapturingTessellator.quadsToBuffer(quads, format);
+
+        vao.upload(buffer);
+
+        return vao;
+    }
+
+    /**
+     * Compile captured line vertices into a VertexBuffer (VAO or VBO).
+     * Lines use POSITION_COLOR format (x, y, z, color).
+     *
+     * @param lines The line vertices to compile (in pairs: vertex 0-1 = line 1, 2-3 = line 2, etc.)
+     * @return The uploaded VertexBuffer
+     */
+    private static VertexBuffer compileLines(List<ImmediateModeRecorder.LineVertex> lines) {
+        final VertexFormat format = DefaultVertexFormat.POSITION_COLOR;
+        final VertexBuffer vao = VAOManager.createVAO(format, GL11.GL_LINES);
+
+        // POSITION_COLOR format: 3 floats (12 bytes) + 4 bytes color = 16 bytes per vertex
+        final int vertexSize = format.getVertexSize();
+        final ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(vertexSize * lines.size());
+
+        for (ImmediateModeRecorder.LineVertex v : lines) {
+            buffer.putFloat(v.x);
+            buffer.putFloat(v.y);
+            buffer.putFloat(v.z);
+            buffer.putInt(v.color);
+        }
+        buffer.flip();
 
         vao.upload(buffer);
 

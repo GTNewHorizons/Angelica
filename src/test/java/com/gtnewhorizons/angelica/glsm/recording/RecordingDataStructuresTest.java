@@ -201,4 +201,55 @@ class RecordingDataStructuresTest {
         recorder.begin(GL11.GL_QUADS);
         assertThrows(IllegalStateException.class, () -> recorder.getQuadsAndClear());
     }
+
+    @Test
+    void testImmediateModeRecorderCapturesLines() {
+        ImmediateModeRecorder recorder = new ImmediateModeRecorder();
+
+        // Record 2 lines (4 vertices)
+        recorder.begin(GL11.GL_LINES);
+        recorder.vertex(0, 0, 0);
+        recorder.vertex(1, 0, 0);
+        recorder.vertex(0, 1, 0);
+        recorder.vertex(1, 1, 0);
+
+        ImmediateModeRecorder.Result result = recorder.end();
+        assertNotNull(result);
+        assertTrue(result.quads().isEmpty(), "Lines should not produce quads");
+        assertEquals(4, result.lines().size(), "4 vertices for 2 lines");
+    }
+
+    @Test
+    void testImmediateModeRecorderCapturesLineStrip() {
+        ImmediateModeRecorder recorder = new ImmediateModeRecorder();
+
+        // Record a line strip: 4 vertices = 3 line segments = 6 line vertices
+        recorder.begin(GL11.GL_LINE_STRIP);
+        recorder.vertex(0, 0, 0);
+        recorder.vertex(1, 0, 0);
+        recorder.vertex(1, 1, 0);
+        recorder.vertex(0, 1, 0);
+
+        ImmediateModeRecorder.Result result = recorder.end();
+        assertNotNull(result);
+        assertTrue(result.quads().isEmpty(), "Line strips should not produce quads");
+        assertEquals(6, result.lines().size(), "4 vertices in strip = 3 segments = 6 line vertices");
+    }
+
+    @Test
+    void testImmediateModeRecorderCapturesLineLoop() {
+        ImmediateModeRecorder recorder = new ImmediateModeRecorder();
+
+        // Record a line loop: 4 vertices = 4 line segments (closes back to start) = 8 line vertices
+        recorder.begin(GL11.GL_LINE_LOOP);
+        recorder.vertex(0, 0, 0);
+        recorder.vertex(1, 0, 0);
+        recorder.vertex(1, 1, 0);
+        recorder.vertex(0, 1, 0);
+
+        ImmediateModeRecorder.Result result = recorder.end();
+        assertNotNull(result);
+        assertTrue(result.quads().isEmpty(), "Line loops should not produce quads");
+        assertEquals(8, result.lines().size(), "4 vertices in loop = 4 segments (including closing) = 8 line vertices");
+    }
 }

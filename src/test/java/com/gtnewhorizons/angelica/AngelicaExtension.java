@@ -35,7 +35,7 @@ public class AngelicaExtension implements BeforeAllCallback, AfterEachCallback, 
             Display.setDisplayModeAndFullscreen(displayMode);
             Display.setResizable(false);
             Display.setFullscreen(false);
-            final PixelFormat format = new PixelFormat().withDepthBits(24);
+            final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(8);
             Display.create(format);
 
             // Set MainThread to the current test thread (the one with the GL context)

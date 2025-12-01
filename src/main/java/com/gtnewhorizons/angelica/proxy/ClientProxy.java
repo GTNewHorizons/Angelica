@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -115,6 +116,10 @@ public class ClientProxy extends CommonProxy {
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
 
             VertexFormat.registerSetupBufferStateOverride((vertexFormat, l) -> {
+                // Skip Iris format override during display list rendering - display lists use their own formats
+                if (DisplayListManager.isRenderingDisplayList()) {
+                    return false;
+                }
                 if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
                     || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
                     IrisVertexFormats.TERRAIN.setupBufferState(l);
@@ -123,6 +128,10 @@ public class ClientProxy extends CommonProxy {
                 return false;
             });
             VertexFormat.registerClearBufferStateOverride(vertexFormat -> {
+                // Skip Iris format override during display list rendering - display lists use their own formats
+                if (DisplayListManager.isRenderingDisplayList()) {
+                    return false;
+                }
                 if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
                     || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
                     IrisVertexFormats.TERRAIN.clearBufferState();

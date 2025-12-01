@@ -10,6 +10,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +50,9 @@ public class ImmediateModeRecorder {
 
     // Accumulated quads from completed primitives
     private final List<ModelQuadViewMutable> quads = new ArrayList<>();
+
+    // Accumulated line vertices (pairs of vertices for GL_LINES)
+    private final List<LineVertex> lineVertices = new ArrayList<>();
 
     // Current primitive state
     private int currentPrimitiveType = -1;
@@ -82,6 +90,22 @@ public class ImmediateModeRecorder {
             this.texU = texU;
             this.texV = texV;
             this.normal = normal;
+        }
+    }
+
+    /**
+     * Represents a vertex for line primitives.
+     * Simpler than ImmediateVertex - just position and color.
+     */
+    public static class LineVertex {
+        public final float x, y, z;
+        public final int color;  // Packed ABGR color
+
+        public LineVertex(float x, float y, float z, int color) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.color = color;
         }
     }
 
@@ -130,28 +154,29 @@ public class ImmediateModeRecorder {
     }
 
     /**
-     * End the current primitive, convert to quads, and return them immediately.
+     * End the current primitive, convert to quads/lines, and return them immediately.
      * This allows the caller to create AccumulatedDraw at the correct command position.
      *
-     * @return Result containing quads and flags, or null if no geometry was produced
+     * @return Result containing quads, lines, and flags, or null if no geometry was produced
      */
     public Result end() {
         if (!inPrimitive) {
             throw new IllegalStateException("glEnd called without glBegin");
         }
 
-        // Convert this primitive's vertices to quads
+        // Convert this primitive's vertices to quads or lines
         convertPrimitiveToQuads();
         this.currentVertices.clear();
         this.inPrimitive = false;
 
-        // Return quads from this primitive immediately (don't accumulate)
-        if (quads.isEmpty()) {
+        // Return geometry from this primitive immediately (don't accumulate)
+        if (quads.isEmpty() && lineVertices.isEmpty()) {
             return null;
         }
 
-        // Copy quads and create flags
-        List<ModelQuadViewMutable> result = new ArrayList<>(quads);
+        // Copy geometry and create flags
+        List<ModelQuadViewMutable> resultQuads = new ArrayList<>(quads);
+        List<LineVertex> resultLines = new ArrayList<>(lineVertices);
         CapturingTessellator.Flags flags = new CapturingTessellator.Flags(
             hasTexCoord,   // hasTexture
             false,         // hasBrightness - immediate mode doesn't typically use lightmap
@@ -159,10 +184,11 @@ public class ImmediateModeRecorder {
             hasNormal      // hasNormals
         );
 
-        // Clear quads for next primitive (but keep attribute tracking state)
+        // Clear for next primitive (but keep attribute tracking state)
         quads.clear();
+        lineVertices.clear();
 
-        return new Result(result, flags);
+        return new Result(resultQuads, resultLines, flags);
     }
 
     /**
@@ -224,9 +250,9 @@ public class ImmediateModeRecorder {
             case GL11.GL_TRIANGLE_FAN, GL11.GL_POLYGON -> convertTriangleFan();
             case GL11.GL_TRIANGLE_STRIP -> convertTriangleStrip();
             case GL11.GL_QUAD_STRIP -> convertQuadStrip();
-            case GL11.GL_LINES, GL11.GL_LINE_STRIP, GL11.GL_LINE_LOOP -> {
-                LOGGER.warn("[ImmediateModeRecorder] Line primitives not supported, discarding {} vertices", vertexCount);
-            }
+            case GL11.GL_LINES -> convertLines();
+            case GL11.GL_LINE_STRIP -> convertLineStripToLines();
+            case GL11.GL_LINE_LOOP -> convertLineLoopToLines();
             case GL11.GL_POINTS -> {
                 LOGGER.warn("[ImmediateModeRecorder] Point primitives not supported, discarding {} vertices", vertexCount);
             }
@@ -355,6 +381,67 @@ public class ImmediateModeRecorder {
     }
 
     /**
+     * Convert GL_LINES vertices to line segments (pairs of vertices).
+     */
+    private void convertLines() {
+        int vertexCount = currentVertices.size();
+        int fullLines = vertexCount / 2;
+
+        for (int i = 0; i < fullLines; i++) {
+            int base = i * 2;
+            ImmediateVertex v0 = currentVertices.get(base);
+            ImmediateVertex v1 = currentVertices.get(base + 1);
+            lineVertices.add(new LineVertex(v0.x, v0.y, v0.z, v0.color));
+            lineVertices.add(new LineVertex(v1.x, v1.y, v1.z, v1.color));
+        }
+
+        int remaining = vertexCount % 2;
+        if (remaining > 0) {
+            LOGGER.warn("[ImmediateModeRecorder] GL_LINES: Incomplete line, discarding {} vertices", remaining);
+        }
+    }
+
+    /**
+     * Convert GL_LINE_STRIP to individual line segments.
+     * Vertices 0-1-2-3 become lines: 0-1, 1-2, 2-3
+     */
+    private void convertLineStripToLines() {
+        int vertexCount = currentVertices.size();
+        if (vertexCount < 2) {
+            LOGGER.warn("[ImmediateModeRecorder] GL_LINE_STRIP: Need at least 2 vertices, got {}", vertexCount);
+            return;
+        }
+
+        for (int i = 0; i < vertexCount - 1; i++) {
+            ImmediateVertex v0 = currentVertices.get(i);
+            ImmediateVertex v1 = currentVertices.get(i + 1);
+            lineVertices.add(new LineVertex(v0.x, v0.y, v0.z, v0.color));
+            lineVertices.add(new LineVertex(v1.x, v1.y, v1.z, v1.color));
+        }
+    }
+
+    /**
+     * Convert GL_LINE_LOOP to individual line segments.
+     * Like LINE_STRIP but also closes the loop from last to first vertex.
+     */
+    private void convertLineLoopToLines() {
+        int vertexCount = currentVertices.size();
+        if (vertexCount < 2) {
+            LOGGER.warn("[ImmediateModeRecorder] GL_LINE_LOOP: Need at least 2 vertices, got {}", vertexCount);
+            return;
+        }
+
+        // Convert as strip first
+        convertLineStripToLines();
+
+        // Close the loop: add last-to-first segment
+        ImmediateVertex vLast = currentVertices.get(vertexCount - 1);
+        ImmediateVertex vFirst = currentVertices.get(0);
+        lineVertices.add(new LineVertex(vLast.x, vLast.y, vLast.z, vLast.color));
+        lineVertices.add(new LineVertex(vFirst.x, vFirst.y, vFirst.z, vFirst.color));
+    }
+
+    /**
      * Create a ModelQuad from 4 ImmediateVertex objects.
      */
     private void addQuad(ImmediateVertex v0, ImmediateVertex v1, ImmediateVertex v2, ImmediateVertex v3) {
@@ -389,34 +476,35 @@ public class ImmediateModeRecorder {
     /**
      * Check if any immediate mode geometry has been captured.
      *
-     * <p>Note: With immediate flush mode, this will typically return false as quads
-     * are returned from end() immediately. This method is kept for edge cases
+     * <p>Note: With immediate flush mode, this will typically return false as geometry
+     * is returned from end() immediately. This method is kept for edge cases
      * where primitives might fail to convert (e.g., incomplete quads).
      */
     public boolean hasGeometry() {
-        return !quads.isEmpty();
+        return !quads.isEmpty() || !lineVertices.isEmpty();
     }
 
     /**
-     * Get any remaining accumulated quads and clear the recorder.
+     * Get any remaining accumulated geometry and clear the recorder.
      *
-     * <p>Note: With immediate flush mode, this will typically return null as quads
-     * are returned from end() immediately. This method is kept for cleanup and
+     * <p>Note: With immediate flush mode, this will typically return null as geometry
+     * is returned from end() immediately. This method is kept for cleanup and
      * edge cases where geometry might remain (e.g., if end() was never called).
      *
-     * @return Result containing remaining quads and flags, or null if no geometry
+     * @return Result containing remaining quads, lines, and flags, or null if no geometry
      */
     public Result getQuadsAndClear() {
         if (inPrimitive) {
-            throw new IllegalStateException("Cannot get quads while in primitive (missing glEnd)");
+            throw new IllegalStateException("Cannot get geometry while in primitive (missing glEnd)");
         }
 
-        if (quads.isEmpty()) {
+        if (quads.isEmpty() && lineVertices.isEmpty()) {
             return null;
         }
 
-        // Copy quads and create flags
-        List<ModelQuadViewMutable> result = new ArrayList<>(quads);
+        // Copy geometry and create flags
+        List<ModelQuadViewMutable> resultQuads = new ArrayList<>(quads);
+        List<LineVertex> resultLines = new ArrayList<>(lineVertices);
         CapturingTessellator.Flags flags = new CapturingTessellator.Flags(
             hasTexCoord,   // hasTexture
             false,         // hasBrightness - immediate mode doesn't typically use lightmap
@@ -426,19 +514,20 @@ public class ImmediateModeRecorder {
 
         // Clear state for reuse
         quads.clear();
+        lineVertices.clear();
         hasColor = false;
         hasTexCoord = false;
         hasNormal = false;
         // Note: current texcoord/normal values are NOT reset - they persist per OpenGL spec
 
-        return new Result(result, flags);
+        return new Result(resultQuads, resultLines, flags);
     }
 
     /**
-     * Result of immediate mode recording: quads and their attribute flags.
+     * Result of immediate mode recording: quads, lines, and their attribute flags.
      */
     @com.github.bsideup.jabel.Desugar
-    public record Result(List<ModelQuadViewMutable> quads, CapturingTessellator.Flags flags) {}
+    public record Result(List<ModelQuadViewMutable> quads, List<LineVertex> lines, CapturingTessellator.Flags flags) {}
 
     /**
      * Reset all state including current texcoord/normal.
@@ -446,6 +535,7 @@ public class ImmediateModeRecorder {
      */
     public void reset() {
         quads.clear();
+        lineVertices.clear();
         currentVertices.clear();
         inPrimitive = false;
         currentPrimitiveType = -1;
@@ -457,5 +547,162 @@ public class ImmediateModeRecorder {
         hasColor = false;
         hasTexCoord = false;
         hasNormal = false;
+    }
+
+    /**
+     * Process a glDrawArrays call during display list recording.
+     * Reads vertex data from client arrays (tracked globally in GLStateManager) and converts to immediate mode geometry.
+     *
+     * @param mode Primitive type (GL_QUADS, GL_LINES, etc.)
+     * @param first Starting index in arrays
+     * @param count Number of vertices
+     * @return Result containing converted geometry, or null if no geometry produced
+     */
+    public Result processDrawArrays(int mode, int first, int count) {
+        final var cas = GLStateManager.getClientArrayState();
+        final var vertexPointer = cas.isVertexArrayEnabled() ? cas.getVertexPointer() : null;
+        final var colorPointer = cas.isColorArrayEnabled() ? cas.getColorPointer() : null;
+
+        return convertClientArrays(
+            mode, first, count,
+            vertexPointer,
+            cas.getVertexPointerType(), cas.getVertexPointerSize(), cas.getVertexPointerStride(),
+            colorPointer,
+            cas.getColorPointerType(), cas.getColorPointerSize(), cas.getColorPointerStride()
+        );
+    }
+
+    /**
+     * Convert client array data to immediate mode.
+     * Called by glDrawArrays during display list recording.
+     * Like Mesa's save_DrawArrays, reads vertex data from arrays and emits as immediate mode.
+     *
+     * @param mode Primitive type (GL_QUADS, GL_LINES, etc.)
+     * @param first Starting index in arrays
+     * @param count Number of vertices
+     * @param vertexPointer Vertex position buffer (or null if not enabled)
+     * @param vertexType GL type (GL_FLOAT, GL_DOUBLE, etc.)
+     * @param vertexSize Size of vertex (2, 3, or 4)
+     * @param vertexStride Stride in bytes (0 for tightly packed)
+     * @param colorPointer Color buffer (or null if not enabled)
+     * @param colorType GL type (GL_FLOAT, GL_UNSIGNED_BYTE, etc.)
+     * @param colorSize Size of color (3 or 4)
+     * @param colorStride Stride in bytes (0 for tightly packed)
+     * @return Result containing converted geometry, or null if no geometry produced
+     */
+    public Result convertClientArrays(
+        int mode, int first, int count,
+        java.nio.Buffer vertexPointer, int vertexType, int vertexSize, int vertexStride,
+        java.nio.Buffer colorPointer, int colorType, int colorSize, int colorStride
+    ) {
+        begin(mode);
+
+        // Hoist type checks and stride calculations outside the loop for performance.
+        // Mesa's algorithm: offset_bytes = index * effective_stride
+        // effective_stride = (stride == 0) ? (numComponents * sizeof(element)) : stride
+
+        // Determine color reader (hoisted out of loop)
+        final ColorReader colorReader;
+        final int colorEffectiveStride;
+        if (colorPointer == null) {
+            colorReader = null;
+            colorEffectiveStride = 0;
+        } else if (colorType == GL11.GL_FLOAT && colorPointer instanceof FloatBuffer fb) {
+            colorEffectiveStride = (colorStride == 0) ? colorSize * 4 : colorStride;
+            final int strideInFloats = colorEffectiveStride / 4;
+            colorReader = (idx) -> {
+                final int offset = idx * strideInFloats;
+                final float r = fb.get(offset);
+                final float g = fb.get(offset + 1);
+                final float b = fb.get(offset + 2);
+                final float a = (colorSize == 4) ? fb.get(offset + 3) : 1.0f;
+                GLStateManager.glColor4f(r, g, b, a);
+            };
+        } else if ((colorType == GL11.GL_UNSIGNED_BYTE || colorType == GL11.GL_BYTE) && colorPointer instanceof ByteBuffer bb) {
+            colorEffectiveStride = (colorStride == 0) ? colorSize : colorStride;
+            colorReader = (idx) -> {
+                final int offset = idx * colorEffectiveStride;
+                final float r = (bb.get(offset) & 0xFF) / 255.0f;
+                final float g = (bb.get(offset + 1) & 0xFF) / 255.0f;
+                final float b = (bb.get(offset + 2) & 0xFF) / 255.0f;
+                final float a = (colorSize == 4) ? (bb.get(offset + 3) & 0xFF) / 255.0f : 1.0f;
+                GLStateManager.glColor4f(r, g, b, a);
+            };
+        } else {
+            // Unsupported color type - use white
+            colorEffectiveStride = 0;
+            colorReader = (idx) -> GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+
+        // Determine vertex reader (hoisted out of loop)
+        final VertexReader vertexReader;
+        if (vertexPointer == null) {
+            vertexReader = null;
+        } else if (vertexType == GL11.GL_FLOAT && vertexPointer instanceof FloatBuffer fb) {
+            final int effectiveStride = (vertexStride == 0) ? vertexSize * 4 : vertexStride;
+            final int strideInFloats = effectiveStride / 4;
+            vertexReader = (idx) -> {
+                final int offset = idx * strideInFloats;
+                final float x = fb.get(offset);
+                final float y = fb.get(offset + 1);
+                final float z = (vertexSize >= 3) ? fb.get(offset + 2) : 0.0f;
+                vertex(x, y, z);
+            };
+        } else if (vertexType == GL11.GL_DOUBLE && vertexPointer instanceof DoubleBuffer db) {
+            final int effectiveStride = (vertexStride == 0) ? vertexSize * 8 : vertexStride;
+            final int strideInDoubles = effectiveStride / 8;
+            vertexReader = (idx) -> {
+                final int offset = idx * strideInDoubles;
+                final float x = (float) db.get(offset);
+                final float y = (float) db.get(offset + 1);
+                final float z = (vertexSize >= 3) ? (float) db.get(offset + 2) : 0.0f;
+                vertex(x, y, z);
+            };
+        } else if (vertexType == GL11.GL_INT && vertexPointer instanceof IntBuffer ib) {
+            final int effectiveStride = (vertexStride == 0) ? vertexSize * 4 : vertexStride;
+            final int strideInInts = effectiveStride / 4;
+            vertexReader = (idx) -> {
+                final int offset = idx * strideInInts;
+                final float x = ib.get(offset);
+                final float y = ib.get(offset + 1);
+                final float z = (vertexSize >= 3) ? ib.get(offset + 2) : 0.0f;
+                vertex(x, y, z);
+            };
+        } else if (vertexType == GL11.GL_SHORT && vertexPointer instanceof ShortBuffer sb) {
+            final int effectiveStride = (vertexStride == 0) ? vertexSize * 2 : vertexStride;
+            final int strideInShorts = effectiveStride / 2;
+            vertexReader = (idx) -> {
+                final int offset = idx * strideInShorts;
+                final float x = sb.get(offset);
+                final float y = sb.get(offset + 1);
+                final float z = (vertexSize >= 3) ? sb.get(offset + 2) : 0.0f;
+                vertex(x, y, z);
+            };
+        } else {
+            // Unsupported vertex type
+            vertexReader = null;
+        }
+
+        // Main loop - no type checks, just function calls
+        for (int i = first; i < first + count; i++) {
+            if (colorReader != null) {
+                colorReader.read(i);
+            }
+            if (vertexReader != null) {
+                vertexReader.read(i);
+            }
+        }
+
+        return end();
+    }
+
+    @FunctionalInterface
+    private interface ColorReader {
+        void read(int index);
+    }
+
+    @FunctionalInterface
+    private interface VertexReader {
+        void read(int index);
     }
 }

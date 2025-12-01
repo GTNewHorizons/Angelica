@@ -58,7 +58,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: should batch into 1 DrawVBOCmd
         long drawCount = countDrawVBOCmds(optimized);
@@ -78,7 +78,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: should NOT batch - different flags
         long drawCount = countDrawVBOCmds(optimized);
@@ -104,7 +104,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: different transforms should break batching
         long drawCount = countDrawVBOCmds(optimized);
@@ -129,7 +129,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: all should batch into 1
         long drawCount = countDrawVBOCmds(optimized);
@@ -149,7 +149,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: should batch into 1 (total 16 quads)
         long drawCount = countDrawVBOCmds(optimized);
@@ -166,7 +166,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: no DrawVBOCmds
         long drawCount = countDrawVBOCmds(optimized);
@@ -205,7 +205,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: even though command stream transforms cancel out, draws 1 and 2 have different
         // recorded transforms and MUST NOT be batched together
@@ -232,7 +232,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: all draws have same transform, should batch into 1
         long drawCount = countDrawVBOCmds(optimized);
@@ -263,7 +263,7 @@ class GLSM_DisplayList_Batching_Test {
 
         // Execute
         List<DisplayListCommand> optimized = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, 1);
+            commands, draws, null, 1);
 
         // Verify: 3 batches
         long drawCount = countDrawVBOCmds(optimized);

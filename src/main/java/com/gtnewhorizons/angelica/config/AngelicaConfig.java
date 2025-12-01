@@ -17,7 +17,7 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableReesesSodiumOptions;
 
-    @Config.Comment("Enable Sodium fluid rendering")
+    @Config.Comment("Enable Sodium fluid rendering [Experimental]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean enableSodiumFluidRendering;

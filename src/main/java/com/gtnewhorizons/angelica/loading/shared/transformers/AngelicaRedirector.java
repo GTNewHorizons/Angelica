@@ -203,6 +203,10 @@ public final class AngelicaRedirector {
             .add("glVertex2f")
             .add("glVertex3d")
             .add("glVertex3f")
+            .add("glVertexPointer")
+            .add("glColorPointer")
+            .add("glEnableClientState")
+            .add("glDisableClientState")
             .add("glViewport")
         );
         methodRedirects.put(GL12, RedirectMap.newMap()
