@@ -13,6 +13,9 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
  * The ownedVbos array contains these shared VBOs that are referenced by DrawRangeCmds
  * in both arrays.
  *
+ * <p><b>Note:</b> The unoptimized path is only built when {@code -Dangelica.debugDisplayLists=true}
+ * is set. In production, the unoptimized array is empty to save CPU time and memory.
+ *
  */
 @Desugar
 public record CompiledDisplayList(
@@ -31,7 +34,10 @@ public record CompiledDisplayList(
 
     /**
      * Execute unoptimized commands (preserves all matrix commands).
-     * Generally not needed since we track relative transforms, but kept for visibility.
+     * Generally not needed since we track relative transforms, but kept for debugging.
+     *
+     * <p><b>Note:</b> This method does nothing unless {@code -Dangelica.debugDisplayLists=true}
+     * is set, since the unoptimized array will be empty in production.
      */
     public void executeUnoptimized() {
         for (DisplayListCommand cmd : unoptimized) {
@@ -54,6 +60,11 @@ public record CompiledDisplayList(
     /**
      * Get the unoptimized commands for inlining into another display list (nested lists).
      * Returns unoptimized version because nested calls need matrix state preserved.
+     *
+     * <p><b>Note:</b> Returns an empty array unless {@code -Dangelica.debugDisplayLists=true}
+     * is set. In production, unoptimized commands are not built to save CPU time and memory.
+     *
+     * @return The unoptimized command array, or empty array if debug flag is not set
      */
     public DisplayListCommand[] getCommands() {
         return unoptimized;

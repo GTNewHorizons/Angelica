@@ -5,8 +5,6 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -15,7 +13,6 @@ import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
-import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -40,7 +37,6 @@ import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
-import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -114,31 +110,6 @@ public class ClientProxy extends CommonProxy {
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
-
-            VertexFormat.registerSetupBufferStateOverride((vertexFormat, l) -> {
-                // Skip Iris format override during display list rendering - display lists use their own formats
-                if (DisplayListManager.isRenderingDisplayList()) {
-                    return false;
-                }
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.setupBufferState(l);
-                    return true;
-                }
-                return false;
-            });
-            VertexFormat.registerClearBufferStateOverride(vertexFormat -> {
-                // Skip Iris format override during display list rendering - display lists use their own formats
-                if (DisplayListManager.isRenderingDisplayList()) {
-                    return false;
-                }
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.clearBufferState();
-                    return true;
-                }
-                return false;
-            });
         }
 
         FMLCommonHandler.instance().bus().register(this);

@@ -83,6 +83,14 @@ import java.util.Map;
 public class DisplayListManager {
     private static final Logger LOGGER = LogManager.getLogger("DisplayListManager");
 
+    /**
+     * Debug flag to enable building unoptimized display list commands.
+     * When false (default), unoptimized commands are not built
+     * When true, unoptimized commands are built for debugging GL behavior.
+     * Set via: -Dangelica.debugDisplayLists=true
+     */
+    private static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
+
     // Track which display list is currently being rendered
     @Getter private static int currentRenderingList = -1;
 
@@ -410,7 +418,10 @@ public class DisplayListManager {
             final DisplayListCommand[] optimized = buildOptimizedCommands(cmds, compiledQuadBuffers, compiledLineBuffer, glListId);
 
             // Phase 4: Build unoptimized commands (original transforms, per-draw ranges)
-            final DisplayListCommand[] unoptimized = buildUnoptimizedCommands(cmds, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer);
+            // Only built when debug flag is enabled - saves CPU and memory in production
+            final DisplayListCommand[] unoptimized = DEBUG_DISPLAY_LISTS
+                ? buildUnoptimizedCommands(cmds, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer)
+                : new DisplayListCommand[0];
 
             compiled = new CompiledDisplayList(optimized, unoptimized, ownedVbos);
             displayListCache.put(glListId, compiled);
