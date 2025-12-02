@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.FloatBuffer;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+
 /**
  * Command: glFog(pname, param)
  * Sets multiple float fog parameters.
@@ -20,7 +22,7 @@ public record FogCmd(int pname, FloatBuffer params) implements DisplayListComman
      * Creates a FogCmd with a defensive copy of the buffer.
      */
     public static FogCmd fromBuffer(int pname, FloatBuffer buffer) {
-        return new FogCmd(pname, BufferUtil.copyBuffer(buffer));
+        return new FogCmd(pname, BufferUtil.copyDirectBuffer(buffer));
     }
 
     /**
@@ -33,6 +35,11 @@ public record FogCmd(int pname, FloatBuffer params) implements DisplayListComman
     @Override
     public void execute() {
         GLStateManager.glFog(pname, params);
+    }
+
+    @Override
+    public void delete() {
+        memFree(params);
     }
 
     @Override

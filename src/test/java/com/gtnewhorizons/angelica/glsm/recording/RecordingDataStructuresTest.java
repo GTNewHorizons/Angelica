@@ -63,13 +63,12 @@ class RecordingDataStructuresTest {
             new PopMatrixCmd(GL11.GL_MODELVIEW)
         );
 
-        // Create CompiledDisplayList with dual representation (both same for test)
+        // Create CompiledDisplayList
         DisplayListCommand[] cmdArray = commands.toArray(new DisplayListCommand[0]);
         VertexBuffer[] ownedVbos = new VertexBuffer[] { vbo };
-        CompiledDisplayList compiled = new CompiledDisplayList(cmdArray, cmdArray, ownedVbos);
+        CompiledDisplayList compiled = new CompiledDisplayList(cmdArray, ownedVbos);
 
-        assertEquals(4, compiled.optimized().length);
-        assertEquals(4, compiled.unoptimized().length);
+        assertEquals(4, compiled.commands().length);
         assertNotNull(compiled.getCommands());
 
         // Cleanup

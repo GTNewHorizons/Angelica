@@ -426,16 +426,12 @@ public class DisplayListManager {
 
             final List<DisplayListCommand> cmds = currentCommands != null ? currentCommands : new ArrayList<>();
 
-            /* Phase 3: Build optimized commands (collapsed transforms, merged ranges) */
-            final DisplayListCommand[] optimized = buildOptimizedCommands(cmds, compiledQuadBuffers, compiledLineBuffer, glListId);
-
-            // Phase 4: Build unoptimized commands (original transforms, per-draw ranges)
-            // Only built when debug flag is enabled - saves CPU and memory in production
-            final DisplayListCommand[] unoptimized = DEBUG_DISPLAY_LISTS
+            // Build either optimized or unoptimized commands based on debug flag
+            final DisplayListCommand[] commands = DEBUG_DISPLAY_LISTS
                 ? buildUnoptimizedCommands(cmds, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer)
-                : new DisplayListCommand[0];
+                : buildOptimizedCommands(cmds, compiledQuadBuffers, compiledLineBuffer, glListId);
 
-            compiled = new CompiledDisplayList(optimized, unoptimized, ownedVbos);
+            compiled = new CompiledDisplayList(commands, ownedVbos);
             displayListCache.put(glListId, compiled);
         } else {
             compiled = null;

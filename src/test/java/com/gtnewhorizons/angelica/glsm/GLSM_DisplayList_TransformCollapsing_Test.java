@@ -74,7 +74,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
         long multMatrixCount = Arrays.stream(optimized)
             .filter(cmd -> cmd instanceof MultMatrixCmd)
             .count();
@@ -130,7 +130,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: should have Push, Pop, and collapsed MultMatrix commands
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         long pushCount = Arrays.stream(optimized).filter(cmd -> cmd instanceof PushMatrixCmd).count();
         long popCount = Arrays.stream(optimized).filter(cmd -> cmd instanceof PopMatrixCmd).count();
@@ -225,7 +225,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: MultMatrix should be emitted before CallList
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         // Find positions of MultMatrix and CallList
         int multMatrixIndex = -1;
@@ -285,7 +285,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glEndList();
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         long multMatrixCount = Arrays.stream(optimized)
             .filter(cmd -> cmd instanceof MultMatrixCmd)
@@ -375,7 +375,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: should collapse to 1 MultMatrix
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         long multMatrixCount = Arrays.stream(optimized)
             .filter(cmd -> cmd instanceof MultMatrixCmd)
@@ -437,7 +437,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         // Find indices of key commands
         int pushIndex = -1;
@@ -493,7 +493,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glEndList();
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
 
         int pushIndex = -1;
         int popIndex = -1;
@@ -546,7 +546,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        DisplayListCommand[] optimized = compiled.optimized();
+        DisplayListCommand[] optimized = compiled.commands();
         long loadMatrixCount = Arrays.stream(optimized)
             .filter(cmd -> cmd instanceof LoadMatrixCmd)
             .count();

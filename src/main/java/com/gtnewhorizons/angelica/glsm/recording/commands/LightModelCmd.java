@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.FloatBuffer;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+
 /**
  * Command: glLightModel(pname, params)
  * Sets multiple float lighting model parameters.
@@ -19,7 +21,7 @@ public record LightModelCmd(int pname, FloatBuffer params) implements DisplayLis
      * Creates a LightModelCmd with a copy of the buffer.
      */
     public static LightModelCmd fromBuffer(int pname, FloatBuffer buffer) {
-        return new LightModelCmd(pname, BufferUtil.copyBuffer(buffer));
+        return new LightModelCmd(pname, BufferUtil.copyDirectBuffer(buffer));
     }
 
     /**
@@ -32,6 +34,11 @@ public record LightModelCmd(int pname, FloatBuffer params) implements DisplayLis
     @Override
     public void execute() {
         GLStateManager.glLightModel(pname, params);
+    }
+
+    @Override
+    public void delete() {
+        memFree(params);
     }
 
     @Override

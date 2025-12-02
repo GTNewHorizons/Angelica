@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.FloatBuffer;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+
 /**
  * Command: glMaterial(face, pname, params)
  * Sets multiple float material parameters.
@@ -19,7 +21,7 @@ public record MaterialCmd(int face, int pname, FloatBuffer params) implements Di
      * Creates a MaterialCmd with a copy of the buffer.
      */
     public static MaterialCmd fromBuffer(int face, int pname, FloatBuffer buffer) {
-        return new MaterialCmd(face, pname, BufferUtil.copyBuffer(buffer));
+        return new MaterialCmd(face, pname, BufferUtil.copyDirectBuffer(buffer));
     }
 
     /**
@@ -32,6 +34,11 @@ public record MaterialCmd(int face, int pname, FloatBuffer params) implements Di
     @Override
     public void execute() {
         GLStateManager.glMaterial(face, pname, params);
+    }
+
+    @Override
+    public void delete() {
+        memFree(params);
     }
 
     @Override
