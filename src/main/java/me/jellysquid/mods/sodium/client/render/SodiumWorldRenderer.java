@@ -28,6 +28,7 @@ import me.jellysquid.mods.sodium.client.render.pipeline.context.ChunkRenderCache
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
 import me.jellysquid.mods.sodium.common.util.ListUtil;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shadows.ShadowRenderingState;
@@ -51,6 +52,7 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Vector3d;
+import org.lwjgl.opengl.GL20;
 
 import java.util.Set;
 
@@ -359,6 +361,9 @@ public class SodiumWorldRenderer {
             if(AngelicaConfig.enableIris) {
                 final Block block = tileEntity.getWorldObj().getBlock(tileEntity.xCoord, tileEntity.yCoord, tileEntity.zCoord);
                 CapturedRenderingState.INSTANCE.setCurrentBlockEntity(Block.getIdFromBlock(block));
+                GL20.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
+                GL20.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
+                GL20.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
                 GbufferPrograms.beginBlockEntities();
             }
             TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
