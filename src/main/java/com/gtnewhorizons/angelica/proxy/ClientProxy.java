@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -12,15 +12,13 @@ import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
-import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.models.VanillaModels;
+import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
-import com.gtnewhorizons.angelica.utils.AssetLoader;
 import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -39,7 +37,6 @@ import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
-import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -76,7 +73,7 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        AssetLoader.load();
+        ModelRegistry.registerModid(MOD_ID);
     }
 
     @SubscribeEvent
@@ -102,8 +99,7 @@ public class ClientProxy extends CommonProxy {
         super.init(event);
 
         if (AngelicaConfig.enableHudCaching) {
-            FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
-            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE);
+            HUDCaching.init();
         }
         if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
@@ -114,23 +110,6 @@ public class ClientProxy extends CommonProxy {
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
-
-            VertexFormat.registerSetupBufferStateOverride((vertexFormat, l) -> {
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.setupBufferState(l);
-                    return true;
-                }
-                return false;
-            });
-            VertexFormat.registerClearBufferStateOverride(vertexFormat -> {
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.clearBufferState();
-                    return true;
-                }
-                return false;
-            });
         }
 
         FMLCommonHandler.instance().bus().register(this);
@@ -138,8 +117,6 @@ public class ClientProxy extends CommonProxy {
 
         glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
         ClientRegistry.registerKeyBinding(glsmKeyBinding);
-
-        VanillaModels.init();
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
