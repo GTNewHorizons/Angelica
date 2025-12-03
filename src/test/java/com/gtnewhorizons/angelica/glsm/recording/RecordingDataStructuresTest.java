@@ -9,10 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -72,7 +73,7 @@ class RecordingDataStructuresTest {
         assertNotNull(compiled.getCommandBuffer(), "Command buffer should not be null");
 
         // Get command counts to verify structure
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
 
         // Should have PushMatrix and PopMatrix
         assertEquals(1, counts.getOrDefault(GLCommand.PUSH_MATRIX, 0), "Should have 1 PushMatrix");

@@ -58,7 +58,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.8.18:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.8.19:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
@@ -114,6 +114,7 @@ dependencies {
     testImplementation('org.junit.jupiter:junit-jupiter')
     testImplementation("org.mockito:mockito-core:3.+")
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
+    testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 }

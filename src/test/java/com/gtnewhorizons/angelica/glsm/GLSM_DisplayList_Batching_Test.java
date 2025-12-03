@@ -58,8 +58,8 @@ class GLSM_DisplayList_Batching_Test {
     private Set<VertexBuffer> getUniqueVBOs(DisplayListCommand[] commands) {
         Set<VertexBuffer> vbos = new HashSet<>();
         for (DisplayListCommand cmd : commands) {
-            if (cmd instanceof DrawRangeCmd) {
-                vbos.add(((DrawRangeCmd) cmd).sharedVbo());
+            if (cmd instanceof DrawRangeCmd rangeCmd)  {
+                vbos.add(rangeCmd.sharedVbo());
             }
         }
         return vbos;

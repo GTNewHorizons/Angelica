@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -256,17 +257,6 @@ public final class CommandBufferProcessor {
     }
 
     /**
-     * Check if a matrix is identity (within epsilon).
-     */
-    public static boolean isIdentity(Matrix4f m) {
-        final float eps = 1e-6f;
-        return Math.abs(m.m00() - 1) < eps && Math.abs(m.m01()) < eps && Math.abs(m.m02()) < eps && Math.abs(m.m03()) < eps
-            && Math.abs(m.m10()) < eps && Math.abs(m.m11() - 1) < eps && Math.abs(m.m12()) < eps && Math.abs(m.m13()) < eps
-            && Math.abs(m.m20()) < eps && Math.abs(m.m21()) < eps && Math.abs(m.m22() - 1) < eps && Math.abs(m.m23()) < eps
-            && Math.abs(m.m30()) < eps && Math.abs(m.m31()) < eps && Math.abs(m.m32()) < eps && Math.abs(m.m33() - 1) < eps;
-    }
-
-    /**
      * Lightweight transform optimizer for buffer-to-buffer processing.
      * Tracks accumulated MODELVIEW transform and emits MultMatrix commands when needed.
      */
@@ -316,7 +306,7 @@ public final class CommandBufferProcessor {
         }
 
         public boolean isIdentity() {
-            return CommandBufferProcessor.isIdentity(accumulated);
+            return DisplayListManager.isIdentity(accumulated);
         }
 
         public void markAbsoluteMatrix() {
@@ -340,7 +330,7 @@ public final class CommandBufferProcessor {
                 return;
             }
 
-            if (CommandBufferProcessor.isIdentity(lastEmitted)) {
+            if (DisplayListManager.isIdentity(lastEmitted)) {
                 out.writeMultMatrix(GL11.GL_MODELVIEW, target);
             } else {
                 final Matrix4f delta = new Matrix4f(lastEmitted).invert().mul(target);
