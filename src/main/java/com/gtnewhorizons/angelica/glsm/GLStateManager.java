@@ -4,65 +4,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ActiveTextureCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.AlphaFuncCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.BindTextureCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.BlendFuncCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ClearCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ClearColorCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ClearStencilCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ColorCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ColorMaskCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ColorMaterialCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DepthFuncCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DepthMaskCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DisableCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.EnableCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.FogCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.FogfCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.FogiCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.FrustumCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightModelCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightModelfCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightModeliCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightfCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LightiCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.CullFaceCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LineStippleCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LineWidthCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LoadIdentityCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LoadMatrixCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.LogicOpCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.MaterialfCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.MatrixModeCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.NormalCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.OrthoCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PopAttribCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PointSizeCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PolygonModeCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PolygonOffsetCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PopMatrixCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PushAttribCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.PushMatrixCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.RotateCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ScaleCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ShadeModelCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilFuncCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilFuncSeparateCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilMaskCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilMaskSeparateCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilOpCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.StencilOpSeparateCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.TexParameterfCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.TexParameteriCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexSubImage2DCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.TranslateCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.UseProgramCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.ViewportCmd;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -490,7 +433,7 @@ public class GLStateManager {
     // LWJGL Overrides
     public static void glEnable(int cap) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new EnableCmd(cap));
+            DisplayListManager.recordEnable(cap);
         }
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
@@ -565,7 +508,7 @@ public class GLStateManager {
 
     public static void glDisable(int cap) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new DisableCmd(cap));
+            DisplayListManager.recordDisable(cap);
         }
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
@@ -973,7 +916,7 @@ public class GLStateManager {
 
     public static void glBlendFunc(int srcFactor, int dstFactor) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new BlendFuncCmd(srcFactor, dstFactor));
+            DisplayListManager.recordBlendFunc(srcFactor, dstFactor, srcFactor, dstFactor);
         }
         if (Iris.enabled) {
             if (BlendModeStorage.isBlendLocked()) {
@@ -1020,7 +963,7 @@ public class GLStateManager {
 
     public static void tryBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new BlendFuncCmd(srcRgb, dstRgb, srcAlpha, dstAlpha));
+            DisplayListManager.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
         if (Iris.enabled) {
             if (BlendModeStorage.isBlendLocked()) {
@@ -1057,7 +1000,7 @@ public class GLStateManager {
     }
     public static void glNormal3b(byte nx, byte ny, byte nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new NormalCmd(nx, ny, nz));
+            DisplayListManager.recordNormal(nx, ny, nz);
             // Also update immediate mode recorder for glBegin/glEnd capture
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
@@ -1069,7 +1012,7 @@ public class GLStateManager {
     }
     public static void glNormal3d(double nx, double ny, double nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new NormalCmd((float)nx, (float)ny, (float)nz));
+            DisplayListManager.recordNormal((float)nx, (float)ny, (float)nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal((float) nx, (float) ny, (float) nz);
@@ -1080,7 +1023,7 @@ public class GLStateManager {
     }
     public static void glNormal3f(float nx, float ny, float nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new NormalCmd(nx, ny, nz));
+            DisplayListManager.recordNormal(nx, ny, nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal(nx, ny, nz);
@@ -1091,7 +1034,7 @@ public class GLStateManager {
     }
     public static void glNormal3i(int nx, int ny, int nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new NormalCmd(nx, ny, nz));
+            DisplayListManager.recordNormal(nx, ny, nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal((float) nx, (float) ny, (float) nz);
@@ -1103,7 +1046,7 @@ public class GLStateManager {
 
     public static void glDepthFunc(int func) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new DepthFuncCmd(func));
+            DisplayListManager.recordDepthFunc(func);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || func != depthState.getFunc()) {
@@ -1116,7 +1059,7 @@ public class GLStateManager {
 
     public static void glDepthMask(boolean mask) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new DepthMaskCmd(mask));
+            DisplayListManager.recordDepthMask(mask);
         }
         if (Iris.enabled) {
             if (DepthColorStorage.isDepthColorLocked()) {
@@ -1139,7 +1082,7 @@ public class GLStateManager {
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(red, green, blue, alpha));
+            DisplayListManager.recordColor(red, green, blue, alpha);
             changeColor(red, green, blue, alpha);  // Update state for glGet queries
         } else {
             if (changeColor(red, green, blue, alpha)) {
@@ -1150,7 +1093,7 @@ public class GLStateManager {
 
     public static void glColor4d(double red, double green, double blue, double alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd((float) red, (float) green, (float) blue, (float) alpha));
+            DisplayListManager.recordColor((float) red, (float) green, (float) blue, (float) alpha);
             changeColor((float) red, (float) green, (float) blue, (float) alpha);  // Update state for glGet queries
         } else {
             if (changeColor((float) red, (float) green, (float) blue, (float) alpha)) {
@@ -1161,7 +1104,7 @@ public class GLStateManager {
 
     public static void glColor4b(byte red, byte green, byte blue, byte alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(b2f(red), b2f(green), b2f(blue), b2f(alpha)));
+            DisplayListManager.recordColor(b2f(red), b2f(green), b2f(blue), b2f(alpha));
             changeColor(b2f(red), b2f(green), b2f(blue), b2f(alpha));  // Update state for glGet queries
         } else {
             if (changeColor(b2f(red), b2f(green), b2f(blue), b2f(alpha))) {
@@ -1172,7 +1115,7 @@ public class GLStateManager {
 
     public static void glColor4ub(byte red, byte green, byte blue, byte alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha)));
+            DisplayListManager.recordColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha));
             changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha));  // Update state for glGet queries
         } else {
             if (changeColor(ub2f(red), ub2f(green), ub2f(blue), ub2f(alpha))) {
@@ -1183,7 +1126,7 @@ public class GLStateManager {
 
     public static void glColor3f(float red, float green, float blue) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(red, green, blue, 1.0F));
+            DisplayListManager.recordColor(red, green, blue, 1.0F);
             changeColor(red, green, blue, 1.0F);  // Update state for glGet queries
         } else {
             if (changeColor(red, green, blue, 1.0F)) {
@@ -1194,7 +1137,7 @@ public class GLStateManager {
 
     public static void glColor3d(double red, double green, double blue) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd((float) red, (float) green, (float) blue, 1.0F));
+            DisplayListManager.recordColor((float) red, (float) green, (float) blue, 1.0F);
             changeColor((float) red, (float) green, (float) blue, 1.0F);  // Update state for glGet queries
         } else {
             if (changeColor((float) red, (float) green, (float) blue, 1.0F)) {
@@ -1205,7 +1148,7 @@ public class GLStateManager {
 
     public static void glColor3b(byte red, byte green, byte blue) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(b2f(red), b2f(green), b2f(blue), 1.0F));
+            DisplayListManager.recordColor(b2f(red), b2f(green), b2f(blue), 1.0F);
             changeColor(b2f(red), b2f(green), b2f(blue), 1.0F);  // Update state for immediate mode vertex capture
         } else {
             if (changeColor(b2f(red), b2f(green), b2f(blue), 1.0F)) {
@@ -1216,7 +1159,7 @@ public class GLStateManager {
 
     public static void glColor3ub(byte red, byte green, byte blue) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorCmd(ub2f(red), ub2f(green), ub2f(blue), 1.0F));
+            DisplayListManager.recordColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F);
             changeColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F);  // Update state for immediate mode vertex capture
         } else {
             if (changeColor(ub2f(red), ub2f(green), ub2f(blue), 1.0F)) {
@@ -1258,7 +1201,7 @@ public class GLStateManager {
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorMaskCmd(red, green, blue, alpha));
+            DisplayListManager.recordColorMask(red, green, blue, alpha);
         }
         if (Iris.enabled) {
             if (DepthColorStorage.isDepthColorLocked()) {
@@ -1280,7 +1223,7 @@ public class GLStateManager {
     // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ClearColorCmd(red, green, blue, alpha));
+            DisplayListManager.recordClearColor(red, green, blue, alpha);
             // Update state for glGet queries (recording only happens on main thread)
             clearColor.setRed(red);
             clearColor.setGreen(green);
@@ -1330,7 +1273,7 @@ public class GLStateManager {
 
     public static void glAlphaFunc(int function, float reference) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new AlphaFuncCmd(function, reference));
+            DisplayListManager.recordAlphaFunc(function, reference);
         }
         if (Iris.enabled) {
             if (AlphaTestStorage.isAlphaTestLocked()) {
@@ -1351,7 +1294,7 @@ public class GLStateManager {
     public static void glActiveTexture(int texture) {
         // Recording mode: record command and update state tracking (only on main thread)
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ActiveTextureCmd(texture));
+            DisplayListManager.recordActiveTexture(texture);
             final int newTexture = texture - GL13.GL_TEXTURE0;
             activeTextureUnit.setValue(newTexture);  // Update state for glGet queries
             return;  // Don't execute during recording
@@ -1367,7 +1310,7 @@ public class GLStateManager {
     public static void glActiveTextureARB(int texture) {
         // Recording mode: record command and update state tracking (only on main thread)
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ActiveTextureCmd(texture));
+            DisplayListManager.recordActiveTexture(texture);
             final int newTexture = texture - GL13.GL_TEXTURE0;
             activeTextureUnit.setValue(newTexture);  // Update state for glGet queries
             return;  // Don't execute during recording
@@ -1390,7 +1333,7 @@ public class GLStateManager {
 
     public static void glBindTexture(int target, int texture) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new BindTextureCmd(target, texture));
+            DisplayListManager.recordBindTexture(target, texture);
         }
         if (target != GL11.GL_TEXTURE_2D) {
             // We're only supporting 2D textures for now
@@ -1421,7 +1364,7 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
         }
         // Always update cache for glGet queries
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -1436,7 +1379,7 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
         }
         // Always update cache for glGet queries
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -1446,7 +1389,7 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
         }
         // Always update cache for glGet queries
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -1456,7 +1399,7 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
         }
         // Always update cache for glGet queries
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : null);
@@ -1574,7 +1517,7 @@ public class GLStateManager {
 
     public static void enableTexture() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new EnableCmd(GL11.GL_TEXTURE_2D));
+            DisplayListManager.recordEnable(GL11.GL_TEXTURE_2D);
         }
         final int textureUnit = getActiveTextureUnit();
         if (Iris.enabled) {
@@ -1597,7 +1540,7 @@ public class GLStateManager {
 
     public static void disableTexture() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new DisableCmd(GL11.GL_TEXTURE_2D));
+            DisplayListManager.recordDisable(GL11.GL_TEXTURE_2D);
         }
         final int textureUnit = getActiveTextureUnit();
         if (Iris.enabled) {
@@ -1881,7 +1824,7 @@ public class GLStateManager {
 
     public static void glLogicOp(int opcode) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LogicOpCmd(opcode));
+            DisplayListManager.recordLogicOp(opcode);
             return;
         }
         GL11.glLogicOp(opcode);
@@ -1983,7 +1926,7 @@ public class GLStateManager {
 
     public static void glFog(int pname, FloatBuffer param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(FogCmd.fromBuffer(pname, param));
+            DisplayListManager.recordFog(pname, param);
         }
         // TODO: Iris Notifier
         if (HAS_MULTIPLE_SET.contains(pname)) {
@@ -2031,7 +1974,7 @@ public class GLStateManager {
 
     public static void glFogf(int pname, float param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new FogfCmd(pname, param));
+            DisplayListManager.recordFogf(pname, param);
         } else {
             GL11.glFogf(pname, param);
         }
@@ -2063,7 +2006,7 @@ public class GLStateManager {
 
     public static void glFogi(int pname, int param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new FogiCmd(pname, param));
+            DisplayListManager.recordFogi(pname, param);
         }
         GL11.glFogi(pname, param);
         // Only update cached state when caching is enabled
@@ -2082,7 +2025,7 @@ public class GLStateManager {
     public static void glShadeModel(int mode) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new ShadeModelCmd(mode));
+            DisplayListManager.recordShadeModel(mode);
         }
         final boolean caching = isCachingEnabled();
         final int oldValue = shadeModelState.getValue();
@@ -2236,14 +2179,14 @@ public class GLStateManager {
 
     public static void glClear(int mask) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ClearCmd(mask));
+            DisplayListManager.recordClear(mask);
         }
         // Always execute - clears are immediate operations
         GL11.glClear(mask);
     }
     public static void glPushAttrib(int mask) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new PushAttribCmd(mask));
+            DisplayListManager.recordPushAttrib(mask);
         } else {
             GL11.glPushAttrib(mask);
         }
@@ -2255,7 +2198,7 @@ public class GLStateManager {
 
     public static void glPopAttrib() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new PopAttribCmd());
+            DisplayListManager.recordPopAttrib();
         } else {
             GL11.glPopAttrib();
         }
@@ -2270,7 +2213,7 @@ public class GLStateManager {
     // Matrix Operations
     public static void glMatrixMode(int mode) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new MatrixModeCmd(mode));
+            DisplayListManager.recordMatrixMode(mode);
         }
         matrixMode.setMode(mode);
     }
@@ -2285,7 +2228,9 @@ public class GLStateManager {
 
     public static void glLoadMatrix(FloatBuffer m) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(LoadMatrixCmd.create(m, matrixMode.getMode()));
+            final Matrix4f matrix = new Matrix4f().set(m);
+            m.rewind();
+            DisplayListManager.recordLoadMatrix(matrixMode.getMode(), matrix);
             // Reset relative transform for MODELVIEW - subsequent transforms are relative to loaded matrix
             if (isModelViewMatrix()) {
                 DisplayListManager.resetRelativeTransform();
@@ -2303,7 +2248,7 @@ public class GLStateManager {
             m.rewind();
             final Matrix4f floatMatrix = new Matrix4f();
             floatMatrix.set(conversionMatrix4d);
-            DisplayListManager.recordCommand(LoadMatrixCmd.create(floatMatrix, matrixMode.getMode()));
+            DisplayListManager.recordLoadMatrix(matrixMode.getMode(), floatMatrix);
             // Reset relative transform for MODELVIEW - subsequent transforms are relative to loaded matrix
             if (isModelViewMatrix()) {
                 DisplayListManager.resetRelativeTransform();
@@ -2334,7 +2279,7 @@ public class GLStateManager {
 
     public static void glLoadIdentity() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LoadIdentityCmd(matrixMode.getMode()));
+            DisplayListManager.recordLoadIdentity(matrixMode.getMode());
         } else {
             GL11.glLoadIdentity();
         }
@@ -2343,7 +2288,7 @@ public class GLStateManager {
 
     public static void glTranslatef(float x, float y, float z) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new TranslateCmd(x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordTranslate(matrixMode.getMode(), x, y, z);
             DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.TRANSLATE, null);
         } else {
             GL11.glTranslatef(x, y, z);
@@ -2353,7 +2298,7 @@ public class GLStateManager {
 
     public static void glTranslated(double x, double y, double z) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new TranslateCmd(x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordTranslate(matrixMode.getMode(), x, y, z);
             DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.TRANSLATE, null);
         } else {
             GL11.glTranslated(x, y, z);
@@ -2363,7 +2308,7 @@ public class GLStateManager {
 
     public static void glScalef(float x, float y, float z) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ScaleCmd(x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordScale(matrixMode.getMode(), x, y, z);
             DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.SCALE, null);
         } else {
             GL11.glScalef(x, y, z);
@@ -2373,7 +2318,7 @@ public class GLStateManager {
 
     public static void glScaled(double x, double y, double z) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ScaleCmd(x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordScale(matrixMode.getMode(), x, y, z);
             DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.SCALE, null);
         } else {
             GL11.glScaled(x, y, z);
@@ -2388,7 +2333,7 @@ public class GLStateManager {
 
         if (DisplayListManager.isRecording()) {
             // Record with the mode it's being applied to
-            DisplayListManager.recordCommand(MultMatrixCmd.create(multMatrix, currentMode));
+            DisplayListManager.recordMultMatrix(currentMode, multMatrix);
 
             // Only track if MODELVIEW (for baking into VBO vertices)
             if (currentMode == GL11.GL_MODELVIEW) {
@@ -2409,7 +2354,7 @@ public class GLStateManager {
 
         if (DisplayListManager.isRecording()) {
             // Record with the mode it's being applied to
-            DisplayListManager.recordCommand(MultMatrixCmd.create(conversionMatrix4f, currentMode));
+            DisplayListManager.recordMultMatrix(currentMode, conversionMatrix4f);
 
             // Only track if MODELVIEW (for baking into VBO vertices)
             if (currentMode == GL11.GL_MODELVIEW) {
@@ -2427,7 +2372,7 @@ public class GLStateManager {
         final boolean caching = isCachingEnabled();
 
         if (recording) {
-            DisplayListManager.recordCommand(new RotateCmd(angle, x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordRotate(matrixMode.getMode(), angle, x, y, z);
         } else {
             GL11.glRotatef(angle, x, y, z);
         }
@@ -2449,7 +2394,7 @@ public class GLStateManager {
         final boolean caching = isCachingEnabled();
 
         if (recording) {
-            DisplayListManager.recordCommand(new RotateCmd(angle, x, y, z, matrixMode.getMode()));
+            DisplayListManager.recordRotate(matrixMode.getMode(), angle, x, y, z);
         } else {
             GL11.glRotated(angle, x, y, z);
         }
@@ -2468,7 +2413,7 @@ public class GLStateManager {
 
     public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new OrthoCmd(left, right, bottom, top, zNear, zFar));
+            DisplayListManager.recordOrtho(left, right, bottom, top, zNear, zFar);
         } else {
             GL11.glOrtho(left, right, bottom, top, zNear, zFar);
         }
@@ -2477,7 +2422,7 @@ public class GLStateManager {
 
     public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new FrustumCmd(left, right, bottom, top, zNear, zFar));
+            DisplayListManager.recordFrustum(left, right, bottom, top, zNear, zFar);
         } else {
             GL11.glFrustum(left, right, bottom, top, zNear, zFar);
         }
@@ -2485,7 +2430,7 @@ public class GLStateManager {
     }
     public static void glPushMatrix() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new PushMatrixCmd(matrixMode.getMode()));
+            DisplayListManager.recordPushMatrix(matrixMode.getMode());
             DisplayListManager.pushRelativeTransform();  // Track MODELVIEW transform stack
         } else {
             GL11.glPushMatrix();
@@ -2503,7 +2448,7 @@ public class GLStateManager {
 
     public static void glPopMatrix() {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new PopMatrixCmd(matrixMode.getMode()));
+            DisplayListManager.recordPopMatrix(matrixMode.getMode());
             DisplayListManager.popRelativeTransform();  // Track MODELVIEW transform stack
         } else {
             GL11.glPopMatrix();
@@ -2530,7 +2475,7 @@ public class GLStateManager {
 
     public static void glViewport(int x, int y, int width, int height) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ViewportCmd(x, y, width, height));
+            DisplayListManager.recordViewport(x, y, width, height);
         } else {
             GL11.glViewport(x, y, width, height);
         }
@@ -2614,7 +2559,7 @@ public class GLStateManager {
     public static void glTexParameteri(int target, int pname, int param) {
         // Recording mode: record command but continue to update state tracking
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new TexParameteriCmd(target, pname, param));
+            DisplayListManager.recordTexParameteri(target, pname, param);
             // Don't return - fall through to update cache for glGet queries
         }
         if (target != GL11.GL_TEXTURE_2D) {
@@ -2657,7 +2602,7 @@ public class GLStateManager {
     public static void glTexParameterf(int target, int pname, float param) {
         // Recording mode: record command but continue to update state tracking
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new TexParameterfCmd(target, pname, param));
+            DisplayListManager.recordTexParameterf(target, pname, param);
             // Don't return - fall through to update cache for glGet queries
         }
         if (target != GL11.GL_TEXTURE_2D) {
@@ -2828,7 +2773,7 @@ public class GLStateManager {
 
     public static void glMaterial(int face, int pname, FloatBuffer params) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(MaterialCmd.fromBuffer(face, pname, params));
+            DisplayListManager.recordMaterial(face, pname, params);
         }
         if (face == GL11.GL_FRONT) {
             glMaterialFront(pname, params);
@@ -2878,13 +2823,13 @@ public class GLStateManager {
                     params.reset();
                 }
             }
-            DisplayListManager.recordCommand(MaterialCmd.fromArray(face, pname, floatParams));
+            DisplayListManager.recordMaterial(face, pname, java.nio.FloatBuffer.wrap(floatParams));
         }
     }
 
     public static void glMaterialf(int face, int pname, float val) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new MaterialfCmd(face, pname, val));
+            DisplayListManager.recordMaterialf(face, pname, val);
         }
         if (pname != GL11.GL_SHININESS) {
             // it is only valid to call glMaterialf for the GL_SHININESS parameter
@@ -2911,7 +2856,7 @@ public class GLStateManager {
 
     public static void glLight(int light, int pname, FloatBuffer params) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(LightCmd.fromBuffer(light, pname, params));
+            DisplayListManager.recordLight(light, pname, params);
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
         switch (pname) {
@@ -2970,13 +2915,13 @@ public class GLStateManager {
                     params.reset();
                 }
             }
-            DisplayListManager.recordCommand(LightCmd.fromArray(light, pname, floatParams));
+            DisplayListManager.recordLight(light, pname, java.nio.FloatBuffer.wrap(floatParams));
         }
     }
 
     public static void glLightf(int light, int pname, float param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LightfCmd(light, pname, param));
+            DisplayListManager.recordLightf(light, pname, param);
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
         switch (pname) {
@@ -2991,7 +2936,7 @@ public class GLStateManager {
 
     public static void glLighti(int light, int pname, int param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LightiCmd(light, pname, param));
+            DisplayListManager.recordLighti(light, pname, param);
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
         switch (pname) {
@@ -3006,7 +2951,7 @@ public class GLStateManager {
 
     public static void glLightModel(int pname, FloatBuffer params) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(LightModelCmd.fromBuffer(pname, params));
+            DisplayListManager.recordLightModel(pname, params);
         }
         switch (pname) {
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
@@ -3043,12 +2988,12 @@ public class GLStateManager {
                     params.reset();
                 }
             }
-            DisplayListManager.recordCommand(LightModelCmd.fromArray(pname, floatParams));
+            DisplayListManager.recordLightModel(pname, java.nio.FloatBuffer.wrap(floatParams));
         }
     }
     public static void glLightModelf(int pname, float param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LightModelfCmd(pname, param));
+            DisplayListManager.recordLightModelf(pname, param);
         }
         // Only update cached state on main thread
         if (isCachingEnabled()) {
@@ -3063,7 +3008,7 @@ public class GLStateManager {
     }
     public static void glLightModeli(int pname, int param) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new LightModeliCmd(pname, param));
+            DisplayListManager.recordLightModeli(pname, param);
         }
         // Only update cached state on main thread
         if (isCachingEnabled()) {
@@ -3080,7 +3025,7 @@ public class GLStateManager {
 
     public static void glColorMaterial(int face, int mode) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new ColorMaterialCmd(face, mode));
+            DisplayListManager.recordColorMaterial(face, mode);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || colorMaterialFace.getValue() != face || colorMaterialParameter.getValue() != mode) {
@@ -3098,7 +3043,7 @@ public class GLStateManager {
 
     public static void glUseProgram(int program) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new UseProgramCmd(program));
+            DisplayListManager.recordUseProgram(program);
             return;
         }
         final boolean caching = isCachingEnabled();
@@ -3139,7 +3084,7 @@ public class GLStateManager {
     public static void glLineWidth(float width) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new LineWidthCmd(width));
+            DisplayListManager.recordLineWidth(width);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || lineState.getWidth() != width) {
@@ -3155,7 +3100,7 @@ public class GLStateManager {
     // Texture commands
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
         }
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture - keeps GL binding state unchanged
@@ -3168,7 +3113,7 @@ public class GLStateManager {
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
         }
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
@@ -3231,7 +3176,7 @@ public class GLStateManager {
     // State commands
     public static void glCullFace(int mode) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCommand(new CullFaceCmd(mode));
+            DisplayListManager.recordCullFace(mode);
             return;
         }
         final boolean caching = isCachingEnabled();
@@ -3266,7 +3211,7 @@ public class GLStateManager {
     public static void glLineStipple(int factor, short pattern) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new LineStippleCmd(factor, pattern));
+            DisplayListManager.recordLineStipple(factor, pattern);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || lineState.getStippleFactor() != factor || lineState.getStipplePattern() != pattern) {
@@ -3283,7 +3228,7 @@ public class GLStateManager {
     public static void glPointSize(float size) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new PointSizeCmd(size));
+            DisplayListManager.recordPointSize(size);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || pointState.getSize() != size) {
@@ -3299,7 +3244,7 @@ public class GLStateManager {
     public static void glPolygonMode(int face, int mode) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new PolygonModeCmd(face, mode));
+            DisplayListManager.recordPolygonMode(face, mode);
         }
         final boolean caching = isCachingEnabled();
         final boolean needsUpdate;
@@ -3324,7 +3269,7 @@ public class GLStateManager {
     public static void glPolygonOffset(float factor, float units) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new PolygonOffsetCmd(factor, units));
+            DisplayListManager.recordPolygonOffset(factor, units);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || polygonState.getOffsetFactor() != factor || polygonState.getOffsetUnits() != units) {
@@ -3355,7 +3300,7 @@ public class GLStateManager {
     public static void glStencilFunc(int func, int ref, int mask) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilFuncCmd(func, ref, mask));
+            DisplayListManager.recordStencilFunc(func, ref, mask);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || stencilState.getFuncFront() != func || stencilState.getRefFront() != ref || stencilState.getValueMaskFront() != mask) {
@@ -3371,7 +3316,7 @@ public class GLStateManager {
     public static void glStencilMask(int mask) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilMaskCmd(mask));
+            DisplayListManager.recordStencilMask(mask);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || stencilState.getWriteMaskFront() != mask) {
@@ -3387,7 +3332,7 @@ public class GLStateManager {
     public static void glStencilOp(int fail, int zfail, int zpass) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilOpCmd(fail, zfail, zpass));
+            DisplayListManager.recordStencilOp(fail, zfail, zpass);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || stencilState.getFailOpFront() != fail || stencilState.getZFailOpFront() != zfail || stencilState.getZPassOpFront() != zpass) {
@@ -3448,7 +3393,7 @@ public class GLStateManager {
     public static void glClearStencil(int s) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new ClearStencilCmd(s));
+            DisplayListManager.recordClearStencil(s);
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || stencilState.getClearValue() != s) {
@@ -3481,7 +3426,7 @@ public class GLStateManager {
     public static void glStencilFuncSeparate(int face, int func, int ref, int mask) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilFuncSeparateCmd(face, func, ref, mask));
+            DisplayListManager.recordStencilFuncSeparate(face, func, ref, mask);
         }
         final boolean caching = isCachingEnabled();
         boolean needsUpdate = BYPASS_CACHE || !caching;
@@ -3515,7 +3460,7 @@ public class GLStateManager {
     public static void glStencilMaskSeparate(int face, int mask) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilMaskSeparateCmd(face, mask));
+            DisplayListManager.recordStencilMaskSeparate(face, mask);
         }
         final boolean caching = isCachingEnabled();
         boolean needsUpdate = BYPASS_CACHE || !caching;
@@ -3545,7 +3490,7 @@ public class GLStateManager {
     public static void glStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            DisplayListManager.recordCommand(new StencilOpSeparateCmd(face, sfail, dpfail, dppass));
+            DisplayListManager.recordStencilOpSeparate(face, sfail, dpfail, dppass);
         }
         final boolean caching = isCachingEnabled();
         boolean needsUpdate = BYPASS_CACHE || !caching;
