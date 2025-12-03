@@ -11,12 +11,11 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedLineDraw;
+import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
+import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
-import com.gtnewhorizons.angelica.glsm.recording.commands.CallListCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.OptimizationContext;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -113,7 +112,7 @@ public class DisplayListManager {
     private static int glListMode = 0;
     private static int glListId = -1;
     private static boolean tessellatorCompiling = false;  // Track if we started compiling
-    private static List<DisplayListCommand> currentCommands = null;  // null when not recording
+    private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static List<AccumulatedLineDraw> accumulatedLineDraws = null;  // Accumulates line draws
@@ -134,7 +133,7 @@ public class DisplayListManager {
     private record CompilationContext(
         int listId,
         int listMode,
-        List<DisplayListCommand> commands,
+        CommandRecorder recorder,
         List<AccumulatedDraw> draws,
         List<AccumulatedLineDraw> lineDraws,
         Matrix4fStack transform,
@@ -148,7 +147,7 @@ public class DisplayListManager {
      * This prevents other threads from having their GL calls captured.
      */
     public static boolean isRecording() {
-        return currentCommands != null && Thread.currentThread() == recordingThread;
+        return currentRecorder != null && Thread.currentThread() == recordingThread;
     }
 
     /**
@@ -168,16 +167,75 @@ public class DisplayListManager {
     }
 
     /**
-     * Record a command during display list compilation.
-     * If not recording, this is a no-op.
-     *
-     * @param cmd The command to record
+     * Get the current command count (for draw position tracking).
+     * @return The current command position
      */
-    public static void recordCommand(DisplayListCommand cmd) {
-        if (currentCommands != null) {
-            currentCommands.add(cmd);
-        }
+    public static int getCommandCount() {
+        return currentRecorder != null ? currentRecorder.getCommandCount() : 0;
     }
+
+    // ==================== Recording Method Delegates ====================
+    // These delegate to the current CommandRecorder during compilation.
+
+    public static void recordEnable(int cap) { if (currentRecorder != null) currentRecorder.recordEnable(cap); }
+    public static void recordDisable(int cap) { if (currentRecorder != null) currentRecorder.recordDisable(cap); }
+    public static void recordClear(int mask) { if (currentRecorder != null) currentRecorder.recordClear(mask); }
+    public static void recordClearColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordClearColor(r, g, b, a); }
+    public static void recordClearStencil(int s) { if (currentRecorder != null) currentRecorder.recordClearStencil(s); }
+    public static void recordColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordColor(r, g, b, a); }
+    public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) { if (currentRecorder != null) currentRecorder.recordColorMask(r, g, b, a); }
+    public static void recordDepthMask(boolean flag) { if (currentRecorder != null) currentRecorder.recordDepthMask(flag); }
+    public static void recordDepthFunc(int func) { if (currentRecorder != null) currentRecorder.recordDepthFunc(func); }
+    public static void recordBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) { if (currentRecorder != null) currentRecorder.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha); }
+    public static void recordAlphaFunc(int func, float ref) { if (currentRecorder != null) currentRecorder.recordAlphaFunc(func, ref); }
+    public static void recordCullFace(int mode) { if (currentRecorder != null) currentRecorder.recordCullFace(mode); }
+    public static void recordShadeModel(int mode) { if (currentRecorder != null) currentRecorder.recordShadeModel(mode); }
+    public static void recordBindTexture(int target, int texture) { if (currentRecorder != null) currentRecorder.recordBindTexture(target, texture); }
+    public static void recordTexParameteri(int target, int pname, int param) { if (currentRecorder != null) currentRecorder.recordTexParameteri(target, pname, param); }
+    public static void recordTexParameterf(int target, int pname, float param) { if (currentRecorder != null) currentRecorder.recordTexParameterf(target, pname, param); }
+    public static void recordMatrixMode(int mode) { if (currentRecorder != null) currentRecorder.recordMatrixMode(mode); }
+    public static void recordLoadIdentity(int matrixMode) { if (currentRecorder != null) currentRecorder.recordLoadIdentity(matrixMode); }
+    public static void recordPushMatrix(int matrixMode) { if (currentRecorder != null) currentRecorder.recordPushMatrix(matrixMode); }
+    public static void recordPopMatrix(int matrixMode) { if (currentRecorder != null) currentRecorder.recordPopMatrix(matrixMode); }
+    public static void recordTranslate(int matrixMode, double x, double y, double z) { if (currentRecorder != null) currentRecorder.recordTranslate(matrixMode, x, y, z); }
+    public static void recordRotate(int matrixMode, double angle, double x, double y, double z) { if (currentRecorder != null) currentRecorder.recordRotate(matrixMode, angle, x, y, z); }
+    public static void recordScale(int matrixMode, double x, double y, double z) { if (currentRecorder != null) currentRecorder.recordScale(matrixMode, x, y, z); }
+    public static void recordMultMatrix(int matrixMode, Matrix4f matrix) { if (currentRecorder != null) currentRecorder.recordMultMatrix(matrixMode, matrix); }
+    public static void recordLoadMatrix(int matrixMode, Matrix4f matrix) { if (currentRecorder != null) currentRecorder.recordLoadMatrix(matrixMode, matrix); }
+    public static void recordOrtho(double left, double right, double bottom, double top, double zNear, double zFar) { if (currentRecorder != null) currentRecorder.recordOrtho(left, right, bottom, top, zNear, zFar); }
+    public static void recordFrustum(double left, double right, double bottom, double top, double zNear, double zFar) { if (currentRecorder != null) currentRecorder.recordFrustum(left, right, bottom, top, zNear, zFar); }
+    public static void recordViewport(int x, int y, int width, int height) { if (currentRecorder != null) currentRecorder.recordViewport(x, y, width, height); }
+    public static void recordNormal(float nx, float ny, float nz) { if (currentRecorder != null) currentRecorder.recordNormal(nx, ny, nz); }
+    public static void recordPointSize(float size) { if (currentRecorder != null) currentRecorder.recordPointSize(size); }
+    public static void recordLineWidth(float width) { if (currentRecorder != null) currentRecorder.recordLineWidth(width); }
+    public static void recordLineStipple(int factor, int pattern) { if (currentRecorder != null) currentRecorder.recordLineStipple(factor, pattern); }
+    public static void recordPolygonOffset(float factor, float units) { if (currentRecorder != null) currentRecorder.recordPolygonOffset(factor, units); }
+    public static void recordPolygonMode(int face, int mode) { if (currentRecorder != null) currentRecorder.recordPolygonMode(face, mode); }
+    public static void recordColorMaterial(int face, int mode) { if (currentRecorder != null) currentRecorder.recordColorMaterial(face, mode); }
+    public static void recordLogicOp(int opcode) { if (currentRecorder != null) currentRecorder.recordLogicOp(opcode); }
+    public static void recordActiveTexture(int texture) { if (currentRecorder != null) currentRecorder.recordActiveTexture(texture); }
+    public static void recordUseProgram(int program) { if (currentRecorder != null) currentRecorder.recordUseProgram(program); }
+    public static void recordPushAttrib(int mask) { if (currentRecorder != null) currentRecorder.recordPushAttrib(mask); }
+    public static void recordPopAttrib() { if (currentRecorder != null) currentRecorder.recordPopAttrib(); }
+    public static void recordFogf(int pname, float param) { if (currentRecorder != null) currentRecorder.recordFogf(pname, param); }
+    public static void recordFogi(int pname, int param) { if (currentRecorder != null) currentRecorder.recordFogi(pname, param); }
+    public static void recordFog(int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordFog(pname, params); }
+    public static void recordLightf(int light, int pname, float param) { if (currentRecorder != null) currentRecorder.recordLightf(light, pname, param); }
+    public static void recordLighti(int light, int pname, int param) { if (currentRecorder != null) currentRecorder.recordLighti(light, pname, param); }
+    public static void recordLight(int light, int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordLight(light, pname, params); }
+    public static void recordLightModelf(int pname, float param) { if (currentRecorder != null) currentRecorder.recordLightModelf(pname, param); }
+    public static void recordLightModeli(int pname, int param) { if (currentRecorder != null) currentRecorder.recordLightModeli(pname, param); }
+    public static void recordLightModel(int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordLightModel(pname, params); }
+    public static void recordMaterialf(int face, int pname, float val) { if (currentRecorder != null) currentRecorder.recordMaterialf(face, pname, val); }
+    public static void recordMaterial(int face, int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordMaterial(face, pname, params); }
+    public static void recordStencilFunc(int func, int ref, int mask) { if (currentRecorder != null) currentRecorder.recordStencilFunc(func, ref, mask); }
+    public static void recordStencilFuncSeparate(int face, int func, int ref, int mask) { if (currentRecorder != null) currentRecorder.recordStencilFuncSeparate(face, func, ref, mask); }
+    public static void recordStencilOp(int fail, int zfail, int zpass) { if (currentRecorder != null) currentRecorder.recordStencilOp(fail, zfail, zpass); }
+    public static void recordStencilOpSeparate(int face, int sfail, int dpfail, int dppass) { if (currentRecorder != null) currentRecorder.recordStencilOpSeparate(face, sfail, dpfail, dppass); }
+    public static void recordStencilMask(int mask) { if (currentRecorder != null) currentRecorder.recordStencilMask(mask); }
+    public static void recordStencilMaskSeparate(int face, int mask) { if (currentRecorder != null) currentRecorder.recordStencilMaskSeparate(face, mask); }
+    public static void recordCallList(int listId) { if (currentRecorder != null) currentRecorder.recordCallList(listId); }
+    public static void recordComplexCommand(DisplayListCommand cmd) { if (currentRecorder != null) currentRecorder.recordComplexCommand(cmd); }
 
     /**
      * Add an immediate mode draw to the current display list compilation.
@@ -196,17 +254,16 @@ public class DisplayListManager {
 
         // Get relative transform (changes since glNewList, not absolute matrix state)
         final Matrix4f currentTransform = new Matrix4f(relativeTransform);
-        final int commandPosition = currentCommands != null ? currentCommands.size() : 0;
 
         // Add quad draw if we have quads
         if (!result.quads().isEmpty()) {
-            final AccumulatedDraw quadDraw = new AccumulatedDraw(result.quads(), currentTransform, result.flags(), commandPosition);
+            final AccumulatedDraw quadDraw = new AccumulatedDraw(result.quads(), currentTransform, result.flags(), getCommandCount());
             accumulatedDraws.add(quadDraw);
         }
 
         // Add line draw if we have lines
         if (!result.lines().isEmpty()) {
-            final AccumulatedLineDraw lineDraw = new AccumulatedLineDraw(result.lines(), currentTransform, result.flags(), commandPosition);
+            final AccumulatedLineDraw lineDraw = new AccumulatedLineDraw(result.lines(), currentTransform, result.flags(), getCommandCount());
             accumulatedLineDraws.add(lineDraw);
         }
     }
@@ -354,7 +411,7 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentCommands, accumulatedDraws, accumulatedLineDraws,
+                glListId, glListMode, currentRecorder, accumulatedDraws, accumulatedLineDraws,
                 relativeTransform, tessellatorCompiling, immediateModeRecorder
             );
             compilationStack.push(parentContext);
@@ -364,7 +421,7 @@ public class DisplayListManager {
         glListId = list;
         glListMode = mode;
         recordingThread = Thread.currentThread();  // Track which thread is recording
-        currentCommands = new ArrayList<>(256);   // Typical display list command count
+        currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(64);   // Fewer draws than commands typically
         accumulatedLineDraws = new ArrayList<>(16);  // Line draws are less common
         relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
@@ -381,7 +438,7 @@ public class DisplayListManager {
             final Matrix4f currentTransform = new Matrix4f(relativeTransform);
 
             // Accumulate this draw for batching at glEndList()
-            final AccumulatedDraw draw = new AccumulatedDraw(quads, currentTransform, flags, currentCommands.size());
+            final AccumulatedDraw draw = new AccumulatedDraw(quads, currentTransform, flags, getCommandCount());
             accumulatedDraws.add(draw);
         });
         tessellatorCompiling = true;
@@ -410,7 +467,8 @@ public class DisplayListManager {
 
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions
-        final boolean hasCommands = currentCommands != null && !currentCommands.isEmpty();
+        final CommandBuffer rawCommandBuffer = currentRecorder != null ? currentRecorder.getBuffer() : null;
+        final boolean hasCommands = rawCommandBuffer != null && rawCommandBuffer.size() > 0;
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
         final boolean hasLineDraws = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
 
@@ -424,16 +482,24 @@ public class DisplayListManager {
             // Collect all owned VBOs (quads + lines)
             final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer);
 
-            final List<DisplayListCommand> cmds = currentCommands != null ? currentCommands : new ArrayList<>();
+            // Build to CommandBuffer - optimize raw buffer to final buffer
+            final CommandBuffer finalBuffer = new CommandBuffer();
+            if (DEBUG_DISPLAY_LISTS) {
+                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer, ownedVbos, finalBuffer);
+            } else {
+                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, ownedVbos, glListId, finalBuffer);
+            }
 
-            // Build either optimized or unoptimized commands based on debug flag
-            final DisplayListCommand[] commands = DEBUG_DISPLAY_LISTS
-                ? buildUnoptimizedCommands(cmds, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer)
-                : buildOptimizedCommands(cmds, compiledQuadBuffers, compiledLineBuffer, glListId);
+            // Free the recorder (and its buffer) after optimization
+            currentRecorder.free();
 
-            compiled = new CompiledDisplayList(commands, ownedVbos);
+            compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), ownedVbos);
             displayListCache.put(glListId, compiled);
         } else {
+            // Free the recorder even if empty
+            if (currentRecorder != null) {
+                currentRecorder.free();
+            }
             compiled = null;
         }
 
@@ -444,7 +510,7 @@ public class DisplayListManager {
             // Restore parent context
             glListId = parentContext.listId;
             glListMode = parentContext.listMode;
-            currentCommands = parentContext.commands;
+            currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
             accumulatedLineDraws = parentContext.lineDraws;
             relativeTransform = parentContext.transform;
@@ -455,7 +521,7 @@ public class DisplayListManager {
             // Parent's COMPILING callback is now active again
         } else {
             // Not nested - clear all compilation state
-            currentCommands = null;
+            currentRecorder = null;
             recordingThread = null;
             accumulatedDraws = null;
             accumulatedLineDraws = null;
@@ -482,9 +548,9 @@ public class DisplayListManager {
         // If we're currently recording, record a reference to this list Per OpenGL spec: the inner list is NOT executed during compilation.
         // It only executes when the parent list is played back.
         // For GL_COMPILE_AND_EXECUTE: the entire parent list (including this CallListCmd) executes at the end of glEndList, not during compilation.
-        if (currentCommands != null) {
-            // Record a CallListCmd that will execute the referenced list during playback
-            currentCommands.add(new CallListCmd(list));
+        if (currentRecorder != null) {
+            // Record a CallList command that will execute the referenced list during playback
+            recordCallList(list);
             return;
         }
 
@@ -527,98 +593,6 @@ public class DisplayListManager {
         }
         // Also call legacy glDeleteLists for any lists we didn't handle
         GL11.glDeleteLists(list, range);
-    }
-
-    /**
-     * Build unoptimized command list using shared VBOs via DrawRangeCmd.
-     * Preserves original matrix commands for nested display list composition.
-     * Uses perDrawRanges from compiled buffers (1:1 with input draws).
-     *
-     * @param currentCommands Original matrix/state commands
-     * @param accumulatedDraws The accumulated draws (for ordering info)
-     * @param compiledQuadBuffers Pre-compiled format-based quad VBOs with perDrawRanges
-     * @param compiledLineBuffer Pre-compiled line VBO (may be null)
-     */
-    private static DisplayListCommand[] buildUnoptimizedCommands(
-            List<DisplayListCommand> currentCommands,
-            List<AccumulatedDraw> accumulatedDraws,
-            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer) {
-
-        final boolean hasQuads = accumulatedDraws != null && !accumulatedDraws.isEmpty();
-        final boolean hasLines = compiledLineBuffer != null;
-
-        if (!hasQuads && !hasLines && (currentCommands == null || currentCommands.isEmpty())) {
-            return new DisplayListCommand[0];
-        }
-
-        // Build per-format draw counters to index into perDrawRanges
-        final Map<CapturingTessellator.Flags, int[]> perFormatDrawIndex = new HashMap<>();
-        for (var key : compiledQuadBuffers.keySet()) {
-            perFormatDrawIndex.put(key, new int[]{0});  // Mutable int holder
-        }
-
-        final List<DisplayListCommand> unoptimized = new ArrayList<>();
-        int drawIndex = 0;
-        int lineRangeIndex = 0;
-        final DrawRange[] lineRanges = hasLines ? compiledLineBuffer.perDrawRanges() : null;
-
-        // Insert draws at their recorded positions in the command stream
-        final int cmdCount = currentCommands != null ? currentCommands.size() : 0;
-        for (int i = 0; i < cmdCount; i++) {
-            // Insert any quad draws that belong at this position
-            while (hasQuads && drawIndex < accumulatedDraws.size() && accumulatedDraws.get(drawIndex).commandIndex == i) {
-                final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
-                emitUnoptimizedQuadDraw(draw, compiledQuadBuffers, perFormatDrawIndex, unoptimized);
-                drawIndex++;
-            }
-
-            // Insert any line draws that belong at this position (using shared line VBO)
-            while (hasLines && lineRangeIndex < lineRanges.length && lineRanges[lineRangeIndex].commandIndex() == i) {
-                final DrawRange range = lineRanges[lineRangeIndex++];
-                unoptimized.add(new DrawRangeCmd(compiledLineBuffer.vbo(), range.startVertex(), range.vertexCount(), false));
-            }
-
-            // Add the original command (including matrix commands for nested list composition)
-            unoptimized.add(currentCommands.get(i));
-        }
-
-        // Insert any remaining quad draws at the end
-        while (hasQuads && drawIndex < accumulatedDraws.size()) {
-            final AccumulatedDraw draw = accumulatedDraws.get(drawIndex);
-            emitUnoptimizedQuadDraw(draw, compiledQuadBuffers, perFormatDrawIndex, unoptimized);
-            drawIndex++;
-        }
-
-        // Insert any remaining line draws at the end
-        while (hasLines && lineRangeIndex < lineRanges.length) {
-            final DrawRange range = lineRanges[lineRangeIndex++];
-            unoptimized.add(new DrawRangeCmd(compiledLineBuffer.vbo(), range.startVertex(), range.vertexCount(), false));
-        }
-
-        return unoptimized.toArray(new DisplayListCommand[0]);
-    }
-
-    /**
-     * Emit a DrawRangeCmd for a quad draw in the unoptimized path.
-     * Uses perDrawRanges from the pre-compiled buffer for this format.
-     */
-    private static void emitUnoptimizedQuadDraw(
-            AccumulatedDraw draw,
-            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledBuffers,
-            Map<CapturingTessellator.Flags, int[]> perFormatDrawIndex,
-            List<DisplayListCommand> output) {
-
-        final CompiledFormatBuffer buffer = compiledBuffers.get(draw.flags);
-        final int[] indexHolder = perFormatDrawIndex.get(draw.flags);
-        final DrawRange range = buffer.perDrawRanges()[indexHolder[0]++];
-
-        output.add(new DrawRangeCmd(
-            buffer.vbo(),
-            range.startVertex(),
-            range.vertexCount(),
-            buffer.flags().hasBrightness
-        ));
     }
 
     /**
@@ -693,9 +667,11 @@ public class DisplayListManager {
         return vbos.toArray(new VertexBuffer[0]);
     }
 
+    // ==================== Buffer-to-Buffer Optimization ====================
     /**
      * Build optimized command list using pre-compiled VBOs.
      * Uses mergedRanges (consecutive same-transform draws combined) and collapses MODELVIEW transforms.
+     * (Package-private for testing)
      *
      * @param currentCommands Original matrix/state commands
      * @param compiledQuadBuffers Pre-compiled format-based quad VBOs
@@ -703,7 +679,7 @@ public class DisplayListManager {
      * @param glListId Display list ID for logging
      * @return Optimized command array
      */
-    private static DisplayListCommand[] buildOptimizedCommands(
+    static DisplayListCommand[] buildOptimizedCommands(
             List<DisplayListCommand> currentCommands,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
@@ -716,9 +692,9 @@ public class DisplayListManager {
         final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
 
         // Add quad ranges
-        for (CompiledFormatBuffer buffer : compiledQuadBuffers.values()) {
-            for (DrawRange range : buffer.mergedRanges()) {
-                allRanges.add(new DrawRangeWithBuffer(range, buffer.vbo(), buffer.flags().hasBrightness));
+        for (CompiledFormatBuffer compiledBuffer : compiledQuadBuffers.values()) {
+            for (DrawRange range : compiledBuffer.mergedRanges()) {
+                allRanges.add(new DrawRangeWithBuffer(range, compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
             }
         }
 
@@ -738,7 +714,7 @@ public class DisplayListManager {
         for (int i = 0; i < currentCommands.size(); i++) {
             // Emit draw ranges (quads and lines) at this command position
             while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == i) {
-                emitDrawRange(allRanges.get(rangeIndex++), transformOpt, optimized);
+                emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
             }
 
             // Process the original command
@@ -750,7 +726,7 @@ public class DisplayListManager {
 
         // Emit remaining draw ranges at end of command stream
         while (rangeIndex < allRanges.size()) {
-            emitDrawRange(allRanges.get(rangeIndex++), transformOpt, optimized);
+            emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
         }
 
         // Emit residual transform to match expected GL state
@@ -796,10 +772,10 @@ public class DisplayListManager {
     }
 
     /**
-     * Emit a draw range command, synchronizing transforms as needed.
+     * Emit a draw range command for the legacy path (testing).
      * Uses delta-based transform emission via TransformOptimizer.
      */
-    private static void emitDrawRange(DrawRangeWithBuffer drwb, TransformOptimizer transformOpt,
+    private static void emitDrawRangeLegacy(DrawRangeWithBuffer drwb, TransformOptimizer transformOpt,
                                        List<DisplayListCommand> output) {
         final DrawRange range = drwb.range();
 
@@ -808,7 +784,7 @@ public class DisplayListManager {
             transformOpt.emitTransformTo(output, range.transform());
         }
 
-        output.add(new DrawRangeCmd(
+        output.add(new com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd(
             drwb.vbo(),
             range.startVertex(),
             range.vertexCount(),
