@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -11,8 +13,6 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -68,7 +68,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
         int multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
         int individualTransformCount = counts.getOrDefault(GLCommand.TRANSLATE, 0)
             + counts.getOrDefault(GLCommand.ROTATE, 0)
@@ -122,7 +122,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: should have Push, Pop, and collapsed MultMatrix commands
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
 
         int pushCount = counts.getOrDefault(GLCommand.PUSH_MATRIX, 0);
         int popCount = counts.getOrDefault(GLCommand.POP_MATRIX, 0);
@@ -217,7 +217,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: MultMatrix should be emitted before CallList
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        List<Integer> opcodes = compiled.getCommandOpcodes();
+        IntList opcodes = compiled.getCommandOpcodes();
 
         // Find positions of MultMatrix and CallList
         int multMatrixIndex = opcodes.indexOf(GLCommand.MULT_MATRIX);
@@ -268,7 +268,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glEndList();
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
 
         int multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
 
@@ -356,7 +356,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         // Verify optimization: should collapse to 1 MultMatrix
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
 
         int multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
 
@@ -416,7 +416,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        List<Integer> opcodes = compiled.getCommandOpcodes();
+        IntList opcodes = compiled.getCommandOpcodes();
 
         // Find indices of key commands
         int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
@@ -467,7 +467,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glEndList();
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        List<Integer> opcodes = compiled.getCommandOpcodes();
+        IntList opcodes = compiled.getCommandOpcodes();
 
         int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
         int popIndex = opcodes.indexOf(GLCommand.POP_MATRIX);
@@ -507,7 +507,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
-        Map<Integer, Integer> counts = compiled.getCommandCounts();
+        Int2IntMap counts = compiled.getCommandCounts();
         int loadMatrixCount = counts.getOrDefault(GLCommand.LOAD_MATRIX, 0);
 
         assertEquals(1, loadMatrixCount,

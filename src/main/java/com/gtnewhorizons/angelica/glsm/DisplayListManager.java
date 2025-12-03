@@ -101,7 +101,7 @@ public class DisplayListManager {
         return currentRenderingList != -1;
     }
 
-    static boolean isIdentity(Matrix4f m) {
+    public static boolean isIdentity(Matrix4f m) {
         return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0;
     }
 

@@ -2,12 +2,12 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
@@ -96,8 +96,8 @@ public final class CompiledDisplayList {
      * Get counts of each command type in the buffer.
      * Used for testing to verify optimization results.
      */
-    public Map<Integer, Integer> getCommandCounts() {
-        Map<Integer, Integer> counts = new HashMap<>();
+    public Int2IntMap getCommandCounts() {
+        Int2IntMap counts = new Int2IntOpenHashMap();
         if (commandBuffer == null || commandBuffer.limit() == 0) {
             return counts;
         }
@@ -105,7 +105,7 @@ public final class CompiledDisplayList {
         long end = ptr + commandBuffer.limit();
         while (ptr < end) {
             int cmd = memGetInt(ptr);
-            counts.merge(cmd, 1, Integer::sum);
+            counts.mergeInt(cmd, 1, Integer::sum);
             ptr += getCommandSize(cmd, ptr);
         }
         return counts;
@@ -115,8 +115,8 @@ public final class CompiledDisplayList {
      * Get the sequence of command opcodes in order.
      * Used for testing to verify command ordering.
      */
-    public List<Integer> getCommandOpcodes() {
-        List<Integer> opcodes = new ArrayList<>();
+    public IntList getCommandOpcodes() {
+        IntList opcodes = new IntArrayList();
         if (commandBuffer == null || commandBuffer.limit() == 0) {
             return opcodes;
         }

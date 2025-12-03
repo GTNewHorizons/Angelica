@@ -5,6 +5,11 @@ plugins {
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+/*    extraRunJvmArguments.addAll(
+        "-Dlegacy.debugClassLoading=true",
+        "-Dlegacy.debugClassLoadingFiner=true",
+        "-Dlegacy.debugClassLoadingSave=true")*/
+
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
 }
 
