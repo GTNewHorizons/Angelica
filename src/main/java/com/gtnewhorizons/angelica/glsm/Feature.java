@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
@@ -22,6 +23,7 @@ public class Feature {
         GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_TEXTURE_BIT, GL11.GL_TRANSFORM_BIT, GL11.GL_VIEWPORT_BIT };
 
     static final Int2ObjectMap<List<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
+    static final Int2ObjectMap<IStateStack<?>[]> maskToNonBooleanStacksMap = new Int2ObjectOpenHashMap<>();
 
     static List<IStateStack<?>> maskToFeatures(int mask) {
         if(maskToFeaturesMap.containsKey(mask)) {
@@ -40,6 +42,29 @@ public class Feature {
 
         maskToFeaturesMap.put(mask, asList);
         return asList;
+    }
+
+    /**
+     * Returns only non-BooleanStateStack instances for the given mask.
+     * These use traditional push/pop without global depth tracking.
+     */
+    static IStateStack<?>[] maskToNonBooleanStacks(int mask) {
+        IStateStack<?>[] cached = maskToNonBooleanStacksMap.get(mask);
+        if (cached != null) {
+            return cached;
+        }
+
+        final List<IStateStack<?>> all = maskToFeatures(mask);
+        final List<IStateStack<?>> nonBooleans = new ArrayList<>();
+        for (int i = 0; i < all.size(); i++) {
+            final IStateStack<?> stack = all.get(i);
+            if (!(stack instanceof BooleanStateStack)) {
+                nonBooleans.add(stack);
+            }
+        }
+        cached = nonBooleans.toArray(new IStateStack<?>[0]);
+        maskToNonBooleanStacksMap.put(mask, cached);
+        return cached;
     }
 
     private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
@@ -223,10 +248,9 @@ public class Feature {
             , GLStateManager.shadeModelState // GL_SHADE_MODEL setting
         ));
         attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(
-            // GL_LINE_SMOOTH flag
-            // GL_LINE_STIPPLE enable bit
-            // Line stipple pattern and repeat counter
-            // Line width
+              GLStateManager.lineSmoothState // GL_LINE_SMOOTH flag
+            , GLStateManager.lineStippleState // GL_LINE_STIPPLE enable bit
+            , GLStateManager.lineState // Line stipple pattern, repeat counter, and width
         ));
         attribToFeatures.put(GL11.GL_LIST_BIT, ImmutableSet.of(
             // GL_LIST_BASE setting
@@ -251,21 +275,17 @@ public class Feature {
             // GL_READ_BUFFER setting
         ));
         attribToFeatures.put(GL11.GL_POINT_BIT, ImmutableSet.of(
-            // GL_POINT_SMOOTH flag
-            // Point size
+              GLStateManager.pointSmoothState // GL_POINT_SMOOTH flag
+            , GLStateManager.pointState // Point size
         ));
         attribToFeatures.put(GL11.GL_POLYGON_BIT, ImmutableSet.of(
               GLStateManager.cullState // GL_CULL_FACE enable bit
-            // GL_CULL_FACE_MODE value
-            // GL_FRONT_FACE indicator
-            // GL_POLYGON_MODE setting
-            // GL_POLYGON_SMOOTH flag
-            // GL_POLYGON_STIPPLE enable bit
-            // GL_POLYGON_OFFSET_FILL flag
-            // GL_POLYGON_OFFSET_LINE flag
-            // GL_POLYGON_OFFSET_POINT flag
-            // GL_POLYGON_OFFSET_FACTOR
-            // GL_POLYGON_OFFSET_UNITS
+            , GLStateManager.polygonSmoothState // GL_POLYGON_SMOOTH flag
+            , GLStateManager.polygonStippleState // GL_POLYGON_STIPPLE enable bit
+            , GLStateManager.polygonOffsetFillState // GL_POLYGON_OFFSET_FILL flag
+            , GLStateManager.polygonOffsetLineState // GL_POLYGON_OFFSET_LINE flag
+            , GLStateManager.polygonOffsetPointState // GL_POLYGON_OFFSET_POINT flag
+            , GLStateManager.polygonState // GL_CULL_FACE_MODE, GL_FRONT_FACE, GL_POLYGON_MODE, GL_POLYGON_OFFSET_FACTOR/UNITS
         ));
         attribToFeatures.put(GL11.GL_POLYGON_STIPPLE_BIT, ImmutableSet.of(
             // Polygon stipple pattern
@@ -275,12 +295,8 @@ public class Feature {
             // Scissor box
         ));
         attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, ImmutableSet.of(
-            // GL_STENCIL_TEST enable bit
-            // Stencil function and reference value
-            // Stencil value mask
-            // Stencil fail, pass, and depth buffer pass actions
-            // Stencil buffer clear value
-            // Stencil buffer writemask
+              GLStateManager.stencilTest // GL_STENCIL_TEST enable bit
+            , GLStateManager.stencilState // Stencil function, ref, mask, ops, writemask, clear value
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
             GLStateManager.activeTextureUnit // Active texture unit

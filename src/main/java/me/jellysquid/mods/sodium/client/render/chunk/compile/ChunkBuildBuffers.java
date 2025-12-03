@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.coderbot.iris.Iris;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import lombok.Getter;
@@ -59,7 +59,7 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
             }
         }
 
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
 
             if (blockMatches != null) {
@@ -76,7 +76,7 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
 
             for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
                 final ModelVertexSink sink = this.vertexType.createBufferWriter(this.buffersByLayer[i][facing.ordinal()], SodiumClientMod.isDirectMemoryAccessEnabled());
-                if (AngelicaConfig.enableIris && sink instanceof ContextAwareVertexWriter) {
+                if (Iris.enabled && sink instanceof ContextAwareVertexWriter) {
                     ((ContextAwareVertexWriter) sink).iris$setContextHolder(iris$contextHolder);
                 }
                 writers[facing.ordinal()] = new ChunkModelVertexTransformer(sink, this.offset);
@@ -156,17 +156,17 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
 
     // Iris Compat
     public void iris$setLocalPos(int localPosX, int localPosY, int localPosZ) {
-        if(!AngelicaConfig.enableIris) return;
+        if(!Iris.enabled) return;
         this.iris$contextHolder.setLocalPos(localPosX, localPosY, localPosZ);
     }
 
     public void iris$setMaterialId(Block block, short renderType) {
-        if(!AngelicaConfig.enableIris) return;
+        if(!Iris.enabled) return;
         this.iris$contextHolder.set(block, renderType);
     }
 
     public void iris$resetBlockContext() {
-        if(!AngelicaConfig.enableIris) return;
+        if(!Iris.enabled) return;
         this.iris$contextHolder.reset();
     }
 }

@@ -70,6 +70,14 @@ public class GLSMUtil {
         );
     }
 
+    public static void verifyState(int glCap, short expected, String message) {
+        // For short state (e.g., line stipple pattern), GL returns it as int, we compare as short
+        assertAll(message,
+            () -> assertEquals(expected, (short) GL11.glGetInteger(glCap), "GL State Mismatch"),
+            () -> assertEquals(expected, (short) GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
+        );
+    }
+
     public static void verifyState(int glCap, float expected) {
         verifyState(glCap, expected, "Float State Mismatch");
     }
@@ -253,6 +261,25 @@ public class GLSMUtil {
 
         // Reset draw buffer
         GLStateManager.glDrawBuffer(GLStateManager.DEFAULT_DRAW_BUFFER);
+
+        // Reset line state
+        GLStateManager.glLineWidth(1.0f);
+        GLStateManager.glLineStipple(1, (short) 0xFFFF);
+
+        // Reset point state
+        GLStateManager.glPointSize(1.0f);
+
+        // Reset polygon state
+        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+        GLStateManager.glPolygonOffset(0.0f, 0.0f);
+        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLStateManager.glFrontFace(GL11.GL_CCW);
+
+        // Reset stencil state
+        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 0, 0xFFFFFFFF);
+        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+        GLStateManager.glStencilMask(0xFFFFFFFF);
+        GLStateManager.glClearStencil(0);
     }
 
 

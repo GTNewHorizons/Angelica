@@ -35,19 +35,17 @@ public enum Mixins implements IMixins {
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.MixinFMLClientHandler"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            , "angelica.glsm.MixinSplashProgressCaching"
         )
     ),
-    ANGELICA_VBO(
+
+    ANGELICA_VBO_CLOUDS(
         new MixinBuilder()
-            .setApplyIf(() -> AngelicaConfig.enableVBO)
+            .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
             .setPhase(Phase.EARLY)
-            .addClientMixins(
-                "angelica.vbo.MixinGLAllocation"
-                , "angelica.vbo.MixinModelRenderer"
-                , "angelica.vbo.MixinRenderGlobal"
-                , "angelica.vbo.MixinWavefrontObject"
-            )
+            .addClientMixins("angelica.vbo.MixinRenderGlobal")
     ),
+
     ANGELICA_FONT_RENDERER(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableFontRenderer)
@@ -100,6 +98,10 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
+
+    ANGELICA_OPTIMIZE_GLALLOCATION(new MixinBuilder("Replace HashMap with fastutil Int2IntMap in GLAllocation")
+        .setPhase(Phase.EARLY)
+        .addClientMixins("angelica.optimizations.MixinGLAllocation")),
 
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
@@ -438,15 +440,24 @@ public enum Mixins implements IMixins {
             "base.MixinMinecraft"
         ))
     ),
-    MCPATCHER_FORGE_RENDERPASS(new MixinBuilder()
+    MCPATCHER_FORGE_RENDERPASS_BASE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> NotFineConfig.renderPass)
-        .addClientMixins(addPrefix("mcpatcherforge.",
-            "renderpass.MixinEntityRenderer",
-            "renderpass.MixinRenderBlocks",
-            "renderpass.MixinRenderGlobal",
-            "renderpass.MixinWorldRenderer"
+        .addClientMixins(addPrefix("mcpatcherforge.renderpass.",
+            "MixinEntityRenderer",
+            "MixinRenderBlocks",
+            "MixinWorldRenderer"
         ))
+    ),
+    MCPATCHER_FORGE_RENDERPASS_DISPLAYLIST(new MixinBuilder("RenderPass display list allocation increase")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableSodium)
+        .addClientMixins("mcpatcherforge.renderpass.MixinRenderGlobal_DisplayLists")
+    ),
+    MCPATCHER_FORGE_RENDERPASS_FEATURES(new MixinBuilder("RenderPass rendering features")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableSodium)
+        .addClientMixins("mcpatcherforge.renderpass.MixinRenderGlobal_Features")
     ),
     MCPATCHER_FORGE_CUSTOM_COLORS(new MixinBuilder()
         .setPhase(Phase.EARLY)

@@ -4,7 +4,6 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import net.coderbot.iris.Iris;
@@ -105,7 +104,7 @@ public class SodiumGameOptions {
         }
 
         Files.write(this.configPath, GSON.toJson(this).getBytes(StandardCharsets.UTF_8));
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             try {
                 if (Iris.getIrisConfig() != null) {
                     Iris.getIrisConfig().save();

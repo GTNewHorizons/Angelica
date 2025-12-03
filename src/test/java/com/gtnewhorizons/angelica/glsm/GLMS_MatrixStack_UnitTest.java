@@ -104,16 +104,6 @@ public class GLMS_MatrixStack_UnitTest {
         GLStateManager.glPopMatrix();
         testMatrix.identity();
         validateMatrix(testMatrix, matrix.getEnum, "Popped " + matrix.name + " Matrix");
-    }
-
-    @AfterAll
-    static void cleanup() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
 
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }

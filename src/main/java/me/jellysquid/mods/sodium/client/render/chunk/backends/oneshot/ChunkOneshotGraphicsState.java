@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.oneshot;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
+import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBufferUsage;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlMutableBuffer;
@@ -87,7 +87,7 @@ public class ChunkOneshotGraphicsState extends ChunkGraphicsState {
     }
 
      private GlVertexAttributeBinding[] getBindings(GlVertexFormat<ChunkMeshAttribute> vertexFormat) {
-        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
+        if(Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
             return new GlVertexAttributeBinding[] {
                 new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
                 new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),

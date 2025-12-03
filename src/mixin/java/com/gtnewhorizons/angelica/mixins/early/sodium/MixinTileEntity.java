@@ -23,7 +23,7 @@ public class MixinTileEntity {
     @Overwrite
     public Block getBlockType() {
         Block block = this.blockType;
-        if (block == null) {
+        if (block == null && this.worldObj != null) {
             this.blockType = block = this.worldObj.getBlock(this.xCoord, this.yCoord, this.zCoord);
         }
 
@@ -37,7 +37,7 @@ public class MixinTileEntity {
     @Overwrite
     public int getBlockMetadata() {
         int metadata = this.blockMetadata;
-        if (metadata == -1) {
+        if (metadata == -1 && this.worldObj != null) {
             this.blockMetadata = metadata = this.worldObj.getBlockMetadata(this.xCoord, this.yCoord, this.zCoord);
         }
 

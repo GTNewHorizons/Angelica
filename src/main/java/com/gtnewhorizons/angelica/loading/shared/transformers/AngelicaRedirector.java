@@ -41,6 +41,7 @@ public final class AngelicaRedirector {
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
+    private static final String GL12 = "org/lwjgl/opengl/GL12";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
@@ -55,7 +56,7 @@ public final class AngelicaRedirector {
         "initializeTextures", "func_77474_a"
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL12, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 
@@ -75,9 +76,12 @@ public final class AngelicaRedirector {
             .add("glBindTexture")
             .add("glBlendFunc")
             .add("glCallList")
+            .add("glCallLists")
             .add("glClear")
             .add("glClearColor")
             .add("glClearDepth")
+            .add("glClearStencil")
+            .add("glClipPlane")
             .add("glColor3b")
             .add("glColor3d")
             .add("glColor3f")
@@ -88,6 +92,7 @@ public final class AngelicaRedirector {
             .add("glColor4ub")
             .add("glColorMask")
             .add("glColorMaterial")
+            .add("glDeleteLists")
             .add("glDeleteTextures")
             .add("glDepthFunc")
             .add("glDepthMask")
@@ -96,6 +101,7 @@ public final class AngelicaRedirector {
             .add("glDrawBuffer")
             .add("glDrawElements")
             .add("glEdgeFlag")
+            .add("glEnd")
             .add("glEndList")
             .add("glFog")
             .add("glFogf")
@@ -119,6 +125,9 @@ public final class AngelicaRedirector {
             .add("glLightModel")
             .add("glLightModelf")
             .add("glLightModeli")
+            .add("glLineStipple")
+            .add("glLineWidth")
+            .add("glListBase")
             .add("glLoadIdentity")
             .add("glLoadMatrix")
             .add("glLogicOp")
@@ -156,16 +165,59 @@ public final class AngelicaRedirector {
             .add("glTexCoord3f")
             .add("glTexCoord4d")
             .add("glTexCoord4f")
+            .add("glTexImage1D")
             .add("glTexImage2D")
+            .add("glTexImage3D")
+            .add("glTexSubImage1D")
+            .add("glTexSubImage2D")
+            .add("glCopyTexImage1D")
+            .add("glCopyTexImage2D")
+            .add("glCopyTexSubImage1D")
+            .add("glCopyTexSubImage2D")
+            .add("glPixelStoref")
+            .add("glPixelStorei")
             .add("glTexParameter")
             .add("glTexParameterf")
             .add("glTexParameteri")
             .add("glTexParameteri")
+            .add("glCullFace")
+            .add("glFrontFace")
+            .add("glHint")
+            .add("glLineStipple")
+            .add("glLineWidth")
+            .add("glPointSize")
+            .add("glPolygonMode")
+            .add("glPolygonOffset")
+            .add("glReadBuffer")
+            .add("glSampleCoverage")
+            .add("glScissor")
+            .add("glStencilFunc")
+            .add("glStencilFuncSeparate")
+            .add("glStencilMask")
+            .add("glStencilMaskSeparate")
+            .add("glStencilOp")
+            .add("glStencilOpSeparate")
             .add("glTranslated")
             .add("glTranslatef")
+            .add("glVertex2d")
+            .add("glVertex2f")
+            .add("glVertex3d")
+            .add("glVertex3f")
+            .add("glVertexPointer")
+            .add("glColorPointer")
+            .add("glEnableClientState")
+            .add("glDisableClientState")
             .add("glViewport")
         );
-        methodRedirects.put(GL13, RedirectMap.newMap().add("glActiveTexture"));
+        methodRedirects.put(GL12, RedirectMap.newMap()
+            .add("glTexImage3D")
+            .add("glTexSubImage3D")
+            .add("glCopyTexSubImage3D")
+        );
+        methodRedirects.put(GL13, RedirectMap.newMap()
+            .add("glActiveTexture")
+            .add("glSampleCoverage")
+        );
         methodRedirects.put(GL14, RedirectMap.newMap()
             .add("glBlendFuncSeparate", "tryBlendFuncSeparate")
             .add("glBlendColor")
@@ -173,6 +225,10 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(GL20, RedirectMap.newMap()
             .add("glBlendEquationSeparate")
+            .add("glDrawBuffers")
+            .add("glStencilFuncSeparate")
+            .add("glStencilMaskSeparate")
+            .add("glStencilOpSeparate")
             .add("glUseProgram")
         );
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()

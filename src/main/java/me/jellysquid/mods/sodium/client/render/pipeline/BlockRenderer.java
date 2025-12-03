@@ -9,8 +9,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMuta
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadOrientation;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.List;
+import net.coderbot.iris.Iris;
 import java.util.Random;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
@@ -97,7 +97,7 @@ public class BlockRenderer {
 
         boolean rendered = false;
 
-        this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
+        this.useSeparateAo = Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
         final int emitted = block.getLightValue(world, pos.x, pos.y, pos.z);
 
         try {
