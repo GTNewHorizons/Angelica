@@ -25,7 +25,6 @@ public class FontStrategist {
     @Getter
     private static final Font[] availableFonts;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
-    public static boolean customFontInUse;
 
     static {
         // get available fonts without duplicates (250 copies of dialog.plain need not apply)
@@ -68,21 +67,6 @@ public class FontStrategist {
         List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
         defaultResourcePacks.add(fontResourcePack);
         Minecraft.getMinecraft().refreshResources();
-
-        // determine if a custom font is in use based on config values
-        boolean primaryFontFound = false;
-        boolean fallbackFontFound = false;
-        for (Font availableFont : availableFonts) {
-            if (Objects.equals(FontConfig.customFontNamePrimary, availableFont.getFontName())) {
-                primaryFontFound = true;
-                break;
-            }
-            if (Objects.equals(FontConfig.customFontNameFallback, availableFont.getFontName())) {
-                fallbackFontFound = true;
-                break;
-            }
-        }
-        customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
     }
 
     /**
@@ -112,20 +96,14 @@ public class FontStrategist {
     public static void reloadCustomFontProviders() {
         FontProviderCustom.getPrimary().setFont(null);
         FontProviderCustom.getFallback().setFont(null);
-        boolean primaryFontFound = false;
-        boolean fallbackFontFound = false;
         for (int i = 0; i < availableFonts.length; i++) {
             if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getFontName())) {
                 FontProviderCustom.getPrimary().reloadFont(i);
-                primaryFontFound = true;
             }
             if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getFontName())) {
                 FontProviderCustom.getFallback().reloadFont(i);
-                fallbackFontFound = true;
             }
-            if (primaryFontFound && fallbackFontFound) { break; }
         }
-        customFontInUse = (FontConfig.enableCustomFont && (primaryFontFound || fallbackFontFound));
     }
 
     public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {

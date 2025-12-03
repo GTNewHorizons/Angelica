@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -380,11 +381,11 @@ public class BatchingFontRenderer {
     }
 
     public float getGlyphScaleX() {
-        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
+        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphScaleY() {
-        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect)) * (FontStrategist.customFontInUse ? 1.5f : 1);
+        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphSpacing() {
@@ -431,13 +432,13 @@ public class BatchingFontRenderer {
             boolean curStrikethrough = false;
             boolean curUnderline = false;
 
-            final float glyphScaleY = getGlyphScaleY();
-            final float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
-            final float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
+            float glyphScaleY = getGlyphScaleY();
+            float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
 
             final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
             float underlineStartX = 0.0f;
             float underlineEndX = 0.0f;
+
             final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
@@ -507,11 +508,19 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
+                String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
+                if (chrReplacement != null) {
+                    chr = chrReplacement.charAt(0);
+                }
+
                 if (curRandom) {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
 
                 FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
+
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
+                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
@@ -527,6 +536,7 @@ public class BatchingFontRenderer {
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
+                final float xShift = (fontProvider instanceof FontProviderCustom ? getGlyphScaleX() * FontConfig.customFontScale : 0.0f); // corrective factor to improve text alignment
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
                 final ResourceLocation texture = fontProvider.getTexture(chr);
@@ -535,20 +545,20 @@ public class BatchingFontRenderer {
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        pushTexRect(curX + shadowOffsetPart - xShift, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                            pushTexRect(curX + 2.0f * shadowOffsetPart - xShift, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
                         }
                     }
                 }
 
-                pushTexRect(curX, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                pushTexRect(curX - xShift, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(curX + shadowOffsetPart, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                        pushTexRect(curX + shadowOffsetPart - xShift, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
                     }
                 }
 

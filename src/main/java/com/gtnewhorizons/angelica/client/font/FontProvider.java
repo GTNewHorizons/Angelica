@@ -17,4 +17,5 @@ public interface FontProvider {
     float getVSize(char chr);
     float getShadowOffset();
     ResourceLocation getTexture(char chr);
+    float getYScaleMultiplier();
 }
