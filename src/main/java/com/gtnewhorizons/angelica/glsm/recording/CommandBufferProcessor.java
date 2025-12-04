@@ -184,6 +184,9 @@ public final class CommandBufferProcessor {
             case GLCommand.COLOR -> out.writeColor(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
             case GLCommand.CLEAR_COLOR -> out.writeClearColor(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
 
+            // Single double commands
+            case GLCommand.CLEAR_DEPTH -> out.writeClearDepth(raw.readDouble());
+
             // Mixed int+float commands
             case GLCommand.ALPHA_FUNC -> out.writeAlphaFunc(raw.readInt(), raw.readFloat());
             case GLCommand.FOGF -> out.writeFogf(raw.readInt(), raw.readFloat());

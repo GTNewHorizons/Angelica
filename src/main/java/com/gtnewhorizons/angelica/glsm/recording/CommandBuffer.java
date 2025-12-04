@@ -330,6 +330,12 @@ public final class CommandBuffer {
         writeFloat(a);
     }
 
+    public void writeClearDepth(double depth) {
+        ensureCapacity(12);
+        writeInt(GLCommand.CLEAR_DEPTH);
+        writeDouble(depth);
+    }
+
     // === Mixed int+float commands ===
 
     public void writeAlphaFunc(int func, float ref) {

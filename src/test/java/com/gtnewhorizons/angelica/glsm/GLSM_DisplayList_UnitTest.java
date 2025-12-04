@@ -155,4 +155,45 @@ class GLSM_DisplayList_UnitTest {
         GLStateManager.glDisable(GL11.GL_LIGHTING);
         GLStateManager.glDeleteLists(list, 1);
     }
+
+    // ==================== ClearDepth Tests ====================
+
+    @Test
+    void testClearDepthInDisplayList() {
+        // Get initial clear depth
+        double initialDepth = GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE);
+
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glClearDepth(0.5);
+        GLStateManager.glEndList();
+
+        // After compile, depth should be unchanged
+        assertEquals(initialDepth, GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE), 0.0001, "ClearDepth should be unchanged after GL_COMPILE");
+
+        // Call the display list
+        GLStateManager.glCallList(list);
+
+        // Now depth should be 0.5
+        assertEquals(0.5, GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE), 0.0001, "ClearDepth should be 0.5 after calling display list");
+
+        // Cleanup
+        GLStateManager.glClearDepth(1.0);  // Reset to default
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    @Test
+    void testClearDepthCompileAndExecute() {
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLStateManager.glClearDepth(0.25);
+        GLStateManager.glEndList();
+
+        // After compile and execute, depth should be changed
+        assertEquals(0.25, GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE), 0.0001, "ClearDepth should be 0.25 after GL_COMPILE_AND_EXECUTE");
+
+        // Cleanup
+        GLStateManager.glClearDepth(1.0);
+        GLStateManager.glDeleteLists(list, 1);
+    }
 }

@@ -269,6 +269,11 @@ public final class CommandBufferExecutor {
                     ptr += 16;
                     GLStateManager.glClearColor(r, g, b, a);
                 }
+                case GLCommand.CLEAR_DEPTH -> {
+                    final double depth = memGetDouble(ptr);
+                    ptr += 8;
+                    GLStateManager.glClearDepth(depth);
+                }
 
                 // === Mixed int+float commands ===
                 case GLCommand.ALPHA_FUNC -> {
