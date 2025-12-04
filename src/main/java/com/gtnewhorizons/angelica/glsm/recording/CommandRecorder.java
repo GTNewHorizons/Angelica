@@ -51,6 +51,11 @@ public class CommandRecorder {
         commandCount++;
     }
 
+    public void recordClearDepth(double depth) {
+        buffer.writeClearDepth(depth);
+        commandCount++;
+    }
+
     public void recordClearStencil(int s) {
         buffer.writeClearStencil(s);
         commandCount++;

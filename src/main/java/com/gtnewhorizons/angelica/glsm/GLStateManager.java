@@ -1245,9 +1245,10 @@ public class GLStateManager {
 
     public static void glClearDepth(double depth) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glClearDepth in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordClearDepth(depth);
+        } else {
+            GL11.glClearDepth(depth);
         }
-        GL11.glClearDepth(depth);
     }
 
     // ALPHA

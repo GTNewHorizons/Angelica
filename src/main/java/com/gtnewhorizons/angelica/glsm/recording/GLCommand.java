@@ -56,6 +56,9 @@ public final class GLCommand {
     public static final int COLOR = 54;              // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int CLEAR_COLOR = 55;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
 
+    // === Double commands (single value) ===
+    public static final int CLEAR_DEPTH = 56;        // [cmd:4][depth:8d] = 12 bytes
+
     // === Mixed int+float commands ===
     public static final int ALPHA_FUNC = 60;         // [cmd:4][func:4][ref:4f]
     public static final int FOGF = 61;               // [cmd:4][pname:4][param:4f]
@@ -133,6 +136,7 @@ public final class GLCommand {
             case NORMAL -> "NORMAL";
             case COLOR -> "COLOR";
             case CLEAR_COLOR -> "CLEAR_COLOR";
+            case CLEAR_DEPTH -> "CLEAR_DEPTH";
             case ALPHA_FUNC -> "ALPHA_FUNC";
             case FOGF -> "FOGF";
             case LIGHTF -> "LIGHTF";
