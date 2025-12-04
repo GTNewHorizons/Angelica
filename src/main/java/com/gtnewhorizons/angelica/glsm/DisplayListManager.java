@@ -182,10 +182,12 @@ public class DisplayListManager {
     public static void recordClear(int mask) { if (currentRecorder != null) currentRecorder.recordClear(mask); }
     public static void recordClearColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordClearColor(r, g, b, a); }
     public static void recordClearDepth(double depth) { if (currentRecorder != null) currentRecorder.recordClearDepth(depth); }
+    public static void recordBlendColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordBlendColor(r, g, b, a); }
     public static void recordClearStencil(int s) { if (currentRecorder != null) currentRecorder.recordClearStencil(s); }
     public static void recordColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordColor(r, g, b, a); }
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) { if (currentRecorder != null) currentRecorder.recordColorMask(r, g, b, a); }
     public static void recordDepthMask(boolean flag) { if (currentRecorder != null) currentRecorder.recordDepthMask(flag); }
+    public static void recordFrontFace(int mode) { if (currentRecorder != null) currentRecorder.recordFrontFace(mode); }
     public static void recordDepthFunc(int func) { if (currentRecorder != null) currentRecorder.recordDepthFunc(func); }
     public static void recordBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) { if (currentRecorder != null) currentRecorder.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha); }
     public static void recordAlphaFunc(int func, float ref) { if (currentRecorder != null) currentRecorder.recordAlphaFunc(func, ref); }
@@ -220,6 +222,7 @@ public class DisplayListManager {
     public static void recordPopAttrib() { if (currentRecorder != null) currentRecorder.recordPopAttrib(); }
     public static void recordFogf(int pname, float param) { if (currentRecorder != null) currentRecorder.recordFogf(pname, param); }
     public static void recordFogi(int pname, int param) { if (currentRecorder != null) currentRecorder.recordFogi(pname, param); }
+    public static void recordHint(int target, int mode) { if (currentRecorder != null) currentRecorder.recordHint(target, mode); }
     public static void recordFog(int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordFog(pname, params); }
     public static void recordLightf(int light, int pname, float param) { if (currentRecorder != null) currentRecorder.recordLightf(light, pname, param); }
     public static void recordLighti(int light, int pname, int param) { if (currentRecorder != null) currentRecorder.recordLighti(light, pname, param); }

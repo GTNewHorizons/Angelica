@@ -27,6 +27,7 @@ public final class GLCommand {
     public static final int POP_MATRIX = 16;         // [cmd:4][matrixMode:4]
     public static final int STENCIL_MASK = 17;       // [cmd:4][mask:4]
     public static final int DEPTH_MASK = 18;         // [cmd:4][flag:4] (0 or 1)
+    public static final int FRONT_FACE = 19;         // [cmd:4][mode:4]
 
     // === Two int commands (12 bytes) ===
     public static final int BIND_TEXTURE = 20;       // [cmd:4][target:4][texture:4]
@@ -35,6 +36,7 @@ public final class GLCommand {
     public static final int LINE_STIPPLE = 23;       // [cmd:4][factor:4][pattern:4]
     public static final int STENCIL_MASK_SEPARATE = 24; // [cmd:4][face:4][mask:4]
     public static final int FOGI = 25;               // [cmd:4][pname:4][param:4]
+    public static final int HINT = 26;               // [cmd:4][target:4][mode:4]
 
     // === Three int commands (16 bytes) ===
     public static final int STENCIL_FUNC = 30;       // [cmd:4][func:4][ref:4][mask:4]
@@ -55,9 +57,7 @@ public final class GLCommand {
     public static final int NORMAL = 53;             // [cmd:4][x:4f][y:4f][z:4f]
     public static final int COLOR = 54;              // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int CLEAR_COLOR = 55;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
-
-    // === Double commands (single value) ===
-    public static final int CLEAR_DEPTH = 56;        // [cmd:4][depth:8d] = 12 bytes
+    public static final int BLEND_COLOR = 56;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
 
     // === Mixed int+float commands ===
     public static final int ALPHA_FUNC = 60;         // [cmd:4][func:4][ref:4f]
@@ -75,6 +75,7 @@ public final class GLCommand {
     public static final int SCALE = 72;              // [cmd:4][mode:4][x:8d][y:8d][z:8d] = 32 bytes
     public static final int ORTHO = 73;              // [cmd:4][left:8d][right:8d][bottom:8d][top:8d][zNear:8d][zFar:8d] = 52 bytes
     public static final int FRUSTUM = 74;            // [cmd:4][left:8d][right:8d][bottom:8d][top:8d][zNear:8d][zFar:8d] = 52 bytes
+    public static final int CLEAR_DEPTH = 75;        // [cmd:4][depth:8d] = 12 bytes
 
     // === Matrix commands (72 bytes) ===
     public static final int MULT_MATRIX = 80;        // [cmd:4][mode:4][m00-m33:64f] = 72 bytes
@@ -116,12 +117,14 @@ public final class GLCommand {
             case POP_MATRIX -> "POP_MATRIX";
             case STENCIL_MASK -> "STENCIL_MASK";
             case DEPTH_MASK -> "DEPTH_MASK";
+            case FRONT_FACE -> "FRONT_FACE";
             case BIND_TEXTURE -> "BIND_TEXTURE";
             case POLYGON_MODE -> "POLYGON_MODE";
             case COLOR_MATERIAL -> "COLOR_MATERIAL";
             case LINE_STIPPLE -> "LINE_STIPPLE";
             case STENCIL_MASK_SEPARATE -> "STENCIL_MASK_SEPARATE";
             case FOGI -> "FOGI";
+            case HINT -> "HINT";
             case STENCIL_FUNC -> "STENCIL_FUNC";
             case STENCIL_OP -> "STENCIL_OP";
             case TEX_PARAMETERI -> "TEX_PARAMETERI";
@@ -136,7 +139,7 @@ public final class GLCommand {
             case NORMAL -> "NORMAL";
             case COLOR -> "COLOR";
             case CLEAR_COLOR -> "CLEAR_COLOR";
-            case CLEAR_DEPTH -> "CLEAR_DEPTH";
+            case BLEND_COLOR -> "BLEND_COLOR";
             case ALPHA_FUNC -> "ALPHA_FUNC";
             case FOGF -> "FOGF";
             case LIGHTF -> "LIGHTF";
@@ -150,6 +153,7 @@ public final class GLCommand {
             case SCALE -> "SCALE";
             case ORTHO -> "ORTHO";
             case FRUSTUM -> "FRUSTUM";
+            case CLEAR_DEPTH -> "CLEAR_DEPTH";
             case MULT_MATRIX -> "MULT_MATRIX";
             case LOAD_MATRIX -> "LOAD_MATRIX";
             case FOG -> "FOG";

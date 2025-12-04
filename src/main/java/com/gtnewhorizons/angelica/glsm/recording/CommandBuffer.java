@@ -166,6 +166,12 @@ public final class CommandBuffer {
         writeInt(flag ? 1 : 0);
     }
 
+    public void writeFrontFace(int mode) {
+        ensureCapacity(8);
+        writeInt(GLCommand.FRONT_FACE);
+        writeInt(mode);
+    }
+
     // === Two int commands ===
 
     public void writeBindTexture(int target, int texture) {
@@ -208,6 +214,13 @@ public final class CommandBuffer {
         writeInt(GLCommand.FOGI);
         writeInt(pname);
         writeInt(param);
+    }
+
+    public void writeHint(int target, int mode) {
+        ensureCapacity(12);
+        writeInt(GLCommand.HINT);
+        writeInt(target);
+        writeInt(mode);
     }
 
     // === Three int commands ===
@@ -334,6 +347,15 @@ public final class CommandBuffer {
         ensureCapacity(12);
         writeInt(GLCommand.CLEAR_DEPTH);
         writeDouble(depth);
+    }
+
+    public void writeBlendColor(float r, float g, float b, float a) {
+        ensureCapacity(20);
+        writeInt(GLCommand.BLEND_COLOR);
+        writeFloat(r);
+        writeFloat(g);
+        writeFloat(b);
+        writeFloat(a);
     }
 
     // === Mixed int+float commands ===
