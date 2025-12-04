@@ -181,6 +181,7 @@ public class DisplayListManager {
     public static void recordDisable(int cap) { if (currentRecorder != null) currentRecorder.recordDisable(cap); }
     public static void recordClear(int mask) { if (currentRecorder != null) currentRecorder.recordClear(mask); }
     public static void recordClearColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordClearColor(r, g, b, a); }
+    public static void recordClearDepth(double depth) { if (currentRecorder != null) currentRecorder.recordClearDepth(depth); }
     public static void recordClearStencil(int s) { if (currentRecorder != null) currentRecorder.recordClearStencil(s); }
     public static void recordColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordColor(r, g, b, a); }
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) { if (currentRecorder != null) currentRecorder.recordColorMask(r, g, b, a); }

@@ -160,6 +160,9 @@ public final class CompiledDisplayList {
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.DRAW_RANGE -> 20;
 
+            // Single double commands (12 bytes)
+            case GLCommand.CLEAR_DEPTH -> 12;
+
             // Double commands
             case GLCommand.TRANSLATE, GLCommand.SCALE -> 32;  // cmd + mode + 3 doubles
             case GLCommand.ROTATE -> 40;  // cmd + mode + 4 doubles
