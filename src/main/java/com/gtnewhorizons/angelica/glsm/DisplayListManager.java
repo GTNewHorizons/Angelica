@@ -509,7 +509,7 @@ public class DisplayListManager {
             // Build to CommandBuffer - optimize raw buffer to final buffer
             final CommandBuffer finalBuffer = new CommandBuffer();
             if (DEBUG_DISPLAY_LISTS) {
-                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers, ownedVbos, finalBuffer);
+                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers, ownedVbos, finalBuffer);
             } else {
                 CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers, ownedVbos, glListId, finalBuffer);
             }
