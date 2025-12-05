@@ -500,8 +500,8 @@ public class DisplayListManager {
             // Phase 2: Compile immediate mode line VBO (shared by both paths)
             final CompiledLineBuffer compiledLineBuffer = compileLineBuffer(accumulatedLineDraws);
 
-            // Phase 3: Compile tessellator primitive VBOs (lines, triangles)
-            final CompiledPrimitiveBuffers compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
+            // Phase 3: Compile tessellator primitive VBOs (lines, triangles) - grouped by format
+            final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
 
             // Collect all owned VBOs (quads + immediate mode lines + tessellator primitives)
             final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
@@ -678,12 +678,13 @@ public class DisplayListManager {
     private static VertexBuffer[] extractOwnedVbos(
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
-            CompiledPrimitiveBuffers compiledPrimitiveBuffers) {
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers) {
         final List<VertexBuffer> vbos = new ArrayList<>();
 
         // Add quad VBOs
-        for (CompiledFormatBuffer buffer : compiledQuadBuffers.values()) {
-            vbos.add(buffer.vbo());
+        final CompiledFormatBuffer[] quadBufferArray = compiledQuadBuffers.values().toArray(new CompiledFormatBuffer[0]);
+        for (int i = 0; i < quadBufferArray.length; i++) {
+            vbos.add(quadBufferArray[i].vbo());
         }
 
         // Add immediate mode line VBO if present
@@ -691,13 +692,17 @@ public class DisplayListManager {
             vbos.add(compiledLineBuffer.vbo());
         }
 
-        // Add tessellator primitive VBOs if present
-        if (compiledPrimitiveBuffers != null) {
-            if (compiledPrimitiveBuffers.hasLines()) {
-                vbos.add(compiledPrimitiveBuffers.lineVbo());
-            }
-            if (compiledPrimitiveBuffers.hasTriangles()) {
-                vbos.add(compiledPrimitiveBuffers.triangleVbo());
+        // Add tessellator primitive VBOs if present (one per format, separate for lines/triangles)
+        if (!compiledPrimitiveBuffers.isEmpty()) {
+            final CompiledPrimitiveBuffers[] primBufferArray = compiledPrimitiveBuffers.values().toArray(new CompiledPrimitiveBuffers[0]);
+            for (int i = 0; i < primBufferArray.length; i++) {
+                final CompiledPrimitiveBuffers primBuffers = primBufferArray[i];
+                if (primBuffers.hasLines()) {
+                    vbos.add(primBuffers.lineVbo());
+                }
+                if (primBuffers.hasTriangles()) {
+                    vbos.add(primBuffers.triangleVbo());
+                }
             }
         }
 
@@ -705,22 +710,39 @@ public class DisplayListManager {
     }
 
     /**
-     * Compile tessellator primitives (lines, triangles) into VBOs.
+     * Compile tessellator primitives (lines, triangles) into format-based VBOs.
+     * Groups draws by vertex format for optimal memory usage.
      *
      * @param primitiveDraws The accumulated primitive draws from tessellator callback
-     * @return Compiled primitive buffers, or null if no primitives
+     * @return Map of flags to compiled primitive buffers, empty map if no primitives
      */
-    private static CompiledPrimitiveBuffers compilePrimitiveBuffers(List<AccumulatedPrimitiveDraw> primitiveDraws) {
+    private static Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compilePrimitiveBuffers(
+            List<AccumulatedPrimitiveDraw> primitiveDraws) {
         if (primitiveDraws == null || primitiveDraws.isEmpty()) {
-            return null;
+            return Collections.emptyMap();
         }
 
-        final TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        // Group draws by vertex format
+        final Map<CapturingTessellator.Flags, TessellatorPrimitiveBuffer> formatBuffers = new HashMap<>();
         final int size = primitiveDraws.size();
         for (int i = 0; i < size; i++) {
-            buffer.addDraw(primitiveDraws.get(i));
+            final AccumulatedPrimitiveDraw draw = primitiveDraws.get(i);
+            formatBuffers.computeIfAbsent(draw.flags, TessellatorPrimitiveBuffer::new).addDraw(draw);
         }
-        return buffer.finish();
+
+        // Compile each format's geometry into VBOs
+        final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiled = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        final Map.Entry<CapturingTessellator.Flags, TessellatorPrimitiveBuffer>[] entries =
+            formatBuffers.entrySet().toArray(new Map.Entry[0]);
+        for (int i = 0; i < entries.length; i++) {
+            final Map.Entry<CapturingTessellator.Flags, TessellatorPrimitiveBuffer> entry = entries[i];
+            final CompiledPrimitiveBuffers result = entry.getValue().finish();
+            if (result != null) {
+                compiled.put(entry.getKey(), result);
+            }
+        }
+        return compiled;
     }
 
     // ==================== Buffer-to-Buffer Optimization ====================
@@ -739,7 +761,7 @@ public class DisplayListManager {
             List<DisplayListCommand> currentCommands,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
-            CompiledPrimitiveBuffers compiledPrimitiveBuffers,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             int glListId) {
 
         final List<DisplayListCommand> optimized = new ArrayList<>();
@@ -801,8 +823,8 @@ public class DisplayListManager {
         // Compile quad VBOs
         final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers = compileFormatBasedVBOs(accumulatedDraws);
 
-        // Compile tessellator primitive VBOs (lines, triangles)
-        final CompiledPrimitiveBuffers compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
+        // Compile tessellator primitive VBOs (lines, triangles) - grouped by format
+        final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
 
         // Extract owned VBOs (quads + primitives, no immediate mode lines in test path)
         final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, null, compiledPrimitiveBuffers);
@@ -858,7 +880,7 @@ public class DisplayListManager {
      * Selects the optimal VertexFormat from GTNHLib defaults based on actual attribute usage.
      * This reduces memory usage by excluding unused attributes.
      */
-    private static VertexFormat selectOptimalFormat(CapturingTessellator.Flags flags) {
+    static VertexFormat selectOptimalFormat(CapturingTessellator.Flags flags) {
         final boolean hasColor = flags.hasColor;
         final boolean hasTexture = flags.hasTexture;
         final boolean hasBrightness = flags.hasBrightness;

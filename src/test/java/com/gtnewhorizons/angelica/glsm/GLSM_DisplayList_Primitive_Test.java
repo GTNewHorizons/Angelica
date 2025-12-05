@@ -160,7 +160,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferSeparatesLinesByTransform() {
         // Setup: Create primitive buffer and add draws with different transforms
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
 
         AccumulatedPrimitiveDraw draw1 = createLinesDraw(2, 0);  // 2 lines at identity
         AccumulatedPrimitiveDraw draw2 = createPrimitiveDrawWithTransform(
@@ -185,7 +185,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferMergesSameTransformLines() {
         // Setup: Multiple draws with same transform
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
 
         buffer.addDraw(createLinesDraw(2, 0));  // 2 lines
         buffer.addDraw(createLinesDraw(3, 0));  // 3 more lines, same transform
@@ -207,7 +207,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferSeparatesTrianglesByTransform() {
         // Setup
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
 
         buffer.addDraw(createTrianglesDraw(2, 0));  // 2 triangles at identity
         buffer.addDraw(createPrimitiveDrawWithTransform(
@@ -228,7 +228,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferMergesSameTransformTriangles() {
         // Setup
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
 
         buffer.addDraw(createTrianglesDraw(2, 0));  // 2 triangles
         buffer.addDraw(createTrianglesDraw(3, 0));  // 3 more, same transform
@@ -249,7 +249,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferHandlesMixedLinesAndTriangles() {
         // Setup: Draw with mixed primitives
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
         buffer.addDraw(createMixedPrimitiveDraw(3, 2, 0));  // 3 lines + 2 triangles
 
         // Execute
@@ -269,7 +269,7 @@ class GLSM_DisplayList_Primitive_Test {
 
     @Test
     void testPrimitiveBufferEmptyReturnsNull() {
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
         CompiledPrimitiveBuffers compiled = buffer.finish();
         assertNull(compiled, "Empty buffer should return null");
     }
@@ -277,7 +277,7 @@ class GLSM_DisplayList_Primitive_Test {
     @Test
     void testPrimitiveBufferPerDrawRangesTrackEachDraw() {
         // Setup: Multiple draws
-        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer();
+        TessellatorPrimitiveBuffer buffer = new TessellatorPrimitiveBuffer(positionOnly());
 
         buffer.addDraw(createLinesDraw(2, 0));  // 4 vertices
         buffer.addDraw(createLinesDraw(3, 1));  // 6 vertices (same transform, different cmd index)
@@ -295,6 +295,37 @@ class GLSM_DisplayList_Primitive_Test {
         assertEquals(4, compiled.linePerDrawRanges()[0].vertexCount());
         assertEquals(6, compiled.linePerDrawRanges()[1].vertexCount());
         assertEquals(2, compiled.linePerDrawRanges()[2].vertexCount());
+    }
+
+    @Test
+    void testDifferentFlagsProduceDifferentFormats() {
+        // Test that format-aware compilation uses optimal vertex sizes
+        // positionOnly = 12 bytes, positionColor = 16 bytes, fullFormat = 32 bytes
+
+        // Position only (12 bytes per vertex)
+        TessellatorPrimitiveBuffer posOnlyBuffer = new TessellatorPrimitiveBuffer(positionOnly());
+        posOnlyBuffer.addDraw(createLinesDraw(1, 0));
+        CompiledPrimitiveBuffers posOnlyCompiled = posOnlyBuffer.finish();
+        assertNotNull(posOnlyCompiled);
+        assertEquals(positionOnly(), posOnlyCompiled.flags(), "Should preserve positionOnly flags");
+
+        // Position + Color (16 bytes per vertex)
+        TessellatorPrimitiveBuffer posColorBuffer = new TessellatorPrimitiveBuffer(positionColor());
+        posColorBuffer.addDraw(createPrimitiveDraw(createMixedPrimitives(1, 0), identity(), positionColor(), 0));
+        CompiledPrimitiveBuffers posColorCompiled = posColorBuffer.finish();
+        assertNotNull(posColorCompiled);
+        assertEquals(positionColor(), posColorCompiled.flags(), "Should preserve positionColor flags");
+
+        // Full format (32 bytes per vertex)
+        TessellatorPrimitiveBuffer fullBuffer = new TessellatorPrimitiveBuffer(fullFormat());
+        fullBuffer.addDraw(createPrimitiveDraw(createMixedPrimitives(1, 0), identity(), fullFormat(), 0));
+        CompiledPrimitiveBuffers fullCompiled = fullBuffer.finish();
+        assertNotNull(fullCompiled);
+        assertEquals(fullFormat(), fullCompiled.flags(), "Should preserve fullFormat flags");
+
+        // Verify the flags differ (ensuring format selection works)
+        assertNotEquals(posOnlyCompiled.flags(), posColorCompiled.flags());
+        assertNotEquals(posColorCompiled.flags(), fullCompiled.flags());
     }
 
     // ==================== Integration Tests ====================

@@ -1,14 +1,15 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.line.ModelLine;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.primitive.ModelPrimitiveView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.tri.ModelTriangle;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedPrimitiveDraw;
 import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -16,18 +17,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Accumulates tessellator primitives (lines, triangles) during display list compilation.
- * Similar to FormatBuffer but handles ModelPrimitiveView instances with full 32-byte vertex format.
+ * Accumulates tessellator primitives (lines, triangles) for a single vertex format during display list compilation.
+ * Similar to FormatBuffer but handles ModelPrimitiveView instances instead of quads.
  * <p>
- * Unlike LineBuffer which handles ImmediateModeRecorder.LineVertex (16-byte: pos+color),
- * this handles ModelLine/ModelTriangle from the tessellator (32-byte: pos+color+tex+light+normal).
+ * Unlike LineBuffer which handles ImmediateModeRecorder.LineVertex (fixed 16-byte: pos+color),
+ * this handles ModelLine/ModelTriangle from the tessellator with format-optimized vertex size.
  * <p>
  * Primitives are separated by draw mode (GL_LINES, GL_TRIANGLES) into separate VBOs.
  */
 class TessellatorPrimitiveBuffer {
-    // Use full vertex format: pos(12) + color(4) + tex(8) + light(4) + normal(4) = 32 bytes
-    private static final VertexFormat PRIMITIVE_FORMAT = DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL;
-    private static final int VERTEX_SIZE = PRIMITIVE_FORMAT.getVertexSize(); // 32 bytes
+    final CapturingTessellator.Flags flags;
 
     // Accumulated primitives separated by type
     final List<ModelLine> allLines = new ArrayList<>();
@@ -50,6 +49,10 @@ class TessellatorPrimitiveBuffer {
     private int pendingTriangleVertexCount = 0;
     private Matrix4f pendingTriangleTransform = null;
     private int pendingTriangleCommandIndex = -1;
+
+    TessellatorPrimitiveBuffer(CapturingTessellator.Flags flags) {
+        this.flags = flags;
+    }
 
     /**
      * Add a primitive draw to this buffer.
@@ -125,7 +128,7 @@ class TessellatorPrimitiveBuffer {
     }
 
     /**
-     * Compile all accumulated primitives into VBOs.
+     * Compile all accumulated primitives into VBOs using optimal vertex format.
      * @return The compiled buffers with separate VBOs for lines and triangles, or null if empty
      */
     CompiledPrimitiveBuffers finish() {
@@ -136,10 +139,14 @@ class TessellatorPrimitiveBuffer {
             return null;
         }
 
-        final VertexBuffer lineVbo = allLines.isEmpty() ? null : compileLinesToVBO();
-        final VertexBuffer triangleVbo = allTriangles.isEmpty() ? null : compileTrianglesToVBO();
+        // Use optimal format based on flags (same logic as quads)
+        final VertexFormat format = DisplayListManager.selectOptimalFormat(flags);
+
+        final VertexBuffer lineVbo = allLines.isEmpty() ? null : compileLinesToVBO(format);
+        final VertexBuffer triangleVbo = allTriangles.isEmpty() ? null : compileTrianglesToVBO(format);
 
         return new CompiledPrimitiveBuffers(
+            flags,
             lineVbo,
             lineMergedRanges.toArray(new DrawRange[0]),
             linePerDrawRanges.toArray(new DrawRange[0]),
@@ -149,58 +156,73 @@ class TessellatorPrimitiveBuffer {
         );
     }
 
-    private VertexBuffer compileLinesToVBO() {
+    private VertexBuffer compileLinesToVBO(VertexFormat format) {
+        final int vertexSize = format.getVertexSize();
         final int size = allLines.size();
-        final ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(VERTEX_SIZE * size * 2);
+        final ByteBuffer buffer = BufferUtils.createByteBuffer(vertexSize * size * 2);
 
         for (int i = 0; i < size; i++) {
             writePrimitiveToBuffer(allLines.get(i), buffer);
         }
         buffer.flip();
 
-        final VertexBuffer vbo = VAOManager.createVAO(PRIMITIVE_FORMAT, GL11.GL_LINES);
+        final VertexBuffer vbo = VAOManager.createVAO(format, GL11.GL_LINES);
         vbo.upload(buffer);
         return vbo;
     }
 
-    private VertexBuffer compileTrianglesToVBO() {
+    private VertexBuffer compileTrianglesToVBO(VertexFormat format) {
+        final int vertexSize = format.getVertexSize();
         final int size = allTriangles.size();
-        final ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(VERTEX_SIZE * size * 3);
+        final ByteBuffer buffer = BufferUtils.createByteBuffer(vertexSize * size * 3);
 
         for (int i = 0; i < size; i++) {
             writePrimitiveToBuffer(allTriangles.get(i), buffer);
         }
         buffer.flip();
 
-        final VertexBuffer vbo = VAOManager.createVAO(PRIMITIVE_FORMAT, GL11.GL_TRIANGLES);
+        final VertexBuffer vbo = VAOManager.createVAO(format, GL11.GL_TRIANGLES);
         vbo.upload(buffer);
         return vbo;
     }
 
     /**
-     * Write a primitive's vertices to the buffer.
-     * Layout: pos(12) + color(4) + tex(8) + light(4) + normal(4) = 32 bytes per vertex
+     * Write a primitive's vertices to the buffer using the format specified by flags.
+     * Only writes attributes that are present in the format.
      */
-    private static void writePrimitiveToBuffer(ModelPrimitiveView prim, ByteBuffer buffer) {
+    private void writePrimitiveToBuffer(ModelPrimitiveView prim, ByteBuffer buffer) {
         final int vertexCount = prim.getVertexCount();
+        final boolean hasTexture = flags.hasTexture;
+        final boolean hasBrightness = flags.hasBrightness;
+        final boolean hasColor = flags.hasColor;
+        final boolean hasNormals = flags.hasNormals;
+
         for (int i = 0; i < vertexCount; i++) {
-            // Position (3 floats = 12 bytes)
+            // Position (always present) - 12 bytes
             buffer.putFloat(prim.getX(i));
             buffer.putFloat(prim.getY(i));
             buffer.putFloat(prim.getZ(i));
 
-            // Color (4 bytes, ABGR)
-            buffer.putInt(prim.getColor(i));
+            // Color (4 bytes, ABGR) - if present
+            if (hasColor) {
+                buffer.putInt(prim.getColor(i));
+            }
 
-            // Texture (2 floats = 8 bytes)
-            buffer.putFloat(prim.getTexU(i));
-            buffer.putFloat(prim.getTexV(i));
+            // Texture (2 floats = 8 bytes) - if present
+            if (hasTexture) {
+                buffer.putFloat(prim.getTexU(i));
+                buffer.putFloat(prim.getTexV(i));
+            }
 
-            // Light (4 bytes, packed)
-            buffer.putInt(prim.getLight(i));
+            // Light/Brightness (4 bytes, packed) - if present
+            if (hasBrightness) {
+                buffer.putInt(prim.getLight(i));
+            }
 
-            // Normal (4 bytes, packed) - includes 1 byte padding
-            buffer.putInt(prim.getForgeNormal(i));
+            // Normal (4 bytes, packed) - if present
+            if (hasNormals) {
+                buffer.putInt(prim.getForgeNormal(i));
+            }
         }
     }
 }

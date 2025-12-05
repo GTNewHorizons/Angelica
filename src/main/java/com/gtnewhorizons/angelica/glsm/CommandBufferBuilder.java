@@ -31,7 +31,7 @@ public final class CommandBufferBuilder {
             CommandBuffer rawBuffer,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             final CompiledLineBuffer compiledLineBuffer,
-            final CompiledPrimitiveBuffers compiledPrimitiveBuffers,
+            final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             VertexBuffer[] ownedVbos,
             int glListId,
             CommandBuffer finalBuffer) {
@@ -83,10 +83,9 @@ public final class CommandBufferBuilder {
      */
     public static void buildUnoptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
-            List<AccumulatedDraw> accumulatedDraws,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
-            CompiledPrimitiveBuffers compiledPrimitiveBuffers,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             VertexBuffer[] ownedVbos,
             CommandBuffer finalBuffer) {
 
@@ -135,12 +134,14 @@ public final class CommandBufferBuilder {
     static List<DrawRangeWithBuffer> collectDrawRanges(
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
-            CompiledPrimitiveBuffers compiledPrimitiveBuffers) {
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers) {
 
         final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
 
-        // Add quad ranges (map iteration unavoidable)
-        for (CompiledFormatBuffer compiledBuffer : compiledQuadBuffers.values()) {
+        // Add quad ranges
+        final CompiledFormatBuffer[] quadBufferArray = compiledQuadBuffers.values().toArray(new CompiledFormatBuffer[0]);
+        for (int b = 0; b < quadBufferArray.length; b++) {
+            final CompiledFormatBuffer compiledBuffer = quadBufferArray[b];
             final DrawRange[] ranges = compiledBuffer.mergedRanges();
             for (int i = 0; i < ranges.length; i++) {
                 allRanges.add(new DrawRangeWithBuffer(ranges[i], compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
@@ -155,22 +156,27 @@ public final class CommandBufferBuilder {
             }
         }
 
-        // Add tessellator primitive ranges (lines and triangles)
-        if (compiledPrimitiveBuffers != null) {
-            // Tessellator lines
-            if (compiledPrimitiveBuffers.hasLines()) {
-                final DrawRange[] ranges = compiledPrimitiveBuffers.lineMergedRanges();
-                final VertexBuffer vbo = compiledPrimitiveBuffers.lineVbo();
-                for (int i = 0; i < ranges.length; i++) {
-                    allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, false));
+        // Add tessellator primitive ranges (lines and triangles) - grouped by format
+        if (compiledPrimitiveBuffers != null && !compiledPrimitiveBuffers.isEmpty()) {
+            final CompiledPrimitiveBuffers[] primBufferArray = compiledPrimitiveBuffers.values().toArray(new CompiledPrimitiveBuffers[0]);
+            for (int p = 0; p < primBufferArray.length; p++) {
+                final CompiledPrimitiveBuffers primBuffers = primBufferArray[p];
+                final boolean hasBrightness = primBuffers.flags().hasBrightness;
+                // Tessellator lines
+                if (primBuffers.hasLines()) {
+                    final DrawRange[] ranges = primBuffers.lineMergedRanges();
+                    final VertexBuffer vbo = primBuffers.lineVbo();
+                    for (int i = 0; i < ranges.length; i++) {
+                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
+                    }
                 }
-            }
-            // Tessellator triangles
-            if (compiledPrimitiveBuffers.hasTriangles()) {
-                final DrawRange[] ranges = compiledPrimitiveBuffers.triangleMergedRanges();
-                final VertexBuffer vbo = compiledPrimitiveBuffers.triangleVbo();
-                for (int i = 0; i < ranges.length; i++) {
-                    allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, false));
+                // Tessellator triangles
+                if (primBuffers.hasTriangles()) {
+                    final DrawRange[] ranges = primBuffers.triangleMergedRanges();
+                    final VertexBuffer vbo = primBuffers.triangleVbo();
+                    for (int i = 0; i < ranges.length; i++) {
+                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
+                    }
                 }
             }
         }
