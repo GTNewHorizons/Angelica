@@ -15,7 +15,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
  * </ul>
  */
 @Desugar
-record CompiledFormatBuffer(
+public record CompiledFormatBuffer(
     VertexBuffer vbo,
     CapturingTessellator.Flags flags,
     DrawRange[] mergedRanges,

@@ -155,6 +155,7 @@ public final class CommandBufferProcessor {
             case GLCommand.POP_MATRIX -> out.writePopMatrix(raw.readInt());
             case GLCommand.STENCIL_MASK -> out.writeStencilMask(raw.readInt());
             case GLCommand.DEPTH_MASK -> out.writeDepthMask(raw.readInt() != 0);
+            case GLCommand.FRONT_FACE -> out.writeFrontFace(raw.readInt());
 
             // Two int commands
             case GLCommand.BIND_TEXTURE -> out.writeBindTexture(raw.readInt(), raw.readInt());
@@ -163,6 +164,7 @@ public final class CommandBufferProcessor {
             case GLCommand.LINE_STIPPLE -> out.writeLineStipple(raw.readInt(), raw.readInt());
             case GLCommand.STENCIL_MASK_SEPARATE -> out.writeStencilMaskSeparate(raw.readInt(), raw.readInt());
             case GLCommand.FOGI -> out.writeFogi(raw.readInt(), raw.readInt());
+            case GLCommand.HINT -> out.writeHint(raw.readInt(), raw.readInt());
 
             // Three int commands
             case GLCommand.STENCIL_FUNC -> out.writeStencilFunc(raw.readInt(), raw.readInt(), raw.readInt());
@@ -186,6 +188,9 @@ public final class CommandBufferProcessor {
 
             // Single double commands
             case GLCommand.CLEAR_DEPTH -> out.writeClearDepth(raw.readDouble());
+
+            // Four float commands
+            case GLCommand.BLEND_COLOR -> out.writeBlendColor(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
 
             // Mixed int+float commands
             case GLCommand.ALPHA_FUNC -> out.writeAlphaFunc(raw.readInt(), raw.readFloat());

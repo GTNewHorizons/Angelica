@@ -123,6 +123,10 @@ public final class CommandBufferExecutor {
                     GLStateManager.glDepthMask(memGetInt(ptr) != 0);
                     ptr += 4;
                 }
+                case GLCommand.FRONT_FACE -> {
+                    GLStateManager.glFrontFace(memGetInt(ptr));
+                    ptr += 4;
+                }
 
                 // === Two int commands ===
                 case GLCommand.BIND_TEXTURE -> {
@@ -160,6 +164,12 @@ public final class CommandBufferExecutor {
                     final int param = memGetInt(ptr + 4);
                     ptr += 8;
                     GLStateManager.glFogi(pname, param);
+                }
+                case GLCommand.HINT -> {
+                    final int target = memGetInt(ptr);
+                    final int mode = memGetInt(ptr + 4);
+                    ptr += 8;
+                    GLStateManager.glHint(target, mode);
                 }
 
                 // === Three int commands ===
@@ -273,6 +283,14 @@ public final class CommandBufferExecutor {
                     final double depth = memGetDouble(ptr);
                     ptr += 8;
                     GLStateManager.glClearDepth(depth);
+                }
+                case GLCommand.BLEND_COLOR -> {
+                    final float r = memGetFloat(ptr);
+                    final float g = memGetFloat(ptr + 4);
+                    final float b = memGetFloat(ptr + 8);
+                    final float a = memGetFloat(ptr + 12);
+                    ptr += 16;
+                    GLStateManager.glBlendColor(r, g, b, a);
                 }
 
                 // === Mixed int+float commands ===

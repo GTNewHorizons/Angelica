@@ -196,4 +196,118 @@ class GLSM_DisplayList_UnitTest {
         GLStateManager.glClearDepth(1.0);
         GLStateManager.glDeleteLists(list, 1);
     }
+
+    // ==================== BlendColor Tests ====================
+
+    @Test
+    void testBlendColorInDisplayList() {
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glBlendColor(0.2f, 0.4f, 0.6f, 0.8f);
+        GLStateManager.glEndList();
+
+        // Call the display list - should not throw
+        GLStateManager.glCallList(list);
+
+        // Cleanup
+        GLStateManager.glBlendColor(0f, 0f, 0f, 0f);
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    @Test
+    void testBlendColorCompileAndExecute() {
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLStateManager.glBlendColor(0.5f, 0.5f, 0.5f, 1.0f);
+        GLStateManager.glEndList();
+
+        // Should not throw - display list was executed
+        GLStateManager.glCallList(list);
+
+        // Cleanup
+        GLStateManager.glBlendColor(0f, 0f, 0f, 0f);
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    // ==================== FrontFace Tests ====================
+
+    @Test
+    void testFrontFaceInDisplayList() {
+        // Get initial front face
+        int initialMode = GL11.glGetInteger(GL11.GL_FRONT_FACE);
+
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glFrontFace(GL11.GL_CW);
+        GLStateManager.glEndList();
+
+        // After compile, mode should be unchanged
+        assertEquals(initialMode, GL11.glGetInteger(GL11.GL_FRONT_FACE), "FrontFace should be unchanged after GL_COMPILE");
+
+        // Call the display list
+        GLStateManager.glCallList(list);
+
+        // Now mode should be GL_CW
+        assertEquals(GL11.GL_CW, GL11.glGetInteger(GL11.GL_FRONT_FACE), "FrontFace should be GL_CW after calling display list");
+
+        // Cleanup
+        GLStateManager.glFrontFace(GL11.GL_CCW);  // Reset to default
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    @Test
+    void testFrontFaceCompileAndExecute() {
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLStateManager.glFrontFace(GL11.GL_CW);
+        GLStateManager.glEndList();
+
+        // After compile and execute, mode should be changed
+        assertEquals(GL11.GL_CW, GL11.glGetInteger(GL11.GL_FRONT_FACE), "FrontFace should be GL_CW after GL_COMPILE_AND_EXECUTE");
+
+        // Cleanup
+        GLStateManager.glFrontFace(GL11.GL_CCW);
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    // ==================== Hint Tests ====================
+
+    @Test
+    void testHintInDisplayList() {
+        // Get initial hint value
+        int initialHint = GL11.glGetInteger(GL11.GL_LINE_SMOOTH_HINT);
+
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
+        GLStateManager.glEndList();
+
+        // After compile, hint should be unchanged
+        assertEquals(initialHint, GL11.glGetInteger(GL11.GL_LINE_SMOOTH_HINT), "Hint should be unchanged after GL_COMPILE");
+
+        // Call the display list
+        GLStateManager.glCallList(list);
+
+        // Now hint should be GL_NICEST
+        assertEquals(GL11.GL_NICEST, GL11.glGetInteger(GL11.GL_LINE_SMOOTH_HINT), "Hint should be GL_NICEST after calling display list");
+
+        // Cleanup
+        GLStateManager.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_DONT_CARE);  // Reset to default
+        GLStateManager.glDeleteLists(list, 1);
+    }
+
+    @Test
+    void testHintCompileAndExecute() {
+        int list = GL11.glGenLists(1);
+        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLStateManager.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_FASTEST);
+        GLStateManager.glEndList();
+
+        // After compile and execute, hint should be changed
+        assertEquals(GL11.GL_FASTEST, GL11.glGetInteger(GL11.GL_LINE_SMOOTH_HINT), "Hint should be GL_FASTEST after GL_COMPILE_AND_EXECUTE");
+
+        // Cleanup
+        GLStateManager.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_DONT_CARE);
+        GLStateManager.glDeleteLists(list, 1);
+    }
 }
