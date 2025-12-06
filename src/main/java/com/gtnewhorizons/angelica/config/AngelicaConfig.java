@@ -194,12 +194,13 @@ public class AngelicaConfig {
                      "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
     })
     @Config.DefaultStringList({
+            "gregtech.common.blocks.BlockOres",
             "gregtech.common.blocks.GTBlockOre",
             "shukaro.artifice.block.world.BlockOre",
             "bartworks.system.material.BWMetaGeneratedOres",
             "gtPlusPlus.core.block.base.BlockBaseOre",
     })
-    public static String[] blockCrackFixRenderPassWhitelist_;
+    public static String[] blockCrackFixRenderPassWhitelist__;
 
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
