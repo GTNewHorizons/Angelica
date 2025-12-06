@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.primitive.ModelPrimitiveView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
@@ -11,6 +12,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedLineDraw;
+import com.gtnewhorizons.angelica.glsm.recording.AccumulatedPrimitiveDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -32,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -115,7 +116,8 @@ public class DisplayListManager {
     private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
-    private static List<AccumulatedLineDraw> accumulatedLineDraws = null;  // Accumulates line draws
+    private static List<AccumulatedLineDraw> accumulatedLineDraws = null;  // Accumulates immediate mode line draws
+    private static List<AccumulatedPrimitiveDraw> accumulatedPrimitiveDraws = null;  // Accumulates tessellator primitive draws (lines, triangles)
     private static Matrix4fStack relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
     @Getter private static ImmediateModeRecorder immediateModeRecorder = null;  // Records glBegin/glEnd/glVertex during compilation
 
@@ -136,6 +138,7 @@ public class DisplayListManager {
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
         List<AccumulatedLineDraw> lineDraws,
+        List<AccumulatedPrimitiveDraw> primitiveDraws,
         Matrix4fStack transform,
         boolean wasTessellatorCompiling,
         ImmediateModeRecorder immediateRecorder
@@ -182,10 +185,12 @@ public class DisplayListManager {
     public static void recordClear(int mask) { if (currentRecorder != null) currentRecorder.recordClear(mask); }
     public static void recordClearColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordClearColor(r, g, b, a); }
     public static void recordClearDepth(double depth) { if (currentRecorder != null) currentRecorder.recordClearDepth(depth); }
+    public static void recordBlendColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordBlendColor(r, g, b, a); }
     public static void recordClearStencil(int s) { if (currentRecorder != null) currentRecorder.recordClearStencil(s); }
     public static void recordColor(float r, float g, float b, float a) { if (currentRecorder != null) currentRecorder.recordColor(r, g, b, a); }
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) { if (currentRecorder != null) currentRecorder.recordColorMask(r, g, b, a); }
     public static void recordDepthMask(boolean flag) { if (currentRecorder != null) currentRecorder.recordDepthMask(flag); }
+    public static void recordFrontFace(int mode) { if (currentRecorder != null) currentRecorder.recordFrontFace(mode); }
     public static void recordDepthFunc(int func) { if (currentRecorder != null) currentRecorder.recordDepthFunc(func); }
     public static void recordBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) { if (currentRecorder != null) currentRecorder.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha); }
     public static void recordAlphaFunc(int func, float ref) { if (currentRecorder != null) currentRecorder.recordAlphaFunc(func, ref); }
@@ -220,6 +225,7 @@ public class DisplayListManager {
     public static void recordPopAttrib() { if (currentRecorder != null) currentRecorder.recordPopAttrib(); }
     public static void recordFogf(int pname, float param) { if (currentRecorder != null) currentRecorder.recordFogf(pname, param); }
     public static void recordFogi(int pname, int param) { if (currentRecorder != null) currentRecorder.recordFogi(pname, param); }
+    public static void recordHint(int target, int mode) { if (currentRecorder != null) currentRecorder.recordHint(target, mode); }
     public static void recordFog(int pname, java.nio.FloatBuffer params) { if (currentRecorder != null) currentRecorder.recordFog(pname, params); }
     public static void recordLightf(int light, int pname, float param) { if (currentRecorder != null) currentRecorder.recordLightf(light, pname, param); }
     public static void recordLighti(int light, int pname, int param) { if (currentRecorder != null) currentRecorder.recordLighti(light, pname, param); }
@@ -413,7 +419,7 @@ public class DisplayListManager {
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
                 glListId, glListMode, currentRecorder, accumulatedDraws, accumulatedLineDraws,
-                relativeTransform, tessellatorCompiling, immediateModeRecorder
+                accumulatedPrimitiveDraws, relativeTransform, tessellatorCompiling, immediateModeRecorder
             );
             compilationStack.push(parentContext);
         }
@@ -424,23 +430,36 @@ public class DisplayListManager {
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(64);   // Fewer draws than commands typically
-        accumulatedLineDraws = new ArrayList<>(16);  // Line draws are less common
+        accumulatedLineDraws = new ArrayList<>(16);  // Immediate mode line draws are less common
+        accumulatedPrimitiveDraws = new ArrayList<>(16);  // Tessellator primitive draws are less common
         relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
         relativeTransform.identity();  // Track relative transforms from identity
         immediateModeRecorder = new ImmediateModeRecorder();  // For glBegin/glEnd/glVertex
 
         // Start compiling mode with per-draw callback (works for both root and nested lists now)
-        TessellatorManager.setCompiling((quads, flags) -> {
-            if (quads.isEmpty()) {
+        // Callback receives quads (GL_QUADS) and primitives (GL_TRIANGLES, GL_LINES, etc.)
+        TessellatorManager.setCompiling((quads, primitives, flags) -> {
+            final boolean hasQuads = !quads.isEmpty();
+            final boolean hasPrimitives = !primitives.isEmpty();
+
+            // Early exit to avoid allocations when nothing to accumulate
+            if (!hasQuads && !hasPrimitives) {
                 return;
             }
 
             // Get relative transform (changes since glNewList, not absolute matrix state)
             final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+            final int cmdIndex = getCommandCount();
 
-            // Accumulate this draw for batching at glEndList()
-            final AccumulatedDraw draw = new AccumulatedDraw(quads, currentTransform, flags, getCommandCount());
-            accumulatedDraws.add(draw);
+            // Accumulate quads for batching at glEndList()
+            if (hasQuads) {
+                accumulatedDraws.add(new AccumulatedDraw(quads, currentTransform, flags, cmdIndex));
+            }
+
+            // Accumulate primitives (lines, triangles) for batching at glEndList()
+            if (hasPrimitives) {
+                accumulatedPrimitiveDraws.add(new AccumulatedPrimitiveDraw(primitives, currentTransform, flags, cmdIndex));
+            }
         });
         tessellatorCompiling = true;
 
@@ -472,23 +491,27 @@ public class DisplayListManager {
         final boolean hasCommands = rawCommandBuffer != null && rawCommandBuffer.size() > 0;
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
         final boolean hasLineDraws = accumulatedLineDraws != null && !accumulatedLineDraws.isEmpty();
+        final boolean hasPrimitiveDraws = accumulatedPrimitiveDraws != null && !accumulatedPrimitiveDraws.isEmpty();
 
-        if (hasCommands || hasDraws || hasLineDraws) {
+        if (hasCommands || hasDraws || hasLineDraws || hasPrimitiveDraws) {
             // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
             final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers = compileFormatBasedVBOs(accumulatedDraws);
 
-            // Phase 2: Compile line VBO (shared by both paths)
+            // Phase 2: Compile immediate mode line VBO (shared by both paths)
             final CompiledLineBuffer compiledLineBuffer = compileLineBuffer(accumulatedLineDraws);
 
-            // Collect all owned VBOs (quads + lines)
-            final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer);
+            // Phase 3: Compile tessellator primitive VBOs (lines, triangles) - grouped by format
+            final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
+
+            // Collect all owned VBOs (quads + immediate mode lines + tessellator primitives)
+            final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
             // Build to CommandBuffer - optimize raw buffer to final buffer
             final CommandBuffer finalBuffer = new CommandBuffer();
             if (DEBUG_DISPLAY_LISTS) {
-                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, compiledQuadBuffers, compiledLineBuffer, ownedVbos, finalBuffer);
+                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers, ownedVbos, finalBuffer);
             } else {
-                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, ownedVbos, glListId, finalBuffer);
+                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers, ownedVbos, glListId, finalBuffer);
             }
 
             // Free the recorder (and its buffer) after optimization
@@ -514,6 +537,7 @@ public class DisplayListManager {
             currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
             accumulatedLineDraws = parentContext.lineDraws;
+            accumulatedPrimitiveDraws = parentContext.primitiveDraws;
             relativeTransform = parentContext.transform;
             tessellatorCompiling = parentContext.wasTessellatorCompiling;
             immediateModeRecorder = parentContext.immediateRecorder;
@@ -526,6 +550,7 @@ public class DisplayListManager {
             recordingThread = null;
             accumulatedDraws = null;
             accumulatedLineDraws = null;
+            accumulatedPrimitiveDraws = null;
             relativeTransform = null;
             immediateModeRecorder = null;
             glListId = -1;
@@ -652,20 +677,72 @@ public class DisplayListManager {
      */
     private static VertexBuffer[] extractOwnedVbos(
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer) {
+            CompiledLineBuffer compiledLineBuffer,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers) {
         final List<VertexBuffer> vbos = new ArrayList<>();
 
         // Add quad VBOs
-        for (CompiledFormatBuffer buffer : compiledQuadBuffers.values()) {
-            vbos.add(buffer.vbo());
+        final CompiledFormatBuffer[] quadBufferArray = compiledQuadBuffers.values().toArray(new CompiledFormatBuffer[0]);
+        for (int i = 0; i < quadBufferArray.length; i++) {
+            vbos.add(quadBufferArray[i].vbo());
         }
 
-        // Add line VBO if present
+        // Add immediate mode line VBO if present
         if (compiledLineBuffer != null) {
             vbos.add(compiledLineBuffer.vbo());
         }
 
+        // Add tessellator primitive VBOs if present (one per format, separate for lines/triangles)
+        if (!compiledPrimitiveBuffers.isEmpty()) {
+            final CompiledPrimitiveBuffers[] primBufferArray = compiledPrimitiveBuffers.values().toArray(new CompiledPrimitiveBuffers[0]);
+            for (int i = 0; i < primBufferArray.length; i++) {
+                final CompiledPrimitiveBuffers primBuffers = primBufferArray[i];
+                if (primBuffers.hasLines()) {
+                    vbos.add(primBuffers.lineVbo());
+                }
+                if (primBuffers.hasTriangles()) {
+                    vbos.add(primBuffers.triangleVbo());
+                }
+            }
+        }
+
         return vbos.toArray(new VertexBuffer[0]);
+    }
+
+    /**
+     * Compile tessellator primitives (lines, triangles) into format-based VBOs.
+     * Groups draws by vertex format for optimal memory usage.
+     *
+     * @param primitiveDraws The accumulated primitive draws from tessellator callback
+     * @return Map of flags to compiled primitive buffers, empty map if no primitives
+     */
+    private static Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compilePrimitiveBuffers(
+            List<AccumulatedPrimitiveDraw> primitiveDraws) {
+        if (primitiveDraws == null || primitiveDraws.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // Group draws by vertex format
+        final Map<CapturingTessellator.Flags, TessellatorPrimitiveBuffer> formatBuffers = new HashMap<>();
+        final int size = primitiveDraws.size();
+        for (int i = 0; i < size; i++) {
+            final AccumulatedPrimitiveDraw draw = primitiveDraws.get(i);
+            formatBuffers.computeIfAbsent(draw.flags, TessellatorPrimitiveBuffer::new).addDraw(draw);
+        }
+
+        // Compile each format's geometry into VBOs
+        final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiled = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        final Map.Entry<CapturingTessellator.Flags, TessellatorPrimitiveBuffer>[] entries =
+            formatBuffers.entrySet().toArray(new Map.Entry[0]);
+        for (int i = 0; i < entries.length; i++) {
+            final Map.Entry<CapturingTessellator.Flags, TessellatorPrimitiveBuffer> entry = entries[i];
+            final CompiledPrimitiveBuffers result = entry.getValue().finish();
+            if (result != null) {
+                compiled.put(entry.getKey(), result);
+            }
+        }
+        return compiled;
     }
 
     // ==================== Buffer-to-Buffer Optimization ====================
@@ -684,29 +761,15 @@ public class DisplayListManager {
             List<DisplayListCommand> currentCommands,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             int glListId) {
 
         final List<DisplayListCommand> optimized = new ArrayList<>();
         final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
 
-        // Collect all merged draw ranges (quads + lines) sorted by command index
-        final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
-
-        // Add quad ranges
-        for (CompiledFormatBuffer compiledBuffer : compiledQuadBuffers.values()) {
-            for (DrawRange range : compiledBuffer.mergedRanges()) {
-                allRanges.add(new DrawRangeWithBuffer(range, compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
-            }
-        }
-
-        // Add line ranges
-        if (compiledLineBuffer != null) {
-            for (DrawRange range : compiledLineBuffer.mergedRanges()) {
-                allRanges.add(new DrawRangeWithBuffer(range, compiledLineBuffer.vbo(), false));
-            }
-        }
-
-        allRanges.sort(Comparator.comparingInt(r -> r.range().commandIndex()));
+        // Collect all merged draw ranges (quads + lines + primitives) sorted by command index
+        final List<DrawRangeWithBuffer> allRanges = CommandBufferBuilder.collectDrawRanges(
+            compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
         // Process command stream with interleaved draws
         final OptimizationContextImpl ctx = new OptimizationContextImpl(transformOpt, optimized);
@@ -755,19 +818,19 @@ public class DisplayListManager {
     static OptimizedListResult buildOptimizedDisplayList(
             List<DisplayListCommand> currentCommands,
             List<AccumulatedDraw> accumulatedDraws,
-            List<AccumulatedLineDraw> accumulatedLineDraws,
+            List<AccumulatedPrimitiveDraw> accumulatedPrimitiveDraws,
             int glListId) {
         // Compile quad VBOs
         final Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers = compileFormatBasedVBOs(accumulatedDraws);
 
-        // Compile line VBO
-        final CompiledLineBuffer compiledLineBuffer = compileLineBuffer(accumulatedLineDraws);
+        // Compile tessellator primitive VBOs (lines, triangles) - grouped by format
+        final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers = compilePrimitiveBuffers(accumulatedPrimitiveDraws);
 
-        // Extract owned VBOs
-        final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, compiledLineBuffer);
+        // Extract owned VBOs (quads + primitives, no immediate mode lines in test path)
+        final VertexBuffer[] ownedVbos = extractOwnedVbos(compiledQuadBuffers, null, compiledPrimitiveBuffers);
 
         // Build optimized commands using the new unified path
-        final DisplayListCommand[] optimized = buildOptimizedCommands(currentCommands, compiledQuadBuffers, compiledLineBuffer, glListId);
+        final DisplayListCommand[] optimized = buildOptimizedCommands(currentCommands, compiledQuadBuffers, null, compiledPrimitiveBuffers, glListId);
 
         return new OptimizedListResult(optimized, ownedVbos);
     }
@@ -817,7 +880,7 @@ public class DisplayListManager {
      * Selects the optimal VertexFormat from GTNHLib defaults based on actual attribute usage.
      * This reduces memory usage by excluding unused attributes.
      */
-    private static VertexFormat selectOptimalFormat(CapturingTessellator.Flags flags) {
+    static VertexFormat selectOptimalFormat(CapturingTessellator.Flags flags) {
         final boolean hasColor = flags.hasColor;
         final boolean hasTexture = flags.hasTexture;
         final boolean hasBrightness = flags.hasBrightness;

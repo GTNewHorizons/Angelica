@@ -56,6 +56,11 @@ public class CommandRecorder {
         commandCount++;
     }
 
+    public void recordBlendColor(float r, float g, float b, float a) {
+        buffer.writeBlendColor(r, g, b, a);
+        commandCount++;
+    }
+
     public void recordClearStencil(int s) {
         buffer.writeClearStencil(s);
         commandCount++;
@@ -73,6 +78,11 @@ public class CommandRecorder {
 
     public void recordDepthMask(boolean flag) {
         buffer.writeDepthMask(flag);
+        commandCount++;
+    }
+
+    public void recordFrontFace(int mode) {
+        buffer.writeFrontFace(mode);
         commandCount++;
     }
 
@@ -243,6 +253,11 @@ public class CommandRecorder {
 
     public void recordFogi(int pname, int param) {
         buffer.writeFogi(pname, param);
+        commandCount++;
+    }
+
+    public void recordHint(int target, int mode) {
+        buffer.writeHint(target, mode);
         commandCount++;
     }
 

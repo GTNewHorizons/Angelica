@@ -881,9 +881,10 @@ public class GLStateManager {
 
     public static void glBlendColor(float red, float green, float blue, float alpha) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glBlendColor in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordBlendColor(red, green, blue, alpha);
+        } else {
+            GL14.glBlendColor(red, green, blue, alpha);
         }
-        GL14.glBlendColor(red, green, blue, alpha);
     }
 
     public static void enableBlend() {
@@ -3191,7 +3192,8 @@ public class GLStateManager {
 
     public static void glFrontFace(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glFrontFace in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordFrontFace(mode);
+            return;
         }
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || polygonState.getFrontFace() != mode) {
@@ -3203,8 +3205,12 @@ public class GLStateManager {
     }
 
     public static void glHint(int target, int mode) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glHint in display lists not yet implemented - if you see this, please report!");
+        final boolean recording = DisplayListManager.isRecording();
+        if (recording) {
+            DisplayListManager.recordHint(target, mode);
+            if (DisplayListManager.getListMode() == GL11.GL_COMPILE) {
+                return;
+            }
         }
         GL11.glHint(target, mode);
     }

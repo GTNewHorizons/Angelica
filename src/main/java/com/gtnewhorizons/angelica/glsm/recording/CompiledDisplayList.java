@@ -141,13 +141,13 @@ public final class CompiledDisplayList {
                  GLCommand.MATRIX_MODE, GLCommand.ACTIVE_TEXTURE, GLCommand.USE_PROGRAM,
                  GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.LOAD_IDENTITY,
                  GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX, GLCommand.STENCIL_MASK,
-                 GLCommand.DEPTH_MASK, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
+                 GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
                  GLCommand.CALL_LIST, GLCommand.COMPLEX_REF -> 8;
 
             // Two int commands (12 bytes)
             case GLCommand.BIND_TEXTURE, GLCommand.POLYGON_MODE, GLCommand.COLOR_MATERIAL,
                  GLCommand.LINE_STIPPLE, GLCommand.STENCIL_MASK_SEPARATE, GLCommand.FOGI,
-                 GLCommand.POLYGON_OFFSET, GLCommand.ALPHA_FUNC, GLCommand.FOGF,
+                 GLCommand.HINT, GLCommand.POLYGON_OFFSET, GLCommand.ALPHA_FUNC, GLCommand.FOGF,
                  GLCommand.LIGHT_MODELF, GLCommand.LIGHT_MODELI -> 12;
 
             // Three int commands (16 bytes)
@@ -158,13 +158,12 @@ public final class CompiledDisplayList {
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
-                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.DRAW_RANGE -> 20;
-
-            // Single double commands (12 bytes)
-            case GLCommand.CLEAR_DEPTH -> 12;
+                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR,
+                 GLCommand.DRAW_RANGE -> 20;
 
             // Double commands
             case GLCommand.TRANSLATE, GLCommand.SCALE -> 32;  // cmd + mode + 3 doubles
+            case GLCommand.CLEAR_DEPTH -> 12;  // cmd + 1 double
             case GLCommand.ROTATE -> 40;  // cmd + mode + 4 doubles
             case GLCommand.ORTHO, GLCommand.FRUSTUM -> 52;  // cmd + 6 doubles
 

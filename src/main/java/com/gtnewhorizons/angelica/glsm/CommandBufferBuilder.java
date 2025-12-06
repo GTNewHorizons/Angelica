@@ -30,7 +30,8 @@ public final class CommandBufferBuilder {
     public static void buildOptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer,
+            final CompiledLineBuffer compiledLineBuffer,
+            final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             VertexBuffer[] ownedVbos,
             int glListId,
             CommandBuffer finalBuffer) {
@@ -43,7 +44,7 @@ public final class CommandBufferBuilder {
         }
 
         // Collect all merged draw ranges sorted by command index
-        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer);
+        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
         // Buffer optimizer state
         final BufferTransformOptimizer opt = new BufferTransformOptimizer();
@@ -82,9 +83,9 @@ public final class CommandBufferBuilder {
      */
     public static void buildUnoptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
-            List<AccumulatedDraw> accumulatedDraws,
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
             CompiledLineBuffer compiledLineBuffer,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
             VertexBuffer[] ownedVbos,
             CommandBuffer finalBuffer) {
 
@@ -96,7 +97,7 @@ public final class CommandBufferBuilder {
         }
 
         // Collect all merged draw ranges sorted by command index
-        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer);
+        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
         rawBuffer.resetRead();
         int cmdIndex = 0;
@@ -130,21 +131,53 @@ public final class CommandBufferBuilder {
     /**
      * Collect all draw ranges from compiled buffers, sorted by command index.
      */
-    private static List<DrawRangeWithBuffer> collectDrawRanges(
+    static List<DrawRangeWithBuffer> collectDrawRanges(
             Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer) {
+            CompiledLineBuffer compiledLineBuffer,
+            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers) {
 
         final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
 
-        for (CompiledFormatBuffer compiledBuffer : compiledQuadBuffers.values()) {
-            for (DrawRange range : compiledBuffer.mergedRanges()) {
-                allRanges.add(new DrawRangeWithBuffer(range, compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
+        // Add quad ranges
+        final CompiledFormatBuffer[] quadBufferArray = compiledQuadBuffers.values().toArray(new CompiledFormatBuffer[0]);
+        for (int b = 0; b < quadBufferArray.length; b++) {
+            final CompiledFormatBuffer compiledBuffer = quadBufferArray[b];
+            final DrawRange[] ranges = compiledBuffer.mergedRanges();
+            for (int i = 0; i < ranges.length; i++) {
+                allRanges.add(new DrawRangeWithBuffer(ranges[i], compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
             }
         }
 
+        // Add immediate mode line ranges
         if (compiledLineBuffer != null) {
-            for (DrawRange range : compiledLineBuffer.mergedRanges()) {
-                allRanges.add(new DrawRangeWithBuffer(range, compiledLineBuffer.vbo(), false));
+            final DrawRange[] ranges = compiledLineBuffer.mergedRanges();
+            for (int i = 0; i < ranges.length; i++) {
+                allRanges.add(new DrawRangeWithBuffer(ranges[i], compiledLineBuffer.vbo(), false));
+            }
+        }
+
+        // Add tessellator primitive ranges (lines and triangles) - grouped by format
+        if (compiledPrimitiveBuffers != null && !compiledPrimitiveBuffers.isEmpty()) {
+            final CompiledPrimitiveBuffers[] primBufferArray = compiledPrimitiveBuffers.values().toArray(new CompiledPrimitiveBuffers[0]);
+            for (int p = 0; p < primBufferArray.length; p++) {
+                final CompiledPrimitiveBuffers primBuffers = primBufferArray[p];
+                final boolean hasBrightness = primBuffers.flags().hasBrightness;
+                // Tessellator lines
+                if (primBuffers.hasLines()) {
+                    final DrawRange[] ranges = primBuffers.lineMergedRanges();
+                    final VertexBuffer vbo = primBuffers.lineVbo();
+                    for (int i = 0; i < ranges.length; i++) {
+                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
+                    }
+                }
+                // Tessellator triangles
+                if (primBuffers.hasTriangles()) {
+                    final DrawRange[] ranges = primBuffers.triangleMergedRanges();
+                    final VertexBuffer vbo = primBuffers.triangleVbo();
+                    for (int i = 0; i < ranges.length; i++) {
+                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
+                    }
+                }
             }
         }
 
