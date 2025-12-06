@@ -103,4 +103,9 @@ public final class FontProviderMC implements FontProvider {
     public ResourceLocation getTexture(char chr) {
         return locationFontTexture;
     }
+
+    @Override
+    public float getYScaleMultiplier() {
+        return 1;
+    }
 }

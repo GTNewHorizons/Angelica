@@ -270,12 +270,12 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public float getXAdvance(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].xAdvance;
+        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].xAdvance * FontConfig.customFontScale;
     }
 
     @Override
     public float getGlyphW(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].glyphW;
+        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].glyphW * FontConfig.customFontScale;
     }
 
     @Override
@@ -296,5 +296,10 @@ public final class FontProviderCustom implements FontProvider {
     @Override
     public ResourceLocation getTexture(char chr) {
         return getAtlas(chr).texture;
+    }
+
+    @Override
+    public float getYScaleMultiplier() {
+        return FontConfig.customFontScale;
     }
 }

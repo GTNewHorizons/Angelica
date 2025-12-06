@@ -65,4 +65,9 @@ public class FontConfig {
     @Config.DefaultInt(7)
     @Config.RangeInt(min = 1, max = 24)
     public static int fontAAStrength;
+
+    @Config.Comment("Custom font scale multiplier, for bugfixes.")
+    @Config.DefaultFloat(1.5F)
+    @Config.RangeFloat(min = 0.1F, max = 3F)
+    public static float customFontScale;
 }
