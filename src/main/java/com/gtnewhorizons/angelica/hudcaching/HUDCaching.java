@@ -198,7 +198,7 @@ public class HUDCaching {
         tessellator.addVertexWithUV(width, 0, 0.0, 1, 1);
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
-        return TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE);
+        return TessellatorManager.stopCapturingToVBO(DefaultVertexFormat.POSITION_TEXTURE);
     }
 
     public static void disableHoloInventory() {
