@@ -508,9 +508,11 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
-                if (chrReplacement != null) {
-                    chr = chrReplacement.charAt(0);
+                if (FontConfig.enableCustomFont) {
+                    String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
+                    if (chrReplacement != null) {
+                        chr = chrReplacement.charAt(0);
+                    }
                 }
 
                 if (curRandom) {
