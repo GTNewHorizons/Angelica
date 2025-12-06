@@ -1,10 +1,8 @@
 package com.gtnewhorizons.angelica.proxy;
 
-import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 import com.google.common.base.Objects;
-import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -73,7 +71,6 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        ModelRegistry.registerModid(MOD_ID);
     }
 
     @SubscribeEvent
@@ -99,7 +96,8 @@ public class ClientProxy extends CommonProxy {
         super.init(event);
 
         if (AngelicaConfig.enableHudCaching) {
-            HUDCaching.init();
+            FMLCommonHandler.instance().bus().register(HUDCaching.INSTANCE);
+            MinecraftForge.EVENT_BUS.register(HUDCaching.INSTANCE);
         }
         if (AngelicaConfig.enableSodium) {
             MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
