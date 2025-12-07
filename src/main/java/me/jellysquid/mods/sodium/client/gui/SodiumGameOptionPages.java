@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
@@ -52,7 +53,7 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build());
 
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
                 .setName(I18n.format("options.iris.shadowDistance"))
                 .setTooltip(I18n.format("options.iris.shadowDistance.sodium_tooltip"))
@@ -264,8 +265,8 @@ public class SodiumGameOptionPages {
                 )*/
                 .add(Settings.MODE_SHADOWS.option)
                 .add(Settings.MODE_VIGNETTE.option)
-                .add(Settings.DYNAMIC_LIGHTS.option, AngelicaConfig.enableDynamicLights)
-                .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, AngelicaConfig.enableDynamicLights)
+                .add(Settings.DYNAMIC_LIGHTS.option, DynamicLights.configEnabled)
+                .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, DynamicLights.configEnabled)
                 .build());
 
 

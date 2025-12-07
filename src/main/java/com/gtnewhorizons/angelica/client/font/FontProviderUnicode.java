@@ -90,4 +90,9 @@ public final class FontProviderUnicode implements FontProvider {
         final int uniPage = chr / 256;
         return getUnicodePageLocation(uniPage);
     }
+
+    @Override
+    public float getYScaleMultiplier() {
+        return 1;
+    }
 }

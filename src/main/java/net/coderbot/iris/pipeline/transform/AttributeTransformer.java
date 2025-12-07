@@ -11,7 +11,7 @@ import org.taumc.glsl.Util;
  */
 class AttributeTransformer {
 	public static void transform(GLSLParser.Translation_unitContext translationUnit, AttributeParameters parameters, String profile, int version) {
-		boolean isCore = (profile.equals("core") || version > 140);
+		boolean isCore = profile.equals("core") || (version > 140 && !profile.equals("compatibility"));
 		if (isCore) {
 			if (parameters.type == PatchShaderType.VERTEX) {
 				throw new IllegalStateException("Vertex shaders must be in the compatibility profile to run properly!");

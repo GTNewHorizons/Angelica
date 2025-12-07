@@ -11,16 +11,22 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.KHRDebug;
 
 public class ProgramCreator {
+
 	private static final Logger LOGGER = LogManager.getLogger(ProgramCreator.class);
+
+	public static final int MC_ENTITY = 11;
+	public static final int MC_MID_TEX_COORD = 12;
+	public static final int AT_TANGENT = 13;
+	public static final int AT_MIDBLOCK = 14;
 
 	public static int create(String name, GlShader... shaders) {
 		int program = GL20.glCreateProgram();
 
 		// TODO: This is *really* hardcoded, we need to refactor this to support external calls to glBindAttribLocation
-		RenderSystem.bindAttributeLocation(program, 11, "mc_Entity");
-		RenderSystem.bindAttributeLocation(program, 12, "mc_midTexCoord");
-		RenderSystem.bindAttributeLocation(program, 13, "at_tangent");
-		RenderSystem.bindAttributeLocation(program, 14, "at_midBlock");
+		RenderSystem.bindAttributeLocation(program, MC_ENTITY, "mc_Entity");
+		RenderSystem.bindAttributeLocation(program, MC_MID_TEX_COORD, "mc_midTexCoord");
+		RenderSystem.bindAttributeLocation(program, AT_TANGENT, "at_tangent");
+		RenderSystem.bindAttributeLocation(program, AT_MIDBLOCK, "at_midBlock");
 
 		for (GlShader shader : shaders) {
             GL20.glAttachShader(program, shader.getHandle());

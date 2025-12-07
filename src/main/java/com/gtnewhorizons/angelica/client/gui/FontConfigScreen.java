@@ -56,6 +56,7 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
+    SliderClone.Option optCustomFontScale = new SliderClone.Option(0.1f, 3, 0.05f);
 
     public FontConfigScreen(GuiScreen parent) {
         this.title = I18n.format("options.angelica.fontconfig.title");
@@ -214,6 +215,16 @@ public class FontConfigScreen extends GuiScreen {
             .formatString("%.0f")
             .build()
         );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
+            .option(optCustomFontScale)
+            .initialValue(FontConfig.customFontScale)
+            .setter(value -> FontConfig.customFontScale = value)
+            .langKey("options.angelica.fontconfig.custom_font_scale")
+            .formatString("x%3.2f")
+            .build()
+        );
 
         final int halfWidth = this.width / 2;
         final int sliderSpacing = 4;
@@ -279,7 +290,6 @@ public class FontConfigScreen extends GuiScreen {
         currentFallbackFontName = null;
         selectedPrimaryFontListPos = -1;
         selectedFallbackFontListPos = -1;
-        FontStrategist.customFontInUse = false;
         super.buttonList.clear();
         this.initButtons();
     }

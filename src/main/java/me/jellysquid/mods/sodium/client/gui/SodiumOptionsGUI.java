@@ -4,8 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.client.gui.ScrollableGuiScreen;
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
+import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -61,14 +61,14 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
 
-        if (AngelicaConfig.enableIris) {
+        if (Iris.enabled) {
             shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of());
             this.pages.add(shaderPacks);
         }
     }
 
     public void setPage(OptionPage page) {
-        if (AngelicaConfig.enableIris && page == shaderPacks) {
+        if (Iris.enabled && page == shaderPacks) {
             mc.displayGuiScreen(new ShaderPackScreen(this));
             return;
         }

@@ -1,0 +1,21 @@
+package com.gtnewhorizons.angelica.glsm;
+
+import com.github.bsideup.jabel.Desugar;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+
+/**
+ * A compiled VBO containing all line geometry with associated draw ranges.
+ * All ranges reference vertices within this single VBO.
+ * <p>
+ * Contains two range arrays:
+ * <ul>
+ *   <li><b>mergedRanges</b>: For optimized path - consecutive same-transform draws merged</li>
+ *   <li><b>perDrawRanges</b>: For unoptimized path - 1:1 with original draws</li>
+ * </ul>
+ */
+@Desugar
+record CompiledLineBuffer(
+    VertexBuffer vbo,
+    DrawRange[] mergedRanges,
+    DrawRange[] perDrawRanges
+) {}

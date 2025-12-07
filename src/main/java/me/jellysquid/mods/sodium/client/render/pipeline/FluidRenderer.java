@@ -14,8 +14,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFlags;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.Arrays;
+import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.model.light.LightMode;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
@@ -89,7 +89,7 @@ public class FluidRenderer {
     }
 
     public boolean render(IBlockAccess world, WorldSlice slice, Block block, BlockPos pos, ChunkModelBuffers buffers) {
-        this.useSeparateAo = AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
+        this.useSeparateAo = Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
 
         int posX = pos.x;
         int posY = pos.y;

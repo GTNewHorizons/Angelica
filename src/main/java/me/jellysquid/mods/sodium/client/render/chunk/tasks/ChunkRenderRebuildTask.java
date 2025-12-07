@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionDataBuilder;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
+import net.coderbot.iris.Iris;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
@@ -217,7 +218,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                     pos.set(baseX + relX, baseY + relY, baseZ + relZ);
                     buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
 
-                    if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
+                    if(Iris.enabled) buffers.iris$setLocalPos(relX, relY, relZ);
 
                     if (rendersOffThread(block)) {
                         // Do regular block rendering
@@ -226,14 +227,14 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             if (ModStatus.isFluidLoggedLoaded) {
                                 if (fluid != null && canRenderInPass(fluid.getBlock(), pass)) {
                                     ChunkRenderManager.setWorldRenderPass(pass);
-                                    if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(fluid.getBlock(), ExtendedDataHelper.FLUID_RENDER_TYPE);
+                                    if(Iris.enabled)  buffers.iris$setMaterialId(fluid.getBlock(), ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                     cache.getBlockRenderer().renderFluidLogged(cache.getWorldSlice(), fluid, renderBlocks, pos, buffers.get(pass), seed);
                                 }
                             }
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
-                                if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+                                if(Iris.enabled) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                                 if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
                                     bounds.addBlock(relX, relY, relZ);
@@ -251,7 +252,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (canRenderInPass(block, pass)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
-                                if(AngelicaConfig.enableIris)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
+                                if(Iris.enabled)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                 if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), block, pos, buffers.get(pass))) {
                                     bounds.addBlock(relX, relY, relZ);
@@ -260,7 +261,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         }
                     }
 
-                    if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
+                    if(Iris.enabled) buffers.iris$resetBlockContext();
 
                     if (block.hasTileEntity(meta)) {
                         final TileEntity entity = slice.getTileEntity(pos.x, pos.y, pos.z);
@@ -355,14 +356,14 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
             final int meta = slice.getBlockMetadataRelative(relX + 16, relY + 16, relZ + 16);
 
             buffers.setRenderOffset(pos.x - renderOffset.getX(), pos.y - renderOffset.getY(), pos.z - renderOffset.getZ());
-            if(AngelicaConfig.enableIris) buffers.iris$setLocalPos(relX, relY, relZ);
+            if(Iris.enabled) buffers.iris$setLocalPos(relX, relY, relZ);
 
             // Do regular block rendering
             for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                 if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                     ChunkRenderManager.setWorldRenderPass(pass);
                     final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
-                    if(AngelicaConfig.enableIris) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+                    if(Iris.enabled) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                     if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
                         bounds.addBlock(relX, relY, relZ);
@@ -370,7 +371,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 }
             }
 
-            if(AngelicaConfig.enableIris) buffers.iris$resetBlockContext();
+            if(Iris.enabled) buffers.iris$resetBlockContext();
         }
 
         if(rb instanceof ITexturesCache) {

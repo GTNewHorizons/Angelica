@@ -12,6 +12,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL32;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -515,5 +516,357 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Reset");
         verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Reset");
+    }
+
+    @Test
+    void testPushPopLineBit() {
+        /*
+         * GL_LINE_BIT
+         *     GL_LINE_SMOOTH enable bit
+         *     GL_LINE_STIPPLE enable bit
+         *     Line stipple pattern and repeat counter
+         *     Line width
+         */
+        verifyState(GL11.GL_LINE_WIDTH, 1.0f, "Line Width - Initial");
+        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xFFFF, "Line Stipple Pattern - Initial");
+        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 1, "Line Stipple Repeat - Initial");
+        verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Initial");
+        verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_LINE_BIT);
+        GLStateManager.glLineWidth(2.5f);
+        GLStateManager.glLineStipple(3, (short) 0xAAAA);
+        GLStateManager.glEnable(GL11.GL_LINE_SMOOTH);
+        GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
+
+        verifyState(GL11.GL_LINE_WIDTH, 2.5f, "Line Width");
+        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xAAAA, "Line Stipple Pattern");
+        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 3, "Line Stipple Repeat");
+        verifyIsEnabled(GL11.GL_LINE_SMOOTH, true, "Line Smooth");
+        verifyIsEnabled(GL11.GL_LINE_STIPPLE, true, "Line Stipple");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_LINE_WIDTH, 1.0f, "Line Width - Reset");
+        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xFFFF, "Line Stipple Pattern - Reset");
+        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 1, "Line Stipple Repeat - Reset");
+        verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Reset");
+        verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Reset");
+    }
+
+    @Test
+    void testPushPopPointBit() {
+        /*
+         * GL_POINT_BIT
+         *     GL_POINT_SMOOTH enable bit
+         *     Point size
+         */
+        verifyState(GL11.GL_POINT_SIZE, 1.0f, "Point Size - Initial");
+        verifyIsEnabled(GL11.GL_POINT_SMOOTH, false, "Point Smooth - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_POINT_BIT);
+        GLStateManager.glPointSize(5.0f);
+        GLStateManager.glEnable(GL11.GL_POINT_SMOOTH);
+
+        verifyState(GL11.GL_POINT_SIZE, 5.0f, "Point Size");
+        verifyIsEnabled(GL11.GL_POINT_SMOOTH, true, "Point Smooth");
+
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_POINT_SIZE, 1.0f, "Point Size - Reset");
+        verifyIsEnabled(GL11.GL_POINT_SMOOTH, false, "Point Smooth - Reset");
+    }
+
+    @Test
+    void testPushPopPolygonBit() {
+        /*
+         * GL_POLYGON_BIT
+         *     GL_CULL_FACE enable bit
+         *     GL_CULL_FACE_MODE setting
+         *     GL_FRONT_FACE setting
+         *     GL_POLYGON_MODE setting
+         *     GL_POLYGON_SMOOTH enable bit
+         *     GL_POLYGON_STIPPLE enable bit
+         *     GL_POLYGON_OFFSET_FILL enable bit
+         *     GL_POLYGON_OFFSET_LINE enable bit
+         *     GL_POLYGON_OFFSET_POINT enable bit
+         *     GL_POLYGON_OFFSET_FACTOR
+         *     GL_POLYGON_OFFSET_UNITS
+         */
+        verifyIsEnabled(GL11.GL_CULL_FACE, false, "Cull Face - Initial");
+        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_BACK, "Cull Face Mode - Initial");
+        verifyState(GL11.GL_FRONT_FACE, GL11.GL_CCW, "Front Face - Initial");
+        verifyState(GL11.GL_POLYGON_MODE, new int[] { GL11.GL_FILL, GL11.GL_FILL }, "Polygon Mode - Initial");
+        verifyIsEnabled(GL11.GL_POLYGON_SMOOTH, false, "Polygon Smooth - Initial");
+        verifyIsEnabled(GL11.GL_POLYGON_STIPPLE, false, "Polygon Stipple - Initial");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_FILL, false, "Polygon Offset Fill - Initial");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_LINE, false, "Polygon Offset Line - Initial");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_POINT, false, "Polygon Offset Point - Initial");
+        verifyState(GL11.GL_POLYGON_OFFSET_FACTOR, 0.0f, "Polygon Offset Factor - Initial");
+        verifyState(GL11.GL_POLYGON_OFFSET_UNITS, 0.0f, "Polygon Offset Units - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_POLYGON_BIT);
+        GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+        GLStateManager.glFrontFace(GL11.GL_CW);
+        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+        GLStateManager.glEnable(GL11.GL_POLYGON_SMOOTH);
+        GLStateManager.glEnable(GL11.GL_POLYGON_STIPPLE);
+        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
+        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_POINT);
+        GLStateManager.glPolygonOffset(1.5f, 2.0f);
+
+        verifyIsEnabled(GL11.GL_CULL_FACE, true, "Cull Face");
+        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode");
+        verifyState(GL11.GL_FRONT_FACE, GL11.GL_CW, "Front Face");
+        verifyState(GL11.GL_POLYGON_MODE, new int[] { GL11.GL_LINE, GL11.GL_LINE }, "Polygon Mode");
+        verifyIsEnabled(GL11.GL_POLYGON_SMOOTH, true, "Polygon Smooth");
+        verifyIsEnabled(GL11.GL_POLYGON_STIPPLE, true, "Polygon Stipple");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_FILL, true, "Polygon Offset Fill");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_LINE, true, "Polygon Offset Line");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_POINT, true, "Polygon Offset Point");
+        verifyState(GL11.GL_POLYGON_OFFSET_FACTOR, 1.5f, "Polygon Offset Factor");
+        verifyState(GL11.GL_POLYGON_OFFSET_UNITS, 2.0f, "Polygon Offset Units");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_CULL_FACE, false, "Cull Face - Reset");
+        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_BACK, "Cull Face Mode - Reset");
+        verifyState(GL11.GL_FRONT_FACE, GL11.GL_CCW, "Front Face - Reset");
+        verifyState(GL11.GL_POLYGON_MODE, new int[] { GL11.GL_FILL, GL11.GL_FILL }, "Polygon Mode - Reset");
+        verifyIsEnabled(GL11.GL_POLYGON_SMOOTH, false, "Polygon Smooth - Reset");
+        verifyIsEnabled(GL11.GL_POLYGON_STIPPLE, false, "Polygon Stipple - Reset");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_FILL, false, "Polygon Offset Fill - Reset");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_LINE, false, "Polygon Offset Line - Reset");
+        verifyIsEnabled(GL11.GL_POLYGON_OFFSET_POINT, false, "Polygon Offset Point - Reset");
+        verifyState(GL11.GL_POLYGON_OFFSET_FACTOR, 0.0f, "Polygon Offset Factor - Reset");
+        verifyState(GL11.GL_POLYGON_OFFSET_UNITS, 0.0f, "Polygon Offset Units - Reset");
+    }
+
+    @Test
+    void testPushPopStencilBufferBit() {
+        /*
+         * GL_STENCIL_BUFFER_BIT
+         *     GL_STENCIL_TEST enable bit
+         *     Stencil function and reference value
+         *     Stencil value mask
+         *     Stencil fail, pass, and depth buffer pass actions
+         *     Stencil buffer clear value
+         *     Stencil buffer writemask
+         */
+        // The default stencil mask is clamped to the stencil buffer bit depth
+        // Query the actual initial mask from GL to get the hardware-specific value
+        final int initialStencilMask = GL11.glGetInteger(GL11.GL_STENCIL_VALUE_MASK);
+        final int initialWriteMask = GL11.glGetInteger(GL11.GL_STENCIL_WRITEMASK);
+
+        verifyIsEnabled(GL11.GL_STENCIL_TEST, false, "Stencil Test - Initial");
+        verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_ALWAYS, "Stencil Func - Initial");
+        verifyState(GL11.GL_STENCIL_REF, 0, "Stencil Ref - Initial");
+        verifyState(GL11.GL_STENCIL_VALUE_MASK, initialStencilMask, "Stencil Value Mask - Initial");
+        verifyState(GL11.GL_STENCIL_FAIL, GL11.GL_KEEP, "Stencil Fail - Initial");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_FAIL, GL11.GL_KEEP, "Stencil Pass Depth Fail - Initial");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Pass Depth Pass - Initial");
+        verifyState(GL11.GL_STENCIL_CLEAR_VALUE, 0, "Stencil Clear Value - Initial");
+        verifyState(GL11.GL_STENCIL_WRITEMASK, initialWriteMask, "Stencil Write Mask - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+        GLStateManager.glStencilFunc(GL11.GL_LESS, 127, 0x7F);
+        GLStateManager.glStencilOp(GL11.GL_INCR, GL11.GL_DECR, GL11.GL_REPLACE);
+        GLStateManager.glStencilMask(0x0F);
+        GLStateManager.glClearStencil(64);
+
+        verifyIsEnabled(GL11.GL_STENCIL_TEST, true, "Stencil Test");
+        verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_LESS, "Stencil Func");
+        verifyState(GL11.GL_STENCIL_REF, 127, "Stencil Ref");
+        verifyState(GL11.GL_STENCIL_VALUE_MASK, 0x7F, "Stencil Value Mask");
+        verifyState(GL11.GL_STENCIL_FAIL, GL11.GL_INCR, "Stencil Fail");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_FAIL, GL11.GL_DECR, "Stencil Pass Depth Fail");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_PASS, GL11.GL_REPLACE, "Stencil Pass Depth Pass");
+        verifyState(GL11.GL_STENCIL_CLEAR_VALUE, 64, "Stencil Clear Value");
+        verifyState(GL11.GL_STENCIL_WRITEMASK, 0x0F, "Stencil Write Mask");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_STENCIL_TEST, false, "Stencil Test - Reset");
+        verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_ALWAYS, "Stencil Func - Reset");
+        verifyState(GL11.GL_STENCIL_REF, 0, "Stencil Ref - Reset");
+        verifyState(GL11.GL_STENCIL_VALUE_MASK, initialStencilMask, "Stencil Value Mask - Reset");
+        verifyState(GL11.GL_STENCIL_FAIL, GL11.GL_KEEP, "Stencil Fail - Reset");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_FAIL, GL11.GL_KEEP, "Stencil Pass Depth Fail - Reset");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Pass Depth Pass - Reset");
+        verifyState(GL11.GL_STENCIL_CLEAR_VALUE, 0, "Stencil Clear Value - Reset");
+        verifyState(GL11.GL_STENCIL_WRITEMASK, initialWriteMask, "Stencil Write Mask - Reset");
+    }
+
+    @Test
+    void testPushPopStencilBufferBitSeparate() {
+        /*
+         * GL_STENCIL_BUFFER_BIT with GL 2.0 separate front/back state
+         */
+        // The default stencil mask is clamped to the stencil buffer bit depth
+        // Query the actual initial masks from GL to get the hardware-specific values
+        final int initialFrontMask = GL11.glGetInteger(GL11.GL_STENCIL_VALUE_MASK);
+        final int initialFrontWriteMask = GL11.glGetInteger(GL11.GL_STENCIL_WRITEMASK);
+        final int initialBackMask = GL11.glGetInteger(GL20.GL_STENCIL_BACK_VALUE_MASK);
+        final int initialBackWriteMask = GL11.glGetInteger(GL20.GL_STENCIL_BACK_WRITEMASK);
+
+        // GL 2.0 separate stencil queries
+        verifyState(GL20.GL_STENCIL_BACK_FUNC, GL11.GL_ALWAYS, "Stencil Back Func - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_REF, 0, "Stencil Back Ref - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_VALUE_MASK, initialBackMask, "Stencil Back Value Mask - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_FAIL, GL11.GL_KEEP, "Stencil Back Fail - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_FAIL, GL11.GL_KEEP, "Stencil Back Pass Depth Fail - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Back Pass Depth Pass - Initial");
+        verifyState(GL20.GL_STENCIL_BACK_WRITEMASK, initialBackWriteMask, "Stencil Back Write Mask - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+        // Use separate functions to set different front/back state
+        GLStateManager.glStencilFuncSeparate(GL11.GL_FRONT, GL11.GL_LESS, 10, 0x0A);
+        GLStateManager.glStencilFuncSeparate(GL11.GL_BACK, GL11.GL_GREATER, 20, 0x0B);
+        GLStateManager.glStencilOpSeparate(GL11.GL_FRONT, GL11.GL_INCR, GL11.GL_DECR, GL11.GL_ZERO);
+        GLStateManager.glStencilOpSeparate(GL11.GL_BACK, GL11.GL_KEEP, GL11.GL_INVERT, GL11.GL_REPLACE);
+        GLStateManager.glStencilMaskSeparate(GL11.GL_FRONT, 0x11);
+        GLStateManager.glStencilMaskSeparate(GL11.GL_BACK, 0x22);
+
+        // Verify front state
+        verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_LESS, "Stencil Front Func");
+        verifyState(GL11.GL_STENCIL_REF, 10, "Stencil Front Ref");
+        verifyState(GL11.GL_STENCIL_VALUE_MASK, 0x0A, "Stencil Front Value Mask");
+        verifyState(GL11.GL_STENCIL_FAIL, GL11.GL_INCR, "Stencil Front Fail");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_FAIL, GL11.GL_DECR, "Stencil Front Pass Depth Fail");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_PASS, GL11.GL_ZERO, "Stencil Front Pass Depth Pass");
+        verifyState(GL11.GL_STENCIL_WRITEMASK, 0x11, "Stencil Front Write Mask");
+
+        // Verify back state
+        verifyState(GL20.GL_STENCIL_BACK_FUNC, GL11.GL_GREATER, "Stencil Back Func");
+        verifyState(GL20.GL_STENCIL_BACK_REF, 20, "Stencil Back Ref");
+        verifyState(GL20.GL_STENCIL_BACK_VALUE_MASK, 0x0B, "Stencil Back Value Mask");
+        verifyState(GL20.GL_STENCIL_BACK_FAIL, GL11.GL_KEEP, "Stencil Back Fail");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_FAIL, GL11.GL_INVERT, "Stencil Back Pass Depth Fail");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_PASS, GL11.GL_REPLACE, "Stencil Back Pass Depth Pass");
+        verifyState(GL20.GL_STENCIL_BACK_WRITEMASK, 0x22, "Stencil Back Write Mask");
+
+        GLStateManager.glPopAttrib();
+        // Verify front state reset
+        verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_ALWAYS, "Stencil Front Func - Reset");
+        verifyState(GL11.GL_STENCIL_REF, 0, "Stencil Front Ref - Reset");
+        verifyState(GL11.GL_STENCIL_VALUE_MASK, initialFrontMask, "Stencil Front Value Mask - Reset");
+        verifyState(GL11.GL_STENCIL_FAIL, GL11.GL_KEEP, "Stencil Front Fail - Reset");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_FAIL, GL11.GL_KEEP, "Stencil Front Pass Depth Fail - Reset");
+        verifyState(GL11.GL_STENCIL_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Front Pass Depth Pass - Reset");
+        verifyState(GL11.GL_STENCIL_WRITEMASK, initialFrontWriteMask, "Stencil Front Write Mask - Reset");
+
+        // Verify back state reset
+        verifyState(GL20.GL_STENCIL_BACK_FUNC, GL11.GL_ALWAYS, "Stencil Back Func - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_REF, 0, "Stencil Back Ref - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_VALUE_MASK, initialBackMask, "Stencil Back Value Mask - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_FAIL, GL11.GL_KEEP, "Stencil Back Fail - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_FAIL, GL11.GL_KEEP, "Stencil Back Pass Depth Fail - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Back Pass Depth Pass - Reset");
+        verifyState(GL20.GL_STENCIL_BACK_WRITEMASK, initialBackWriteMask, "Stencil Back Write Mask - Reset");
+    }
+
+    // ==================== Lazy Copy-on-Write Tests ====================
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyAtBothLevels() {
+        // Test: modify same state at both depth levels
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first enable");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.disableBlend();
+        GLStateManager.enableLighting();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second push disable");
+        verifyIsEnabled(GL11.GL_LIGHTING, true, "Lighting - After enable at depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first pop (should restore to depth 1 value)");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After first pop (should restore to depth 1 value)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second pop (should restore to initial)");
+        verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After second pop (should restore to initial)");
+    }
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyOnlyAtInnerLevel() {
+        // Test: modify state only at depth 2, not at depth 1
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        // Don't modify blend at depth 1
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 1 (should restore)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should still be false)");
+    }
+
+    @Test
+    void testNestedPushPopEnableBit_ModifyOnlyAtOuterLevel() {
+        // Test: modify state only at depth 1, not at depth 2
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 1");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        // Don't modify blend at depth 2
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 2 (unchanged)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1 (should still be true)");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should restore to initial)");
+    }
+
+    @Test
+    void testMultipleModificationsAtSameDepth() {
+        // Test: multiple modifications to same state at same depth should only save once
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();  // First modification - should save false
+        GLStateManager.disableBlend(); // Second modification - should NOT save again
+        GLStateManager.enableBlend();  // Third modification - should NOT save again
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After multiple toggles");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop (should restore original false)");
+    }
+
+    @Test
+    void testTripleNestedPushPop() {
+        // Test: three levels of nesting
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.disableBlend();
+
+        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLStateManager.enableBlend();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 3");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 2");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1");
+
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0");
     }
 }

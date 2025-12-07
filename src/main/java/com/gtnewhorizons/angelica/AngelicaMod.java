@@ -18,7 +18,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         name = "Angelica",
         version = Tags.VERSION,
         dependencies = """
-            required-after:gtnhlib@[0.6.6,);\
+            required-after:gtnhlib@[0.8.21,);\
             before:lwjgl3ify@[1.5.3,);\
             after:hodgepodge@[2.4.4,);\
             after:CodeChickenCore@[1.2.0,);\

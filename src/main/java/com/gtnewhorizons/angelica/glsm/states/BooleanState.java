@@ -22,12 +22,18 @@ public class BooleanState implements ISettableState<BooleanState> {
     }
 
     public void setEnabled(boolean enabled) {
-        if (GLStateManager.shouldBypassCache() || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
-            this.enabled = enabled;
-            if (enabled) {
-                GL11.glEnable(this.glCap);
-            } else {
-                GL11.glDisable(this.glCap);
+        final boolean bypass = GLStateManager.shouldBypassCache();
+        if (bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
+            if (!bypass) {
+                this.enabled = enabled;
+            }
+            // Skip actual GL calls during display list recording (state tracking only)
+            if (!GLStateManager.isRecordingDisplayList()) {
+                if (enabled) {
+                    GL11.glEnable(this.glCap);
+                } else {
+                    GL11.glDisable(this.glCap);
+                }
             }
         }
     }

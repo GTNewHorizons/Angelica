@@ -21,6 +21,18 @@ public class BlendState implements ISettableState<BlendState> {
         this.dstAlpha = dstAlpha;
     }
 
+    public void setAll(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        this.srcRgb = srcRgb;
+        this.dstRgb = dstRgb;
+        this.srcAlpha = srcAlpha;
+        this.dstAlpha = dstAlpha;
+    }
+
+    public void setSrcDstRgb(int srcRgb, int dstRgb) {
+        this.srcRgb = srcRgb;
+        this.dstRgb = dstRgb;
+    }
+
     @Override
     public BlendState set(BlendState state) {
         this.srcRgb = state.srcRgb;

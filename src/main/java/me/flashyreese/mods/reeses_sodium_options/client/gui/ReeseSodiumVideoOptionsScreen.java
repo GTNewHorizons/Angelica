@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.client.gui.FontConfigScreen;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
+import net.coderbot.iris.Iris;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.BasicFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components.SearchTextFieldComponent;
@@ -104,7 +105,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
         int cumulativeXShift = 0;
 
-        if (AngelicaConfig.enableIris) {
+        if (Iris.enabled) {
             //int size = this.client.textRenderer.getWidth(new TranslatableText(IrisApi.getInstance().getMainScreenLanguageKey()));
             final String irisText = I18n.format(IrisApi.getInstance().getMainScreenLanguageKey());
             final int size = this.mc.fontRenderer.getStringWidth(irisText);
