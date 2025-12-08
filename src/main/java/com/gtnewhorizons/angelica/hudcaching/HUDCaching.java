@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexArrayBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -178,10 +179,7 @@ public class HUDCaching {
         if (quadWidth != width || quadHeight != height) {
             quadWidth = width;
             quadHeight = height;
-            if (quadVAO != null) {
-                quadVAO.close();
-            }
-            quadVAO = rebuildVAO(width, height);
+            rebuildVAO(width, height);
         }
         GLStateManager.disableDepthTest();
         GLStateManager.enableTexture();
@@ -190,7 +188,7 @@ public class HUDCaching {
     }
 
 
-    private static VertexBuffer rebuildVAO(float width, float height) {
+    private static void rebuildVAO(float width, float height) {
         final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
         tessellator.startDrawingQuads();
         tessellator.addVertexWithUV(0, height, 0.0, 0, 0);
@@ -198,7 +196,7 @@ public class HUDCaching {
         tessellator.addVertexWithUV(width, 0, 0.0, 1, 1);
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
-        return TessellatorManager.stopCapturingToVAO(DefaultVertexFormat.POSITION_TEXTURE);
+        quadVAO = TessellatorManager.stopCapturingToVAO(quadVAO, DefaultVertexFormat.POSITION_TEXTURE);
     }
 
     public static void disableHoloInventory() {

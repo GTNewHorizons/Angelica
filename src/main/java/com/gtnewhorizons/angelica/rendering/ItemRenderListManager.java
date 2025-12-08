@@ -27,6 +27,7 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -126,7 +127,7 @@ public class ItemRenderListManager {
         private int expiry;
 
         public CachedVBO() {
-            this.vertexBuffer = new VertexBuffer(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
+            this.vertexBuffer = VAOManager.createVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
         }
 
         private void render(int elapsedTicks) {

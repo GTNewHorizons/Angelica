@@ -47,6 +47,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableVBOClouds;
 
+    @Config.Comment("Uses cached attributes for VBO rendering, resulting in less CPU overhead. Disable if you notice any graphical issues.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableVAO;
+
     @Config.Comment("Enable NotFine features")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
