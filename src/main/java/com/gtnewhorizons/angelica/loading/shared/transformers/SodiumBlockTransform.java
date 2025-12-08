@@ -104,6 +104,7 @@ public class SodiumBlockTransform {
             "org.lwjgl",
             "com.gtnewhorizons.angelica.glsm.",
             "com.gtnewhorizons.angelica.transform",
+            "com.gtnewhorizon.gtnhlib.asm.",
             "me.eigenraven.lwjgl3ify"
         };
     }
