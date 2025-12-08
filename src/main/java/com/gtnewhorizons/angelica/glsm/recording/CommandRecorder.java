@@ -186,11 +186,6 @@ public class CommandRecorder {
         commandCount++;
     }
 
-    public void recordNormal(float nx, float ny, float nz) {
-        buffer.writeNormal(nx, ny, nz);
-        commandCount++;
-    }
-
     public void recordPointSize(float size) {
         buffer.writePointSize(size);
         commandCount++;

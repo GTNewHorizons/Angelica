@@ -256,13 +256,6 @@ public final class CommandBufferExecutor {
                     ptr += 8;
                     GLStateManager.glPolygonOffset(factor, units);
                 }
-                case GLCommand.NORMAL -> {
-                    final float x = memGetFloat(ptr);
-                    final float y = memGetFloat(ptr + 4);
-                    final float z = memGetFloat(ptr + 8);
-                    ptr += 12;
-                    GLStateManager.glNormal3f(x, y, z);
-                }
                 case GLCommand.COLOR -> {
                     final float r = memGetFloat(ptr);
                     final float g = memGetFloat(ptr + 4);

@@ -152,7 +152,7 @@ public final class CompiledDisplayList {
 
             // Three int commands (16 bytes)
             case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
-                 GLCommand.NORMAL, GLCommand.LIGHTF, GLCommand.LIGHTI,
+                 GLCommand.LIGHTF, GLCommand.LIGHTI,
                  GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF -> 16;
 
             // Four int commands (20 bytes)

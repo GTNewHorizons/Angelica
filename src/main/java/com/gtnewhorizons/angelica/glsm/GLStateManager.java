@@ -1001,48 +1001,43 @@ public class GLStateManager {
     }
     public static void glNormal3b(byte nx, byte ny, byte nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordNormal(nx, ny, nz);
-            // Also update immediate mode recorder for glBegin/glEnd capture
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal(b2f(nx), b2f(ny), b2f(nz));
             }
-        } else {
-            GL11.glNormal3b(nx, ny, nz);
+            return;
         }
+        GL11.glNormal3b(nx, ny, nz);
     }
     public static void glNormal3d(double nx, double ny, double nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordNormal((float)nx, (float)ny, (float)nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal((float) nx, (float) ny, (float) nz);
             }
-        } else {
-            GL11.glNormal3d(nx, ny, nz);
+            return;
         }
+        GL11.glNormal3d(nx, ny, nz);
     }
     public static void glNormal3f(float nx, float ny, float nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordNormal(nx, ny, nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal(nx, ny, nz);
             }
-        } else {
-            GL11.glNormal3f(nx, ny, nz);
+            return;
         }
+        GL11.glNormal3f(nx, ny, nz);
     }
     public static void glNormal3i(int nx, int ny, int nz) {
         if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordNormal(nx, ny, nz);
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 recorder.setNormal((float) nx, (float) ny, (float) nz);
             }
-        } else {
-            GL11.glNormal3i(nx, ny, nz);
+            return;
         }
+        GL11.glNormal3i(nx, ny, nz);
     }
 
     public static void glDepthFunc(int func) {
