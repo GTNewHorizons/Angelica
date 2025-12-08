@@ -136,7 +136,6 @@ public final class GLCommand {
             case POINT_SIZE -> "POINT_SIZE";
             case LINE_WIDTH -> "LINE_WIDTH";
             case POLYGON_OFFSET -> "POLYGON_OFFSET";
-            case NORMAL -> "NORMAL";
             case COLOR -> "COLOR";
             case CLEAR_COLOR -> "CLEAR_COLOR";
             case BLEND_COLOR -> "BLEND_COLOR";

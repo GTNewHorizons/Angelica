@@ -211,7 +211,6 @@ public class DisplayListManager {
     public static void recordOrtho(double left, double right, double bottom, double top, double zNear, double zFar) { if (currentRecorder != null) currentRecorder.recordOrtho(left, right, bottom, top, zNear, zFar); }
     public static void recordFrustum(double left, double right, double bottom, double top, double zNear, double zFar) { if (currentRecorder != null) currentRecorder.recordFrustum(left, right, bottom, top, zNear, zFar); }
     public static void recordViewport(int x, int y, int width, int height) { if (currentRecorder != null) currentRecorder.recordViewport(x, y, width, height); }
-    public static void recordNormal(float nx, float ny, float nz) { if (currentRecorder != null) currentRecorder.recordNormal(nx, ny, nz); }
     public static void recordPointSize(float size) { if (currentRecorder != null) currentRecorder.recordPointSize(size); }
     public static void recordLineWidth(float width) { if (currentRecorder != null) currentRecorder.recordLineWidth(width); }
     public static void recordLineStipple(int factor, int pattern) { if (currentRecorder != null) currentRecorder.recordLineStipple(factor, pattern); }

@@ -317,14 +317,6 @@ public final class CommandBuffer {
         writeFloat(units);
     }
 
-    public void writeNormal(float x, float y, float z) {
-        ensureCapacity(16);
-        writeInt(GLCommand.NORMAL);
-        writeFloat(x);
-        writeFloat(y);
-        writeFloat(z);
-    }
-
     public void writeColor(float r, float g, float b, float a) {
         ensureCapacity(20);
         writeInt(GLCommand.COLOR);

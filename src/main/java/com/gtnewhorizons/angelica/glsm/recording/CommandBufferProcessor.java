@@ -182,7 +182,6 @@ public final class CommandBufferProcessor {
             case GLCommand.POINT_SIZE -> out.writePointSize(raw.readFloat());
             case GLCommand.LINE_WIDTH -> out.writeLineWidth(raw.readFloat());
             case GLCommand.POLYGON_OFFSET -> out.writePolygonOffset(raw.readFloat(), raw.readFloat());
-            case GLCommand.NORMAL -> out.writeNormal(raw.readFloat(), raw.readFloat(), raw.readFloat());
             case GLCommand.COLOR -> out.writeColor(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
             case GLCommand.CLEAR_COLOR -> out.writeClearColor(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
 
