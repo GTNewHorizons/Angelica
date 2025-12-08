@@ -15,8 +15,11 @@ public class MatrixMode implements ISettableState<MatrixMode> {
             return;
         }
 
-        if(this.mode != mode || GLStateManager.shouldBypassCache()) {
-            this.mode = mode;
+        final boolean bypass = GLStateManager.shouldBypassCache();
+        if (bypass || this.mode != mode) {
+            if (!bypass) {
+                this.mode = mode;
+            }
             GL11.glMatrixMode(mode);
         }
     }

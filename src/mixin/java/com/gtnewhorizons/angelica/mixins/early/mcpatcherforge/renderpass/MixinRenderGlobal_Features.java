@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.renderpass;
 
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.world.IWorldAccess;
@@ -16,18 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.prupe.mcpatcher.renderpass.RenderPass;
 import com.prupe.mcpatcher.renderpass.RenderPassMap;
 
+/**
+ * RenderPass feature hooks - loadRenderers, sortAndRender, renderAllRenderLists.
+ * Separated from display list allocation for compatibility with Sodium.
+ */
 @Mixin(RenderGlobal.class)
-public abstract class MixinRenderGlobal implements IWorldAccess {
-
-    @Redirect(
-        method = "<init>(Lnet/minecraft/client/Minecraft;)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I",
-            ordinal = 0))
-    private int modifyRenderGlobal(int n) {
-        return GLAllocation.generateDisplayLists(n / 3 * 5);
-    }
+public abstract class MixinRenderGlobal_Features implements IWorldAccess {
 
     @ModifyVariable(
         method = "loadRenderers()V",
@@ -78,5 +71,4 @@ public abstract class MixinRenderGlobal implements IWorldAccess {
     private void modifyRenderAllRenderLists(EntityRenderer instance, double partialTick) {
         RenderPass.enableDisableLightmap(instance, partialTick);
     }
-
 }

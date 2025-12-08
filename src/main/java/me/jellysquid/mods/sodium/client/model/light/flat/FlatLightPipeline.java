@@ -4,8 +4,8 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadView;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFlags;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import java.util.Arrays;
+import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
@@ -45,7 +45,7 @@ public class FlatLightPipeline implements LightPipeline {
         }
 
         Arrays.fill(out.lm, lightmap);
-        final float brightness = (AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading())
+        final float brightness = (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading())
             ? 1.0F : this.lightCache.getWorld().getBrightness(face, shade);
         Arrays.fill(out.br, brightness);
     }

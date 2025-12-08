@@ -37,6 +37,8 @@ public class DynamicLights {
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
     public static boolean ShaderForce = false;
 
+    public static final boolean configEnabled = AngelicaConfig.enableDynamicLights;
+
     private static final double MAX_RADIUS = 7.75;
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
@@ -51,7 +53,7 @@ public class DynamicLights {
     }
 
     public static boolean isEnabled() {
-        return AngelicaConfig.enableDynamicLights &&
+        return configEnabled &&
             Mode.isEnabled() &&
             // if shader force is enabled then true
             // if not, then true when shaders are not in use

@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -68,6 +67,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Override
     public void scheduleTerrainUpdate() {
         this.renderer.scheduleTerrainUpdate();
+    }
+
+    @Redirect(
+        method = "<init>(Lnet/minecraft/client/Minecraft;)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
+    private int sodium$skipDisplayListAllocation(int count) {
+        // Skip allocation when Sodium is enabled - Sodium completely replaces WorldRenderer
+        // with its own chunk rendering system, so these display lists are never used.
+        return 0;
     }
 
     @Inject(method="<init>", at=@At("RETURN"))
@@ -164,7 +172,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
         final WorldRenderingPipeline pipeline;
-        if(!AngelicaConfig.enableIris) {
+        if(!Iris.enabled) {
             pipeline = null;
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();

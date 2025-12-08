@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.shader;
 
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.compat.FogHelper;
@@ -52,7 +51,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     private ChunkProgram override;
 
     public ChunkRenderShaderBackend(ChunkVertexType vertexType) {
-        if (AngelicaConfig.enableIris) {
+        if (Iris.enabled) {
             irisChunkProgramOverrides = new IrisChunkProgramOverrides();
         }
 
@@ -61,7 +60,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     }
 
     public GlShader loadShaderRedirect(RenderDevice device, ShaderType type, ResourceLocation name, List<String> constants) {
-        if (AngelicaConfig.enableIris && this.vertexType == IrisModelVertexFormats.MODEL_VERTEX_XHFP) {
+        if (Iris.enabled && this.vertexType == IrisModelVertexFormats.MODEL_VERTEX_XHFP) {
             String shader = getShaderSource(ShaderLoader.getShaderPath(name, type));
             shader = shader.replace("v_LightCoord = a_LightCoord", "v_LightCoord = (iris_LightmapTextureMatrix * vec4(a_LightCoord, 0, 1)).xy");
 
@@ -78,7 +77,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     }
 
     private ChunkProgram createShader(RenderDevice device, ChunkFogMode fogMode, GlVertexFormat<ChunkMeshAttribute> vertexFormat) {
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             this.device = device;
             WorldRenderingPipeline worldRenderingPipeline = Iris.getPipelineManager().getPipelineNullable();
             SodiumTerrainPipeline sodiumTerrainPipeline = null;
@@ -159,7 +158,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     @Override
     public void begin(MatrixStack matrixStack) {
         this.activeProgram = this.programs.get(FogHelper.getFogMode());
-        if (AngelicaConfig.enableIris && override != null) {
+        if (Iris.enabled && override != null) {
             this.activeProgram = override;
         }
         this.activeProgram.bind();
@@ -170,7 +169,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     public void end(MatrixStack matrixStack) {
         this.activeProgram.unbind();
         this.activeProgram = null;
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             ProgramUniforms.clearActiveUniforms();
             ProgramSamplers.clearActiveSamplers();
             Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::endSodiumTerrainRendering);
@@ -179,7 +178,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
 
     @Override
     public void delete() {
-        if(AngelicaConfig.enableIris) {
+        if(Iris.enabled) {
             irisChunkProgramOverrides.deleteShaders();
         }
         for (ChunkProgram shader : this.programs.values()) {

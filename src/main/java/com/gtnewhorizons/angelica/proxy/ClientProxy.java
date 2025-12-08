@@ -40,7 +40,6 @@ import jss.notfine.core.Settings;
 import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
-import net.coderbot.iris.vertices.IrisVertexFormats;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -117,23 +116,6 @@ public class ClientProxy extends CommonProxy {
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
             MinecraftForge.EVENT_BUS.register(Iris.INSTANCE);
-
-            VertexFormat.registerSetupBufferStateOverride((vertexFormat, l) -> {
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.setupBufferState(l);
-                    return true;
-                }
-                return false;
-            });
-            VertexFormat.registerClearBufferStateOverride(vertexFormat -> {
-                if (vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL
-                    || vertexFormat == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP) {
-                    IrisVertexFormats.TERRAIN.clearBufferState();
-                    return true;
-                }
-                return false;
-            });
         }
 
         FMLCommonHandler.instance().bus().register(this);

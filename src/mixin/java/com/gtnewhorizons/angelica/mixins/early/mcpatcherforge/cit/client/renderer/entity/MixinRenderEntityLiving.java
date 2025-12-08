@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import com.prupe.mcpatcher.cit.CITUtils;
 
-@Mixin(RendererLivingEntity.class)
+@Mixin(value = RendererLivingEntity.class, priority = 500)
 public abstract class MixinRenderEntityLiving extends Render {
 
     @Final

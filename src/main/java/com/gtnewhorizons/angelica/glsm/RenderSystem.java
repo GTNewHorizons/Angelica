@@ -131,6 +131,22 @@ public class RenderSystem {
 		dsaState.texParameterf(texture, target, pname, param);
 	}
 
+	public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+		dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
+	}
+
+	public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+		dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
+	}
+
+	public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
+		dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
+	}
+
+	public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
+		dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
+	}
+
     public static String getProgramInfoLog(int program) {
         return GL20.glGetProgramInfoLog(program, GL20.glGetProgrami(program, GL20.GL_INFO_LOG_LENGTH));
     }

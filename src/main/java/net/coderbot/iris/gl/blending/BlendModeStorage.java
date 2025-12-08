@@ -54,10 +54,7 @@ public class BlendModeStorage {
 	}
 
 	public static void deferBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        originalBlend.setSrcRgb(srcRgb);
-        originalBlend.setDstRgb(dstRgb);
-        originalBlend.setSrcAlpha(srcAlpha);
-        originalBlend.setDstAlpha(dstAlpha);
+        originalBlend.setAll(srcRgb, dstRgb, srcAlpha, dstAlpha);
 	}
 
 	public static void restoreBlend() {

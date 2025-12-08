@@ -2,8 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.sodium;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import net.coderbot.iris.Iris;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -88,7 +88,7 @@ public abstract class MixinRenderBlocks {
     @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
     private boolean checkAOEnabled() {
         if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && SodiumClientMod.options().quality.useSodiumAO) ||
-            (AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
+            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             return false; // Force sodium pipeline with Iris or for standard blocks rendered from renderBlockByRenderType when using AO
         }
 

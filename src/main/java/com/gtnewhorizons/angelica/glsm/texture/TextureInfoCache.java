@@ -21,7 +21,7 @@ public class TextureInfoCache {
 	}
 
 	public TextureInfo getInfo(int id) {
-        if(id < 0 || !GLStateManager.isMainThread()) return null;
+        if(id < 0 || !GLStateManager.isCachingEnabled()) return null;
 		return cache.computeIfAbsent(id, TextureInfo::new);
 	}
 
@@ -45,7 +45,7 @@ public class TextureInfoCache {
 	}
 
 	public void onDeleteTexture(int id) {
-		if(id >= 0 && GLStateManager.isMainThread()) cache.remove(id);
+		if(id >= 0 && GLStateManager.isCachingEnabled()) cache.remove(id);
 	}
 
 }

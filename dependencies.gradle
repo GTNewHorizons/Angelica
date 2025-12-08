@@ -58,7 +58,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.8.13:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.8.21:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module
@@ -67,8 +67,8 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Because who doesn't want NEI
-    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.39-GTNH:dev')
-    devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.8:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
+    devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
@@ -114,6 +114,7 @@ dependencies {
     testImplementation('org.junit.jupiter:junit-jupiter')
     testImplementation("org.mockito:mockito-core:3.+")
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
+    testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 }

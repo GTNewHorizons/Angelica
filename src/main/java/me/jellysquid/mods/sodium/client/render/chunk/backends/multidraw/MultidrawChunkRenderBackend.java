@@ -1,8 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
+import net.coderbot.iris.Iris;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -196,7 +196,7 @@ public class MultidrawChunkRenderBackend extends ChunkRenderShaderBackend<Multid
     }
 
     private GlVertexAttributeBinding[] getBindings() {
-        if(AngelicaConfig.enableIris && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
+        if(Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat()) {
             return new GlVertexAttributeBinding[] {
                 new GlVertexAttributeBinding(ChunkShaderBindingPoints.POSITION, this.vertexFormat.getAttribute(ChunkMeshAttribute.POSITION)),
                 new GlVertexAttributeBinding(ChunkShaderBindingPoints.COLOR, this.vertexFormat.getAttribute(ChunkMeshAttribute.COLOR)),
