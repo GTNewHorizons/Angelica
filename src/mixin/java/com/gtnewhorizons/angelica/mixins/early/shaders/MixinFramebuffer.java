@@ -80,12 +80,10 @@ public class MixinFramebuffer implements IRenderTargetExt {
             final boolean stencil = MinecraftForgeClient.getStencilBits() != 0;
             if (stencil) {
                 GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH24_STENCIL8, width, height, 0, GL30.GL_DEPTH_STENCIL, GL30.GL_UNSIGNED_INT_24_8, (IntBuffer) null);
+                OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
             } else {
                 GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
-            }
-            OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
-            if (stencil) {
-                OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
+                OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
             }
         }
     }
