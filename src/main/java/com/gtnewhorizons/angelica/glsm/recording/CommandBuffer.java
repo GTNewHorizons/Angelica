@@ -5,6 +5,7 @@ import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -562,6 +563,39 @@ public final class CommandBuffer {
         ensureCapacity(8);
         writeInt(GLCommand.CALL_LIST);
         writeInt(listId);
+    }
+
+    public void writeDrawBuffer(int mode) {
+        ensureCapacity(8);
+        writeInt(GLCommand.DRAW_BUFFER);
+        writeInt(mode);
+    }
+
+    private static final int MAX_DRAW_BUFFERS = 8;
+    // cmd (4) + count (4) + buffers (4 * MAX_DRAW_BUFFERS)
+    private static final int DRAW_BUFFERS_SIZE = 4 + 4 + 4 * MAX_DRAW_BUFFERS;
+
+    public void writeDrawBuffers(int count, int buffer) {
+        ensureCapacity(DRAW_BUFFERS_SIZE);
+        writeInt(GLCommand.DRAW_BUFFERS);
+        writeInt(count);
+        writeInt(buffer);
+        for (int i = 1; i < MAX_DRAW_BUFFERS; i++) {
+            writeInt(0);
+        }
+    }
+
+    public void writeDrawBuffers(int count, IntBuffer bufs) {
+        ensureCapacity(DRAW_BUFFERS_SIZE);
+        writeInt(GLCommand.DRAW_BUFFERS);
+        writeInt(count);
+        final int pos = bufs.position();
+        for (int i = 0; i < count && i < MAX_DRAW_BUFFERS; i++) {
+            writeInt(bufs.get(pos + i));
+        }
+        for (int i = count; i < MAX_DRAW_BUFFERS; i++) {
+            writeInt(0);
+        }
     }
 
     // === Complex object reference ===

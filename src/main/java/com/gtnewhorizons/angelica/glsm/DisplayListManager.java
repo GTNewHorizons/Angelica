@@ -241,6 +241,9 @@ public class DisplayListManager {
     public static void recordStencilMask(int mask) { if (currentRecorder != null) currentRecorder.recordStencilMask(mask); }
     public static void recordStencilMaskSeparate(int face, int mask) { if (currentRecorder != null) currentRecorder.recordStencilMaskSeparate(face, mask); }
     public static void recordCallList(int listId) { if (currentRecorder != null) currentRecorder.recordCallList(listId); }
+    public static void recordDrawBuffer(int mode) { if (currentRecorder != null) currentRecorder.recordDrawBuffer(mode); }
+    public static void recordDrawBuffers(int count, int buf) { if (currentRecorder != null) currentRecorder.recordDrawBuffers(count, buf); }
+    public static void recordDrawBuffers(int count, java.nio.IntBuffer bufs) { if (currentRecorder != null) currentRecorder.recordDrawBuffers(count, bufs); }
     public static void recordComplexCommand(DisplayListCommand cmd) { if (currentRecorder != null) currentRecorder.recordComplexCommand(cmd); }
 
     /**

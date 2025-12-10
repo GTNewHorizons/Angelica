@@ -8,6 +8,7 @@ import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
@@ -21,6 +22,9 @@ public final class CommandBufferExecutor {
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     // Static reusable buffer for fog/light/material params
     private static final FloatBuffer PARAMS_BUFFER = BufferUtils.createFloatBuffer(4);
+    // Static reusable buffer for draw buffers
+    private static final int MAX_DRAW_BUFFERS = 8;
+    private static final IntBuffer DRAW_BUFFERS_BUFFER = BufferUtils.createIntBuffer(MAX_DRAW_BUFFERS);
 
     /**
      * Execute all commands in the buffer.
@@ -494,6 +498,21 @@ public final class CommandBufferExecutor {
                     final int listId = memGetInt(ptr);
                     ptr += 4;
                     DisplayListManager.glCallList(listId);
+                }
+                case GLCommand.DRAW_BUFFER -> {
+                    GLStateManager.glDrawBuffer(memGetInt(ptr));
+                    ptr += 4;
+                }
+                case GLCommand.DRAW_BUFFERS -> {
+                    final int count = memGetInt(ptr);
+                    ptr += 4;
+                    DRAW_BUFFERS_BUFFER.clear();
+                    for (int i = 0; i < count; i++) {
+                        DRAW_BUFFERS_BUFFER.put(memGetInt(ptr + i * 4));
+                    }
+                    DRAW_BUFFERS_BUFFER.flip();
+                    ptr += 4 * MAX_DRAW_BUFFERS;
+                    GLStateManager.glDrawBuffers(DRAW_BUFFERS_BUFFER);
                 }
 
                 // === Complex object reference ===
