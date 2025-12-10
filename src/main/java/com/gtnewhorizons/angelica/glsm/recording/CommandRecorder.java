@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 /**
  * Records GL commands to a CommandBuffer during display list compilation.
@@ -333,6 +334,21 @@ public class CommandRecorder {
 
     public void recordCallList(int listId) {
         buffer.writeCallList(listId);
+        commandCount++;
+    }
+
+    public void recordDrawBuffer(int mode) {
+        buffer.writeDrawBuffer(mode);
+        commandCount++;
+    }
+
+    public void recordDrawBuffers(int count, int buf) {
+        buffer.writeDrawBuffers(count, buf);
+        commandCount++;
+    }
+
+    public void recordDrawBuffers(int count, IntBuffer bufs) {
+        buffer.writeDrawBuffers(count, bufs);
         commandCount++;
     }
 

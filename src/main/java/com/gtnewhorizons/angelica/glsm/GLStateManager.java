@@ -1745,7 +1745,7 @@ public class GLStateManager {
 
     public static void glDrawBuffer(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawBuffer in display lists not yet implemented");
+            DisplayListManager.recordDrawBuffer(mode);
         }
         trySyncProgram();
         GL11.glDrawBuffer(mode);
@@ -3409,9 +3409,16 @@ public class GLStateManager {
     }
 
     // Draw Buffer Commands (GL 2.0+)
+    public static void glDrawBuffers(int buffer) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordDrawBuffers(1, buffer);
+        }
+        GL20.glDrawBuffers(buffer);
+    }
+
     public static void glDrawBuffers(IntBuffer bufs) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawBuffers in display lists not yet implemented - if you see this, please report!");
+            DisplayListManager.recordDrawBuffers(bufs.remaining(), bufs);
         }
         GL20.glDrawBuffers(bufs);
     }
