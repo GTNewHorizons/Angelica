@@ -37,7 +37,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getUStart(char chr) {
-        final float startColumnF = (float)((this.glyphWidth[chr] & 255) >>> 4);
+        final float startColumnF = (float)((this.glyphWidth[chr] >>> 4) & 15);
         return ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
     }
 
