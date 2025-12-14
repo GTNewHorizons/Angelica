@@ -37,7 +37,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getUStart(char chr) {
-        final float startColumnF = (float)(this.glyphWidth[chr] >>> 4);
+        final float startColumnF = (float)((this.glyphWidth[chr] >>> 4) & 255);
         return ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
     }
 
@@ -48,7 +48,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getXAdvance(char chr) {
-        final int startColumn = this.glyphWidth[chr] >>> 4;
+        final int startColumn = (this.glyphWidth[chr] >>> 4) & 15;
         final int endColumn = this.glyphWidth[chr] & 15;
         final float startColumnF = (float) startColumn;
         final float endColumnF = (float) (endColumn + 1);
@@ -57,7 +57,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getGlyphW(char chr) {
-        final int startColumn = this.glyphWidth[chr] >>> 4;
+        final int startColumn = (this.glyphWidth[chr] >>> 4) & 15;
         final int endColumn = this.glyphWidth[chr] & 15;
         final float startColumnF = (float) startColumn;
         final float endColumnF = (float) (endColumn + 1);
@@ -67,7 +67,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getUSize(char chr) {
-        final int startColumn = this.glyphWidth[chr] >>> 4;
+        final int startColumn = (this.glyphWidth[chr] >>> 4) & 15;
         final int endColumn = this.glyphWidth[chr] & 15;
         final float startColumnF = (float) startColumn;
         final float endColumnF = (float) (endColumn + 1);
