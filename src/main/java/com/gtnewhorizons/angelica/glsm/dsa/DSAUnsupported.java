@@ -91,6 +91,15 @@ public class DSAUnsupported implements DSAAccess {
     }
 
     @Override
+    public int getTexLevelParameteri(int texture, int level, int pname) {
+        final int previous = GLStateManager.getBoundTexture();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        final int result = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, pname);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+        return result;
+    }
+
+    @Override
     public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
         final int previous = GLStateManager.getBoundTexture();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, destTexture);
