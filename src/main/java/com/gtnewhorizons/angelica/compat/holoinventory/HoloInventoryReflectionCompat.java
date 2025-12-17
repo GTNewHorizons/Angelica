@@ -75,9 +75,11 @@ public class HoloInventoryReflectionCompat {
             } else {
                 renderEventMethod.invokeExact(event);
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             LOGGER.error("Failed to invoke HoloInventory renderEvent", e);
             isLoaded = false;
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -85,9 +87,11 @@ public class HoloInventoryReflectionCompat {
         if (!isLoaded) return;
         try {
             angelicaOverrideSetter.invokeExact(value);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             LOGGER.error("Failed to set HoloInventory angelicaOverride", e);
             isLoaded = false;
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
         }
     }
 }

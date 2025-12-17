@@ -50,7 +50,7 @@ public class BlockFaceMatcher {
                 if (!matcher.isAll()) {
                     return matcher;
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

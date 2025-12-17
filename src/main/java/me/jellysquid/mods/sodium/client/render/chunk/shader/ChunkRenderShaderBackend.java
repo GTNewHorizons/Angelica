@@ -114,7 +114,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
     private static String getShaderSource(String path) {
         try {
             InputStream in = ShaderLoader.class.getResourceAsStream(path);
-            Throwable throwable = null;
+            Exception throwable = null;
 
             String res;
             try {
@@ -123,7 +123,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
                 }
 
                 res = IOUtils.toString(in, StandardCharsets.UTF_8);
-            } catch (Throwable tr) {
+            } catch (Exception tr) {
                 throwable = tr;
                 throw tr;
             } finally {
@@ -131,7 +131,7 @@ public abstract class ChunkRenderShaderBackend<T extends ChunkGraphicsState> imp
                     if (throwable != null) {
                         try {
                             in.close();
-                        } catch (Throwable var12) {
+                        } catch (Exception var12) {
                             throwable.addSuppressed(var12);
                         }
                     } else {

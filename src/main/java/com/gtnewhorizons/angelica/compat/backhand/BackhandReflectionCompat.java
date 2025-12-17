@@ -55,9 +55,11 @@ public class BackhandReflectionCompat {
         if (isLoaded && renderOffhandReturn != null) {
             try {
                 renderOffhandReturn.invokeExact(partialTicks);
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 LOGGER.error("Failed to invoke Backhand renderOffhandReturn", e);
                 isLoaded = false;
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -66,9 +68,11 @@ public class BackhandReflectionCompat {
         if (isLoaded && getOffhandItem != null) {
             try {
                 return (ItemStack) getOffhandItem.invokeExact(player);
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 LOGGER.error("Failed to invoke Backhand getOffhandItem", e);
                 isLoaded = false;
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
             }
         }
         return null;
