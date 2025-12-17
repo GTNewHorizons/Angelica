@@ -21,7 +21,10 @@ public class TextureInfoCache {
 	}
 
 	public TextureInfo getInfo(int id) {
-        if(id < 0 || !GLStateManager.isCachingEnabled()) return null;
+        if(id < 0) return null;
+        if(!GLStateManager.isCachingEnabled()) {
+            return new TextureInfo(id);
+        }
 		return cache.computeIfAbsent(id, TextureInfo::new);
 	}
 

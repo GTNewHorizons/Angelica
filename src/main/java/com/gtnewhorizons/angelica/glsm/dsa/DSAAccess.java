@@ -23,6 +23,8 @@ public interface DSAAccess {
 
     int getTexParameteri(int texture, int target, int pname);
 
+    int getTexLevelParameteri(int texture, int level, int pname);
+
     void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height);
 
     void bindTextureToUnit(int unit, int texture);

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.texture;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.opengl.GL11;
@@ -29,36 +29,22 @@ public class TextureInfo {
 
     public int getInternalFormat() {
         if (internalFormat == -1) {
-            internalFormat = fetchLevelParameter(GL11.GL_TEXTURE_INTERNAL_FORMAT);
+            internalFormat = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
         }
         return internalFormat;
     }
 
     public int getWidth() {
         if (width == -1) {
-            width = fetchLevelParameter(GL11.GL_TEXTURE_WIDTH);
+            width = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_WIDTH);
         }
         return width;
     }
 
     public int getHeight() {
         if (height == -1) {
-            height = fetchLevelParameter(GL11.GL_TEXTURE_HEIGHT);
+            height = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_HEIGHT);
         }
         return height;
-    }
-
-    private int fetchLevelParameter(int pname) {
-        // Keep track of what texture was bound before
-        final int previousTextureBinding = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-
-        // Bind this texture and grab the parameter from it.
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        final int parameter = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, pname);
-
-        // Make sure to re-bind the previous texture to avoid issues.
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
-
-        return parameter;
     }
 }

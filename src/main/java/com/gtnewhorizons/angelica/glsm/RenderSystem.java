@@ -195,6 +195,10 @@ public class RenderSystem {
 		return dsaState.getTexParameteri(texture, target, pname);
 	}
 
+	public static int getTexLevelParameteri(int texture, int level, int pname) {
+		return dsaState.getTexLevelParameteri(texture, level, pname);
+	}
+
 	public static void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
 		if (GLStateManager.capabilities.OpenGL42) {
 			GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
