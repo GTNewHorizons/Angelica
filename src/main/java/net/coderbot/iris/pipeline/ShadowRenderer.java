@@ -262,19 +262,18 @@ public class ShadowRenderer {
 			String reason;
 
 			if (packCullingState == OptionalBoolean.FALSE) {
-				reason = "(set by shader pack)";
+				reason = "pack";
 			} else /*if (packHasVoxelization)*/ {
 				reason = "(voxelization detected)";
 			}
 
 			if (distance <= 0 || distance > Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
-				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
-				cullingInfo = "disabled " + reason;
+				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16 + " blocks (capped)";
+				cullingInfo = "off (" + reason + ")";
 				return holder.setInfo(new NonCullingFrustum(), distanceInfo, cullingInfo);
 			} else {
-				distanceInfo = distance + " blocks (set by shader pack)";
-				cullingInfo = "distance only " + reason;
+				distanceInfo = (int) distance + " blocks (pack)";
+				cullingInfo = "dist (" + reason + ")";
 				BoxCuller boxCuller = new BoxCuller(distance);
 				holder.setInfo(new BoxCullingFrustum(boxCuller), distanceInfo, cullingInfo);
 			}
@@ -282,24 +281,23 @@ public class ShadowRenderer {
 			BoxCuller boxCuller;
 
 			double distance = halfPlaneLength * renderMultiplier;
-			String setter = "(set by shader pack)";
+			String setter = "pack";
 
 			if (renderMultiplier < 0) {
                 // TODO: GUI
 				distance = IrisVideoSettings.shadowDistance * 16; // can be zero :(
 				//distance = 32 * 16;
-				setter = "(set by user)";
+				setter = "user";
 			}
 
 			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
-				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
+				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16 + " blocks (capped)";
 				boxCuller = null;
 			} else {
-				distanceInfo = distance + " blocks " + setter;
+				distanceInfo = (int) distance + " blocks (" + setter + ")";
 
 				if (distance == 0.0) {
-					cullingInfo = "no shadows rendered";
+					cullingInfo = "none";
 					holder.setInfo(new CullEverythingFrustum(), distanceInfo, cullingInfo);
 				}
 
@@ -643,24 +641,20 @@ public class ShadowRenderer {
 	}
 
 	public void addDebugText(List<String> messages) {
-		messages.add("[" + Iris.MODNAME + "] Shadow Maps: " + debugStringOverall);
-		messages.add("[" + Iris.MODNAME + "] Shadow Distance Terrain: " + terrainFrustumHolder.getDistanceInfo() + " Entity: " + entityFrustumHolder.getDistanceInfo());
-		messages.add("[" + Iris.MODNAME + "] Shadow Culling Terrain: " + terrainFrustumHolder.getCullingInfo() + " Entity: " + entityFrustumHolder.getCullingInfo());
-		messages.add("[" + Iris.MODNAME + "] Shadow Terrain: " + debugStringTerrain + (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
-		messages.add("[" + Iris.MODNAME + "] Shadow Entities: " + getEntitiesDebugString());
-		messages.add("[" + Iris.MODNAME + "] Shadow Block Entities: " + getTileEntitiesDebugString());
-
-//		if (buffers instanceof DrawCallTrackingRenderBuffers drawCallTracker && (shouldRenderEntities || shouldRenderPlayer)) {
-//            messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
-//		}
+		messages.add("[Angelica Shaders]");
+		messages.add("[AS] Shadow: " + debugStringOverall);
+		messages.add("[AS] Shadow Terrain: " + terrainFrustumHolder.getDistanceInfo() + " " + terrainFrustumHolder.getCullingInfo());
+		messages.add("[AS] Shadow Entity: " + entityFrustumHolder.getDistanceInfo() + " " + entityFrustumHolder.getCullingInfo());
+		messages.add("[AS] Shadow Terrain: " + debugStringTerrain + (shouldRenderTerrain ? "" : " (no terrain)") + (shouldRenderTranslucent ? "" : " (no translucent)"));
+		messages.add("[AS] Shadow Entity: " + getEntitiesDebugString() + " Block Entity: " + getTileEntitiesDebugString());
 	}
 
 	private String getEntitiesDebugString() {
-		return (shouldRenderEntities || shouldRenderPlayer) ? (renderedShadowEntities + "/" + Minecraft.getMinecraft().theWorld.loadedEntityList.size()) : "disabled by pack";
+		return (shouldRenderEntities || shouldRenderPlayer) ? (renderedShadowEntities + "/" + Minecraft.getMinecraft().theWorld.loadedEntityList.size()) : "off (pack)";
 	}
 
 	private String getTileEntitiesDebugString() {
-		return shouldRenderBlockEntities ? (renderedShadowTileEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "disabled by pack";
+		return shouldRenderBlockEntities ? (renderedShadowTileEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "off (pack)";
 	}
 
 	private static class MipmapPass {

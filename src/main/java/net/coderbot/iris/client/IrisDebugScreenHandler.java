@@ -43,10 +43,10 @@ public class IrisDebugScreenHandler {
             event.right.add("");
 
             if (Iris.getIrisConfig().areShadersEnabled()) {
-                event.right.add("[" + Iris.MODNAME + "] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
-                Iris.getCurrentPack().ifPresent(pack -> event.right.add("[" + Iris.MODNAME + "] " + pack.getProfileInfo()));
+                event.right.add("[AS] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
+                Iris.getCurrentPack().ifPresent(pack -> event.right.add("[AS] " + pack.getProfileInfo()));
             } else {
-                event.right.add("[" + Iris.MODNAME + "] Shaders are disabled");
+                event.right.add("[AS] Shaders disabled");
             }
             if (AngelicaConfig.speedupAnimations) {
                 event.right.add(Math.min(event.right.size(), 9), "animationsMode: " + AngelicaMod.animationsMode);
