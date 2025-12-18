@@ -6,13 +6,15 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.primitive.ModelPrimiti
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.tri.ModelTriangle;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
-import com.gtnewhorizons.angelica.glsm.recording.AccumulatedPrimitiveDraw;
+import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Helper class for building test data for display list batching tests.
@@ -92,7 +94,8 @@ public final class DisplayListTestHelper {
             Matrix4f transform,
             CapturingTessellator.Flags flags,
             int commandIndex) {
-        return new AccumulatedDraw(quads, transform, flags, commandIndex);
+//        return new AccumulatedDraw(quads, transform, flags, commandIndex);
+        return null;
     }
 
     /**
@@ -324,53 +327,145 @@ public final class DisplayListTestHelper {
     }
 
     // ==================== AccumulatedPrimitiveDraw Builders ====================
-
-    /**
-     * Create an AccumulatedPrimitiveDraw with specified parameters.
-     */
-    public static AccumulatedPrimitiveDraw createPrimitiveDraw(
-            List<ModelPrimitiveView> primitives,
-            Matrix4f transform,
-            CapturingTessellator.Flags flags,
-            int commandIndex) {
-        return new AccumulatedPrimitiveDraw(primitives, transform, flags, commandIndex);
-    }
-
-    /**
-     * Create an AccumulatedPrimitiveDraw with lines only.
-     */
-    public static AccumulatedPrimitiveDraw createLinesDraw(int lineCount, int commandIndex) {
-        List<ModelPrimitiveView> primitives = new ArrayList<>(lineCount);
-        for (ModelLine line : createLines(lineCount)) {
-            primitives.add(line);
-        }
-        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
-    }
-
-    /**
-     * Create an AccumulatedPrimitiveDraw with triangles only.
-     */
-    public static AccumulatedPrimitiveDraw createTrianglesDraw(int triangleCount, int commandIndex) {
-        List<ModelPrimitiveView> primitives = new ArrayList<>(triangleCount);
-        for (ModelTriangle tri : createTriangles(triangleCount)) {
-            primitives.add(tri);
-        }
-        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
-    }
-
-    /**
-     * Create an AccumulatedPrimitiveDraw with mixed lines and triangles.
-     */
-    public static AccumulatedPrimitiveDraw createMixedPrimitiveDraw(int lineCount, int triangleCount, int commandIndex) {
-        List<ModelPrimitiveView> primitives = createMixedPrimitives(lineCount, triangleCount);
-        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
-    }
-
-    /**
-     * Create an AccumulatedPrimitiveDraw with specified transform.
-     */
-    public static AccumulatedPrimitiveDraw createPrimitiveDrawWithTransform(
-            List<ModelPrimitiveView> primitives, Matrix4f transform, int commandIndex) {
-        return createPrimitiveDraw(primitives, transform, positionOnly(), commandIndex);
-    }
+//
+//    /**
+//     * Create an AccumulatedPrimitiveDraw with specified parameters.
+//     */
+//    public static AccumulatedPrimitiveDraw createPrimitiveDraw(
+//            List<ModelPrimitiveView> primitives,
+//            Matrix4f transform,
+//            CapturingTessellator.Flags flags,
+//            int commandIndex) {
+//        return new AccumulatedPrimitiveDraw(primitives, transform, flags, commandIndex);
+//    }
+//
+//    /**
+//     * Create an AccumulatedPrimitiveDraw with lines only.
+//     */
+//    public static AccumulatedPrimitiveDraw createLinesDraw(int lineCount, int commandIndex) {
+//        List<ModelPrimitiveView> primitives = new ArrayList<>(lineCount);
+//        for (ModelLine line : createLines(lineCount)) {
+//            primitives.add(line);
+//        }
+//        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
+//    }
+//
+//    /**
+//     * Create an AccumulatedPrimitiveDraw with triangles only.
+//     */
+//    public static AccumulatedPrimitiveDraw createTrianglesDraw(int triangleCount, int commandIndex) {
+//        List<ModelPrimitiveView> primitives = new ArrayList<>(triangleCount);
+//        for (ModelTriangle tri : createTriangles(triangleCount)) {
+//            primitives.add(tri);
+//        }
+//        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
+//    }
+//
+//    /**
+//     * Create an AccumulatedPrimitiveDraw with mixed lines and triangles.
+//     */
+//    public static AccumulatedPrimitiveDraw createMixedPrimitiveDraw(int lineCount, int triangleCount, int commandIndex) {
+//        List<ModelPrimitiveView> primitives = createMixedPrimitives(lineCount, triangleCount);
+//        return createPrimitiveDraw(primitives, identity(), positionOnly(), commandIndex);
+//    }
+//
+//    /**
+//     * Create an AccumulatedPrimitiveDraw with specified transform.
+//     */
+//    public static AccumulatedPrimitiveDraw createPrimitiveDrawWithTransform(
+//            List<ModelPrimitiveView> primitives, Matrix4f transform, int commandIndex) {
+//        return createPrimitiveDraw(primitives, transform, positionOnly(), commandIndex);
+//    }
+//
+//    /**
+//     * Build optimized display list: batches draws with same flags, collapses MODELVIEW transforms.
+//     * Instead of baking transforms into vertices, we emit collapsed MultMatrix commands at barriers.
+//     * This properly handles nested display lists (CallList) which need GL state to be correct.
+//     *
+//     * <p>Transform collapsing strategy:
+//     * <ul>
+//     *   <li>Track accumulated MODELVIEW transform during command stream analysis</li>
+//     *   <li>At barriers (Draw, CallList), emit a single MultMatrix if transform changed</li>
+//     *   <li>Push/Pop maintain proper stack semantics</li>
+//     *   <li>Vertices stay canonical (untransformed) in VBOs</li>
+//     * </ul>
+//     */
+//    // Package-private for testing
+//    public static OptimizedListResult buildOptimizedDisplayList(
+//        List<DisplayListCommand> currentCommands,
+//        List<AccumulatedDraw> accumulatedDraws,
+//        List<AccumulatedPrimitiveDraw> accumulatedPrimitiveDraws,
+//        int glListId) {
+//        // Compile quad VBOs
+////        final Map<Vert, CompiledFormatBuffer> compiledQuadBuffers = DisplayListManager.compileFormatBasedVBOs(accumulatedDraws);
+////
+////        // Compile tessellator primitive VBOs (lines, triangles) - grouped by format
+////        final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers = DisplayListManager.compilePrimitiveBuffers(accumulatedPrimitiveDraws);
+////
+////        // Extract owned VBOs (quads + primitives, no immediate mode lines in test path)
+////        final VertexBuffer[] ownedVbos = DisplayListManager.extractOwnedVbos(compiledQuadBuffers);
+////
+////        // Build optimized commands using the new unified path
+////        final DisplayListCommand[] optimized = DisplayListManager.buildOptimizedCommands(currentCommands, compiledQuadBuffers, null, compiledPrimitiveBuffers, glListId);
+////
+////        return new OptimizedListResult(optimized, ownedVbos);
+//        return null;
+//    }
+//
+//    // ==================== Buffer-to-Buffer Optimization ====================
+//    /**
+//     * Build optimized command list using pre-compiled VBOs.
+//     * Uses mergedRanges (consecutive same-transform draws combined) and collapses MODELVIEW transforms.
+//     * (Package-private for testing)
+//     *
+//     * @param currentCommands Original matrix/state commands
+//     * @param compiledQuadBuffers Pre-compiled format-based quad VBOs
+//     * @param compiledLineBuffer Pre-compiled line VBO (may be null)
+//     * @param glListId Display list ID for logging
+//     * @return Optimized command array
+//     */
+//    static DisplayListCommand[] buildOptimizedCommands(
+//        List<DisplayListCommand> currentCommands,
+//        Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
+//        CompiledLineBuffer compiledLineBuffer,
+//        Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
+//        int glListId) {
+//
+////        final List<DisplayListCommand> optimized = new ArrayList<>();
+////        final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
+////
+////        // Collect all merged draw ranges (quads + lines + primitives) sorted by command index
+////        final List<DrawRangeWithBuffer> allRanges = CommandBufferBuilder.collectDrawRanges(
+////            compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
+////
+////        // Process command stream with interleaved draws
+////        final DisplayListManager.OptimizationContextImpl ctx = new DisplayListManager.OptimizationContextImpl(transformOpt, optimized);
+////
+////        int rangeIndex = 0;
+////        for (int i = 0; i < currentCommands.size(); i++) {
+////            // Emit draw ranges (quads and lines) at this command position
+////            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == i) {
+////                emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
+////            }
+////
+////            // Process the original command
+////            final DisplayListCommand cmd = currentCommands.get(i);
+////            if (cmd.handleOptimization(ctx)) {
+////                optimized.add(cmd);
+////            }
+////        }
+////
+////        // Emit remaining draw ranges at end of command stream
+////        while (rangeIndex < allRanges.size()) {
+////            emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
+////        }
+////
+////        // Emit residual transform to match expected GL state
+////        if (!transformOpt.isIdentity()) {
+////            transformOpt.emitPendingTransform(optimized);
+////        }
+////
+////        return optimized.toArray(new DisplayListCommand[0]);
+//        return null;
+//    }
 }

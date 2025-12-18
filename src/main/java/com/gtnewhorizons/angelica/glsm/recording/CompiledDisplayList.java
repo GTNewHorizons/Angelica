@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -24,9 +25,9 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 public final class CompiledDisplayList {
     private final ByteBuffer commandBuffer;     // Off-heap command storage, must be freed
     private final Object[] complexObjects;      // Complex commands (TexImage2D, etc.)
-    private final VertexBuffer[] ownedVbos;     // GPU resources referenced by index
+    private final BigVBO ownedVbos;     // GPU resources referenced by index
 
-    public CompiledDisplayList(ByteBuffer commandBuffer, Object[] complexObjects, VertexBuffer[] ownedVbos) {
+    public CompiledDisplayList(ByteBuffer commandBuffer, Object[] complexObjects, BigVBO ownedVbos) {
         this.commandBuffer = commandBuffer;
         this.complexObjects = complexObjects;
         this.ownedVbos = ownedVbos;
@@ -56,11 +57,7 @@ public final class CompiledDisplayList {
 
         // Close VBOs
         if (ownedVbos != null) {
-            for (VertexBuffer vbo : ownedVbos) {
-                if (vbo != null) {
-                    vbo.close();
-                }
-            }
+            ownedVbos.delete();
         }
 
         // Free the command buffer (off-heap memory)
@@ -81,13 +78,6 @@ public final class CompiledDisplayList {
      */
     public Object[] getComplexObjects() {
         return complexObjects;
-    }
-
-    /**
-     * Get owned VBOs for inlining into another display list.
-     */
-    public VertexBuffer[] getOwnedVbos() {
-        return ownedVbos;
     }
 
     // === Test inspection methods ===
@@ -142,7 +132,7 @@ public final class CompiledDisplayList {
                  GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.LOAD_IDENTITY,
                  GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX, GLCommand.STENCIL_MASK,
                  GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
-                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF -> 8;
+                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_RANGE -> 8;
 
             // Two int commands (12 bytes)
             case GLCommand.BIND_TEXTURE, GLCommand.POLYGON_MODE, GLCommand.COLOR_MATERIAL,
@@ -158,8 +148,7 @@ public final class CompiledDisplayList {
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
-                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR,
-                 GLCommand.DRAW_RANGE -> 20;
+                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
 
             // Double commands
             case GLCommand.TRANSLATE, GLCommand.SCALE -> 32;  // cmd + mode + 3 doubles

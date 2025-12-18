@@ -22,6 +22,7 @@
 package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
@@ -32,6 +33,7 @@ import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
@@ -92,7 +94,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         return (float)Math.ceil(value / scale) * scale;
     }
 
-    private void vertices(CapturingTessellator tessellator) {
+    private void vertices(Tessellator tessellator) {
         GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
         boolean fancy = cloudGraphicsQuality == GraphicsQualityOff.FANCY || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics;
 
@@ -133,18 +135,20 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                 float v1 = sectZ1 * sectPx;
 
                 // Bottom
-                tessellator.pos(sectX0, 0, sectZ0).tex(u0, v0).color(bCol, bCol, bCol, ALPHA).endVertex();
-                tessellator.pos(sectX1, 0, sectZ0).tex(u1, v0).color(bCol, bCol, bCol, ALPHA).endVertex();
-                tessellator.pos(sectX1, 0, sectZ1).tex(u1, v1).color(bCol, bCol, bCol, ALPHA).endVertex();
-                tessellator.pos(sectX0, 0, sectZ1).tex(u0, v1).color(bCol, bCol, bCol, ALPHA).endVertex();
+                tessellator.setColorRGBA_F(bCol, bCol, bCol, ALPHA);
+                tessellator.addVertexWithUV(sectX0, 0, sectZ0, u0, v0);
+                tessellator.addVertexWithUV(sectX1, 0, sectZ0, u1, v0);
+                tessellator.addVertexWithUV(sectX1, 0, sectZ1, u1, v1);
+                tessellator.addVertexWithUV(sectX0, 0, sectZ1, u0, v1);
 
                 if (fancy) {
                     final int height = HEIGHT * scaleMult;
                     // Top
-                    tessellator.pos(sectX0, height, sectZ0).tex(u0, v0).color(1, 1, 1, ALPHA).endVertex();
-                    tessellator.pos(sectX0, height, sectZ1).tex(u0, v1).color(1, 1, 1, ALPHA).endVertex();
-                    tessellator.pos(sectX1, height, sectZ1).tex(u1, v1).color(1, 1, 1, ALPHA).endVertex();
-                    tessellator.pos(sectX1, height, sectZ0).tex(u1, v0).color(1, 1, 1, ALPHA).endVertex();
+                    tessellator.setColorRGBA_F(1, 1, 1, ALPHA);
+                    tessellator.addVertexWithUV(sectX0, height, sectZ0, u0, v0);
+                    tessellator.addVertexWithUV(sectX0, height, sectZ1, u0, v1);
+                    tessellator.addVertexWithUV(sectX1, height, sectZ1, u1, v1);
+                    tessellator.addVertexWithUV(sectX1, height, sectZ0, u1, v0);
 
                     float slice;
                     float sliceCoord0;
@@ -157,10 +161,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                         // X sides
                         if (slice > -CULL_DIST) {
                             slice += INSET;
-                            tessellator.pos(slice, 0, sectZ1).tex(sliceCoord0, v1).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, height, sectZ1).tex(sliceCoord1, v1).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, height, sectZ0).tex(sliceCoord1, v0).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, 0, sectZ0).tex(sliceCoord0, v0).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
+                            tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, ALPHA);
+                            tessellator.addVertexWithUV(slice, 0, sectZ1, sliceCoord0, v1);
+                            tessellator.addVertexWithUV(slice, height, sectZ1, sliceCoord1, v1);
+                            tessellator.addVertexWithUV(slice, height, sectZ0, sliceCoord1, v0);
+                            tessellator.addVertexWithUV(slice, 0, sectZ0, sliceCoord0, v0);
                             slice -= INSET;
                         }
 
@@ -168,10 +173,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
                         if (slice <= CULL_DIST) {
                             slice -= INSET;
-                            tessellator.pos(slice, 0, sectZ0).tex(sliceCoord0, v0).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, height, sectZ0).tex(sliceCoord1, v0).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, height, sectZ1).tex(sliceCoord1, v1).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
-                            tessellator.pos(slice, 0, sectZ1).tex(sliceCoord0, v1).color(0.9F, 0.9F, 0.9F, ALPHA).endVertex();
+                            tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, ALPHA);
+                            tessellator.addVertexWithUV(slice, 0, sectZ0, sliceCoord0, v0);
+                            tessellator.addVertexWithUV(slice, height, sectZ0, sliceCoord1, v0);
+                            tessellator.addVertexWithUV(slice, height, sectZ1, sliceCoord1, v1);
+                            tessellator.addVertexWithUV(slice, 0, sectZ1, sliceCoord0, v1);
                             slice += INSET;
                         }
                     }
@@ -183,10 +189,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                         // Z sides
                         if (slice > -CULL_DIST) {
                             slice += INSET;
-                            tessellator.pos(sectX0, 0, slice).tex(u0, sliceCoord0).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX0, height, slice).tex(u0, sliceCoord1).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX1, height, slice).tex(u1, sliceCoord1).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX1, 0, slice).tex(u1, sliceCoord0).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
+                            tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, ALPHA);
+                            tessellator.addVertexWithUV(sectX0, 0, slice, u0, sliceCoord0);
+                            tessellator.addVertexWithUV(sectX0, height, slice, u0, sliceCoord1);
+                            tessellator.addVertexWithUV(sectX1, height, slice, u1, sliceCoord1);
+                            tessellator.addVertexWithUV(sectX1, 0, slice, u1, sliceCoord0);
                             slice -= INSET;
                         }
 
@@ -194,10 +201,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
                         if (slice <= CULL_DIST) {
                             slice -= INSET;
-                            tessellator.pos(sectX1, 0, slice).tex(u1, sliceCoord0).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX1, height, slice).tex(u1, sliceCoord1).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX0, height, slice).tex(u0, sliceCoord1).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
-                            tessellator.pos(sectX0, 0, slice).tex(u0, sliceCoord0).color(0.8F, 0.8F, 0.8F, ALPHA).endVertex();
+                            tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, ALPHA);
+                            tessellator.addVertexWithUV(sectX1, 0, slice, u1, sliceCoord0);
+                            tessellator.addVertexWithUV(sectX1, height, slice, u1, sliceCoord1);
+                            tessellator.addVertexWithUV(sectX0, height, slice, u0, sliceCoord1);
+                            tessellator.addVertexWithUV(sectX0, 0, slice, u0, sliceCoord0);
                             slice += INSET;
                         }
                     }
@@ -218,11 +226,19 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private void build() {
-        CapturingTessellator tess = TessellatorManager.startCapturingAndGet();
+        long time = System.nanoTime();
+        DirectTessellator tess = TessellatorManager.startCapturingDirect();
 
         vertices(tess);
+        double diff = (System.nanoTime() - time) / 1_000_000d;
+        System.out.println("Vertices (new) took " + diff + "ms.");
+        time = System.nanoTime();
 
-        this.vbo = TessellatorManager.stopCapturingToVAO(FORMAT);
+
+        this.vbo = TessellatorManager.stopCapturingDirectToVAO();
+
+        diff = (System.nanoTime() - time) / 1_000_000d;
+        System.out.println("Building buffer (new) took " + diff + "ms.");
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.

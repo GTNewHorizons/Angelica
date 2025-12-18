@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBufferProcessor;
@@ -29,22 +31,9 @@ public final class CommandBufferBuilder {
      */
     public static void buildOptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
-            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            final CompiledLineBuffer compiledLineBuffer,
-            final Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
-            VertexBuffer[] ownedVbos,
+            List<AccumulatedDraw> accumulatedDraws,
             int glListId,
             CommandBuffer finalBuffer) {
-
-        // Build VBO index map for efficient lookup (no boxing)
-        final Object2IntMap<VertexBuffer> vboIndexMap = new Object2IntOpenHashMap<>();
-        vboIndexMap.defaultReturnValue(-1);
-        for (int i = 0; i < ownedVbos.length; i++) {
-            vboIndexMap.put(ownedVbos[i], i);
-        }
-
-        // Collect all merged draw ranges sorted by command index
-        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
         // Buffer optimizer state
         final BufferTransformOptimizer opt = new BufferTransformOptimizer();
@@ -55,8 +44,9 @@ public final class CommandBufferBuilder {
 
         while (rawBuffer.hasRemaining()) {
             // Emit draw ranges at this command position
-            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == cmdIndex) {
-                emitDrawRangeToBuffer(allRanges.get(rangeIndex++), opt, finalBuffer, vboIndexMap);
+            while (rangeIndex < accumulatedDraws.size() && accumulatedDraws.get(rangeIndex).commandIndex == cmdIndex) {
+                emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), opt, finalBuffer, rangeIndex);
+                rangeIndex++;
             }
 
             // Read and process the command
@@ -66,8 +56,9 @@ public final class CommandBufferBuilder {
         }
 
         // Emit remaining draw ranges at end of command stream
-        while (rangeIndex < allRanges.size()) {
-            emitDrawRangeToBuffer(allRanges.get(rangeIndex++), opt, finalBuffer, vboIndexMap);
+        while (rangeIndex < accumulatedDraws.size()) {
+            emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), opt, finalBuffer, rangeIndex);
+            rangeIndex++;
         }
 
         // Emit residual transform if not identity
@@ -83,21 +74,8 @@ public final class CommandBufferBuilder {
      */
     public static void buildUnoptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
-            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer,
-            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
-            VertexBuffer[] ownedVbos,
+            List<AccumulatedDraw> accumulatedDraws,
             CommandBuffer finalBuffer) {
-
-        // Build VBO index map for efficient lookup (no boxing)
-        final Object2IntMap<VertexBuffer> vboIndexMap = new Object2IntOpenHashMap<>();
-        vboIndexMap.defaultReturnValue(-1);
-        for (int i = 0; i < ownedVbos.length; i++) {
-            vboIndexMap.put(ownedVbos[i], i);
-        }
-
-        // Collect all merged draw ranges sorted by command index
-        final List<DrawRangeWithBuffer> allRanges = collectDrawRanges(compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
 
         rawBuffer.resetRead();
         int cmdIndex = 0;
@@ -105,12 +83,9 @@ public final class CommandBufferBuilder {
 
         while (rawBuffer.hasRemaining()) {
             // Emit draw ranges at this command position
-            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == cmdIndex) {
-                final DrawRangeWithBuffer drb = allRanges.get(rangeIndex++);
-                final int vboIdx = vboIndexMap.getInt(drb.vbo());
-                if (vboIdx >= 0) {
-                    finalBuffer.writeDrawRange(vboIdx, drb.range().startVertex(), drb.range().vertexCount(), drb.hasBrightness());
-                }
+            while (rangeIndex < accumulatedDraws.size() && accumulatedDraws.get(rangeIndex).commandIndex == cmdIndex) {
+                finalBuffer.writeDrawRange(rangeIndex);
+                rangeIndex++;
             }
 
             // Copy the command directly
@@ -119,87 +94,26 @@ public final class CommandBufferBuilder {
         }
 
         // Emit remaining draw ranges at end of command stream
-        while (rangeIndex < allRanges.size()) {
-            final DrawRangeWithBuffer drb = allRanges.get(rangeIndex++);
-            final int vboIdx = vboIndexMap.getInt(drb.vbo());
-            if (vboIdx >= 0) {
-                finalBuffer.writeDrawRange(vboIdx, drb.range().startVertex(), drb.range().vertexCount(), drb.hasBrightness());
-            }
+        while (rangeIndex < accumulatedDraws.size()) {
+            finalBuffer.writeDrawRange(rangeIndex);
+            rangeIndex++;
         }
-    }
-
-    /**
-     * Collect all draw ranges from compiled buffers, sorted by command index.
-     */
-    static List<DrawRangeWithBuffer> collectDrawRanges(
-            Map<CapturingTessellator.Flags, CompiledFormatBuffer> compiledQuadBuffers,
-            CompiledLineBuffer compiledLineBuffer,
-            Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers) {
-
-        final List<DrawRangeWithBuffer> allRanges = new ArrayList<>();
-
-        // Add quad ranges
-        final CompiledFormatBuffer[] quadBufferArray = compiledQuadBuffers.values().toArray(new CompiledFormatBuffer[0]);
-        for (int b = 0; b < quadBufferArray.length; b++) {
-            final CompiledFormatBuffer compiledBuffer = quadBufferArray[b];
-            final DrawRange[] ranges = compiledBuffer.mergedRanges();
-            for (int i = 0; i < ranges.length; i++) {
-                allRanges.add(new DrawRangeWithBuffer(ranges[i], compiledBuffer.vbo(), compiledBuffer.flags().hasBrightness));
-            }
-        }
-
-        // Add immediate mode line ranges
-        if (compiledLineBuffer != null) {
-            final DrawRange[] ranges = compiledLineBuffer.mergedRanges();
-            for (int i = 0; i < ranges.length; i++) {
-                allRanges.add(new DrawRangeWithBuffer(ranges[i], compiledLineBuffer.vbo(), false));
-            }
-        }
-
-        // Add tessellator primitive ranges (lines and triangles) - grouped by format
-        if (compiledPrimitiveBuffers != null && !compiledPrimitiveBuffers.isEmpty()) {
-            final CompiledPrimitiveBuffers[] primBufferArray = compiledPrimitiveBuffers.values().toArray(new CompiledPrimitiveBuffers[0]);
-            for (int p = 0; p < primBufferArray.length; p++) {
-                final CompiledPrimitiveBuffers primBuffers = primBufferArray[p];
-                final boolean hasBrightness = primBuffers.flags().hasBrightness;
-                // Tessellator lines
-                if (primBuffers.hasLines()) {
-                    final DrawRange[] ranges = primBuffers.lineMergedRanges();
-                    final VertexBuffer vbo = primBuffers.lineVbo();
-                    for (int i = 0; i < ranges.length; i++) {
-                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
-                    }
-                }
-                // Tessellator triangles
-                if (primBuffers.hasTriangles()) {
-                    final DrawRange[] ranges = primBuffers.triangleMergedRanges();
-                    final VertexBuffer vbo = primBuffers.triangleVbo();
-                    for (int i = 0; i < ranges.length; i++) {
-                        allRanges.add(new DrawRangeWithBuffer(ranges[i], vbo, hasBrightness));
-                    }
-                }
-            }
-        }
-
-        allRanges.sort(Comparator.comparingInt(r -> r.range().commandIndex()));
-        return allRanges;
     }
 
     /**
      * Emit a draw range to the output buffer, with transform if needed.
      */
     private static void emitDrawRangeToBuffer(
-            DrawRangeWithBuffer drb,
+            AccumulatedDraw draw,
             BufferTransformOptimizer opt,
             CommandBuffer out,
-            Object2IntMap<VertexBuffer> vboIndexMap) {
+            int vboIdx) {
         // Emit transform to reach the draw's expected transform
-        opt.emitTransformTo(out, drb.range().transform());
+        opt.emitTransformTo(out, draw.transform);
 
         // Write the draw range command
-        final int vboIdx = vboIndexMap.getInt(drb.vbo());
         if (vboIdx >= 0) {
-            out.writeDrawRange(vboIdx, drb.range().startVertex(), drb.range().vertexCount(), drb.hasBrightness());
+            out.writeDrawRange(vboIdx);
         }
     }
 }

@@ -308,15 +308,18 @@ public final class AngelicaRedirector {
                         }
                     } else {
                         final Map<String, String> redirects = methodRedirects.get(mNode.owner);
-                        if (redirects != null && redirects.containsKey(mNode.name)) {
-                            if (LOG_SPAM) {
-                                final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                        if (redirects != null) {
+                            final String name = redirects.get(mNode.name);
+                            if (name != null) {
+                                if (LOG_SPAM) {
+                                    final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                                }
+                                mNode.owner = GLStateManager;
+                                mNode.name = name;
+                                changed = true;
+                                redirectInMethod = true;
                             }
-                            mNode.owner = GLStateManager;
-                            mNode.name = redirects.get(mNode.name);
-                            changed = true;
-                            redirectInMethod = true;
                         }
                     }
                 }
@@ -329,7 +332,7 @@ public final class AngelicaRedirector {
         return changed;
     }
 
-    private static class RedirectMap<K> extends HashMap<K, K> {
+    private static final class RedirectMap<K> extends HashMap<K, K> {
 
         public static RedirectMap<String> newMap() {
             return new RedirectMap<>();

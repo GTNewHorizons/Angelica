@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -33,7 +34,7 @@ public final class CommandBufferExecutor {
      * @param complexObjects Array of complex objects (TexImage2DCmd, etc.)
      * @param ownedVbos Array of VBOs owned by the display list (indexed by DrawRange commands)
      */
-    public static void execute(ByteBuffer buffer, Object[] complexObjects, VertexBuffer[] ownedVbos) {
+    public static void execute(ByteBuffer buffer, Object[] complexObjects, BigVBO ownedVbos) {
         long ptr = memAddress(buffer);
         final long end = ptr + buffer.limit();
 
@@ -485,14 +486,8 @@ public final class CommandBufferExecutor {
                 // === Draw commands ===
                 case GLCommand.DRAW_RANGE -> {
                     final int vboIndex = memGetInt(ptr);
-                    final int start = memGetInt(ptr + 4);
-                    final int count = memGetInt(ptr + 8);
-                    final boolean hasBrightness = memGetInt(ptr + 12) != 0;
-                    ptr += 16;
-                    final VertexBuffer vbo = ownedVbos[vboIndex];
-                    vbo.setupState();
-                    vbo.draw(start, count);
-                    vbo.cleanupState();
+                    ptr += 4;
+                    ownedVbos.render(vboIndex);
                 }
                 case GLCommand.CALL_LIST -> {
                     final int listId = memGetInt(ptr);

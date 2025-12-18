@@ -1,10 +1,13 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import org.joml.Matrix4f;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -13,23 +16,25 @@ import java.util.List;
  * The matrix will be applied at runtime, not baked into vertices.
  */
 public class AccumulatedDraw {
-    public final List<ModelQuadViewMutable> quads;
     public final Matrix4f transform;
-    public final CapturingTessellator.Flags flags;
+    public final VertexFormat format;
+    public final ByteBuffer drawData;
+    public final int vertexCount;
+    public final int drawMode;
     public final int commandIndex; // Position in command list for state tracking
 
-    public AccumulatedDraw(List<ModelQuadViewMutable> quads, Matrix4f transform, CapturingTessellator.Flags flags, int commandIndex) {
-        // Deep copy quads - pooled quads are reused after callback
-        this.quads = ModelQuadUtil.deepCopyQuads(quads);
-
-        this.transform = new Matrix4f(transform); // Snapshot for runtime application
-        this.flags = flags;
+    public AccumulatedDraw(DirectTessellator tessellator, Matrix4f transform, int commandIndex) {
+        this.transform = transform; // Snapshot for runtime application
+        this.format = tessellator.getOptimalVertexFormat();
+        this.drawMode = tessellator.drawMode;
+        this.drawData = tessellator.compileToByteBufferCopy(format);
+        this.vertexCount = format.getVertexCount(this.drawData);
         this.commandIndex = commandIndex;
     }
 
-    @Override
-    public String toString() {
-        return String.format("AccumulatedDraw[quads=%d, cmdIdx=%d, flags=C%dT%dL%dN%d]",
-            quads.size(), commandIndex, flags.hasColor ? 1 : 0, flags.hasTexture ? 1 : 0, flags.hasBrightness ? 1 : 0, flags.hasNormals ? 1 : 0);
-    }
+//    @Override
+//    public String toString() {
+//        return String.format("AccumulatedDraw[quads=%d, cmdIdx=%d, flags=C%dT%dL%dN%d]",
+//            quads.size(), commandIndex, flags.hasColor ? 1 : 0, flags.hasTexture ? 1 : 0, flags.hasBrightness ? 1 : 0, flags.hasNormals ? 1 : 0);
+//    }
 }

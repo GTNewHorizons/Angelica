@@ -550,13 +550,10 @@ public final class CommandBuffer {
 
     // === Draw commands ===
 
-    public void writeDrawRange(int vboIndex, int startVertex, int vertexCount, boolean hasBrightness) {
-        ensureCapacity(20);
+    public void writeDrawRange(int vboIndex) {
+        ensureCapacity(8);
         writeInt(GLCommand.DRAW_RANGE);
         writeInt(vboIndex);
-        writeInt(startVertex);
-        writeInt(vertexCount);
-        writeInt(hasBrightness ? 1 : 0);
     }
 
     public void writeCallList(int listId) {

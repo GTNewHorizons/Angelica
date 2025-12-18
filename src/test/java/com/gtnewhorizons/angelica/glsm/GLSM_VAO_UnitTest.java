@@ -105,6 +105,11 @@ public class GLSM_VAO_UnitTest {
 
         UniversalVAO.bindVertexArray(0);
 
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        UniversalVAO.bindVertexArray(vao);
+        GLStateManager.glPopAttrib();
+        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, vao, "GL_VERTEX_ARRAY_BINDING - Not affected by glPushAttrib");
+
 
         GL15.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);

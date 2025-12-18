@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -58,7 +59,9 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.APPLEVertexArrayObject;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.ARBVertexArrayObject;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
@@ -66,8 +69,10 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
@@ -283,6 +288,9 @@ public class GLStateManager {
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
     @Getter protected static int activeProgram = 0;
+
+    @Getter protected static int boundVBO;
+    @Getter protected static int boundVAO;
 
     public static void reset() {
         runningSplash = true;
@@ -1646,7 +1654,7 @@ public class GLStateManager {
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
                 // end() returns quads immediately (like tessellator callback)
-                final ImmediateModeRecorder.Result result = recorder.end();
+                final DirectTessellator result = recorder.end();
                 if (result != null) {
                     // Add draw at current command position for correct interleaving
                     DisplayListManager.addImmediateModeDraw(result);
@@ -1755,7 +1763,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
-                final ImmediateModeRecorder.Result result = recorder.processDrawArrays(mode, first, count);
+                final DirectTessellator result = recorder.processDrawArrays(mode, first, count);
                 if (result != null) {
                     DisplayListManager.addImmediateModeDraw(result);
                 }
@@ -3528,6 +3536,39 @@ public class GLStateManager {
                 GL20.glStencilOpSeparate(face, sfail, dpfail, dppass);
             }
         }
+    }
+
+    public static void glBindBuffer(int target, int buffer) {
+        if (target == GL15.GL_ARRAY_BUFFER) {
+            if (boundVBO == buffer) return;
+            boundVBO = buffer;
+        }
+        GL15.glBindBuffer(target, buffer);
+    }
+
+    public static void glBindVertexArray(int array) {
+        if (boundVAO != array) {
+            boundVAO = array;
+            GL30.glBindVertexArray(array);
+        }
+    }
+
+    public static void glBindVertexArrayAPPLE(int array) {
+        if (boundVAO != array) {
+            boundVAO = array;
+            APPLEVertexArrayObject.glBindVertexArrayAPPLE(array);
+        }
+    }
+
+    public static void glBindVertexArrayARB(int array) {
+        if (boundVAO != array) {
+            boundVAO = array;
+            ARBVertexArrayObject.glBindVertexArray(array);
+        }
+    }
+
+    public static boolean isVAOBound() {
+        return boundVAO != 0;
     }
 
     public static boolean vendorIsAMD() {
