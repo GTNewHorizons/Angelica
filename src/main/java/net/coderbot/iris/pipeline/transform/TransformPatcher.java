@@ -10,7 +10,12 @@ import java.util.Map;
 public class TransformPatcher {
 
     private static final int MAX_CACHE_ENTRIES = 400;
-    private static final Map<TransformPatcher.CacheKey, Map<PatchShaderType, String>> cache =  new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true);
+    private static final Map<TransformPatcher.CacheKey, Map<PatchShaderType, String>> cache = new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<CacheKey, Map<PatchShaderType, String>> eldest) {
+            return size() > MAX_CACHE_ENTRIES;
+        }
+    };
 
     private static final boolean useCache = true;
 
@@ -46,7 +51,7 @@ public class TransformPatcher {
                 return false;
             if (getClass() != obj.getClass())
                 return false;
-            TransformPatcher.CacheKey other = (TransformPatcher.CacheKey) obj;
+            final TransformPatcher.CacheKey other = (TransformPatcher.CacheKey) obj;
             if (fragment == null) {
                 if (other.fragment != null)
                     return false;
@@ -77,11 +82,11 @@ public class TransformPatcher {
         }
 
         // check if this has been cached
-        TransformPatcher.CacheKey key;
+        TransformPatcher.CacheKey key = null;
         Map<PatchShaderType, String> result = null;
         if (useCache) {
             key = new TransformPatcher.CacheKey(parameters, vertex, geometry, fragment);
-            if (cache.containsKey(key)) {
+            synchronized (cache) {
                 result = cache.get(key);
             }
         }
@@ -90,7 +95,14 @@ public class TransformPatcher {
         if (result == null) {
             result = ShaderTransformer.transform(vertex, geometry, fragment, parameters);
             if (useCache) {
-                cache.put(key, result);
+                synchronized (cache) {
+                    // Double-check in case another thread added it while we were transforming
+                    final Map<PatchShaderType, String> existing = cache.get(key);
+                    if (existing != null) {
+                        return existing;
+                    }
+                    cache.put(key, result);
+                }
             }
         }
 
@@ -107,5 +119,11 @@ public class TransformPatcher {
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment) {
         return transform(vertex, geometry, fragment, new Parameters(Patch.COMPOSITE));
+    }
+
+    public static void clearCache() {
+        synchronized (cache) {
+            cache.clear();
+        }
     }
 }

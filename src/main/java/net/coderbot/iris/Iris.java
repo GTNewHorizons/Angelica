@@ -16,6 +16,9 @@ import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
+import net.coderbot.iris.pipeline.transform.ShaderTransformer;
+import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -56,6 +59,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import java.util.zip.ZipError;
 import java.util.zip.ZipException;
@@ -82,6 +91,8 @@ public class Iris {
     private static String currentPackName;
     @Getter
     private static boolean initialized;
+    @Getter
+    private static int shaderPackLoadId = 0;
 
     private static PipelineManager pipelineManager;
     @Getter
@@ -98,6 +109,109 @@ public class Iris {
     private static String IRIS_VERSION;
     @Getter
     private static boolean fallback;
+
+    /**
+     * Lazy executor for parallelizing shader transformations during shader pack loading.
+     * Creates threads on demand and shuts down after a period of inactivity.
+     */
+    public static final class ShaderTransformExecutor {
+        private static final long IDLE_TIMEOUT_SECONDS = 120;
+        private static final int THREAD_COUNT = Math.max(2, Math.min(12, Runtime.getRuntime().availableProcessors() / 2));
+
+        private static final Object lock = new Object();
+        private static ExecutorService executor;
+        private static ScheduledExecutorService scheduler;
+        private static long lastActivityTime;
+
+        private ShaderTransformExecutor() {}
+
+        public static ExecutorService get() {
+            synchronized (lock) {
+                lastActivityTime = System.nanoTime();
+
+                if (executor != null && !executor.isShutdown()) {
+                    return executor;
+                }
+
+                executor = new ForkJoinPool(
+                    THREAD_COUNT,
+                    pool -> {
+                        ForkJoinWorkerThread t = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+                        t.setName("Shader-Transform-" + t.getPoolIndex());
+                        t.setDaemon(true);
+                        return t;
+                    },
+                    null,  // UncaughtExceptionHandler
+                    true   // asyncMode - FIFO, better for independent tasks
+                );
+                logger.debug("Created shader transform executor with " + THREAD_COUNT + " threads");
+
+                if (scheduler == null || scheduler.isShutdown()) {
+                    scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                        Thread t = new Thread(r, "Shader-Transform-Scheduler");
+                        t.setDaemon(true);
+                        return t;
+                    });
+                }
+                scheduleIdleCheck();
+
+                return executor;
+            }
+        }
+
+        private static void scheduleIdleCheck() {
+            scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, IDLE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }
+
+        /**
+         * Warm up the threadpool by running a representative shader transformation.
+         */
+        public static void warmup() {
+            final String vertexShader = "#version 120\nvoid main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }";
+            final String fragmentShader = "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }";
+            try {
+                get().submit(() -> {
+                    TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
+                    TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, new InputAvailability(true, true));
+                }).get();
+            } catch (Exception e) {
+                logger.warn("Warmup failed", e);
+            }
+        }
+
+        private static void checkIdleShutdown() {
+            synchronized (lock) {
+                final ExecutorService current = executor;
+                if (current == null || current.isShutdown()) {
+                    // Executor already gone, shut down scheduler
+                    if (scheduler != null && !scheduler.isShutdown()) {
+                        scheduler.shutdown();
+                        scheduler = null;
+                    }
+                    return;
+                }
+
+                final long idleNanos = System.nanoTime() - lastActivityTime;
+                final long idleSeconds = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
+
+                if (idleSeconds >= IDLE_TIMEOUT_SECONDS) {
+                    logger.debug("Shutting down idle shader transform executor after " + idleSeconds + " seconds");
+                    current.shutdown();
+                    executor = null;
+                    scheduler.shutdown();
+                    scheduler = null;
+
+                    // Clear transformation caches - no longer needed after loading
+                    TransformPatcher.clearCache();
+                    ShaderTransformer.clearCache();
+                } else {
+                    // Still active, schedule another check for remaining time plus buffer
+                    final long remainingSeconds = IDLE_TIMEOUT_SECONDS - idleSeconds + 1;
+                    scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, remainingSeconds, TimeUnit.SECONDS);
+                }
+            }
+        }
+    }
 
     private static KeyBinding reloadKeybind;
     private static KeyBinding toggleShadersKeybind;
@@ -193,6 +307,9 @@ public class Iris {
                 + " Trying to avoid a crash but this is an odd state.");
             return;
         }
+
+        // Warm up the threadpool so shader transformations are faster when we need them
+        ShaderTransformExecutor.warmup();
 
         PBRTextureManager.INSTANCE.init();
 
@@ -575,7 +692,12 @@ public class Iris {
 
 
         try {
-            return new DeferredWorldRenderingPipeline(programs);
+            shaderPackLoadId++;
+            long startTime = System.nanoTime();
+            WorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
+            long endTime = System.nanoTime();
+            logger.info("[Load #{}] Total shaderpack load time for '{}': {} ms", shaderPackLoadId, currentPackName, String.format("%.1f", (endTime - startTime) / 1_000_000.0));
+            return pipeline;
         } catch (Exception e) {
             logger.error("Failed to create shader rendering pipeline, disabling shaders!", e);
             // TODO: This should be reverted if a dimension change causes shaders to compile again

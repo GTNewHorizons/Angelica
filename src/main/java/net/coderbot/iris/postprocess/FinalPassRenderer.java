@@ -40,6 +40,7 @@ import org.lwjgl.opengl.GL30;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -65,7 +66,8 @@ public class FinalPassRenderer {
 							 CenterDepthSampler centerDepthSampler,
 							 Supplier<ShadowRenderTargets> shadowTargetsSupplier,
 							 Object2ObjectMap<String, IntSupplier> customTextureIds,
-							 ImmutableSet<Integer> flippedAtLeastOnce, CustomUniforms customUniforms) {
+							 ImmutableSet<Integer> flippedAtLeastOnce, CustomUniforms customUniforms,
+							 CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture) {
 		this.updateNotifier = updateNotifier;
 		this.centerDepthSampler = centerDepthSampler;
 		this.customTextureIds = customTextureIds;
@@ -77,7 +79,16 @@ public class FinalPassRenderer {
 			Pass pass = new Pass();
 			ProgramDirectives directives = source.getDirectives();
 
-			pass.program = createProgram(source, flippedBuffers, flippedAtLeastOnce, shadowTargetsSupplier);
+			Map<PatchShaderType, String> transformed;
+			if (precomputedTransformFuture != null) {
+				transformed = precomputedTransformFuture.join();
+			} else {
+				transformed = TransformPatcher.patchComposite(
+					source.getVertexSource().orElseThrow(NullPointerException::new),
+					source.getGeometrySource().orElse(null),
+					source.getFragmentSource().orElseThrow(NullPointerException::new));
+			}
+			pass.program = createProgramFromTransformed(source, transformed, flippedBuffers, flippedAtLeastOnce, shadowTargetsSupplier);
 			pass.computes = createComputes(pack.getFinalCompute(), flippedBuffers, flippedAtLeastOnce, shadowTargetsSupplier);
 			pass.stageReadsFromAlt = flippedBuffers;
 			pass.mipmappedBuffers = directives.getMipmappedBuffers();
@@ -314,13 +325,9 @@ public class FinalPassRenderer {
 	}
 
 	// TODO: Don't just copy this from DeferredWorldRenderingPipeline
-	private Program createProgram(ProgramSource source, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
-								  Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
-		// TODO: Properly handle empty shaders
-		Map<PatchShaderType, String> transformed = TransformPatcher.patchComposite(
-			source.getVertexSource().orElseThrow(NullPointerException::new),
-			source.getGeometrySource().orElse(null),
-			source.getFragmentSource().orElseThrow(NullPointerException::new));
+	private Program createProgramFromTransformed(ProgramSource source, Map<PatchShaderType, String> transformed,
+												 ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
+												 Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
 		final String vertex = transformed.get(PatchShaderType.VERTEX);
 		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
 		final String fragment = transformed.get(PatchShaderType.FRAGMENT);
