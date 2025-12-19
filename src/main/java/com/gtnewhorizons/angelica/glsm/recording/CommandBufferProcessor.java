@@ -251,6 +251,9 @@ public final class CommandBufferProcessor {
             // Draw/call commands
             case GLCommand.DRAW_RANGE -> out.writeDrawRange(raw.readInt());
             case GLCommand.CALL_LIST -> out.writeCallList(raw.readInt());
+            case GLCommand.DRAW_ARRAYS -> out.writeDrawArrays(raw.readInt(), raw.readInt(), raw.readInt());
+            case GLCommand.BIND_VBO -> out.writeBindVBO(raw.readInt());
+            case GLCommand.BIND_VAO -> out.writeBindVAO(raw.readInt());
 
             // Complex object reference - transfer the object to output buffer
             case GLCommand.COMPLEX_REF -> {

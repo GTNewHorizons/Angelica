@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -350,6 +351,21 @@ public class CommandRecorder {
 
     public void recordDrawBuffers(int count, IntBuffer bufs) {
         buffer.writeDrawBuffers(count, bufs);
+        commandCount++;
+    }
+
+    public void recordDrawArrays(int mode, int start, int count) {
+        buffer.writeDrawArrays(mode, start, count);
+        commandCount++;
+    }
+
+    public void recordBindVBO(int vbo) {
+        buffer.writeBindVBO(vbo);
+        commandCount++;
+    }
+
+    public void recordBindVAO(int vao) {
+        buffer.writeBindVAO(vao);
         commandCount++;
     }
 

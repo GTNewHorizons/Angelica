@@ -241,6 +241,10 @@ public class DisplayListManager {
     public static void recordDrawBuffer(int mode) { if (currentRecorder != null) currentRecorder.recordDrawBuffer(mode); }
     public static void recordDrawBuffers(int count, int buf) { if (currentRecorder != null) currentRecorder.recordDrawBuffers(count, buf); }
     public static void recordDrawBuffers(int count, java.nio.IntBuffer bufs) { if (currentRecorder != null) currentRecorder.recordDrawBuffers(count, bufs); }
+    public static void recordDrawArrays(int mode, int start, int count) { if (currentRecorder != null) currentRecorder.recordDrawArrays(mode, start, count); }
+    public static void recordBindVBO(int vbo) { if (currentRecorder != null) currentRecorder.recordBindVBO(vbo); }
+    public static void recordBindVAO(int vao) { if (currentRecorder != null) currentRecorder.recordBindVAO(vao); }
+
     public static void recordComplexCommand(DisplayListCommand cmd) { if (currentRecorder != null) currentRecorder.recordComplexCommand(cmd); }
 
     /**
@@ -425,11 +429,12 @@ public class DisplayListManager {
         immediateModeRecorder = new ImmediateModeRecorder();  // For glBegin/glEnd/glVertex
 
         TessellatorManager.startCapturingDirect(new DirectTessellator((tessellator) -> {
-            if (tessellator.isEmpty()) return;
+            if (tessellator.isEmpty()) return true;
             final Matrix4f currentTransform = new Matrix4f(relativeTransform);
             final int cmdIndex = getCommandCount();
             accumulatedDraws.add(new AccumulatedDraw(tessellator, currentTransform, cmdIndex));
             tessellator.reset();
+            return true;
         }));
 
         // We hijack display list compilation completely - no GL11.glNewList() calls

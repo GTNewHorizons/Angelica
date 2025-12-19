@@ -90,8 +90,13 @@ public final class GLCommand {
     // === Draw commands ===
     public static final int DRAW_RANGE = 100;        // [cmd:4][vboIndex:4][start:4][count:4][hasBrightness:4] = 20 bytes
     public static final int CALL_LIST = 101;         // [cmd:4][listId:4] = 8 bytes
-    public static final int DRAW_BUFFER = 102;       // [cmd:4][mode:4] = 8 bytes
-    public static final int DRAW_BUFFERS = 103;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
+    public static final int DRAW_ARRAYS = 102;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
+    public static final int DRAW_BUFFER = 103;       // [cmd:4][mode:4] = 8 bytes
+    public static final int DRAW_BUFFERS = 104;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
+
+    // === Bind commands ===
+    public static final int BIND_VBO = 110;
+    public static final int BIND_VAO = 111;
 
     // === Complex object reference ===
     public static final int COMPLEX_REF = 255;       // [cmd:4][index:4] = 8 bytes

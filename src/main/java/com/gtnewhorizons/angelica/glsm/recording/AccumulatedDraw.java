@@ -25,10 +25,10 @@ public class AccumulatedDraw {
 
     public AccumulatedDraw(DirectTessellator tessellator, Matrix4f transform, int commandIndex) {
         this.transform = transform; // Snapshot for runtime application
-        this.format = tessellator.getOptimalVertexFormat();
+        this.format = tessellator.getVertexFormat();
         this.drawMode = tessellator.drawMode;
-        this.drawData = tessellator.compileToByteBufferCopy(format);
-        this.vertexCount = format.getVertexCount(this.drawData);
+        this.drawData = tessellator.getBufferCopy();
+        this.vertexCount = tessellator.getVertexCount();
         this.commandIndex = commandIndex;
     }
 

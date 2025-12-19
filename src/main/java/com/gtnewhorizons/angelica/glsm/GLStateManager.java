@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
@@ -779,15 +780,21 @@ public class GLStateManager {
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
+            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
+            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
+            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
+            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
+
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
             case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
-            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
-            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
+
+            case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
+
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
-            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
-            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
+
+            case GL30.GL_VERTEX_ARRAY_BINDING -> boundVAO;
 
             default -> GL11.glGetInteger(pname);
         };
@@ -1635,6 +1642,8 @@ public class GLStateManager {
         }
     }
 
+    private static boolean inImmediateModeRendering;
+
     public static void glBegin(int mode) {
         if (DisplayListManager.isRecording()) {
             // Record to immediate mode recorder
@@ -1642,6 +1651,7 @@ public class GLStateManager {
             if (recorder != null) {
                 recorder.begin(mode);
             }
+            inImmediateModeRendering = true;
             return;  // Don't call actual GL during recording
         }
         trySyncProgram();
@@ -1660,6 +1670,7 @@ public class GLStateManager {
                     DisplayListManager.addImmediateModeDraw(result);
                 }
             }
+            inImmediateModeRendering = false;
             return;  // Don't call actual GL during recording
         }
         GL11.glEnd();
@@ -1761,12 +1772,16 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         if (DisplayListManager.isRecording()) {
+            if (isVAOBound() || isVBOBound()) {
+                DisplayListManager.recordDrawArrays(mode, first, count);
+                return;
+            }
             final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
             if (recorder != null) {
-                final DirectTessellator result = recorder.processDrawArrays(mode, first, count);
-                if (result != null) {
-                    DisplayListManager.addImmediateModeDraw(result);
-                }
+//                final DirectTessellator result = recorder.processDrawArrays(mode, first, count);
+//                if (result != null) {
+//                    DisplayListManager.addImmediateModeDraw(result);
+//                }
             }
             return;
         }
@@ -1778,52 +1793,70 @@ public class GLStateManager {
     // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
+        }
         GL11.glVertexPointer(size, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        clientArrayState.setVertexPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setVertexPointer(size, type, stride, pointer);
+        }
         GL11.glVertexPointer(size, type, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        // VBO offset - can't track buffer reference, clear it
-        clientArrayState.setVertexPointer(size, type, stride, null);
+        if (!isVAOBound()) {
+            // VBO offset - can't track buffer reference, clear it
+            clientArrayState.setVertexPointer(size, type, stride, null);
+        }
         GL11.glVertexPointer(size, type, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
+        }
         GL11.glColorPointer(size, stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        clientArrayState.setColorPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setColorPointer(size, type, stride, pointer);
+        }
         GL11.glColorPointer(size, type, stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
-        final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-        clientArrayState.setColorPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
+            clientArrayState.setColorPointer(size, type, stride, pointer);
+        }
         GL11.glColorPointer(size, unsigned, stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        // VBO offset - can't track buffer reference, clear it
-        clientArrayState.setColorPointer(size, type, stride, null);
+        if (!isVAOBound()) {
+            // VBO offset - can't track buffer reference, clear it
+            clientArrayState.setColorPointer(size, type, stride, null);
+        }
         GL11.glColorPointer(size, type, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
-        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
-        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
+        if (!isVAOBound()) {
+            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
+            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
+        }
         GL11.glEnableClientState(cap);
     }
 
     public static void glDisableClientState(int cap) {
-        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
-        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
+        if (!isVAOBound()) {
+            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
+            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
+        }
         GL11.glDisableClientState(cap);
     }
 
@@ -2631,7 +2664,7 @@ public class GLStateManager {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexParameteri called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", texture));
+                        "Cannot query OpenGL state during compilation!", texture));
             }
             return defaultSupplier.getAsInt();
         }
@@ -2647,7 +2680,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexParameteri called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), texture));
+                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), texture));
                 }
                 yield defaultSupplier.getAsInt();
             }
@@ -2669,7 +2702,7 @@ public class GLStateManager {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexParameterf called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", getBoundTexture()));
+                        "Cannot query OpenGL state during compilation!", getBoundTexture()));
             }
             return GL11.glGetTexParameterf(target, pname);
         }
@@ -2681,7 +2714,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexParameterf called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
+                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
                 }
                 yield GL11.glGetTexParameterf(target, pname);
             }
@@ -2697,7 +2730,7 @@ public class GLStateManager {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexLevelParameteri called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", getBoundTexture()));
+                        "Cannot query OpenGL state during compilation!", getBoundTexture()));
             }
             return GL11.glGetTexLevelParameteri(target, level, pname);
         }
@@ -2709,7 +2742,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexLevelParameteri called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
+                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
                 }
                 yield GL11.glGetTexLevelParameteri(target, level, pname);
             }
@@ -2816,7 +2849,7 @@ public class GLStateManager {
                 case GL11.GL_EMISSION -> floatParams = new float[] {material.emission.x, material.emission.y, material.emission.z, material.emission.w};
                 case GL11.GL_SHININESS -> floatParams = new float[] {material.shininess};
                 case GL11.GL_AMBIENT_AND_DIFFUSE -> // For AMBIENT_AND_DIFFUSE, capture ambient (could also use diffuse, they're the same)
-                        floatParams = new float[] {material.ambient.x, material.ambient.y, material.ambient.z, material.ambient.w};
+                    floatParams = new float[] {material.ambient.x, material.ambient.y, material.ambient.z, material.ambient.w};
                 case GL11.GL_COLOR_INDEXES -> floatParams = new float[] {material.colorIndexes.x, material.colorIndexes.y, material.colorIndexes.z};
                 default -> {
                     // Fallback for unknown pname - do simple cast
@@ -3540,6 +3573,9 @@ public class GLStateManager {
 
     public static void glBindBuffer(int target, int buffer) {
         if (target == GL15.GL_ARRAY_BUFFER) {
+            if (DisplayListManager.isRecording()) {
+                DisplayListManager.recordBindVBO(buffer);
+            }
             if (boundVBO == buffer) return;
             boundVBO = buffer;
         }
@@ -3547,6 +3583,9 @@ public class GLStateManager {
     }
 
     public static void glBindVertexArray(int array) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordBindVAO(array);
+        }
         if (boundVAO != array) {
             boundVAO = array;
             GL30.glBindVertexArray(array);
@@ -3554,6 +3593,9 @@ public class GLStateManager {
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordBindVAO(array);
+        }
         if (boundVAO != array) {
             boundVAO = array;
             APPLEVertexArrayObject.glBindVertexArrayAPPLE(array);
@@ -3561,10 +3603,17 @@ public class GLStateManager {
     }
 
     public static void glBindVertexArrayARB(int array) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordBindVAO(array);
+        }
         if (boundVAO != array) {
             boundVAO = array;
             ARBVertexArrayObject.glBindVertexArray(array);
         }
+    }
+
+    public static boolean isVBOBound() {
+        return boundVBO != 0;
     }
 
     public static boolean isVAOBound() {

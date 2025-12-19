@@ -132,7 +132,8 @@ public final class CompiledDisplayList {
                  GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.LOAD_IDENTITY,
                  GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX, GLCommand.STENCIL_MASK,
                  GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
-                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_RANGE -> 8;
+                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_RANGE, GLCommand.BIND_VBO,
+                 GLCommand.BIND_VAO -> 8;
 
             // Two int commands (12 bytes)
             case GLCommand.BIND_TEXTURE, GLCommand.POLYGON_MODE, GLCommand.COLOR_MATERIAL,
@@ -143,7 +144,7 @@ public final class CompiledDisplayList {
             // Three int commands (16 bytes)
             case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
                  GLCommand.LIGHTF, GLCommand.LIGHTI,
-                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF -> 16;
+                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF, GLCommand.DRAW_ARRAYS -> 16;
 
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,

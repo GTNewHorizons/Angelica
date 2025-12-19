@@ -262,6 +262,8 @@ public class ImmediateModeRecorder {
         return end();
     }
 
+
+
     @FunctionalInterface
     private interface ColorReader {
         void read(int index);

@@ -1,11 +1,14 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -508,6 +511,18 @@ public final class CommandBufferExecutor {
                     DRAW_BUFFERS_BUFFER.flip();
                     ptr += 4 * MAX_DRAW_BUFFERS;
                     GLStateManager.glDrawBuffers(DRAW_BUFFERS_BUFFER);
+                }
+                case GLCommand.DRAW_ARRAYS -> {
+                    GL11.glDrawArrays(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8));
+                    ptr += 12;
+                }
+                case GLCommand.BIND_VBO -> {
+                    GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, memGetInt(ptr));
+                    ptr += 4;
+                }
+                case GLCommand.BIND_VAO -> {
+                    VAOManager.VAO.glBindVertexArray(memGetInt(ptr));
+                    ptr += 4;
                 }
 
                 // === Complex object reference ===
