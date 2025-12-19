@@ -63,6 +63,8 @@ dependencies {
     api('com.github.GTNewHorizons:OpenComputers:1.11.19-GTNH:dev')
     api('com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-720-GTNH:dev')
     api("com.github.GTNewHorizons:ae2stuff:0.10.2-GTNH:dev")
+    implementation("com.github.GTNewHorizons:OpenBlocks:1.12.4-GTNH:dev")
+    api('com.github.GTNewHorizons:OpenModsLib:0.10.13:dev')
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-4.g6b42bca") {
         exclude module: "antlr4" // we only want to shadow the runtime module

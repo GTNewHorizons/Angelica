@@ -431,9 +431,23 @@ public class DisplayListManager {
         TessellatorManager.startCapturingDirect(new DirectTessellator((tessellator) -> {
             if (tessellator.isEmpty()) return true;
             final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+            final VertexFormat format = tessellator.getVertexFormat();
+            final ByteBuffer drawData = tessellator.getBufferCopy();
             final int cmdIndex = getCommandCount();
-            accumulatedDraws.add(new AccumulatedDraw(tessellator, currentTransform, cmdIndex));
-            tessellator.reset();
+            if (accumulatedDraws.isEmpty()) {
+                accumulatedDraws.add(
+                    new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
+                );
+            } else {
+                final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
+                if (previous.format == format && previous.commandIndex == cmdIndex) {
+                    previous.mergeDraw(drawData);
+                } else {
+                    accumulatedDraws.add(
+                        new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
+                    );
+                }
+            }
             return true;
         }));
 
