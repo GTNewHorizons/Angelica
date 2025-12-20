@@ -7,6 +7,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
@@ -37,6 +39,7 @@ public class CTMUtils {
     private static TileLoader tileLoader;
 
     private static TileOverride lastOverride;
+    private static final Lock lock = new ReentrantLock();
 
     private static final TileOverrideIterator.IJK ijkIterator = newIJKIterator();
     private static final TileOverrideIterator.Metadata metadataIterator = newMetadataIterator();
@@ -49,69 +52,80 @@ public class CTMUtils {
             Class.forName(MCPatcherUtils.RENDER_PASS_CLASS)
                 .getMethod("finish")
                 .invoke(null);
-        } catch (Throwable ignore) {}
+        } catch (Throwable ignore) {
+        }
 
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CONNECTED_TEXTURES, 3) {
-
             @Override
-            public void initialize() {}
+            public void initialize() {
+            }
 
             @Override
             public void beforeChange() {
-                RenderPassAPI.instance.clear();
+                lock.lock();
                 try {
-                    GlassPaneRenderer.clear();
-                } catch (NoClassDefFoundError e) {
-                    // nothing
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                renderBlockState.clear();
-                ijkIterator.clear();
-                metadataIterator.clear();
-                allOverrides.clear();
-                blockOverrides.clear();
-                tileOverrides.clear();
-                lastOverride = null;
-                RenderBlocksUtils.blankIcon = null;
-                tileLoader = new TileLoader("textures/blocks", logger);
-                RenderPassAPI.instance.refreshBlendingOptions();
-
-                if (MCPatcherForgeConfig.ConnectedTextures.standard || MCPatcherForgeConfig.ConnectedTextures.nonStandard) {
-                    for (ResourceLocation resource : ResourceList.getInstance()
-                        .listResources(TexturePackAPI.MCPATCHER_SUBDIR + "ctm", ".properties", true)) {
-                        registerOverride(TileOverride.create(resource, tileLoader));
+                    RenderPassAPI.instance.clear();
+                    try {
+                        GlassPaneRenderer.clear();
+                    } catch (NoClassDefFoundError e) {
+                        // nothing
+                    } catch (Throwable e) {
+                        e.printStackTrace();
                     }
-                }
-                for (ResourceLocation resource : BlendMethod.getAllBlankResources()) {
-                    tileLoader.preloadTile(resource, false);
+                    renderBlockState.clear();
+                    ijkIterator.clear();
+                    metadataIterator.clear();
+                    allOverrides.clear();
+                    blockOverrides.clear();
+                    tileOverrides.clear();
+                    lastOverride = null;
+                    RenderBlocksUtils.blankIcon = null;
+                    tileLoader = new TileLoader("textures/blocks", logger);
+                    RenderPassAPI.instance.refreshBlendingOptions();
+
+                    if (MCPatcherForgeConfig.ConnectedTextures.standard || MCPatcherForgeConfig.ConnectedTextures.nonStandard) {
+                        for (ResourceLocation resource : ResourceList.getInstance()
+                            .listResources(TexturePackAPI.MCPATCHER_SUBDIR + "ctm", ".properties", true)) {
+                            registerOverride(TileOverride.create(resource, tileLoader));
+                        }
+                    }
+                    for (ResourceLocation resource : BlendMethod.getAllBlankResources()) {
+                        tileLoader.preloadTile(resource, false);
+                    }
+                } finally {
+                    lock.unlock();
                 }
             }
 
             @Override
             public void afterChange() {
-                for (TileOverride override : allOverrides) {
-                    override.registerIcons();
-                }
-                for (Map.Entry<Block, List<BlockStateMatcher>> entry : blockOverrides.entrySet()) {
-                    for (BlockStateMatcher matcher : entry.getValue()) {
-                        TileOverride override = (TileOverride) matcher.getData();
-                        if (override.getRenderPass() >= 0) {
-                            RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
+                lock.lock();
+                try {
+                    for (TileOverride override : allOverrides) {
+                        override.registerIcons();
+                    }
+                    for (Map.Entry<Block, List<BlockStateMatcher>> entry : blockOverrides.entrySet()) {
+                        for (BlockStateMatcher matcher : entry.getValue()) {
+                            TileOverride override = (TileOverride) matcher.getData();
+                            if (override.getRenderPass() >= 0) {
+                                RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
+                            }
                         }
                     }
+                    for (List<BlockStateMatcher> overrides : blockOverrides.values()) {
+                        overrides.sort((m1, m2) -> {
+                            TileOverride o1 = (TileOverride) m1.getData();
+                            TileOverride o2 = (TileOverride) m2.getData();
+                            return o1.compareTo(o2);
+                        });
+                    }
+                    for (List<TileOverride> overrides : tileOverrides.values()) {
+                        Collections.sort(overrides);
+                    }
+                    setBlankResource();
+                } finally {
+                    lock.unlock();
                 }
-                for (List<BlockStateMatcher> overrides : blockOverrides.values()) {
-                    overrides.sort((m1, m2) -> {
-                        TileOverride o1 = (TileOverride) m1.getData();
-                        TileOverride o2 = (TileOverride) m2.getData();
-                        return o1.compareTo(o2);
-                    });
-                }
-                for (List<TileOverride> overrides : tileOverrides.values()) {
-                    Collections.sort(overrides);
-                }
-                setBlankResource();
             }
         });
     }
@@ -120,40 +134,53 @@ public class CTMUtils {
         haveBlockFace = false;
     }
 
-    public static synchronized IIcon getBlockIcon(IIcon icon, Block block, IBlockAccess blockAccess,
-        int x, int y, int z, int face) {
-        lastOverride = null;
-        if (blockAccess != null && checkFace(face)) {
-            if (!haveBlockFace) {
-                renderBlockState.setBlock(block, blockAccess, x, y, z);
-                renderBlockState.setFace(face);
+    public static IIcon getBlockIcon(IIcon icon, Block block, IBlockAccess blockAccess,
+                                     int x, int y, int z, int face) {
+        lock.lock();
+        try {
+            lastOverride = null;
+            if (blockAccess != null && checkFace(face)) {
+                if (!haveBlockFace) {
+                    renderBlockState.setBlock(block, blockAccess, x, y, z);
+                    renderBlockState.setFace(face);
+                }
+                lastOverride = ijkIterator.go(renderBlockState, icon);
+                if (lastOverride != null) {
+                    icon = ijkIterator.getIcon();
+                }
             }
-            lastOverride = ijkIterator.go(renderBlockState, icon);
-            if (lastOverride != null) {
-                icon = ijkIterator.getIcon();
-            }
+            clearBlockFace();
+            IIcon result = lastOverride == null && skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : icon;
+            return result;
+        } finally {
+            lock.unlock();
         }
-        clearBlockFace();
-        return lastOverride == null && skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : icon;
     }
 
-    public static synchronized IIcon getBlockIcon(IIcon icon, Block block, int face, int metadata) {
-        lastOverride = null;
-        if (checkFace(face) && checkRenderType(block)) {
-            renderBlockState.setBlockMetadata(block, metadata, face);
-            lastOverride = metadataIterator.go(renderBlockState, icon);
-            if (lastOverride != null) {
-                icon = metadataIterator.getIcon();
+    public static IIcon getBlockIcon(IIcon icon, Block block, int face, int metadata) {
+        lock.lock();
+        try {
+            lastOverride = null;
+            if (checkFace(face) && checkRenderType(block)) {
+                renderBlockState.setBlockMetadata(block, metadata, face);
+                lastOverride = metadataIterator.go(renderBlockState, icon);
+                if (lastOverride != null) {
+                    icon = metadataIterator.getIcon();
+                }
             }
+            return icon;
+
+        } finally {
+            lock.unlock();
         }
-        return icon;
     }
 
     public static IIcon getBlockIcon(IIcon icon, Block block, int face) {
         return getBlockIcon(icon, block, face, 0);
     }
 
-    public static void reset() {}
+    public static void reset() {
+    }
 
     private static boolean checkFace(int face) {
         return face < 0 ? MCPatcherForgeConfig.ConnectedTextures.nonStandard : MCPatcherForgeConfig.ConnectedTextures.standard;
@@ -167,50 +194,60 @@ public class CTMUtils {
         };
     }
 
-    private static synchronized boolean skipDefaultRendering(Block block) {
+    private static boolean skipDefaultRendering(Block block) {
         return RenderPassAPI.instance.skipDefaultRendering(block);
     }
 
-    private static synchronized void registerOverride(TileOverride override) {
-        if (override != null && !override.isDisabled()) {
-            boolean registered = false;
-            List<BlockStateMatcher> matchingBlocks = override.getMatchingBlocks();
-            if (!MCPatcherUtils.isNullOrEmpty(matchingBlocks)) {
-                for (BlockStateMatcher matcher : matchingBlocks) {
-                    if (matcher == null) {
-                        continue;
+    private static void registerOverride(TileOverride override) {
+        lock.lock();
+        try {
+            if (override != null && !override.isDisabled()) {
+                boolean registered = false;
+                List<BlockStateMatcher> matchingBlocks = override.getMatchingBlocks();
+                if (!MCPatcherUtils.isNullOrEmpty(matchingBlocks)) {
+                    for (BlockStateMatcher matcher : matchingBlocks) {
+                        if (matcher == null) {
+                            continue;
+                        }
+                        Block block = matcher.getBlock();
+                        List<BlockStateMatcher> list = blockOverrides.computeIfAbsent(block, k -> new ArrayList<>());
+                        list.add(matcher);
+                        logger.fine("using %s for block %s", override, BlockAPI.getBlockName(block));
+                        registered = true;
                     }
-                    Block block = matcher.getBlock();
-                    List<BlockStateMatcher> list = blockOverrides.computeIfAbsent(block, k -> new ArrayList<>());
-                    list.add(matcher);
-                    logger.fine("using %s for block %s", override, BlockAPI.getBlockName(block));
-                    registered = true;
+                }
+                Set<String> matchingTiles = override.getMatchingTiles();
+                if (!MCPatcherUtils.isNullOrEmpty(matchingTiles)) {
+                    for (String name : matchingTiles) {
+                        List<TileOverride> list = tileOverrides.computeIfAbsent(name, k -> new ArrayList<>());
+                        list.add(override);
+                        logger.fine("using %s for tile %s", override, name);
+                        registered = true;
+                    }
+                }
+                if (registered) {
+                    allOverrides.add(override);
                 }
             }
-            Set<String> matchingTiles = override.getMatchingTiles();
-            if (!MCPatcherUtils.isNullOrEmpty(matchingTiles)) {
-                for (String name : matchingTiles) {
-                    List<TileOverride> list = tileOverrides.computeIfAbsent(name, k -> new ArrayList<>());
-                    list.add(override);
-                    logger.fine("using %s for tile %s", override, name);
-                    registered = true;
-                }
-            }
-            if (registered) {
-                allOverrides.add(override);
-            }
+        } finally {
+            lock.unlock();
         }
     }
 
-    public static synchronized void setBlankResource() {
-        RenderBlocksUtils.blankIcon = tileLoader.getIcon(RenderPassAPI.instance.getBlankResource());
+    public static void setBlankResource() {
+        lock.lock();
+        try {
+            RenderBlocksUtils.blankIcon = tileLoader.getIcon(RenderPassAPI.instance.getBlankResource());
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public static TileOverrideIterator.IJK newIJKIterator() {
+    private static TileOverrideIterator.IJK newIJKIterator() {
         return new TileOverrideIterator.IJK(blockOverrides, tileOverrides);
     }
 
-    public static TileOverrideIterator.Metadata newMetadataIterator() {
+    private static TileOverrideIterator.Metadata newMetadataIterator() {
         return new TileOverrideIterator.Metadata(blockOverrides, tileOverrides);
     }
 }
