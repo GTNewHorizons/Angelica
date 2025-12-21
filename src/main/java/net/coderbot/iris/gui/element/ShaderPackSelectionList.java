@@ -47,7 +47,7 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
 
         try {
             names = Iris.getShaderpacksDirectoryManager().enumerate();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Iris.logger.error("Error reading files while constructing selection UI", e);
 
             // Not translating this since it's going to be seen very rarely,

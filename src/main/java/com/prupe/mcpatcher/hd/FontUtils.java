@@ -143,7 +143,7 @@ public class FontUtils {
         boolean[] isOverride = new boolean[charWidth.length];
         try {
             getCharWidthOverrides(filename, charWidthf, isOverride);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         if (!isOverride[32]) {

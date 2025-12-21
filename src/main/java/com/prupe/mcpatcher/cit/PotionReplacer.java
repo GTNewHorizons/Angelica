@@ -77,7 +77,7 @@ class PotionReplacer {
                         i);
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

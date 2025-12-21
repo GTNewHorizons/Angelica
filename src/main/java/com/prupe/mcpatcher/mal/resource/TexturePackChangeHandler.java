@@ -55,7 +55,7 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
             try {
                 logger.info("initializing %s...", handler.name);
                 handler.initialize();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.severe("%s initialization failed", handler.name);
             }
@@ -72,7 +72,7 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
                 try {
                     logger.info("refreshing %s...", handler.name);
                     handler.refresh();
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     logger.severe("%s refresh failed", handler.name);
                 }
@@ -105,7 +105,7 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
             try {
                 logger.info("refreshing %s (pre)...", handler.name);
                 handler.beforeChange();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.severe("%s.beforeChange failed", handler.name);
             }
@@ -123,7 +123,7 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
             try {
                 logger.info("refreshing %s (post)...", handler.name);
                 handler.afterChange();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.severe("%s.afterChange failed", handler.name);
             }
@@ -133,7 +133,7 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
             TexturePackChangeHandler handler = handlers.get(i);
             try {
                 handler.afterChange2();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.severe("%s.afterChange2 failed", handler.name);
             }

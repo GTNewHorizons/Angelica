@@ -87,7 +87,7 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
         if (!pending.isEmpty()) {
             try {
                 checkPendingAnimations();
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.error("%d remaining animations cleared", pending.size());
                 pending.clear();
