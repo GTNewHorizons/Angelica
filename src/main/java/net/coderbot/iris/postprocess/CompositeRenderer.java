@@ -40,6 +40,7 @@ import org.lwjgl.opengl.GL30;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -62,12 +63,16 @@ public class CompositeRenderer {
 							 Object2ObjectMap<String, IntSupplier> customTextureIds, ImmutableMap<Integer, Boolean> explicitPreFlips,
 							 CustomUniforms customUniforms,
 							 Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures) {
-		this.noiseTexture = noiseTexture;
-		this.updateNotifier = updateNotifier;
-		this.centerDepthSampler = centerDepthSampler;
-		this.renderTargets = renderTargets;
-		this.customTextureIds = customTextureIds;
-        this.customUniforms = customUniforms;
+		this(sources, computes, bufferFlipper, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms), explicitPreFlips, precomputedTransformFutures, "unknown");
+	}
+
+	public CompositeRenderer(ProgramSource[] sources, ComputeSource[][] computes, BufferFlipper bufferFlipper, ProgramBuildContext context, ImmutableMap<Integer, Boolean> explicitPreFlips, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures, String stageName) {
+		this.noiseTexture = context.noiseTexture();
+		this.updateNotifier = context.updateNotifier();
+		this.centerDepthSampler = context.centerDepthSampler();
+		this.renderTargets = context.renderTargets();
+		this.customTextureIds = context.customTextureIds();
+        this.customUniforms = context.customUniforms();
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -89,29 +94,29 @@ public class CompositeRenderer {
 
 			if (source == null || !source.isValid()) {
 				if (computes[i] != null) {
-					ComputeOnlyPass pass = new ComputeOnlyPass();
-					pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, shadowTargetsSupplier);
+					final ComputeOnlyPass pass = new ComputeOnlyPass();
+					pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
 					passes.add(pass);
 				}
 				continue;
 			}
 
-			Pass pass = new Pass();
-			ProgramDirectives directives = source.getDirectives();
+			final Pass pass = new Pass();
+			final ProgramDirectives directives = source.getDirectives();
 
-			Map<PatchShaderType, String> transformed = transformFutures.get(i).join();
-			pass.program = createProgramFromTransformed(source, transformed, flipped, flippedAtLeastOnceSnapshot, shadowTargetsSupplier);
-			pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, shadowTargetsSupplier);
-			int[] drawBuffers = directives.getDrawBuffers();
+			Map<PatchShaderType, String> transformed = getTransformed(source, transformFutures, i, stageName);
+			pass.program = createProgramFromTransformed(source, transformed, flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
+			pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
+			final int[] drawBuffers = directives.getDrawBuffers();
 
-			GlFramebuffer framebuffer = renderTargets.createColorFramebuffer(flipped, drawBuffers);
+			final GlFramebuffer framebuffer = renderTargets.createColorFramebuffer(flipped, drawBuffers);
 
 			int passWidth = 0, passHeight = 0;
 			// Flip the buffers that this shader wrote to, and set pass width and height
-			ImmutableMap<Integer, Boolean> explicitFlips = directives.getExplicitFlips();
+			final ImmutableMap<Integer, Boolean> explicitFlips = directives.getExplicitFlips();
 
 			for (int buffer : drawBuffers) {
-				RenderTarget target = renderTargets.get(buffer);
+				final RenderTarget target = renderTargets.get(buffer);
 				if ((passWidth > 0 && passWidth != target.getWidth()) || (passHeight > 0 && passHeight != target.getHeight())) {
 					throw new IllegalStateException("Pass widths must match");
 				}
@@ -149,6 +154,25 @@ public class CompositeRenderer {
 		this.flippedAtLeastOnceFinal = flippedAtLeastOnce.build();
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
+	}
+
+	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> transformFutures, int index, String stageName) {
+		if (transformFutures != null) {
+			final CompletableFuture<Map<PatchShaderType, String>> future = transformFutures.get(index);
+			if (future != null) {
+				try {
+					final Map<PatchShaderType, String> result = future.join();
+					if (result != null) {
+						return result;
+					}
+				} catch (CompletionException e) {
+					throw new RuntimeException("Shader transformation failed for '" + source.getName() + "' in stage '" + stageName + "' (pass " + index + ")", e.getCause() != null ? e.getCause() : e);
+				}
+			}
+		}
+
+		// Fallback: transform synchronously
+		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
 	}
 
     public void recalculateSizes() {

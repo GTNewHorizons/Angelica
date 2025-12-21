@@ -57,14 +57,18 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.zip.ZipError;
 import java.util.zip.ZipException;
@@ -121,13 +125,19 @@ public class Iris {
         private static final Object lock = new Object();
         private static ExecutorService executor;
         private static ScheduledExecutorService scheduler;
-        private static long lastActivityTime;
+        private static volatile long lastActivityTime;
+        private static final AtomicInteger inFlight = new AtomicInteger(0);
+        private static boolean idleCheckScheduled;
 
         private ShaderTransformExecutor() {}
 
+        private static void noteActivity() {
+            lastActivityTime = System.nanoTime();
+        }
+
         public static ExecutorService get() {
             synchronized (lock) {
-                lastActivityTime = System.nanoTime();
+                noteActivity();
 
                 if (executor != null && !executor.isShutdown()) {
                     return executor;
@@ -153,14 +163,34 @@ public class Iris {
                         return t;
                     });
                 }
-                scheduleIdleCheck();
+                if (!idleCheckScheduled) {
+                    idleCheckScheduled = true;
+                    scheduleIdleCheck(IDLE_TIMEOUT_SECONDS);
+                }
 
                 return executor;
             }
         }
 
-        private static void scheduleIdleCheck() {
-            scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, IDLE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        private static void scheduleIdleCheck(long delaySeconds) {
+            try {
+                scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, delaySeconds, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                // If scheduling fails, reset the flag so a future get() can try again
+                idleCheckScheduled = false;
+                logger.warn("Failed to schedule idle check", e);
+            }
+        }
+
+        /**
+         * Ensures the executor exists and begins spinning up worker threads.
+         * Intended for UI entrypoints (eg. shader settings screen open).
+         */
+        public static void prepare() {
+            // Submit empty tasks to warm up all worker threads without blocking the UI thread.
+            for (int i = 0; i < THREAD_COUNT; i++) {
+                submitTracked(() -> { });
+            }
         }
 
         /**
@@ -170,12 +200,50 @@ public class Iris {
             final String vertexShader = "#version 120\nvoid main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }";
             final String fragmentShader = "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }";
             try {
-                get().submit(() -> {
+                submitTracked(() -> {
                     TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
                     TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, new InputAvailability(true, true));
                 }).get();
             } catch (Exception e) {
                 logger.warn("Warmup failed", e);
+            }
+        }
+
+        public static <T> CompletableFuture<T> submitTracked(Supplier<T> supplier) {
+            Objects.requireNonNull(supplier);
+            noteActivity();
+            inFlight.incrementAndGet();
+            try {
+                return CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return supplier.get();
+                    } finally {
+                        noteActivity();
+                        inFlight.decrementAndGet();
+                    }
+                }, get());
+            } catch (Exception e) {
+                inFlight.decrementAndGet();
+                throw e;
+            }
+        }
+
+        public static CompletableFuture<Void> submitTracked(Runnable runnable) {
+            Objects.requireNonNull(runnable);
+            noteActivity();
+            inFlight.incrementAndGet();
+            try {
+                return CompletableFuture.runAsync(() -> {
+                    try {
+                        runnable.run();
+                    } finally {
+                        noteActivity();
+                        inFlight.decrementAndGet();
+                    }
+                }, get());
+            } catch (Exception e) {
+                inFlight.decrementAndGet();
+                throw e;
             }
         }
 
@@ -188,26 +256,28 @@ public class Iris {
                         scheduler.shutdown();
                         scheduler = null;
                     }
+                    idleCheckScheduled = false;
                     return;
                 }
 
                 final long idleNanos = System.nanoTime() - lastActivityTime;
                 final long idleSeconds = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
 
-                if (idleSeconds >= IDLE_TIMEOUT_SECONDS) {
+                if (idleSeconds >= IDLE_TIMEOUT_SECONDS && inFlight.get() == 0) {
                     logger.debug("Shutting down idle shader transform executor after " + idleSeconds + " seconds");
                     current.shutdown();
                     executor = null;
                     scheduler.shutdown();
                     scheduler = null;
+                    idleCheckScheduled = false;
 
                     // Clear transformation caches - no longer needed after loading
                     TransformPatcher.clearCache();
                     ShaderTransformer.clearCache();
                 } else {
-                    // Still active, schedule another check for remaining time plus buffer
-                    final long remainingSeconds = IDLE_TIMEOUT_SECONDS - idleSeconds + 1;
-                    scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, remainingSeconds, TimeUnit.SECONDS);
+                    // Still active (or in-flight), schedule another check.
+                    final long remainingSeconds = Math.max(1, IDLE_TIMEOUT_SECONDS - idleSeconds + 1);
+                    scheduleIdleCheck(remainingSeconds);
                 }
             }
         }

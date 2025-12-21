@@ -350,16 +350,17 @@ public class ShaderTransformer {
             }
 
             if (text.equals("}")) {
-                stringBuilder.deleteCharAt(stringBuilder.length() - 2);
-            tabHolder[0] = "";
+                if (stringBuilder.length() >= 2) {
+                    stringBuilder.deleteCharAt(stringBuilder.length() - 2);
+                }
+                tabHolder[0] = "";
             }
             stringBuilder.append(text.equals(";") ? " \n" + tabHolder[0] : " ");
         } else {
-            for(int i = 0; i < tree.getChildCount(); ++i) {
+            for (int i = 0; i < tree.getChildCount(); ++i) {
                 getFormattedShader(tree.getChild(i), stringBuilder, tabHolder);
             }
         }
-
     }
 
 }

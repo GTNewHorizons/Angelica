@@ -5,7 +5,7 @@ import net.coderbot.iris.pipeline.transform.PatchShaderType;
 
 public class Parameters implements JobParameters {
     public final Patch patch;
-    public PatchShaderType type; // may only be set by TransformPatcher
+    public PatchShaderType type;
     // WARNING: adding new fields requires updating hashCode and equals methods!
 
     // name of the shader, this should not be part of hash/equals
