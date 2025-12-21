@@ -48,7 +48,7 @@ public class TextureInfoCache {
 	}
 
 	public void onDeleteTexture(int id) {
-		if(id >= 0 && GLStateManager.isCachingEnabled()) cache.remove(id);
+		if(id >= 0) cache.remove(id);
 	}
 
 }
