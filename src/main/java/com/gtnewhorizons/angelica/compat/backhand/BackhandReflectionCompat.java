@@ -55,11 +55,11 @@ public class BackhandReflectionCompat {
         if (isLoaded && renderOffhandReturn != null) {
             try {
                 renderOffhandReturn.invokeExact(partialTicks);
-            } catch (Exception e) {
-                LOGGER.error("Failed to invoke Backhand renderOffhandReturn", e);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable t) {
+                LOGGER.error("Failed to invoke HoloInventory renderEvent", t);
                 isLoaded = false;
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -68,11 +68,11 @@ public class BackhandReflectionCompat {
         if (isLoaded && getOffhandItem != null) {
             try {
                 return (ItemStack) getOffhandItem.invokeExact(player);
-            } catch (Exception e) {
-                LOGGER.error("Failed to invoke Backhand getOffhandItem", e);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable t) {
+                LOGGER.error("Failed to invoke HoloInventory renderEvent", t);
                 isLoaded = false;
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
             }
         }
         return null;
