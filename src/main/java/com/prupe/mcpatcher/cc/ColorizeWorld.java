@@ -63,7 +63,7 @@ public class ColorizeWorld {
     static {
         try {
             reset();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

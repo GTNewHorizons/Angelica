@@ -219,7 +219,7 @@ public class FancyDial {
                 return instance;
             }
             instance.finish();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
@@ -410,7 +410,7 @@ public class FancyDial {
             }
             ImageIO.write(image, "png", path);
             logger.info("wrote %dx%d %s", image.getWidth(), image.getHeight(), path.getPath());
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
