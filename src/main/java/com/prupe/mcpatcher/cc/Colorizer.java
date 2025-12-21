@@ -35,7 +35,7 @@ public class Colorizer {
     static {
         try {
             reset();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CUSTOM_COLORS, 2) {

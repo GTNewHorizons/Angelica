@@ -129,7 +129,7 @@ public class ColorizeBlock {
     static {
         try {
             reset();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
