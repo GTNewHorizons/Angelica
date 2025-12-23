@@ -79,6 +79,9 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
         this.parent = parent;
 
+        // Prime the shader transform executor so reloads from this screen don't pay thread spin-up costs.
+        Iris.ShaderTransformExecutor.prepare();
+
         String irisName = Iris.MODNAME; // + " " + Iris.getVersion(); // TEMP
 
         if (Iris.INSTANCE.isDevelopmentEnvironment) {
