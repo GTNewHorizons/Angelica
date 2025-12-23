@@ -80,7 +80,7 @@ public class BlockEntry {
 
 		for (int index = statesStart; index < splitStates.length; index++) {
 			// Parse out one or more metadata ids
-			final String[] metaParts = splitStates[index].split(", ");
+			final String[] metaParts = splitStates[index].split(",");
 
             for (String metaPart : metaParts) {
                 try {
