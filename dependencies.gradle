@@ -109,12 +109,20 @@ dependencies {
     // Better Crashes
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
 
-    // Tests
-    testImplementation(platform('org.junit:junit-bom:5.11.4'))
-    testImplementation('org.junit.jupiter:junit-jupiter')
-    testImplementation("org.mockito:mockito-core:3.+")
-    testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
-    testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
+    afterEvaluate {
+        dependencies {
+            testImplementation(platform('org.junit:junit-bom:5.14.1'))
+            testImplementation('org.junit.jupiter:junit-jupiter')
+            testImplementation("org.mockito:mockito-core:3.+")
+            testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
+            // testAnnotationProcessor("com.github.GTNewHorizons:jabel-javac-plugin:1.0.2-GTNH") // Soon :tm:
+            testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
+
+            testImplementation('org.junit.platform:junit-platform-engine')
+            testImplementation('org.junit.platform:junit-platform-reporting')
+            testImplementation('org.junit.platform:junit-platform-launcher')
+        }
+    }
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 }
