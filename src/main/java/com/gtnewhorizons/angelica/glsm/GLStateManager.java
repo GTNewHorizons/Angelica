@@ -143,6 +143,40 @@ public class GLStateManager {
         return Thread.currentThread() == drawableGLHolder;
     }
 
+    /**
+     * Check if splash screen is complete.
+     * After splash, there's only one GL context and no locking is needed.
+     */
+    public static boolean isSplashComplete() {
+        return splashComplete;
+    }
+
+    /**
+     * Get the active texture unit for server-side state operations.
+     * If caching is enabled, returns cached value.
+     * If caching is disabled (SharedDrawable), queries actual GL state.
+     */
+    public static int getActiveTextureUnitForServerState() {
+        if (isCachingEnabled()) {
+            return getActiveTextureUnit();
+        }
+        // Query actual GL state for SharedDrawable context
+        return GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE) - GL13.GL_TEXTURE0;
+    }
+
+    /**
+     * Get the texture bound to the current texture unit for server-side state operations.
+     * If caching is enabled, returns cached value.
+     * If caching is disabled (SharedDrawable), queries actual GL state.
+     */
+    public static int getBoundTextureForServerState() {
+        if (isCachingEnabled()) {
+            return getBoundTexture();
+        }
+        // Query actual GL state for SharedDrawable context
+        return GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+    }
+
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
 
@@ -1341,21 +1375,21 @@ public class GLStateManager {
             return;
         }
 
+        if (!isCachingEnabled()) {
+            GL11.glBindTexture(target, texture);
+            return;
+        }
+
         final int activeUnit = GLStateManager.activeTextureUnit.getValue();
         final TextureBinding textureUnit = textures.getTextureUnitBindings(activeUnit);
         final int cachedBinding = textureUnit.getBinding();
-        final boolean bypassCache = shouldBypassCache();
-        final boolean cacheMatches = cachedBinding == texture;
-        final boolean willBind = bypassCache || !cacheMatches;
 
-        if (willBind) {
+        if (cachedBinding != texture) {
             if (!isRecordingDisplayList()) {
                 GL11.glBindTexture(target, texture);
             }
-            if (isCachingEnabled()) {
-                textureUnit.setBinding(texture);
-                TextureTracker.INSTANCE.onBindTexture(texture);
-            }
+            textureUnit.setBinding(texture);
+            TextureTracker.INSTANCE.onBindTexture(texture);
         }
     }
 
@@ -1367,7 +1401,7 @@ public class GLStateManager {
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
-            RenderSystem.textureImage2D(getBoundTexture(), target, level, internalformat, width, height, border, format, type, pixels);
+            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
         } else {
             // Non-main thread or proxy texture - use direct GL call
             GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -1402,7 +1436,7 @@ public class GLStateManager {
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : null);
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture - keeps GL binding state unchanged
-            RenderSystem.textureImage2D(getBoundTexture(), target, level, internalformat, width, height, border, format, type, pixels);
+            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
         } else {
             // Non-main thread or proxy texture - use direct GL call
             GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
@@ -2538,7 +2572,7 @@ public class GLStateManager {
             GL11.glTexParameter(target, pname, params);
             return;
         }
-        if(!updateTexParameteriCache(target, getBoundTexture(), pname, params.get(0))) return;
+        if(!updateTexParameteriCache(target, getBoundTextureForServerState(), pname, params.get(0))) return;
 
         GL11.glTexParameter(target, pname, params);
     }
@@ -2548,7 +2582,7 @@ public class GLStateManager {
             GL11.glTexParameter(target, pname, params);
             return;
         }
-        if(!updateTexParameterfCache(target, getBoundTexture(), pname, params.get(0))) return;
+        if(!updateTexParameterfCache(target, getBoundTextureForServerState(), pname, params.get(0))) return;
 
         GL11.glTexParameter(target, pname, params);
     }
@@ -2566,7 +2600,7 @@ public class GLStateManager {
             }
             return;
         }
-        if (!updateTexParameteriCache(target, getBoundTexture(), pname, param)) return;
+        if (!updateTexParameteriCache(target, getBoundTextureForServerState(), pname, param)) return;
 
         // Skip actual GL call during display list recording (state tracking only)
         if (!isRecordingDisplayList()) {
@@ -2609,7 +2643,7 @@ public class GLStateManager {
             }
             return;
         }
-        if (!updateTexParameterfCache(getActiveTextureUnit(), target, pname, param)) return;
+        if (!updateTexParameterfCache(target, getBoundTextureForServerState(), pname, param)) return;
 
         // Skip actual GL call during display list recording (state tracking only)
         if (!isRecordingDisplayList()) {
@@ -2649,19 +2683,20 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexParameteri(target, pname);
         }
-        return getTexParameterOrDefault(getBoundTexture(), pname, () -> GL11.glGetTexParameteri(target, pname));
+        return getTexParameterOrDefault(getBoundTextureForServerState(), pname, () -> GL11.glGetTexParameteri(target, pname));
     }
 
     public static float glGetTexParameterf(int target, int pname) {
         if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexParameterf(target, pname);
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+        final int boundTexture = getBoundTextureForServerState();
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(boundTexture);
         if(info == null) {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexParameterf called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", getBoundTexture()));
+                    "Cannot query OpenGL state during compilation!", boundTexture));
             }
             return GL11.glGetTexParameterf(target, pname);
         }
@@ -2673,7 +2708,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexParameterf called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
+                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), boundTexture));
                 }
                 yield GL11.glGetTexParameterf(target, pname);
             }
