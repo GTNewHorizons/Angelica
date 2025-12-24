@@ -177,6 +177,18 @@ public class GLStateManager {
         return GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
     }
 
+    /**
+     * Get the texture bound to a specific texture unit for server-side state operations.
+     * If caching is enabled, returns cached value.
+     * If caching is disabled (SharedDrawable), returns -1 to force operations to proceed
+     */
+    public static int getBoundTextureForServerState(int unit) {
+        if (isCachingEnabled()) {
+            return getBoundTexture(unit);
+        }
+        return -1;
+    }
+
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
 
@@ -804,7 +816,7 @@ public class GLStateManager {
             case GL11.GL_LIST_MODE -> DisplayListManager.getListMode();
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
-            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTexture();
+            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
@@ -1354,11 +1366,11 @@ public class GLStateManager {
         }
     }
 
-    public static int getBoundTexture() {
+    private static int getBoundTexture() {
         return getBoundTexture(activeTextureUnit.getValue());
     }
 
-    public static int getBoundTexture(int unit) {
+    private static int getBoundTexture(int unit) {
         return textures.getTextureUnitBindings(unit).getBinding();
     }
 
@@ -2719,12 +2731,12 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return GL11.glGetTexLevelParameteri(target, level, pname);
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTexture());
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
         if (info == null) {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexLevelParameteri called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", getBoundTexture()));
+                    "Cannot query OpenGL state during compilation!", getBoundTextureForServerState()));
             }
             return GL11.glGetTexLevelParameteri(target, level, pname);
         }
@@ -2736,7 +2748,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexLevelParameteri called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTexture()));
+                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), getBoundTextureForServerState()));
                 }
                 yield GL11.glGetTexLevelParameteri(target, level, pname);
             }
@@ -3136,7 +3148,7 @@ public class GLStateManager {
         }
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture - keeps GL binding state unchanged
-            RenderSystem.textureSubImage2D(getBoundTexture(), target, level, xoffset, yoffset, width, height, format, type, pixels);
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
         } else {
             // Non-main thread or proxy texture - use direct GL call
             GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -3149,7 +3161,7 @@ public class GLStateManager {
         }
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
-            RenderSystem.textureSubImage2D(getBoundTexture(), target, level, xoffset, yoffset, width, height, format, type, pixels);
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
         } else {
             // Non-main thread or proxy texture - use direct GL call
             GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);

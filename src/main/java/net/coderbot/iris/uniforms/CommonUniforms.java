@@ -72,7 +72,7 @@ public final class CommonUniforms {
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
 		//       but we do. How will custom uniforms depending on atlasSize work?
 		uniforms.uniform2i("atlasSize", () -> {
-			final int glId = GLStateManager.getBoundTexture();
+			final int glId = GLStateManager.getBoundTextureForServerState();
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
@@ -84,7 +84,7 @@ public final class CommonUniforms {
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
-			final int glId = GLStateManager.getBoundTexture();
+			final int glId = GLStateManager.getBoundTextureForServerState();
 
 			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());

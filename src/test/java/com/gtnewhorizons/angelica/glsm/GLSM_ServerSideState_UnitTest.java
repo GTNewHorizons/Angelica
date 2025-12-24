@@ -282,7 +282,7 @@ public class GLSM_ServerSideState_UnitTest {
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, initialB_GLSM, "texIdB initial GLSM should be LINEAR_MIPMAP_LINEAR");
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, initialB_GL, "texIdB initial GL should be LINEAR_MIPMAP_LINEAR");
 
-            assertEquals(texIdB, GLStateManager.getBoundTexture(), "Main thread should have texIdB bound");
+            assertEquals(texIdB, GLStateManager.getBoundTextureForServerState(), "Main thread should have texIdB bound");
 
             // SharedDrawable: bind texIdA and change its MIN_FILTER to NEAREST
             // Main thread has texIdB bound, but SharedDrawable should correctly update texIdA's params, not texIdB's
@@ -330,11 +330,11 @@ public class GLSM_ServerSideState_UnitTest {
 
         try {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId1);
-            assertEquals(texId1, GLStateManager.getBoundTexture(), "Main thread cache should show texId1 bound");
+            assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should show texId1 bound");
 
             executeOnSharedDrawable(() -> GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId2));
 
-            assertEquals(texId1, GLStateManager.getBoundTexture(), "Main thread cache should still show texId1 (client-side state is per-context)");
+            assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should still show texId1 (client-side state is per-context)");
 
             int actualBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             assertEquals(texId1, actualBinding, "Main thread actual GL binding should still be texId1");

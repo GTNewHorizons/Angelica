@@ -21,7 +21,7 @@ public class MixinRenderGlobal_DestroyBlock {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V")
     )
     private void iris$beginDrawBlockDamageTexture(Tessellator tessellator, EntityLivingBase entity, float partialTicks, CallbackInfo ci, @Share("lastMin") LocalIntRef lastMin, @Share("lastMag") LocalIntRef lastMag) {
-        TextureInfo info = TextureInfoCache.INSTANCE.getInfo(GLStateManager.getBoundTexture());
+        TextureInfo info = TextureInfoCache.INSTANCE.getInfo(GLStateManager.getBoundTextureForServerState());
         lastMin.set(info.getMinFilter());
         lastMag.set(info.getMagFilter());
         GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
