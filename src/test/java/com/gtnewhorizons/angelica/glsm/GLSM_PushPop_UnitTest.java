@@ -17,7 +17,7 @@ import org.lwjgl.opengl.GL32;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
@@ -470,7 +470,11 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
-        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding Deleted - Unit 1");
+        // After pop, binding a deleted texture is driver-specific:
+        // - Mesa: calls bindTexture_no_error which recreates the texture, returns tex1
+        // - Nvidia: refuses to bind deleted texture, returns 0
+        int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        assertTrue(binding == 0 || binding == tex1, "Texture Binding after pop with deleted texture - Unit 1: expected 0 or " + tex1 + ", got " + binding);
         GLStateManager.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
