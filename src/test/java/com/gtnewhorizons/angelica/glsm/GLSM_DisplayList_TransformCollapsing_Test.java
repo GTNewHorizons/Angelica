@@ -16,18 +16,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Tests for transform collapsing optimization in display lists.
- *
- * <p>The optimization collapses consecutive MODELVIEW transforms into single MultMatrix
- * commands, emitting them at "barriers" (draws, CallList, exit). These tests verify:</p>
- * <ul>
- *   <li>Consecutive transforms collapse to single MultMatrix</li>
- *   <li>Matrix state is correct after execution</li>
- *   <li>Push/Pop maintain proper stack semantics</li>
- *   <li>Barriers (draws, CallList) correctly flush pending transforms</li>
- * </ul>
- */
+/** Tests for transform collapsing optimization in display lists. */
 @ExtendWith(AngelicaExtension.class)
 class GLSM_DisplayList_TransformCollapsing_Test {
 
@@ -268,9 +257,14 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glEndList();
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        Int2IntMap counts = compiled.getCommandCounts();
 
-        int multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
+        // If compiled is null, the list is empty (correct - no commands needed)
+        // If compiled exists, verify no MultMatrix commands
+        int multMatrixCount = 0;
+        if (compiled != null) {
+            Int2IntMap counts = compiled.getCommandCounts();
+            multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
+        }
 
         assertEquals(0, multMatrixCount,
             "Identity-equivalent transforms should not emit MultMatrix");
@@ -503,7 +497,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         GLStateManager.glEndList();
 
-        // Verify the LoadMatrixCmd is present
+        // Verify the LOAD_MATRIX command is present
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled, "Display list should be compiled");
 
@@ -644,5 +638,321 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         assertEquals(20.0f, actualBuf.get(13), 0.0001f, "Y should be 20.0 (from second LoadMatrix)");
 
         GLStateManager.glPopMatrix();
+    }
+
+    // ==================== Immediate Mode with Transforms Tests ====================
+
+    @Test
+    void testImmediateModeDrawCommandStructure() {
+        // Verifies MultMatrix emitted before DrawRange, push/pop ordering correct
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        GLStateManager.glPushMatrix();
+        GLStateManager.glScalef(0.25f, 0.25f, 0.25f);
+
+        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(2.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(2.0f, 2.0f, 0.0f);
+        GLStateManager.glVertex3f(0.0f, 2.0f, 0.0f);
+        GLStateManager.glEnd();
+
+        GLStateManager.glPopMatrix();
+        GLStateManager.glEndList();
+
+        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+        assertNotNull(compiled);
+
+        IntList opcodes = compiled.getCommandOpcodes();
+        int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
+        int popIndex = opcodes.indexOf(GLCommand.POP_MATRIX);
+        int multMatrixIndex = opcodes.indexOf(GLCommand.MULT_MATRIX);
+        int drawRangeIndex = opcodes.indexOf(GLCommand.DRAW_RANGE);
+
+        assertTrue(pushIndex < multMatrixIndex, "Push before MultMatrix");
+        assertTrue(multMatrixIndex < drawRangeIndex, "MultMatrix before DrawRange");
+        assertTrue(drawRangeIndex < popIndex, "DrawRange before Pop");
+    }
+
+    @Test
+    void testImmediateModeDrawMatrixValues() {
+        // Verifies matrix values correct after playback with translate + scale
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        GLStateManager.glTranslatef(100.0f, 50.0f, 0.0f);
+        GLStateManager.glScalef(0.5f, 0.5f, 1.0f);
+
+        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(16.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(16.0f, 16.0f, 0.0f);
+        GLStateManager.glVertex3f(0.0f, 16.0f, 0.0f);
+        GLStateManager.glEnd();
+
+        GLStateManager.glEndList();
+
+        // Verify transforms collapsed
+        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+        Int2IntMap counts = compiled.getCommandCounts();
+        assertEquals(1, counts.getOrDefault(GLCommand.MULT_MATRIX, 0), "Translate+Scale -> 1 MultMatrix");
+        assertEquals(0, counts.getOrDefault(GLCommand.TRANSLATE, 0), "No individual Translate");
+        assertEquals(0, counts.getOrDefault(GLCommand.SCALE, 0), "No individual Scale");
+
+        // Verify matrix values after playback
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+
+        assertEquals(0.5f, matrixBuf.get(0), 0.0001f, "Scale X");
+        assertEquals(0.5f, matrixBuf.get(5), 0.0001f, "Scale Y");
+        assertEquals(1.0f, matrixBuf.get(10), 0.0001f, "Scale Z");
+        assertEquals(100.0f, matrixBuf.get(12), 0.0001f, "Translate X");
+        assertEquals(50.0f, matrixBuf.get(13), 0.0001f, "Translate Y");
+
+        GLStateManager.glPopMatrix();
+    }
+
+    // ==================== Cross-Mode Transform Collapsing Tests ====================
+
+    @Test
+    void testTransformsAcrossMatrixModeSwitch() {
+        // Transforms must not leak across matrix mode boundaries
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+
+        // Execute directly via GL to get expected results
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glTranslatef(1.0f, 0.0f, 0.0f);
+        GL11.glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glScalef(2.0f, 2.0f, 2.0f);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glTranslatef(3.0f, 0.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+
+        FloatBuffer expectedMV = BufferUtils.createFloatBuffer(16);
+        FloatBuffer expectedProj = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedMV);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, expectedProj);
+
+        // Reset and test via display list
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+        GLStateManager.glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glTranslatef(3.0f, 0.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glEndList();
+
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualMV = BufferUtils.createFloatBuffer(16);
+        FloatBuffer actualProj = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualMV);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, actualProj);
+
+        for (int i = 0; i < 16; i++) {
+            assertEquals(expectedMV.get(i), actualMV.get(i), 0.0001f, "MODELVIEW[" + i + "]");
+            assertEquals(expectedProj.get(i), actualProj.get(i), 0.0001f, "PROJECTION[" + i + "]");
+        }
+
+        // Cleanup
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+    }
+
+    @Test
+    void testBarrierCommandsBetweenScaleAndDraw() {
+        // State commands between transform and draw must not break transform capture
+        for (int mode : new int[]{GL11.GL_COMPILE, GL11.GL_COMPILE_AND_EXECUTE}) {
+            if (testList > 0) {
+                GLStateManager.glDeleteLists(testList, 1);
+            }
+
+            testList = GL11.glGenLists(1);
+            GLStateManager.glNewList(testList, mode);
+
+            GLStateManager.glScalef(0.5f, 0.5f, 1.0f);
+            // Barrier commands between scale and draw
+            GLStateManager.glDepthMask(true);
+            GLStateManager.disableLighting();
+            GLStateManager.enableTexture();
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+            GLStateManager.glBegin(GL11.GL_QUADS);
+            GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+            GLStateManager.glVertex3f(1.0f, 0.0f, 0.0f);
+            GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
+            GLStateManager.glVertex3f(0.0f, 1.0f, 0.0f);
+            GLStateManager.glEnd();
+
+            GLStateManager.glEndList();
+
+            CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+            assertNotNull(compiled);
+
+            Int2IntMap counts = compiled.getCommandCounts();
+            assertEquals(1, counts.getOrDefault(GLCommand.MULT_MATRIX, 0), "1 MultMatrix for mode " + mode);
+            assertEquals(1, counts.getOrDefault(GLCommand.DRAW_RANGE, 0), "1 DrawRange for mode " + mode);
+
+            IntList opcodes = compiled.getCommandOpcodes();
+            assertTrue(opcodes.indexOf(GLCommand.MULT_MATRIX) < opcodes.indexOf(GLCommand.DRAW_RANGE),
+                "MultMatrix before DrawRange for mode " + mode);
+
+            GLStateManager.glPushMatrix();
+            GLStateManager.glLoadIdentity();
+            GLStateManager.glCallList(testList);
+
+            FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
+            GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+            assertEquals(0.5f, matrixBuf.get(0), 0.0001f, "Scale X for mode " + mode);
+            assertEquals(0.5f, matrixBuf.get(5), 0.0001f, "Scale Y for mode " + mode);
+
+            GLStateManager.glPopMatrix();
+        }
+    }
+
+    // ==================== Optimizer Push/Pop Reset Tests ====================
+
+    @Test
+    void testOptimizerResetsAfterPushMatrix() {
+        // Optimizer must reset after PUSH_MATRIX to avoid spurious inverse transform emission
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        // T1: transforms before push (collapsed)
+        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
+
+        GLStateManager.glPushMatrix();
+
+        // T2: transforms after push (collapsed separately)
+        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);
+        GLStateManager.glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+
+        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(1.0f, 0.0f, 0.0f);
+        GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
+        GLStateManager.glVertex3f(0.0f, 1.0f, 0.0f);
+        GLStateManager.glEnd();
+
+        GLStateManager.glPopMatrix();
+        GLStateManager.glEndList();
+
+        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+        assertNotNull(compiled);
+
+        Int2IntMap counts = compiled.getCommandCounts();
+        IntList opcodes = compiled.getCommandOpcodes();
+
+        // Should have exactly 2 MULT_MATRIX (T1 before push, T2 after push)
+        // Bug would produce 3 (T1, T2, spurious T1^-1)
+        assertEquals(2, counts.getOrDefault(GLCommand.MULT_MATRIX, 0),
+            "2 MULT_MATRIX expected (T1 before push, T2 after push)");
+
+        // Verify ordering
+        int firstMultMatrix = opcodes.indexOf(GLCommand.MULT_MATRIX);
+        int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
+        int drawIndex = opcodes.indexOf(GLCommand.DRAW_RANGE);
+        int popIndex = opcodes.indexOf(GLCommand.POP_MATRIX);
+
+        assertTrue(firstMultMatrix < pushIndex, "T1 before PUSH");
+        assertTrue(pushIndex < drawIndex, "PUSH before DRAW");
+        assertTrue(drawIndex < popIndex, "DRAW before POP");
+
+        // Verify final matrix after pop = T1
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+
+        assertEquals(2.0f, matrixBuf.get(0), 0.0001f, "Scale X after pop");
+        assertEquals(2.0f, matrixBuf.get(5), 0.0001f, "Scale Y after pop");
+        assertEquals(5.0f, matrixBuf.get(12), 0.0001f, "Translate X after pop");
+
+        GLStateManager.glPopMatrix();
+    }
+
+    @Test
+    void testTransformCollapsingEquivalence() {
+        // Core equivalence test: verify that collapsed transforms produce
+        // the exact same result as executing transforms sequentially.
+        //
+        // This tests the fundamental invariant of the optimization.
+        // Use axis-aligned rotations to minimize float/double precision differences.
+
+        // Transform sequence: translate, rotate around Y, scale, rotate around X, translate
+        final float tx1 = 5.0f, ty1 = 3.0f, tz1 = -2.0f;
+        final float angle1 = 45.0f;
+        final float sx = 1.5f, sy = 0.8f, sz = 2.0f;
+        final float angle2 = 30.0f;
+        final float tx2 = -1.0f, ty2 = 4.0f, tz2 = 0.5f;
+
+        // Execute directly via GL
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GL11.glTranslatef(tx1, ty1, tz1);
+        GL11.glRotatef(angle1, 0.0f, 1.0f, 0.0f);  // Y-axis rotation
+        GL11.glScalef(sx, sy, sz);
+        GL11.glRotatef(angle2, 1.0f, 0.0f, 0.0f);  // X-axis rotation
+        GL11.glTranslatef(tx2, ty2, tz2);
+
+        FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedBuf);
+
+        // Reset and execute via display list
+        GLStateManager.glLoadIdentity();
+
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+        GLStateManager.glTranslatef(tx1, ty1, tz1);
+        GLStateManager.glRotatef(angle1, 0.0f, 1.0f, 0.0f);
+        GLStateManager.glScalef(sx, sy, sz);
+        GLStateManager.glRotatef(angle2, 1.0f, 0.0f, 0.0f);
+        GLStateManager.glTranslatef(tx2, ty2, tz2);
+        GLStateManager.glEndList();
+
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+
+        // Verify equivalence
+        for (int i = 0; i < 16; i++) {
+            assertEquals(expectedBuf.get(i), actualBuf.get(i), 0.0001f,
+                String.format("Matrix[%d]: collapsed transform must equal sequential execution", i));
+        }
+
+        GLStateManager.glLoadIdentity();
     }
 }

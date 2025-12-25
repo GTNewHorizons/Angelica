@@ -19,92 +19,53 @@ public final class CommandBufferProcessor {
 
     public static void processCommandForOptimization(int opcode, CommandBuffer raw, BufferTransformOptimizer opt, CommandBuffer out) {
         switch (opcode) {
-            // === MODELVIEW matrix commands - accumulate instead of copying ===
-            case GLCommand.TRANSLATE -> {
-                final int mode = raw.readInt();
-                final double x = raw.readDouble();
-                final double y = raw.readDouble();
-                final double z = raw.readDouble();
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.translate(x, y, z);
-                } else {
-                    out.writeTranslate(mode, x, y, z);
-                }
-            }
-            case GLCommand.ROTATE -> {
-                final int mode = raw.readInt();
-                final double angle = raw.readDouble();
-                final double x = raw.readDouble();
-                final double y = raw.readDouble();
-                final double z = raw.readDouble();
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.rotate(angle, x, y, z);
-                } else {
-                    out.writeRotate(mode, angle, x, y, z);
-                }
-            }
-            case GLCommand.SCALE -> {
-                final int mode = raw.readInt();
-                final double x = raw.readDouble();
-                final double y = raw.readDouble();
-                final double z = raw.readDouble();
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.scale(x, y, z);
-                } else {
-                    out.writeScale(mode, x, y, z);
-                }
-            }
+            // === MultMatrix - already collapsed transforms from flushMatrix() ===
             case GLCommand.MULT_MATRIX -> {
-                final int mode = raw.readInt();
                 raw.readMatrix4f(tempMatrix);
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.multMatrix(tempMatrix);
-                } else {
-                    out.writeMultMatrix(mode, tempMatrix);
-                }
-            }
-            case GLCommand.LOAD_IDENTITY -> {
-                final int mode = raw.readInt();
-                if (mode == GL11.GL_MODELVIEW) {
-                    if (opt.checkAndClearAbsoluteMatrix()) {
-                        out.writeLoadIdentity(mode);
-                    }
-                    opt.loadIdentity();
-                } else {
-                    out.writeLoadIdentity(mode);
-                }
-            }
-            case GLCommand.LOAD_MATRIX -> {
-                final int mode = raw.readInt();
-                raw.readMatrix4f(tempMatrix);
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.emitPendingTransform(out);
-                    out.writeLoadMatrix(mode, tempMatrix);
-                    opt.loadIdentity();
-                    opt.markAbsoluteMatrix();
-                } else {
-                    out.writeLoadMatrix(mode, tempMatrix);
-                }
+                opt.multMatrix(tempMatrix);          // accumulated = accumulated * tempMatrix
+                out.writeMultMatrix(tempMatrix);     // Copy to output
+                opt.markLastEmittedAsAccumulated();  // lastEmitted = accumulated (what GL now has)
             }
 
-            // === Stack operations - update optimizer state and copy ===
+            // === Load commands - flush pending, emit, reset accumulator ===
+            case GLCommand.LOAD_IDENTITY -> {
+                opt.emitPendingTransform(out);     // Emit any pending transforms first
+                out.writeLoadIdentity();           // Always emit LoadIdentity
+                opt.loadIdentity();                // Reset accumulated to identity
+                opt.resetLastEmitted();            // Reset lastEmitted to identity
+                opt.checkAndClearAbsoluteMatrix(); // Clear the flag if set
+            }
+            case GLCommand.LOAD_MATRIX -> {
+                raw.readMatrix4f(tempMatrix);
+                opt.emitPendingTransform(out);
+                out.writeLoadMatrix(tempMatrix);
+                opt.loadIdentity();
+                opt.resetLastEmitted();  // Reset lastEmitted to identity
+                opt.markAbsoluteMatrix();
+            }
+
+            // === Stack operations - flush/update optimizer state and copy ===
             case GLCommand.PUSH_MATRIX -> {
-                final int mode = raw.readInt();
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.emitPendingTransform(out);
-                    opt.push();
-                }
-                out.writePushMatrix(mode);
+                opt.emitPendingTransform(out);
+                opt.push();
+                // Reset accumulated/lastEmitted to identity after push.
+                opt.loadIdentity();
+                opt.resetLastEmitted();
+                out.writePushMatrix();
             }
             case GLCommand.POP_MATRIX -> {
-                final int mode = raw.readInt();
-                if (mode == GL11.GL_MODELVIEW) {
-                    opt.pop();
-                }
-                out.writePopMatrix(mode);
+                opt.pop();
+                out.writePopMatrix();
             }
 
             // === Barriers - emit pending transform before copying ===
+            case GLCommand.MATRIX_MODE -> {
+                final int mode = raw.readInt();
+                opt.emitPendingTransform(out);  // Pending transforms apply to OLD mode
+                out.writeMatrixMode(mode);
+                opt.loadIdentity();             // Reset accumulated for new mode
+                opt.resetLastEmitted();         // Reset lastEmitted for new mode
+            }
             case GLCommand.CALL_LIST -> {
                 final int listId = raw.readInt();
                 opt.emitPendingTransform(out);
@@ -150,9 +111,9 @@ public final class CommandBufferProcessor {
             case GLCommand.USE_PROGRAM -> out.writeUseProgram(raw.readInt());
             case GLCommand.PUSH_ATTRIB -> out.writePushAttrib(raw.readInt());
             case GLCommand.POP_ATTRIB -> { raw.readInt(); out.writePopAttrib(); }
-            case GLCommand.LOAD_IDENTITY -> out.writeLoadIdentity(raw.readInt());
-            case GLCommand.PUSH_MATRIX -> out.writePushMatrix(raw.readInt());
-            case GLCommand.POP_MATRIX -> out.writePopMatrix(raw.readInt());
+            case GLCommand.LOAD_IDENTITY -> out.writeLoadIdentity();
+            case GLCommand.PUSH_MATRIX -> out.writePushMatrix();
+            case GLCommand.POP_MATRIX -> out.writePopMatrix();
             case GLCommand.STENCIL_MASK -> out.writeStencilMask(raw.readInt());
             case GLCommand.DEPTH_MASK -> out.writeDepthMask(raw.readInt() != 0);
             case GLCommand.FRONT_FACE -> out.writeFrontFace(raw.readInt());
@@ -202,15 +163,15 @@ public final class CommandBufferProcessor {
             case GLCommand.TEX_PARAMETERF -> out.writeTexParameterf(raw.readInt(), raw.readInt(), raw.readFloat());
 
             // Double commands
-            case GLCommand.TRANSLATE -> out.writeTranslate(raw.readInt(), raw.readDouble(), raw.readDouble(), raw.readDouble());
-            case GLCommand.ROTATE -> out.writeRotate(raw.readInt(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
-            case GLCommand.SCALE -> out.writeScale(raw.readInt(), raw.readDouble(), raw.readDouble(), raw.readDouble());
+            case GLCommand.TRANSLATE -> out.writeTranslate(raw.readDouble(), raw.readDouble(), raw.readDouble());
+            case GLCommand.ROTATE -> out.writeRotate(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
+            case GLCommand.SCALE -> out.writeScale(raw.readDouble(), raw.readDouble(), raw.readDouble());
             case GLCommand.ORTHO -> out.writeOrtho(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
             case GLCommand.FRUSTUM -> out.writeFrustum(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
 
             // Matrix commands
-            case GLCommand.MULT_MATRIX -> { int mode = raw.readInt(); out.writeMultMatrix(mode, raw.readMatrix4f(tempMatrix)); }
-            case GLCommand.LOAD_MATRIX -> { int mode = raw.readInt(); out.writeLoadMatrix(mode, raw.readMatrix4f(tempMatrix)); }
+            case GLCommand.MULT_MATRIX -> { out.writeMultMatrix(raw.readMatrix4f(tempMatrix)); }
+            case GLCommand.LOAD_MATRIX -> { out.writeLoadMatrix(raw.readMatrix4f(tempMatrix)); }
 
             // FloatBuffer commands (inline 4 floats max)
             case GLCommand.FOG -> {
@@ -265,29 +226,23 @@ public final class CommandBufferProcessor {
 
     /**
      * Lightweight transform optimizer for buffer-to-buffer processing.
-     * Tracks accumulated MODELVIEW transform and emits MultMatrix commands when needed.
+     * Tracks accumulated transform (mode-agnostic) and emits MultMatrix commands when needed.
+     *
+     * <p>This optimizer processes raw transform commands (TRANSLATE, ROTATE, SCALE) and
+     * collapses them into single MultMatrix commands at barriers. It must stay synchronized
+     * with the relativeTransform tracking in DisplayListManager - both systems must reset
+     * at the same barriers (MatrixMode, LoadIdentity, LoadMatrix, Push/Pop).</p>
      */
     public static class BufferTransformOptimizer {
         private final Matrix4f accumulated = new Matrix4f();
         private final Matrix4f lastEmitted = new Matrix4f();
+        private final Matrix4f delta = new Matrix4f();  // Reused for delta computation
         private final Deque<Matrix4f> stack = new ArrayDeque<>();
         private boolean absoluteMatrixFlag = false;
 
         public BufferTransformOptimizer() {
             accumulated.identity();
             lastEmitted.identity();
-        }
-
-        public void translate(double x, double y, double z) {
-            accumulated.translate((float) x, (float) y, (float) z);
-        }
-
-        public void rotate(double angle, double x, double y, double z) {
-            accumulated.rotate((float) Math.toRadians(angle), (float) x, (float) y, (float) z);
-        }
-
-        public void scale(double x, double y, double z) {
-            accumulated.scale((float) x, (float) y, (float) z);
         }
 
         public void multMatrix(Matrix4f m) {
@@ -326,6 +281,18 @@ public final class CommandBufferProcessor {
             return was;
         }
 
+        public void resetLastEmitted() {
+            lastEmitted.identity();
+        }
+
+        public void setLastEmitted(Matrix4f m) {
+            lastEmitted.set(m);
+        }
+
+        public void markLastEmittedAsAccumulated() {
+            lastEmitted.set(accumulated);
+        }
+
         public void emitPendingTransform(CommandBuffer out) {
             if (!accumulated.equals(lastEmitted)) {
                 emitTransformTo(out, accumulated);
@@ -338,10 +305,10 @@ public final class CommandBufferProcessor {
             }
 
             if (DisplayListManager.isIdentity(lastEmitted)) {
-                out.writeMultMatrix(GL11.GL_MODELVIEW, target);
+                out.writeMultMatrix(target);
             } else {
-                final Matrix4f delta = new Matrix4f(lastEmitted).invert().mul(target);
-                out.writeMultMatrix(GL11.GL_MODELVIEW, delta);
+                delta.set(lastEmitted).invert().mul(target);
+                out.writeMultMatrix(delta);
             }
             lastEmitted.set(target);
         }

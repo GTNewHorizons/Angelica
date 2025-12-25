@@ -132,43 +132,28 @@ public class CommandRecorder {
         commandCount++;
     }
 
-    public void recordLoadIdentity(int matrixMode) {
-        buffer.writeLoadIdentity(matrixMode);
+    public void recordLoadIdentity() {
+        buffer.writeLoadIdentity();
         commandCount++;
     }
 
-    public void recordPushMatrix(int matrixMode) {
-        buffer.writePushMatrix(matrixMode);
+    public void recordPushMatrix() {
+        buffer.writePushMatrix();
         commandCount++;
     }
 
-    public void recordPopMatrix(int matrixMode) {
-        buffer.writePopMatrix(matrixMode);
+    public void recordPopMatrix() {
+        buffer.writePopMatrix();
         commandCount++;
     }
 
-    public void recordTranslate(int matrixMode, double x, double y, double z) {
-        buffer.writeTranslate(matrixMode, x, y, z);
+    public void recordMultMatrix(Matrix4f matrix) {
+        buffer.writeMultMatrix(matrix);
         commandCount++;
     }
 
-    public void recordRotate(int matrixMode, double angle, double x, double y, double z) {
-        buffer.writeRotate(matrixMode, angle, x, y, z);
-        commandCount++;
-    }
-
-    public void recordScale(int matrixMode, double x, double y, double z) {
-        buffer.writeScale(matrixMode, x, y, z);
-        commandCount++;
-    }
-
-    public void recordMultMatrix(int matrixMode, Matrix4f matrix) {
-        buffer.writeMultMatrix(matrixMode, matrix);
-        commandCount++;
-    }
-
-    public void recordLoadMatrix(int matrixMode, Matrix4f matrix) {
-        buffer.writeLoadMatrix(matrixMode, matrix);
+    public void recordLoadMatrix(Matrix4f matrix) {
+        buffer.writeLoadMatrix(matrix);
         commandCount++;
     }
 

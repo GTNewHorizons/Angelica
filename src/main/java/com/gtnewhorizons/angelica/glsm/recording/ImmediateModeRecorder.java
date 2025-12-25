@@ -164,6 +164,31 @@ public class ImmediateModeRecorder {
             throw new IllegalStateException("glEnd called without glBegin");
         }
 
+        // Capture last vertex attributes BEFORE clearing currentVertices
+        // These will be used to restore GL current state after VBO playback
+        float lastColorR = 1.0f, lastColorG = 1.0f, lastColorB = 1.0f, lastColorA = 1.0f;
+        float lastNormalX = 0.0f, lastNormalY = 0.0f, lastNormalZ = 1.0f;
+        float lastTexS = 0.0f, lastTexT = 0.0f;
+
+        if (!currentVertices.isEmpty()) {
+            ImmediateVertex last = currentVertices.get(currentVertices.size() - 1);
+
+            // Unpack color from ABGR format
+            lastColorR = (last.color & 0xFF) / 255.0f;
+            lastColorG = ((last.color >> 8) & 0xFF) / 255.0f;
+            lastColorB = ((last.color >> 16) & 0xFF) / 255.0f;
+            lastColorA = ((last.color >> 24) & 0xFF) / 255.0f;
+
+            // Unpack normal from NormI8 format (signed bytes packed into int)
+            lastNormalX = NormI8.unpackX(last.normal);
+            lastNormalY = NormI8.unpackY(last.normal);
+            lastNormalZ = NormI8.unpackZ(last.normal);
+
+            // Texture coords are stored directly as floats
+            lastTexS = last.texU;
+            lastTexT = last.texV;
+        }
+
         // Convert this primitive's vertices to quads or lines
         convertPrimitiveToQuads();
         this.currentVertices.clear();
@@ -188,7 +213,10 @@ public class ImmediateModeRecorder {
         quads.clear();
         lineVertices.clear();
 
-        return new Result(resultQuads, resultLines, flags);
+        return new Result(resultQuads, resultLines, flags,
+            lastColorR, lastColorG, lastColorB, lastColorA,
+            lastNormalX, lastNormalY, lastNormalZ,
+            lastTexS, lastTexT);
     }
 
     /**
@@ -520,14 +548,28 @@ public class ImmediateModeRecorder {
         hasNormal = false;
         // Note: current texcoord/normal values are NOT reset - they persist per OpenGL spec
 
-        return new Result(resultQuads, resultLines, flags);
+        // For getQuadsAndClear, we don't have last vertex data (it was cleared in end())
+        // Use default values - this method is for edge cases/cleanup anyway
+        return new Result(resultQuads, resultLines, flags,
+            1.0f, 1.0f, 1.0f, 1.0f,  // Default white color
+            0.0f, 0.0f, 1.0f,        // Default +Z normal
+            0.0f, 0.0f);             // Default (0,0) texcoord
     }
 
     /**
-     * Result of immediate mode recording: quads, lines, and their attribute flags.
+     * Result of immediate mode recording: quads, lines, attribute flags, and last vertex state.
+     * The last vertex state is used to restore GL_CURRENT_COLOR etc. after VBO playback.
      */
     @com.github.bsideup.jabel.Desugar
-    public record Result(List<ModelQuadViewMutable> quads, List<LineVertex> lines, CapturingTessellator.Flags flags) {}
+    public record Result(
+        List<ModelQuadViewMutable> quads,
+        List<LineVertex> lines,
+        CapturingTessellator.Flags flags,
+        // Last vertex attributes for restoration after VBO draw
+        float lastColorR, float lastColorG, float lastColorB, float lastColorA,
+        float lastNormalX, float lastNormalY, float lastNormalZ,
+        float lastTexCoordS, float lastTexCoordT
+    ) {}
 
     /**
      * Reset all state including current texcoord/normal.

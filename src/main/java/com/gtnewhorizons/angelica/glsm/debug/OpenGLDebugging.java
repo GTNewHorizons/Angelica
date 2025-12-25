@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.debug;
 
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import net.minecraft.client.Minecraft;
@@ -23,7 +24,9 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 // Adapted from https://github.com/makamys/CoreTweaks/blob/master/src/main/java/makamys/coretweaks/util/OpenGLDebugging.java;
@@ -34,6 +37,7 @@ public class OpenGLDebugging {
     public static final Logger LOGGER = LogManager.getLogger("gldumper");
 
     private static final Consumer<String> LINE_LOGGER = LOGGER::debug;
+    private static final Set<String> seenErrors = new HashSet<>();
     public static final String GL_IS_ENABLED = "glIsEnabled()";
     public static final String GL_GET_BOOLEANV = "glGetBooleanv()";
     public static final String GL_GET_INTEGERV = "glGetIntegerv()";
@@ -455,49 +459,195 @@ public class OpenGLDebugging {
     }
 
     public static String getGLSMErrorLog() {
-        StringBuilder error = new StringBuilder();
+        return getGLSMErrorLog(null, false, false);
+    }
+
+    // Re-entrancy guard - getGLSMErrorLog calls glActiveTexture which could trigger checkGLSMOnce
+    private static boolean inCheck = false;
+
+    /**
+     * Enhanced GLSM error logging with context, stack trace, and first-occurrence filtering.
+     *
+     * @param context Optional context string to include in error messages (e.g., "During rendering")
+     * @param logStacktrace If true, includes the current stack trace in the error output
+     * @param onlyFirstOccurrence If true, only logs each unique error once
+     * @return Error log string if mismatches found, null otherwise
+     */
+    public static String getGLSMErrorLog(String context, boolean logStacktrace, boolean onlyFirstOccurrence) {
+        if (inCheck) return null;
+        if (!GLStateManager.isCachingEnabled() || GLStateManager.isRecordingDisplayList()) {
+            return null;
+        }
+        inCheck = true;
+        try {
+        String group = "checkGLSM" + (context == null ? "" : " " + context);
+        GLDebug.pushGroup(group);
+        final StringBuilder error = new StringBuilder();
         boolean mismatch = false;
+
+        if (context != null && !context.isEmpty()) {
+            error.append("[").append(context).append("] ");
+        }
+
         for (int i = 0; i < instance.propertyList.length; ++i) {
             final GLproperty gLProperty = instance.propertyList[i];
             if (gLProperty.fetchCommand.equals(GL_GET_FLOATV) && gLProperty.name.endsWith("_MATRIX")) {
                 final Matrix4f cached = gLProperty.getAsMatrix4f(true);
                 final Matrix4f uncached = gLProperty.getAsMatrix4f(false);
-                // Some precision issues due to RAD vs degrees, and translated (vs f)
-                if (!cached.equals(uncached, 0.001f)) {
-                    LOGGER.error("GLSM mismatch: " + gLProperty.name + "\ncached:\n" + cached + "uncached:\n" + uncached);
-                    mismatch = true;
+
+                // Skip comparison if either matrix is degenerate (contains NaN/Infinity) these represent invalid GL state from bad parameters, not cache bugs
+                if (isMatrixDegenerate(cached) || isMatrixDegenerate(uncached)) continue;
+
+                if (!matricesEquivalent(cached, uncached, 0.001f)) {
+                    final String errorKey = "MATRIX:" + gLProperty.name;
+                    if (!onlyFirstOccurrence || seenErrors.add(errorKey)) {
+                        final String errorMsg = "GLSM mismatch: " + gLProperty.name + "\ncached:\n" + cached + "uncached:\n" + uncached;
+                        LOGGER.error(errorMsg);
+                        error.append(errorMsg).append('\n');
+                        mismatch = true;
+                    }
                 }
             } else {
                 final String cached = gLProperty.getAsString(true);
                 final String uncached = gLProperty.getAsString(false);
                 if (!cached.equals(uncached)) {
-                    error.append("GLSM mismatch: " + gLProperty.name + " cached: " + cached + " uncached: " + uncached);
-                    error.append('\n');
+                    final String errorKey = "PROPERTY:" + gLProperty.name + ":" + cached + ":" + uncached;
+                    if (!onlyFirstOccurrence || seenErrors.add(errorKey)) {
+                        error.append("GLSM mismatch: ").append(gLProperty.name).append(" cached: ").append(cached).append(" uncached: ").append(uncached);
+                        error.append('\n');
+                        mismatch = true;
+                    }
+                }
+            }
+        }
+
+        final TextureUnitArray textureUnits = GLStateManager.getTextures();
+        final int currentActiveTexture = GLStateManager.getActiveTextureUnit();
+
+        // Check GL_ACTIVE_TEXTURE
+        final int glActiveUnit = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE) - GL13.GL_TEXTURE0;
+        if (glActiveUnit != currentActiveTexture) {
+            final String errorKey = "ACTIVE_TEXTURE:" + currentActiveTexture + ":" + glActiveUnit;
+            if (!onlyFirstOccurrence || seenErrors.add(errorKey)) {
+                error.append("GLSM mismatch: GL_ACTIVE_TEXTURE cached: ").append(currentActiveTexture)
+                        .append(" uncached: ").append(glActiveUnit).append('\n');
+                mismatch = true;
+            }
+        }
+
+        // Check per-unit texture state
+        for (int i = 0; i < textureUnits.textureMatricies.length; i++) {
+            GL13.glActiveTexture(GL13.GL_TEXTURE0 + i);
+
+            // Check GL_TEXTURE_2D enabled
+            final boolean cachedEnabled = textureUnits.getTextureUnitStates(i).isEnabled();
+            final boolean uncachedEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+            if (cachedEnabled != uncachedEnabled) {
+                final String errorKey = "TEXTURE_2D:" + i + ":" + cachedEnabled + ":" + uncachedEnabled;
+                if (!onlyFirstOccurrence || seenErrors.add(errorKey)) {
+                    error.append("GLSM mismatch: GL_TEXTURE_2D cached: ").append(cachedEnabled)
+                            .append(" uncached: ").append(uncachedEnabled)
+                            .append(", texture unit: GL_TEXTURE").append(i).append('\n');
+                    mismatch = true;
+                }
+            }
+
+            // Check GL_TEXTURE_BINDING_2D
+            final int cachedBinding = textureUnits.getTextureUnitBindings(i).getBinding();
+            final int uncachedBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+            if (cachedBinding != uncachedBinding) {
+                final String errorKey = "TEXTURE_BINDING_2D:" + i + ":" + cachedBinding + ":" + uncachedBinding;
+                if (!onlyFirstOccurrence || seenErrors.add(errorKey)) {
+                    error.append("GLSM mismatch: GL_TEXTURE_BINDING_2D cached: ").append(cachedBinding)
+                            .append(" uncached: ").append(uncachedBinding)
+                            .append(", texture unit: GL_TEXTURE").append(i).append('\n');
                     mismatch = true;
                 }
             }
         }
-        final TextureUnitArray textureUnits = GLStateManager.getTextures();
-        int currentActiveTexture = GLStateManager.getActiveTextureUnit();
-        for (int i = 0; i < textureUnits.textureMatricies.length; i++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-            final boolean cached = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
-            final boolean uncached = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
-            if (cached != uncached) {
-                error.append("GLSM mismatch: " + "GL_TEXTURE_2D" + " cached: " + cached + " uncached: " + uncached + ", texture unit: GL_TEXTURE" + i);
-                error.append('\n');
-                mismatch = true;
+        GL13.glActiveTexture(GL13.GL_TEXTURE0 + currentActiveTexture);
+
+        // Add stack trace if requested
+        if (mismatch && logStacktrace) {
+            error.append("\nStack trace:\n");
+            final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            for (int i = 2; i < stackTrace.length; i++) {
+                error.append("  at ").append(stackTrace[i].toString()).append('\n');
             }
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + currentActiveTexture);
-        if (!mismatch) {
-            return null;
+        GLDebug.popGroup();
+
+        return mismatch ? error.toString() : null;
+        } finally {
+            inCheck = false;
         }
-        return error.toString();
+    }
+
+    public static boolean checkGLSMOnce(String context) {
+        final String output = getGLSMErrorLog(context, true, true);
+
+        if (output != null) {
+            // Only log on actual mismatch
+            LOGGER.error("[{}] MISMATCH thread={}\n{}", context, Thread.currentThread().getName(), output);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Check if a matrix contains any non-finite values (NaN or Infinity).
+     * Such matrices represent invalid/degenerate GL state (e.g., zero near/far in projection).
+     */
+    private static boolean isMatrixDegenerate(Matrix4f matrix) {
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                if (!Float.isFinite(matrix.get(col, row))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Compare two matrices with tolerance for NaN/Infinity.
+     * Treats NaN == NaN and Infinity == Infinity as equal (both are degenerate states).
+     * For finite values, uses epsilon comparison.
+     */
+    private static boolean matricesEquivalent(Matrix4f a, Matrix4f b, float epsilon) {
+        // Compare all 16 elements
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                final float aVal = a.get(col, row);
+                final float bVal = b.get(col, row);
+
+                // If both are non-finite (NaN or Infinity), consider them equal
+                if (!Float.isFinite(aVal) && !Float.isFinite(bVal)) {
+                    // Both non-finite: check if both NaN or both same Infinity
+                    if (Float.isNaN(aVal) && Float.isNaN(bVal)) continue;
+                    if (Float.isInfinite(aVal) && Float.isInfinite(bVal)) {
+                        // Check same sign of infinity
+                        if ((aVal > 0) == (bVal > 0)) continue;
+                    }
+                    return false; // Different non-finite values
+                }
+
+                // If one is finite and other is not, they differ
+                if (Float.isFinite(aVal) != Float.isFinite(bVal)) {
+                    return false;
+                }
+
+                // Both finite: use epsilon comparison
+                if (Math.abs(aVal - bVal) > epsilon) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public static void checkGLSM() {
-        String output = getGLSMErrorLog();
+        final String output = getGLSMErrorLog();
 
         if (output == null) {
             LOGGER.info("GLSM state matches!");
@@ -507,7 +657,7 @@ public class OpenGLDebugging {
     }
 
     public static void copyTexture(ResourceLocation resource, File output) {
-        Object object = Minecraft.getMinecraft().renderEngine.mapTextureObjects.get(resource);
+        final Object object = Minecraft.getMinecraft().renderEngine.mapTextureObjects.get(resource);
 
         if (object != null) {
             copyTexture(((ITextureObject) object).getGlTextureId(), output);
