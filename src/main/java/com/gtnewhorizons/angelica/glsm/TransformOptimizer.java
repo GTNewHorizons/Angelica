@@ -5,14 +5,13 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
 /**
- * Helper class for tracking and collapsing MODELVIEW transforms during optimization.
+ * Helper class for tracking and collapsing matrix transforms during optimization.
  * Implements the transform accumulation and emission strategy:
  * <ul>
  *   <li>accumulated: total relative transform (what GL matrix should be)</li>
@@ -100,11 +99,11 @@ class TransformOptimizer {
         // But for simplicity, if lastEmitted is identity, just emit target
         if (DisplayListManager.isIdentity(lastEmitted)) {
             // Simple case: just emit target
-            output.add(MultMatrixCmd.create(target, GL11.GL_MODELVIEW));
+            output.add(MultMatrixCmd.create(target));
         } else {
             // Need to emit delta: inv(lastEmitted) * target
             final Matrix4f delta = new Matrix4f(lastEmitted).invert().mul(target);
-            output.add(MultMatrixCmd.create(delta, GL11.GL_MODELVIEW));
+            output.add(MultMatrixCmd.create(delta));
         }
         lastEmitted.set(target);
     }
@@ -126,7 +125,7 @@ class TransformOptimizer {
 
     /**
      * Check if the GL matrix is at an absolute value and clear the flag.
-     * Used by LoadIdentityCmd to determine if it needs to emit.
+     * Used to determine if LoadIdentity needs to emit.
      * @return true if LoadMatrix was called and not yet reset by LoadIdentity
      */
     boolean checkAndClearAbsoluteMatrix() {

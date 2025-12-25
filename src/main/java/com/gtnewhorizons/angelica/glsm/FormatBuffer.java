@@ -11,13 +11,7 @@ import java.util.List;
 
 /**
  * Accumulates geometry for a single vertex format during display list compilation.
- * All draws with the same format are collected here, then compiled into a single VBO.
- * <p>
- * Tracks two types of ranges:
- * <ul>
- *   <li><b>mergedRanges</b>: Consecutive same-transform draws merged for optimized path</li>
- *   <li><b>perDrawRanges</b>: One range per input draw for unoptimized path (1:1 with addDraw calls)</li>
- * </ul>
+ * Tracks merged ranges (same-transform draws combined) and per-draw ranges (1:1).
  */
 class FormatBuffer {
     final CapturingTessellator.Flags flags;
@@ -36,25 +30,36 @@ class FormatBuffer {
     private int pendingVertexCount = 0;
     private Matrix4f pendingTransform = null;
     private int pendingCommandIndex = -1;
+    private int pendingGeneration = -1;
+    private int pendingStateGen = -1;
+    // Track last restore data for merged draws (uses the LAST draw's data)
+    private AccumulatedDraw.RestoreData pendingRestoreData = null;
 
     FormatBuffer(CapturingTessellator.Flags flags) {
         this.flags = flags;
     }
 
-    /**
-     * Add a draw to this format buffer.
-     * Tracks both merged (for optimized) and per-draw (for unoptimized) ranges.
-     */
+    /** Add a draw, tracking both merged and per-draw ranges. */
     void addDraw(AccumulatedDraw draw) {
-        int vertexCount = draw.quads.size() * 4;  // 4 vertices per quad
+        final int vertexCount = draw.quads.size() * 4;  // 4 vertices per quad
 
-        // Always track per-draw range for unoptimized path
-        perDrawRanges.add(new DrawRange(currentVertexOffset, vertexCount, draw.transform, draw.commandIndex));
+        // Always track per-draw range for unoptimized path (includes restoreData)
+        perDrawRanges.add(new DrawRange(
+            currentVertexOffset, vertexCount, draw.transform, draw.commandIndex, draw.restoreData
+        ));
 
-        // Merge logic for optimized path
-        if (pendingTransform != null && pendingTransform.equals(draw.transform)) {
+        // Merge logic for optimized path:
+        // - same matrixGeneration = same matrix transform context
+        // - same stateGeneration = no state commands (draw barriers) between draws
+        boolean canMerge = pendingGeneration != -1
+            && pendingGeneration == draw.matrixGeneration
+            && pendingStateGen == draw.stateGeneration;
+
+        if (canMerge) {
             // Extend the pending range
             pendingVertexCount += vertexCount;
+            // Update restoreData to the LAST draw's data (used after merged draw completes)
+            pendingRestoreData = draw.restoreData;
         } else {
             // Flush pending range if any
             flushPendingRange();
@@ -64,6 +69,9 @@ class FormatBuffer {
             pendingVertexCount = vertexCount;
             pendingTransform = new Matrix4f(draw.transform);
             pendingCommandIndex = draw.commandIndex;
+            pendingGeneration = draw.matrixGeneration;
+            pendingStateGen = draw.stateGeneration;
+            pendingRestoreData = draw.restoreData;
         }
 
         allQuads.addAll(draw.quads);
@@ -71,16 +79,18 @@ class FormatBuffer {
     }
 
     private void flushPendingRange() {
-        if (pendingTransform != null) {
-            mergedRanges.add(new DrawRange(pendingStartVertex, pendingVertexCount, pendingTransform, pendingCommandIndex));
+        if (pendingGeneration != -1) {
+            mergedRanges.add(new DrawRange(
+                pendingStartVertex, pendingVertexCount, pendingTransform, pendingCommandIndex, pendingRestoreData
+            ));
             pendingTransform = null;
+            pendingGeneration = -1;
+            pendingStateGen = -1;
+            pendingRestoreData = null;
         }
     }
 
-    /**
-     * Compile all accumulated quads into a single VBO.
-     * @return The compiled buffer with VBO and both range types
-     */
+    /** Compile accumulated quads into a VBO. */
     CompiledFormatBuffer finish() {
         // Flush any remaining pending range
         flushPendingRange();

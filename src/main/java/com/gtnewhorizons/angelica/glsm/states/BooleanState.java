@@ -27,13 +27,11 @@ public class BooleanState implements ISettableState<BooleanState> {
             if (!bypass) {
                 this.enabled = enabled;
             }
-            // Skip actual GL calls during display list recording (state tracking only)
-            if (!GLStateManager.isRecordingDisplayList()) {
-                if (enabled) {
-                    GL11.glEnable(this.glCap);
-                } else {
-                    GL11.glDisable(this.glCap);
-                }
+            // Always call GL - the calling method controls whether we reach here based on recording mode
+            if (enabled) {
+                GL11.glEnable(this.glCap);
+            } else {
+                GL11.glDisable(this.glCap);
             }
         }
     }

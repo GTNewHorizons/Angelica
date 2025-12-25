@@ -11,6 +11,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizons.angelica.glsm.recording.CommandBuffer.*;
 
 /**
  * Executes commands from a CommandBuffer
@@ -96,28 +97,13 @@ public final class CommandBufferExecutor {
                     ptr += 4; // Skip unused padding
                 }
                 case GLCommand.LOAD_IDENTITY -> {
-                    final int mode = memGetInt(ptr);
-                    ptr += 4;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
                     GLStateManager.glLoadIdentity();
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.PUSH_MATRIX -> {
-                    final int mode = memGetInt(ptr);
-                    ptr += 4;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
                     GLStateManager.glPushMatrix();
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.POP_MATRIX -> {
-                    final int mode = memGetInt(ptr);
-                    ptr += 4;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
                     GLStateManager.glPopMatrix();
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.STENCIL_MASK -> {
                     GLStateManager.glStencilMask(memGetInt(ptr));
@@ -346,38 +332,26 @@ public final class CommandBufferExecutor {
 
                 // === Double commands ===
                 case GLCommand.TRANSLATE -> {
-                    final int mode = memGetInt(ptr);
-                    final double x = memGetDouble(ptr + 4);
-                    final double y = memGetDouble(ptr + 12);
-                    final double z = memGetDouble(ptr + 20);
-                    ptr += 28;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
+                    final double x = memGetDouble(ptr);
+                    final double y = memGetDouble(ptr + 8);
+                    final double z = memGetDouble(ptr + 16);
+                    ptr += 24;
                     GLStateManager.glTranslated(x, y, z);
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.ROTATE -> {
-                    final int mode = memGetInt(ptr);
-                    final double angle = memGetDouble(ptr + 4);
-                    final double x = memGetDouble(ptr + 12);
-                    final double y = memGetDouble(ptr + 20);
-                    final double z = memGetDouble(ptr + 28);
-                    ptr += 36;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
+                    final double angle = memGetDouble(ptr);
+                    final double x = memGetDouble(ptr + 8);
+                    final double y = memGetDouble(ptr + 16);
+                    final double z = memGetDouble(ptr + 24);
+                    ptr += 32;
                     GLStateManager.glRotated(angle, x, y, z);
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.SCALE -> {
-                    final int mode = memGetInt(ptr);
-                    final double x = memGetDouble(ptr + 4);
-                    final double y = memGetDouble(ptr + 12);
-                    final double z = memGetDouble(ptr + 20);
-                    ptr += 28;
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
+                    final double x = memGetDouble(ptr);
+                    final double y = memGetDouble(ptr + 8);
+                    final double z = memGetDouble(ptr + 16);
+                    ptr += 24;
                     GLStateManager.glScaled(x, y, z);
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.ORTHO -> {
                     final double left = memGetDouble(ptr);
@@ -402,32 +376,23 @@ public final class CommandBufferExecutor {
 
                 // === Matrix commands ===
                 case GLCommand.MULT_MATRIX -> {
-                    final int mode = memGetInt(ptr);
-                    ptr += 4;
+                    // Mode-agnostic: just multiply current matrix
                     MATRIX_BUFFER.clear();
                     for (int i = 0; i < 16; i++) {
                         MATRIX_BUFFER.put(memGetFloat(ptr));
                         ptr += 4;
                     }
                     MATRIX_BUFFER.flip();
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
                     GLStateManager.glMultMatrix(MATRIX_BUFFER);
-                    GLStateManager.glMatrixMode(savedMode);
                 }
                 case GLCommand.LOAD_MATRIX -> {
-                    final int mode = memGetInt(ptr);
-                    ptr += 4;
                     MATRIX_BUFFER.clear();
                     for (int i = 0; i < 16; i++) {
                         MATRIX_BUFFER.put(memGetFloat(ptr));
                         ptr += 4;
                     }
                     MATRIX_BUFFER.flip();
-                    final int savedMode = GLStateManager.getMatrixMode().getMode();
-                    GLStateManager.glMatrixMode(mode);
                     GLStateManager.glLoadMatrix(MATRIX_BUFFER);
-                    GLStateManager.glMatrixMode(savedMode);
                 }
 
                 // === Buffer commands ===
@@ -493,6 +458,40 @@ public final class CommandBufferExecutor {
                     vbo.setupState();
                     vbo.draw(start, count);
                     vbo.cleanupState();
+                }
+                case GLCommand.DRAW_RANGE_RESTORE -> {
+                    // Draw VBO range then restore GL current state from last vertex attributes
+                    final int vboIndex = memGetInt(ptr);
+                    final int start = memGetInt(ptr + 4);
+                    final int count = memGetInt(ptr + 8);
+                    final int flags = memGetInt(ptr + 12);
+
+                    // Draw the VBO
+                    final VertexBuffer vbo = ownedVbos[vboIndex];
+                    vbo.setupState();
+                    vbo.draw(start, count);
+                    vbo.cleanupState();
+
+                    // Restore attributes based on flags
+                    if ((flags & FLAG_HAS_COLOR) != 0) {
+                        final float r = memGetFloat(ptr + 16);
+                        final float g = memGetFloat(ptr + 20);
+                        final float b = memGetFloat(ptr + 24);
+                        final float a = memGetFloat(ptr + 28);
+                        GLStateManager.glColor4f(r, g, b, a);
+                    }
+                    if ((flags & FLAG_HAS_NORMALS) != 0) {
+                        final float nx = memGetFloat(ptr + 32);
+                        final float ny = memGetFloat(ptr + 36);
+                        final float nz = memGetFloat(ptr + 40);
+                        GLStateManager.glNormal3f(nx, ny, nz);
+                    }
+                    if ((flags & FLAG_HAS_TEXTURE) != 0) {
+                        final float s = memGetFloat(ptr + 44);
+                        final float t = memGetFloat(ptr + 48);
+                        GLStateManager.glTexCoord2f(s, t);
+                    }
+                    ptr += 52;  // Skip full command size (56 - 4 for cmd already read)
                 }
                 case GLCommand.CALL_LIST -> {
                     final int listId = memGetInt(ptr);

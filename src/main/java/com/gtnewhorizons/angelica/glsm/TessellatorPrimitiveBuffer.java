@@ -40,6 +40,7 @@ class TessellatorPrimitiveBuffer {
     private int pendingLineVertexCount = 0;
     private Matrix4f pendingLineTransform = null;
     private int pendingLineCommandIndex = -1;
+    private int pendingLineStateGen = -1;
 
     // Ranges for triangles
     final List<DrawRange> triangleMergedRanges = new ArrayList<>();
@@ -49,6 +50,7 @@ class TessellatorPrimitiveBuffer {
     private int pendingTriangleVertexCount = 0;
     private Matrix4f pendingTriangleTransform = null;
     private int pendingTriangleCommandIndex = -1;
+    private int pendingTriangleStateGen = -1;
 
     TessellatorPrimitiveBuffer(CapturingTessellator.Flags flags) {
         this.flags = flags;
@@ -81,8 +83,14 @@ class TessellatorPrimitiveBuffer {
             final int lineVertexCount = lineCount * 2; // 2 vertices per line
             linePerDrawRanges.add(new DrawRange(currentLineVertexOffset, lineVertexCount, draw.transform, draw.commandIndex));
 
-            // Merge logic for optimized path
-            if (pendingLineTransform != null && pendingLineTransform.equals(draw.transform)) {
+            // Merge logic for optimized path:
+            // - same transform
+            // - same stateGeneration = no state commands (draw barriers) between draws
+            boolean canMerge = pendingLineTransform != null
+                && pendingLineTransform.equals(draw.transform)
+                && pendingLineStateGen == draw.stateGeneration;
+
+            if (canMerge) {
                 pendingLineVertexCount += lineVertexCount;
             } else {
                 flushPendingLineRange();
@@ -90,6 +98,7 @@ class TessellatorPrimitiveBuffer {
                 pendingLineVertexCount = lineVertexCount;
                 pendingLineTransform = new Matrix4f(draw.transform);
                 pendingLineCommandIndex = draw.commandIndex;
+                pendingLineStateGen = draw.stateGeneration;
             }
             currentLineVertexOffset += lineVertexCount;
         }
@@ -99,8 +108,14 @@ class TessellatorPrimitiveBuffer {
             final int triangleVertexCount = triangleCount * 3; // 3 vertices per triangle
             trianglePerDrawRanges.add(new DrawRange(currentTriangleVertexOffset, triangleVertexCount, draw.transform, draw.commandIndex));
 
-            // Merge logic for optimized path
-            if (pendingTriangleTransform != null && pendingTriangleTransform.equals(draw.transform)) {
+            // Merge logic for optimized path:
+            // - same transform
+            // - same stateGeneration = no state commands (draw barriers) between draws
+            boolean canMerge = pendingTriangleTransform != null
+                && pendingTriangleTransform.equals(draw.transform)
+                && pendingTriangleStateGen == draw.stateGeneration;
+
+            if (canMerge) {
                 pendingTriangleVertexCount += triangleVertexCount;
             } else {
                 flushPendingTriangleRange();
@@ -108,6 +123,7 @@ class TessellatorPrimitiveBuffer {
                 pendingTriangleVertexCount = triangleVertexCount;
                 pendingTriangleTransform = new Matrix4f(draw.transform);
                 pendingTriangleCommandIndex = draw.commandIndex;
+                pendingTriangleStateGen = draw.stateGeneration;
             }
             currentTriangleVertexOffset += triangleVertexCount;
         }
@@ -117,6 +133,7 @@ class TessellatorPrimitiveBuffer {
         if (pendingLineTransform != null) {
             lineMergedRanges.add(new DrawRange(pendingLineStartVertex, pendingLineVertexCount, pendingLineTransform, pendingLineCommandIndex));
             pendingLineTransform = null;
+            pendingLineStateGen = -1;
         }
     }
 
@@ -124,6 +141,7 @@ class TessellatorPrimitiveBuffer {
         if (pendingTriangleTransform != null) {
             triangleMergedRanges.add(new DrawRange(pendingTriangleStartVertex, pendingTriangleVertexCount, pendingTriangleTransform, pendingTriangleCommandIndex));
             pendingTriangleTransform = null;
+            pendingTriangleStateGen = -1;
         }
     }
 

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.TextureUnitBooleanStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
 import lombok.Getter;
 import org.joml.Matrix4fStack;
@@ -10,36 +10,36 @@ import org.lwjgl.opengl.GL12;
 
 public class TextureUnitArray {
     private final TextureBindingStack[] bindings;
-    private final BooleanStateStack[] states;
-    private final BooleanStateStack[] texture1DStates;
-    private final BooleanStateStack[] texture3DStates;
-    private final BooleanStateStack[] texGenSStates;
-    private final BooleanStateStack[] texGenTStates;
-    private final BooleanStateStack[] texGenRStates;
-    private final BooleanStateStack[] texGenQStates;
+    private final TextureUnitBooleanStateStack[] states;
+    private final TextureUnitBooleanStateStack[] texture1DStates;
+    private final TextureUnitBooleanStateStack[] texture3DStates;
+    private final TextureUnitBooleanStateStack[] texGenSStates;
+    private final TextureUnitBooleanStateStack[] texGenTStates;
+    private final TextureUnitBooleanStateStack[] texGenRStates;
+    private final TextureUnitBooleanStateStack[] texGenQStates;
     @Getter
     public final Matrix4fStack[] textureMatricies;
 
     public TextureUnitArray() {
         bindings = new TextureBindingStack[GLStateManager.MAX_TEXTURE_UNITS];
-        states = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texture1DStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texture3DStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texGenSStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texGenTStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texGenRStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
-        texGenQStates = new BooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        states = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texture1DStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texture3DStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texGenSStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texGenTStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texGenRStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texGenQStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         textureMatricies = new Matrix4fStack[GLStateManager.MAX_TEXTURE_UNITS];
 
         for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             bindings[i] = new TextureBindingStack();
-            states[i] = new BooleanStateStack(GL11.GL_TEXTURE_2D);
-            texture1DStates[i] = new BooleanStateStack(GL11.GL_TEXTURE_1D);
-            texture3DStates[i] = new BooleanStateStack(GL12.GL_TEXTURE_3D);
-            texGenSStates[i] = new BooleanStateStack(GL11.GL_TEXTURE_GEN_S);
-            texGenTStates[i] = new BooleanStateStack(GL11.GL_TEXTURE_GEN_T);
-            texGenRStates[i] = new BooleanStateStack(GL11.GL_TEXTURE_GEN_R);
-            texGenQStates[i] = new BooleanStateStack(GL11.GL_TEXTURE_GEN_Q);
+            states[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_2D, i);
+            texture1DStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_1D, i);
+            texture3DStates[i] = new TextureUnitBooleanStateStack(GL12.GL_TEXTURE_3D, i);
+            texGenSStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_S, i);
+            texGenTStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_T, i);
+            texGenRStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_R, i);
+            texGenQStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_Q, i);
             textureMatricies[i] = new Matrix4fStack(GLStateManager.MAX_TEXTURE_STACK_DEPTH);
         }
     }
@@ -48,31 +48,31 @@ public class TextureUnitArray {
         return bindings[index];
     }
 
-    public BooleanStateStack getTextureUnitStates(int index) {
+    public TextureUnitBooleanStateStack getTextureUnitStates(int index) {
         return states[index];
     }
 
-    public BooleanStateStack getTexture1DStates(int index) {
+    public TextureUnitBooleanStateStack getTexture1DStates(int index) {
         return texture1DStates[index];
     }
 
-    public BooleanStateStack getTexture3DStates(int index) {
+    public TextureUnitBooleanStateStack getTexture3DStates(int index) {
         return texture3DStates[index];
     }
 
-    public BooleanStateStack getTexGenSStates(int index) {
+    public TextureUnitBooleanStateStack getTexGenSStates(int index) {
         return texGenSStates[index];
     }
 
-    public BooleanStateStack getTexGenTStates(int index) {
+    public TextureUnitBooleanStateStack getTexGenTStates(int index) {
         return texGenTStates[index];
     }
 
-    public BooleanStateStack getTexGenRStates(int index) {
+    public TextureUnitBooleanStateStack getTexGenRStates(int index) {
         return texGenRStates[index];
     }
 
-    public BooleanStateStack getTexGenQStates(int index) {
+    public TextureUnitBooleanStateStack getTexGenQStates(int index) {
         return texGenQStates[index];
     }
 

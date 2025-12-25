@@ -69,7 +69,7 @@ class GLSM_DisplayList_Primitive_Test {
 
         // Execute: Create AccumulatedPrimitiveDraw (should deep copy)
         AccumulatedPrimitiveDraw draw = new AccumulatedPrimitiveDraw(
-            primitives, identity(), positionOnly(), 0);
+            primitives, identity(), positionOnly(), 0, 0);
 
         // Modify original
         originalLine.setX(0, 999.0f);
@@ -96,7 +96,7 @@ class GLSM_DisplayList_Primitive_Test {
 
         // Execute: Create AccumulatedPrimitiveDraw (should deep copy)
         AccumulatedPrimitiveDraw draw = new AccumulatedPrimitiveDraw(
-            primitives, identity(), positionOnly(), 0);
+            primitives, identity(), positionOnly(), 0, 0);
 
         // Modify original
         originalTri.setX(0, 999.0f);
@@ -119,7 +119,7 @@ class GLSM_DisplayList_Primitive_Test {
 
         // Execute
         AccumulatedPrimitiveDraw draw = new AccumulatedPrimitiveDraw(
-            primitives, identity(), positionOnly(), 0);
+            primitives, identity(), positionOnly(), 0, 0);
 
         // Verify: All primitives copied correctly
         assertEquals(4, draw.primitives.size(), "Should have 4 primitives (2 lines + 2 triangles)");
@@ -143,7 +143,7 @@ class GLSM_DisplayList_Primitive_Test {
 
         // Execute
         AccumulatedPrimitiveDraw draw = new AccumulatedPrimitiveDraw(
-            primitives, originalTransform, positionOnly(), 0);
+            primitives, originalTransform, positionOnly(), 0, 0);
 
         // Modify original transform
         originalTransform.identity();
@@ -475,11 +475,11 @@ class GLSM_DisplayList_Primitive_Test {
 
         List<ModelPrimitiveView> lines1 = new ArrayList<>();
         lines1.add(createSimpleLine());
-        primitiveDraws.add(new AccumulatedPrimitiveDraw(lines1, identity(), positionOnly(), 0));
+        primitiveDraws.add(new AccumulatedPrimitiveDraw(lines1, identity(), positionOnly(), 0, 0));
 
         List<ModelPrimitiveView> lines2 = new ArrayList<>();
         lines2.add(createSimpleLine());
-        primitiveDraws.add(new AccumulatedPrimitiveDraw(lines2, translate(1, 0, 0), positionOnly(), 1));
+        primitiveDraws.add(new AccumulatedPrimitiveDraw(lines2, translate(1, 0, 0), positionOnly(), 1, 1));
 
         List<DisplayListCommand> commands = new ArrayList<>();
 

@@ -12,7 +12,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
  * Similar to CompiledFormatBuffer but handles primitives instead of quads.
  */
 @Desugar
-record CompiledPrimitiveBuffers(
+public record CompiledPrimitiveBuffers(
     CapturingTessellator.Flags flags,
     VertexBuffer lineVbo,
     DrawRange[] lineMergedRanges,

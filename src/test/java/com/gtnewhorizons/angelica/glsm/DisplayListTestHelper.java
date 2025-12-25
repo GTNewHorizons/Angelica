@@ -92,7 +92,26 @@ public final class DisplayListTestHelper {
             Matrix4f transform,
             CapturingTessellator.Flags flags,
             int commandIndex) {
-        return new AccumulatedDraw(quads, transform, flags, commandIndex);
+        return new AccumulatedDraw(quads, transform, flags, commandIndex, 0);
+    }
+
+    public static AccumulatedDraw createDraw(
+            List<ModelQuadViewMutable> quads,
+            Matrix4f transform,
+            CapturingTessellator.Flags flags,
+            int commandIndex,
+            int matrixGeneration) {
+        return new AccumulatedDraw(quads, transform, flags, commandIndex, matrixGeneration, 0);
+    }
+
+    public static AccumulatedDraw createDraw(
+            List<ModelQuadViewMutable> quads,
+            Matrix4f transform,
+            CapturingTessellator.Flags flags,
+            int commandIndex,
+            int matrixGeneration,
+            int stateGeneration) {
+        return new AccumulatedDraw(quads, transform, flags, commandIndex, matrixGeneration, stateGeneration);
     }
 
     /**
@@ -110,12 +129,27 @@ public final class DisplayListTestHelper {
     /**
      * Create an AccumulatedDraw with specified transform.
      */
-    public static AccumulatedDraw createDrawWithTransform(Matrix4f transform, int commandIndex) {
+    public static AccumulatedDraw createDrawWithTransform(Matrix4f transform, int commandIndex, int matrixGeneration) {
         return createDraw(
             Collections.singletonList(createSimpleQuad()),
             transform,
             positionOnly(),
-            commandIndex
+            commandIndex,
+            matrixGeneration
+        );
+    }
+
+    /**
+     * Create an AccumulatedDraw with specified transform and stateGeneration.
+     */
+    public static AccumulatedDraw createDrawWithTransformAndBatch(Matrix4f transform, int commandIndex, int matrixGeneration, int stateGeneration) {
+        return createDraw(
+            Collections.singletonList(createSimpleQuad()),
+            transform,
+            positionOnly(),
+            commandIndex,
+            matrixGeneration,
+            stateGeneration
         );
     }
 
@@ -333,7 +367,16 @@ public final class DisplayListTestHelper {
             Matrix4f transform,
             CapturingTessellator.Flags flags,
             int commandIndex) {
-        return new AccumulatedPrimitiveDraw(primitives, transform, flags, commandIndex);
+        return new AccumulatedPrimitiveDraw(primitives, transform, flags, commandIndex, 0);
+    }
+
+    public static AccumulatedPrimitiveDraw createPrimitiveDraw(
+            List<ModelPrimitiveView> primitives,
+            Matrix4f transform,
+            CapturingTessellator.Flags flags,
+            int commandIndex,
+            int matrixGeneration) {
+        return new AccumulatedPrimitiveDraw(primitives, transform, flags, commandIndex, matrixGeneration);
     }
 
     /**

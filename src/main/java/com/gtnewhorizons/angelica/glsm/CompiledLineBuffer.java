@@ -14,7 +14,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
  * </ul>
  */
 @Desugar
-record CompiledLineBuffer(
+public record CompiledLineBuffer(
     VertexBuffer vbo,
     DrawRange[] mergedRanges,
     DrawRange[] perDrawRanges
