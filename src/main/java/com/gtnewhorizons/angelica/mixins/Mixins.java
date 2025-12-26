@@ -182,6 +182,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinLocale"
             , "shaders.MixinOpenGlHelper"
             , "shaders.MixinRender"
+            , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
             , "shaders.MixinTileEntityBeaconRenderer"
