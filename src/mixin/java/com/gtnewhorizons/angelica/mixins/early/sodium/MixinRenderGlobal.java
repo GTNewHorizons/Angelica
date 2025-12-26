@@ -68,6 +68,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private SodiumWorldRenderer renderer;
 
     private int sodium$frame;
+    private static final String LIGHTNING_BOLT_ENTITY_TYPE = "lightning_bolt";
 
     @Override
     public void scheduleTerrainUpdate() {
@@ -334,7 +335,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             // Quick way of getting an unregistered entity. Not sure if there's a fast way to extend this to all unregistered entities.
             if (entityType == null) {
                 if (entity instanceof EntityLightningBolt) {
-                    entityType = "lightning_bolt";
+                    entityType = LIGHTNING_BOLT_ENTITY_TYPE;
                 }
             }
 
@@ -343,6 +344,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             }
         }
 
+        // May cause slowdown. Not sure if this matters too much at the moment. Probably needs profiling.
         CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
         GbufferPrograms.beginEntities();
         try {
