@@ -16,8 +16,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinRenderEntityFlame {
     @Unique
     private static final NamespacedId flameId = new NamespacedId("minecraft", "entity_flame");
-
+    // Shader devs use entity_flame to target this effect.
+    
     @Inject(method = "renderEntityOnFire", at = @At("HEAD"))
+
+    // This runs after the initial entity has finished being rendered.
+    // The flame is not a real entity but from the shader's perspective, it is.
     private void iris$setFlame(Entity entity, double x, double y, double z, float partialTicks, CallbackInfo ci) {
         Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
         if (entityIdMap != null) {
