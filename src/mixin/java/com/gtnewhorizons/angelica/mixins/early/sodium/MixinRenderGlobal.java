@@ -35,6 +35,7 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
@@ -323,13 +324,21 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
     private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        // Get the entity type string (e.g., "XPOrb", "Creeper", "Zombie")
-        String entityType = EntityList.getEntityString(entity);
         int entityId = -1;
 
-        if (entityType != null) {
-            Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-            if (entityIdMap != null) {
+        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
+        if (entityIdMap != null) {
+            // Get the entity type string (e.g., "XPOrb", "Creeper", "Zombie")
+            String entityType = EntityList.getEntityString(entity);
+
+            // Quick way of getting an unregistered entity. Not sure if there's a fast way to extend this to all unregistered entities.
+            if (entityType == null) {
+                if (entity instanceof EntityLightningBolt) {
+                    entityType = "lightning_bolt";
+                }
+            }
+
+            if (entityType != null) {
                 entityId = entityIdMap.applyAsInt(new NamespacedId(entityType));
             }
         }
