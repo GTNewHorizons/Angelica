@@ -326,7 +326,7 @@ public final class DisplayListTestHelper {
         return primitives;
     }
 
-    // ==================== AccumulatedPrimitiveDraw Builders ====================
+//    // ==================== AccumulatedPrimitiveDraw Builders ====================
 //
 //    /**
 //     * Create an AccumulatedPrimitiveDraw with specified parameters.
@@ -431,41 +431,41 @@ public final class DisplayListTestHelper {
 //        Map<CapturingTessellator.Flags, CompiledPrimitiveBuffers> compiledPrimitiveBuffers,
 //        int glListId) {
 //
-////        final List<DisplayListCommand> optimized = new ArrayList<>();
-////        final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
-////
-////        // Collect all merged draw ranges (quads + lines + primitives) sorted by command index
-////        final List<DrawRangeWithBuffer> allRanges = CommandBufferBuilder.collectDrawRanges(
-////            compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
-////
-////        // Process command stream with interleaved draws
-////        final DisplayListManager.OptimizationContextImpl ctx = new DisplayListManager.OptimizationContextImpl(transformOpt, optimized);
-////
-////        int rangeIndex = 0;
-////        for (int i = 0; i < currentCommands.size(); i++) {
-////            // Emit draw ranges (quads and lines) at this command position
-////            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == i) {
-////                emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
-////            }
-////
-////            // Process the original command
-////            final DisplayListCommand cmd = currentCommands.get(i);
-////            if (cmd.handleOptimization(ctx)) {
-////                optimized.add(cmd);
-////            }
-////        }
-////
-////        // Emit remaining draw ranges at end of command stream
-////        while (rangeIndex < allRanges.size()) {
-////            emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
-////        }
-////
-////        // Emit residual transform to match expected GL state
-////        if (!transformOpt.isIdentity()) {
-////            transformOpt.emitPendingTransform(optimized);
-////        }
-////
-////        return optimized.toArray(new DisplayListCommand[0]);
+//        final List<DisplayListCommand> optimized = new ArrayList<>();
+//        final TransformOptimizer transformOpt = new TransformOptimizer(glListId);
+//
+//        // Collect all merged draw ranges (quads + lines + primitives) sorted by command index
+//        final List<DrawRangeWithBuffer> allRanges = CommandBufferBuilder.collectDrawRanges(
+//            compiledQuadBuffers, compiledLineBuffer, compiledPrimitiveBuffers);
+//
+//        // Process command stream with interleaved draws
+//        final DisplayListManager.OptimizationContextImpl ctx = new DisplayListManager.OptimizationContextImpl(transformOpt, optimized);
+//
+//        int rangeIndex = 0;
+//        for (int i = 0; i < currentCommands.size(); i++) {
+//            // Emit draw ranges (quads and lines) at this command position
+//            while (rangeIndex < allRanges.size() && allRanges.get(rangeIndex).range().commandIndex() == i) {
+//                emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
+//            }
+//
+//            // Process the original command
+//            final DisplayListCommand cmd = currentCommands.get(i);
+//            if (cmd.handleOptimization(ctx)) {
+//                optimized.add(cmd);
+//            }
+//        }
+//
+//        // Emit remaining draw ranges at end of command stream
+//        while (rangeIndex < allRanges.size()) {
+//            emitDrawRangeLegacy(allRanges.get(rangeIndex++), transformOpt, optimized);
+//        }
+//
+//        // Emit residual transform to match expected GL state
+//        if (!transformOpt.isIdentity()) {
+//            transformOpt.emitPendingTransform(optimized);
+//        }
+//
+//        return optimized.toArray(new DisplayListCommand[0]);
 //        return null;
 //    }
 }

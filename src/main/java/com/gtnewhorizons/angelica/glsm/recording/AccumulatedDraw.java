@@ -27,8 +27,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
 public class AccumulatedDraw {
     public final Matrix4f transform;
     public final VertexFormat format;
-    public ByteBuffer drawData;
-    public int vertexCount;
+    public List<ByteBuffer> drawBuffers;
     public final int drawMode;
     public final int commandIndex; // Position in command list for state tracking
 
@@ -36,8 +35,8 @@ public class AccumulatedDraw {
         this.transform = transform; // Snapshot for runtime application
         this.format = tessellator.getVertexFormat();
         this.drawMode = tessellator.drawMode;
-        this.drawData = tessellator.getBufferCopy();
-        this.vertexCount = tessellator.getVertexCount();
+        this.drawBuffers = new ArrayList<>();
+        this.drawBuffers.add(tessellator.getBufferCopy());
         this.commandIndex = commandIndex;
     }
 
@@ -45,29 +44,13 @@ public class AccumulatedDraw {
         this.transform = transform; // Snapshot for runtime application
         this.format = format;
         this.drawMode = drawMode;
-        this.drawData = drawData;
-        this.vertexCount = format.getVertexCount(drawData);
+        this.drawBuffers = new ArrayList<>();
+        this.drawBuffers.add(drawData);
         this.commandIndex = commandIndex;
     }
 
     public void mergeDraw(ByteBuffer data) {
-        List<ByteBuffer> buffers = Arrays.asList(drawData, data);
-        int needed = drawData.remaining() + data.remaining();
-        ByteBuffer out = memAlloc(needed);
-        long dst = memAddress0(out);
-
-        for (ByteBuffer buffer : buffers) {
-            int len = buffer.remaining();
-            long src = memAddress0(buffer) + buffer.position();
-            memCopy(src, dst, len);
-            dst += len;
-        }
-
-        out.position(needed);
-        out.flip();
-        drawData = out;
-
-        this.vertexCount = format.getVertexCount(needed);
+        this.drawBuffers.add(data);
     }
 
     /**

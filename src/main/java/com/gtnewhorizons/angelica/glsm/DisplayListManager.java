@@ -607,7 +607,7 @@ public class DisplayListManager {
     public static void addImmediateModeDraw(DirectTessellator tessellator) {
         if (!tessellator.isEmpty()) {
             // Get relative transform (changes since glNewList, not absolute matrix state)
-            addAccumulatedDraw(tessellator, relativeTransform);
+            addAccumulatedDraw(tessellator, relativeTransform, true);
         }
         tessellator.reset();
     }
@@ -831,7 +831,7 @@ public class DisplayListManager {
 
         TessellatorManager.startCapturingDirect(new DirectTessellator((tessellator) -> {
             if (!tessellator.isEmpty()) {
-                addAccumulatedDraw(tessellator, relativeTransform);
+                addAccumulatedDraw(tessellator, relativeTransform, false);
             }
             return true;
         }));
@@ -842,7 +842,7 @@ public class DisplayListManager {
 //        GLStateManager.pushState(GL11.GL_ALL_ATTRIB_BITS);
     }
 
-    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform) {
+    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {
         final Matrix4f currentTransform = new Matrix4f(relativeTransform);
         final VertexFormat format = tessellator.getVertexFormat();
         final ByteBuffer drawData = tessellator.getBufferCopy();
@@ -1020,7 +1020,7 @@ public class DisplayListManager {
         // Compile each format's geometry into a single VBO
         final BigVBOBuilder builder = new BigVBOBuilder();
         for (AccumulatedDraw draw : accumulatedDraws) {
-            builder.addDraw(draw.format, draw.drawMode, draw.drawData);
+            builder.addDraw(draw.format, draw.drawMode, draw.drawBuffers);
         }
         return builder.build();
     }
