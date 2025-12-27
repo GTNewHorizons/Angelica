@@ -42,7 +42,7 @@ public class GLSM_VAO_UnitTest {
 
         // Set the vertex attrib to a defined state
         int vbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
         GL11.glVertexPointer(defaultVertexSize, defaultVertexType, defaultVertexStride, 0);
 
@@ -53,7 +53,7 @@ public class GLSM_VAO_UnitTest {
         verifyState(GL11.GL_VERTEX_ARRAY_TYPE, defaultVertexType, "GL_VERTEX_ARRAY_TYPE - Setup");
         verifyState(GL11.GL_VERTEX_ARRAY_STRIDE, defaultVertexStride, "GL_VERTEX_ARRAY_STRIDE - Setup");
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         // Verify VAO & VBO creation
         int vao = UniversalVAO.genVertexArrays();
@@ -62,7 +62,7 @@ public class GLSM_VAO_UnitTest {
         glBindVertexArray(vao);
         verifyState(GL30.GL_VERTEX_ARRAY_BINDING, vao, "GL_VERTEX_ARRAY_BINDING - Bound");
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         verifyState(GL15.GL_ARRAY_BUFFER_BINDING, vbo, "GL_ARRAY_BUFFER_BINDING - Bound");
 
         verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "GL_CLIENT_ACTIVE_TEXTURE - Preserved");
@@ -81,7 +81,7 @@ public class GLSM_VAO_UnitTest {
         verifyState(GL11.GL_VERTEX_ARRAY_TYPE, vaoVertexType, "GL_VERTEX_ARRAY_TYPE - Set");
         verifyState(GL11.GL_VERTEX_ARRAY_STRIDE, vaoVertexStride, "GL_VERTEX_ARRAY_STRIDE - Set");
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         // Check if everything got reset to default
         glBindVertexArray(0);
@@ -106,22 +106,16 @@ public class GLSM_VAO_UnitTest {
         glBindVertexArray(0);
 
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        UniversalVAO.bindVertexArray(vao);
-        GLStateManager.glPopAttrib();
-        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, vao, "GL_VERTEX_ARRAY_BINDING - Not affected by glPushAttrib");
-
-
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
         glBindVertexArray(vao);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
         GLStateManager.glPopAttrib();
 
         verifyState(GL30.GL_VERTEX_ARRAY_BINDING, vao, "GL_VERTEX_ARRAY_BINDING - Not affected by glPushAttrib");
         verifyState(GL15.GL_ARRAY_BUFFER_BINDING, vbo, "GL_ARRAY_BUFFER_BINDING - Not affected by glPushAttrib");
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
         GL15.glDeleteBuffers(vbo);

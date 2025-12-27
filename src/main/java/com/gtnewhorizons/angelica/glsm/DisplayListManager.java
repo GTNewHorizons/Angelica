@@ -605,25 +605,10 @@ public class DisplayListManager {
      *
      */
     public static void addImmediateModeDraw(DirectTessellator tessellator) {
-        if (accumulatedDraws == null) {
-            return;
+        if (!tessellator.isEmpty()) {
+            // Get relative transform (changes since glNewList, not absolute matrix state)
+            addAccumulatedDraw(tessellator, relativeTransform);
         }
-
-        if (matrixGeneration != lastFlushedGeneration) {
-            if (lastFlushedTransform == null) {
-                lastFlushedTransform = new Matrix4f();
-            }
-            lastFlushedTransform.set(relativeTransform);
-            flushMatrix();
-            lastFlushedGeneration = matrixGeneration;
-        }
-        // Get relative transform (changes since glNewList, not absolute matrix state)
-        final Matrix4f currentTransform = new Matrix4f(relativeTransform);
-
-        if (tessellator.isEmpty()) return;
-
-        final AccumulatedDraw draw = new AccumulatedDraw(tessellator, currentTransform, getCommandCount());
-        accumulatedDraws.add(draw);
         tessellator.reset();
     }
 
@@ -826,7 +811,7 @@ public class DisplayListManager {
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(64);   // Fewer draws than commands typically
         relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
-        relativeTransform.identity();  // Delta from current GL state, starts at identity
+        // relativeTransform.identity();  // Track relative transforms from identity
         lastFlushedGeneration = -1;  // Reset so first draw triggers flush
         lastFlushedTransform = null;  // Will be set on first flush
         stateGeneration = 0;  // Reset state generation for fresh list
@@ -845,35 +830,45 @@ public class DisplayListManager {
         }
 
         TessellatorManager.startCapturingDirect(new DirectTessellator((tessellator) -> {
-            if (tessellator.isEmpty()) return true;
-            final Matrix4f currentTransform = new Matrix4f(relativeTransform);
-            final VertexFormat format = tessellator.getVertexFormat();
-            final ByteBuffer drawData = tessellator.getBufferCopy();
-            final int cmdIndex = getCommandCount();
-            if (matrixGeneration != lastFlushedGeneration) {
-                if (lastFlushedTransform == null) {
-                    lastFlushedTransform = new Matrix4f();
-                }
-                lastFlushedTransform.set(relativeTransform);
-                flushMatrix();
-                lastFlushedGeneration = matrixGeneration;
-            }
-            if (accumulatedDraws.isEmpty()) {
-                accumulatedDraws.add(
-                    new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
-                );
-            } else {
-                final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
-                if (previous.format == format && previous.commandIndex == cmdIndex) {
-                    previous.mergeDraw(drawData);
-                } else {
-                    accumulatedDraws.add(
-                        new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
-                    );
-                }
+            if (!tessellator.isEmpty()) {
+                addAccumulatedDraw(tessellator, relativeTransform);
             }
             return true;
         }));
+//
+//        // We hijack display list compilation completely - no GL11.glNewList() calls
+//        // During compile don't actually apply any changes to GL, but do track them
+//        GLStateManager.getModelViewMatrix().pushMatrix();  // Save current model view matrix state
+//        GLStateManager.pushState(GL11.GL_ALL_ATTRIB_BITS);
+    }
+
+    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform) {
+        final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+        final VertexFormat format = tessellator.getVertexFormat();
+        final ByteBuffer drawData = tessellator.getBufferCopy();
+        final int cmdIndex = getCommandCount();
+        if (matrixGeneration != lastFlushedGeneration) {
+            if (lastFlushedTransform == null) {
+                lastFlushedTransform = new Matrix4f();
+            }
+            lastFlushedTransform.set(relativeTransform);
+            flushMatrix();
+            lastFlushedGeneration = matrixGeneration;
+        }
+        if (accumulatedDraws.isEmpty()) {
+            accumulatedDraws.add(
+                new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
+            );
+        } else {
+            final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
+            if (previous.format == format && previous.commandIndex == cmdIndex) {
+                previous.mergeDraw(drawData);
+            } else {
+                accumulatedDraws.add(
+                    new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
+                );
+            }
+        }
 
         // We hijack display list compilation completely - no GL11.glNewList() calls
     }

@@ -82,6 +82,8 @@ public class ImmediateModeRecorder {
             throw new IllegalStateException("glEnd called without glBegin");
         }
 
+        tessellator.isDrawing = false;
+
         if (tessellator.isEmpty()) return null;
 //
 //        // Capture last vertex attributes BEFORE clearing currentVertices
@@ -136,8 +138,6 @@ public class ImmediateModeRecorder {
 //            lastColorR, lastColorG, lastColorB, lastColorA,
 //            lastNormalX, lastNormalY, lastNormalZ,
 //            lastTexS, lastTexT);
-
-        tessellator.isDrawing = false;
 
         return this.tessellator;
     }
