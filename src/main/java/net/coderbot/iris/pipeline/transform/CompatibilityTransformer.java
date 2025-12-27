@@ -3,7 +3,7 @@ package net.coderbot.iris.pipeline.transform;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.taumc.glsl.Util;
+import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
@@ -14,7 +14,7 @@ public class CompatibilityTransformer {
     private static final ShaderType[] pipeline = {ShaderType.VERTEX, ShaderType.GEOMETRY, ShaderType.FRAGMENT};
 
 
-    public static void transformEach(GLSLParser.Translation_unitContext translationUnit, Parameters parameters) {
+    public static void transformEach(Transformer transformer, Parameters parameters) {
         if (parameters.type == PatchShaderType.VERTEX) {
             ;
             // TODO: sildur's jankness
@@ -22,7 +22,7 @@ public class CompatibilityTransformer {
             // Why is this the GLSL transformation code in Iris, tell sildur to fix it and remove this?
             // it's still there in current, modern Iris
             // See https://github.com/IrisShaders/Iris/issues/509
-            Util.replaceExpression(translationUnit, "fract(worldpos.y + 0.001)", "fract(worldpos.y + 0.01)");
+            transformer.replaceExpression("fract(worldpos.y + 0.001)", "fract(worldpos.y + 0.01)");
         }
 
         /**
@@ -34,8 +34,8 @@ public class CompatibilityTransformer {
          * identifiers from which the declaration was removed previously.
          * See https://wiki.shaderlabs.org/wiki/Compiler_Behavior_Notes
          */
-        Util.removeUnusedFunctions(translationUnit);
-        Util.removeConstAssignment(translationUnit);
+        transformer.removeUnusedFunctions();
+        transformer.removeConstAssignment();
 
         // TODO: glsl-transformation-lib doesn't have a way to identify empty declarations
         // this transformation is not done in current versions of Iris, so not sure it's necessary
@@ -49,7 +49,7 @@ public class CompatibilityTransformer {
     }
 
 	// does transformations that require cross-shader type data
-    public static void transformGrouped(Map<PatchShaderType, GLSLParser.Translation_unitContext> trees, Parameters parameters) {
+    public static void transformGrouped(Map<PatchShaderType, Transformer> trees, Parameters parameters) {
 		/**
 		 * find attributes that are declared as "in" in geometry or fragment but not
 		 * declared as "out" in the previous stage. The missing "out" declarations for
@@ -88,32 +88,32 @@ public class CompatibilityTransformer {
             }
 
             PatchShaderType prevPatchTypes = PatchShaderType.fromGlShaderType(prevType)[0];
-            GLSLParser.Translation_unitContext prevTree = trees.get(prevPatchTypes);
+            Transformer prevTransformer = trees.get(prevPatchTypes);
 
             // find out declarations
-            Map<String, GLSLParser.Single_declarationContext> outDec = Util.findQualifiers(prevTree, GLSLLexer.OUT);
+            Map<String, GLSLParser.Single_declarationContext> outDec = prevTransformer.findQualifiers(GLSLLexer.OUT);
             for (PatchShaderType currentType : patchTypes) {
-                GLSLParser.Translation_unitContext currentTree = trees.get(currentType);
+                Transformer currentTransformer = trees.get(currentType);
 
-                if (currentTree == null) {
+                if (currentTransformer == null) {
                     continue;
                 }
 
-                Map<String, GLSLParser.Single_declarationContext> inDec = Util.findQualifiers(currentTree, GLSLLexer.IN);
+                Map<String, GLSLParser.Single_declarationContext> inDec = currentTransformer.findQualifiers(GLSLLexer.IN);
                 for (String in : inDec.keySet()) {
                     if (in.startsWith("gl_")) {
                         continue;
                     }
 
                     if (!outDec.containsKey(in)) {
-                        if (!Util.containsCall(currentTree, in)) {
+                        if (!currentTransformer.containsCall(in)) {
                             continue;
                         }
 
-                        Util.makeOutDeclaration(prevTree, inDec.get(in), in);
+                        prevTransformer.makeOutDeclaration(inDec.get(in), in);
 
-                        if (!Util.hasAssigment(prevTree, in)) {
-                            Util.initialize(prevTree, inDec.get(in), in);
+                        if (!prevTransformer.hasAssigment(in)) {
+                            prevTransformer.initialize(inDec.get(in), in);
                         }
                     } else {
                         ParseTree outType = outDec.get(in).fully_specified_type().type_specifier().type_specifier_nonarray().children.get(0);
@@ -124,8 +124,8 @@ public class CompatibilityTransformer {
                         }
 
                         if (inType.getText().equals(outType.getText())) {
-                            if (!Util.hasAssigment(prevTree, in)) {
-                                Util.initialize(prevTree, inDec.get(in), in);
+                            if (!prevTransformer.hasAssigment(in)) {
+                                prevTransformer.initialize(inDec.get(in), in);
                             }
                         }
                     }

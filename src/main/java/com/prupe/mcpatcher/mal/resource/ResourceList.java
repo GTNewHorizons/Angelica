@@ -104,7 +104,7 @@ public class ResourceList {
             try {
                 zipFile = new ZipFile(jar);
                 scanZipFile(zipFile);
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 MCPatcherUtils.close(zipFile);

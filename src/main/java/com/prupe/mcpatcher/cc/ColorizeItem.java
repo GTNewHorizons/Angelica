@@ -36,7 +36,7 @@ public class ColorizeItem {
     static {
         try {
             reset();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

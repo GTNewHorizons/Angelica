@@ -14,6 +14,12 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 public final class CommandBuffer {
     private static final int DEFAULT_CAPACITY = 4096; // Guess at typical display list size
 
+    // Flag bits for DRAW_RANGE_RESTORE command
+    public static final int FLAG_HAS_BRIGHTNESS = 1 << 0;
+    public static final int FLAG_HAS_COLOR      = 1 << 1;
+    public static final int FLAG_HAS_NORMALS    = 1 << 2;
+    public static final int FLAG_HAS_TEXTURE    = 1 << 3;
+
     private ByteBuffer buffer;
     private long basePointer;
     private long writePointer;
@@ -137,22 +143,19 @@ public final class CommandBuffer {
         writeInt(0); // unused padding
     }
 
-    public void writeLoadIdentity(int matrixMode) {
-        ensureCapacity(8);
+    public void writeLoadIdentity() {
+        ensureCapacity(4);
         writeInt(GLCommand.LOAD_IDENTITY);
-        writeInt(matrixMode);
     }
 
-    public void writePushMatrix(int matrixMode) {
-        ensureCapacity(8);
+    public void writePushMatrix() {
+        ensureCapacity(4);
         writeInt(GLCommand.PUSH_MATRIX);
-        writeInt(matrixMode);
     }
 
-    public void writePopMatrix(int matrixMode) {
-        ensureCapacity(8);
+    public void writePopMatrix() {
+        ensureCapacity(4);
         writeInt(GLCommand.POP_MATRIX);
-        writeInt(matrixMode);
     }
 
     public void writeStencilMask(int mask) {
@@ -415,29 +418,26 @@ public final class CommandBuffer {
 
     // === Double commands ===
 
-    public void writeTranslate(int matrixMode, double x, double y, double z) {
-        ensureCapacity(32);
+    public void writeTranslate(double x, double y, double z) {
+        ensureCapacity(28);
         writeInt(GLCommand.TRANSLATE);
-        writeInt(matrixMode);
         writeDouble(x);
         writeDouble(y);
         writeDouble(z);
     }
 
-    public void writeRotate(int matrixMode, double angle, double x, double y, double z) {
-        ensureCapacity(40);
+    public void writeRotate(double angle, double x, double y, double z) {
+        ensureCapacity(36);
         writeInt(GLCommand.ROTATE);
-        writeInt(matrixMode);
         writeDouble(angle);
         writeDouble(x);
         writeDouble(y);
         writeDouble(z);
     }
 
-    public void writeScale(int matrixMode, double x, double y, double z) {
-        ensureCapacity(32);
+    public void writeScale(double x, double y, double z) {
+        ensureCapacity(28);
         writeInt(GLCommand.SCALE);
-        writeInt(matrixMode);
         writeDouble(x);
         writeDouble(y);
         writeDouble(z);
@@ -467,17 +467,15 @@ public final class CommandBuffer {
 
     // === Matrix commands ===
 
-    public void writeMultMatrix(int matrixMode, Matrix4f matrix) {
-        ensureCapacity(72);
+    public void writeMultMatrix(Matrix4f matrix) {
+        ensureCapacity(68);
         writeInt(GLCommand.MULT_MATRIX);
-        writeInt(matrixMode);
         writeMatrix4f(matrix);
     }
 
-    public void writeLoadMatrix(int matrixMode, Matrix4f matrix) {
-        ensureCapacity(72);
+    public void writeLoadMatrix(Matrix4f matrix) {
+        ensureCapacity(68);
         writeInt(GLCommand.LOAD_MATRIX);
-        writeInt(matrixMode);
         writeMatrix4f(matrix);
     }
 
@@ -554,6 +552,58 @@ public final class CommandBuffer {
         ensureCapacity(8);
         writeInt(GLCommand.DRAW_RANGE);
         writeInt(vboIndex);
+    }
+
+    /**
+     * Write a DRAW_RANGE_RESTORE command that draws a VBO range and restores GL current state after.
+     * Used for immediate mode VBOs to restore GL_CURRENT_COLOR, GL_CURRENT_NORMAL, GL_CURRENT_TEXTURE_COORDS.
+     *
+     * @param vboIndex Index into ownedVbos array
+     * @param startVertex First vertex to draw
+     * @param vertexCount Number of vertices to draw
+     * @param hasBrightness True if VBO has brightness/lightmap data
+     * @param hasColor True if color should be restored after draw
+     * @param hasNormals True if normal should be restored after draw
+     * @param hasTexture True if texcoord should be restored after draw
+     * @param lastColorR Last vertex's red color component
+     * @param lastColorG Last vertex's green color component
+     * @param lastColorB Last vertex's blue color component
+     * @param lastColorA Last vertex's alpha color component
+     * @param lastNormalX Last vertex's normal X
+     * @param lastNormalY Last vertex's normal Y
+     * @param lastNormalZ Last vertex's normal Z
+     * @param lastTexS Last vertex's texture S coordinate
+     * @param lastTexT Last vertex's texture T coordinate
+     */
+    public void writeDrawRangeRestore(
+        int vboIndex, int startVertex, int vertexCount,
+        boolean hasBrightness, boolean hasColor, boolean hasNormals, boolean hasTexture,
+        float lastColorR, float lastColorG, float lastColorB, float lastColorA,
+        float lastNormalX, float lastNormalY, float lastNormalZ,
+        float lastTexS, float lastTexT
+    ) {
+        ensureCapacity(56);
+        writeInt(GLCommand.DRAW_RANGE_RESTORE);
+        writeInt(vboIndex);
+        writeInt(startVertex);
+        writeInt(vertexCount);
+        int flags = (hasBrightness ? FLAG_HAS_BRIGHTNESS : 0)
+                  | (hasColor ? FLAG_HAS_COLOR : 0)
+                  | (hasNormals ? FLAG_HAS_NORMALS : 0)
+                  | (hasTexture ? FLAG_HAS_TEXTURE : 0);
+        writeInt(flags);
+        // Last color (4 floats = 16 bytes)
+        writeFloat(lastColorR);
+        writeFloat(lastColorG);
+        writeFloat(lastColorB);
+        writeFloat(lastColorA);
+        // Last normal (3 floats = 12 bytes)
+        writeFloat(lastNormalX);
+        writeFloat(lastNormalY);
+        writeFloat(lastNormalZ);
+        // Last texcoord (2 floats = 8 bytes)
+        writeFloat(lastTexS);
+        writeFloat(lastTexT);
     }
 
     public void writeCallList(int listId) {

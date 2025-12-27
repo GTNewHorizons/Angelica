@@ -5,9 +5,7 @@ import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
-import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.shaderpack.ProgramSet;
-import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.ExternallyManagedUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
@@ -16,7 +14,10 @@ import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.IntFunction;
+
+import net.coderbot.iris.Iris;
 
 public class SodiumTerrainPipeline {
 	Optional<String> terrainVertex = Optional.empty();
@@ -46,55 +47,63 @@ public class SodiumTerrainPipeline {
 								 ProgramSet programSet, IntFunction<ProgramSamplers> createTerrainSamplers,
 								 IntFunction<ProgramSamplers> createShadowSamplers,
 								 IntFunction<ProgramImages> createTerrainImages,
-								 IntFunction<ProgramImages> createShadowImages, CustomUniforms customUniforms) {
+								 IntFunction<ProgramImages> createShadowImages, CustomUniforms customUniforms,
+								 String terrainSourceName,
+								 String translucentSourceName,
+								 String shadowSourceName,
+								 CompletableFuture<Map<PatchShaderType, String>> terrainFuture,
+								 CompletableFuture<Map<PatchShaderType, String>> translucentFuture,
+								 CompletableFuture<Map<PatchShaderType, String>> shadowFuture) {
 		this.parent = Objects.requireNonNull(parent);
-
-		Optional<ProgramSource> terrainSource = first(programSet.getGbuffersTerrain(), programSet.getGbuffersTexturedLit(), programSet.getGbuffersTextured(), programSet.getGbuffersBasic());
-		Optional<ProgramSource> translucentSource = first(programSet.getGbuffersWater(), terrainSource);
-		Optional<ProgramSource> shadowSource = programSet.getShadow();
 
 		this.programSet = programSet;
 
         this.customUniforms = customUniforms;
 
-		terrainSource.ifPresent(sources -> {
-			Map<PatchShaderType, String> result = TransformPatcher.patchSodiumTerrain(
-				sources.getVertexSource().orElse(null),
-				sources.getGeometrySource().orElse(null),
-				sources.getFragmentSource().orElse(null));
-			terrainVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
-			terrainGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
-			terrainFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
+		if (terrainFuture != null) {
+			try {
+				Map<PatchShaderType, String> result = terrainFuture.join();
+				terrainVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
+				terrainGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
+				terrainFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
 
-			PatchedShaderPrinter.debugPatchedShaders(sources.getName() + "_sodium",
-				terrainVertex.orElse(null), terrainGeometry.orElse(null), terrainFragment.orElse(null));
-		});
+				PatchedShaderPrinter.debugPatchedShaders(terrainSourceName + "_sodium",
+					terrainVertex.orElse(null), terrainGeometry.orElse(null), terrainFragment.orElse(null));
+			} catch (Exception e) {
+				Iris.logger.error("Failed to transform terrain shader: {}", terrainSourceName, e);
+				throw new RuntimeException("Shader transformation failed for " + terrainSourceName, e);
+			}
+		}
 
-		translucentSource.ifPresent(sources -> {
-			Map<PatchShaderType, String> result = TransformPatcher.patchSodiumTerrain(
-				sources.getVertexSource().orElse(null),
-				sources.getGeometrySource().orElse(null),
-				sources.getFragmentSource().orElse(null));
-			translucentVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
-			translucentGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
-			translucentFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
+		if (translucentFuture != null) {
+			try {
+				Map<PatchShaderType, String> result = translucentFuture.join();
+				translucentVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
+				translucentGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
+				translucentFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
 
-			PatchedShaderPrinter.debugPatchedShaders(sources.getName() + "_sodium",
-				translucentVertex.orElse(null), translucentGeometry.orElse(null), translucentFragment.orElse(null));
-		});
+				PatchedShaderPrinter.debugPatchedShaders(translucentSourceName + "_sodium",
+					translucentVertex.orElse(null), translucentGeometry.orElse(null), translucentFragment.orElse(null));
+			} catch (Exception e) {
+				Iris.logger.error("Failed to transform translucent shader: {}", translucentSourceName, e);
+				throw new RuntimeException("Shader transformation failed for " + translucentSourceName, e);
+			}
+		}
 
-		shadowSource.ifPresent(sources -> {
-			Map<PatchShaderType, String> result = TransformPatcher.patchSodiumTerrain(
-				sources.getVertexSource().orElse(null),
-				sources.getGeometrySource().orElse(null),
-				sources.getFragmentSource().orElse(null));
-			shadowVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
-			shadowGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
-			shadowFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
+		if (shadowFuture != null) {
+			try {
+				Map<PatchShaderType, String> result = shadowFuture.join();
+				shadowVertex = Optional.ofNullable(result.get(PatchShaderType.VERTEX));
+				shadowGeometry = Optional.ofNullable(result.get(PatchShaderType.GEOMETRY));
+				shadowFragment = Optional.ofNullable(result.get(PatchShaderType.FRAGMENT));
 
-			PatchedShaderPrinter.debugPatchedShaders(sources.getName() + "_sodium",
-				shadowVertex.orElse(null), shadowGeometry.orElse(null), shadowFragment.orElse(null));
-		});
+				PatchedShaderPrinter.debugPatchedShaders(shadowSourceName + "_sodium",
+					shadowVertex.orElse(null), shadowGeometry.orElse(null), shadowFragment.orElse(null));
+			} catch (Exception e) {
+				Iris.logger.error("Failed to transform shadow shader: {}", shadowSourceName, e);
+				throw new RuntimeException("Shader transformation failed for " + shadowSourceName, e);
+			}
+		}
 
 		this.createTerrainSamplers = createTerrainSamplers;
 		this.createShadowSamplers = createShadowSamplers;
@@ -177,15 +186,4 @@ public class SodiumTerrainPipeline {
 	public void unbindFramebuffer() {
 		GlStateManager.bindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 	}*/
-
-	@SafeVarargs
-	private static <T> Optional<T> first(Optional<T>... candidates) {
-		for (Optional<T> candidate : candidates) {
-			if (candidate.isPresent()) {
-				return candidate;
-			}
-		}
-
-		return Optional.empty();
-	}
 }

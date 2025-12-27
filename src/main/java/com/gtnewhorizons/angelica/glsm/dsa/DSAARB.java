@@ -73,13 +73,18 @@ public class DSAARB extends DSAUnsupported {
     }
 
     @Override
+    public int getTexLevelParameteri(int texture, int level, int pname) {
+        return ARBDirectStateAccess.glGetTextureLevelParameteri(texture, level, pname);
+    }
+
+    @Override
     public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
         ARBDirectStateAccess.glCopyTextureSubImage2D(destTexture, i, i1, i2, i3, i4, width, height);
     }
 
     @Override
     public void bindTextureToUnit(int unit, int texture) {
-        if(GLStateManager.getBoundTexture(unit) == texture) return;
+        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
 
         if (texture == 0) {
             super.bindTextureToUnit(unit, texture);

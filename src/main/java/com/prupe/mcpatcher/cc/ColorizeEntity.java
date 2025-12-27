@@ -46,7 +46,7 @@ public class ColorizeEntity {
     static {
         try {
             reset();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

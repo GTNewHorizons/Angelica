@@ -23,6 +23,12 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
  * <p>The ownedVbos array contains VBOs that are referenced by DrawRange commands.
  */
 public final class CompiledDisplayList {
+    /**
+     * Empty display list singleton. Per OpenGL spec, an empty list is still valid.
+     * This instance does nothing when rendered and is never deleted (shared singleton).
+     */
+    public static final CompiledDisplayList EMPTY = new CompiledDisplayList(null, null, null);
+
     private final ByteBuffer commandBuffer;     // Off-heap command storage, must be freed
     private final Object[] complexObjects;      // Complex commands (TexImage2D, etc.)
     private final BigVBO ownedVbos;     // GPU resources referenced by index
@@ -87,14 +93,14 @@ public final class CompiledDisplayList {
      * Used for testing to verify optimization results.
      */
     public Int2IntMap getCommandCounts() {
-        Int2IntMap counts = new Int2IntOpenHashMap();
+        final Int2IntMap counts = new Int2IntOpenHashMap();
         if (commandBuffer == null || commandBuffer.limit() == 0) {
             return counts;
         }
         long ptr = memAddress(commandBuffer);
-        long end = ptr + commandBuffer.limit();
+        final long end = ptr + commandBuffer.limit();
         while (ptr < end) {
-            int cmd = memGetInt(ptr);
+            final int cmd = memGetInt(ptr);
             counts.mergeInt(cmd, 1, Integer::sum);
             ptr += getCommandSize(cmd, ptr);
         }
@@ -106,14 +112,14 @@ public final class CompiledDisplayList {
      * Used for testing to verify command ordering.
      */
     public IntList getCommandOpcodes() {
-        IntList opcodes = new IntArrayList();
+        final IntList opcodes = new IntArrayList();
         if (commandBuffer == null || commandBuffer.limit() == 0) {
             return opcodes;
         }
         long ptr = memAddress(commandBuffer);
-        long end = ptr + commandBuffer.limit();
+        final long end = ptr + commandBuffer.limit();
         while (ptr < end) {
-            int cmd = memGetInt(ptr);
+            final int cmd = memGetInt(ptr);
             opcodes.add(cmd);
             ptr += getCommandSize(cmd, ptr);
         }
@@ -125,12 +131,14 @@ public final class CompiledDisplayList {
      */
     private static int getCommandSize(int cmd, long ptr) {
         return switch (cmd) {
+            // Opcode-only commands (4 bytes)
+            case GLCommand.LOAD_IDENTITY, GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX -> 4;
+
             // Single int commands (8 bytes)
             case GLCommand.ENABLE, GLCommand.DISABLE, GLCommand.CLEAR, GLCommand.CLEAR_STENCIL,
                  GLCommand.CULL_FACE, GLCommand.DEPTH_FUNC, GLCommand.SHADE_MODEL, GLCommand.LOGIC_OP,
                  GLCommand.MATRIX_MODE, GLCommand.ACTIVE_TEXTURE, GLCommand.USE_PROGRAM,
-                 GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.LOAD_IDENTITY,
-                 GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX, GLCommand.STENCIL_MASK,
+                 GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.STENCIL_MASK,
                  GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
                  GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_RANGE, GLCommand.BIND_VBO,
                  GLCommand.BIND_VAO -> 8;
@@ -151,22 +159,32 @@ public final class CompiledDisplayList {
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
 
+            // DRAW_RANGE_RESTORE: 56 bytes
+            // [cmd:4][vboIndex:4][start:4][count:4][flags:4][color:16f][normal:12f][texcoord:8f]
+            case GLCommand.DRAW_RANGE_RESTORE -> 56;
+
+            // DRAW_BUFFER: 8 bytes [cmd:4][mode:4]
+            case GLCommand.DRAW_BUFFER -> 8;
+
+            // DRAW_BUFFERS: 40 bytes [cmd:4][count:4][bufs:4*8]
+            case GLCommand.DRAW_BUFFERS -> 40;
+
             // Double commands
-            case GLCommand.TRANSLATE, GLCommand.SCALE -> 32;  // cmd + mode + 3 doubles
+            case GLCommand.TRANSLATE, GLCommand.SCALE -> 28;  // cmd + 3 doubles
             case GLCommand.CLEAR_DEPTH -> 12;  // cmd + 1 double
-            case GLCommand.ROTATE -> 40;  // cmd + mode + 4 doubles
+            case GLCommand.ROTATE -> 36;  // cmd + 4 doubles
             case GLCommand.ORTHO, GLCommand.FRUSTUM -> 52;  // cmd + 6 doubles
 
-            // Matrix commands (72 bytes)
-            case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> 72;
+            // Matrix commands
+            case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> 68;  // cmd + 16 floats
 
             // Buffer commands (variable, read count)
             case GLCommand.FOG, GLCommand.LIGHT_MODEL -> {
-                int count = memGetInt(ptr + 8);  // pname at +4, count at +8
+                final int count = memGetInt(ptr + 8);  // pname at +4, count at +8
                 yield 12 + count * 4;
             }
             case GLCommand.LIGHT, GLCommand.MATERIAL -> {
-                int count = memGetInt(ptr + 12);  // light/face at +4, pname at +8, count at +12
+                final int count = memGetInt(ptr + 12);  // light/face at +4, pname at +8, count at +12
                 yield 16 + count * 4;
             }
 

@@ -67,8 +67,8 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		for (TextureAtlasSprite sprite : sprites.values()) {
 			try {
 				uploadSprite(sprite);
-			} catch (Throwable throwable) {
-				CrashReport crashReport = CrashReport.makeCrashReport(throwable, "Stitching texture atlas");
+			} catch (Exception e) {
+				CrashReport crashReport = CrashReport.makeCrashReport(e, "Stitching texture atlas");
 				CrashReportCategory crashReportCategory = crashReport.makeCategory("Texture being stitched together");
 				crashReportCategory.addCrashSection("Atlas path", id);
 				crashReportCategory.addCrashSection("Sprite", sprite);
@@ -97,7 +97,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		try {
 			upload(atlasWidth, atlasHeight, mipLevel, anisotropicFiltering);
 			return true;
-		} catch (Throwable t) {
+		} catch (Exception t) {
             Iris.logger.error("Could not upload PBR texture", t);
 			return false;
 		}

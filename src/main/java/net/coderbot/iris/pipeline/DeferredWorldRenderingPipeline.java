@@ -32,6 +32,7 @@ import net.coderbot.iris.postprocess.BufferFlipper;
 import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
+import net.coderbot.iris.postprocess.ProgramBuildContext;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
 import net.coderbot.iris.rendertarget.RenderTargets;
@@ -78,8 +79,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -127,6 +130,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private final SodiumTerrainPipeline sodiumTerrainPipeline;
 
+	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> attributeTransforms;
+
 	private final HorizonRenderer horizonRenderer = new HorizonRenderer();
 
 	private final float sunPathRotation;
@@ -158,6 +163,27 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
+
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> prepareTransformFutures = submitCompositeTransforms(programs.getPrepare());
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> deferredTransformFutures = submitCompositeTransforms(programs.getDeferred());
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> compositeTransformFutures = submitCompositeTransforms(programs.getComposite());
+
+		final CompletableFuture<Map<PatchShaderType, String>> finalTransformFuture =
+			programs.getCompositeFinal()
+				.filter(ProgramSource::isValid)
+				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
+				.orElse(null);
+
+		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
+
+		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
+		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);
+		final Optional<ProgramSource> shadowSource = programs.getShadow();
+
+		final CompletableFuture<Map<PatchShaderType, String>> sodiumTerrainFuture = terrainSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
+		final CompletableFuture<Map<PatchShaderType, String>> sodiumTranslucentFuture = translucentSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
+		final CompletableFuture<Map<PatchShaderType, String>> sodiumShadowFuture = shadowSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
 
 		this.cloudSetting = programs.getPackDirectives().getCloudSetting();
 		this.shouldRenderUnderwaterOverlay = programs.getPackDirectives().underwaterOverlay();
@@ -239,31 +265,22 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		PatchedShaderPrinter.resetPrintState();
 
-		this.prepareRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getPrepare(), programs.getPrepareCompute(), renderTargets,
-				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
-				customTextureManager.getCustomTextureIdMap(TextureStage.PREPARE),
-				programs.getPackDirectives().getExplicitFlips("prepare_pre"), customUniforms);
+		final ProgramBuildContext prepareBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.PREPARE), customUniforms);
+		final ProgramBuildContext deferredBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.DEFERRED), customUniforms);
+		final ProgramBuildContext compositeBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL), customUniforms);
+		this.prepareRenderer = new CompositeRenderer(programs.getPrepare(), programs.getPrepareCompute(), flipper, prepareBuildContext, programs.getPackDirectives().getExplicitFlips("prepare_pre"), prepareTransformFutures, "prepare");
 
 		flippedAfterPrepare = flipper.snapshot();
 
-		this.deferredRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getDeferred(), programs.getDeferredCompute(), renderTargets,
-				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
-				customTextureManager.getCustomTextureIdMap(TextureStage.DEFERRED),
-				programs.getPackDirectives().getExplicitFlips("deferred_pre"), customUniforms);
+		this.deferredRenderer = new CompositeRenderer(programs.getDeferred(), programs.getDeferredCompute(), flipper, deferredBuildContext, programs.getPackDirectives().getExplicitFlips("deferred_pre"), deferredTransformFutures, "deferred");
 
 		flippedAfterTranslucent = flipper.snapshot();
 
-		this.compositeRenderer = new CompositeRenderer(programs.getPackDirectives(), programs.getComposite(), programs.getCompositeCompute(), renderTargets,
-				customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier,
-				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				programs.getPackDirectives().getExplicitFlips("composite_pre"), customUniforms);
-		this.finalPassRenderer = new FinalPassRenderer(programs, renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, flipper.snapshot(),
-				centerDepthSampler, shadowTargetsSupplier,
-				customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL),
-				this.compositeRenderer.getFlippedAtLeastOnceFinal(), customUniforms);
+		this.compositeRenderer = new CompositeRenderer(programs.getComposite(), programs.getCompositeCompute(), flipper, compositeBuildContext, programs.getPackDirectives().getExplicitFlips("composite_pre"), compositeTransformFutures, "composite");
+		this.finalPassRenderer = new FinalPassRenderer(programs, compositeBuildContext, flipper.snapshot(), this.compositeRenderer.getFlippedAtLeastOnceFinal(), finalTransformFuture, "final");
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
-		ProgramId[] ids = new ProgramId[] {
+		final ProgramId[] ids = new ProgramId[] {
 				ProgramId.Basic, ProgramId.Textured, ProgramId.TexturedLit,
 				ProgramId.SkyBasic, ProgramId.SkyTextured, ProgramId.SkyTextured,
 				null, null, ProgramId.Terrain,
@@ -288,14 +305,22 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			throw new IllegalStateException("Program ID table length mismatch");
 		}
 
-		ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+		this.attributeTransforms = new HashMap<>();
+		for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : attributeTransformFutures.entrySet()) {
+			try {
+				this.attributeTransforms.put(entry.getKey(), entry.getValue().join());
+			} catch (Exception e) {
+				Iris.logger.error("Failed to transform shader: {}", entry.getKey().getLeft(), e);
+				throw new RuntimeException("Shader transformation failed for " + entry.getKey().getLeft(), e);
+			}
+		}
 
-		Map<Pair<ProgramId, InputAvailability>, Pass> cachedPasses = new HashMap<>();
+		final Map<Pair<ProgramId, InputAvailability>, Pass> cachedPasses = new HashMap<>();
 
 		this.shadowComputes = createShadowComputes(programs.getShadowCompute());
 
 		this.table = new ProgramTable<>((condition, availability) -> {
-			int idx;
+			final int idx;
 
 			if (availability.texture && availability.lightmap) {
 				idx = 2;
@@ -311,10 +336,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				id = ids[idx];
 			}
 
-			ProgramId finalId = id;
+			final ProgramId finalId = id;
 
 			return cachedPasses.computeIfAbsent(Pair.of(id, availability), p -> {
-				ProgramSource source = resolver.resolveNullable(p.getLeft());
+				final ProgramSource source = resolver.resolveNullable(p.getLeft());
 
 				if (condition == RenderCondition.SHADOW) {
 					if (!shadowDirectives.isShadowEnabled().orElse(shadowRenderTargets != null)) {
@@ -427,7 +452,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		};
         this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
-			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms);
+			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms,
+			terrainSource.map(ProgramSource::getName).orElse(null),
+			translucentSource.map(ProgramSource::getName).orElse(null),
+			shadowSource.map(ProgramSource::getName).orElse(null),
+			sodiumTerrainFuture, sodiumTranslucentFuture, sodiumShadowFuture);
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -592,12 +621,19 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private Pass createPass(ProgramSource source, InputAvailability availability, boolean shadow, ProgramId id) {
-		// TODO: Properly handle empty shaders?
-		Map<PatchShaderType, String> transformed = TransformPatcher.patchAttributes(
-			source.getVertexSource().orElseThrow(NullPointerException::new),
-			source.getGeometrySource().orElse(null),
-			source.getFragmentSource().orElseThrow(NullPointerException::new),
-			availability);
+		// Use pre-computed transform if available, otherwise transform synchronously
+		Pair<String, InputAvailability> key = Pair.of(source.getName(), availability);
+		Map<PatchShaderType, String> transformed = attributeTransforms.get(key);
+
+		if (transformed == null) {
+			// Fallback to synchronous transform if not pre-computed
+			transformed = TransformPatcher.patchAttributes(
+				source.getVertexSource().orElseThrow(NullPointerException::new),
+				source.getGeometrySource().orElse(null),
+				source.getFragmentSource().orElseThrow(NullPointerException::new),
+				availability);
+		}
+
 		String vertex = transformed.get(PatchShaderType.VERTEX);
 		String geometry = transformed.get(PatchShaderType.GEOMETRY);
 		String fragment = transformed.get(PatchShaderType.FRAGMENT);
@@ -1265,5 +1301,60 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			PBRTextureManager.notifyPBRTexturesChanged();
 		}
+	}
+
+	private static final InputAvailability INPUT_NONE = new InputAvailability(false, false);
+	private static final InputAvailability INPUT_TEXTURE = new InputAvailability(true, false);
+	private static final InputAvailability INPUT_TEXTURE_LIGHTMAP = new InputAvailability(true, true);
+	private static final InputAvailability[] INPUT_AVAILABILITIES = { INPUT_NONE, INPUT_TEXTURE, INPUT_TEXTURE_LIGHTMAP };
+
+	private static CompletableFuture<Map<PatchShaderType, String>> submitCompositeTransform(ProgramSource source) {
+		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null)));
+	}
+
+	private static Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> submitCompositeTransforms(ProgramSource[] sources) {
+		// Count valid sources for initial capacity
+		int count = 0;
+		for (ProgramSource source : sources) {
+			if (source != null && source.isValid()) count++;
+		}
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>(count);
+		for (int i = 0; i < sources.length; i++) {
+			if (sources[i] != null && sources[i].isValid()) {
+				futures.put(i, submitCompositeTransform(sources[i]));
+			}
+		}
+		return futures;
+	}
+
+	private static Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>
+			submitAttributeTransforms(ProgramFallbackResolver resolver) {
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
+		final Set<String> processedSourceNames = new HashSet<>();
+		for (ProgramId id : ProgramId.values()) {
+			ProgramSource source = resolver.resolveNullable(id);
+			if (source != null && !processedSourceNames.contains(source.getName())) {
+				processedSourceNames.add(source.getName());
+				for (InputAvailability avail : INPUT_AVAILABILITIES) {
+					Pair<String, InputAvailability> key = Pair.of(source.getName(), avail);
+					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null), avail)));
+				}
+			}
+		}
+		return futures;
+	}
+
+	private static CompletableFuture<Map<PatchShaderType, String>> submitSodiumTerrainTransform(ProgramSource source) {
+		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchSodiumTerrain(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null)));
+	}
+
+	@SafeVarargs
+	private static <T> Optional<T> first(Optional<T>... candidates) {
+		for (Optional<T> candidate : candidates) {
+			if (candidate.isPresent()) {
+				return candidate;
+			}
+		}
+		return Optional.empty();
 	}
 }

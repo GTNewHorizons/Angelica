@@ -11,34 +11,23 @@ import java.nio.FloatBuffer;
 
 /**
  * Command: glMultMatrix(matrix)
- * Multiplies the specified matrix mode by the specified matrix.
+ * Multiplies the current matrix by the specified matrix.
  */
 @Desugar
-public record MultMatrixCmd(Matrix4f matrix, int matrixMode, FloatBuffer buffer) implements AccumulableMatrixCommand {
+public record MultMatrixCmd(Matrix4f matrix, FloatBuffer buffer) implements DisplayListCommand {
 
     /**
      * Create a MultMatrixCmd with pre-allocated buffer.
      */
-    public static MultMatrixCmd create(Matrix4f matrix, int matrixMode) {
+    public static MultMatrixCmd create(Matrix4f matrix) {
         final FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
         matrix.get(buffer);
         buffer.rewind();
-        return new MultMatrixCmd(new Matrix4f(matrix), matrixMode, buffer);
-    }
-
-    @Override
-    public boolean isModelView() {
-        return matrixMode == GL11.GL_MODELVIEW;
-    }
-
-    @Override
-    public void applyTo(Matrix4f target) {
-        target.mul(matrix);
+        return new MultMatrixCmd(new Matrix4f(matrix), buffer);
     }
 
     @Override
     public void execute() {
-        // Buffer already populated at construction, just rewind and use
         buffer.rewind();
         GLStateManager.glMultMatrix(buffer);
     }
