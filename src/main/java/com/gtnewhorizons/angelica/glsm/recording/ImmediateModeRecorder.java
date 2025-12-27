@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 
@@ -9,6 +11,8 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) during display list compilation.
@@ -78,61 +82,64 @@ public class ImmediateModeRecorder {
             throw new IllegalStateException("glEnd called without glBegin");
         }
 
-        // Capture last vertex attributes BEFORE clearing currentVertices
-        // These will be used to restore GL current state after VBO playback
-        float lastColorR = 1.0f, lastColorG = 1.0f, lastColorB = 1.0f, lastColorA = 1.0f;
-        float lastNormalX = 0.0f, lastNormalY = 0.0f, lastNormalZ = 1.0f;
-        float lastTexS = 0.0f, lastTexT = 0.0f;
+        if (tessellator.isEmpty()) return null;
+//
+//        // Capture last vertex attributes BEFORE clearing currentVertices
+//        // These will be used to restore GL current state after VBO playback
+//        float lastColorR = 1.0f, lastColorG = 1.0f, lastColorB = 1.0f, lastColorA = 1.0f;
+//        float lastNormalX = 0.0f, lastNormalY = 0.0f, lastNormalZ = 1.0f;
+//        float lastTexS = 0.0f, lastTexT = 0.0f;
+//
+//        if (!currentVertices.isEmpty()) {
+//            ImmediateVertex last = currentVertices.get(currentVertices.size() - 1);
+//
+//            // Unpack color from ABGR format
+//            lastColorR = (last.color & 0xFF) / 255.0f;
+//            lastColorG = ((last.color >> 8) & 0xFF) / 255.0f;
+//            lastColorB = ((last.color >> 16) & 0xFF) / 255.0f;
+//            lastColorA = ((last.color >> 24) & 0xFF) / 255.0f;
+//
+//            // Unpack normal from NormI8 format (signed bytes packed into int)
+//            lastNormalX = NormI8.unpackX(last.normal);
+//            lastNormalY = NormI8.unpackY(last.normal);
+//            lastNormalZ = NormI8.unpackZ(last.normal);
+//
+//            // Texture coords are stored directly as floats
+//            lastTexS = last.texU;
+//            lastTexT = last.texV;
+//        }
+//
+//        // Convert this primitive's vertices to quads or lines
+//        convertPrimitiveToQuads();
+//        this.currentVertices.clear();
+//        this.inPrimitive = false;
+//
+//        // Return geometry from this primitive immediately (don't accumulate)
+//        if (quads.isEmpty() && lineVertices.isEmpty()) {
+//            return null;
+//        }
+//
+//        // Copy geometry and create flags
+//        List<ModelQuadViewMutable> resultQuads = new ArrayList<>(quads);
+//        List<LineVertex> resultLines = new ArrayList<>(lineVertices);
+//        CapturingTessellator.Flags flags = new CapturingTessellator.Flags(
+//            hasTexCoord,   // hasTexture
+//            false,         // hasBrightness - immediate mode doesn't typically use lightmap
+//            hasColor,      // hasColor
+//            hasNormal      // hasNormals
+//        );
+//        // Clear for next primitive (but keep attribute tracking state)
+//        quads.clear();
+//        lineVertices.clear();
+//
+//        return new Result(resultQuads, resultLines, flags,
+//            lastColorR, lastColorG, lastColorB, lastColorA,
+//            lastNormalX, lastNormalY, lastNormalZ,
+//            lastTexS, lastTexT);
 
-        if (!currentVertices.isEmpty()) {
-            ImmediateVertex last = currentVertices.get(currentVertices.size() - 1);
-
-            // Unpack color from ABGR format
-            lastColorR = (last.color & 0xFF) / 255.0f;
-            lastColorG = ((last.color >> 8) & 0xFF) / 255.0f;
-            lastColorB = ((last.color >> 16) & 0xFF) / 255.0f;
-            lastColorA = ((last.color >> 24) & 0xFF) / 255.0f;
-
-            // Unpack normal from NormI8 format (signed bytes packed into int)
-            lastNormalX = NormI8.unpackX(last.normal);
-            lastNormalY = NormI8.unpackY(last.normal);
-            lastNormalZ = NormI8.unpackZ(last.normal);
-
-            // Texture coords are stored directly as floats
-            lastTexS = last.texU;
-            lastTexT = last.texV;
-        }
-
-        // Convert this primitive's vertices to quads or lines
-        convertPrimitiveToQuads();
-        this.currentVertices.clear();
-        this.inPrimitive = false;
-
-        // Return geometry from this primitive immediately (don't accumulate)
-        if (quads.isEmpty() && lineVertices.isEmpty()) {
-            return null;
-        }
-
-        // Copy geometry and create flags
-        List<ModelQuadViewMutable> resultQuads = new ArrayList<>(quads);
-        List<LineVertex> resultLines = new ArrayList<>(lineVertices);
-        CapturingTessellator.Flags flags = new CapturingTessellator.Flags(
-            hasTexCoord,   // hasTexture
-            false,         // hasBrightness - immediate mode doesn't typically use lightmap
-            hasColor,      // hasColor
-            hasNormal      // hasNormals
-        );
         tessellator.isDrawing = false;
 
         return this.tessellator;
-        // Clear for next primitive (but keep attribute tracking state)
-        quads.clear();
-        lineVertices.clear();
-
-        return new Result(resultQuads, resultLines, flags,
-            lastColorR, lastColorG, lastColorB, lastColorA,
-            lastNormalX, lastNormalY, lastNormalZ,
-            lastTexS, lastTexT);
     }
 
     /**
@@ -211,9 +218,6 @@ public class ImmediateModeRecorder {
         java.nio.Buffer vertexPointer, int vertexType, int vertexSize, int vertexStride,
         java.nio.Buffer colorPointer, int colorType, int colorSize, int colorStride
     ) {
-        if (true) {
-            throw new UnsupportedOperationException("test");
-        }
         begin(mode);
 
         // Hoist type checks and stride calculations outside the loop for performance.

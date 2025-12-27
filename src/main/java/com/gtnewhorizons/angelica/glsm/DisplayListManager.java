@@ -141,7 +141,6 @@ public class DisplayListManager {
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
         Matrix4fStack transform,
-        boolean wasTessellatorCompiling,
         ImmediateModeRecorder immediateRecorder,
         StackTraceElement[] stackTrace,
 
@@ -605,8 +604,8 @@ public class DisplayListManager {
      * during display list playback.
      *
      */
-    public static void addImmediateModeDraw(ImmediateModeRecorder.Result result) {
-        if (accumulatedDraws == null || result == null) {
+    public static void addImmediateModeDraw(DirectTessellator tessellator) {
+        if (accumulatedDraws == null) {
             return;
         }
 
@@ -814,8 +813,8 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform, immediateModeRecorder, compilationStackTrace,
-                pendingTransformOps, multMatrixSources, drawRangeSources
+                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform, immediateModeRecorder,
+                compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
         }
@@ -913,7 +912,7 @@ public class DisplayListManager {
             // Free the recorder (and its buffer) after optimization
             currentRecorder.free();
 
-            compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), ownedVbos);
+            compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), compiledBuffers);
         } else {
             // Free the recorder even if empty
             if (currentRecorder != null) {
@@ -1067,7 +1066,7 @@ public class DisplayListManager {
                 sb.append("Contents: No commands\n");
             } else {
                 sb.append("Commands (").append(buffer.limit()).append(" bytes):\n");
-                dumpCommandBuffer(buffer, compiled.getComplexObjects(), compiled.getOwnedVbos(), sb);
+                // dumpCommandBuffer(buffer, compiled.getComplexObjects(), compiled.getOwnedVbos(), sb);
             }
         }
 

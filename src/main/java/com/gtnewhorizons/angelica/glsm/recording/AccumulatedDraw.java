@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
@@ -68,6 +69,16 @@ public class AccumulatedDraw {
 
         this.vertexCount = format.getVertexCount(needed);
     }
+
+    /**
+     * Holds last vertex attribute values for GL state restoration after VBO draw.
+     * Used to sync GLSM cache with actual GL state after VBO rendering.
+     */
+    @Desugar
+    public record RestoreData(
+        float lastColorR, float lastColorG, float lastColorB, float lastColorA,
+        float lastNormalX, float lastNormalY, float lastNormalZ,
+        float lastTexCoordS, float lastTexCoordT) {}
 
 //    @Override
 //    public String toString() {

@@ -465,10 +465,7 @@ public final class CommandBufferExecutor {
                     final int flags = memGetInt(ptr + 12);
 
                     // Draw the VBO
-                    final VertexBuffer vbo = ownedVbos[vboIndex];
-                    vbo.setupState();
-                    vbo.draw(start, count);
-                    vbo.cleanupState();
+                    ownedVbos.render(vboIndex);
 
                     // Restore attributes based on flags
                     if ((flags & FLAG_HAS_COLOR) != 0) {
