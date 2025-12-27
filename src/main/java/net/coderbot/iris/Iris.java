@@ -848,14 +848,14 @@ public class Iris {
 
     private static int getShaderMaterialOverrideId(Block block, int meta) {
         if (contextHolder == null) {
-            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
-            if (blockMatches == null) {
+            final it.unimi.dsi.fastutil.objects.Reference2ObjectMap<Block, it.unimi.dsi.fastutil.ints.Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+            if (blockMetaMatches == null) {
                 return -1;
             }
-            contextHolder = new BlockContextHolder(blockMatches);
+            contextHolder = new BlockContextHolder(blockMetaMatches);
 
         }
-        contextHolder.set(block, (short) block.getRenderType());
+        contextHolder.set(block, meta, (short) block.getRenderType());
         return contextHolder.blockId;
     }
 
