@@ -325,7 +325,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
     private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        int entityId = -1;
+        int entityId = entity.getEntityId();
 
         Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
         if (entityIdMap != null) {
