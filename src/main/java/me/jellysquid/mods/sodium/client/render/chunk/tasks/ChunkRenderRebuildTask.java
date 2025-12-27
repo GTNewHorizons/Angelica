@@ -227,14 +227,14 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                             if (ModStatus.isFluidLoggedLoaded) {
                                 if (fluid != null && canRenderInPass(fluid.getBlock(), pass)) {
                                     ChunkRenderManager.setWorldRenderPass(pass);
-                                    if(Iris.enabled)  buffers.iris$setMaterialId(fluid.getBlock(), ExtendedDataHelper.FLUID_RENDER_TYPE);
+                                    if(Iris.enabled)  buffers.iris$setMaterialId(fluid.getBlock(), 0, ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                     cache.getBlockRenderer().renderFluidLogged(cache.getWorldSlice(), fluid, renderBlocks, pos, buffers.get(pass), seed);
                                 }
                             }
                             if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
-                                if(Iris.enabled) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+                                if(Iris.enabled) buffers.iris$setMaterialId(block, meta, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                                 if (cache.getBlockRenderer().renderModel(cache.getWorldSlice(), renderBlocks, block, meta, pos, buffers.get(pass), true, seed)) {
                                     bounds.addBlock(relX, relY, relZ);
@@ -252,7 +252,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                         for (BlockRenderPass pass : BlockRenderPass.VALUES) {
                             if (canRenderInPass(block, pass)) {
                                 ChunkRenderManager.setWorldRenderPass(pass);
-                                if(Iris.enabled)  buffers.iris$setMaterialId(block, ExtendedDataHelper.FLUID_RENDER_TYPE);
+                                if(Iris.enabled)  buffers.iris$setMaterialId(block, 0, ExtendedDataHelper.FLUID_RENDER_TYPE);
 
                                 if (cache.getFluidRenderer().render(slice, cache.getWorldSlice(), block, pos, buffers.get(pass))) {
                                     bounds.addBlock(relX, relY, relZ);
@@ -363,7 +363,7 @@ public class ChunkRenderRebuildTask<T extends ChunkGraphicsState> extends ChunkR
                 if (canRenderInPass(block, pass) && !shouldUseSodiumFluidRendering(block)) {
                     ChunkRenderManager.setWorldRenderPass(pass);
                     final long seed = MathUtil.hashPos(pos.x, pos.y, pos.z);
-                    if(Iris.enabled) buffers.iris$setMaterialId(block, ExtendedDataHelper.BLOCK_RENDER_TYPE);
+                    if(Iris.enabled) buffers.iris$setMaterialId(block, meta, ExtendedDataHelper.BLOCK_RENDER_TYPE);
 
                     if (cache.getBlockRenderer().renderModel(slice.getWorld(), rb, block, meta, pos, buffers.get(pass), true, seed)) {
                         bounds.addBlock(relX, relY, relZ);
