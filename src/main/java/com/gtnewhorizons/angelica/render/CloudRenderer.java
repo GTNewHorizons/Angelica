@@ -48,7 +48,6 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private static final float PX_SIZE = 1 / 256F;
 
     // Building constants.
-    private static final VertexFormat FORMAT = DefaultVertexFormat.POSITION_TEXTURE_COLOR;
     private static final int TOP_SECTIONS = 12;    // Number of slices a top face will span.
     private static final int HEIGHT = 4;
     private static final float INSET = 0.001F;

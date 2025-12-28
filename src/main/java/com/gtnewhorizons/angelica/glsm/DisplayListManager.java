@@ -845,7 +845,7 @@ public class DisplayListManager {
     private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {
         final Matrix4f currentTransform = new Matrix4f(relativeTransform);
         final VertexFormat format = tessellator.getVertexFormat();
-        final ByteBuffer drawData = tessellator.getBufferCopy();
+        final ByteBuffer drawData = tessellator.allocateBufferCopy();
         final int cmdIndex = getCommandCount();
         if (matrixGeneration != lastFlushedGeneration) {
             if (lastFlushedTransform == null) {
@@ -1023,24 +1023,6 @@ public class DisplayListManager {
             builder.addDraw(draw.format, draw.drawMode, draw.drawBuffers);
         }
         return builder.build();
-    }
-
-    public static ByteBuffer merge(List<ByteBuffer> buffers) {
-        int totalSize = 0;
-
-        for (ByteBuffer buffer : buffers) {
-            totalSize += buffer.remaining();
-        }
-
-        ByteBuffer merged = BufferUtils.createByteBuffer(totalSize);
-
-        for (ByteBuffer buffer : buffers) {
-            // duplicate so we don't modify position/limit of the original
-            merged.put(buffer.duplicate());
-        }
-
-        merged.flip();
-        return merged;
     }
 
     // ==================== DEBUG LOGGING ====================

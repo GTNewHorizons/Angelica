@@ -31,15 +31,6 @@ public class AccumulatedDraw {
     public final int drawMode;
     public final int commandIndex; // Position in command list for state tracking
 
-    public AccumulatedDraw(DirectTessellator tessellator, Matrix4f transform, int commandIndex) {
-        this.transform = transform; // Snapshot for runtime application
-        this.format = tessellator.getVertexFormat();
-        this.drawMode = tessellator.drawMode;
-        this.drawBuffers = new ArrayList<>();
-        this.drawBuffers.add(tessellator.getBufferCopy());
-        this.commandIndex = commandIndex;
-    }
-
     public AccumulatedDraw(VertexFormat format, int drawMode, ByteBuffer drawData, Matrix4f transform, int commandIndex) {
         this.transform = transform; // Snapshot for runtime application
         this.format = format;
