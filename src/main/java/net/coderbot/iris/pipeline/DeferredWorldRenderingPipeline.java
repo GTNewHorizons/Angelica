@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
+import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
@@ -128,7 +129,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final ImmutableSet<Integer> flippedAfterPrepare;
 	private final ImmutableSet<Integer> flippedAfterTranslucent;
 
-	private final SodiumTerrainPipeline sodiumTerrainPipeline;
+	private final CeleritasTerrainPipeline celeritasTerrainPipeline;
 
 	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> attributeTransforms;
 
@@ -181,9 +182,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);
 		final Optional<ProgramSource> shadowSource = programs.getShadow();
 
-		final CompletableFuture<Map<PatchShaderType, String>> sodiumTerrainFuture = terrainSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
-		final CompletableFuture<Map<PatchShaderType, String>> sodiumTranslucentFuture = translucentSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
-		final CompletableFuture<Map<PatchShaderType, String>> sodiumShadowFuture = shadowSource.map(DeferredWorldRenderingPipeline::submitSodiumTerrainTransform).orElse(null);
+		// Celeritas terrain transform futures
+		final CompletableFuture<Map<PatchShaderType, String>> celeritasTerrainFuture = terrainSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
+		final CompletableFuture<Map<PatchShaderType, String>> celeritasTranslucentFuture = translucentSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
+		final CompletableFuture<Map<PatchShaderType, String>> celeritasShadowFuture = shadowSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
 
 		this.cloudSetting = programs.getPackDirectives().getCloudSetting();
 		this.shouldRenderUnderwaterOverlay = programs.getPackDirectives().underwaterOverlay();
@@ -392,7 +394,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.clearPassesFull = ClearPassCreator.createClearPasses(renderTargets, true, programs.getPackDirectives().getRenderTargetDirectives());
 		this.clearPasses = ClearPassCreator.createClearPasses(renderTargets, false, programs.getPackDirectives().getRenderTargetDirectives());
 
-		// SodiumTerrainPipeline setup follows.
+		// Terrain pipeline sampler/image factory setup follows.
 
 		Supplier<ImmutableSet<Integer>> flipped = () -> isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent;
 
@@ -450,13 +452,22 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			return builder.build();
 		};
-        this.sodiumTerrainPipeline = new SodiumTerrainPipeline(this, programs, createTerrainSamplers,
+		final GlFramebuffer celeritasShadowFb = (shadowRenderTargets != null && shadowRenderer != null)
+			? shadowRenderTargets.createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] {0, 1})
+			: null;
+		final int[] celeritasTerrainDrawBuffers = terrainSource
+			.map(source -> source.getDirectives().getDrawBuffers())
+			.orElse(new int[] {0});
+
+		this.celeritasTerrainPipeline = new CeleritasTerrainPipeline(createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
 			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms,
 			terrainSource.map(ProgramSource::getName).orElse(null),
 			translucentSource.map(ProgramSource::getName).orElse(null),
 			shadowSource.map(ProgramSource::getName).orElse(null),
-			sodiumTerrainFuture, sodiumTranslucentFuture, sodiumShadowFuture);
+			celeritasTerrainFuture, celeritasTranslucentFuture, celeritasShadowFuture,
+			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
+			celeritasShadowFb, celeritasTerrainDrawBuffers);
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -582,11 +593,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private void matchPass() {
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
-			return;
-		}
-
-		if (sodiumTerrainRendering) {
-			beginPass(table.match(getCondition(getPhase()), new InputAvailability(true, true)));
 			return;
 		}
 
@@ -796,11 +802,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				GL11.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
-			if (program != null && !sodiumTerrainRendering) {
+			if (program != null) {
 				program.use();
 			}
 
-            DeferredWorldRenderingPipeline.this.customUniforms.push(this);
+			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
@@ -1094,6 +1100,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		if (shadowRenderer != null) {
 			isRenderingShadow = true;
+			matchPass();  // Ensure shadow shader is bound for entity rendering
 
 			shadowRenderer.renderShadows(levelRenderer, playerCamera);
 
@@ -1208,8 +1215,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public SodiumTerrainPipeline getSodiumTerrainPipeline() {
-		return sodiumTerrainPipeline;
+	public CeleritasTerrainPipeline getCeleritasTerrainPipeline() {
+		return celeritasTerrainPipeline;
 	}
 
 	@Override
@@ -1226,49 +1233,28 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return phase;
 	}
 
-	boolean sodiumTerrainRendering = false;
-
-	@Override
-	public void syncProgram() {
-		matchPass();
-	}
-
-	@Override
-	public void beginSodiumTerrainRendering() {
-		sodiumTerrainRendering = true;
-		syncProgram();
-
-	}
-
-	@Override
-	public void endSodiumTerrainRendering() {
-		sodiumTerrainRendering = false;
-		current = null;
-		syncProgram();
-	}
-
 	@Override
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
-
-		GbufferPrograms.runPhaseChangeNotifier();
+		matchPass();
 	}
 
 	@Override
 	public void setPhase(WorldRenderingPhase phase) {
 		this.phase = phase;
-
-		GbufferPrograms.runPhaseChangeNotifier();
+		matchPass();
 	}
 
 	@Override
 	public void setInputs(InputAvailability availability) {
 		this.inputs = availability;
+		matchPass();
 	}
 
 	@Override
 	public void setSpecialCondition(SpecialCondition special) {
 		this.special = special;
+		matchPass();
 	}
 
 	@Override
@@ -1344,8 +1330,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return futures;
 	}
 
-	private static CompletableFuture<Map<PatchShaderType, String>> submitSodiumTerrainTransform(ProgramSource source) {
-		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchSodiumTerrain(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null)));
+	private static CompletableFuture<Map<PatchShaderType, String>> submitCeleritasTerrainTransform(ProgramSource source) {
+		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchCeleritasTerrain(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null)));
 	}
 
 	@SafeVarargs

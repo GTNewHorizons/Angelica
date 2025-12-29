@@ -12,8 +12,6 @@ public class ExternallyManagedUniforms {
 		addMat4(uniformHolder, "iris_ModelViewMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
 		addMat4(uniformHolder, "iris_NormalMatrix");
-
-		// 1.21.6+
 		uniformHolder.externallyManagedUniform("heavyFog", UniformType.BOOL);
 	}
 
@@ -24,42 +22,7 @@ public class ExternallyManagedUniforms {
 		uniformHolder.externallyManagedUniform("u_TextureScale", UniformType.VEC2);
 	}
 
-	public static void addExternallyManagedUniforms117(UniformHolder uniformHolder) {
-		addExternallyManagedUniforms(uniformHolder);
-
-		// Sodium
-		addFloat(uniformHolder, "iris_FogStart");
-		addFloat(uniformHolder, "iris_FogEnd");
-		addVec4(uniformHolder, "iris_FogColor");
-		addMat4(uniformHolder, "iris_ProjectionMatrix");
-		addFloat(uniformHolder, "u_TextureScale");
-		addFloat(uniformHolder, "u_ModelScale");
-		addFloat(uniformHolder, "iris_ModelOffset");
-		uniformHolder.externallyManagedUniform("iris_CameraTranslation", UniformType.VEC3);
-
-		// Vanilla
-		uniformHolder.externallyManagedUniform("iris_TextureMat", UniformType.MAT4);
-		uniformHolder.externallyManagedUniform("iris_ModelViewMat", UniformType.MAT4);
-		uniformHolder.externallyManagedUniform("iris_ProjMat", UniformType.MAT4);
-		uniformHolder.externallyManagedUniform("iris_ChunkOffset", UniformType.VEC3);
-		uniformHolder.externallyManagedUniform("iris_ColorModulator", UniformType.VEC4);
-		uniformHolder.externallyManagedUniform("iris_FogStart", UniformType.FLOAT);
-		uniformHolder.externallyManagedUniform("iris_FogEnd", UniformType.FLOAT);
-		uniformHolder.externallyManagedUniform("iris_FogDensity", UniformType.FLOAT);
-		uniformHolder.externallyManagedUniform("iris_LineWidth", UniformType.FLOAT);
-		uniformHolder.externallyManagedUniform("iris_ScreenSize", UniformType.VEC2);
-		uniformHolder.externallyManagedUniform("iris_FogColor", UniformType.VEC4);
-	}
-
 	private static void addMat4(UniformHolder uniformHolder, String name) {
 		uniformHolder.externallyManagedUniform(name, UniformType.MAT4);
-	}
-
-	private static void addVec4(UniformHolder uniformHolder, String name) {
-		uniformHolder.externallyManagedUniform(name, UniformType.VEC4);
-	}
-
-	private static void addFloat(UniformHolder uniformHolder, String name) {
-		uniformHolder.externallyManagedUniform(name, UniformType.FLOAT);
 	}
 }

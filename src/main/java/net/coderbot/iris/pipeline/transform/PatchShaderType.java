@@ -7,6 +7,8 @@ public enum PatchShaderType {
 	GEOMETRY(ShaderType.GEOMETRY),
 	FRAGMENT(ShaderType.FRAGMENT);
 
+	public static final PatchShaderType[] VALUES = values();
+
 	public final ShaderType glShaderType;
 
 	private PatchShaderType(ShaderType glShaderType) {

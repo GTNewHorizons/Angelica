@@ -11,6 +11,27 @@ public class AngelicaRenderQueue {
     private static final Thread MAIN_THREAD = Thread.currentThread();
     private static final Queue<Runnable> TASKS = new ConcurrentLinkedQueue<>();
 
+    // Metrics
+    private static volatile int lastFrameTasksRan = 0;
+    private static volatile long lastFrameTimeNs = 0;
+
+    public static int getQueueDepth() {
+        return TASKS.size();
+    }
+
+    public static int getLastFrameTasksRan() {
+        return lastFrameTasksRan;
+    }
+
+    public static long getLastFrameTimeNs() {
+        return lastFrameTimeNs;
+    }
+
+    public static void recordFrameStats(int tasksRan, long timeNs) {
+        lastFrameTasksRan = tasksRan;
+        lastFrameTimeNs = timeNs;
+    }
+
     private static final Executor EXECUTOR = (runnable) -> {
         if(Thread.currentThread() == MAIN_THREAD) {
             runnable.run();
@@ -27,7 +48,7 @@ public class AngelicaRenderQueue {
     public static int processTasks(int max) {
         int tasksRun = 0;
         while(tasksRun < max) {
-            Runnable r = TASKS.poll();
+            final Runnable r = TASKS.poll();
             if(r == null)
                 break;
             r.run();
@@ -36,11 +57,7 @@ public class AngelicaRenderQueue {
         return tasksRun;
     }
 
-    public static int processTasks() {
-        return processTasks(Integer.MAX_VALUE);
-    }
-
-    private static final long WAIT_TIME = TimeUnit.MILLISECONDS.toNanos(50);
+    private static final long WAIT_TIME = TimeUnit.MILLISECONDS.toNanos(20);
 
     public static void managedBlock(BooleanSupplier isDone) {
         while(!isDone.getAsBoolean()) {

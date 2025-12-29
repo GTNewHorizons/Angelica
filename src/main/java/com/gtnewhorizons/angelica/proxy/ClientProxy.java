@@ -20,6 +20,10 @@ import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
 import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -35,7 +39,6 @@ import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import jss.notfine.core.Settings;
-import me.jellysquid.mods.sodium.client.SodiumDebugScreenHandler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
@@ -59,7 +62,9 @@ import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
+import org.embeddedt.embeddium.impl.gl.device.GLRenderDevice;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL15;
 
 public class ClientProxy extends CommonProxy {
 
@@ -84,7 +89,11 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
 
-        if (AngelicaConfig.enableSodium) {
+        if (AngelicaConfig.enableCeleritas) {
+            ChunkTaskRegistry.reset();
+            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
+            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
+
             // Register all blocks. Because blockids are unique to a world, this must be done each load
             GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
                 AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
@@ -102,8 +111,9 @@ public class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableHudCaching) {
             HUDCaching.init();
         }
-        if (AngelicaConfig.enableSodium) {
-            MinecraftForge.EVENT_BUS.register(SodiumDebugScreenHandler.INSTANCE);
+        if (AngelicaConfig.enableCeleritas) {
+            GLRenderDevice.VANILLA_STATE_RESETTER = () -> GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
         }
         if (AngelicaConfig.enableIris) {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
@@ -145,7 +155,7 @@ public class ClientProxy extends CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
 
-        if (ModStatus.isLotrLoaded && AngelicaConfig.enableSodium && CompatConfig.fixLotr) {
+        if (ModStatus.isLotrLoaded && AngelicaConfig.enableCeleritas && CompatConfig.fixLotr) {
             try {
                 Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
