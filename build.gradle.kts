@@ -5,11 +5,8 @@ plugins {
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
-/*    extraRunJvmArguments.addAll(
-        "-Dlegacy.debugClassLoading=true",
-        "-Dlegacy.debugClassLoadingFiner=true",
-        "-Dlegacy.debugClassLoadingSave=true")*/
-
+//    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
+//    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
 }
 
@@ -32,9 +29,10 @@ tasks.test {
 }
 
 tasks.processResources {
-    inputs.property("version", project.version.toString())
+    val projectVersion = project.version.toString()
+    inputs.property("version", projectVersion)
     filesMatching("META-INF/rfb-plugin/*") {
-        expand("version" to project.version.toString())
+        expand("version" to projectVersion)
     }
 }
 

@@ -49,22 +49,26 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14:dev")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
-    compileOnly("org.projectlombok:lombok:1.18.34") { transitive = false }
-    annotationProcessor("org.projectlombok:lombok:1.18.34")
+    compileOnly("org.projectlombok:lombok:1.18.42") { transitive = false }
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.8.21:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.9.0:dev")
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-25.g3a943bb") {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
     compileOnly "org.apache.ant:ant:1.8.2"
+
+    // Celeritas (transitive=false: deps provided by GTNHLib/runtime)
+    shadowImplementation("org.embeddedt.celeritas:celeritas-common:2.4.0-dev") { transitive = false }
+    shadowImplementation("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.4.0-dev") { transitive = false }
 
     // Because who doesn't want NEI
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
@@ -99,7 +103,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
 
-    runtimeOnlyNonPublishable(rfg.deobf("CoreTweaks:CoreTweaks:0.3.3.2"))
+//    runtimeOnlyNonPublishable("com.github.GTNewHorizons:CoreTweaks:0.3.3.6-GTNH")
     // For testing alternative splash screens, can be sourced from https://github.com/MalTeeez/ModernSplash/releases
     //runtimeOnly(rfg.deobf(files("dependencies/modernsplash-1.7.10-1.2.2-dev.jar")))
 
@@ -115,8 +119,6 @@ dependencies {
             testImplementation('org.junit.jupiter:junit-jupiter')
             testImplementation("org.mockito:mockito-core:3.+")
             testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
-            // testAnnotationProcessor("com.github.GTNewHorizons:jabel-javac-plugin:1.0.2-GTNH") // Soon :tm:
-            testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
 
             testImplementation('org.junit.platform:junit-platform-engine')
             testImplementation('org.junit.platform:junit-platform-reporting')

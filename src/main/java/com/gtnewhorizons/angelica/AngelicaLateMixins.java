@@ -9,10 +9,14 @@ import java.util.List;
 import java.util.Set;
 
 @LateMixin
+@SuppressWarnings("unused")
 public class AngelicaLateMixins implements ILateMixinLoader {
 
     @Override
     public String getMixinConfig() {
+        int v = Runtime.version().feature();
+        if (v >= 21) return "mixins.angelica.late.j21.json";
+        if (v >= 17) return "mixins.angelica.late.j17.json";
         return "mixins.angelica.late.json";
     }
 

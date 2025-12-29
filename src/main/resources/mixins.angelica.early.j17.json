@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8.3-GTNH",
+  "package": "com.gtnewhorizons.angelica.mixins.early",
+  "refmap": "mixins.angelica.refmap.json",
+  "target": "@env(DEFAULT)",
+  "injectors":{
+    "maxShiftBy": 2
+  },
+  "compatibilityLevel": "JAVA_17"
+}
