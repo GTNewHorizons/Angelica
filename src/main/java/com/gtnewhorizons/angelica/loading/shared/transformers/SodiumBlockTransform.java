@@ -58,22 +58,22 @@ public class SodiumBlockTransform {
     // Block owners we *shouldn't* redirect because they shadow one of our fields
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
-    private static final MethodHandle angelicaConfigSodiumEnabledGetter;
-    private static boolean isSodiumEnabled;
+    private static final MethodHandle angelicaConfigCeleritasEnabledGetter;
+    private static boolean isCeleritasEnabled;
 
     static {
         try {
             final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            angelicaConfigSodiumEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableSodium", boolean.class);
+            angelicaConfigCeleritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static boolean isSodiumEnabled() {
-        if (isSodiumEnabled) return true;
+    private static boolean isCeleritasEnabled() {
+        if (isCeleritasEnabled) return true;
         try {
-            return (boolean) angelicaConfigSodiumEnabledGetter.invokeExact();
+            return (boolean) angelicaConfigCeleritasEnabledGetter.invokeExact();
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
@@ -119,7 +119,7 @@ public class SodiumBlockTransform {
             return false;
         }
 
-        if ("net.minecraft.block.Block".equals(transformedName) && isSodiumEnabled()) {
+        if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
             cn.fields.removeIf(field -> BlockBoundsFields.stream().anyMatch(pair -> field.name.equals(pair.getLeft()) || field.name.equals(pair.getRight())));
         }
 
@@ -164,7 +164,7 @@ public class SodiumBlockTransform {
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isSodiumEnabled()) {
+                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isCeleritasEnabled()) {
                         Pair<String, String> fieldToRedirect = BlockBoundsFields.stream()
                             .filter(pair -> fNode.name.equals(getFieldName(pair)))
                             .findFirst()
@@ -206,7 +206,7 @@ public class SodiumBlockTransform {
         return changed;
     }
 
-    public void setSodiumSetting() {
-        isSodiumEnabled = true;
+    public void setCeleritasSetting() {
+        isCeleritasEnabled = true;
     }
 }

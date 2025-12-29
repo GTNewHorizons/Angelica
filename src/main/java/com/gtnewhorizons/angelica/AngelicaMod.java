@@ -9,6 +9,8 @@ import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -29,6 +31,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
         guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
 public class AngelicaMod {
     public static final String MOD_ID = "angelica";
+    public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;

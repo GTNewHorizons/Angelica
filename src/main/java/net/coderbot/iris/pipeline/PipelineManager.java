@@ -3,10 +3,8 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.shaderpack.DimensionId;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
-import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -36,14 +34,6 @@ public class PipelineManager {
 			Iris.logger.info("Creating pipeline for dimension {}", currentDimension);
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
-
-			if (BlockRenderingSettings.INSTANCE.isReloadRequired()) {
-				if (Minecraft.getMinecraft().renderGlobal != null) {
-					Minecraft.getMinecraft().renderGlobal.loadRenderers();
-				}
-
-				BlockRenderingSettings.INSTANCE.clearReloadRequired();
-			}
 		} else {
 			pipeline = pipelinesPerDimension.get(currentDimension);
 		}

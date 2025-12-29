@@ -42,3 +42,12 @@ tasks.register<Copy>("copyDependencies") {
     from(configurations.default)
     into("testDependencies")
 }
+
+val embedOnly: Configuration by configurations
+
+tasks.shadowJar {
+    from(embedOnly.map(::zipTree))
+    relocate("com.mitchej123", "com.mitchej123")
+    relocate("org.embeddedt", "org.embeddedt")
+}
+

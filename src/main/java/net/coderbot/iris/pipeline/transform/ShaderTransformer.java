@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.google.common.base.Stopwatch;
+import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
@@ -8,6 +9,8 @@ import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
@@ -139,7 +142,7 @@ public class ShaderTransformer {
 
         Stopwatch watch = Stopwatch.createStarted();
 
-        for (PatchShaderType type : PatchShaderType.values()) {
+        for (PatchShaderType type : PatchShaderType.VALUES) {
             parameters.type = type;
             if (inputs.get(type) == null) {
                 continue;
@@ -205,11 +208,18 @@ public class ShaderTransformer {
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
             final Transformer transformer = entry.getValue();
-            final String header = prepatched.get(entry.getKey());
+            String header = prepatched.get(entry.getKey());
+
+            // For Celeritas terrain vertex shaders, inject chunk_vertex.glsl header
+            if (patchType == Patch.CELERITAS_TERRAIN && entry.getKey() == PatchShaderType.VERTEX) {
+                header += computeCeleritasHeader();
+            }
+
+            final String finalHeader = header;
             final StringBuilder formattedShaderBuilder = new StringBuilder();
 
             transformer.mutateTree(tree -> {
-                formattedShaderBuilder.append(getFormattedShader(tree, header));
+                formattedShaderBuilder.append(getFormattedShader(tree, finalHeader));
             });
 
             String formattedShader = formattedShaderBuilder.toString();
@@ -250,8 +260,12 @@ public class ShaderTransformer {
 
     private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, String profile, int versionInt) {
         switch (patchType) {
-            case SODIUM_TERRAIN:
-                SodiumTransformer.transform(transformer, parameters);
+            case CELERITAS_TERRAIN:
+                CeleritasTransformer.transform(transformer, parameters);
+                // Handle mc_midTexCoord for Celeritas
+                patchMultiTexCoord3(transformer, parameters);
+                replaceMidTexCoord(transformer, IrisExtendedChunkVertexType.MID_TEX_SCALE);
+                applyIntelHd4000Workaround(transformer);
                 break;
             case COMPOSITE:
                 CompositeDepthTransformer.transform(transformer);
@@ -324,6 +338,21 @@ public class ShaderTransformer {
         if (!transformer.hasVariable(name)) {
             transformer.injectVariable(type + " " + name + ";");
         }
+    }
+
+    private static String computeCeleritasHeader() {
+        final ShaderConstants constants = ShaderConstants.builder()
+            .add("VERT_POS_SCALE", "1.0")
+            .add("VERT_POS_OFFSET", "0.0")
+            .add("VERT_TEX_SCALE", "1.0")
+            .build();
+
+        final String chunkVertexHeader = org.embeddedt.embeddium.impl.gl.shader.ShaderParser.parseShader(
+            ShaderLoader.getShaderSource("sodium:include/chunk_vertex.glsl"),
+            ShaderLoader::getShaderSource,
+            constants);
+
+        return "\n\n" + chunkVertexHeader + "\n\n";
     }
 
     public static String getFormattedShader(ParseTree tree, String string) {

@@ -3,7 +3,7 @@ package net.coderbot.iris.shadows.frustum;
 import net.minecraft.util.AxisAlignedBB;
 
 public class BoxCuller {
-	private final double maxDistance;
+	private double maxDistance;
 
 	private double minAllowedX;
 	private double maxAllowedX;
@@ -13,6 +13,10 @@ public class BoxCuller {
 	private double maxAllowedZ;
 
 	public BoxCuller(double maxDistance) {
+		this.maxDistance = maxDistance;
+	}
+
+	public void setMaxDistance(double maxDistance) {
 		this.maxDistance = maxDistance;
 	}
 
@@ -39,10 +43,19 @@ public class BoxCuller {
 			return true;
 		}
 
-		if (maxZ < this.minAllowedZ || minZ > this.maxAllowedZ) {
+		return maxZ < this.minAllowedZ || minZ > this.maxAllowedZ;
+	}
+
+	// View-relative coordinates version
+	public boolean isCulledViewRelative(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		if (maxX < -this.maxDistance || minX > this.maxDistance) {
 			return true;
 		}
 
-		return false;
+		if (maxY < -this.maxDistance || minY > this.maxDistance) {
+			return true;
+		}
+
+		return maxZ < -this.maxDistance || minZ > this.maxDistance;
 	}
 }

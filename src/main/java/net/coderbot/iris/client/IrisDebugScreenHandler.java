@@ -40,8 +40,6 @@ public class IrisDebugScreenHandler {
         if (mc.gameSettings.showDebugInfo) {
             event.right.add(Math.min(event.right.size(), 2), "Direct Buffers: +" + iris$humanReadableByteCountBin(iris$directPool.getMemoryUsed()));
 
-            event.right.add("");
-
             if (Iris.getIrisConfig().areShadersEnabled()) {
                 event.right.add("[" + Iris.MODNAME + "] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));
                 Iris.getCurrentPack().ifPresent(pack -> event.right.add("[" + Iris.MODNAME + "] " + pack.getProfileInfo()));

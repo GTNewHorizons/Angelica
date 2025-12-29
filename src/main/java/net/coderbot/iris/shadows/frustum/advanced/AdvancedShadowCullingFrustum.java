@@ -3,8 +3,12 @@ package net.coderbot.iris.shadows.frustum.advanced;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.util.AxisAlignedBB;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
+import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
+import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
 import org.joml.Math;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -28,7 +32,7 @@ import org.joml.Vector4f;
  * are not sensitive to the specific internal ordering of planes and corners, in order to avoid potential bugs at the
  * cost of slightly more computations.</p>
  */
-public class AdvancedShadowCullingFrustum extends Frustrum {
+public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportProvider, Frustum {
 	private static final int MAX_CLIPPING_PLANES = 13;
 
 	/**
@@ -59,30 +63,47 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 	 * </ul>
 	 * </p>
 	 */
+	private static final Vector3f scratch3a = new Vector3f();
+	private static final Vector3f scratch3b = new Vector3f();
+	private static final Vector3f scratch3c = new Vector3f();
+	private static final Vector3f scratch3d = new Vector3f();
+	private static final Vector3f scratch3e = new Vector3f();
+	private static final Vector3f scratch3f = new Vector3f();
+
 	private final Vector4f[] planes = new Vector4f[MAX_CLIPPING_PLANES];
 	private int planeCount = 0;
 
-	// The center coordinates of this frustum.
-	private double x;
-	private double y;
-	private double z;
+	private final Vector3f shadowLightVectorFromOrigin = new Vector3f();
+	private BoxCuller boxCuller;
+	private final Vector3d position = new Vector3d();
 
-	private final Vector3f shadowLightVectorFromOrigin;
-	private final BoxCuller boxCuller;
+	private final BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes();
+	private final boolean[] isBackArray = new boolean[6];
 
-	public AdvancedShadowCullingFrustum(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVectorFromOrigin,
-										BoxCuller boxCuller) {
-		this.shadowLightVectorFromOrigin = shadowLightVectorFromOrigin;
-		BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes(playerView, playerProjection);
+	public AdvancedShadowCullingFrustum() {
+		for (int i = 0; i < MAX_CLIPPING_PLANES; i++) {
+			planes[i] = new Vector4f();
+		}
+	}
 
-		boolean[] isBack = addBackPlanes(baseClippingPlanes);
-		addEdgePlanes(baseClippingPlanes, isBack);
-
+	public void init(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVector, BoxCuller boxCuller) {
+		this.shadowLightVectorFromOrigin.set(shadowLightVector);
 		this.boxCuller = boxCuller;
+		this.planeCount = 0;
+
+		baseClippingPlanes.init(playerView, playerProjection);
+
+		addBackPlanes(baseClippingPlanes, isBackArray);
+		addEdgePlanes(baseClippingPlanes, isBackArray);
 	}
 
 	private void addPlane(Vector4f plane) {
-		planes[planeCount] = plane;
+		planes[planeCount].set(plane);
+		planeCount += 1;
+	}
+
+	private void addPlane(float x, float y, float z, float w) {
+		planes[planeCount].set(x, y, z, w);
 		planeCount += 1;
 	}
 
@@ -91,24 +112,23 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 	 * This can eliminate many chunks, especially if the player is staring at the shadow light
 	 * (sun / moon).
 	 */
-	private boolean[] addBackPlanes(BaseClippingPlanes baseClippingPlanes) {
-		Vector4f[] planes = baseClippingPlanes.getPlanes();
-		boolean[] isBack = new boolean[planes.length];
+	private void addBackPlanes(BaseClippingPlanes baseClippingPlanes, boolean[] isBack) {
+		final Vector4f[] basePlanes = baseClippingPlanes.getPlanes();
 
-		for (int planeIndex = 0; planeIndex < planes.length; planeIndex++) {
-			Vector4f plane = planes[planeIndex];
-			Vector3f planeNormal = truncate(plane);
+		for (int planeIndex = 0; planeIndex < basePlanes.length; planeIndex++) {
+			final Vector4f plane = basePlanes[planeIndex];
+			truncate(plane, scratch3a);
 
 			// Find back planes by looking for planes with a normal vector that points
 			// in the same general direction as the vector pointing from the origin to the shadow light
-			//
+
 			// That is, the angle between those two vectors is less than or equal to 90 degrees,
 			// meaning that the dot product is positive or zero.
 
-			float dot = planeNormal.dot(shadowLightVectorFromOrigin);
+			final float dot = scratch3a.dot(shadowLightVectorFromOrigin);
 
-			boolean back = dot > 0.0;
-			boolean edge = dot == 0.0;
+			final boolean back = dot > 0.0;
+			final boolean edge = dot == 0.0;
 
 			// TODO: audit behavior when the dot product is zero
 			isBack[planeIndex] = back;
@@ -117,21 +137,18 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 				addPlane(plane);
 			}
 		}
-
-		return isBack;
 	}
 
 	private void addEdgePlanes(BaseClippingPlanes baseClippingPlanes, boolean[] isBack) {
-		Vector4f[] planes = baseClippingPlanes.getPlanes();
+		final Vector4f[] planes = baseClippingPlanes.getPlanes();
 
 		for (int planeIndex = 0; planeIndex < planes.length; planeIndex++) {
 			if (!isBack[planeIndex]) {
 				continue;
 			}
 
-			Vector4f plane = planes[planeIndex];
-
-			NeighboringPlaneSet neighbors = NeighboringPlaneSet.forPlane(planeIndex);
+			final Vector4f plane = planes[planeIndex];
+			final NeighboringPlaneSet neighbors = NeighboringPlaneSet.forPlane(planeIndex);
 
 			if (!isBack[neighbors.getPlane0()]) {
 				addEdgePlane(plane, planes[neighbors.getPlane0()]);
@@ -151,40 +168,33 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 		}
 	}
 
-	private Vector3f truncate(Vector4f base) {
-		return new Vector3f(base.x(), base.y(), base.z());
-	}
-
-	private Vector4f extend(Vector3f base, float w) {
-		return new Vector4f(base.x(), base.y(), base.z(), w);
+	private Vector3f truncate(Vector4f base, Vector3f dest) {
+		return dest.set(base.x(), base.y(), base.z());
 	}
 
 	private float lengthSquared(Vector3f v) {
-		float x = v.x();
-		float y = v.y();
-		float z = v.z();
+		final float x = v.x();
+		final float y = v.y();
+		final float z = v.z();
 
 		return x * x + y * y + z * z;
 	}
 
-	private Vector3f cross(Vector3f first, Vector3f second) {
-		Vector3f result = new Vector3f(first.x(), first.y(), first.z());
-		result.cross(second);
-
-		return result;
+	private Vector3f cross(Vector3f first, Vector3f second, Vector3f dest) {
+		return dest.set(first).cross(second);
 	}
 
 	private void addEdgePlane(Vector4f backPlane4, Vector4f frontPlane4) {
-		Vector3f backPlaneNormal = truncate(backPlane4);
-		Vector3f frontPlaneNormal = truncate(frontPlane4);
+		final Vector3f backPlaneNormal = truncate(backPlane4, scratch3a);
+		final Vector3f frontPlaneNormal = truncate(frontPlane4, scratch3b);
 
 		// vector along the intersection of the two planes
-		Vector3f intersection = cross(backPlaneNormal, frontPlaneNormal);
+		final Vector3f intersection = cross(backPlaneNormal, frontPlaneNormal, scratch3c);
 
 		// compute edge plane normal, we want the normal vector of the edge plane
 		// to always be perpendicular to the shadow light vector (since that's
 		// what makes it an edge plane!)
-		Vector3f edgePlaneNormal = cross(intersection, shadowLightVectorFromOrigin);
+		final Vector3f edgePlaneNormal = cross(intersection, shadowLightVectorFromOrigin, scratch3d);
 
 		// At this point, we have a normal vector for our new edge plane, but we don't
 		// have a value for distance (d). We can solve for it with a little algebra,
@@ -204,16 +214,15 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 		// Fortunately, we can compute that point. If we create a plane passing through the origin
 		// with a normal vector parallel to the intersection line, then the intersection
 		// of all 3 planes will be a point on the line of intersection between the two planes we care about.
-		Vector3f point;
-
+		final Vector3f point;
 		{
 			// "Line of intersection between two planes"
 			// https://stackoverflow.com/a/32410473 by ideasman42, CC BY-SA 3.0
 			// (a modified version of "Intersection of 2-planes" from Graphics Gems 1, page 305
 
 			// NB: We can assume that the intersection vector has a non-zero length.
-			Vector3f ixb = cross(intersection, backPlaneNormal);
-			Vector3f fxi = cross(frontPlaneNormal, intersection);
+			final Vector3f ixb = cross(intersection, backPlaneNormal, scratch3e);
+			final Vector3f fxi = cross(frontPlaneNormal, intersection, scratch3f);
 
 			ixb.mul(-frontPlane4.w());
 			fxi.mul(-backPlane4.w());
@@ -225,54 +234,23 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 		}
 
 		// Now that we have a point and a normal vector, we can make a plane.
+		// dot(normal, (x, y, z) - point) = 0
+		// a(x - point.x) + b(y - point.y) + c(z - point.z) = 0
+		// d = a * point.x + b * point.y + c * point.z = dot(normal, point)
+		// w = -d
 
-		Vector4f plane;
-
-		{
-			// dot(normal, (x, y, z) - point) = 0
-			// a(x - point.x) + b(y - point.y) + c(z - point.z) = 0
-			// d = a * point.x + b * point.y + c * point.z = dot(normal, point)
-			// w = -d
-
-			float d = edgePlaneNormal.dot(point);
-			float w = -d;
-
-			plane = extend(edgePlaneNormal, w);
-		}
-
-		// Check and make sure our point is actually on all 3 planes.
-		// This can be removed in production but it's good to check for now while we're still testing.
-		/*{
-			float dp0 = plane.dotProduct(extend(point, 1.0F));
-			float dp1 = frontPlane4.dotProduct(extend(point, 1.0F));
-			float dp2 = backPlane4.dotProduct(extend(point, 1.0F));
-
-			if (Math.abs(dp0) > 0.0005) {
-				throw new IllegalStateException("dp0 should be zero, but was " + dp0);
-			}
-
-			if (Math.abs(dp1) > 0.0005) {
-				throw new IllegalStateException("dp1 should be zero, but was " + dp1);
-			}
-
-			if (Math.abs(dp2) > 0.0005) {
-				throw new IllegalStateException("dp2 should be zero, but was " + dp2);
-			}
-		}*/
-
-		addPlane(plane);
+		final float d = edgePlaneNormal.dot(point);
+		addPlane(edgePlaneNormal.x(), edgePlaneNormal.y(), edgePlaneNormal.z(), -d);
 	}
 
 	// Note: These functions are copied & modified from the vanilla Frustum class.
 	@Override
 	public void setPosition(double cameraX, double cameraY, double cameraZ) {
+		super.setPosition(cameraX, cameraY, cameraZ);
+
 		if (this.boxCuller != null) {
 			boxCuller.setPosition(cameraX, cameraY, cameraZ);
 		}
-
-		this.x = cameraX;
-		this.y = cameraY;
-		this.z = cameraZ;
 	}
 
 	@Override
@@ -284,77 +262,40 @@ public class AdvancedShadowCullingFrustum extends Frustrum {
 		return this.isVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ);
 	}
 
-	// For Sodium
-	// TODO: change this to respect intersections on 1.18+!
-	public boolean fastAabbTest(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
-		if (boxCuller != null && boxCuller.isCulled(minX, minY, minZ, maxX, maxY, maxZ)) {
+	// Embeddium Frustum interface - receives view-relative coords
+	@Override
+	public boolean testAab(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		if (boxCuller != null && boxCuller.isCulledViewRelative(minX, minY, minZ, maxX, maxY, maxZ)) {
 			return false;
 		}
 
-		return isVisible(minX, minY, minZ, maxX, maxY, maxZ);
+		return checkCornerVisibility(minX, minY, minZ, maxX, maxY, maxZ);
 	}
 
-	// For Immersive Portals
-	// TODO: Figure out if IP culling can somehow be compatible with Iris culling.
-	public boolean canDetermineInvisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
-		return false;
+	@Override
+	public Viewport sodium$createViewport() {
+		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}
 
 	private boolean isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
-		float f = (float)(minX - this.x);
-		float g = (float)(minY - this.y);
-		float h = (float)(minZ - this.z);
-		float i = (float)(maxX - this.x);
-		float j = (float)(maxY - this.y);
-		float k = (float)(maxZ - this.z);
-		return this.checkCornerVisibility(f, g, h, i, j, k) != 0;
+		return this.checkCornerVisibility((float)(minX - xPosition), (float)(minY - yPosition), (float)(minZ - zPosition),
+				                          (float)(maxX - xPosition), (float)(maxY - yPosition), (float)(maxZ - zPosition));
 	}
 
-
-	/**
-	 * Checks corner visibility.
-	 * @param minX Minimum X value of the AABB.
-	 * @param minY Minimum Y value of the AABB.
-	 * @param minZ Minimum Z value of the AABB.
-	 * @param maxX Maximum X value of the AABB.
-	 * @param maxY Maximum Y value of the AABB.
-	 * @param maxZ Maximum Z value of the AABB.
-	 * @return 0 if nothing is visible, 1 if everything is visible, 2 if only some corners are visible.
-	 */
-	private int checkCornerVisibility(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
-		float outsideBoundX;
-		float outsideBoundY;
-		float outsideBoundZ;
-
+	// view-relative coordinates.
+	private boolean checkCornerVisibility(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
 		for (int i = 0; i < planeCount; ++i) {
-			Vector4f plane = this.planes[i];
+			final Vector4f plane = this.planes[i];
 
-			// Check if plane is inside or intersecting.
-			// This is ported from JOML's FrustumIntersection.
-
-			if (plane.x() < 0) {
-				outsideBoundX = minX;
-			} else {
-				outsideBoundX = maxX;
-			}
-
-			if (plane.y() < 0) {
-				outsideBoundY = minY;
-			} else {
-				outsideBoundY = maxY;
-			}
-
-			if (plane.z() < 0) {
-				outsideBoundZ = minZ;
-			} else {
-				outsideBoundZ = maxZ;
-			}
+			final float outsideBoundX = plane.x() < 0 ? minX : maxX;
+			final float outsideBoundY = plane.y() < 0 ? minY : maxY;
+			final float outsideBoundZ = plane.z() < 0 ? minZ : maxZ;
 
 			if (Math.fma(plane.x(), outsideBoundX, Math.fma(plane.y(), outsideBoundY, plane.z() * outsideBoundZ)) < -plane.w()) {
-				return 0;
+				return false;
 			}
 		}
 
-		return 2;
+		return true;
 	}
 }

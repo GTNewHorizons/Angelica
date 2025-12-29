@@ -22,7 +22,6 @@ import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
-import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
@@ -285,7 +284,7 @@ public class NotFineGameOptionPages {
                 .setBinding((opts, value) -> opts.advanced.useChunkMultidraw = value, opts -> opts.advanced.useChunkMultidraw)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .setImpact(OptionImpact.EXTREME)
-                .setEnabled(MultidrawChunkRenderBackend.isSupported(sodiumOpts.getData().advanced.ignoreDriverBlacklist))
+                .setEnabled(true)
                 .build())
             .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                 .setName(I18n.format("sodium.options.use_vertex_objects.name"))

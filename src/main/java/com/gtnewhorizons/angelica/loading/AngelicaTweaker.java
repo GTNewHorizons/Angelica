@@ -16,6 +16,7 @@ import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
 import jss.notfine.config.MCPatcherForgeConfig;
 import jss.notfine.config.NotFineConfig;
+import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -55,6 +56,10 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     private String[] transformerClasses;
 
     public AngelicaTweaker() {
+        if (Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE) {
+            addLwjgl3ifyExclusions();
+        }
+
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
@@ -137,9 +142,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
                 if (!rfbLoaded) {
                     tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
-                    if (AngelicaConfig.enableSodium) {
-                        tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.SodiumLateTweaker");
-                    }
                 }
             }
         }
@@ -166,6 +168,19 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             MCPatcherForgeConfig.ExtendedHD.hdFont = false;
         }
         return IMixins.getEarlyMixins(Mixins.class, loadedCoreMods);
+    }
+
+    private static void addLwjgl3ifyExclusions() {
+        var handle = SharedConfig.getRfbTransformers().stream()
+            .filter(transformer -> transformer.id().equals("lwjgl3ify:redirect"))
+            .findFirst()
+            .orElse(null);
+        if (handle != null) {
+            handle.exclusions().add("org.embeddedt.embeddium");
+            handle.exclusions().add("org.taumc.celeritas");
+            handle.exclusions().add("com.mitchej123.lwjgl.lwjgl3");
+            handle.exclusions().add("com.mitchej123.glsm");
+        }
     }
 
     /**

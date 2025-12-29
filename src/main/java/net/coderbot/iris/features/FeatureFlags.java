@@ -12,6 +12,7 @@ public enum FeatureFlags {
 	PER_BUFFER_BLENDING(() -> true, RenderSystem::supportsBufferBlending),
 	COMPUTE_SHADERS(() -> true, RenderSystem::supportsCompute),
 	ENTITY_TRANSLUCENT(() -> true, () -> true),
+	BLOCK_EMISSION_ATTRIBUTE(() -> true, () -> true),
 	UNKNOWN(() -> false, () -> false);
 
 	private final BooleanSupplier irisRequirement;

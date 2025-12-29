@@ -4,8 +4,8 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -97,7 +97,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer) {
+    public boolean angelica$updateDynamicLight(@NotNull IDynamicLightWorldRenderer renderer) {
         double deltaX = this.posX - this.angelica$prevX;
         double deltaY = this.posY - this.angelica$prevY;
         double deltaZ = this.posZ - this.angelica$prevZ;
@@ -148,7 +148,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer) {
+    public void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer) {
         for (long pos : this.angelica$trackedLitChunkPos) {
             DynamicLights.scheduleChunkRebuild(renderer, pos);
         }

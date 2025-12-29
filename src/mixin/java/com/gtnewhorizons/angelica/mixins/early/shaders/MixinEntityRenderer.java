@@ -64,8 +64,8 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         }
     }
 
-    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V", shift = At.Shift.AFTER), method = "renderWorld(FJ)V")
-    private void iris$beginEntities(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V"), method = "renderWorld(FJ)V")
+    private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 

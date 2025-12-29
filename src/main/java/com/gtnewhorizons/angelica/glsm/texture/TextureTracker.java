@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import org.jetbrains.annotations.Nullable;
@@ -16,12 +15,6 @@ public class TextureTracker {
      */
 
 	public static final TextureTracker INSTANCE = new TextureTracker();
-
-	private static Runnable bindTextureListener;
-
-	static {
-		StateUpdateNotifiers.bindTextureNotifier = listener -> bindTextureListener = listener;
-	}
 
 	private final Int2ObjectMap<AbstractTexture> textures = new Int2ObjectOpenHashMap<>();
 
@@ -45,9 +38,6 @@ public class TextureTracker {
 		}
 		if (GLStateManager.getActiveTextureUnit() == 0) {
 			lockBindCallback = true;
-			if (bindTextureListener != null) {
-				bindTextureListener.run();
-			}
             if(Iris.enabled) {
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
                 if (pipeline != null) {
