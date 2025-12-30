@@ -59,6 +59,11 @@ public class MixinItemRenderer {
 
         ItemStack itemStack = mc.thePlayer.getCurrentEquippedItem();
 
+        if (itemStack == null || itemStack.getItem() == null) {
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+            return;
+        }
+
         // Get material ID from item.properties or block.properties
         int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);

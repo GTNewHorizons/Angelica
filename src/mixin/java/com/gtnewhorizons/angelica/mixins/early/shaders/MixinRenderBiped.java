@@ -30,6 +30,12 @@ public class MixinRenderBiped {
         // Get the armor item stack for this slot
         ItemStack itemStack = entity.func_130225_q(3 - armorSlot);
 
+        if (itemStack == null || itemStack.getItem() == null) {
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+            original.call(instance, model);
+            return;
+        }
+
         // Get material ID from item.properties or block.properties
         int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
@@ -52,7 +58,7 @@ public class MixinRenderBiped {
 
     /**
      * Reset the item ID at the start of renderEquippedItems.
-     * This prevents armor IDs from bleeding into cape rendering.
+     * This prevents armor IDs from bleeding into held item rendering.
      */
     @Inject(
         method = "renderEquippedItems(Lnet/minecraft/entity/EntityLiving;F)V",
@@ -71,6 +77,11 @@ public class MixinRenderBiped {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;I)V")
     )
     private void iris$setHeldItemId(net.minecraft.client.renderer.ItemRenderer itemRenderer, net.minecraft.entity.EntityLivingBase entity, ItemStack itemStack, int renderPass, Operation<Void> original) {
+        if (itemStack == null || itemStack.getItem() == null) {
+            original.call(itemRenderer, entity, itemStack, renderPass);
+            return;
+        }
+
         // Get material ID from item.properties or block.properties
         int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
