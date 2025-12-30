@@ -111,9 +111,12 @@ public final class CommandBufferBuilder {
         // Emit transform to reach the draw's expected transform
         opt.emitTransformTo(out, draw.transform);
 
-        // Write the draw range command
-        if (vboIdx >= 0) {
-            out.writeDrawRange(vboIdx);
+        if (draw.restoreData != null) {
+            out.writeDrawRangeRestore(vboIdx, draw.restoreData);
+            return;
         }
+
+        // Write the draw range command
+        out.writeDrawRange(vboIdx);
     }
 }

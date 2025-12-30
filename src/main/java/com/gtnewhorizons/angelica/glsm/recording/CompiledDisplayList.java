@@ -161,7 +161,7 @@ public final class CompiledDisplayList {
 
             // DRAW_RANGE_RESTORE: 56 bytes
             // [cmd:4][vboIndex:4][start:4][count:4][flags:4][color:16f][normal:12f][texcoord:8f]
-            case GLCommand.DRAW_RANGE_RESTORE -> 56;
+            case GLCommand.DRAW_RANGE_RESTORE -> 36;
 
             // DRAW_BUFFER: 8 bytes [cmd:4][mode:4]
             case GLCommand.DRAW_BUFFER -> 8;

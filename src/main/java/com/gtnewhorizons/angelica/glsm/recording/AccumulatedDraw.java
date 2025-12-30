@@ -24,39 +24,55 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
  * Matrix-as-Data Architecture: Stores untransformed vertices + captured matrix.
  * The matrix will be applied at runtime, not baked into vertices.
  */
-public class AccumulatedDraw {
+public final class AccumulatedDraw {
     public final Matrix4f transform;
     public final VertexFormat format;
-    public List<ByteBuffer> drawBuffers;
+    public final List<ByteBuffer> drawBuffers;
     public final int drawMode;
     public final int commandIndex; // Position in command list for state tracking
+    public final int stateGeneration; // Position in command list for state tracking
+    public RestoreData restoreData;
 
-    public AccumulatedDraw(VertexFormat format, int drawMode, ByteBuffer drawData, Matrix4f transform, int commandIndex) {
+    public AccumulatedDraw(DirectTessellator tessellator, Matrix4f transform, int commandIndex, int stateGeneration, boolean copyLast) {
         this.transform = transform; // Snapshot for runtime application
-        this.format = format;
-        this.drawMode = drawMode;
+        this.format = tessellator.getVertexFormat();
+        this.drawMode = tessellator.drawMode;
         this.drawBuffers = new ArrayList<>();
-        this.drawBuffers.add(drawData);
+        this.drawBuffers.add(tessellator.allocateBufferCopy());
         this.commandIndex = commandIndex;
+        this.stateGeneration = stateGeneration;
+
+        if (copyLast) {
+            this.restoreData = new RestoreData(tessellator);
+        }
     }
 
-    public void mergeDraw(ByteBuffer data) {
-        this.drawBuffers.add(data);
+
+    public void mergeDraw(DirectTessellator tessellator, boolean copyLast) {
+        this.drawBuffers.add(tessellator.allocateBufferCopy());
+
+        if (copyLast) {
+            this.restoreData = new RestoreData(tessellator);
+        }
     }
 
     /**
      * Holds last vertex attribute values for GL state restoration after VBO draw.
      * Used to sync GLSM cache with actual GL state after VBO rendering.
      */
-    @Desugar
-    public record RestoreData(
-        float lastColorR, float lastColorG, float lastColorB, float lastColorA,
-        float lastNormalX, float lastNormalY, float lastNormalZ,
-        float lastTexCoordS, float lastTexCoordT) {}
+    public static class RestoreData {
+        public final int lastColor;
+        public final int lastNormal;
+        public final float lastTexCoordU;
+        public final float lastTexCoordV;
+        public final int flags;
 
-//    @Override
-//    public String toString() {
-//        return String.format("AccumulatedDraw[quads=%d, cmdIdx=%d, flags=C%dT%dL%dN%d]",
-//            quads.size(), commandIndex, flags.hasColor ? 1 : 0, flags.hasTexture ? 1 : 0, flags.hasBrightness ? 1 : 0, flags.hasNormals ? 1 : 0);
-//    }
+        public RestoreData(DirectTessellator tessellator) {
+            this.lastColor = tessellator.getPackedColor();
+            this.lastNormal = tessellator.getPackedNormal();
+            this.lastTexCoordU = (float) tessellator.getLastTextureU();
+            this.lastTexCoordV = (float) tessellator.getLastTextureV();
+            this.flags = tessellator.getVertexFormat().getVertexFlags();
+        }
+    }
 }

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
@@ -460,33 +461,33 @@ public final class CommandBufferExecutor {
                 case GLCommand.DRAW_RANGE_RESTORE -> {
                     // Draw VBO range then restore GL current state from last vertex attributes
                     final int vboIndex = memGetInt(ptr);
-                    final int start = memGetInt(ptr + 4);
-                    final int count = memGetInt(ptr + 8);
-                    final int flags = memGetInt(ptr + 12);
+                    final int flags = memGetInt(ptr + 4);
 
                     // Draw the VBO
                     ownedVbos.render(vboIndex);
 
                     // Restore attributes based on flags
-                    if ((flags & FLAG_HAS_COLOR) != 0) {
-                        final float r = memGetFloat(ptr + 16);
-                        final float g = memGetFloat(ptr + 20);
-                        final float b = memGetFloat(ptr + 24);
-                        final float a = memGetFloat(ptr + 28);
-                        GLStateManager.glColor4f(r, g, b, a);
+                    if ((flags & VertexFlags.COLOR_BIT) != 0) {
+                        final int color = memGetInt(ptr + 8);
+                        byte a = (byte) ((color >> 24) & 0xFF);
+                        byte r = (byte) ((color >> 16) & 0xFF);
+                        byte g = (byte) ((color >> 8) & 0xFF);
+                        byte b = (byte) ((color & 0xFF));
+                        GL11.glColor4ub(r, g, b, a);
                     }
-                    if ((flags & FLAG_HAS_NORMALS) != 0) {
-                        final float nx = memGetFloat(ptr + 32);
-                        final float ny = memGetFloat(ptr + 36);
-                        final float nz = memGetFloat(ptr + 40);
-                        GLStateManager.glNormal3f(nx, ny, nz);
+                    if ((flags & VertexFlags.NORMAL_BIT) != 0) {
+                        final int normal = memGetInt(ptr + 12);
+                        float nx = (byte)(normal)       / 127.0f;
+                        float ny = (byte)(normal >> 8)  / 127.0f;
+                        float nz = (byte)(normal >> 16) / 127.0f;
+                        GL11.glNormal3f(nx, ny, nz);
                     }
-                    if ((flags & FLAG_HAS_TEXTURE) != 0) {
-                        final float s = memGetFloat(ptr + 44);
-                        final float t = memGetFloat(ptr + 48);
+                    if ((flags & VertexFlags.TEXTURE_BIT) != 0) {
+                        final float s = memGetFloat(ptr + 16);
+                        final float t = memGetFloat(ptr + 20);
                         GLStateManager.glTexCoord2f(s, t);
                     }
-                    ptr += 52;  // Skip full command size (56 - 4 for cmd already read)
+                    ptr += 24;  // Skip full command size (28 - 4 for cmd already read)
                 }
                 case GLCommand.CALL_LIST -> {
                     final int listId = memGetInt(ptr);

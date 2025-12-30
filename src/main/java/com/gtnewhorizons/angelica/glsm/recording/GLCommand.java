@@ -101,8 +101,8 @@ public final class GLCommand {
      * Draw VBO range with attribute restoration after draw.
      * Used for immediate mode VBOs to restore GL current state (color, normal, texcoord).
      */
-    public static final int DRAW_RANGE_RESTORE = 105; // [cmd:4][vboIndex:4][start:4][count:4][flags:4]
-                                                      // [lastColor:16f][lastNormal:12f][lastTexCoord:8f] = 56 bytes
+    public static final int DRAW_RANGE_RESTORE = 105; // [cmd:4][vboIndex:4][flags:4]
+                                                      // [color:4][normal:4][lastTexCoord:8f] = 28 bytes
 
     // === Complex object reference ===
     public static final int COMPLEX_REF = 255;       // [cmd:4][index:4] = 8 bytes

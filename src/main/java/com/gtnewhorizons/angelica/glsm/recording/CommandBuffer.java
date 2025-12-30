@@ -14,12 +14,6 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 public final class CommandBuffer {
     private static final int DEFAULT_CAPACITY = 4096; // Guess at typical display list size
 
-    // Flag bits for DRAW_RANGE_RESTORE command
-    public static final int FLAG_HAS_BRIGHTNESS = 1 << 0;
-    public static final int FLAG_HAS_COLOR      = 1 << 1;
-    public static final int FLAG_HAS_NORMALS    = 1 << 2;
-    public static final int FLAG_HAS_TEXTURE    = 1 << 3;
-
     private ByteBuffer buffer;
     private long basePointer;
     private long writePointer;
@@ -559,51 +553,21 @@ public final class CommandBuffer {
      * Used for immediate mode VBOs to restore GL_CURRENT_COLOR, GL_CURRENT_NORMAL, GL_CURRENT_TEXTURE_COORDS.
      *
      * @param vboIndex Index into ownedVbos array
-     * @param startVertex First vertex to draw
-     * @param vertexCount Number of vertices to draw
-     * @param hasBrightness True if VBO has brightness/lightmap data
-     * @param hasColor True if color should be restored after draw
-     * @param hasNormals True if normal should be restored after draw
-     * @param hasTexture True if texcoord should be restored after draw
-     * @param lastColorR Last vertex's red color component
-     * @param lastColorG Last vertex's green color component
-     * @param lastColorB Last vertex's blue color component
-     * @param lastColorA Last vertex's alpha color component
-     * @param lastNormalX Last vertex's normal X
-     * @param lastNormalY Last vertex's normal Y
-     * @param lastNormalZ Last vertex's normal Z
-     * @param lastTexS Last vertex's texture S coordinate
-     * @param lastTexT Last vertex's texture T coordinate
      */
     public void writeDrawRangeRestore(
-        int vboIndex, int startVertex, int vertexCount,
-        boolean hasBrightness, boolean hasColor, boolean hasNormals, boolean hasTexture,
-        float lastColorR, float lastColorG, float lastColorB, float lastColorA,
-        float lastNormalX, float lastNormalY, float lastNormalZ,
-        float lastTexS, float lastTexT
+        int vboIndex, AccumulatedDraw.RestoreData restoreData
     ) {
-        ensureCapacity(56);
+        ensureCapacity(28);
         writeInt(GLCommand.DRAW_RANGE_RESTORE);
         writeInt(vboIndex);
-        writeInt(startVertex);
-        writeInt(vertexCount);
-        int flags = (hasBrightness ? FLAG_HAS_BRIGHTNESS : 0)
-                  | (hasColor ? FLAG_HAS_COLOR : 0)
-                  | (hasNormals ? FLAG_HAS_NORMALS : 0)
-                  | (hasTexture ? FLAG_HAS_TEXTURE : 0);
-        writeInt(flags);
-        // Last color (4 floats = 16 bytes)
-        writeFloat(lastColorR);
-        writeFloat(lastColorG);
-        writeFloat(lastColorB);
-        writeFloat(lastColorA);
-        // Last normal (3 floats = 12 bytes)
-        writeFloat(lastNormalX);
-        writeFloat(lastNormalY);
-        writeFloat(lastNormalZ);
+        writeInt(restoreData.flags);
+        // Last color (4 bytes)
+        writeInt(restoreData.lastColor);
+        // Last normal (4 bytes)
+        writeInt(restoreData.lastNormal);
         // Last texcoord (2 floats = 8 bytes)
-        writeFloat(lastTexS);
-        writeFloat(lastTexT);
+        writeFloat(restoreData.lastTexCoordU);
+        writeFloat(restoreData.lastTexCoordU);
     }
 
     public void writeCallList(int listId) {

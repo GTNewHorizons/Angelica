@@ -52,8 +52,8 @@ import java.util.Map;
  * emitted at barriers (draws, CallList, exit). Vertices stay canonical in VBOs. Handles nested
  * display lists correctly and maintains Push/Pop semantics.
  *
- * <p><b>Format-Based Batching:</b> Draws with same vertex format share a VBO via {@link FormatBuffer}.
- * Each draw's position is tracked as a {@link DrawRange}. Consecutive same-transform draws merge.
+ * <p><b>Format-Based Batching:</b> Draws with same vertex format share a VBO via {@link BigVBO}.
+ * Consecutive same-transform draws merge.
  * Delta transforms handled via {@link TransformOptimizer}.
  */
 @UtilityClass
@@ -842,37 +842,6 @@ public class DisplayListManager {
 //        GLStateManager.pushState(GL11.GL_ALL_ATTRIB_BITS);
     }
 
-    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {
-        final Matrix4f currentTransform = new Matrix4f(relativeTransform);
-        final VertexFormat format = tessellator.getVertexFormat();
-        final ByteBuffer drawData = tessellator.allocateBufferCopy();
-        final int cmdIndex = getCommandCount();
-        if (matrixGeneration != lastFlushedGeneration) {
-            if (lastFlushedTransform == null) {
-                lastFlushedTransform = new Matrix4f();
-            }
-            lastFlushedTransform.set(relativeTransform);
-            flushMatrix();
-            lastFlushedGeneration = matrixGeneration;
-        }
-        if (accumulatedDraws.isEmpty()) {
-            accumulatedDraws.add(
-                new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
-            );
-        } else {
-            final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
-            if (previous.format == format && previous.commandIndex == cmdIndex) {
-                previous.mergeDraw(drawData);
-            } else {
-                accumulatedDraws.add(
-                    new AccumulatedDraw(format, tessellator.drawMode, drawData, currentTransform, cmdIndex)
-                );
-            }
-        }
-
-        // We hijack display list compilation completely - no GL11.glNewList() calls
-    }
-
     /**
      * End display list compilation and build optimized/unoptimized versions.
      */
@@ -956,6 +925,43 @@ public class DisplayListManager {
             glListId = -1;
             glListMode = 0;
         }
+
+        double diff = (System.nanoTime() - time) / 1_000_000d;
+        System.out.println("Display lists (new) took " + diff + "ms.");
+
+    }
+
+    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {
+        final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+        final int cmdIndex = getCommandCount();
+        if (matrixGeneration != lastFlushedGeneration) {
+            if (lastFlushedTransform == null) {
+                lastFlushedTransform = new Matrix4f();
+            }
+            lastFlushedTransform.set(relativeTransform);
+            flushMatrix();
+            lastFlushedGeneration = matrixGeneration;
+        }
+
+        if (accumulatedDraws.isEmpty()) {
+            accumulatedDraws.add(
+                new AccumulatedDraw(
+                    tessellator, currentTransform, cmdIndex, stateGeneration, copyLast
+                )
+            );
+            return;
+        }
+
+        // Merge the previous draw call if possible
+        final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
+        if (previous.format == tessellator.getVertexFormat() && previous.stateGeneration == stateGeneration) {
+            previous.mergeDraw(tessellator, copyLast);
+            return;
+        }
+
+        accumulatedDraws.add(
+            new AccumulatedDraw(tessellator, currentTransform, cmdIndex, stateGeneration, copyLast)
+        );
     }
 
     /**
@@ -1015,7 +1021,6 @@ public class DisplayListManager {
         if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
             return BigVBO.emptyVBO();
         }
-
 
         // Compile each format's geometry into a single VBO
         final BigVBOBuilder builder = new BigVBOBuilder();
