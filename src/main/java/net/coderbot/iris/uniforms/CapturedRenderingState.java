@@ -58,6 +58,10 @@ public class CapturedRenderingState {
     }
 
 	public void setCurrentRenderedItem(int item) {
+		if (this.currentRenderedItem == item) {
+			return;
+		}
+
 		this.currentRenderedItem = item;
 
 		if (this.itemIdListener != null) {
