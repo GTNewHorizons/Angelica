@@ -6,22 +6,15 @@ import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import me.jellysquid.mods.sodium.client.render.chunk.passes.BlockRenderPass;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -29,13 +22,10 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.culling.ICamera;
-import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
@@ -68,7 +58,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private SodiumWorldRenderer renderer;
 
     private int sodium$frame;
-    private static final String LIGHTNING_BOLT_ENTITY_TYPE = "lightning_bolt";
 
     @Override
     public void scheduleTerrainUpdate() {
@@ -323,37 +312,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.renderChunksDeep = 0;
     }
 
-    @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
-    private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        int entityId = entity.getEntityId();
 
-        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-        if (entityIdMap != null) {
-            // Get the entity type string (e.g., "XPOrb", "Creeper", "Zombie")
-            String entityType = EntityList.getEntityString(entity);
-
-            // Quick way of getting an unregistered entity. Not sure if there's a fast way to extend this to all unregistered entities.
-            if (entityType == null) {
-                if (entity instanceof EntityLightningBolt) {
-                    entityType = LIGHTNING_BOLT_ENTITY_TYPE;
-                }
-            }
-
-            if (entityType != null) {
-                entityId = entityIdMap.applyAsInt(new NamespacedId(entityType));
-            }
-        }
-
-        // May cause slowdown. Not sure if this matters too much at the moment. Probably needs profiling.
-        CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
-        GbufferPrograms.beginEntities();
-        try {
-            return original.call(instance, entity, partialTicks);
-        } finally {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
-            GbufferPrograms.endEntities();
-        }
-    }
 
 
     @Inject(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER))
