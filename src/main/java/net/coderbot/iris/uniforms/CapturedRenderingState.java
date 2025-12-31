@@ -19,7 +19,7 @@ public class CapturedRenderingState {
 	private Runnable entityIdListener = null;
 
 	@Getter
-	private int currentRenderedItem = 0;
+	private int currentRenderedItem = -1;
 	private Runnable itemIdListener = null;
 
     @Getter

@@ -31,7 +31,7 @@ public class MixinRenderBiped {
         ItemStack itemStack = entity.func_130225_q(3 - armorSlot);
 
         if (itemStack == null || itemStack.getItem() == null) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
             original.call(instance, model);
             return;
         }
@@ -53,7 +53,7 @@ public class MixinRenderBiped {
         at = @At("HEAD")
     )
     private void iris$resetAtStart(EntityLiving entity, double x, double y, double z, float entityYaw, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
     }
 
     /**
@@ -65,7 +65,7 @@ public class MixinRenderBiped {
         at = @At("HEAD")
     )
     private void iris$resetInEquippedItems(EntityLiving entity, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
     }
 
     /**
@@ -89,6 +89,6 @@ public class MixinRenderBiped {
         original.call(itemRenderer, entity, itemStack, renderPass);
 
         // Reset after rendering the held item
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
     }
 }

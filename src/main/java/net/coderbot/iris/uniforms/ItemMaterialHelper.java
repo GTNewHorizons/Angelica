@@ -37,8 +37,11 @@ public class ItemMaterialHelper {
 
         // Check cache first
         Int2IntMap metadataCache = MATERIAL_CACHE.get(item);
-        if (metadataCache != null && metadataCache.containsKey(metadata)) {
-            return metadataCache.get(metadata);
+        if (metadataCache != null) {
+            // Use getOrDefault to avoid returning the default value (-1) for missing keys
+            if (metadataCache.containsKey(metadata)) {
+                return metadataCache.get(metadata);
+            }
         }
 
         // Cache miss
@@ -69,7 +72,7 @@ public class ItemMaterialHelper {
         Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
         if (itemIds != null) {
             int id = itemIds.applyAsInt(namespacedId);
-            if (id != 0) {
+            if (id > 0) {
                 return id;
             }
         }
@@ -79,12 +82,19 @@ public class ItemMaterialHelper {
             ItemBlock itemBlock = (ItemBlock) item;
             Block block = itemBlock.field_150939_a; // The block this item places
 
+            if (block == null) {
+                return 0;
+            }
+
+            // Convert item damage to block metadata
+            int blockMeta = itemBlock.getMetadata(metadata);
+
             Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
             if (blockMetaMatches != null) {
                 Int2IntMap metaMap = blockMetaMatches.get(block);
                 if (metaMap != null) {
-                    int id = metaMap.get(metadata);
-                    if (id != 0) {
+                    int id = metaMap.get(blockMeta);
+                    if (id > 0) {
                         return id;
                     }
                 }
