@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -67,6 +69,32 @@ public class MixinItemRenderer {
         // Get material ID from item.properties or block.properties
         int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+    }
+
+    /**
+     * Activate GLINT shader before rendering enchantment glint on held items.
+     * Injects at the first glDepthFunc inside the if(hasEffect) block.
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
+    )
+    private void iris$activateGlintShaderHeldItem(net.minecraft.entity.EntityLivingBase entity, ItemStack itemStack, int renderPass, net.minecraftforge.client.IItemRenderer.ItemRenderType type, CallbackInfo ci) {
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+    }
+
+    /**
+     * Deactivate GLINT shader after rendering enchantment glint on held items.
+     * Injects at the last glDepthFunc inside the if(hasEffect) block.
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
+    )
+    private void iris$deactivateGlintShaderHeldItem(net.minecraft.entity.EntityLivingBase entity, ItemStack itemStack, int renderPass, net.minecraftforge.client.IItemRenderer.ItemRenderType type, CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
     }
 
     /**
