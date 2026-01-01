@@ -1,28 +1,19 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.primitive.ModelPrimitiveView;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBOBuilder;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
+import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
+import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
-import com.gtnewhorizons.angelica.glsm.recording.commands.OptimizationContext;
-import io.netty.buffer.ByteBuf;
-import com.gtnewhorizons.angelica.glsm.GLDebug;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Getter;
@@ -32,7 +23,6 @@ import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -41,9 +31,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * VBO-based display list emulation with command recording, transform collapsing, and format-based batching.
@@ -52,7 +40,7 @@ import java.util.Map;
  * emitted at barriers (draws, CallList, exit). Vertices stay canonical in VBOs. Handles nested
  * display lists correctly and maintains Push/Pop semantics.
  *
- * <p><b>Format-Based Batching:</b> Draws with same vertex format share a VBO via {@link BigVBO}.
+ * <p><b>Format-Based Batching:</b> Draws with same vertex format share a VBO via {@link DisplayListVBO}.
  * Consecutive same-transform draws merge.
  * Delta transforms handled via {@link TransformOptimizer}.
  */
@@ -829,12 +817,12 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-        TessellatorManager.startCapturingDirect(new DirectTessellator((tessellator) -> {
+        TessellatorManager.startCapturingDirect((tessellator) -> {
             if (!tessellator.isEmpty()) {
                 addAccumulatedDraw(tessellator, relativeTransform, false);
             }
             return true;
-        }));
+        });
 //
 //        // We hijack display list compilation completely - no GL11.glNewList() calls
 //        // During compile don't actually apply any changes to GL, but do track them
@@ -863,14 +851,14 @@ public class DisplayListManager {
 
         if (hasCommands || hasDraws) {
             // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
-            final BigVBO compiledBuffers = compileBigVBO(accumulatedDraws);
+            final DisplayListVBO compiledBuffers = compileBigVBO(accumulatedDraws);
 
             // Build to CommandBuffer - optimize raw buffer to final buffer
             final CommandBuffer finalBuffer = new CommandBuffer();
             if (DEBUG_DISPLAY_LISTS) {
                 CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
             } else {
-                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, glListId, finalBuffer);
+                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
             }
 
             // Free the recorder (and its buffer) after optimization
@@ -1016,14 +1004,14 @@ public class DisplayListManager {
         GL11.glDeleteLists(list, range);
     }
 
-    static BigVBO compileBigVBO(
+    static DisplayListVBO compileBigVBO(
         List<AccumulatedDraw> accumulatedDraws) {
         if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
-            return BigVBO.emptyVBO();
+            return DisplayListVBO.emptyVBO();
         }
 
         // Compile each format's geometry into a single VBO
-        final BigVBOBuilder builder = new BigVBOBuilder();
+        final DisplayListVBOBuilder builder = new DisplayListVBOBuilder();
         for (AccumulatedDraw draw : accumulatedDraws) {
             builder.addDraw(draw.format, draw.drawMode, draw.drawBuffers);
         }

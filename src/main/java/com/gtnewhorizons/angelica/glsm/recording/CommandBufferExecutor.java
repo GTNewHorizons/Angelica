@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -16,7 +14,6 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
-import static com.gtnewhorizons.angelica.glsm.recording.CommandBuffer.*;
 
 /**
  * Executes commands from a CommandBuffer
@@ -39,7 +36,7 @@ public final class CommandBufferExecutor {
      * @param complexObjects Array of complex objects (TexImage2DCmd, etc.)
      * @param ownedVbos Array of VBOs owned by the display list (indexed by DrawRange commands)
      */
-    public static void execute(ByteBuffer buffer, Object[] complexObjects, BigVBO ownedVbos) {
+    public static void execute(ByteBuffer buffer, Object[] complexObjects, DisplayListVBO ownedVbos) {
         long ptr = memAddress(buffer);
         final long end = ptr + buffer.limit();
 

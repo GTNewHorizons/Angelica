@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.stacks.TextureUnitBooleanStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
+import com.gtnewhorizons.angelica.glsm.stacks.TextureUnitBooleanStateStack;
 import lombok.Getter;
 import org.joml.Matrix4fStack;
 import org.lwjgl.opengl.GL11;

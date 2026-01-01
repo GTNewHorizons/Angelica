@@ -1,23 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.client.model.obj.Vertex;
 import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
 
 /**
  * Represents an accumulated draw call during display list compilation.

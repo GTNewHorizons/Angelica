@@ -1,20 +1,11 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBufferProcessor;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBufferProcessor.BufferTransformOptimizer;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Builds final command buffers from raw command buffers and compiled VBO data.
@@ -32,7 +23,6 @@ public final class CommandBufferBuilder {
     public static void buildOptimizedFromRawBuffer(
             CommandBuffer rawBuffer,
             List<AccumulatedDraw> accumulatedDraws,
-            int glListId,
             CommandBuffer finalBuffer) {
 
         // Buffer optimizer state

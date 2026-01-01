@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuadViewMutable;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 
@@ -11,8 +9,6 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) during display list compilation.
@@ -42,7 +38,7 @@ import java.util.List;
  * </ul>
  */
 public class ImmediateModeRecorder {
-    private final DirectTessellator tessellator = new DirectTessellator(null);
+    private final DirectTessellator tessellator = new DirectTessellator();
 
     public ImmediateModeRecorder() {
         // Recorder is ready to capture geometry

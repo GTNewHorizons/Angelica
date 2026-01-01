@@ -1,9 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
-import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;

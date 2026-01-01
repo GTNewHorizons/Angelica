@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.BigVBO;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -31,9 +29,9 @@ public final class CompiledDisplayList {
 
     private final ByteBuffer commandBuffer;     // Off-heap command storage, must be freed
     private final Object[] complexObjects;      // Complex commands (TexImage2D, etc.)
-    private final BigVBO ownedVbos;     // GPU resources referenced by index
+    private final DisplayListVBO ownedVbos;     // GPU resources referenced by index
 
-    public CompiledDisplayList(ByteBuffer commandBuffer, Object[] complexObjects, BigVBO ownedVbos) {
+    public CompiledDisplayList(ByteBuffer commandBuffer, Object[] complexObjects, DisplayListVBO ownedVbos) {
         this.commandBuffer = commandBuffer;
         this.complexObjects = complexObjects;
         this.ownedVbos = ownedVbos;

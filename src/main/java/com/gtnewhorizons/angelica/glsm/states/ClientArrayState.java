@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import java.nio.Buffer;
 import org.lwjgl.opengl.GL11;
+
+import java.nio.Buffer;
 
 /**
  * Tracks OpenGL client array state (glVertexPointer, glColorPointer, etc.)
