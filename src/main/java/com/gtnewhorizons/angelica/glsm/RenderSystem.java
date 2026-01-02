@@ -74,7 +74,7 @@ public class RenderSystem {
 	}
 
 	public static void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
-		GL11.glCopyTexImage2D(target, level, internalFormat, x, y, width, height, border);
+		GLStateManager.glCopyTexImage2D(target, level, internalFormat, x, y, width, height, border);
 	}
 
 	public static void uniform1f(int location, float v0) {
@@ -257,17 +257,17 @@ public class RenderSystem {
 
     public static final FloatBuffer PROJECTION_MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     public static void setupProjectionMatrix(Matrix4f matrix) {
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glPushMatrix();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glPushMatrix();
         matrix.get(0, PROJECTION_MATRIX_BUFFER);
-        GL11.glLoadMatrix(PROJECTION_MATRIX_BUFFER);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadMatrix(PROJECTION_MATRIX_BUFFER);
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     public static void restoreProjectionMatrix() {
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glPopMatrix();
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glPopMatrix();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
 	public static void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter) {
