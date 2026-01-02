@@ -24,7 +24,9 @@ public enum TargetedMod implements ITargetMod {
     THAUMCRAFT(null, "Thaumcraft"),
     TINKERS_CONSTRUCT(null, "TConstruct"),
     TWILIGHT_FOREST(null, "TwilightForest"),
-    WITCHERY(null, "witchery");
+    WITCHERY(null, "witchery"),
+    MODERNSPLASH("gkappa.modernsplash.MSLoadingPlugin", "modernsplash")
+    ;
 
     private final TargetModBuilder builder;
 

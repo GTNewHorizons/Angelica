@@ -315,6 +315,14 @@ public enum Mixins implements IMixins {
         .addClientMixins("angelica.textures.MixinTextureUtil_OptimizeMipmap")
         .setApplyIf(() -> AngelicaConfig.optimizeTextureLoading)),
 
+    EXLCLUDE_MODERNSPLASH(new MixinBuilder("Exclude ModernSplash from Angelica mixins")
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.MODERNSPLASH)
+        .addClientMixins(
+            "angelica.glsm.MixinCustomSplashMS"
+        )
+    ),
+
     //From NotFine
     NOTFINE_BASE_MOD(new MixinBuilder()
         .setPhase(Phase.EARLY)
