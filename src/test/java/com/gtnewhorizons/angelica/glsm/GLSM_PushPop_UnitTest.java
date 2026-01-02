@@ -17,6 +17,8 @@ import org.lwjgl.opengl.GL32;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
@@ -468,7 +470,11 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
-        verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding Deleted - Unit 1");
+        // After pop, binding a deleted texture is driver-specific:
+        // - Mesa: calls bindTexture_no_error which recreates the texture, returns tex1
+        // - Nvidia: refuses to bind deleted texture, returns 0
+        int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        assertTrue(binding == 0 || binding == tex1, "Texture Binding after pop with deleted texture - Unit 1: expected 0 or " + tex1 + ", got " + binding);
         GLStateManager.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -868,5 +874,308 @@ class GLSM_PushPop_UnitTest {
 
         GLStateManager.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0");
+    }
+
+    // ==================== Display List + Push/Pop Interaction Tests ====================
+
+    @Test
+    void testDisplayListCallInsidePushPopAllAttribBits() {
+        // Tests the pattern:
+        // 1. Push ALL attrib bits
+        // 2. Switch to TEXTURE1, enable GL_TEXTURE_2D
+        // 3. Switch back to TEXTURE0
+        // 4. Call a display list that changes texture state
+        // 5. Pop attrib
+        // 6. Verify state restored correctly
+        //
+        // This pattern is used by mods that wrap vanilla entity rendering.
+
+        // Setup: create textures and verify initial state
+        final int texA = GL11.glGenTextures();
+        final int texB = GL11.glGenTextures();
+        final int texC = GL11.glGenTextures();
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "Initial binding unit 0");
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial active unit");
+
+        // Verify unit 1 starts with no texture and TEXTURE_2D disabled
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial binding unit 1");
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "Initial TEXTURE_2D state unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+        // Create display list that changes texture state on multiple units
+        final int listId = GL11.glGenLists(1);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texC);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glEndList();
+
+        // === Begin pattern ===
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        // Switch to TEXTURE1, enable GL_TEXTURE_2D, switch back
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "TEXTURE_2D enabled on unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+        // Call display list (simulates calling vanilla model/entity display lists)
+        DisplayListManager.glCallList(listId);
+
+        // Verify state changed by display list
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texB, "After display list - unit 0 binding");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texC, "After display list - unit 1 binding");
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After display list - TEXTURE_2D still enabled on unit 1");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+        // Pop attrib - should restore all state
+        GLStateManager.glPopAttrib();
+
+        // === CRITICAL VERIFICATIONS ===
+        // If any of these fail, we've found the bug
+
+        // Active texture unit should be restored
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "After pop - active unit");
+
+        // Unit 0 binding should be restored to texA
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After pop - unit 0 binding");
+
+        // Unit 1 state should be fully restored
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After pop - unit 1 binding");
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - TEXTURE_2D disabled on unit 1");
+
+        // Cleanup - reset all state to defaults
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLStateManager.glDeleteTextures(texA);
+        GLStateManager.glDeleteTextures(texB);
+        GLStateManager.glDeleteTextures(texC);
+        GLStateManager.glDeleteLists(listId, 1);
+    }
+
+    @Test
+    void testDisplayListWithNestedPushPopInsideOuterPushPop() {
+        // Tests nested push/pop where the display list itself contains push/pop
+        // Pattern:
+        // glPushAttrib(ALL)
+        //   glCallList(...) // list contains: glPushAttrib, change state, glPopAttrib
+        // glPopAttrib()
+
+        final int texA = GL11.glGenTextures();
+        final int texB = GL11.glGenTextures();
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "Initial binding");
+
+        // Create display list with its own push/pop
+        final int listId = GL11.glGenLists(1);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLStateManager.glPopAttrib();
+        GLStateManager.glEndList();
+
+        // Outer push
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        // Change texture
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After unbind in outer push");
+
+        // Call display list with nested push/pop
+        DisplayListManager.glCallList(listId);
+
+        // After display list's pop, should be back to 0 (what outer context had)
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After display list with nested push/pop");
+
+        // Outer pop
+        GLStateManager.glPopAttrib();
+
+        // Should restore to original texA
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After outer pop");
+
+        // Cleanup - reset state to defaults
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLStateManager.glDeleteTextures(texA);
+        GLStateManager.glDeleteTextures(texB);
+        GLStateManager.glDeleteLists(listId, 1);
+    }
+
+    @Test
+    void testTextureUnitSwitchingWithDisplayListModifyingDifferentUnit() {
+        // Tests: outer code works on unit 1, display list modifies unit 0
+        // Verifies both units are correctly restored after pop
+
+        final int texA = GL11.glGenTextures();
+        final int texB = GL11.glGenTextures();
+        final int texC = GL11.glGenTextures();
+
+        // Initial state: texA on unit 0, nothing on unit 1
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+
+        // Create display list that only modifies unit 0
+        final int listId = GL11.glGenLists(1);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texC);
+        GLStateManager.glEndList();
+
+        // Push, then work on unit 1
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+
+        // Call display list - modifies unit 0 while we're "on" unit 1
+        DisplayListManager.glCallList(listId);
+
+        // Verify: unit 0 changed, unit 1 unchanged
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texC, "After list - unit 0 changed to texC");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texB, "After list - unit 1 still texB");
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After list - unit 1 still enabled");
+
+        // Pop
+        GLStateManager.glPopAttrib();
+
+        // Both units should be restored
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "After pop - active unit");
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After pop - unit 0 restored to texA");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After pop - unit 1 restored to 0");
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - unit 1 disabled");
+
+        // Cleanup - reset all state to defaults
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLStateManager.glDeleteTextures(texA);
+        GLStateManager.glDeleteTextures(texB);
+        GLStateManager.glDeleteTextures(texC);
+        GLStateManager.glDeleteLists(listId, 1);
+    }
+
+    @Test
+    void testColorStateWithDisplayListInsidePushPop() {
+        // Tests color state restoration - white screen could indicate color issue
+        // Pattern: push, set color, call display list that changes color, pop
+
+        verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Initial color white");
+
+        // Create display list that sets color to red
+        final int listId = GL11.glGenLists(1);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        GLStateManager.glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.glEndList();
+
+        // Push (note: GL_CURRENT_BIT includes color)
+        GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
+
+        // Set color to green
+        GLStateManager.glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+        verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.0f, 1.0f, 0.0f, 1.0f}, "After setting green");
+
+        // Call display list - sets to red
+        DisplayListManager.glCallList(listId);
+        verifyState(GL11.GL_CURRENT_COLOR, new float[]{1.0f, 0.0f, 0.0f, 1.0f}, "After display list - red");
+
+        // Pop - should restore to white (initial state before push)
+        GLStateManager.glPopAttrib();
+        verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "After pop - restored to white");
+
+        // Cleanup - ensure color is reset to white
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLStateManager.glDeleteLists(listId, 1);
+    }
+
+    @Test
+    void testBlendStateWithDisplayListInsidePushPop() {
+        // Tests blend state restoration - incorrect blend could cause visual issues
+
+        verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "color should still be white");
+
+        verifyIsEnabled(GL11.GL_BLEND, false, "Initial blend disabled");
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE, "Initial blend src");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ZERO, "Initial blend dst");
+
+        // Create display list that enables blend with specific function
+        final int listId = GL11.glGenLists(1);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        GLStateManager.enableBlend();
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLStateManager.glEndList();
+
+        // Push
+        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+
+        // Set different blend state
+        GLStateManager.enableBlend();
+        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        // Call display list - changes blend function
+        DisplayListManager.glCallList(listId);
+        verifyIsEnabled(GL11.GL_BLEND, true, "After list - blend enabled");
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE, "After list - blend src ONE");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE, "After list - blend dst ONE");
+
+        // Pop
+        GLStateManager.glPopAttrib();
+        verifyIsEnabled(GL11.GL_BLEND, false, "After pop - blend disabled");
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE, "After pop - blend src restored");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ZERO, "After pop - blend dst restored");
+
+        // Cleanup - ensure blend is reset to defaults
+        GLStateManager.disableBlend();
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.glDeleteLists(listId, 1);
+
+        // Verify GLSM cache matches actual GL state (exposes cache sync bugs)
+        verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "color should still be white");
+    }
+
+    @Test
+    void testTextureUnitPopAttribRestoresCorrectUnit() {
+        // Setup: Unit 0 ENABLED, Unit 1 disabled
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "Initial - Unit 0 enabled");
+
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        // Modify ONLY unit 1
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+        GLStateManager.glPopAttrib();
+
+        // Unit 0 should still be enabled - bug causes it to be disabled
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After pop - Unit 0 still enabled");
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - Unit 1 disabled");
+
+        // Cleanup
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
     }
 }

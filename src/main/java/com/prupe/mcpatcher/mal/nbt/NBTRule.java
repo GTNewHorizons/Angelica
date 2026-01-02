@@ -47,7 +47,7 @@ abstract public class NBTRule {
             } else {
                 return new Exact(tag, value);
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
@@ -204,7 +204,7 @@ abstract public class NBTRule {
                 if (result != null && cl.isAssignableFrom(result.getClass())) {
                     return cl.cast(result);
                 }
-            } catch (Throwable e) {}
+            } catch (Exception e) {}
             return null;
         }
 

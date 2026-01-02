@@ -40,6 +40,8 @@ import org.lwjgl.opengl.GL30;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -59,33 +61,38 @@ public class FinalPassRenderer {
 	private final Object2ObjectMap<String, IntSupplier> customTextureIds;
     private final CustomUniforms customUniforms;
 
-    // TODO: The length of this argument list is getting a bit ridiculous
 	public FinalPassRenderer(ProgramSet pack, RenderTargets renderTargets, IntSupplier noiseTexture,
 							 FrameUpdateNotifier updateNotifier, ImmutableSet<Integer> flippedBuffers,
 							 CenterDepthSampler centerDepthSampler,
 							 Supplier<ShadowRenderTargets> shadowTargetsSupplier,
 							 Object2ObjectMap<String, IntSupplier> customTextureIds,
-							 ImmutableSet<Integer> flippedAtLeastOnce, CustomUniforms customUniforms) {
-		this.updateNotifier = updateNotifier;
-		this.centerDepthSampler = centerDepthSampler;
-		this.customTextureIds = customTextureIds;
+							 ImmutableSet<Integer> flippedAtLeastOnce, CustomUniforms customUniforms,
+							 CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture) {
+		this(pack, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms), flippedBuffers, flippedAtLeastOnce, precomputedTransformFuture, "final");
+	}
 
-		this.noiseTexture = noiseTexture;
-		this.renderTargets = renderTargets;
-        this.customUniforms = customUniforms;
-		this.finalPass = pack.getCompositeFinal().map(source -> {
-			Pass pass = new Pass();
-			ProgramDirectives directives = source.getDirectives();
+	public FinalPassRenderer(ProgramSet pack, ProgramBuildContext context, ImmutableSet<Integer> flippedBuffers, ImmutableSet<Integer> flippedAtLeastOnce, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
+		this.updateNotifier = context.updateNotifier();
+		this.centerDepthSampler = context.centerDepthSampler();
+		this.customTextureIds = context.customTextureIds();
 
-			pass.program = createProgram(source, flippedBuffers, flippedAtLeastOnce, shadowTargetsSupplier);
-			pass.computes = createComputes(pack.getFinalCompute(), flippedBuffers, flippedAtLeastOnce, shadowTargetsSupplier);
+		this.noiseTexture = context.noiseTexture();
+		this.renderTargets = context.renderTargets();
+        this.customUniforms = context.customUniforms();
+		this.finalPass = pack.getCompositeFinal().filter(ProgramSource::isValid).map(source -> {
+			final Pass pass = new Pass();
+			final ProgramDirectives directives = source.getDirectives();
+
+			final Map<PatchShaderType, String> transformed = getTransformed(source, precomputedTransformFuture, stageName);
+			pass.program = createProgramFromTransformed(source, transformed, flippedBuffers, flippedAtLeastOnce, context.shadowTargetsSupplier());
+			pass.computes = createComputes(pack.getFinalCompute(), flippedBuffers, flippedAtLeastOnce, context.shadowTargetsSupplier());
 			pass.stageReadsFromAlt = flippedBuffers;
 			pass.mipmappedBuffers = directives.getMipmappedBuffers();
 
 			return pass;
 		}).orElse(null);
 
-		IntList buffersToBeCleared = pack.getPackDirectives().getRenderTargetDirectives().getBuffersToBeCleared();
+		final IntList buffersToBeCleared = pack.getPackDirectives().getRenderTargetDirectives().getBuffersToBeCleared();
 
 		// The name of this method might seem a bit odd here, but we want a framebuffer with color attachments that line
 		// up with whatever was written last (since we're reading from these framebuffers) instead of trying to create
@@ -126,6 +133,20 @@ public class FinalPassRenderer {
 		this.swapPasses = swapPasses.build();
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
+	}
+
+	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
+		if (precomputedTransformFuture != null) {
+			try {
+				final Map<PatchShaderType, String> result = precomputedTransformFuture.join();
+				if (result != null) {
+					return result;
+				}
+			} catch (CompletionException e) {
+				throw new RuntimeException("Shader transformation failed for '" + source.getName() + "' in stage '" + stageName + "'", e.getCause() != null ? e.getCause() : e);
+			}
+		}
+		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
 	}
 
 	private static final class Pass {
@@ -314,13 +335,9 @@ public class FinalPassRenderer {
 	}
 
 	// TODO: Don't just copy this from DeferredWorldRenderingPipeline
-	private Program createProgram(ProgramSource source, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
-								  Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
-		// TODO: Properly handle empty shaders
-		Map<PatchShaderType, String> transformed = TransformPatcher.patchComposite(
-			source.getVertexSource().orElseThrow(NullPointerException::new),
-			source.getGeometrySource().orElse(null),
-			source.getFragmentSource().orElseThrow(NullPointerException::new));
+	private Program createProgramFromTransformed(ProgramSource source, Map<PatchShaderType, String> transformed,
+												 ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
+												 Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
 		final String vertex = transformed.get(PatchShaderType.VERTEX);
 		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
 		final String fragment = transformed.get(PatchShaderType.FRAGMENT);

@@ -12,7 +12,7 @@ public class TextureInfo {
     protected int width = -1;
     protected int height = -1;
 
-    @Getter @Setter protected int minFilter = GL11.GL_LINEAR_MIPMAP_LINEAR;
+    @Getter @Setter protected int minFilter = GL11.GL_NEAREST_MIPMAP_LINEAR;
     @Getter @Setter protected int magFilter = GL11.GL_LINEAR;
     @Getter @Setter protected int wrapS = GL11.GL_REPEAT;
     @Getter @Setter protected int wrapT = GL11.GL_REPEAT;

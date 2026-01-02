@@ -67,7 +67,7 @@ public class CommentDirectiveParser {
 
 			try {
 				actual = testCase.get();
-			} catch (Throwable e) {
+			} catch (Exception e) {
 				System.err.println("Test \"" + name + "\" failed with an exception:");
 				e.printStackTrace();
 

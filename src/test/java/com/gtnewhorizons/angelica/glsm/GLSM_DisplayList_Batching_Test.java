@@ -7,11 +7,9 @@ import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DrawRangeCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
-import com.gtnewhorizons.angelica.glsm.recording.commands.TranslateCmd;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -120,15 +118,11 @@ class GLSM_DisplayList_Batching_Test {
         // Setup: draws with different transforms but same format
         // With format-based batching, they share 1 VBO but produce separate DrawRangeCmds
         List<AccumulatedDraw> draws = new ArrayList<>();
-        draws.add(createDrawWithTransform(new Matrix4f(), 0));  // Identity transform
-        draws.add(createDrawWithTransform(new Matrix4f().translate(1.0f, 0.0f, 0.0f), 2));  // After translate
-        draws.add(createDrawWithTransform(new Matrix4f().translate(3.0f, 0.0f, 0.0f), 4));  // After more translates
+        draws.add(createDrawWithTransform(new Matrix4f(), 0, 0));  // Identity transform, gen=0
+        draws.add(createDrawWithTransform(new Matrix4f().translate(1.0f, 0.0f, 0.0f), 1, 1));  // T(1), gen=1
+        draws.add(createDrawWithTransform(new Matrix4f().translate(3.0f, 0.0f, 0.0f), 2, 2));  // T(3), gen=2
 
         List<DisplayListCommand> commands = new ArrayList<>();
-        commands.add(new TranslateCmd(1.0, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 0
-        commands.add(new TranslateCmd(2.0, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 1
-        commands.add(new TranslateCmd(3.0, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 2
-        commands.add(new TranslateCmd(4.0, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 3
 
         // Execute
         OptimizedListResult result = DisplayListManager.buildOptimizedDisplayList(commands, draws, null, 1);
@@ -145,9 +139,9 @@ class GLSM_DisplayList_Batching_Test {
         Set<VertexBuffer> uniqueVBOs = getUniqueVBOs(optimized);
         assertEquals(1, uniqueVBOs.size(), "All DrawRangeCmds should reference the same shared VBO");
 
-        // Should have MultMatrix commands for the transforms
+        // Should have MultMatrix commands for the transforms (2 for T(1) and T(3))
         long matrixCount = countMultMatrixCmds(optimized);
-        assertTrue(matrixCount >= 2, "Should have MultMatrix commands for each unique transform");
+        assertEquals(2, matrixCount, "Should have MultMatrix commands for each unique transform");
     }
 
     @Test
@@ -197,51 +191,24 @@ class GLSM_DisplayList_Batching_Test {
     }
 
     @Test
-    void testEmptyDrawListProducesNoVBOs() {
-        // Setup: no draws
-        List<AccumulatedDraw> draws = new ArrayList<>();
-        List<DisplayListCommand> commands = new ArrayList<>();
-        commands.add(new TranslateCmd(1.0, 0.0, 0.0, GL11.GL_MODELVIEW));
-
-        // Execute
-        OptimizedListResult result = DisplayListManager.buildOptimizedDisplayList(
-            commands, draws, null, 1);
-        DisplayListCommand[] optimized = result.commands();
-
-        // Verify: no VBOs
-        assertEquals(0, result.ownedVbos().length, "No draws should produce no VBOs");
-
-        // Verify: no DrawRangeCmds
-        long drawCount = countDrawRangeCmds(optimized);
-        assertEquals(0, drawCount, "No draws should produce no DrawRangeCmds");
-
-        // But should still have the collapsed transform
-        long matrixCount = countMultMatrixCmds(optimized);
-        assertEquals(1, matrixCount,
-            "Transform should still be emitted even without draws");
-    }
-
-    @Test
     void testCancellingTransformsProduceSeparateDrawRangeCmds() {
-        // This tests the specific bug where transforms cancel out in the command stream
+        // This tests the specific bug where transforms cancel out over the sequence
         // (e.g., translate(+0.5) then translate(-0.5)) but draws captured in between
         // have different transform states that must be preserved.
         //
         // With format-based batching: 1 shared VBO, 3 DrawRangeCmds
+        // The key point: draws 1 and 3 have the same transform (identity) but draw 2
+        // has a different transform, so they can't all be merged.
 
         List<AccumulatedDraw> draws = new ArrayList<>();
-        // Draw 1: captured at identity
-        draws.add(createDrawWithTransform(new Matrix4f(), 0));
-        // Draw 2: captured at translate(0.5, 0, 0) - BEFORE the cancelling translate(-0.5)
-        draws.add(createDrawWithTransform(new Matrix4f().translate(0.5f, 0.0f, 0.0f), 2));
-        // Draw 3: captured back at identity (after translate(-0.5) cancelled out)
-        draws.add(createDrawWithTransform(new Matrix4f(), 4));
+        // Draw 1: captured at identity, gen=0
+        draws.add(createDrawWithTransform(new Matrix4f(), 0, 0));
+        // Draw 2: captured at translate(0.5, 0, 0), gen=1 (transform changed)
+        draws.add(createDrawWithTransform(new Matrix4f().translate(0.5f, 0.0f, 0.0f), 1, 1));
+        // Draw 3: captured back at identity, gen=2 (transform changed again)
+        draws.add(createDrawWithTransform(new Matrix4f(), 2, 2));
 
         List<DisplayListCommand> commands = new ArrayList<>();
-        commands.add(new TranslateCmd(0.5, 0.0, 0.0, GL11.GL_MODELVIEW));   // index 0: move +0.5
-        commands.add(new TranslateCmd(-0.5, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 1: move -0.5 (cancels out)
-        commands.add(new TranslateCmd(0.5, 0.0, 0.0, GL11.GL_MODELVIEW));   // index 2: move +0.5
-        commands.add(new TranslateCmd(-0.5, 0.0, 0.0, GL11.GL_MODELVIEW));  // index 3: move -0.5 (cancels out)
 
         // Execute
         OptimizedListResult result = DisplayListManager.buildOptimizedDisplayList(
@@ -262,9 +229,10 @@ class GLSM_DisplayList_Batching_Test {
         Matrix4f commonTransform = new Matrix4f().translate(1.0f, 2.0f, 3.0f);
 
         List<AccumulatedDraw> draws = new ArrayList<>();
-        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0));
-        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0));
-        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0));
+        // All same transform → same generation → will batch into single DrawRangeCmd
+        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0, 1));
+        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0, 1));
+        draws.add(createDrawWithTransform(new Matrix4f(commonTransform), 0, 1));
 
         List<DisplayListCommand> commands = new ArrayList<>();
 
@@ -284,6 +252,44 @@ class GLSM_DisplayList_Batching_Test {
         long matrixCount = countMultMatrixCmds(optimized);
         assertEquals(1, matrixCount,
             "Should have exactly 1 MultMatrix for the common transform");
+    }
+
+    /**
+     * Test that draws with same transform but different stateGeneration do NOT merge.
+     * This simulates state commands (draw barriers) between draws.
+     *
+     * Scenario: Draw1, glColor(red), Draw2, glBindTexture, Draw3
+     * All draws have same transform (gen=1) but different batches (0, 1, 2).
+     * Expected: 3 separate DrawRangeCmds (no merging across draw barriers).
+     *
+     * This test will FAIL until FormatBuffer is fixed to check stateGeneration.
+     */
+    @Test
+    void testDrawsWithDifferentBatchIdDoNotMerge() {
+        // Setup: 3 draws with same transform generation but different batch IDs
+        // This simulates state commands (draw barriers) between draws
+        List<AccumulatedDraw> draws = new ArrayList<>();
+        draws.add(createDrawWithTransformAndBatch(new Matrix4f(), 0, 1, 0));  // batch 0
+        draws.add(createDrawWithTransformAndBatch(new Matrix4f(), 1, 1, 1));  // batch 1 (state cmd between)
+        draws.add(createDrawWithTransformAndBatch(new Matrix4f(), 2, 1, 2));  // batch 2 (state cmd between)
+
+        List<DisplayListCommand> commands = new ArrayList<>();
+
+        // Execute
+        OptimizedListResult result = DisplayListManager.buildOptimizedDisplayList(
+            commands, draws, null, 1);
+        DisplayListCommand[] optimized = result.commands();
+
+        // Verify: 1 shared VBO (same format)
+        assertEquals(1, result.ownedVbos().length,
+            "Draws with same format should share 1 VBO");
+
+        // Verify: 3 DrawRangeCmds (NOT merged due to different batch IDs)
+        // BUG: Currently this will produce 1 DrawRangeCmd because FormatBuffer
+        // only checks matrixGeneration, not stateGeneration
+        long drawCount = countDrawRangeCmds(optimized);
+        assertEquals(3, drawCount,
+            "Draws with same transform but different batch IDs (draw barriers between) must NOT merge");
     }
 
     @Test

@@ -7,48 +7,73 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.Buffer;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TextureInfoCache {
     /**
-     * Adapted from Iris for use in GLSM
+     * Adapted from Iris for use in GLSM.
+     *
+     * This cache stores server-side texture state (parameters, dimensions) that is shared across GL contexts.
+     * Locking is only used during splash when multiple contexts exist.
      */
 
-	public static final TextureInfoCache INSTANCE = new TextureInfoCache();
+    public static final TextureInfoCache INSTANCE = new TextureInfoCache();
 
-	private final Int2ObjectMap<TextureInfo> cache = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<TextureInfo> cache = new Int2ObjectOpenHashMap<>();
+    private final ReentrantLock lock = new ReentrantLock();
 
-	private TextureInfoCache() {
-	}
+    private TextureInfoCache() {
+    }
 
-	public TextureInfo getInfo(int id) {
-        if(id < 0) return null;
-        if(!GLStateManager.isCachingEnabled()) {
-            return new TextureInfo(id);
+    public TextureInfo getInfo(int id) {
+        if (id < 0) return null;
+
+        if (GLStateManager.isSplashComplete()) {
+            return cache.computeIfAbsent(id, TextureInfo::new);
         }
-		return cache.computeIfAbsent(id, TextureInfo::new);
-	}
 
-	public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
-		if (target == GL11.GL_TEXTURE_2D && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
-            if(info == null) return;
-			info.internalFormat = internalformat;
-			info.width = width;
-			info.height = height;
-		}
-	}
+        lock.lock();
+        try {
+            return cache.computeIfAbsent(id, TextureInfo::new);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
+        if (target == GL11.GL_TEXTURE_2D && level == 0) {
+            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+            if (info == null) return;
+            info.internalFormat = internalformat;
+            info.width = width;
+            info.height = height;
+        }
+    }
+
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-		if (target == GL11.GL_TEXTURE_2D && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTexture());
-            if(info == null) return;
-			info.internalFormat = internalformat;
-			info.width = width;
-			info.height = height;
-		}
-	}
+        if (target == GL11.GL_TEXTURE_2D && level == 0) {
+            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+            if (info == null) return;
+            info.internalFormat = internalformat;
+            info.width = width;
+            info.height = height;
+        }
+    }
 
-	public void onDeleteTexture(int id) {
-		if(id >= 0 && GLStateManager.isCachingEnabled()) cache.remove(id);
-	}
+    public void onDeleteTexture(int id) {
+        if (id < 0) return;
 
+        if (GLStateManager.isSplashComplete()) {
+            cache.remove(id);
+            return;
+        }
+
+        // During splash: lock for thread safety
+        lock.lock();
+        try {
+            cache.remove(id);
+        } finally {
+            lock.unlock();
+        }
+    }
 }

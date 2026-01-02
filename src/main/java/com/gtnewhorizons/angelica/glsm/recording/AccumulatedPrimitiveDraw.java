@@ -21,13 +21,21 @@ public class AccumulatedPrimitiveDraw {
     public final Matrix4f transform;
     public final CapturingTessellator.Flags flags;
     public final int commandIndex;
+    public final int matrixGeneration; // For batching: same generation = same transform context
+    public final int stateGeneration; // Same value = no state commands between draws, can merge
 
-    public AccumulatedPrimitiveDraw(List<ModelPrimitiveView> primitives, Matrix4f transform, CapturingTessellator.Flags flags, int commandIndex) {
+    public AccumulatedPrimitiveDraw(List<ModelPrimitiveView> primitives, Matrix4f transform, CapturingTessellator.Flags flags, int commandIndex, int matrixGeneration) {
+        this(primitives, transform, flags, commandIndex, matrixGeneration, 0);
+    }
+
+    public AccumulatedPrimitiveDraw(List<ModelPrimitiveView> primitives, Matrix4f transform, CapturingTessellator.Flags flags, int commandIndex, int matrixGeneration, int stateGeneration) {
         // Deep copy primitives - pooled primitives are reused after callback
         this.primitives = deepCopyPrimitives(primitives);
         this.transform = new Matrix4f(transform);
         this.flags = flags;
         this.commandIndex = commandIndex;
+        this.matrixGeneration = matrixGeneration;
+        this.stateGeneration = stateGeneration;
     }
 
     /**
@@ -50,8 +58,8 @@ public class AccumulatedPrimitiveDraw {
 
     @Override
     public String toString() {
-        return String.format("AccumulatedPrimitiveDraw[primitives=%d, cmdIdx=%d, mode=%d, flags=C%dT%dL%dN%d]",
-            primitives.size(), commandIndex, flags.drawMode,
+        return String.format("AccumulatedPrimitiveDraw[primitives=%d, cmdIdx=%d, matrixGen=%d, stateGen=%d, mode=%d, flags=C%dT%dL%dN%d]",
+            primitives.size(), commandIndex, matrixGeneration, stateGeneration, flags.drawMode,
             flags.hasColor ? 1 : 0, flags.hasTexture ? 1 : 0,
             flags.hasBrightness ? 1 : 0, flags.hasNormals ? 1 : 0);
     }

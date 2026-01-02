@@ -84,7 +84,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void bindTextureToUnit(int unit, int texture) {
-        if(GLStateManager.getBoundTexture(unit) == texture) return;
+        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
 
         if (texture == 0) {
             super.bindTextureToUnit(unit, texture);

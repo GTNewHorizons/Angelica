@@ -52,8 +52,7 @@ public class CTMUtils {
             Class.forName(MCPatcherUtils.RENDER_PASS_CLASS)
                 .getMethod("finish")
                 .invoke(null);
-        } catch (Throwable ignore) {
-        }
+        } catch (Exception ignore) {}
 
         TexturePackChangeHandler.register(new TexturePackChangeHandler(MCPatcherUtils.CONNECTED_TEXTURES, 3) {
             @Override
@@ -69,7 +68,7 @@ public class CTMUtils {
                         GlassPaneRenderer.clear();
                     } catch (NoClassDefFoundError e) {
                         // nothing
-                    } catch (Throwable e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     renderBlockState.clear();

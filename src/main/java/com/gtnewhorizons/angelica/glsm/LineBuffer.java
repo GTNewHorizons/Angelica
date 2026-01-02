@@ -41,6 +41,7 @@ class LineBuffer {
     private int pendingVertexCount = 0;
     private Matrix4f pendingTransform = null;
     private int pendingCommandIndex = -1;
+    private int pendingStateGen = -1;
 
     /**
      * Add a line draw to this buffer.
@@ -52,8 +53,14 @@ class LineBuffer {
         // Always track per-draw range for unoptimized path
         perDrawRanges.add(new DrawRange(currentVertexOffset, vertexCount, draw.transform, draw.commandIndex));
 
-        // Merge logic for optimized path
-        if (pendingTransform != null && pendingTransform.equals(draw.transform)) {
+        // Merge logic for optimized path:
+        // - same transform
+        // - same stateGeneration = no state commands (draw barriers) between draws
+        boolean canMerge = pendingTransform != null
+            && pendingTransform.equals(draw.transform)
+            && pendingStateGen == draw.stateGeneration;
+
+        if (canMerge) {
             // Extend the pending range
             pendingVertexCount += vertexCount;
         } else {
@@ -65,6 +72,7 @@ class LineBuffer {
             pendingVertexCount = vertexCount;
             pendingTransform = new Matrix4f(draw.transform);
             pendingCommandIndex = draw.commandIndex;
+            pendingStateGen = draw.stateGeneration;
         }
 
         allVertices.addAll(draw.lines);
@@ -75,6 +83,7 @@ class LineBuffer {
         if (pendingTransform != null) {
             mergedRanges.add(new DrawRange(pendingStartVertex, pendingVertexCount, pendingTransform, pendingCommandIndex));
             pendingTransform = null;
+            pendingStateGen = -1;
         }
     }
 
