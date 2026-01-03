@@ -36,23 +36,8 @@ public class SettingsManager {
     //TODO: Hook up using sodium system
     public static double entityRenderScaleFactor = 20000;
 
-    public static ResourceLocation defaultBackground = Gui.optionsBackground;
-    public static ResourceLocation[] extraBackgrounds = new ResourceLocation[] {
-        new ResourceLocation("textures/blocks/sand.png"),
-        new ResourceLocation("textures/blocks/mycelium_top.png"),
-        new ResourceLocation("textures/blocks/stonebrick.png"),
-        new ResourceLocation("textures/blocks/stonebrick_mossy.png"),
-        new ResourceLocation("textures/blocks/planks_oak.png"),
-        new ResourceLocation("textures/blocks/planks_birch.png")
-    };
-
     public static void backgroundUpdated() {
-        int value = ((BackgroundSelect)Settings.GUI_BACKGROUND.option.getStore()).ordinal();
-        if(value == 0) {
-            Gui.optionsBackground = defaultBackground;
-        } else {
-            Gui.optionsBackground = extraBackgrounds[((BackgroundSelect)Settings.GUI_BACKGROUND.option.getStore()).ordinal() - 1];
-        }
+        Gui.optionsBackground = ((BackgroundSelect)Settings.GUI_BACKGROUND.option.getStore()).getTexture();
     }
 
     public static void cloudsUpdated() {
