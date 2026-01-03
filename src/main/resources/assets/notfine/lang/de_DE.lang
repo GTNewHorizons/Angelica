@@ -92,3 +92,4 @@ options.total_stars=Sternendichte
 options.total_stars.tooltip=Sternendichte
 options.void_fog=Leerennebel
 options.void_fog.tooltip=Leerennebel
+options.background.random=Zufällig
