@@ -28,7 +28,7 @@ public class FontStrategist {
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
-            LOGGER.warn("GraphicsEnvironment.isHeadless() reported true! Custom fonts will be unavailable. This is likely a MacOS issue.");
+            LOGGER.warn("GraphicsEnvironment.isHeadless() returned true! Custom fonts will be unavailable. This is likely a MacOS issue.");
             availableFonts = new Font[0];
         } else {
             // get available fonts without duplicates (250 copies of dialog.plain need not apply)
