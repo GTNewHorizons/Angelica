@@ -69,3 +69,4 @@ options.total_stars=Star Density
 options.total_stars.tooltip=Star Density
 options.void_fog=Void Fog
 options.void_fog.tooltip=Void Fog
+options.background.random=Random
