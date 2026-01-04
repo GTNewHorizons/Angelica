@@ -32,6 +32,23 @@ repositories {
             includeGroup('CoreTweaks')
         }
     }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = 'ModernSplash releases'
+                url = 'https://github.com/MalTeeez/ModernSplash/releases/download/'
+                patternLayout {
+                    artifact '1.7.10-[revision]/[module]-1.7.10-[revision](-[classifier]).[ext]'
+                }
+                metadataSources {
+                    artifact()
+                }
+            }
+        }
+        filter {
+            includeGroup('MalTeeez')
+        }
+    }
     maven {
         name = 'taumc'
         url = 'https://maven.taumc.org/releases'
