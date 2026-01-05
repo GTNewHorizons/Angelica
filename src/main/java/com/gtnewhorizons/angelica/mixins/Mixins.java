@@ -36,6 +36,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinFMLClientHandler"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.glsm.MixinSplashProgressCaching"
+            , "angelica.debug.MixinMinecraft_FPSCap"
         )
     ),
 
@@ -169,7 +170,8 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableCeleritas)
         .addClientMixins(
-              "celeritas.terrain.MixinChunkProviderClient"
+              "celeritas.terrain.ChunkTrackerAccessor"
+            , "celeritas.terrain.MixinChunkProviderClient"
             , "celeritas.terrain.MixinMinecraft_ChunkUpdates"
             , "celeritas.terrain.MixinRenderGlobal"
             , "celeritas.terrain.MixinRenderSectionManager"

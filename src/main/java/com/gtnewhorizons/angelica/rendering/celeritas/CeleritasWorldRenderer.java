@@ -27,6 +27,7 @@ import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.Iterator;
 import java.util.List;
@@ -35,6 +36,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
     private final Minecraft mc;
     private static CeleritasWorldRenderer instance;
+
+    /** Debug flag for wireframe rendering mode. Toggle via /angelica wireframe */
+    public static boolean DEBUG_WIREFRAME_MODE = false;
 
     private final TileEntityRenderContext teRenderContext = new TileEntityRenderContext();
     private boolean useEntityCulling = true;
@@ -195,7 +199,16 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
+        if (DEBUG_WIREFRAME_MODE) {
+            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+        }
+
         super.drawChunkLayer(renderLayer, x, y, z);
+
+        if (DEBUG_WIREFRAME_MODE) {
+            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+        }
+
         GLStateManager.glColor4f(1, 1, 1, 1);
     }
 
