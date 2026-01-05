@@ -450,6 +450,14 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.aggressiveChunkLoading"))
+                        .setTooltip(I18n.format("options.angelica.aggressiveChunkLoading.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.useVanillaChunkTracking = value, opts -> AngelicaConfig.useVanillaChunkTracking)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build())
 
                 .build());
 

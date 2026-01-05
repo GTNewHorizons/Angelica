@@ -25,7 +25,10 @@ import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistr
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
 import com.gtnewhorizons.angelica.zoom.Zoom;
+import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import cpw.mods.fml.client.registry.ClientRegistry;
+import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import net.minecraftforge.client.ClientCommandHandler;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -137,6 +140,11 @@ public class ClientProxy extends CommonProxy {
         }
         if (AngelicaConfig.enableZoom) {
             Zoom.init();
+        }
+
+        // Register debug commands in dev environment only
+        if (!AngelicaTweaker.isObfEnv()) {
+            ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
         }
     }
 

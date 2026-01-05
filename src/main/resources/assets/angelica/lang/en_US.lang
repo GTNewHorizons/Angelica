@@ -184,3 +184,5 @@ pack.iris.select.title=Select
 pack.iris.configure.title=Configure
 label.iris.true=On
 label.iris.false=Off
+options.angelica.aggressiveChunkLoading=Aggressive Chunk Loading
+options.angelica.aggressiveChunkLoading.tooltip=Renders chunks immediately when loaded, even if neighbors aren't ready yet. Improves perceived loading speed at render distance edges. Chunks rebuild automatically when neighbors load. Useful for low render distance servers.

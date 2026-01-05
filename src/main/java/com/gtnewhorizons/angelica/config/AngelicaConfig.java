@@ -216,4 +216,9 @@ public class AngelicaConfig {
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
+
+    @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
+    @Config.DefaultBoolean(false)
+    public static boolean useVanillaChunkTracking;
+
 }

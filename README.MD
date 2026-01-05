@@ -15,7 +15,7 @@
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.23
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.8.21
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.9.0
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities
@@ -83,3 +83,5 @@
   * Code from both glsl-transformation-lib and Monocle taken under their respective LGPL 3.0 licenses
 * FalseTweaks
   * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
+* Beddium
+  * Venn and Falsepattern for [Beddium](https://github.com/vfx-dev/Beddium) - MinimapRenderer, SafeChunkTracker, and some debug commands adapted under the LGPL 3.0 License

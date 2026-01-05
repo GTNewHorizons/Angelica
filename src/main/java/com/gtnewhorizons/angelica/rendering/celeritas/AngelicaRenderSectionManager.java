@@ -113,7 +113,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     }
 
     @Override
-    protected boolean isSectionVisuallyEmpty(int x, int y, int z) {
+    public boolean isSectionVisuallyEmpty(int x, int y, int z) {
         final Chunk chunk = this.world.getChunkFromChunkCoords(x, z);
         if (chunk.isEmpty()) {
             return true;
