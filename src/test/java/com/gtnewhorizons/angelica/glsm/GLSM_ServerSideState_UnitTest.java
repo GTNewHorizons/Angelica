@@ -60,11 +60,11 @@ public class GLSM_ServerSideState_UnitTest {
 
         sharedDrawable = new SharedDrawable(Display.getDrawable());
 
-        // Register the sharedDrawable so makeCurrent() can detect it
-        GLStateManager.setSharedDrawable(sharedDrawable);
+        // Register the main display context (DrawableGL) so makeCurrent() can identify it
+        GLStateManager.setDrawableGL(Display.getDrawable());
 
-        // Main thread holds DrawableGL, so enable caching for it: This sets drawableGLHolder = current thread
-        GLStateManager.setCachingEnabled(true);
+        // Switch to DrawableGL to enable caching for main thread
+        GLStateManager.makeCurrent(Display.getDrawable());
 
         // Verify main thread has caching enabled
         assertTrue(GLStateManager.isCachingEnabled(), "Main thread should have caching enabled (it holds DrawableGL)");
@@ -140,7 +140,7 @@ public class GLSM_ServerSideState_UnitTest {
         }
 
         // Restore original state
-        GLStateManager.setSharedDrawable(null);
+        GLStateManager.setDrawableGL(null);
         setSplashComplete(originalSplashComplete);
         if (originalSplashComplete) {
             GLStateManager.markSplashComplete();
