@@ -228,8 +228,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
         );
 
-        // TODO: BlockStateIdMap
-		BlockRenderingSettings.INSTANCE.setBlockMatches(BlockMaterialMapping.createBlockStateIdMap(programs.getPack().getIdMap().getBlockProperties()));
+		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(programs.getPack().getIdMap().getBlockProperties()));
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
 
 		BlockRenderingSettings.INSTANCE.setEntityIds(programs.getPack().getIdMap().getEntityIdMap());

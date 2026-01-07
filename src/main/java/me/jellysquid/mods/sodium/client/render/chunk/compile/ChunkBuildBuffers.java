@@ -1,7 +1,8 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.coderbot.iris.Iris;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -60,10 +61,10 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         }
 
         if(Iris.enabled) {
-            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
+            final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
 
-            if (blockMatches != null) {
-                this.iris$contextHolder = new BlockContextHolder(blockMatches);
+            if (blockMetaMatches != null) {
+                this.iris$contextHolder = new BlockContextHolder(blockMetaMatches);
             } else {
                 this.iris$contextHolder = new BlockContextHolder();
             }
@@ -160,9 +161,9 @@ public class ChunkBuildBuffers implements ChunkBuildBuffersExt {
         this.iris$contextHolder.setLocalPos(localPosX, localPosY, localPosZ);
     }
 
-    public void iris$setMaterialId(Block block, short renderType) {
+    public void iris$setMaterialId(Block block, int meta, short renderType) {
         if(!Iris.enabled) return;
-        this.iris$contextHolder.set(block, renderType);
+        this.iris$contextHolder.set(block, meta, renderType);
     }
 
     public void iris$resetBlockContext() {
