@@ -1,11 +1,16 @@
 package net.coderbot.iris.sodium.block_context;
 
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
 import net.minecraft.block.Block;
 
+/**
+ * Holds block context for shader material ID lookups.
+ * Based on Iris's approach but adapted for 1.7.10 metadata system.
+ */
 public class BlockContextHolder {
-	private final Object2IntMap<Block> blockMatches;
+	private final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
 
 	public int localPosX;
 	public int localPosY;
@@ -15,13 +20,13 @@ public class BlockContextHolder {
 	public short renderType;
 
 	public BlockContextHolder() {
-		this.blockMatches = Object2IntMaps.emptyMap();
+		this.blockMetaMatches = Reference2ObjectMaps.emptyMap();
 		this.blockId = -1;
 		this.renderType = -1;
 	}
 
-	public BlockContextHolder(Object2IntMap<Block> idMap) {
-		this.blockMatches = idMap;
+	public BlockContextHolder(Reference2ObjectMap<Block, Int2IntMap> idMap) {
+		this.blockMetaMatches = idMap;
 		this.blockId = -1;
 		this.renderType = -1;
 	}
@@ -32,8 +37,11 @@ public class BlockContextHolder {
 		this.localPosZ = localPosZ;
 	}
 
-	public void set(Block block, short renderType) {
-		this.blockId = (short) this.blockMatches.getOrDefault(block, -1);
+	public void set(Block block, int meta, short renderType) {
+		Int2IntMap metaMap = this.blockMetaMatches.get(block);
+		int id = metaMap != null ? metaMap.get(meta) : -1;
+
+		this.blockId = (short) id;
 		this.renderType = renderType;
 	}
 
