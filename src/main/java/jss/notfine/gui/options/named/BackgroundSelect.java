@@ -18,12 +18,17 @@ public enum BackgroundSelect implements NamedState {
     STONEBRICK("tile.stonebricksmooth.name", new ResourceLocation("textures/blocks/stonebrick.png")),
     MOSSY_STONEBRICK("tile.stonebricksmooth.mossy.name", new ResourceLocation("textures/blocks/stonebrick_mossy.png")),
     COBBLESTONE("tile.stonebrick.name", new ResourceLocation("textures/blocks/cobblestone.png")),
+    OAK_LOG("tile.log.oak.name", new ResourceLocation("textures/blocks/log_oak.png")),
     OAK_PLANKS("tile.wood.oak.name", new ResourceLocation("textures/blocks/planks_oak.png")),
     BIRCH_PLANKS("tile.wood.birch.name", new ResourceLocation("textures/blocks/planks_birch.png")),
     NETHER_BRICKS("tile.netherBrick.name", new ResourceLocation("textures/blocks/nether_brick.png")),
     SOUL_SAND("tile.hellsand.name", new ResourceLocation("textures/blocks/soul_sand.png")),
     SPONGE("tile.sponge.name", new ResourceLocation("textures/blocks/sponge.png")),
-    OBSIDIAN("tile.obsidian.name", new ResourceLocation("textures/blocks/obsidian.png"));
+    OBSIDIAN("tile.obsidian.name", new ResourceLocation("textures/blocks/obsidian.png")),
+    BRICK("tile.brick.name", new ResourceLocation("textures/blocks/brick.png")),
+    CHISELED_QUARTZ("tile.quartzBlock.chiseled.name", new ResourceLocation("textures/blocks/quartz_block_chiseled.png")),
+    COAL("tile.blockCoal.name", new ResourceLocation("textures/blocks/coal_block.png")),
+    PURPLE_WOOL("tile.cloth.purple.name", new ResourceLocation("textures/blocks/wool_colored_purple.png"));
 
     private final String name;
     private final ResourceLocation texture;
