@@ -38,11 +38,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
     protected final RenderSection render;
     protected final int buildTime;
     protected final Vector3d camera;
+
+    private static final long DEFERRED_BLOCK_TIMEOUT_MS = 10_000; // 10 seconds
+    private static final int MAX_RETRIES = 2;
 
     protected record DeferredBlock(int x, int y, int z, Block block, int meta, int pass) {}
 
@@ -255,13 +260,29 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             mainTessellator.setTranslation(0, 0, 0);
         }, AngelicaRenderQueue.executor());
 
-        try {
-            future.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during deferred block rendering", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Error during main thread deferred block rendering", e);
+        if (Thread.currentThread().isInterrupted()) {
+            return;
+        }
+
+        int retries = 0;
+        while (retries < MAX_RETRIES) {
+            try {
+                future.get(DEFERRED_BLOCK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                return;
+            } catch (TimeoutException e) {
+                retries++;
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                if (retries >= MAX_RETRIES) {
+                    return;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (ExecutionException e) {
+                throw new RuntimeException("Error during main thread deferred block rendering", e);
+            }
         }
     }
 
