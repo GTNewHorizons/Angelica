@@ -138,9 +138,9 @@ public class GLStateManager {
     @Setter @Getter private static boolean runningSplash = true;
 
     private static volatile boolean splashComplete = false;
-    private static volatile Thread drawableGLHolder = MainThread;
-    // Reference to SharedDrawable so makeCurrent() can distinguish it from DrawableGL
-    @Setter private static volatile Drawable sharedDrawable = null;
+    @Getter @Setter private static Thread drawableGLHolder = MainThread;
+    // Reference to DrawableGL (main display context) - works with both FML and BLS splash
+    @Setter private static Drawable drawableGL = null;
 
     public static boolean isCachingEnabled() {
         if (splashComplete) return true;
@@ -2357,31 +2357,31 @@ public class GLStateManager {
         drawable.makeCurrent();
         CurrentThread = Thread.currentThread();
 
-        // During splash, track which thread holds DrawableGL for caching
-        if (!splashComplete && sharedDrawable != null) {
-            if (drawable == sharedDrawable) {
-                // Switching to SharedDrawable - disable caching for this thread
-                if (drawableGLHolder == CurrentThread) {
-                    drawableGLHolder = null;
+        // Post-splash: single context, always cache
+        if (splashComplete) return;
+
+        if (drawableGL == null) {
+            // Lazy-capture DrawableGL reference (Display.getDrawable()) on first opportunity
+            try {
+                if (drawable == Display.getDrawable()) {
+                    drawableGL = drawable;
                 }
-            } else {
-                // Switching to DrawableGL - enable caching for this thread
-                drawableGLHolder = CurrentThread;
+            } catch (Exception e) {
+                // Display not ready - can't identify DrawableGL yet, will retry next call
+                LOGGER.warn("Display not ready in makeCurrent", e);
+                return;
             }
         }
-    }
 
-    /**
-     * Set whether the current thread holds DrawableGL (the main display context).
-     * Called by mixins at context switch points during splash.
-     */
-    public static void setCachingEnabled(boolean enabled) {
-        final Thread current = Thread.currentThread();
-        if (enabled) {
-            drawableGLHolder = current;
-        } else if (drawableGLHolder == current) {
+        if (drawableGL != null && drawable == drawableGL) {
+            // Switching TO DrawableGL - enable caching for this thread
+            drawableGLHolder = CurrentThread;
+        }
+        else if (drawableGLHolder == CurrentThread) {
+            // This thread held DrawableGL but is switching AWAY - disable caching
             drawableGLHolder = null;
         }
+        // else: Thread switching to non-DrawableGL, wasn't holder - no change needed
     }
 
     /**
@@ -2391,7 +2391,7 @@ public class GLStateManager {
     public static void markSplashComplete() {
         splashComplete = true;
         drawableGLHolder = null;
-        sharedDrawable = null;
+        drawableGL = null;
     }
 
     public static void glNewList(int list, int mode) {

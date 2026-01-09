@@ -145,6 +145,7 @@ options.angelica.fontconfig.testareaexample=&d&lHerobrine&r was &7&m&oNOT&r &nhe
 options.angelica.fontconfig.disable_custom_font=Disable Custom Font
 options.angelica.fontconfig.enable_custom_font=Enable Custom Font
 options.angelica.fontconfig.reset_values=Reset Values
+options.angelica.fontconfig.no_fonts_warning=Custom fonts are not available on your system. Check logs for details.
 options.angelica.fontconfig.font_quality=Custom Font Quality: %s
 options.angelica.fontconfig.shadow_offset=Shadow Offset: %s
 options.angelica.fontconfig.shadow_copies=Shadow Copies: %s
