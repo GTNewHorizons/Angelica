@@ -258,12 +258,13 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        if (!blockBoxContains(this.volume, x, volume.minY, z)) {
-            return BiomeGenBase.plains;
-        }
-
         final int relX = x - this.baseX;
         final int relZ = z - this.baseZ;
+
+        final int sectionGridBlocks = SECTION_LENGTH << 4;
+        if (relX < 0 || relX >= sectionGridBlocks || relZ < 0 || relZ >= sectionGridBlocks) {
+            return BiomeGenBase.plains;
+        }
 
         final BiomeGenBase biome = this.biomeData[getLocalSectionIndex(relX >> 4, 0, relZ >> 4)]
             [(x & 15) | (z & 15) << 4];
