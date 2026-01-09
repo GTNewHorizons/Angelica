@@ -19,6 +19,7 @@ public class PipelineManager {
 	private final Function<DimensionId, WorldRenderingPipeline> pipelineFactory;
 	private final Map<DimensionId, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
 	private WorldRenderingPipeline pipeline = new FixedFunctionWorldRenderingPipeline();
+	private DimensionId lastPreparedDimension = null;
     @Getter
 	private int versionCounterForSodiumShaderReload = 0;
 
@@ -27,6 +28,13 @@ public class PipelineManager {
 	}
 
 	public WorldRenderingPipeline preparePipeline(DimensionId currentDimension) {
+		// Detect dimension change and do full teardown/recreation
+		if (lastPreparedDimension != null && lastPreparedDimension != currentDimension) {
+			Iris.logger.info("Dimension changed from {} to {}, reloading pipeline", lastPreparedDimension, currentDimension);
+			destroyPipeline();
+		}
+		lastPreparedDimension = currentDimension;
+
 		if (!pipelinesPerDimension.containsKey(currentDimension)) {
 			SystemTimeUniforms.COUNTER.reset();
 			SystemTimeUniforms.TIMER.reset();
@@ -71,6 +79,7 @@ public class PipelineManager {
 
 		pipelinesPerDimension.clear();
 		pipeline = null;
+		lastPreparedDimension = null;
 		versionCounterForSodiumShaderReload++;
 	}
 
