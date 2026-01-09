@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
 public class ShaderTransformer {
     private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
     private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^\\s*(in|out)(\\s+)");
+    private static final Pattern inPattern = Pattern.compile("(?m)^\\s*(in)(\\s+)");
+    private static final Pattern outPattern = Pattern.compile("(?m)^\\s*(out)(\\s+)");
 
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey<?>, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -244,11 +246,20 @@ public class ShaderTransformer {
                 parts[1] = "#extension GL_EXT_gpu_shader4 : require\n" + parts[1];
                 formattedShader = parts[0] + "\n" + parts[1];
 
-                // Kind of GLSL 120 supports in/out specifiers, but also kind of not, and is driver dependent
-                // and also depends on the types of the variables, doesn't work with integers for example(at least on Nvidia)
-                // So we are replacing all in/out usage with varying.
-                Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
-                formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+                // GLSL 120 compatibility for in/out specifiers:
+                // - Vertex shaders: "in" = vertex attribute input -> "attribute", "out" = to fragment -> "varying"
+                // - Fragment shaders: "in" = from vertex -> "varying", "out" = color output -> handled elsewhere
+                if (entry.getKey() == PatchShaderType.VERTEX) {
+                    // In vertex shaders, "in" declarations are vertex attributes, not varyings
+                    Matcher inMatcher = inPattern.matcher(formattedShader);
+                    formattedShader = inMatcher.replaceAll("attribute$2");
+                    Matcher outMatcher = outPattern.matcher(formattedShader);
+                    formattedShader = outMatcher.replaceAll("varying$2");
+                } else {
+                    // In fragment (and geometry) shaders, both in/out become varying
+                    Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
+                    formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+                }
             }
 
             result.put(entry.getKey(), formattedShader);
