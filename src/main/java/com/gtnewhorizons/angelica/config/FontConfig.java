@@ -70,4 +70,8 @@ public class FontConfig {
     @Config.DefaultFloat(1.5F)
     @Config.RangeFloat(min = 0.1F, max = 3F)
     public static float customFontScale;
+
+    @Config.Comment("Replaces some characters with others if the fonts in use support it. See Angelica PR #1148 for more information.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableGlyphReplacements;
 }
