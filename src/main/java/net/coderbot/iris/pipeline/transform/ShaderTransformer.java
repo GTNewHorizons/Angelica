@@ -348,16 +348,16 @@ public class ShaderTransformer {
             .build();
 
         final String chunkVertexHeader = org.embeddedt.embeddium.impl.gl.shader.ShaderParser.parseShader(
-            ShaderLoader.getShaderSource("sodium:include/chunk_vertex.glsl"),
-            ShaderLoader::getShaderSource,
-            constants);
+            ShaderLoader.getShaderSource("sodium:include/chunk_vertex.glsl"), ShaderLoader::getShaderSource, constants)
+            .replace("_get_relative_chunk_coord(pos) * vec3(16.0)", "vec3(_get_relative_chunk_coord(pos)) * 16.0");
+
 
         return "\n\n" + chunkVertexHeader + "\n\n";
     }
 
     public static String getFormattedShader(ParseTree tree, String string) {
-        StringBuilder sb = new StringBuilder(string + "\n");
-        String[] tabHolder = {""};
+        final StringBuilder sb = new StringBuilder(string + "\n");
+        final String[] tabHolder = {""};
         getFormattedShader(tree, sb, tabHolder);
         return sb.toString();
     }

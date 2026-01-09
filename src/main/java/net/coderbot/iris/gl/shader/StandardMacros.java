@@ -10,6 +10,7 @@ import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.uniforms.VanillaBiomeList;
+import net.minecraft.world.biome.BiomeGenBase;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -318,6 +319,10 @@ public class StandardMacros {
 			}
 		}
 
+		// Modern biome name aliases - map modern names to 1.7.10 equivalents(ish)
+		addModernBiomeAlias(defines, "SWAMP", BiomeGenBase.swampland);
+		addModernBiomeAlias(defines, "SWAMP_HILLS", BiomeGenBase.swampland); // No hills variant in 1.7.10
+
 		// Modern biomes that don't exist in 1.7.10 - add dummy IDs that will never match
 		// This allows shader expressions to parse without errors while always evaluating to false/0
 		// Using negative IDs to avoid conflicts with actual biome IDs
@@ -330,5 +335,11 @@ public class StandardMacros {
 		defines.put("BIOME_PALE_GARDEN", "-1006");
 
 		return defines;
+	}
+
+	private static void addModernBiomeAlias(Map<String, String> defines, String modernName, BiomeGenBase biome) {
+		if (biome != null) {
+			defines.put("BIOME_" + modernName, String.valueOf(biome.biomeID));
+		}
 	}
 }

@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.coderbot.iris.Iris;
@@ -54,6 +55,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Unique private CeleritasWorldRenderer celeritas$renderer;
     @Unique private int celeritas$frame;
+    @Unique private float celeritas$lastFov;
 
     @Unique
     private boolean angelica$isSpectatorMode() {
@@ -182,6 +184,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             final double camX = viewEntity.posX;
             final double camY = viewEntity.posY + viewEntity.getEyeHeight();
             final double camZ = viewEntity.posZ;
+
+            final float currentFov = RenderingState.INSTANCE.getFov();
+            if (currentFov != this.celeritas$lastFov) {
+                this.celeritas$renderer.scheduleTerrainUpdate();
+                this.celeritas$lastFov = currentFov;
+            }
 
             final SimpleWorldRenderer.CameraState cameraState = new SimpleWorldRenderer.CameraState(
                 camX, camY, camZ,
