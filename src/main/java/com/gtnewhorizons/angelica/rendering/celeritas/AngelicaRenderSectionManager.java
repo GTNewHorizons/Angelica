@@ -32,6 +32,8 @@ import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
 
 public class AngelicaRenderSectionManager extends RenderSectionManager {
     private boolean initialCameraSectionReady = false;
@@ -196,5 +198,26 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
             finishAllGraphUpdates();
         }
         super.renderLayer(matrices, pass, occlusionCamera, camera);
+    }
+
+    /**
+     * Process both asyncSubmittedTasks and AngelicaRenderQueue.TASKS.
+     */
+    @Override
+    public void managedBlock(BooleanSupplier isDone) {
+        final RenderSectionManagerAccessor accessor = (RenderSectionManagerAccessor) this;
+        while (!isDone.getAsBoolean()) {
+            Runnable task = accessor.angelica$getAsyncSubmittedTasks().poll();
+            if (task != null) {
+                task.run();
+                continue;
+            }
+
+            if (AngelicaRenderQueue.processTasks(1) > 0) {
+                continue;
+            }
+
+            LockSupport.parkNanos("Wait", 100000L);
+        }
     }
 }
