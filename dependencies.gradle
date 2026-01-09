@@ -74,8 +74,8 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Celeritas (transitive=false: deps provided by GTNHLib/runtime)
-    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.0-GTNH") { transitive = false }
-    embedOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.0-GTNH") { transitive = false }
+    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.1-GTNH") { transitive = false }
+    embedOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.1-GTNH") { transitive = false }
 
     // Because who doesn't want NEI
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
