@@ -225,19 +225,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private void build() {
-        long time = System.nanoTime();
         DirectTessellator tess = TessellatorManager.startCapturingDirect();
-
         vertices(tess);
-        double diff = (System.nanoTime() - time) / 1_000_000d;
-        System.out.println("Vertices (new) took " + diff + "ms.");
-        time = System.nanoTime();
-
-
         this.vbo = TessellatorManager.stopCapturingDirectToVAO();
-
-        diff = (System.nanoTime() - time) / 1_000_000d;
-        System.out.println("Building buffer (new) took " + diff + "ms.");
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.

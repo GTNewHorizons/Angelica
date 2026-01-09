@@ -13,10 +13,6 @@ public final class DisplayListVBO {
         this.vbos = vbos;
     }
 
-    public static DisplayListVBO emptyVBO() {
-        return new DisplayListVBO(new SubVBO[0]);
-    }
-
     public void delete() {
         for (SubVBO vbo : vbos) {
             vbo.delete();

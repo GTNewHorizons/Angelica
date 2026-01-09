@@ -1007,15 +1007,10 @@ public class DisplayListManager {
     static DisplayListVBO compileBigVBO(
         List<AccumulatedDraw> accumulatedDraws) {
         if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
-            return DisplayListVBO.emptyVBO();
+            return null;
         }
 
-        // Compile each format's geometry into a single VBO
-        final DisplayListVBOBuilder builder = new DisplayListVBOBuilder();
-        for (AccumulatedDraw draw : accumulatedDraws) {
-            builder.addDraw(draw.format, draw.drawMode, draw.drawBuffers);
-        }
-        return builder.build();
+        return new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
     }
 
     // ==================== DEBUG LOGGING ====================
@@ -1036,7 +1031,7 @@ public class DisplayListManager {
                 sb.append("Contents: No commands\n");
             } else {
                 sb.append("Commands (").append(buffer.limit()).append(" bytes):\n");
-                // dumpCommandBuffer(buffer, compiled.getComplexObjects(), compiled.getOwnedVbos(), sb);
+                 dumpCommandBuffer(buffer, compiled.getComplexObjects(), sb);
             }
         }
 
@@ -1132,7 +1127,7 @@ public class DisplayListManager {
         return className;
     }
 
-    private static void dumpCommandBuffer(ByteBuffer buffer, Object[] complexObjects, VertexBuffer[] ownedVbos, StringBuilder sb) {
+    private static void dumpCommandBuffer(ByteBuffer buffer, Object[] complexObjects, StringBuilder sb) {
         if (buffer == null) return;
 
         final long basePtr = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress(buffer);

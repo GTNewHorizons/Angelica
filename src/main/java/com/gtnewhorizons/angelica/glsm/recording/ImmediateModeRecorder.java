@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -38,7 +40,7 @@ import java.nio.ShortBuffer;
  * </ul>
  */
 public class ImmediateModeRecorder {
-    private final DirectTessellator tessellator = new DirectTessellator();
+    private final DirectTessellator tessellator = new DirectTessellator(BufferUtils.createByteBuffer(0x200000));
 
     public ImmediateModeRecorder() {
         // Recorder is ready to capture geometry
@@ -81,59 +83,6 @@ public class ImmediateModeRecorder {
         tessellator.isDrawing = false;
 
         if (tessellator.isEmpty()) return null;
-//
-//        // Capture last vertex attributes BEFORE clearing currentVertices
-//        // These will be used to restore GL current state after VBO playback
-//        float lastColorR = 1.0f, lastColorG = 1.0f, lastColorB = 1.0f, lastColorA = 1.0f;
-//        float lastNormalX = 0.0f, lastNormalY = 0.0f, lastNormalZ = 1.0f;
-//        float lastTexS = 0.0f, lastTexT = 0.0f;
-//
-//        if (!currentVertices.isEmpty()) {
-//            ImmediateVertex last = currentVertices.get(currentVertices.size() - 1);
-//
-//            // Unpack color from ABGR format
-//            lastColorR = (last.color & 0xFF) / 255.0f;
-//            lastColorG = ((last.color >> 8) & 0xFF) / 255.0f;
-//            lastColorB = ((last.color >> 16) & 0xFF) / 255.0f;
-//            lastColorA = ((last.color >> 24) & 0xFF) / 255.0f;
-//
-//            // Unpack normal from NormI8 format (signed bytes packed into int)
-//            lastNormalX = NormI8.unpackX(last.normal);
-//            lastNormalY = NormI8.unpackY(last.normal);
-//            lastNormalZ = NormI8.unpackZ(last.normal);
-//
-//            // Texture coords are stored directly as floats
-//            lastTexS = last.texU;
-//            lastTexT = last.texV;
-//        }
-//
-//        // Convert this primitive's vertices to quads or lines
-//        convertPrimitiveToQuads();
-//        this.currentVertices.clear();
-//        this.inPrimitive = false;
-//
-//        // Return geometry from this primitive immediately (don't accumulate)
-//        if (quads.isEmpty() && lineVertices.isEmpty()) {
-//            return null;
-//        }
-//
-//        // Copy geometry and create flags
-//        List<ModelQuadViewMutable> resultQuads = new ArrayList<>(quads);
-//        List<LineVertex> resultLines = new ArrayList<>(lineVertices);
-//        CapturingTessellator.Flags flags = new CapturingTessellator.Flags(
-//            hasTexCoord,   // hasTexture
-//            false,         // hasBrightness - immediate mode doesn't typically use lightmap
-//            hasColor,      // hasColor
-//            hasNormal      // hasNormals
-//        );
-//        // Clear for next primitive (but keep attribute tracking state)
-//        quads.clear();
-//        lineVertices.clear();
-//
-//        return new Result(resultQuads, resultLines, flags,
-//            lastColorR, lastColorG, lastColorB, lastColorA,
-//            lastNormalX, lastNormalY, lastNormalZ,
-//            lastTexS, lastTexT);
 
         return this.tessellator;
     }

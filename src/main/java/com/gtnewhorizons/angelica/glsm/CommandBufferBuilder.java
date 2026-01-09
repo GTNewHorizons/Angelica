@@ -32,10 +32,11 @@ public final class CommandBufferBuilder {
         int cmdIndex = 0;
         int rangeIndex = 0;
 
+        AccumulatedDraw draw;
         while (rawBuffer.hasRemaining()) {
             // Emit draw ranges at this command position
-            while (rangeIndex < accumulatedDraws.size() && accumulatedDraws.get(rangeIndex).commandIndex == cmdIndex) {
-                emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), opt, finalBuffer, rangeIndex);
+            while (rangeIndex < accumulatedDraws.size() && (draw = accumulatedDraws.get(rangeIndex)).commandIndex == cmdIndex) {
+                emitDrawRangeToBuffer(draw, opt, finalBuffer, rangeIndex);
                 rangeIndex++;
             }
 
