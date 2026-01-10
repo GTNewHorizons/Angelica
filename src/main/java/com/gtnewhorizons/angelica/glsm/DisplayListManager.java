@@ -369,6 +369,8 @@ public class DisplayListManager {
         // Flush any pending delta, then record pop.
         flushMatrix();
         currentRecorder.recordPopMatrix();
+        // Invalidate cached transform
+        matrixGeneration++;
     }
 
     public static void recordViewport(int x, int y, int width, int height) {
