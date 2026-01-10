@@ -63,6 +63,7 @@ import org.lwjgl.opengl.APPLEVertexArrayObject;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.ARBVertexArrayObject;
 import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;

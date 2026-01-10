@@ -851,7 +851,7 @@ public class DisplayListManager {
 
         if (hasCommands || hasDraws) {
             // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
-            final DisplayListVBO compiledBuffers = compileBigVBO(accumulatedDraws);
+            final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
 
             // Build to CommandBuffer - optimize raw buffer to final buffer
             final CommandBuffer finalBuffer = new CommandBuffer();
@@ -1002,15 +1002,6 @@ public class DisplayListManager {
         }
         // Also call legacy glDeleteLists for any lists we didn't handle
         GL11.glDeleteLists(list, range);
-    }
-
-    static DisplayListVBO compileBigVBO(
-        List<AccumulatedDraw> accumulatedDraws) {
-        if (accumulatedDraws == null || accumulatedDraws.isEmpty()) {
-            return null;
-        }
-
-        return new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
     }
 
     // ==================== DEBUG LOGGING ====================

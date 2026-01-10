@@ -227,7 +227,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private void build() {
         DirectTessellator tess = TessellatorManager.startCapturingDirect();
         vertices(tess);
-        this.vbo = TessellatorManager.stopCapturingDirectToVAO();
+        this.vbo = tess.stopCapturingToVAO();
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.

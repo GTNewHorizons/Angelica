@@ -47,13 +47,12 @@ public final class DisplayListVBOBuilder {
 
     public DisplayListVBO build() {
         final DisplayListVBO.SubVBO[] vbos = new DisplayListVBO.SubVBO[count];
-        final List<ByteBuffer> allBuffers = new ArrayList<>();
+        final ArrayList<ByteBuffer> allBuffers = new ArrayList<>();
         for (int i = 0; i < VertexFlags.BITSET_SIZE; i++) {
             List<FormatData> formatData = formats[i];
             if (formatData == null) continue;
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             int start = 0;
-            GL30.glVertexAttribIPointer();
             VertexBuffer vbo = VAOManager.createVAO(format, -1); // drawMode will be ignored
             for (FormatData data : formatData) {
                 int vertexCount;
