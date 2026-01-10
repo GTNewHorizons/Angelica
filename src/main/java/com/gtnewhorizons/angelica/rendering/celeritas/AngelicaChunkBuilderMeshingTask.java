@@ -230,10 +230,11 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         }
 
         setRenderPass(pass);
+        // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft set global state in this method that gets read elsewhere renderWorldBlock)
+        block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers,
-            passMaterial, originX, originY, originZ);
+        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial, originX, originY, originZ);
         tessellator.reset();
         tessellator.isDrawing = false;
 
