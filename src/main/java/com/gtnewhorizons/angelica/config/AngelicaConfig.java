@@ -4,10 +4,21 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 
 @Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
-    @Config.Comment("Enable Sodium rendering")
+    @Config.Comment("Enable Celeritas terrain rendering")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
-    public static boolean enableSodium;
+    public static boolean enableCeleritas;
+
+    @Config.Comment("Enable multi-threaded chunk building for improved performance [Requires Celeritas]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresWorldRestart
+    public static boolean enableThreadedChunkBuilding;
+
+    @Config.Comment("Number of chunk builder threads. 0 = auto-detect, -1 = use single-threaded fallback")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = -1, max = 16)
+    @Config.RequiresWorldRestart
+    public static int chunkBuilderThreadCount;
 
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
@@ -16,11 +27,6 @@ public class AngelicaConfig {
     @Config.Comment("Enable Reese's Sodium Options")
     @Config.DefaultBoolean(true)
     public static boolean enableReesesSodiumOptions;
-
-    @Config.Comment("Enable Sodium fluid rendering [Experimental]")
-    @Config.DefaultBoolean(false)
-    @Config.RequiresMcRestart
-    public static boolean enableSodiumFluidRendering;
 
     @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
@@ -32,7 +38,7 @@ public class AngelicaConfig {
     @Config.Ignore()
     public static boolean enableTestBlocks;
 
-    @Config.Comment("Enable Iris Shaders [Requires Sodium]")
+    @Config.Comment("Enable Iris Shaders [Requires Celeritas]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableIris;
@@ -210,4 +216,9 @@ public class AngelicaConfig {
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
+
+    @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
+    @Config.DefaultBoolean(false)
+    public static boolean useVanillaChunkTracking;
+
 }

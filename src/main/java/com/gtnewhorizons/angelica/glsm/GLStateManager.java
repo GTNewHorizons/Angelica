@@ -46,8 +46,6 @@ import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
-import net.coderbot.iris.gl.state.StateUpdateNotifiers;
-import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.Minecraft;
@@ -359,14 +357,6 @@ public class GLStateManager {
         projectionMatrix.clear();
     }
 
-    // Iris Listeners
-    private static Runnable blendFuncListener = null;
-    private static Runnable fogToggleListener = null;
-    private static Runnable fogModeListener = null;
-    private static Runnable fogStartListener = null;
-    private static Runnable fogEndListener = null;
-    private static Runnable fogDensityListener = null;
-
     /**
      * Check if a display list exists (has been compiled and stored).
      * Delegates to DisplayListManager.
@@ -438,14 +428,6 @@ public class GLStateManager {
     public static void init() {
         RenderSystem.initRenderer();
 
-        if (Iris.enabled) {
-            StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
-            StateUpdateNotifiers.fogToggleNotifier = listener -> fogToggleListener = listener;
-            StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
-            StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
-            StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
-            StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
-        }
         if(BYPASS_CACHE) {
             LOGGER.info("GLStateManager cache bypassed");
         }
@@ -1040,9 +1022,6 @@ public class GLStateManager {
             if (caching) blendState.setSrcDstRgb(srcFactor, dstFactor);
             GL11.glBlendFunc(srcFactor, dstFactor);
         }
-
-        // Iris
-        if (blendFuncListener != null) blendFuncListener.run();
     }
 
     public static void glBlendEquation(int mode) {
@@ -1084,9 +1063,6 @@ public class GLStateManager {
             if (caching) blendState.setAll(srcRgb, dstRgb, srcAlpha, dstAlpha);
             OpenGlHelper.glBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
         }
-
-        // Iris
-        if (blendFuncListener != null) blendFuncListener.run();
     }
 
     public static void checkCompiling() {
@@ -1778,12 +1754,6 @@ public class GLStateManager {
         glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, j);
     }
 
-    public static void trySyncProgram() {
-        if (Iris.enabled) {
-            Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::syncProgram);
-        }
-    }
-
     private static boolean inImmediateModeRendering;
 
     public static void glBegin(int mode) {
@@ -1796,7 +1766,6 @@ public class GLStateManager {
             inImmediateModeRendering = true;
             return;  // Don't call actual GL during recording
         }
-        trySyncProgram();
         GL11.glBegin(mode);
     }
 
@@ -1868,7 +1837,6 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
-        trySyncProgram();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1876,7 +1844,6 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
-        trySyncProgram();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1884,7 +1851,6 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
-        trySyncProgram();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1892,7 +1858,6 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
-        trySyncProgram();
         GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
@@ -1900,7 +1865,6 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
-        trySyncProgram();
         GL11.glDrawElements(mode, count, type, indices);
     }
 
@@ -1912,7 +1876,6 @@ public class GLStateManager {
                 return;
             }
         }
-        trySyncProgram();
         GL11.glDrawBuffer(mode);
     }
 
@@ -1931,7 +1894,6 @@ public class GLStateManager {
             }
             return;
         }
-        trySyncProgram();
         GL11.glDrawArrays(mode, first, count);
     }
 
@@ -2190,9 +2152,6 @@ public class GLStateManager {
             }
         }
         fogMode.enable();
-        if (fogToggleListener != null) {
-            fogToggleListener.run();
-        }
     }
 
     public static void disableFog() {
@@ -2204,9 +2163,6 @@ public class GLStateManager {
             }
         }
         fogMode.disable();
-        if (fogToggleListener != null) {
-            fogToggleListener.run();
-        }
     }
 
     public static void glFog(int pname, FloatBuffer param) {
@@ -2272,24 +2228,9 @@ public class GLStateManager {
         // Only update cached state when caching is enabled
         if (isCachingEnabled()) {
             switch (pname) {
-                case GL11.GL_FOG_DENSITY -> {
-                    fogState.setDensity(param);
-                    if (fogDensityListener != null) {
-                        fogDensityListener.run();
-                    }
-                }
-                case GL11.GL_FOG_START -> {
-                    fogState.setStart(param);
-                    if (fogStartListener != null) {
-                        fogStartListener.run();
-                    }
-                }
-                case GL11.GL_FOG_END -> {
-                    fogState.setEnd(param);
-                    if (fogEndListener != null) {
-                        fogEndListener.run();
-                    }
-                }
+                case GL11.GL_FOG_DENSITY -> fogState.setDensity(param);
+                case GL11.GL_FOG_START -> fogState.setStart(param);
+                case GL11.GL_FOG_END -> fogState.setEnd(param);
             }
         }
     }
@@ -2306,9 +2247,6 @@ public class GLStateManager {
         // Only update cached state when caching is enabled
         if (isCachingEnabled() && pname == GL11.GL_FOG_MODE) {
             fogState.setFogMode(param);
-            if (fogModeListener != null) {
-                fogModeListener.run();
-            }
         }
     }
 

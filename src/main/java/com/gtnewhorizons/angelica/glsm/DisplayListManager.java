@@ -966,7 +966,6 @@ public class DisplayListManager {
 
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
-            GLStateManager.trySyncProgram();
             final int prevList = currentRenderingList;
             currentRenderingList = list;
             compiled.render();
@@ -985,7 +984,6 @@ public class DisplayListManager {
         } else {
             // Positive IDs - fall back to native GL display lists
             // This happens for lists allocated but never compiled via glNewList
-            GLStateManager.trySyncProgram();
             GL11.glCallList(list);
         }
     }

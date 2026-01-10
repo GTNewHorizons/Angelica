@@ -16,6 +16,7 @@ import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
 import jss.notfine.config.MCPatcherForgeConfig;
 import jss.notfine.config.NotFineConfig;
+import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -45,7 +46,8 @@ import java.util.Set;
 @IFMLLoadingPlugin.TransformerExclusions({
     "jss.notfine.asm",
     "com.gtnewhorizons.angelica.loading",
-    "com.gtnewhorizons.angelica.glsm.GLStateManager"})
+    "com.gtnewhorizons.angelica.glsm.GLStateManager"
+})
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     private static Boolean OBF_ENV;
@@ -54,6 +56,10 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     private String[] transformerClasses;
 
     public AngelicaTweaker() {
+        if (Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE) {
+            addLwjgl3ifyExclusions();
+        }
+
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
@@ -78,8 +84,19 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     }
 
     private static void verifyDependencies() {
+        // Check for fastutil (bundled with GTNHLib since 0.2.1)
         if (AngelicaTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
-            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib 0.2.1 or newer! Download: https://modrinth.com/mod/gtnhlib");
+            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib");
+        }
+
+        // Check for PrimitiveExtractor/cel.model classes (added in GTNHLib 0.8.21)
+        if (AngelicaTweaker.class.getResource("/com/gtnewhorizon/gtnhlib/client/renderer/PrimitiveExtractor.class") == null) {
+            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.8.21 or newer! Download: https://modrinth.com/mod/gtnhlib");
+        }
+
+        // Check for jvmdowngrader stubs (bundled with GTNHLib since 0.9.0)
+        if (AngelicaTweaker.class.getResource("/xyz/wagyourtail/jvmdg/exc/MissingStubError.class") == null) {
+            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.9.0 or newer! Download: https://modrinth.com/mod/gtnhlib");
         }
     }
 
@@ -125,9 +142,6 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
                 if (!rfbLoaded) {
                     tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
-                    if (AngelicaConfig.enableSodium) {
-                        tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.SodiumLateTweaker");
-                    }
                 }
             }
         }
@@ -140,6 +154,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String getMixinConfig() {
+        int v = Runtime.version().feature();
+        if (v >= 21) return "mixins.angelica.early.j21.json";
+        if (v >= 17) return "mixins.angelica.early.j17.json";
         return "mixins.angelica.early.json";
     }
 
@@ -151,6 +168,19 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             MCPatcherForgeConfig.ExtendedHD.hdFont = false;
         }
         return IMixins.getEarlyMixins(Mixins.class, loadedCoreMods);
+    }
+
+    private static void addLwjgl3ifyExclusions() {
+        var handle = SharedConfig.getRfbTransformers().stream()
+            .filter(transformer -> transformer.id().equals("lwjgl3ify:redirect"))
+            .findFirst()
+            .orElse(null);
+        if (handle != null) {
+            handle.exclusions().add("org.embeddedt.embeddium");
+            handle.exclusions().add("org.taumc.celeritas");
+            handle.exclusions().add("com.mitchej123.lwjgl.lwjgl3");
+            handle.exclusions().add("com.mitchej123.glsm");
+        }
     }
 
     /**

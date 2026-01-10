@@ -9,13 +9,13 @@
 
 ## **Beta Quality - Here there be Dragons**
 * Shaders - Beta
-   * Complementary & BSL mostly function, but have some bugs
-   * Sildurs, Seus, and any other shader probably doesn't work
+   * Complementary + Euphoria Patches is the primary compatibility target
+   * Sildurs, Seus, and any other shaders might work
 
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.23
-* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.8.21
+* [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.9.0
 * NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
 
 # Known (temporary) Incompatibilities
@@ -38,7 +38,7 @@
 * [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - Use 1.2.2+
 * [LWJGL3ify 1.5.4 and below](https://github.com/GTNewHorizons/lwjgl3ify/releases/) - Use the latest version available, 1.5.7+
 * [ArchaicFix 0.6.2 and below](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) - Use 0.7.0 or above
-* [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 0.4.5 or above
+* [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 2.4.5 or above
 * CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
 * SmoothFont - Equivalent functionality added
@@ -83,3 +83,5 @@
   * Code from both glsl-transformation-lib and Monocle taken under their respective LGPL 3.0 licenses
 * FalseTweaks
   * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
+* Beddium
+  * Venn and Falsepattern for [Beddium](https://github.com/vfx-dev/Beddium) - MinimapRenderer, SafeChunkTracker, and some debug commands adapted under the LGPL 3.0 License

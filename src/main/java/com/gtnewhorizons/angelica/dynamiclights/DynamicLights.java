@@ -10,7 +10,6 @@ import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import mods.battlegear2.api.core.IBattlePlayer;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
@@ -34,6 +33,7 @@ import java.util.function.Predicate;
 
 public class DynamicLights {
     private static DynamicLights instance;
+    private static IDynamicLightWorldRenderer activeRenderer;
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
     public static boolean ShaderForce = false;
 
@@ -60,12 +60,20 @@ public class DynamicLights {
             (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
     }
 
+    public static IDynamicLightWorldRenderer getActiveRenderer() {
+        return activeRenderer;
+    }
+
+    public static void setActiveRenderer(IDynamicLightWorldRenderer renderer) {
+        activeRenderer = renderer;
+    }
+
     /**
      * Updates all light sources.
      *
      * @param renderer the renderer
      */
-    public void updateAll(@NotNull SodiumWorldRenderer renderer) {
+    public void updateAll(@NotNull IDynamicLightWorldRenderer renderer) {
         if (!isEnabled())
             return;
 
@@ -107,8 +115,8 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (it.equals(lightSource)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null)
-                    lightSource.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                if (activeRenderer != null)
+                    lightSource.angelica$scheduleTrackedChunksRebuild(activeRenderer);
                 break;
             }
         }
@@ -130,10 +138,10 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (filter.test(it)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null) {
+                if (activeRenderer != null) {
                     if (it.angelica$getLuminance() > 0)
                         it.angelica$resetDynamicLight();
-                    it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                    it.angelica$scheduleTrackedChunksRebuild(activeRenderer);
                 }
                 break;
             }
@@ -153,10 +161,10 @@ public class DynamicLights {
         while (dynamicLightSources.hasNext()) {
             it = dynamicLightSources.next();
             dynamicLightSources.remove();
-            if (SodiumWorldRenderer.getInstance() != null) {
+            if (activeRenderer != null) {
                 if (it.angelica$getLuminance() > 0)
                     it.angelica$resetDynamicLight();
-                it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                it.angelica$scheduleTrackedChunksRebuild(activeRenderer);
             }
         }
 
@@ -203,6 +211,20 @@ public class DynamicLights {
         return MathHelper.clamp_double(result, 0, 15);
     }
 
+    /**
+     * Gets dynamic light level at an exact world position (for smooth per-vertex lighting).
+     */
+    public double getDynamicLightLevel(double x, double y, double z) {
+        double result = 0;
+        this.lightSourcesLock.readLock().lock();
+        for (var lightSource : this.dynamicLightSources) {
+            result = maxDynamicLightLevelExact(x, y, z, lightSource, result);
+        }
+        this.lightSourcesLock.readLock().unlock();
+
+        return MathHelper.clamp_double(result, 0, 15);
+    }
+
     public double getDynamicLightLevel(@NotNull BlockPos pos) {
         return this.getDynamicLightLevel(pos.getX(), pos.getY(), pos.getZ());
     }
@@ -218,6 +240,29 @@ public class DynamicLights {
             double distanceSquared = dx * dx + dy * dy + dz * dz;
             // 7.75 because else we would have to update more chunks and that's not a good idea.
             // 15 (max range for blocks) would be too much and a bit cheaty.
+            if (distanceSquared <= MAX_RADIUS_SQUARED) {
+                double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
+                double lightLevel = multiplier * (double) luminance;
+                if (lightLevel > currentLightLevel) {
+                    return lightLevel;
+                }
+            }
+        }
+        return currentLightLevel;
+    }
+
+    /**
+     * Calculates dynamic light level at an exact position (no block center offset).
+     * Used for smooth per-vertex lighting.
+     */
+    public static double maxDynamicLightLevelExact(double x, double y, double z, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
+        int luminance = lightSource.angelica$getLuminance();
+        if (luminance > 0) {
+            double dx = x - lightSource.angelica$getDynamicLightX();
+            double dy = y - lightSource.angelica$getDynamicLightY();
+            double dz = z - lightSource.angelica$getDynamicLightZ();
+
+            double distanceSquared = dx * dx + dy * dy + dz * dz;
             if (distanceSquared <= MAX_RADIUS_SQUARED) {
                 double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
                 double lightLevel = multiplier * (double) luminance;
@@ -275,7 +320,7 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
         scheduleChunkRebuild(renderer, chunkPos.getX(), chunkPos.getY(), chunkPos.getZ());
     }
 
@@ -285,11 +330,11 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the packed chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, long chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, long chunkPos) {
         scheduleChunkRebuild(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
     }
 
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, int x, int y, int z) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
         renderer.scheduleRebuildForChunk(x, y, z, false);
     }
 

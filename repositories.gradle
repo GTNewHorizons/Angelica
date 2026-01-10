@@ -15,23 +15,6 @@ repositories {
             includeGroup 'mega'
         }
     }
-    exclusiveContent {
-        forRepository {
-            ivy {
-                name = 'CoreTweaks releases'
-                url = 'https://github.com/makamys/CoreTweaks/releases/download/'
-                patternLayout {
-                    artifact '[revision]/[module]-1.7.10-[revision]+nomixin(-[classifier])(.[ext])'
-                }
-                metadataSources {
-                    artifact()
-                }
-            }
-        }
-        filter {
-            includeGroup('CoreTweaks')
-        }
-    }
     maven {
         name = 'taumc'
         url = 'https://maven.taumc.org/releases'

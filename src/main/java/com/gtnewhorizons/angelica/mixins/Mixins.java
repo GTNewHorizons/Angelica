@@ -36,6 +36,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinFMLClientHandler"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.glsm.MixinSplashProgressCaching"
+            , "angelica.debug.MixinMinecraft_FPSCap"
         )
     ),
 
@@ -138,36 +139,53 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    SODIUM(new MixinBuilder()
+    RENDERING_INFRASTRUCTURE(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableSodium)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
         .addClientMixins(
-            "sodium.MixinBlock"
-            , "sodium.MixinBlockFluidBase"
-            , "sodium.AccessorBiomeColorEvent"
-            , "sodium.MixinBiomeGenBase"
-            , "sodium.MixinChunk"
-            , "sodium.MixinChunkProviderServer"
-            , "sodium.MixinClientRegistry"
-            , "sodium.MixinEntity_RenderDist"
-            , "sodium.MixinEntityItem_RenderDist"
-            , "sodium.MixinRenderManager"
-            , "sodium.MixinEntityRenderer"
-            , "sodium.MixinFMLClientHandler"
-            , "sodium.MixinForgeHooksClient"
-            , "sodium.MixinGameSettings"
-            , "sodium.MixinFrustrum"
-            , "sodium.MixinMinecraft"
-            , "sodium.MixinRenderBlocks"
-            , "sodium.MixinRenderGlobal"
-            , "sodium.MixinWorldClient"
-            , "sodium.MixinTileEntity"
-            , "sodium.MixinTileEntityMobSpawner"
-            , "sodium.MixinEffectRenderer"
-            , "sodium.MixinTileEntityRendererDispatcher"
-            , "sodium.MixinLongHashMap"
-            , "sodium.MixinRenderingRegistry"
-            , "sodium.MixinPlayerManager"
+            "rendering.MixinBlock"
+            , "rendering.MixinBlockFluidBase"
+            , "rendering.AccessorBiomeColorEvent"
+            , "rendering.MixinBiomeGenBase"
+            , "rendering.MixinChunk"
+            , "rendering.MixinChunkProviderServer"
+            , "rendering.MixinClientRegistry"
+            , "rendering.MixinEntity_RenderDist"
+            , "rendering.MixinEntityItem_RenderDist"
+            , "rendering.MixinEntityRenderer"
+            , "rendering.MixinFMLClientHandler"
+            , "rendering.MixinGameSettings"
+            , "rendering.MixinLongHashMap"
+            , "rendering.MixinMinecraft"
+            , "rendering.MixinPlayerManager"
+            , "rendering.MixinRenderBlocks"
+            , "rendering.MixinRenderingRegistry"
+            , "rendering.MixinTileEntity"
+            , "rendering.MixinTileEntityMobSpawner"
+            , "rendering.MixinTileEntityRendererDispatcher"
+        )
+    ),
+
+    CELERITAS(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins(
+              "celeritas.terrain.ChunkTrackerAccessor"
+            , "celeritas.terrain.MixinChunkProviderClient"
+            , "celeritas.terrain.MixinMinecraft_ChunkUpdates"
+            , "celeritas.terrain.MixinRenderGlobal"
+            , "celeritas.terrain.MixinRenderSectionManager"
+            , "celeritas.terrain.MixinWorldClient"
+            , "celeritas.frustum.MixinFrustrum"
+            , "celeritas.features.culling.MixinEffectRenderer"
+            , "celeritas.features.mipmaps.MixinTextureAtlasSprite"
+            , "celeritas.features.mipmaps.MixinTextureUtil"
+            , "celeritas.features.textures.MixinTextureMap"
+            , "celeritas.features.textures.MixinTextureAtlasSprite"
+            , "celeritas.biome_blending.MixinBlockGrass"
+            , "celeritas.biome_blending.MixinBlockLeaves"
+            , "celeritas.biome_blending.MixinBlockLiquid"
+            , "celeritas.threading.MixinForgeHooksClient"
         )
     ),
 
@@ -209,7 +227,7 @@ public enum Mixins implements IMixins {
 
     ANGELICA_TEXTURE(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableSodium)
+        .setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableCeleritas)
         .addClientMixins(
             "angelica.textures.MixinTextureAtlasSprite"
             , "angelica.textures.MixinTextureUtil"
@@ -250,13 +268,8 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.animation.MixinTextureAtlasSprite",
             "angelica.animation.MixinTextureMap",
-            "angelica.animation.MixinBlockFire",
-            "angelica.animation.MixinMinecraftForgeClient",
             "angelica.animation.MixinChunkCache",
-            "angelica.animation.MixinRenderBlocks",
-            "angelica.animation.MixinRenderBlockFluid",
-            "angelica.animation.MixinWorldRenderer",
-            "angelica.animation.MixinRenderItem")),
+            "angelica.animation.MixinRenderBlocks")),
 
     SCALED_RESOUTION_UNICODE_FIX(new MixinBuilder("Removes unicode languages gui scaling being forced to even values")
         .setPhase(Phase.EARLY)
@@ -452,12 +465,12 @@ public enum Mixins implements IMixins {
     ),
     MCPATCHER_FORGE_RENDERPASS_DISPLAYLIST(new MixinBuilder("RenderPass display list allocation increase")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableSodium)
+        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableCeleritas)
         .addClientMixins("mcpatcherforge.renderpass.MixinRenderGlobal_DisplayLists")
     ),
     MCPATCHER_FORGE_RENDERPASS_FEATURES(new MixinBuilder("RenderPass rendering features")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableSodium)
+        .setApplyIf(() -> NotFineConfig.renderPass && !AngelicaConfig.enableCeleritas)
         .addClientMixins("mcpatcherforge.renderpass.MixinRenderGlobal_Features")
     ),
     MCPATCHER_FORGE_CUSTOM_COLORS(new MixinBuilder()
