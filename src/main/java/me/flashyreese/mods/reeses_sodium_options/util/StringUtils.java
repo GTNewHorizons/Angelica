@@ -38,27 +38,29 @@ public class StringUtils {
 
         for (OptionPage page : pages) {
             for (Option<?> option : page.getOptions()) {
-                String sentence = (option.getName()/*  +
-                        " " +
-                        option.getTooltip().getString()+
-                        " " +
-                        option.getImpact().toString()*/).toLowerCase();
+                String name = option.getName().toLowerCase();
+                String tooltip = option.getTooltip().toLowerCase();
 
                 boolean containsAllWords = true;
                 for (String word : targetWords) {
                     boolean containsWord = false;
-                    for (String sentenceWord : sentence.toLowerCase().split("\\s+")) {
-                        int distance = levenshteinDistance(word, sentenceWord);
-                        if (distance <= maxDistance) {
-                            containsWord = true;
-                            break;
-                        }
-                        // Starts with match
-                        if (sentenceWord.startsWith(word)) {
+
+                    // Fuzzy match on name (handles typos)
+                    // Use stricter matching for short words to avoid false positives (e.g., "fps" matching "fog")
+                    int effectiveMaxDistance = word.length() < 4 ? Math.min(1, maxDistance) : maxDistance;
+                    for (String nameWord : name.split("\\s+")) {
+                        int distance = levenshteinDistance(word, nameWord);
+                        if (distance <= effectiveMaxDistance || nameWord.startsWith(word)) {
                             containsWord = true;
                             break;
                         }
                     }
+
+                    // Substring match on tooltip (for discoverability like "fps" -> "frames per second")
+                    if (!containsWord && tooltip.contains(word)) {
+                        containsWord = true;
+                    }
+
                     if (!containsWord) {
                         containsAllWords = false;
                         break;

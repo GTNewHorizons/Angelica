@@ -73,6 +73,7 @@ public interface IDynamicLightSource {
      * Executed at each tick.
      */
     void angelica$dynamicLightTick();
+    default void angelica$updateLights() {}
 
     boolean angelica$updateDynamicLight(@NotNull IDynamicLightWorldRenderer renderer);
 
