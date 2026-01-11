@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mods.battlegear2.api.core.IBattlePlayer;
@@ -21,9 +22,11 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,6 +39,8 @@ public class DynamicLights {
     private static IDynamicLightWorldRenderer activeRenderer;
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
     public static boolean ShaderForce = false;
+    public static boolean FrustumCullingEnabled = true;
+    public static boolean AdaptiveTickingEnabled = true;
 
     public static final boolean configEnabled = AngelicaConfig.enableDynamicLights;
 
@@ -43,6 +48,7 @@ public class DynamicLights {
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
+    private final ChunkRebuildManager chunkRebuildManager = new ChunkRebuildManager();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
 
@@ -82,8 +88,43 @@ public class DynamicLights {
             this.lastUpdate = now;
             this.lastUpdateCount = 0;
 
+            // Get camera info for adaptive ticking
+            double cameraX = 0, cameraY = 0, cameraZ = 0;
+            double lookDirX = 0, lookDirZ = 1;
+            int worldTick = 0;
+
+            if (AdaptiveTickingEnabled) {
+                Minecraft mc = Minecraft.getMinecraft();
+                if (mc.theWorld != null && mc.renderViewEntity != null) {
+                    cameraX = mc.renderViewEntity.posX;
+                    cameraY = mc.renderViewEntity.posY + mc.renderViewEntity.getEyeHeight();
+                    cameraZ = mc.renderViewEntity.posZ;
+                    worldTick = (int) (mc.theWorld.getTotalWorldTime() & 0x7FFFFFFF);
+
+                    // Calculate look direction from yaw (normalized horizontal direction)
+                    float yaw = mc.renderViewEntity.rotationYaw;
+                    double yawRad = Math.toRadians(yaw);
+                    lookDirX = -Math.sin(yawRad);
+                    lookDirZ = Math.cos(yawRad);
+                }
+            }
+
             this.lightSourcesLock.readLock().lock();
             for (var lightSource : this.dynamicLightSources) {
+                // Entity type filter
+                if (!EntityLightConfig.isEntityTypeEnabled(lightSource)) {
+                    continue;
+                }
+
+                // Adaptive ticking filter
+                if (AdaptiveTickingEnabled) {
+                    AdaptiveTickMode mode = AdaptiveTickCalculator.calculate(
+                        lightSource, cameraX, cameraY, cameraZ, lookDirX, lookDirZ);
+                    if (!mode.shouldTickThisFrame(worldTick, lightSource.hashCode())) {
+                        continue;
+                    }
+                }
+
                 if (lightSource.angelica$updateDynamicLight(renderer))
                     this.lastUpdateCount++;
             }
@@ -335,7 +376,34 @@ public class DynamicLights {
     }
 
     public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
-        renderer.scheduleRebuildForChunk(x, y, z, false);
+        if (FrustumCullingEnabled && instance != null) {
+            instance.chunkRebuildManager.requestRebuild(x, y, z);
+        } else {
+            renderer.scheduleRebuildForChunk(x, y, z, false);
+        }
+    }
+
+    public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
+        if (FrustumCullingEnabled && instance != null) {
+            instance.chunkRebuildManager.requestRemoval(x, y, z);
+        } else {
+            renderer.scheduleRebuildForChunk(x, y, z, false);
+        }
+    }
+
+    public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, long chunkPos) {
+        scheduleChunkRebuildForRemoval(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
+    }
+
+    public void processChunkRebuilds(@Nullable Viewport viewport) {
+        if (activeRenderer == null) {
+            return;
+        }
+        chunkRebuildManager.processVisible(viewport, activeRenderer);
+    }
+
+    public ChunkRebuildManager getChunkRebuildManager() {
+        return chunkRebuildManager;
     }
 
     /**

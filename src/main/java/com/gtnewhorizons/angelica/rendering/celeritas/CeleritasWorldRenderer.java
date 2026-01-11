@@ -148,6 +148,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
+        // Process deferred dynamic light chunk rebuilds with frustum culling
+        if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
+            DynamicLights.get().processChunkRebuilds(viewport);
+        }
+
         // Collect tile entities for shadow pass rendering
         if (renderSectionManager.isInShadowPass() && IrisShaderProviderHolder.isActive()) {
             collectTileEntitiesForShadow();

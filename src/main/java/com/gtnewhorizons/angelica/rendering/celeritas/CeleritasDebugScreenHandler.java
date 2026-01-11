@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -33,6 +34,10 @@ public class CeleritasDebugScreenHandler {
             event.left.add(getFogDebugString());
         }
 
+        if (DynamicLights.configEnabled && DynamicLights.isEnabled()) {
+            event.left.add(getDynamicLightsDebugString());
+        }
+
         event.right.add("");
         event.right.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer]");
         event.right.addAll(renderer.getDebugStrings());
@@ -57,5 +62,17 @@ public class CeleritasDebugScreenHandler {
             fog.getFogColor().x,
             fog.getFogColor().y,
             fog.getFogColor().z);
+    }
+
+    public static String getDynamicLightsDebugString() {
+        final DynamicLights dl = DynamicLights.get();
+        int sources = dl.getLightSourcesCount();
+        int updated = dl.getLastUpdateCount();
+
+        if (DynamicLights.FrustumCullingEnabled) {
+            int pending = dl.getChunkRebuildManager().getPendingCount();
+            return String.format("DynLights: %d src, %d upd, %d pending", sources, updated, pending);
+        }
+        return String.format("DynLights: %d sources, %d updated", sources, updated);
     }
 }

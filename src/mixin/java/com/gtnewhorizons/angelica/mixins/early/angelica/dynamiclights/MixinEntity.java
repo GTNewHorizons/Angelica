@@ -149,8 +149,9 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer) {
-        for (long pos : this.angelica$trackedLitChunkPos) {
-            DynamicLights.scheduleChunkRebuild(renderer, pos);
+        var iter = this.angelica$trackedLitChunkPos.iterator();
+        while (iter.hasNext()) {
+            DynamicLights.scheduleChunkRebuildForRemoval(renderer, iter.nextLong());
         }
     }
 }
