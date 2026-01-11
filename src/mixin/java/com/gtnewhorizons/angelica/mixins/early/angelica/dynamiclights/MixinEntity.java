@@ -78,6 +78,11 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Inject(method = "onEntityUpdate", at = @At("TAIL"))
     public void angelica$onUpdate(CallbackInfo ci) {
+        this.angelica$updateLights();
+    }
+
+    @Unique
+    public void angelica$updateLights() {
         if (worldObj != null && worldObj.isRemote) {
             if (isDead) {
                 angelica$setDynamicLightEnabled(false);

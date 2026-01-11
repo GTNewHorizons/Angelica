@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
+import com.gtnewhorizons.angelica.mixins.interfaces.PrimedEntityAccessor;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mods.battlegear2.api.core.IBattlePlayer;
@@ -494,10 +495,7 @@ public class DynamicLights {
      * @param submergedInWater {@code true} if the stack is submerged in water, else {@code false}
      * @return the luminance of the item
      */
-    public static int getLuminanceFromItemStack(@NotNull ItemStack stack, boolean submergedInWater) {
-        // TODO only have certain items not glow in water?
-        if (submergedInWater) return 0;
-
+    public static int getLuminanceFromItemStack(@NotNull ItemStack stack) {
         Item item = stack.getItem();
         if (item instanceof ItemBlock itemBlock) {
             Block block = itemBlock.field_150939_a;
@@ -515,49 +513,53 @@ public class DynamicLights {
 
     public static int getLuminanceFromEntity(@NotNull Entity entity) {
 
-        if (entity.fire > 0) return 15;
+        if (entity.isBurning()) return 15;
+
+        boolean inWater = entity.isInsideOfMaterial(Material.water);
+
+        // TODO only have certain items not glow in water?
+        if (inWater) return 0;
 
         if (entity instanceof EntityItem item) {
-            return getLuminanceFromItemStack(item.getEntityItem(), item.isInsideOfMaterial(Material.water));
+            return getLuminanceFromItemStack(item.getEntityItem());
         }
 
+        int luminance = 0;
         if (entity instanceof EntityLivingBase living) {
-            int luminance = 0;
-
-            boolean inWater = living.isInsideOfMaterial(Material.water);
 
             // check equipment + hand for light (should work for all entities)
             ItemStack itemStack;
             for (int i = 0; i < 5; i++) {
                 if ((itemStack = living.getEquipmentInSlot(i)) != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(itemStack, inWater));
+                    luminance = Math.max(luminance, getLuminanceFromItemStack(itemStack));
                 }
             }
 
-            if (ModStatus.isBattlegearLoaded &&
-                living instanceof EntityPlayer player &&
-                player instanceof IBattlePlayer battlePlayer &&
-                battlePlayer.battlegear2$isBattlemode()
-            ) {
-                ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
-                if (offhand != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+            if (living instanceof EntityPlayer player) {
+                if (ModStatus.isBattlegearLoaded &&
+                    player instanceof IBattlePlayer battlePlayer &&
+                    battlePlayer.battlegear2$isBattlemode()
+                ) {
+                    ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
+                    if (offhand != null) {
+                        luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
+                    }
                 }
-            }
-            else if (ModStatus.isBackhandLoaded && living instanceof EntityPlayer player){
-                ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
-                if (offhand != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+                else if (ModStatus.isBackhandLoaded){
+                    ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
+                    if (offhand != null) {
+                        luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
+                    }
                 }
-            }
 
-            if (ModStatus.isBaublesLoaded && living instanceof EntityPlayer player){
-                var playerBaubles = PlayerHandler.getPlayerBaubles(player);
-                if (playerBaubles != null){
-                    for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
-                        var stack = playerBaubles.getStackInSlot(i);
-                        if (stack != null){
-                            luminance = Math.max(luminance, getLuminanceFromItemStack(stack, inWater));
+                if (ModStatus.isBaublesLoaded){
+                    var playerBaubles = PlayerHandler.getPlayerBaubles(player);
+                    if (playerBaubles != null){
+                        for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
+                            var stack = playerBaubles.getStackInSlot(i);
+                            if (stack != null){
+                                luminance = Math.max(luminance, getLuminanceFromItemStack(stack));
+                            }
                         }
                     }
                 }
@@ -567,7 +569,10 @@ public class DynamicLights {
         }
 
         // TODO: Creepers? TNT? Dusts?
+        if (entity instanceof PrimedEntityAccessor primedEntity) {
+            luminance = Math.max(luminance, primedEntity.angelica$getLuminance());
+        }
 
-        return 0;
+        return luminance;
     }
 }
