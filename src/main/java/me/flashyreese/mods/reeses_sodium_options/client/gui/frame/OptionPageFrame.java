@@ -18,18 +18,21 @@ import org.apache.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class OptionPageFrame extends AbstractFrame {
     protected static final SodiumControlElementFactory elementFactory = new SodiumControlElementFactory();
     protected final Dim2i originalDim;
     protected final OptionPage page;
+    protected final Predicate<Option<?>> optionFilter;
     private long lastTime = 0;
     private ControlElement<?> lastHoveredElement = null;
 
-    public OptionPageFrame(Dim2i dim, boolean renderOutline, OptionPage page) {
+    public OptionPageFrame(Dim2i dim, boolean renderOutline, OptionPage page, Predicate<Option<?>> optionFilter) {
         super(dim, renderOutline);
         this.originalDim = new Dim2i(dim.getOriginX(), dim.getOriginY(), dim.getWidth(), dim.getHeight());
         this.page = page;
+        this.optionFilter = optionFilter;
         this.setupFrame();
         this.buildFrame();
     }
@@ -48,9 +51,12 @@ public class OptionPageFrame extends AbstractFrame {
             OptionGroup lastGroup = this.page.getGroups().get(this.page.getGroups().size() - 1);
 
             for (OptionGroup group : this.page.getGroups()) {
-                y += group.getOptions().size() * 18;
-                if (group != lastGroup) {
-                    y += 4;
+                int visibleCount = (int) group.getOptions().stream() .filter(optionFilter::test) .count();
+                if (visibleCount > 0) {
+                    y += visibleCount * 18;
+                    if (group != lastGroup) {
+                        y += 4;
+                    }
                 }
             }
         }
@@ -73,19 +79,27 @@ public class OptionPageFrame extends AbstractFrame {
 
         int y = 0;
         for (OptionGroup group : this.page.getGroups()) {
-            // Add each option's control element
+            boolean hasVisibleOptions = false;
+
+            // Add each option's control element (if it passes the filter)
             for (Option<?> option : group.getOptions()) {
+                if (!optionFilter.test(option)) {
+                    continue;
+                }
+
+                hasVisibleOptions = true;
                 final Control<?> control = option.getControl();
                 final ControlElement<?> element = control.createElement(new Dim2i(this.dim.getOriginX(), this.dim.getOriginY() + y, this.dim.getWidth(), 18), elementFactory);
-                // This is probably not safe
                 this.children.add((AbstractWidget) element);
 
                 // Move down to the next option
                 y += 18;
             }
 
-            // Add padding beneath each option group
-            y += 4;
+            // Add padding beneath each option group (only if it had visible options)
+            if (hasVisibleOptions) {
+                y += 4;
+            }
         }
 
         super.buildFrame();
@@ -160,6 +174,7 @@ public class OptionPageFrame extends AbstractFrame {
         private Dim2i dim;
         private boolean renderOutline;
         private OptionPage page;
+        private Predicate<Option<?>> optionFilter = opt -> true;
 
         public Builder setDimension(Dim2i dim) {
             this.dim = dim;
@@ -176,11 +191,16 @@ public class OptionPageFrame extends AbstractFrame {
             return this;
         }
 
+        public Builder setOptionFilter(Predicate<Option<?>> optionFilter) {
+            this.optionFilter = optionFilter;
+            return this;
+        }
+
         public OptionPageFrame build() {
             Validate.notNull(this.dim, "Dimension must be specified");
             Validate.notNull(this.page, "Option Page must be specified");
 
-            return new OptionPageFrame(this.dim, this.renderOutline, this.page);
+            return new OptionPageFrame(this.dim, this.renderOutline, this.page, this.optionFilter);
         }
     }
 }

@@ -14,6 +14,7 @@ import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
+import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
@@ -28,6 +29,7 @@ import org.lwjgl.input.Keyboard;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
@@ -39,7 +41,6 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     private static final AtomicReference<Integer> optionPageScrollBarOffset = new AtomicReference<>(0);
 
     private static final AtomicReference<String> lastSearch = new AtomicReference<>("");
-    private static final AtomicReference<Integer> lastSearchIndex = new AtomicReference<>(0);
 
     private AbstractFrame frame;
     private SearchTextFieldComponent searchTextField;
@@ -51,8 +52,14 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     // Hackalicious! Rebuild UI
     @Override
     public void rebuildGUI() {
+        // Preserve search focus state across rebuilds
+        boolean wasSearchFocused = this.searchTextField != null && this.searchTextField.isFocused();
         this.children.clear();
         this.initGui();
+        if (wasSearchFocused && this.searchTextField != null) {
+            this.searchTextField.setFocused(true);
+            this.setFocused(this.searchTextField);
+        }
     }
 
 
@@ -98,37 +105,40 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         this.applyButton = new FlatButtonWidget(applyButtonDim, "Apply", this::applyChanges);
         this.closeButton = new FlatButtonWidget(closeButtonDim, "Close", this::onClose);
 
+        // Pre-compute button text and widths to avoid duplicate calculations
+        final String irisText = Iris.enabled ? I18n.format(IrisApi.getInstance().getMainScreenLanguageKey()) : null;
+        final int irisWidth = irisText != null ? this.mc.fontRenderer.getStringWidth(irisText) : 0;
+        final String fontConfigText = AngelicaConfig.enableFontRenderer ? I18n.format("options.angelica.fontconfig") : null;
+        final int fontConfigWidth = fontConfigText != null ? this.mc.fontRenderer.getStringWidth(fontConfigText) : 0;
 
+        // Total width reserved for buttons (used for search field sizing)
+        int buttonsWidth = 0;
+        if (irisText != null) buttonsWidth += irisWidth + 12;
+        if (fontConfigText != null) buttonsWidth += fontConfigWidth + 14;
 
+        // Create search field before parentBasicFrameBuilder (which needs the predicate)
+        Dim2i searchTextFieldDim = new Dim2i(tabFrameDim.getOriginX(), tabFrameDim.getOriginY() - 26, tabFrameDim.getWidth() - buttonsWidth, 20);
+        this.searchTextField = new SearchTextFieldComponent(searchTextFieldDim, this.pages, tabFrameSelectedTab,
+                tabFrameScrollBarOffset, optionPageScrollBarOffset, tabFrameDim.getHeight(), this, lastSearch);
 
         basicFrameBuilder = this.parentBasicFrameBuilder(basicFrameDim, tabFrameDim);
 
-        int cumulativeXShift = 0;
-
-        if (Iris.enabled) {
-            //int size = this.client.textRenderer.getWidth(new TranslatableText(IrisApi.getInstance().getMainScreenLanguageKey()));
-            final String irisText = I18n.format(IrisApi.getInstance().getMainScreenLanguageKey());
-            final int size = this.mc.fontRenderer.getStringWidth(irisText);
-            final Dim2i shaderPackButtonDim = new Dim2i(tabFrameDim.getLimitX() - size - 10, tabFrameDim.getOriginY() - 26, 10 + size, 20);
-            cumulativeXShift += size + 12;
-
+        // Add buttons after basicFrameBuilder is created
+        int buttonX = tabFrameDim.getLimitX();
+        if (irisText != null) {
+            buttonX -= irisWidth + 10;
+            final Dim2i shaderPackButtonDim = new Dim2i(buttonX, tabFrameDim.getOriginY() - 26, irisWidth + 10, 20);
             final FlatButtonWidget shaderPackButton = new FlatButtonWidget(shaderPackButtonDim, irisText, () -> mc.displayGuiScreen(new ShaderPackScreen(this)));
             basicFrameBuilder.addChild(dim -> shaderPackButton);
+            buttonX -= 2; // gap between buttons
         }
 
-        if (AngelicaConfig.enableFontRenderer) {
-            final String fontConfigText = I18n.format("options.angelica.fontconfig");
-            final int size = this.mc.fontRenderer.getStringWidth(fontConfigText);
-            final Dim2i fontConfigButtonDim = new Dim2i(tabFrameDim.getLimitX() - size - 12 - cumulativeXShift, tabFrameDim.getOriginY() - 26, 12 + size, 20);
-            cumulativeXShift += size + 14;
-
+        if (fontConfigText != null) {
+            buttonX -= fontConfigWidth + 12;
+            final Dim2i fontConfigButtonDim = new Dim2i(buttonX, tabFrameDim.getOriginY() - 26, fontConfigWidth + 12, 20);
             final FlatButtonWidget fontConfigButton = new FlatButtonWidget(fontConfigButtonDim, fontConfigText, () -> mc.displayGuiScreen(new FontConfigScreen(this)));
             basicFrameBuilder.addChild(dim -> fontConfigButton);
         }
-
-        Dim2i searchTextFieldDim = new Dim2i(tabFrameDim.getOriginX(), tabFrameDim.getOriginY() - 26, tabFrameDim.getWidth() - cumulativeXShift, 20);
-        this.searchTextField = new SearchTextFieldComponent(searchTextFieldDim, this.pages, tabFrameSelectedTab,
-                tabFrameScrollBarOffset, optionPageScrollBarOffset, tabFrameDim.getHeight(), this, lastSearch, lastSearchIndex);
 
         basicFrameBuilder.addChild(dim -> this.searchTextField);
 
@@ -136,6 +146,13 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     }
 
     public BasicFrame.Builder parentBasicFrameBuilder(Dim2i parentBasicFrameDim, Dim2i tabFrameDim) {
+        final Predicate<Option<?>> optionPredicate = searchTextField.getOptionPredicate();
+
+        // Check if any pages have matching options; if not, show all pages unfiltered
+        final boolean anyPagesMatch = this.pages.stream().anyMatch(this::canShowPage);
+        final Predicate<OptionPage> pageFilter = anyPagesMatch ? this::canShowPage : page -> !page.getGroups().isEmpty();
+        final Predicate<Option<?>> effectivePredicate = anyPagesMatch ? optionPredicate : opt -> true;
+
         return BasicFrame.createBuilder()
                 .setDimension(parentBasicFrameDim)
                 .shouldRenderOutline(false)
@@ -146,8 +163,8 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
                         .setTabSectionSelectedTab(tabFrameSelectedTab)
                         .addTabs(tabs -> this.pages
                                 .stream()
-                                .filter(page -> !page.getGroups().isEmpty())
-                                .forEach(page -> tabs.add(Tab.createBuilder().from(page, optionPageScrollBarOffset)))
+                                .filter(pageFilter)
+                                .forEach(page -> tabs.add(Tab.createBuilder().from(page, effectivePredicate, optionPageScrollBarOffset)))
                         )
                         .onSetTab(() -> {
                             optionPageScrollBarOffset.set(0);
@@ -224,6 +241,25 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         this.getAllOptions().forEach(Option::reset);
     }
 
+    /**
+     * Check if a page has any options that match the current search filter.
+     */
+    private boolean canShowPage(OptionPage page) {
+        if (page.getGroups().isEmpty()) {
+            return false;
+        }
+
+        Predicate<Option<?>> predicate = searchTextField.getOptionPredicate();
+        for (OptionGroup group : page.getGroups()) {
+            for (Option<?> option : group.getOptions()) {
+                if (predicate.test(option)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public void keyTyped(char typedChar, int keyCode) {
         if(keyCode == Keyboard.KEY_ESCAPE && !shouldCloseOnEsc()) {
@@ -253,7 +289,6 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     @Override
     public void onClose() {
         lastSearch.set("");
-        lastSearchIndex.set(0);
         super.onClose();
     }
 }
