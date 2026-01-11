@@ -93,6 +93,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final int maxY = minY + 16;
         final int maxZ = minZ + 16;
 
+        buildContext.setupDynamicLights(minX, minY, minZ);
+
         final BlockPos blockPos = new BlockPos(minX, minY, minZ);
         final IBlockAccess region = getBlockAccess();
         final SmoothBiomeColorCache biomeColorCache = getBiomeColorCache();

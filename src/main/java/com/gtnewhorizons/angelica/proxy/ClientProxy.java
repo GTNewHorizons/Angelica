@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -140,6 +141,9 @@ public class ClientProxy extends CommonProxy {
         }
         if (AngelicaConfig.enableZoom) {
             Zoom.init();
+        }
+        if (AngelicaConfig.enableDynamicLights) {
+            EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));
         }
 
         // Register debug commands in dev environment only

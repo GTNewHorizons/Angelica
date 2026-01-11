@@ -5,6 +5,9 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+
+import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
@@ -95,6 +98,9 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private ChunkSectionPos origin;
     private StructureBoundingBox volume;
 
+    private List<IDynamicLightSource> chunkLightSources;
+    private DynamicLights dynamicLightsInstance;
+
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
         final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
@@ -181,6 +187,15 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         this.baseZ = (this.origin.z - NEIGHBOR_CHUNK_RADIUS) << 4;
         Arrays.fill(this.biomeData, null);
 
+        // Pre-filter dynamic light sources for this chunk section
+        if (DynamicLights.isEnabled()) {
+            this.dynamicLightsInstance = DynamicLights.get();
+            this.chunkLightSources = dynamicLightsInstance.getSourcesForChunk(this.origin.getMinX(), this.origin.getMinY(), this.origin.getMinZ());
+        } else {
+            this.dynamicLightsInstance = null;
+            this.chunkLightSources = null;
+        }
+
         for (int x = 0; x < SECTION_LENGTH; x++) {
             for (int y = 0; y < SECTION_LENGTH; y++) {
                 for (int z = 0; z < SECTION_LENGTH; z++) {
@@ -220,8 +235,13 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
             blockBrightness = min;
         }
 
-        if (DynamicLights.isEnabled() && !getBlock(x, y, z).isOpaqueCube()) {
-            return DynamicLights.get().getLightmapWithDynamicLight(x, y, z, (skyBrightness << 20 | blockBrightness << 4));
+        if (chunkLightSources != null && !chunkLightSources.isEmpty() && !getBlock(x, y, z).isOpaqueCube()) {
+            final int lightmap = skyBrightness << 20 | blockBrightness << 4;
+            final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(x + 0.5, y + 0.5, z + 0.5, chunkLightSources);
+            if (dynamicLevel > 0) {
+                return dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, lightmap);
+            }
+            return lightmap;
         }
 
         return skyBrightness << 20 | blockBrightness << 4;
