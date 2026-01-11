@@ -30,6 +30,9 @@ import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
@@ -329,6 +332,51 @@ public class DynamicLights {
 
     public int getLightmapWithDynamicLight(int x, int y, int z, int lightmap) {
         return this.getLightmapWithDynamicLight(this.getDynamicLightLevel(x, y, z), lightmap);
+    }
+
+    public List<IDynamicLightSource> getSourcesForChunk(int chunkMinX, int chunkMinY, int chunkMinZ) {
+        // Chunk center
+        final double centerX = chunkMinX + 8.0;
+        final double centerY = chunkMinY + 8.0;
+        final double centerZ = chunkMinZ + 8.0;
+
+        // Max distance from chunk center to any corner is sqrt(3) * 8 ≈ 13.86
+        // Add MAX_RADIUS to get the search radius (13.86 + 7.75)^2 ≈ 467
+        final double searchRadiusSq = 470.0; // Slightly padded for safety
+
+        List<IDynamicLightSource> result = null;
+
+        this.lightSourcesLock.readLock().lock();
+        try {
+            for (IDynamicLightSource source : this.dynamicLightSources) {
+                double dx = source.angelica$getDynamicLightX() - centerX;
+                double dy = source.angelica$getDynamicLightY() - centerY;
+                double dz = source.angelica$getDynamicLightZ() - centerZ;
+                double distSq = dx * dx + dy * dy + dz * dz;
+
+                if (distSq <= searchRadiusSq) {
+                    if (result == null) {
+                        result = new ArrayList<>();
+                    }
+                    result.add(source);
+                }
+            }
+        } finally {
+            this.lightSourcesLock.readLock().unlock();
+        }
+
+        return result != null ? result : Collections.emptyList();
+    }
+
+    public double getDynamicLightLevelFromSources(double x, double y, double z, List<IDynamicLightSource> sources) {
+        if (sources == null || sources.isEmpty()) {
+            return 0;
+        }
+        double result = 0;
+        for (int i = 0, size = sources.size(); i < size; i++) {
+            result = maxDynamicLightLevelExact(x, y, z, sources.get(i), result);
+        }
+        return MathHelper.clamp_double(result, 0, 15);
     }
 
     /**

@@ -55,20 +55,20 @@ public final class EntityLightConfig {
             return cached;
         }
 
-        boolean enabled = !disabledClassNames.contains(entityClass.getName());
-        enabledCache.put(entityClass, enabled);
-        return enabled;
+        final boolean enabled = !disabledClassNames.contains(entityClass.getName());
+        Boolean existing = enabledCache.putIfAbsent(entityClass, enabled);
+        return existing != null ? existing : enabled;
     }
 
     public static void setEntityTypeEnabled(@NotNull Class<?> entityClass, boolean enabled) {
-        String className = entityClass.getName();
+        enabledCache.put(entityClass, enabled);
+
+        final String className = entityClass.getName();
         if (enabled) {
             disabledClassNames.remove(className);
         } else {
             disabledClassNames.add(className);
         }
-        // Update cache
-        enabledCache.put(entityClass, enabled);
     }
 
     @SuppressWarnings("unchecked")

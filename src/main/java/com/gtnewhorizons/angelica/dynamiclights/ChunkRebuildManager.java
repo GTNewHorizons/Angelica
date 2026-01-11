@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.dynamiclights;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,12 +22,14 @@ public class ChunkRebuildManager {
     /** Maximum ticks a pending rebuild can wait before being forced through */
     private static int maxTicksWaiting = 100;
 
-    public static void setMaxTicksWaiting(int ticks) {
-        maxTicksWaiting = Math.max(20, Math.min(ticks, 600)); // Clamp 1-30 seconds
-    }
-
-    /** Reusable list for collecting chunks to rebuild outside of lock */
+    /** Reusable lists for processVisible - only used from render thread */
+    private final LongArrayList candidates = new LongArrayList();
     private final LongArrayList toRebuild = new LongArrayList();
+    private final LongArrayList toIncrement = new LongArrayList();
+
+    public static void setMaxTicksWaiting(int ticks) {
+        maxTicksWaiting = Math.max(20, Math.min(ticks, 600)); // Clamp 1-30 seconds (20-600 ticks)
+    }
 
     public void requestRebuild(int x, int y, int z) {
         final long packed = CoordinatePacker.pack(x, y, z);
@@ -45,49 +48,73 @@ public class ChunkRebuildManager {
     }
 
     public void processVisible(Viewport viewport, @NotNull IDynamicLightWorldRenderer renderer) {
+        candidates.clear();
         toRebuild.clear();
+        toIncrement.clear();
 
-        // Phase 1: Collect chunks to rebuild while holding lock
-        lock.writeLock().lock();
+        // Phase 1: Collect all pending chunks with read lock (fast)
+        lock.readLock().lock();
         try {
-            var iterator = pendingRebuilds.long2IntEntrySet().fastIterator();
+            if (pendingRebuilds.isEmpty()) {
+                return;
+            }
+            // Collect candidates that might need processing
+            final var iterator = pendingRebuilds.long2IntEntrySet().fastIterator();
             while (iterator.hasNext()) {
-                var entry = iterator.next();
-                long packed = entry.getLongKey();
-                int ticksWaiting = entry.getIntValue();
+                final var entry = iterator.next();
+                final long packed = entry.getLongKey();
+                final int ticksWaiting = entry.getIntValue();
 
-                int x = CoordinatePacker.unpackX(packed);
-                int y = CoordinatePacker.unpackY(packed);
-                int z = CoordinatePacker.unpackZ(packed);
-
-                // Check if chunk is visible or we've waited too long
-                boolean shouldProcess;
-                if (viewport == null) {
-                    // No frustum available yet, process immediately to avoid visual glitches
-                    shouldProcess = true;
-                } else if (ticksWaiting >= maxTicksWaiting) {
-                    // Waited too long, force process
-                    shouldProcess = true;
-                } else {
-                    // Check visibility
-                    shouldProcess = isChunkVisible(viewport, x, y, z);
-                }
-
-                if (shouldProcess) {
+                // Force process if no viewport or waited too long
+                if (viewport == null || ticksWaiting >= maxTicksWaiting) {
                     toRebuild.add(packed);
-                    iterator.remove();
                 } else {
-                    // Increment wait counter
-                    entry.setValue(ticksWaiting + 1);
+                    candidates.add(packed);
                 }
             }
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
 
-        // Phase 2: Schedule rebuilds outside of lock to avoid contention
+        // Phase 2: Check visibility
+        for (int i = 0; i < candidates.size(); i++) {
+            long packed = candidates.getLong(i);
+            int x = CoordinatePacker.unpackX(packed);
+            int y = CoordinatePacker.unpackY(packed);
+            int z = CoordinatePacker.unpackZ(packed);
+
+            if (isChunkVisible(viewport, x, y, z)) {
+                toRebuild.add(packed);
+            } else {
+                toIncrement.add(packed);
+            }
+        }
+
+        // Phase 3: Update map with write lock (brief)
+        if (!toRebuild.isEmpty() || !toIncrement.isEmpty()) {
+            lock.writeLock().lock();
+            try {
+                // Remove chunks we're going to rebuild
+                LongIterator rebuildIter = toRebuild.iterator();
+                while (rebuildIter.hasNext()) {
+                    pendingRebuilds.remove(rebuildIter.nextLong());
+                }
+                LongIterator incIter = toIncrement.iterator();
+                while (incIter.hasNext()) {
+                    long packed = incIter.nextLong();
+                    int current = pendingRebuilds.get(packed);
+                    if (pendingRebuilds.containsKey(packed)) {
+                        pendingRebuilds.put(packed, current + 1);
+                    }
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        // Phase 4: Schedule rebuilds outside of lock
         for (int i = 0; i < toRebuild.size(); i++) {
-            long packed = toRebuild.getLong(i);
+            final long packed = toRebuild.getLong(i);
             renderer.scheduleRebuildForChunk(
                 CoordinatePacker.unpackX(packed),
                 CoordinatePacker.unpackY(packed),
