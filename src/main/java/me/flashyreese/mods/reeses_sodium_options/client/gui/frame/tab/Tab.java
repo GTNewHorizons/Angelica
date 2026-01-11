@@ -3,11 +3,13 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.OptionPageFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.ScrollableFrame;
+import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Tab<T extends AbstractFrame> {
     private final String title;
@@ -49,6 +51,10 @@ public class Tab<T extends AbstractFrame> {
         }
 
         public Tab<ScrollableFrame> from(OptionPage page, AtomicReference<Integer> verticalScrollBarOffset) {
+            return from(page, opt -> true, verticalScrollBarOffset);
+        }
+
+        public Tab<ScrollableFrame> from(OptionPage page, Predicate<Option<?>> optionFilter, AtomicReference<Integer> verticalScrollBarOffset) {
             return new Tab<>(page.getName(), dim2i -> ScrollableFrame
                     .createBuilder()
                     .setDimension(dim2i)
@@ -56,6 +62,7 @@ public class Tab<T extends AbstractFrame> {
                             .createBuilder()
                             .setDimension(new Dim2i(dim2i.getOriginX(), dim2i.getOriginY(), dim2i.getWidth(), dim2i.getHeight()))
                             .setOptionPage(page)
+                            .setOptionFilter(optionFilter)
                             .build())
                     .setVerticalScrollBarOffset(verticalScrollBarOffset)
                     .build());

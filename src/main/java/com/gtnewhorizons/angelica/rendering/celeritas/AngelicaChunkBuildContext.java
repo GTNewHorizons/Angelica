@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+
+import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
@@ -29,10 +32,24 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final WorldSlice worldSlice;
     private final BlockRenderContext blockRenderContext = new BlockRenderContext();
 
+    /** Pre-filtered light sources for the current chunk being built. Null if dynamic lights disabled. */
+    private List<IDynamicLightSource> chunkLightSources;
+    private DynamicLights dynamicLightsInstance;
+
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
         this.textureMap = Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
+    }
+
+    public void setupDynamicLights(int chunkOriginX, int chunkOriginY, int chunkOriginZ) {
+        if (DynamicLights.isEnabled()) {
+            this.dynamicLightsInstance = DynamicLights.get();
+            this.chunkLightSources = dynamicLightsInstance.getSourcesForChunk(chunkOriginX, chunkOriginY, chunkOriginZ);
+        } else {
+            this.dynamicLightsInstance = null;
+            this.chunkLightSources = null;
+        }
     }
 
     public BlockRenderContext getBlockRenderContext() {
@@ -66,7 +83,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             throw new IllegalStateException("Only quads are supported, got: " + vertexCount);
         }
 
-        final DynamicLights dynamicLights = DynamicLights.isEnabled() ? DynamicLights.get() : null;
+        final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
 
         final var encoder = buffers.get(material).getEncoder();
         if (encoder instanceof IrisExtendedChunkVertexEncoder iris) {
@@ -96,10 +113,11 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 vertex.vanillaNormal = rawBuffer[ptr++];
                 vertex.light = rawBuffer[ptr++];
 
-                if (dynamicLights != null) {
-                    final double dynamicLevel = dynamicLights.getDynamicLightLevel(originX + vertex.x, originY + vertex.y, originZ + vertex.z);
+                if (hasDynamicLights) {
+                    final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(
+                        originX + vertex.x, originY + vertex.y, originZ + vertex.z, chunkLightSources);
                     if (dynamicLevel > 0) {
-                        vertex.light = dynamicLights.getLightmapWithDynamicLight(dynamicLevel, vertex.light);
+                        vertex.light = dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, vertex.light);
                     }
                 }
             }

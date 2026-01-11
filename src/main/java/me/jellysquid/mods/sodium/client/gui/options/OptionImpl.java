@@ -214,8 +214,5 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
 
 
     @Setter @Getter private Dim2i parentDimension;
-    @Setter @Getter private Dim2i dim2i;
-    @Setter @Getter private boolean highlight;
-    @Setter @Getter private boolean selected;
 
 }
