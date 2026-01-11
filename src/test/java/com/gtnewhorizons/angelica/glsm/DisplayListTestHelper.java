@@ -98,13 +98,13 @@ public final class DisplayListTestHelper {
         return null;
     }
 
-    public static AccumulatedDraw createDraw(
-        List<ModelQuadViewMutable> quads,
-        Matrix4f transform,
-        CapturingTessellator.Flags flags,
-        int commandIndex) {
-        return new AccumulatedDraw()
-    }
+//    public static AccumulatedDraw createDraw(
+//        List<ModelQuadViewMutable> quads,
+//        Matrix4f transform,
+//        CapturingTessellator.Flags flags,
+//        int commandIndex) {
+//        return new AccumulatedDraw();
+//    }
 
     /**
      * Create an AccumulatedDraw with a single quad and identity transform.

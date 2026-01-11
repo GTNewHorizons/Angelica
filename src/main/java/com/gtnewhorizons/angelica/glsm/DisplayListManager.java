@@ -766,8 +766,6 @@ public class DisplayListManager {
         return displayListCache.get(list);
     }
 
-    private static long time;
-
     /**
      * Start display list compilation.
      * Supports nested glNewList() calls (spec-violating but needed for mod compatibility).
@@ -775,7 +773,6 @@ public class DisplayListManager {
      *   GL_COMPILE_AND_EXECUTE: Commands are recorded AND executed (GLSM cache updated)
      */
     public static void glNewList(int list, int mode) {
-        time = System.nanoTime();
         // Assert main thread for display list compilation
         if (!Thread.currentThread().equals(GLStateManager.getMainThread())) {
             throw new IllegalStateException("Display list compilation must happen on main thread");
@@ -915,10 +912,6 @@ public class DisplayListManager {
             glListId = -1;
             glListMode = 0;
         }
-
-        double diff = (System.nanoTime() - time) / 1_000_000d;
-        System.out.println("Display lists (new) took " + diff + "ms.");
-
     }
 
     private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 
 /**
@@ -25,12 +26,12 @@ public final class DisplayListVBO {
 
     static final class SubVBO {
 
-        private final VertexBuffer vbo;
+        private final IVertexBuffer vbo;
         private final int drawMode;
         private final int start;
         private final int count;
 
-        public SubVBO(VertexBuffer vbo, int drawMode, int start, int count) {
+        public SubVBO(IVertexBuffer vbo, int drawMode, int start, int count) {
             this.vbo = vbo;
             this.drawMode = drawMode;
             this.start = start;

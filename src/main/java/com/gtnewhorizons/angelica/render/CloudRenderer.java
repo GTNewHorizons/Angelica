@@ -24,6 +24,8 @@ package com.gtnewhorizons.angelica.render;
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -60,7 +62,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final ResourceLocation texture = new ResourceLocation("textures/environment/clouds.png");
 
-    private VertexBuffer vbo;
+    private IVertexBuffer vbo;
     private int cloudMode = -1;
     private int renderDistance = -1;
     private int cloudElevation = -1;
@@ -219,15 +221,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private void dispose() {
         if (vbo != null) {
-            vbo.close();
+            vbo.delete();
             vbo = null;
         }
     }
 
     private void build() {
-        DirectTessellator tess = TessellatorManager.startCapturingDirect();
-        vertices(tess);
-        this.vbo = tess.stopCapturingToVAO();
+        this.vbo = TessellatorManager.compileToVBO(VertexBufferType.IMMUTABLE, this::vertices);
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.

@@ -1,7 +1,10 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 
@@ -42,7 +45,7 @@ public class HorizonRenderer {
 	 * Sine of 22.5 degrees.
 	 */
 	private static final double SIN_22_5 = Math.sin(Math.toRadians(22.5));
-	private VertexBuffer vertexBuffer;
+	private IVertexBuffer vertexBuffer;
 	private int currentRenderDistance;
 
 	public HorizonRenderer() {
@@ -52,13 +55,13 @@ public class HorizonRenderer {
 	}
 
 	private void rebuildBuffer() {
-        final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
+        final DirectTessellator tessellator = TessellatorManager.startCapturingDirect(DefaultVertexFormat.POSITION);
 
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
 
-        this.vertexBuffer = TessellatorManager.stopCapturingToVAO(vertexBuffer, DefaultVertexFormat.POSITION);
+        this.vertexBuffer = tessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE); //TODO
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {
@@ -157,6 +160,6 @@ public class HorizonRenderer {
 	}
 
 	public void destroy() {
-		vertexBuffer.close();
+		vertexBuffer.delete();
 	}
 }

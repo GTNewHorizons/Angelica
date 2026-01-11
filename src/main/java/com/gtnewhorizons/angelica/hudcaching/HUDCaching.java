@@ -1,10 +1,13 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexArrayBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -36,7 +39,7 @@ public class HUDCaching {
     private static boolean dirty = true;
     private static long nextHudRefresh;
 
-    private static VertexBuffer quadVAO;
+    private static IVertexBuffer quadVAO;
     private static float quadWidth;
     private static float quadHeight;
 
@@ -189,14 +192,19 @@ public class HUDCaching {
 
 
     private static void rebuildVAO(float width, float height) {
-        final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
+        final DirectTessellator tessellator = TessellatorManager.startCapturingDirect(DefaultVertexFormat.POSITION_TEXTURE);
         tessellator.startDrawingQuads();
         tessellator.addVertexWithUV(0, height, 0.0, 0, 0);
         tessellator.addVertexWithUV(width, height, 0.0, 1, 0);
         tessellator.addVertexWithUV(width, 0, 0.0, 1, 1);
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
-        quadVAO = TessellatorManager.stopCapturingToVAO(quadVAO, DefaultVertexFormat.POSITION_TEXTURE);
+        if (quadVAO == null) {
+            quadVAO = tessellator.stopCapturingToVBO(VertexBufferType.MUTABLE);
+        } else {
+            tessellator.stopCapturingToVBO(quadVAO);
+        }
+
     }
 
     public static void disableHoloInventory() {
