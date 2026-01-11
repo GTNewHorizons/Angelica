@@ -147,30 +147,43 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
     public BasicFrame.Builder parentBasicFrameBuilder(Dim2i parentBasicFrameDim, Dim2i tabFrameDim) {
         final Predicate<Option<?>> optionPredicate = searchTextField.getOptionPredicate();
+        final boolean noResults = searchTextField.hasNoResults();
 
-        // Check if any pages have matching options; if not, show all pages unfiltered
-        final boolean anyPagesMatch = this.pages.stream().anyMatch(this::canShowPage);
-        final Predicate<OptionPage> pageFilter = anyPagesMatch ? this::canShowPage : page -> !page.getGroups().isEmpty();
-        final Predicate<Option<?>> effectivePredicate = anyPagesMatch ? optionPredicate : opt -> true;
-
-        return BasicFrame.createBuilder()
+        BasicFrame.Builder builder = BasicFrame.createBuilder()
                 .setDimension(parentBasicFrameDim)
-                .shouldRenderOutline(false)
-                .addChild(parentDim -> TabFrame.createBuilder()
-                        .setDimension(tabFrameDim)
-                        .shouldRenderOutline(false)
-                        .setTabSectionScrollBarOffset(tabFrameScrollBarOffset)
-                        .setTabSectionSelectedTab(tabFrameSelectedTab)
-                        .addTabs(tabs -> this.pages
-                                .stream()
-                                .filter(pageFilter)
-                                .forEach(page -> tabs.add(Tab.createBuilder().from(page, effectivePredicate, optionPageScrollBarOffset)))
-                        )
-                        .onSetTab(() -> {
-                            optionPageScrollBarOffset.set(0);
-                        })
-                        .build()
-                )
+                .shouldRenderOutline(false);
+
+        if (noResults) {
+            // Show "No matching options" message centered in the tab area
+            final String noResultsText = I18n.format("options.angelica.search.no_results");
+            builder.addChild(dim -> new me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget() {
+                @Override
+                public void render(int mouseX, int mouseY, float delta) {
+                    int textWidth = mc.fontRenderer.getStringWidth(noResultsText);
+                    int x = tabFrameDim.getCenterX() - textWidth / 2;
+                    int y = tabFrameDim.getCenterY();
+                    drawString(noResultsText, x, y, 0x808080);
+                }
+            });
+        } else {
+            builder.addChild(parentDim -> TabFrame.createBuilder()
+                    .setDimension(tabFrameDim)
+                    .shouldRenderOutline(false)
+                    .setTabSectionScrollBarOffset(tabFrameScrollBarOffset)
+                    .setTabSectionSelectedTab(tabFrameSelectedTab)
+                    .addTabs(tabs -> this.pages
+                            .stream()
+                            .filter(this::canShowPage)
+                            .forEach(page -> tabs.add(Tab.createBuilder().from(page, optionPredicate, optionPageScrollBarOffset)))
+                    )
+                    .onSetTab(() -> {
+                        optionPageScrollBarOffset.set(0);
+                    })
+                    .build()
+            );
+        }
+
+        return builder
                 .addChild(dim -> this.undoButton)
                 .addChild(dim -> this.applyButton)
                 .addChild(dim -> this.closeButton);

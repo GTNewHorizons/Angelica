@@ -78,6 +78,14 @@ public class SearchTextFieldComponent extends AbstractWidget {
         return matchingOptions == null ? opt -> true : matchingOptions::contains;
     }
 
+    public boolean hasSearchQuery() {
+        return !this.text.trim().isEmpty();
+    }
+
+    public boolean hasNoResults() {
+        return hasSearchQuery() && matchingOptions != null && matchingOptions.isEmpty();
+    }
+
     @Override
     public void render(int mouseX, int mouseY, float delta) {
         if (!this.isVisible()) {
