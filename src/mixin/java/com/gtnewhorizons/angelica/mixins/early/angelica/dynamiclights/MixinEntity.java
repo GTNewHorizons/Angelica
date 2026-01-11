@@ -161,9 +161,40 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer) {
-        var iter = this.angelica$trackedLitChunkPos.iterator();
-        while (iter.hasNext()) {
-            DynamicLights.scheduleChunkRebuildForRemoval(renderer, iter.nextLong());
+        if (this.angelica$trackedLitChunkPos.isEmpty()) {
+            angelica$scheduleRebuildAroundCurrentPosition(renderer);
+        } else {
+            var iter = this.angelica$trackedLitChunkPos.iterator();
+            while (iter.hasNext()) {
+                DynamicLights.scheduleChunkRebuildForRemoval(renderer, iter.nextLong());
+            }
+        }
+    }
+
+    @Unique
+    private void angelica$scheduleRebuildAroundCurrentPosition(@NotNull IDynamicLightWorldRenderer renderer) {
+        final float eyeHeight = getEyeHeight();
+        final double eyeY = posY + eyeHeight;
+
+        IBlockPos chunkPos = new BlockPos(chunkCoordX, MathHelper.floor_double(eyeY) >> 4, chunkCoordZ);
+        DynamicLights.scheduleChunkRebuildForRemoval(renderer, chunkPos.asLong());
+
+        final var directionX = ((MathHelper.floor_double(posX) & 15) >= 8) ? ForgeDirection.EAST : ForgeDirection.WEST;
+        final var directionY = ((MathHelper.floor_double(eyeY) & 15) >= 8) ? ForgeDirection.UP : ForgeDirection.DOWN;
+        final var directionZ = ((MathHelper.floor_double(posZ) & 15) >= 8) ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
+
+        for (int i = 0; i < 7; i++) {
+            if (i % 4 == 0) {
+                chunkPos = chunkPos.offset(directionX);
+            } else if (i % 4 == 1) {
+                chunkPos = chunkPos.offset(directionZ);
+            } else if (i % 4 == 2) {
+                chunkPos = chunkPos.offset(directionX.getOpposite());
+            } else {
+                chunkPos = chunkPos.offset(directionZ.getOpposite());
+                chunkPos = chunkPos.offset(directionY);
+            }
+            DynamicLights.scheduleChunkRebuildForRemoval(renderer, chunkPos.asLong());
         }
     }
 }

@@ -433,11 +433,7 @@ public class DynamicLights {
     }
 
     public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
-        if (FrustumCullingEnabled && instance != null) {
-            instance.chunkRebuildManager.requestRemoval(x, y, z);
-        } else {
-            renderer.scheduleRebuildForChunk(x, y, z, false);
-        }
+        renderer.scheduleRebuildForChunk(x, y, z, false);
     }
 
     public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, long chunkPos) {

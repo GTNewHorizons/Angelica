@@ -42,11 +42,6 @@ public class ChunkRebuildManager {
         }
     }
 
-    public void requestRemoval(int x, int y, int z) {
-        // Removal and rebuild are now treated the same - both need chunk rebuild
-        requestRebuild(x, y, z);
-    }
-
     public void processVisible(Viewport viewport, @NotNull IDynamicLightWorldRenderer renderer) {
         candidates.clear();
         toRebuild.clear();
