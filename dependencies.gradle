@@ -55,6 +55,12 @@ configurations {
     testCompileClasspath.extendsFrom(embedOnly)
 }
 
+
+// Exclude self-reference from all configurations - prevents transitive Angelica deps from resolving against this project
+configurations.all {
+    exclude group: "com.github.GTNewHorizons", module: "Angelica"
+}
+
 dependencies {
     compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14:dev")
 
