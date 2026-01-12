@@ -28,7 +28,7 @@ uniform float u_FogEnd;
 
 // (end - dist) / (end - start)
 float getFogFactor() {
-    return (u_FogEnd - v_FragDistance) / u_FogLength;
+    return max(1.0, (u_FogEnd - v_FragDistance) / u_FogLength);
 }
 #endif
 

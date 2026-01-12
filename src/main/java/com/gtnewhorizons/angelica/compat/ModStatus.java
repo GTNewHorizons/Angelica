@@ -1,12 +1,14 @@
 package com.gtnewhorizons.angelica.compat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksDelegate;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ModStatus {
     public static final Logger LOGGER = LogManager.getLogger("ModCompat");
@@ -33,6 +35,7 @@ public class ModStatus {
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isCubicChunksLoaded;
 
     public static void preInit(){
         isBackhandLoaded = Loader.isModLoaded("backhand");
@@ -53,6 +56,7 @@ public class ModStatus {
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
+        isCubicChunksLoaded = Loader.isModLoaded("cubicchunks");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
 
@@ -70,6 +74,10 @@ public class ModStatus {
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
+        }
+
+        if (isCubicChunksLoaded) {
+            CubicChunksDelegate.init();
         }
     }
 }

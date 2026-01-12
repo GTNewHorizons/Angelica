@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.world.cloned;
 import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
@@ -52,7 +53,13 @@ public class ClonedChunkSection {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
         }
 
-        ExtendedBlockStorage section = getChunkSection(chunk, pos);
+        ExtendedBlockStorage section;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            section = CubicChunksAPI.getCubeStorage(world, pos.x, pos.y, pos.z);
+        } else {
+            section = getChunkSection(chunk, pos);
+        }
 
         if (section == null /*WorldChunk.EMPTY_SECTION*/ /*ChunkSection.isEmpty(section)*/) {
             section = EMPTY_SECTION;

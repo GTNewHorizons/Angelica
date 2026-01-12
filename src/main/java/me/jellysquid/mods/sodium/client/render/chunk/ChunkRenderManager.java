@@ -1,5 +1,21 @@
 package me.jellysquid.mods.sodium.client.render.chunk;
 
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.concurrent.CompletableFuture;
+
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.WorldRenderer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
+import net.minecraftforge.common.util.ForgeDirection;
+
+import org.joml.Vector3d;
+
+import com.cardinalstar.cubicchunks.api.CCAPI;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
@@ -36,17 +52,6 @@ import me.jellysquid.mods.sodium.common.util.IdTable;
 import me.jellysquid.mods.sodium.common.util.collections.FutureDequeDrain;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.sodium.shadow_map.SwappableChunkRenderManager;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import net.minecraftforge.common.util.ForgeDirection;
-import org.joml.Vector3d;
-
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.concurrent.CompletableFuture;
 
 public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkStatusListener, SwappableChunkRenderManager {
     /**
@@ -354,7 +359,7 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         Collection<TileEntity> tileEntities = render.getData().getTileEntities();
         this.visibleTileEntities.addAll(tileEntities);
     }
-    
+
     public ChunkRenderContainer<T> getRender(int x, int y, int z) {
         ChunkRenderColumn<T> column = this.columns.get(ChunkPos.toLong(x, z));
 
@@ -402,6 +407,16 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         this.unloadChunk(x, z);
     }
 
+    @Override
+    public void onCubeAdded(int x, int y, int z) {
+        loadCube(x, y, z);
+    }
+
+    @Override
+    public void onCubeRemoved(int x, int y, int z) {
+        unloadCube(x, y, z);
+    }
+
     private void loadChunk(int x, int z) {
         ChunkRenderColumn<T> column = new ChunkRenderColumn<>(x, z);
         ChunkRenderColumn<T> prev;
@@ -433,27 +448,30 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         int x = column.getX();
         int z = column.getZ();
 
-        for (int y = 0; y < 16; y++) {
-            ChunkRenderContainer<T> render = this.createChunkRender(column, x, y, z);
-            column.setRender(y, render);
+        if (ModStatus.isCubicChunksLoaded) {
+            for (ExtendedBlockStorage ebs : CCAPI.getLoadedBlockStorages(world.getChunkFromChunkCoords(x, z))) {
+                int y = ebs.yBase >> 4;
 
-            this.culler.onSectionLoaded(x, y, z, render.getId());
+                ChunkRenderContainer<T> render = this.createChunkRender(column, x, y, z);
+                column.setRender(y, render);
+
+                this.culler.onSectionLoaded(x, y, z, render.getId());
+            }
+        } else {
+            for (int y = 0; y < 16; y++) {
+                ChunkRenderContainer<T> render = this.createChunkRender(column, x, y, z);
+                column.setRender(y, render);
+
+                this.culler.onSectionLoaded(x, y, z, render.getId());
+            }
         }
     }
 
     private void unloadSections(ChunkRenderColumn<T> column) {
-        int x = column.getX();
-        int z = column.getZ();
-
-        for (int y = 0; y < 16; y++) {
-            ChunkRenderContainer<T> render = column.getRender(y);
-
-            if (render != null) {
-                this.unloadQueue.enqueue(render);
-                this.renders.remove(render.getId());
-            }
-
-            this.culler.onSectionUnloaded(x, y, z);
+        for (ChunkRenderContainer<T> render : column.getAllRenders()) {
+            this.unloadQueue.enqueue(render);
+            this.renders.remove(render.getId());
+            this.culler.onSectionUnloaded(column.getX(), render.getChunkY(), column.getZ());
         }
     }
 
@@ -489,9 +507,36 @@ public class ChunkRenderManager<T extends ChunkGraphicsState> implements ChunkSt
         return this.columns.get(ChunkPos.toLong(x, z));
     }
 
+    public void loadCube(int x, int y, int z) {
+        ChunkRenderColumn<T> column = this.columns.get(ChunkPos.toLong(x, z));
+
+        if (column == null) return;
+
+        ChunkRenderContainer<T> render = this.createChunkRender(column, x, y, z);
+        column.setRender(y, render);
+
+        this.culler.onSectionLoaded(x, y, z, render.getId());
+    }
+
+    public void unloadCube(int x, int y, int z) {
+        ChunkRenderColumn<T> column = this.columns.get(ChunkPos.toLong(x, z));
+
+        if (column == null) return;
+
+        column.setRender(y, null);
+
+        this.culler.onSectionUnloaded(x, y, z);
+    }
+
     private ChunkRenderContainer<T> createChunkRender(ChunkRenderColumn<T> column, int x, int y, int z) {
         ChunkRenderContainer<T> render = new ChunkRenderContainer<>(this.backend, this.renderer, x, y, z, column);
-        final ExtendedBlockStorage array = this.world.getChunkFromChunkCoords(x, z).getBlockStorageArray()[y];
+        final ExtendedBlockStorage array;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            array = CubicChunksAPI.getCubeStorage(this.world, x, y, z);
+        } else {
+            array = this.world.getChunkFromChunkCoords(x, z).getBlockStorageArray()[y];
+        }
 
         if (array == null || array.isEmpty()) {
             render.setData(ChunkRenderData.EMPTY);

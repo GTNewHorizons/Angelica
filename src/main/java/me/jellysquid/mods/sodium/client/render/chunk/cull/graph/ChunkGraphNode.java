@@ -1,10 +1,11 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
+import net.minecraftforge.common.util.ForgeDirection;
+
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import me.jellysquid.mods.sodium.client.render.chunk.data.ChunkRenderData;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkGraphNode {
     private static final long DEFAULT_VISIBILITY_DATA = calculateVisibilityData(ChunkRenderData.EMPTY.getOcclusionData());

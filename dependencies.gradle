@@ -116,4 +116,6 @@ dependencies {
     testImplementation("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
+
+    compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:99.99.99:dev")
 }

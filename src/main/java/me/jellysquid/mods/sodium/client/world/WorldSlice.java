@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.world;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing;
 import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -100,7 +101,13 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
-        final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
+        final ExtendedBlockStorage section;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            section = CubicChunksAPI.getCubeStorage(world, origin.x, origin.y, origin.z);
+        } else {
+            section = chunk.getBlockStorageArray()[origin.y];
+        }
 
         // If the chunk section is absent or empty, simply terminate now. There will never be anything in this chunk
         // section to render, so we need to signal that a chunk render task shouldn't created. This saves a considerable

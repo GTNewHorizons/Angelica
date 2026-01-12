@@ -1,6 +1,16 @@
 package me.jellysquid.mods.sodium.client.render.chunk.cull.graph;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import net.minecraft.block.Block;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
+
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkOcclusionData;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -9,14 +19,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.sodium.client.render.chunk.cull.ChunkCuller;
 import me.jellysquid.mods.sodium.client.util.math.FrustumExtended;
-import net.minecraft.block.Block;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 public class ChunkGraphCuller implements ChunkCuller {
     private final Long2ObjectMap<ChunkGraphNode> nodes = new Long2ObjectOpenHashMap<>();
@@ -100,7 +102,11 @@ public class ChunkGraphCuller implements ChunkCuller {
 
             this.visible.add(rootNode);
         } else {
-            chunkY = MathHelper.clamp_int(origin.getY() >> 4, 0, 15);
+            chunkY = origin.getY() >> 4;
+
+            if (!ModStatus.isCubicChunksLoaded) {
+                chunkY = MathHelper.clamp_int(chunkY, 0, 15);
+            }
 
             final List<ChunkGraphNode> bestNodes = new ArrayList<>();
 

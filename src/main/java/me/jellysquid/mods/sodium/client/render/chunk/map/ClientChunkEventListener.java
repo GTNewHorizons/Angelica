@@ -1,10 +1,10 @@
 package me.jellysquid.mods.sodium.client.render.chunk.map;
 
 public interface ClientChunkEventListener {
-    void updateMapCenter(int chunkX, int chunkZ);
 
-    void updateLoadDistance(int loadDistance);
+    void onChunkAdded(int x, int z);
+    void onChunkRemoved(int x, int z);
 
-    void onChunkStatusAdded(int x, int z, int flags);
-    void onChunkStatusRemoved(int x, int z, int flags);
+    void onCubeAdded(int x, int y, int z);
+    void onCubeRemoved(int x, int y, int z);
 }

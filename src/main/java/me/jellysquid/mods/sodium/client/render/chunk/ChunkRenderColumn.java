@@ -5,17 +5,23 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.NEG_Z;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_X;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.properties.ModelQuadFacing.POS_Z;
-
+import java.util.Collection;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import lombok.Getter;
+
 public class ChunkRenderColumn<T extends ChunkGraphicsState> {
-    @SuppressWarnings("unchecked")
-    private final ChunkRenderContainer<T>[] renders = new ChunkRenderContainer[16];
+    private final Int2ObjectMap<ChunkRenderContainer<T>> renders = new Int2ObjectOpenHashMap<>();
 
     @SuppressWarnings("unchecked")
     private final ChunkRenderColumn<T>[] adjacent = new ChunkRenderColumn[6];
 
-    private final int x, z;
+    @Getter
+    private final int x;
+    @Getter
+    private final int z;
 
     public ChunkRenderColumn(int x, int z) {
         this.x = x;
@@ -34,22 +40,19 @@ public class ChunkRenderColumn<T extends ChunkGraphicsState> {
     }
 
     public void setRender(int y, ChunkRenderContainer<T> render) {
-        this.renders[y] = render;
+        if (render == null) {
+            this.renders.remove(y);
+        } else {
+            this.renders.put(y, render);
+        }
     }
 
     public ChunkRenderContainer<T> getRender(int y) {
-        if (y < 0 || y >= this.renders.length) {
-            return null;
-        }
-        return this.renders[y];
+        return this.renders.get(y);
     }
 
-    public int getX() {
-        return this.x;
-    }
-
-    public int getZ() {
-        return this.z;
+    public Collection<ChunkRenderContainer<T>> getAllRenders() {
+        return this.renders.values();
     }
 
     public boolean areNeighborsPresent() {

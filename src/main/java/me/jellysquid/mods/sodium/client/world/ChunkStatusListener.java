@@ -17,4 +17,20 @@ public interface ChunkStatusListener {
      * @param z The z-coordinate of the unloaded chunk
      */
     void onChunkRemoved(int x, int z);
+
+    /**
+     * Called after a cube is added to the world and loaded.
+     * @param x The x-coordinate of the loaded cube
+     * @param y The y-coordinate of the loaded cube
+     * @param z The z-coordinate of the loaded cube
+     */
+    void onCubeAdded(int x, int y, int z);
+
+    /**
+     * Called after a cube is removed from the world and unloaded.
+     * @param x The x-coordinate of the loaded cube
+     * @param y The y-coordinate of the loaded cube
+     * @param z The z-coordinate of the loaded cube
+     */
+    void onCubeRemoved(int x, int y, int z);
 }
