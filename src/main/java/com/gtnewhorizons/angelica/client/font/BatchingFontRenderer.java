@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -508,10 +507,16 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                if (FontConfig.enableCustomFont) {
+                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
                     if (chrReplacement != null) {
-                        chr = chrReplacement.charAt(0);
+                        char replacement = chrReplacement.charAt(0);
+                        boolean isReplacementCharAvailable =
+                            FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
+                                || FontProviderCustom.getFallback().isGlyphAvailable(replacement);
+                        if (isReplacementCharAvailable) {
+                            chr = replacement;
+                        }
                     }
                 }
 
