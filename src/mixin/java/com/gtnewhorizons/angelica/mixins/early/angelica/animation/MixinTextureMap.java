@@ -28,31 +28,28 @@ public abstract class MixinTextureMap extends AbstractTexture {
     private static final Minecraft mc = Minecraft.getMinecraft();
 
     /**
-     * @author laetansky
-     * @reason only update animations for textures that are being currently drawn By default minecraft handles any
-     *         animations that present in listAnimatedSprites no matter if you see it or not which can lead to a huge
-     *         performance decrease
+     * @author laetansky, jss2a98aj
+     * @reason Only update visible animations; use UV auto-marking via IPatchedTextureAtlasSprite
      */
     @Overwrite
     public void updateAnimations() {
-        final boolean renderAllAnimations = AngelicaMod.animationsMode.is(AnimationMode.ALL);
-        final boolean renderVisibleAnimations = AngelicaMod.animationsMode.is(AnimationMode.VISIBLE_ONLY);
+        final boolean renderAll = AngelicaMod.animationsMode.is(AnimationMode.ALL);
+        final boolean renderVisible = AngelicaMod.animationsMode.is(AnimationMode.VISIBLE_ONLY);
 
         mc.mcProfiler.startSection("updateAnimations");
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
-        // C Style loop should be faster
+
         final int size = listAnimatedSprites.size();
         for (int i = 0; i < size; i++) {
-            final TextureAtlasSprite textureAtlasSprite = listAnimatedSprites.get(i);
-            final IPatchedTextureAtlasSprite patchedTextureAtlasSprite = ((IPatchedTextureAtlasSprite) textureAtlasSprite);
+            final TextureAtlasSprite sprite = listAnimatedSprites.get(i);
+            final IPatchedTextureAtlasSprite patched = (IPatchedTextureAtlasSprite) sprite;
 
-            if (renderAllAnimations || (renderVisibleAnimations && patchedTextureAtlasSprite.needsAnimationUpdate())) {
-                mc.mcProfiler.startSection(textureAtlasSprite.getIconName());
-                textureAtlasSprite.updateAnimation();
-                patchedTextureAtlasSprite.unmarkNeedsAnimationUpdate();
-                mc.mcProfiler.endSection();
+            // needsAnimationUpdate() is one-shot: returns true if marked, then auto-resets
+            if (renderAll || (renderVisible && patched.needsAnimationUpdate())) {
+                sprite.updateAnimation();
             } else {
-                patchedTextureAtlasSprite.updateAnimationsDryRun();
+                // Keep frame counters in sync for sprites not being updated
+                patched.updateAnimationsDryRun();
             }
         }
         mc.mcProfiler.endSection();

@@ -8,9 +8,10 @@ import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
+import com.gtnewhorizons.angelica.mixins.interfaces.PrimedEntityAccessor;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import mods.battlegear2.api.core.IBattlePlayer;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
@@ -22,20 +23,28 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 
 public class DynamicLights {
     private static DynamicLights instance;
+    private static IDynamicLightWorldRenderer activeRenderer;
     public static DynamicLightsMode Mode = DynamicLightsMode.OFF;
     public static boolean ShaderForce = false;
+    public static boolean FrustumCullingEnabled = true;
+    public static boolean AdaptiveTickingEnabled = true;
 
     public static final boolean configEnabled = AngelicaConfig.enableDynamicLights;
 
@@ -43,6 +52,7 @@ public class DynamicLights {
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
+    private final ChunkRebuildManager chunkRebuildManager = new ChunkRebuildManager();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
 
@@ -60,12 +70,20 @@ public class DynamicLights {
             (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
     }
 
+    public static IDynamicLightWorldRenderer getActiveRenderer() {
+        return activeRenderer;
+    }
+
+    public static void setActiveRenderer(IDynamicLightWorldRenderer renderer) {
+        activeRenderer = renderer;
+    }
+
     /**
      * Updates all light sources.
      *
      * @param renderer the renderer
      */
-    public void updateAll(@NotNull SodiumWorldRenderer renderer) {
+    public void updateAll(@NotNull IDynamicLightWorldRenderer renderer) {
         if (!isEnabled())
             return;
 
@@ -74,8 +92,43 @@ public class DynamicLights {
             this.lastUpdate = now;
             this.lastUpdateCount = 0;
 
+            // Get camera info for adaptive ticking
+            double cameraX = 0, cameraY = 0, cameraZ = 0;
+            double lookDirX = 0, lookDirZ = 1;
+            int worldTick = 0;
+
+            if (AdaptiveTickingEnabled) {
+                Minecraft mc = Minecraft.getMinecraft();
+                if (mc.theWorld != null && mc.renderViewEntity != null) {
+                    cameraX = mc.renderViewEntity.posX;
+                    cameraY = mc.renderViewEntity.posY + mc.renderViewEntity.getEyeHeight();
+                    cameraZ = mc.renderViewEntity.posZ;
+                    worldTick = (int) (mc.theWorld.getTotalWorldTime() & 0x7FFFFFFF);
+
+                    // Calculate look direction from yaw (normalized horizontal direction)
+                    float yaw = mc.renderViewEntity.rotationYaw;
+                    double yawRad = Math.toRadians(yaw);
+                    lookDirX = -Math.sin(yawRad);
+                    lookDirZ = Math.cos(yawRad);
+                }
+            }
+
             this.lightSourcesLock.readLock().lock();
             for (var lightSource : this.dynamicLightSources) {
+                // Entity type filter
+                if (!EntityLightConfig.isEntityTypeEnabled(lightSource)) {
+                    continue;
+                }
+
+                // Adaptive ticking filter
+                if (AdaptiveTickingEnabled) {
+                    AdaptiveTickMode mode = AdaptiveTickCalculator.calculate(
+                        lightSource, cameraX, cameraY, cameraZ, lookDirX, lookDirZ);
+                    if (!mode.shouldTickThisFrame(worldTick, lightSource.hashCode())) {
+                        continue;
+                    }
+                }
+
                 if (lightSource.angelica$updateDynamicLight(renderer))
                     this.lastUpdateCount++;
             }
@@ -107,8 +160,8 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (it.equals(lightSource)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null)
-                    lightSource.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                if (activeRenderer != null)
+                    lightSource.angelica$scheduleTrackedChunksRebuild(activeRenderer);
                 break;
             }
         }
@@ -130,10 +183,10 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (filter.test(it)) {
                 dynamicLightSources.remove();
-                if (SodiumWorldRenderer.getInstance() != null) {
+                if (activeRenderer != null) {
                     if (it.angelica$getLuminance() > 0)
                         it.angelica$resetDynamicLight();
-                    it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                    it.angelica$scheduleTrackedChunksRebuild(activeRenderer);
                 }
                 break;
             }
@@ -153,10 +206,10 @@ public class DynamicLights {
         while (dynamicLightSources.hasNext()) {
             it = dynamicLightSources.next();
             dynamicLightSources.remove();
-            if (SodiumWorldRenderer.getInstance() != null) {
+            if (activeRenderer != null) {
                 if (it.angelica$getLuminance() > 0)
                     it.angelica$resetDynamicLight();
-                it.angelica$scheduleTrackedChunksRebuild(SodiumWorldRenderer.getInstance());
+                it.angelica$scheduleTrackedChunksRebuild(activeRenderer);
             }
         }
 
@@ -203,6 +256,20 @@ public class DynamicLights {
         return MathHelper.clamp_double(result, 0, 15);
     }
 
+    /**
+     * Gets dynamic light level at an exact world position (for smooth per-vertex lighting).
+     */
+    public double getDynamicLightLevel(double x, double y, double z) {
+        double result = 0;
+        this.lightSourcesLock.readLock().lock();
+        for (var lightSource : this.dynamicLightSources) {
+            result = maxDynamicLightLevelExact(x, y, z, lightSource, result);
+        }
+        this.lightSourcesLock.readLock().unlock();
+
+        return MathHelper.clamp_double(result, 0, 15);
+    }
+
     public double getDynamicLightLevel(@NotNull BlockPos pos) {
         return this.getDynamicLightLevel(pos.getX(), pos.getY(), pos.getZ());
     }
@@ -230,6 +297,29 @@ public class DynamicLights {
     }
 
     /**
+     * Calculates dynamic light level at an exact position (no block center offset).
+     * Used for smooth per-vertex lighting.
+     */
+    public static double maxDynamicLightLevelExact(double x, double y, double z, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
+        int luminance = lightSource.angelica$getLuminance();
+        if (luminance > 0) {
+            double dx = x - lightSource.angelica$getDynamicLightX();
+            double dy = y - lightSource.angelica$getDynamicLightY();
+            double dz = z - lightSource.angelica$getDynamicLightZ();
+
+            double distanceSquared = dx * dx + dy * dy + dz * dz;
+            if (distanceSquared <= MAX_RADIUS_SQUARED) {
+                double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
+                double lightLevel = multiplier * (double) luminance;
+                if (lightLevel > currentLightLevel) {
+                    return lightLevel;
+                }
+            }
+        }
+        return currentLightLevel;
+    }
+
+    /**
      * Returns the dynamic light level generated by the light source at the specified position.
      *
      * @param pos               the position
@@ -243,6 +333,51 @@ public class DynamicLights {
 
     public int getLightmapWithDynamicLight(int x, int y, int z, int lightmap) {
         return this.getLightmapWithDynamicLight(this.getDynamicLightLevel(x, y, z), lightmap);
+    }
+
+    public List<IDynamicLightSource> getSourcesForChunk(int chunkMinX, int chunkMinY, int chunkMinZ) {
+        // Chunk center
+        final double centerX = chunkMinX + 8.0;
+        final double centerY = chunkMinY + 8.0;
+        final double centerZ = chunkMinZ + 8.0;
+
+        // Max distance from chunk center to any corner is sqrt(3) * 8 ≈ 13.86
+        // Add MAX_RADIUS to get the search radius (13.86 + 7.75)^2 ≈ 467
+        final double searchRadiusSq = 470.0; // Slightly padded for safety
+
+        List<IDynamicLightSource> result = null;
+
+        this.lightSourcesLock.readLock().lock();
+        try {
+            for (IDynamicLightSource source : this.dynamicLightSources) {
+                double dx = source.angelica$getDynamicLightX() - centerX;
+                double dy = source.angelica$getDynamicLightY() - centerY;
+                double dz = source.angelica$getDynamicLightZ() - centerZ;
+                double distSq = dx * dx + dy * dy + dz * dz;
+
+                if (distSq <= searchRadiusSq) {
+                    if (result == null) {
+                        result = new ArrayList<>();
+                    }
+                    result.add(source);
+                }
+            }
+        } finally {
+            this.lightSourcesLock.readLock().unlock();
+        }
+
+        return result != null ? result : Collections.emptyList();
+    }
+
+    public double getDynamicLightLevelFromSources(double x, double y, double z, List<IDynamicLightSource> sources) {
+        if (sources == null || sources.isEmpty()) {
+            return 0;
+        }
+        double result = 0;
+        for (int i = 0, size = sources.size(); i < size; i++) {
+            result = maxDynamicLightLevelExact(x, y, z, sources.get(i), result);
+        }
+        return MathHelper.clamp_double(result, 0, 15);
     }
 
     /**
@@ -275,7 +410,7 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, @NotNull IBlockPos chunkPos) {
         scheduleChunkRebuild(renderer, chunkPos.getX(), chunkPos.getY(), chunkPos.getZ());
     }
 
@@ -285,12 +420,35 @@ public class DynamicLights {
      * @param renderer the renderer
      * @param chunkPos the packed chunk position
      */
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, long chunkPos) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, long chunkPos) {
         scheduleChunkRebuild(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
     }
 
-    public static void scheduleChunkRebuild(@NotNull SodiumWorldRenderer renderer, int x, int y, int z) {
+    public static void scheduleChunkRebuild(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
+        if (FrustumCullingEnabled && instance != null) {
+            instance.chunkRebuildManager.requestRebuild(x, y, z);
+        } else {
+            renderer.scheduleRebuildForChunk(x, y, z, false);
+        }
+    }
+
+    public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, int x, int y, int z) {
         renderer.scheduleRebuildForChunk(x, y, z, false);
+    }
+
+    public static void scheduleChunkRebuildForRemoval(@NotNull IDynamicLightWorldRenderer renderer, long chunkPos) {
+        scheduleChunkRebuildForRemoval(renderer, CoordinatePacker.unpackX(chunkPos), CoordinatePacker.unpackY(chunkPos), CoordinatePacker.unpackZ(chunkPos));
+    }
+
+    public void processChunkRebuilds(@Nullable Viewport viewport) {
+        if (activeRenderer == null) {
+            return;
+        }
+        chunkRebuildManager.processVisible(viewport, activeRenderer);
+    }
+
+    public ChunkRebuildManager getChunkRebuildManager() {
+        return chunkRebuildManager;
     }
 
     /**
@@ -333,10 +491,7 @@ public class DynamicLights {
      * @param submergedInWater {@code true} if the stack is submerged in water, else {@code false}
      * @return the luminance of the item
      */
-    public static int getLuminanceFromItemStack(@NotNull ItemStack stack, boolean submergedInWater) {
-        // TODO only have certain items not glow in water?
-        if (submergedInWater) return 0;
-
+    public static int getLuminanceFromItemStack(@NotNull ItemStack stack) {
         Item item = stack.getItem();
         if (item instanceof ItemBlock itemBlock) {
             Block block = itemBlock.field_150939_a;
@@ -354,49 +509,53 @@ public class DynamicLights {
 
     public static int getLuminanceFromEntity(@NotNull Entity entity) {
 
-        if (entity.fire > 0) return 15;
+        if (entity.isBurning()) return 15;
+
+        boolean inWater = entity.isInsideOfMaterial(Material.water);
+
+        // TODO only have certain items not glow in water?
+        if (inWater) return 0;
 
         if (entity instanceof EntityItem item) {
-            return getLuminanceFromItemStack(item.getEntityItem(), item.isInsideOfMaterial(Material.water));
+            return getLuminanceFromItemStack(item.getEntityItem());
         }
 
+        int luminance = 0;
         if (entity instanceof EntityLivingBase living) {
-            int luminance = 0;
-
-            boolean inWater = living.isInsideOfMaterial(Material.water);
 
             // check equipment + hand for light (should work for all entities)
             ItemStack itemStack;
             for (int i = 0; i < 5; i++) {
                 if ((itemStack = living.getEquipmentInSlot(i)) != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(itemStack, inWater));
+                    luminance = Math.max(luminance, getLuminanceFromItemStack(itemStack));
                 }
             }
 
-            if (ModStatus.isBattlegearLoaded &&
-                living instanceof EntityPlayer player &&
-                player instanceof IBattlePlayer battlePlayer &&
-                battlePlayer.battlegear2$isBattlemode()
-            ) {
-                ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
-                if (offhand != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+            if (living instanceof EntityPlayer player) {
+                if (ModStatus.isBattlegearLoaded &&
+                    player instanceof IBattlePlayer battlePlayer &&
+                    battlePlayer.battlegear2$isBattlemode()
+                ) {
+                    ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
+                    if (offhand != null) {
+                        luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
+                    }
                 }
-            }
-            else if (ModStatus.isBackhandLoaded && living instanceof EntityPlayer player){
-                ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
-                if (offhand != null) {
-                    luminance = Math.max(luminance, getLuminanceFromItemStack(offhand, inWater));
+                else if (ModStatus.isBackhandLoaded){
+                    ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
+                    if (offhand != null) {
+                        luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
+                    }
                 }
-            }
 
-            if (ModStatus.isBaublesLoaded && living instanceof EntityPlayer player){
-                var playerBaubles = PlayerHandler.getPlayerBaubles(player);
-                if (playerBaubles != null){
-                    for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
-                        var stack = playerBaubles.getStackInSlot(i);
-                        if (stack != null){
-                            luminance = Math.max(luminance, getLuminanceFromItemStack(stack, inWater));
+                if (ModStatus.isBaublesLoaded){
+                    var playerBaubles = PlayerHandler.getPlayerBaubles(player);
+                    if (playerBaubles != null){
+                        for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
+                            var stack = playerBaubles.getStackInSlot(i);
+                            if (stack != null){
+                                luminance = Math.max(luminance, getLuminanceFromItemStack(stack));
+                            }
                         }
                     }
                 }
@@ -406,7 +565,10 @@ public class DynamicLights {
         }
 
         // TODO: Creepers? TNT? Dusts?
+        if (entity instanceof PrimedEntityAccessor primedEntity) {
+            luminance = Math.max(luminance, primedEntity.angelica$getLuminance());
+        }
 
-        return 0;
+        return luminance;
     }
 }

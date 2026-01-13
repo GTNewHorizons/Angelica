@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.google.common.base.Stopwatch;
+import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
@@ -8,6 +9,8 @@ import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
@@ -25,6 +28,8 @@ import java.util.regex.Pattern;
 public class ShaderTransformer {
     private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
     private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^\\s*(in|out)(\\s+)");
+    private static final Pattern inPattern = Pattern.compile("(?m)^\\s*(in)(\\s+)");
+    private static final Pattern outPattern = Pattern.compile("(?m)^\\s*(out)(\\s+)");
 
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey<?>, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -139,7 +144,7 @@ public class ShaderTransformer {
 
         Stopwatch watch = Stopwatch.createStarted();
 
-        for (PatchShaderType type : PatchShaderType.values()) {
+        for (PatchShaderType type : PatchShaderType.VALUES) {
             parameters.type = type;
             if (inputs.get(type) == null) {
                 continue;
@@ -205,11 +210,18 @@ public class ShaderTransformer {
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
             final Transformer transformer = entry.getValue();
-            final String header = prepatched.get(entry.getKey());
+            String header = prepatched.get(entry.getKey());
+
+            // For Celeritas terrain vertex shaders, inject chunk_vertex.glsl header
+            if (patchType == Patch.CELERITAS_TERRAIN && entry.getKey() == PatchShaderType.VERTEX) {
+                header += computeCeleritasHeader();
+            }
+
+            final String finalHeader = header;
             final StringBuilder formattedShaderBuilder = new StringBuilder();
 
             transformer.mutateTree(tree -> {
-                formattedShaderBuilder.append(getFormattedShader(tree, header));
+                formattedShaderBuilder.append(getFormattedShader(tree, finalHeader));
             });
 
             String formattedShader = formattedShaderBuilder.toString();
@@ -234,11 +246,20 @@ public class ShaderTransformer {
                 parts[1] = "#extension GL_EXT_gpu_shader4 : require\n" + parts[1];
                 formattedShader = parts[0] + "\n" + parts[1];
 
-                // Kind of GLSL 120 supports in/out specifiers, but also kind of not, and is driver dependent
-                // and also depends on the types of the variables, doesn't work with integers for example(at least on Nvidia)
-                // So we are replacing all in/out usage with varying.
-                Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
-                formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+                // GLSL 120 compatibility for in/out specifiers:
+                // - Vertex shaders: "in" = vertex attribute input -> "attribute", "out" = to fragment -> "varying"
+                // - Fragment shaders: "in" = from vertex -> "varying", "out" = color output -> handled elsewhere
+                if (entry.getKey() == PatchShaderType.VERTEX) {
+                    // In vertex shaders, "in" declarations are vertex attributes, not varyings
+                    Matcher inMatcher = inPattern.matcher(formattedShader);
+                    formattedShader = inMatcher.replaceAll("attribute$2");
+                    Matcher outMatcher = outPattern.matcher(formattedShader);
+                    formattedShader = outMatcher.replaceAll("varying$2");
+                } else {
+                    // In fragment (and geometry) shaders, both in/out become varying
+                    Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
+                    formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+                }
             }
 
             result.put(entry.getKey(), formattedShader);
@@ -250,8 +271,12 @@ public class ShaderTransformer {
 
     private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, String profile, int versionInt) {
         switch (patchType) {
-            case SODIUM_TERRAIN:
-                SodiumTransformer.transform(transformer, parameters);
+            case CELERITAS_TERRAIN:
+                CeleritasTransformer.transform(transformer, parameters);
+                // Handle mc_midTexCoord for Celeritas
+                patchMultiTexCoord3(transformer, parameters);
+                replaceMidTexCoord(transformer, IrisExtendedChunkVertexType.MID_TEX_SCALE);
+                applyIntelHd4000Workaround(transformer);
                 break;
             case COMPOSITE:
                 CompositeDepthTransformer.transform(transformer);
@@ -326,9 +351,24 @@ public class ShaderTransformer {
         }
     }
 
+    private static String computeCeleritasHeader() {
+        final ShaderConstants constants = ShaderConstants.builder()
+            .add("VERT_POS_SCALE", "1.0")
+            .add("VERT_POS_OFFSET", "0.0")
+            .add("VERT_TEX_SCALE", "1.0")
+            .build();
+
+        final String chunkVertexHeader = org.embeddedt.embeddium.impl.gl.shader.ShaderParser.parseShader(
+            ShaderLoader.getShaderSource("sodium:include/chunk_vertex.glsl"), ShaderLoader::getShaderSource, constants)
+            .replace("_get_relative_chunk_coord(pos) * vec3(16.0)", "vec3(_get_relative_chunk_coord(pos)) * 16.0");
+
+
+        return "\n\n" + chunkVertexHeader + "\n\n";
+    }
+
     public static String getFormattedShader(ParseTree tree, String string) {
-        StringBuilder sb = new StringBuilder(string + "\n");
-        String[] tabHolder = {""};
+        final StringBuilder sb = new StringBuilder(string + "\n");
+        final String[] tabHolder = {""};
         getFormattedShader(tree, sb, tabHolder);
         return sb.toString();
     }

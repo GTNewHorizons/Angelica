@@ -23,7 +23,6 @@ import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
-import me.jellysquid.mods.sodium.client.render.chunk.backends.multidraw.MultidrawChunkRenderBackend;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
@@ -265,8 +264,6 @@ public class SodiumGameOptionPages {
                 )*/
                 .add(Settings.MODE_SHADOWS.option)
                 .add(Settings.MODE_VIGNETTE.option)
-                .add(Settings.DYNAMIC_LIGHTS.option, DynamicLights.configEnabled)
-                .add(Settings.DYNAMIC_LIGHTS_SHADER_FORCE.option, DynamicLights.configEnabled)
                 .build());
 
 
@@ -292,15 +289,6 @@ public class SodiumGameOptionPages {
         final List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_chunk_multidraw.name"))
-                        .setTooltip(I18n.format("sodium.options.use_chunk_multidraw.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.advanced.useChunkMultidraw = value, opts -> opts.advanced.useChunkMultidraw)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .setImpact(OptionImpact.EXTREME)
-                        .setEnabled(MultidrawChunkRenderBackend.isSupported(sodiumOpts.getData().advanced.ignoreDriverBlacklist))
-                        .build())
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.use_vertex_objects.name"))
                         .setTooltip(I18n.format("sodium.options.use_vertex_objects.tooltip"))
@@ -418,6 +406,15 @@ public class SodiumGameOptionPages {
         final List<OptionGroup> groups = new ArrayList<>();
 
         groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.threadedChunkBuilding"))
+                        .setTooltip(I18n.format("options.angelica.threadedChunkBuilding.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.HIGH)
+                        .setBinding((opts, value) -> AngelicaConfig.enableThreadedChunkBuilding = value, opts -> AngelicaConfig.enableThreadedChunkBuilding)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build()
+                )
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.chunk_update_threads.name"))
                         .setTooltip(I18n.format("sodium.options.chunk_update_threads.tooltip"))
@@ -449,6 +446,14 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.EXTREME)
                         .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.aggressiveChunkLoading"))
+                        .setTooltip(I18n.format("options.angelica.aggressiveChunkLoading.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.useVanillaChunkTracking = value, opts -> AngelicaConfig.useVanillaChunkTracking)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
 

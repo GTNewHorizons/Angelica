@@ -42,20 +42,6 @@ class RecordingDataStructuresTest {
     }
 
     @Test
-    void testRecordedGeometryCreation() {
-        ByteBuffer buffer = ByteBuffer.allocate(16);
-        DrawCommand cmd1 = new DrawCommand(0, 4, GL11.GL_QUADS);
-        DrawCommand cmd2 = new DrawCommand(4, 3, GL11.GL_TRIANGLES);
-        List<DrawCommand> commands = Arrays.asList(cmd1, cmd2);
-
-        RecordedGeometry geom = new RecordedGeometry(buffer, null, commands, 7);
-        assertEquals(buffer, geom.buffer());
-        assertEquals(commands, geom.drawCommands());
-        assertEquals(7, geom.totalVertexCount());
-        assertEquals(16, geom.getByteSize());
-    }
-
-    @Test
     void testCompiledDisplayListCreation() {
         // Create a display list with PushMatrix, Scale, PopMatrix
         testList = GL11.glGenLists(1);

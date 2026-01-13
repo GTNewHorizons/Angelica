@@ -32,11 +32,12 @@ public class GLSM_TextureInfoCache_UnitTest {
         // Disable caching (simulate SharedDrawable context)
         Field splashCompleteField = GLStateManager.class.getDeclaredField("splashComplete");
         splashCompleteField.setAccessible(true);
-        boolean original = splashCompleteField.getBoolean(null);
+        boolean originalSplash = splashCompleteField.getBoolean(null);
+        Thread originalHolder = GLStateManager.getDrawableGLHolder();
 
         try {
             splashCompleteField.setBoolean(null, false);
-            GLStateManager.setCachingEnabled(false);
+            GLStateManager.setDrawableGLHolder(null); // Current thread != null, so caching disabled
             assertFalse(GLStateManager.isCachingEnabled());
 
             GLStateManager.glDeleteTextures(texId);
@@ -46,7 +47,8 @@ public class GLSM_TextureInfoCache_UnitTest {
             // Cache entry should be gone - we should get a fresh object
             assertNotSame(info, TextureInfoCache.INSTANCE.getInfo(texId));
         } finally {
-            splashCompleteField.setBoolean(null, original);
+            splashCompleteField.setBoolean(null, originalSplash);
+            GLStateManager.setDrawableGLHolder(originalHolder);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         }
     }

@@ -29,6 +29,7 @@ public class FontConfigScreen extends GuiScreen {
     private final String searchPrompt;
     private final String testAreaPrompt;
     private List<String> testAreaInfo;
+    private List<String> noFontsWarning;
     private String currentPrimaryFontName;
     private String currentFallbackFontName;
     private FontList fontList;
@@ -332,9 +333,22 @@ public class FontConfigScreen extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         drawBackground(0);
-        fontList.drawScreen(mouseX, mouseY, delta);
-        searchBox.drawTextBox();
-        // I bet you thought this was drawn inside the search box, not on top of it.
+
+        this.fontList.drawScreen(mouseX, mouseY, delta);
+        if (availableFonts.length == 0) {
+            if (this.noFontsWarning == null) {
+                this.noFontsWarning = this.fontRendererObj.listFormattedStringToWidth(
+                    I18n.format("options.angelica.fontconfig.no_fonts_warning"), this.width / 2
+                );
+            }
+            int y = 80;
+            for (String s : this.noFontsWarning) {
+                drawCenteredString(this.fontRendererObj, s, this.width / 3, y, 0xFFFFFF);
+                y += this.fontRendererObj.FONT_HEIGHT;
+            }
+        }
+
+        this.searchBox.drawTextBox();
         if (!this.searchBox.isFocused() && this.searchBox.getText().isEmpty()) {
             this.drawCenteredString(this.fontRendererObj, this.searchPrompt,
                 this.searchBox.xPosition + this.fontRendererObj.getStringWidth(this.searchPrompt) / 2 + 4,

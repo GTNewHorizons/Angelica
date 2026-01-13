@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -37,6 +38,15 @@ public class BlockRenderingSettings {
 
     public void clearReloadRequired() {
 		reloadRequired = false;
+	}
+
+	public void reloadRendererIfRequired() {
+		if (isReloadRequired()) {
+			if (Minecraft.getMinecraft().renderGlobal != null) {
+				Minecraft.getMinecraft().renderGlobal.loadRenderers();
+			}
+			clearReloadRequired();
+		}
 	}
 
     @Nullable

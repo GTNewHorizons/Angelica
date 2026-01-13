@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.api;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
+import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
 
@@ -20,8 +20,8 @@ public class TextureServices {
 
     @SuppressWarnings("unused")
     public static void updateTextureAnimation(IIcon icon) {
-        if(icon instanceof IPatchedTextureAtlasSprite patchedSprite) {
-            patchedSprite.markNeedsAnimationUpdate();
+        if (icon instanceof SpriteExtension ext) {
+            ext.celeritas$markActive();
         }
     }
 }

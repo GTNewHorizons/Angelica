@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.lwjgl.opengl.Drawable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,37 +19,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * to the main game loop.
  *
  * GLStateManager.makeCurrent() automatically handles caching based on whether the drawable
- * is SharedDrawable or DrawableGL. This mixin just needs to:
- * 1. Register the SharedDrawable reference when it's created
- * 2. Mark splash complete when finish() is called
+ * is DrawableGL or not. DrawableGL is captured early in OpenGlHelper.initializeTextures().
  */
 @SuppressWarnings("deprecation")
 @Mixin(value = cpw.mods.fml.client.SplashProgress.class, remap = false)
 public class MixinSplashProgressCaching {
-
-    @Shadow private static Drawable d;
-
-    /**
-     * Before start() calls d.makeCurrent(), register the SharedDrawable reference.
-     * This allows GLStateManager.makeCurrent() to distinguish SharedDrawable from DrawableGL.
-     */
-    @Inject(method = "start",
-            at = @At(value = "INVOKE",
-                     target = "Lorg/lwjgl/opengl/Drawable;makeCurrent()V"))
-    private static void angelica$captureSharedDrawable(CallbackInfo ci) {
-        GLStateManager.setSharedDrawable(d);
-    }
+    private static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     /**
-     * After finish() calls Display.getDrawable().makeCurrent() (DrawableGL), mark splash complete.
-     * This is the final switch to DrawableGL that persists into the main game loop.
-     * markSplashComplete() enables the fast path that bypasses holder tracking.
+     *  On return from finish() - mark splash complete
      */
-    @Inject(method = "finish",
-            at = @At(value = "INVOKE",
-                     target = "Lorg/lwjgl/opengl/Drawable;makeCurrent()V",
-                     shift = At.Shift.AFTER))
+    @Inject(method = "finish", at = @At("RETURN"))
     private static void angelica$enableCachingOnFinish(CallbackInfo ci) {
         GLStateManager.markSplashComplete();
+        LOGGER.info("Splash Complete");
     }
 }

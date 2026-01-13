@@ -1,6 +1,8 @@
 package jss.notfine.core;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.dynamiclights.AdaptiveTickCalculator;
+import com.gtnewhorizons.angelica.dynamiclights.ChunkRebuildManager;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLightsMode;
 import cpw.mods.fml.relauncher.Side;
@@ -58,6 +60,42 @@ public enum Settings {
         @Override
         public void applyChanges() {
             DynamicLights.ShaderForce = (boolean) this.option.getStore();
+        }
+    },
+    DYNAMIC_LIGHTS_FRUSTUM_CULLING(new NotFineOptionTickBox(true, OptionImpact.MEDIUM)){
+        @Override
+        public void applyChanges() {
+            DynamicLights.FrustumCullingEnabled = (boolean) this.option.getStore();
+        }
+    },
+    DYNAMIC_LIGHTS_ADAPTIVE_TICKING(new NotFineOptionTickBox(true, OptionImpact.MEDIUM)){
+        @Override
+        public void applyChanges() {
+            DynamicLights.AdaptiveTickingEnabled = (boolean) this.option.getStore();
+        }
+    },
+    DYNAMIC_LIGHTS_SLOW_DIST(new NotFineOptionSlider(32, 16, 64, 8, OptionImpact.LOW)){
+        @Override
+        public void applyChanges() {
+            AdaptiveTickCalculator.setSlowDistance((int) this.option.getStore());
+        }
+    },
+    DYNAMIC_LIGHTS_SLOWER_DIST(new NotFineOptionSlider(64, 32, 128, 16, OptionImpact.LOW)){
+        @Override
+        public void applyChanges() {
+            AdaptiveTickCalculator.setSlowerDistance((int) this.option.getStore());
+        }
+    },
+    DYNAMIC_LIGHTS_BACKGROUND_DIST(new NotFineOptionSlider(128, 64, 256, 16, OptionImpact.LOW)){
+        @Override
+        public void applyChanges() {
+            AdaptiveTickCalculator.setBackgroundDistance((int) this.option.getStore());
+        }
+    },
+    DYNAMIC_LIGHTS_CULL_TIMEOUT(new NotFineOptionSlider(100, 20, 200, 20, OptionImpact.LOW)){
+        @Override
+        public void applyChanges() {
+            ChunkRebuildManager.setMaxTicksWaiting((int) this.option.getStore());
         }
     },
     HORIZON_DISABLE(new NotFineOptionTickBox(true, OptionImpact.LOW)),

@@ -7,7 +7,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
-import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -68,11 +68,10 @@ public final class CommonUniforms {
 		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms);
+		IrisInternalUniforms.addFogUniforms(uniforms);
 
-		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
-		//       but we do. How will custom uniforms depending on atlasSize work?
 		uniforms.uniform2i("atlasSize", () -> {
-			final int glId = GLStateManager.getBoundTextureForServerState();
+			final int glId = GLStateManager.getBoundTextureForServerState(0);
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
@@ -81,15 +80,15 @@ public final class CommonUniforms {
 			}
 
 			return ZERO_VECTOR_2i;
-		}, StateUpdateNotifiers.bindTextureNotifier);
+		}, ValueUpdateNotifier.NONE);
 
 		uniforms.uniform2i("gtextureSize", () -> {
-			final int glId = GLStateManager.getBoundTextureForServerState();
+			final int glId = GLStateManager.getBoundTextureForServerState(0);
 
 			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());
 
-		}, StateUpdateNotifiers.bindTextureNotifier);
+		}, ValueUpdateNotifier.NONE);
 
 		uniforms.uniform4i("blendFunc", () -> {
             if(GLStateManager.getBlendMode().isEnabled()) {
@@ -97,9 +96,9 @@ public final class CommonUniforms {
                 return new Vector4i(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
             }
             return ZERO_VECTOR_4i;
-		}, StateUpdateNotifiers.blendFuncNotifier);
+		}, ValueUpdateNotifier.NONE);
 
-		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), StateUpdateNotifiers.phaseChangeNotifier);
+		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), ValueUpdateNotifier.NONE);
 
         uniforms.uniform4f("entityColor", CapturedRenderingState.INSTANCE::getCurrentEntityColor, CapturedRenderingState.INSTANCE.getEntityColorNotifier());
 

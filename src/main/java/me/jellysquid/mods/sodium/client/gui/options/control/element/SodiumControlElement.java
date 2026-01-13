@@ -1,6 +1,5 @@
 package me.jellysquid.mods.sodium.client.gui.options.control.element;
 
-import me.flashyreese.mods.reeses_sodium_options.client.gui.OptionExtended;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
@@ -15,9 +14,6 @@ public class SodiumControlElement<T> extends AbstractWidget implements ControlEl
     public SodiumControlElement(Option<T> option, Dim2i dim) {
         this.option = option;
         this.dim = dim;
-        if(option instanceof OptionExtended<?> optionExtended) {
-            optionExtended.setDim2i(dim);
-        }
     }
 
     @Override
@@ -41,16 +37,7 @@ public class SodiumControlElement<T> extends AbstractWidget implements ControlEl
 
         this.hovered = this.dim.containsCursor(mouseX, mouseY);
 
-
         this.drawRect(this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), this.hovered ? 0xE0000000 : 0x90000000);
-        if(option instanceof OptionExtended<?> optionExtended && (optionExtended.isHighlight())) {
-            final String replacement = optionExtended.isSelected() ? EnumChatFormatting.DARK_GREEN.toString() : EnumChatFormatting.YELLOW.toString();
-
-            label = label.replace(EnumChatFormatting.WHITE.toString(), EnumChatFormatting.WHITE + replacement);
-            label = label.replace(EnumChatFormatting.STRIKETHROUGH.toString(), EnumChatFormatting.STRIKETHROUGH + replacement);
-            label = label.replace(EnumChatFormatting.ITALIC.toString(), EnumChatFormatting.ITALIC + replacement);
-
-        }
         this.drawString(label, this.dim.getOriginX() + 6, this.dim.getCenterY() - 4, 0xFFFFFFFF);
     }
 

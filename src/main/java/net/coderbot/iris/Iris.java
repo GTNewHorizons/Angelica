@@ -12,6 +12,9 @@ import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -31,7 +34,7 @@ import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
-import net.coderbot.iris.sodium.block_context.BlockContextHolder;
+import net.coderbot.iris.block_context.BlockContextHolder;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -378,6 +381,11 @@ public class Iris {
             return;
         }
 
+        // Register the Celeritas shader provider for Iris integration (only when Celeritas is enabled)
+        if (AngelicaConfig.enableCeleritas) {
+            IrisShaderProviderHolder.setProvider(new IrisCeleritasShaderProvider());
+        }
+
         // Warm up the threadpool so shader transformations are faster when we need them
         ShaderTransformExecutor.warmup();
 
@@ -402,6 +410,8 @@ public class Iris {
         // See: https://github.com/IrisShaders/Iris/issues/323
         lastDimension = DimensionId.OVERWORLD;
         Iris.getPipelineManager().preparePipeline(DimensionId.OVERWORLD);
+
+        BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
     }
 
     public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
@@ -704,6 +714,8 @@ public class Iris {
         // https://github.com/IrisShaders/Iris/issues/1330
         if (Minecraft.getMinecraft().theWorld != null) {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+
+            BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
         }
     }
 
