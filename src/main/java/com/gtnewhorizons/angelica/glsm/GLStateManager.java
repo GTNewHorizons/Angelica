@@ -328,6 +328,7 @@ public class GLStateManager {
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
     @Getter protected static int activeProgram = 0;
+    @Getter protected static int listBase = 0;
 
     public static void reset() {
         runningSplash = true;
@@ -804,6 +805,7 @@ public class GLStateManager {
         return switch (pname) {
             case GL11.GL_ALPHA_TEST_FUNC -> alphaState.getFunction();
             case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
+            case GL11.GL_LIST_BASE -> listBase;
             case GL11.GL_LIST_MODE -> DisplayListManager.getListMode();
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
@@ -2137,7 +2139,7 @@ public class GLStateManager {
         // TODO: Iris Notifier
         if (HAS_MULTIPLE_SET.contains(pname)) {
             GL11.glFog(pname, param);
-    
+
             if (pname == GL11.GL_FOG_COLOR && isCachingEnabled()) {
                 final float red = param.get(0);
                 final float green = param.get(1);
@@ -2459,7 +2461,7 @@ public class GLStateManager {
             // Reset relative transform - subsequent transforms are relative to loaded matrix
             DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
-                return; 
+                return;
             }
         }
         if (isCachingEnabled()) {
@@ -3584,24 +3586,28 @@ public class GLStateManager {
 
     // Display List Commands
     public static void glCallLists(IntBuffer lists) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCallLists in display lists not yet implemented - if you see this, please report!");
+        while (lists.hasRemaining()) {
+            final int listId = lists.get() + listBase;
+            glCallList(listId);
         }
-        GL11.glCallLists(lists);
+    }
+
+    public static void glCallLists(ShortBuffer lists) {
+        while (lists.hasRemaining()) {
+            final int listId = (lists.get() & 0xFFFF) + listBase;
+            glCallList(listId);
+        }
     }
 
     public static void glCallLists(ByteBuffer lists) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCallLists in display lists not yet implemented - if you see this, please report!");
+        while (lists.hasRemaining()) {
+            final int listId = (lists.get() & 0xFF) + listBase;
+            glCallList(listId);
         }
-        GL11.glCallLists(lists);
     }
 
     public static void glListBase(int base) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glListBase in display lists not yet implemented - if you see this, please report!");
-        }
-        GL11.glListBase(base);
+        listBase = base;
     }
 
     // Clip Plane Commands
