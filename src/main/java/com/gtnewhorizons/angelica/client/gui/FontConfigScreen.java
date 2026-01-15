@@ -68,10 +68,10 @@ public class FontConfigScreen extends GuiScreen {
         this.currentFallbackFontName = FontConfig.customFontNameFallback;
         this.displayedFonts = new ArrayList<>(Arrays.asList(availableFonts));
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(this.currentPrimaryFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(this.currentPrimaryFontName, availableFonts[i].getName())) {
                 selectedPrimaryFontListPos = i;
             }
-            if (Objects.equals(this.currentFallbackFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(this.currentFallbackFontName, availableFonts[i].getName())) {
                 selectedFallbackFontListPos = i;
             }
         }
@@ -267,11 +267,11 @@ public class FontConfigScreen extends GuiScreen {
         int pos;
         pos = selectedPrimaryFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
-            FontConfig.customFontNamePrimary = displayedFonts.get(pos).getFontName();
+            FontConfig.customFontNamePrimary = displayedFonts.get(pos).getName();
         }
         pos = selectedFallbackFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
-            FontConfig.customFontNameFallback = displayedFonts.get(pos).getFontName();
+            FontConfig.customFontNameFallback = displayedFonts.get(pos).getName();
         }
 
         FontStrategist.reloadCustomFontProviders();
@@ -466,16 +466,16 @@ public class FontConfigScreen extends GuiScreen {
         if (search == null || search.isEmpty()) {
             results = new ArrayList<>(Arrays.asList(availableFonts));
         } else {
-            results = Arrays.stream(availableFonts).filter((font -> font.getFontName().toLowerCase().contains(search))).collect(Collectors.toCollection(ArrayList::new));
+            results = Arrays.stream(availableFonts).filter((font -> font.getName().toLowerCase().contains(search))).collect(Collectors.toCollection(ArrayList::new));
         }
 
         selectedPrimaryFontListPos = -1;
         selectedFallbackFontListPos = -1;
         for (int i = 0; i < results.size(); i++) {
-            if (Objects.equals(currentPrimaryFontName, results.get(i).getFontName())) {
+            if (Objects.equals(currentPrimaryFontName, results.get(i).getName())) {
                 selectedPrimaryFontListPos = i;
             }
-            if (Objects.equals(currentFallbackFontName, results.get(i).getFontName())) {
+            if (Objects.equals(currentFallbackFontName, results.get(i).getName())) {
                 selectedFallbackFontListPos = i;
             }
         }
@@ -509,10 +509,10 @@ public class FontConfigScreen extends GuiScreen {
         protected void onElemClicked(int index, boolean rightClick) {
             if (!rightClick) {
                 selectedPrimaryFontListPos = index;
-                currentPrimaryFontName = displayedFonts.get(index).getFontName();
+                currentPrimaryFontName = displayedFonts.get(index).getName();
             } else {
                 selectedFallbackFontListPos = index;
-                currentFallbackFontName = displayedFonts.get(index).getFontName();
+                currentFallbackFontName = displayedFonts.get(index).getName();
             }
             applyChanges(false);
         }
@@ -555,7 +555,7 @@ public class FontConfigScreen extends GuiScreen {
             if (index == selectedFallbackFontListPos) {
                 color &= 0x55ffff;
             }
-            drawCenteredString(fontRendererObj, displayedFonts.get(index).getFontName(), this.width / 2, y + 1, color);
+            drawCenteredString(fontRendererObj, displayedFonts.get(index).getName(), this.width / 2, y + 1, color);
         }
     }
 }

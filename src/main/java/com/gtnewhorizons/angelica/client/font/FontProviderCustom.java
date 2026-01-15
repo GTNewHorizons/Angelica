@@ -51,7 +51,7 @@ public final class FontProviderCustom implements FontProvider {
         }
         int fontPos = -1;
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(myFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(myFontName, availableFonts[i].getName())) {
                 fontPos = i;
                 break;
             }

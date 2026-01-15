@@ -37,7 +37,7 @@ public class FontStrategist {
             HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
 
             for (Font font : availableFontsDirty) {
-                String fontName = font.getFontName();
+                String fontName = font.getName();
                 if (fontSet.containsKey(fontName)) {
                     duplicates.add(fontName);
                 } else {
@@ -57,7 +57,7 @@ public class FontStrategist {
                 sb.append(". Some fonts may be missing from the font selection menu.");
                 LOGGER.warn(sb.toString());
             }
-            availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
+            availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getName)).toArray(Font[]::new);
 
             LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, availableFonts.length);
         }
@@ -103,10 +103,10 @@ public class FontStrategist {
         FontProviderCustom.getPrimary().setFont(null);
         FontProviderCustom.getFallback().setFont(null);
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getFontName())) {
+            if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getName())) {
                 FontProviderCustom.getPrimary().reloadFont(i);
             }
-            if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getFontName())) {
+            if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getName())) {
                 FontProviderCustom.getFallback().reloadFont(i);
             }
         }
