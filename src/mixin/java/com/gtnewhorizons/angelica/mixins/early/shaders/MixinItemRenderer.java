@@ -5,6 +5,7 @@ import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
@@ -67,7 +68,7 @@ public class MixinItemRenderer {
         }
 
         // Get material ID from item.properties or block.properties
-        int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
+        int id = ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
     }
 

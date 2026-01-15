@@ -3,6 +3,7 @@
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,7 +30,7 @@ public class MixinRenderItem {
         ItemStack itemStack = entity.getEntityItem();
 
         // Get material ID from item.properties or block.properties
-        int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
+        int id = ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
     }
 

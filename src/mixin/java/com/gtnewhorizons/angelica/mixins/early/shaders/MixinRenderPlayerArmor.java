@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.RenderPlayer;
@@ -37,7 +38,7 @@ public class MixinRenderPlayerArmor {
         }
 
         // Get material ID from item.properties or block.properties
-        int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
+        int id = ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
 
         // Call original method
@@ -83,7 +84,7 @@ public class MixinRenderPlayerArmor {
         }
 
         // Get material ID from item.properties or block.properties
-        int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(itemStack);
+        int id = ItemMaterialHelper.getMaterialId(itemStack);
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
 
         original.call(itemRenderer, entity, itemStack, renderPass);

@@ -19,6 +19,7 @@ import net.minecraft.util.ResourceLocation;
  */
 public class ItemMaterialHelper {
     private static final Reference2ObjectMap<Item, Int2IntMap> MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
+    private static final int CACHE_MISS_SENTINEL = Integer.MIN_VALUE;
 
     /**
      * Get the material ID for an ItemStack.
@@ -31,16 +32,21 @@ public class ItemMaterialHelper {
         if (itemStack == null || itemStack.getItem() == null) {
             return 0;
         }
+        return getMaterialId(itemStack.getItem(), itemStack.getItemDamage());
+    }
 
-        Item item = itemStack.getItem();
-        int metadata = itemStack.getItemDamage();
+
+    public static int getMaterialId(Item item, int metadata) {
+        if (item == null) {
+            return 0;
+        }
 
         // Check cache first
         Int2IntMap metadataCache = MATERIAL_CACHE.get(item);
         if (metadataCache != null) {
-            // Use getOrDefault to avoid returning the default value (-1) for missing keys
-            if (metadataCache.containsKey(metadata)) {
-                return metadataCache.get(metadata);
+            int cached = metadataCache.getOrDefault(metadata, CACHE_MISS_SENTINEL);
+            if (cached != CACHE_MISS_SENTINEL) {
+                return cached;
             }
         }
 
@@ -49,6 +55,7 @@ public class ItemMaterialHelper {
 
         if (metadataCache == null) {
             metadataCache = new Int2IntOpenHashMap();
+            metadataCache.defaultReturnValue(CACHE_MISS_SENTINEL);
             MATERIAL_CACHE.put(item, metadataCache);
         }
         metadataCache.put(metadata, materialId);

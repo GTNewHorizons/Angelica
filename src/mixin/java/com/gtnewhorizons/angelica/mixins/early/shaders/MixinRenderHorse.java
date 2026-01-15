@@ -2,20 +2,19 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.RenderHorse;
 import net.minecraft.entity.passive.EntityHorse;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Mixin to set the currentRenderedItem ID when rendering horse armor.
@@ -24,7 +23,7 @@ import java.util.Set;
 @Mixin(RenderHorse.class)
 public abstract class MixinRenderHorse {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
-    private static final Set<Integer> WARNED_UNKNOWN_ARMOR_INDICES = new HashSet<>();
+    private static final IntSet WARNED_UNKNOWN_ARMOR_INDICES = new IntOpenHashSet();
 
     /**
      * Set the item ID when rendering the horse model if it has armor.
@@ -69,10 +68,8 @@ public abstract class MixinRenderHorse {
                 }
 
                 if (armorItem != null) {
-                    ItemStack armorStack = new ItemStack(armorItem);
-
                     // Get material ID from item.properties
-                    int id = net.coderbot.iris.uniforms.ItemMaterialHelper.getMaterialId(armorStack);
+                    int id = ItemMaterialHelper.getMaterialId(armorItem, 0);
                     CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
                     hasArmor = true;
                 }
