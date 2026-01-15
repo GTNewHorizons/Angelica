@@ -58,7 +58,8 @@ public class MixinRendererLivingEntity {
      */
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0)
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
     )
     private void iris$activateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
@@ -70,7 +71,8 @@ public class MixinRendererLivingEntity {
      */
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER)
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
     )
     private void iris$deactivateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
