@@ -200,7 +200,7 @@ public class AngelicaConfig {
             "net.minecraft.block.BlockStairs"
     })
     public static String[] blockCrackFixBlacklist;
-    
+
     @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated.",
                      "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
     })

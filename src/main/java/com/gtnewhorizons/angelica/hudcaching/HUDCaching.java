@@ -1,14 +1,11 @@
 package com.gtnewhorizons.angelica.hudcaching;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.SharedDepthFramebuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexArrayBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
@@ -200,11 +197,11 @@ public class HUDCaching {
         tessellator.addVertexWithUV(0, 0, 0.0, 0, 1);
         tessellator.draw();
         if (quadVAO == null) {
-            quadVAO = tessellator.stopCapturingToVBO(VertexBufferType.MUTABLE);
+            quadVAO = tessellator.uploadToVBO(VertexBufferType.MUTABLE);
         } else {
-            tessellator.stopCapturingToVBO(quadVAO);
+            tessellator.updateToVBO(quadVAO);
         }
-
+        TessellatorManager.stopCapturingDirect();
     }
 
     public static void disableHoloInventory() {

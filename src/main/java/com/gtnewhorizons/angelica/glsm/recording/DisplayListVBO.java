@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.

@@ -1,16 +1,13 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
@@ -55,13 +52,17 @@ public class HorizonRenderer {
 	}
 
 	private void rebuildBuffer() {
+        if (this.vertexBuffer != null) {
+            this.vertexBuffer.delete();
+        }
+
         final DirectTessellator tessellator = TessellatorManager.startCapturingDirect(DefaultVertexFormat.POSITION);
 
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
 
-        this.vertexBuffer = tessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE); //TODO
+        this.vertexBuffer = tessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {

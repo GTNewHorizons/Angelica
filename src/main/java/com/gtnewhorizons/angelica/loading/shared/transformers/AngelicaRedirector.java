@@ -256,7 +256,7 @@ public final class AngelicaRedirector {
             .add("glActiveTextureARB")
         );
         methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
-            .add("glBindVertexArray", "glBindVertexArrayARB")
+            .add("glBindVertexArray")
         );
 
 

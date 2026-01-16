@@ -1,21 +1,15 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IEmptyVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import org.lwjgl.opengl.APPLEVertexArrayRange;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
@@ -54,7 +48,7 @@ public final class DisplayListVBOBuilder {
             if (formatData == null) continue;
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             int start = 0;
-            IVertexBuffer vbo = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
+            IEmptyVertexBuffer vbo = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
             for (FormatData data : formatData) {
                 int vertexCount;
                 final List<ByteBuffer> drawBuffers = data.buffers;
@@ -76,7 +70,6 @@ public final class DisplayListVBOBuilder {
             }
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);
             vbo.allocate(bigBuffer, false);
-//            vbo.allocate(bigBuffer, false);
             memFree(bigBuffer);
 
             allBuffers.clear();

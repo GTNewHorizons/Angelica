@@ -2,10 +2,12 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -39,8 +41,8 @@ import java.nio.ShortBuffer;
  *   <li>GL_POINTS: Point primitives</li>
  * </ul>
  */
-public class ImmediateModeRecorder {
-    private final DirectTessellator tessellator = new DirectTessellator(BufferUtils.createByteBuffer(0x200000));
+public final class ImmediateModeRecorder {
+    private static final DirectTessellator tessellator = new DirectTessellator(0x4000);
 
     public ImmediateModeRecorder() {
         // Recorder is ready to capture geometry
@@ -84,7 +86,7 @@ public class ImmediateModeRecorder {
 
         if (tessellator.isEmpty()) return null;
 
-        return this.tessellator;
+        return tessellator;
     }
 
     /**
@@ -127,9 +129,9 @@ public class ImmediateModeRecorder {
      * @return Result containing converted geometry, or null if no geometry produced
      */
     public DirectTessellator processDrawArrays(int mode, int first, int count) {
-        final var cas = GLStateManager.getClientArrayState();
-        final var vertexPointer = cas.isVertexArrayEnabled() ? cas.getVertexPointer() : null;
-        final var colorPointer = cas.isColorArrayEnabled() ? cas.getColorPointer() : null;
+        final ClientArrayState cas = GLStateManager.getClientArrayState();
+        final Buffer vertexPointer = cas.isVertexArrayEnabled() ? cas.getVertexPointer() : null;
+        final Buffer colorPointer = cas.isColorArrayEnabled() ? cas.getColorPointer() : null;
 
         return convertClientArrays(
             mode, first, count,
@@ -171,12 +173,10 @@ public class ImmediateModeRecorder {
 
         // Determine color reader (hoisted out of loop)
         final ColorReader colorReader;
-        final int colorEffectiveStride;
         if (colorPointer == null) {
             colorReader = null;
-            colorEffectiveStride = 0;
         } else if (colorType == GL11.GL_FLOAT && colorPointer instanceof FloatBuffer fb) {
-            colorEffectiveStride = (colorStride == 0) ? colorSize * 4 : colorStride;
+            final int colorEffectiveStride = (colorStride == 0) ? colorSize * 4 : colorStride;
             final int strideInFloats = colorEffectiveStride / 4;
             colorReader = (idx) -> {
                 final int offset = idx * strideInFloats;
@@ -187,7 +187,7 @@ public class ImmediateModeRecorder {
                 GLStateManager.glColor4f(r, g, b, a);
             };
         } else if ((colorType == GL11.GL_UNSIGNED_BYTE || colorType == GL11.GL_BYTE) && colorPointer instanceof ByteBuffer bb) {
-            colorEffectiveStride = (colorStride == 0) ? colorSize : colorStride;
+            final int colorEffectiveStride = (colorStride == 0) ? colorSize : colorStride;
             colorReader = (idx) -> {
                 final int offset = idx * colorEffectiveStride;
                 final float r = (bb.get(offset) & 0xFF) / 255.0f;
@@ -198,7 +198,6 @@ public class ImmediateModeRecorder {
             };
         } else {
             // Unsupported color type - use white
-            colorEffectiveStride = 0;
             colorReader = (idx) -> GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         }
 

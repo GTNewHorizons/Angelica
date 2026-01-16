@@ -25,30 +25,21 @@
 
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import java.nio.ByteBuffer;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 public class ItemRenderListManager {
     // Least used element is at position 0. This is in theory slightly faster.
     private static final Object2ObjectLinkedOpenHashMap<ItemProp, CachedVBO> vboCache = new Object2ObjectLinkedOpenHashMap<>(64);
-
-    // Formula: (widthSubdivisions * 2 + heightSubdivisions * 2 + 2) * 4 * vertexSize
-    // Using 256 as both variables due to enchants, to prevent later re-allocations.
-    private static ByteBuffer quadBuffer = BufferUtils.createByteBuffer(
-        (1026 * DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize()) << 2
-    );
 
     // 1 minute
     private static final int EXPIRY_TICKS = 1_200;
@@ -92,29 +83,12 @@ public class ItemRenderListManager {
 
         vbo.expiry = getElapsedTicks() + EXPIRY_TICKS;
 
-        TessellatorManager.startCapturing();
-
         return vbo.vertexBuffer;
     }
 
-    public static void post(CapturingTessellator tessellator, VertexBuffer vbo) {
-        final var quads = TessellatorManager.stopCapturingToPooledQuads();
-        final int size = quads.size();
-
-        final int needed = (DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize() * size) << 2;
-        if (quadBuffer.capacity() < needed) {
-            quadBuffer = BufferUtils.createByteBuffer(HashCommon.nextPowerOfTwo(needed));
-        }
-
-        for (int i = 0; i < size; i++) {
-            DefaultVertexFormat.POSITION_TEXTURE_NORMAL.writeQuad(quads.get(i), quadBuffer);
-        }
-
-        quadBuffer.flip();
-        vbo.upload(quadBuffer);
-        quadBuffer.clear();
-
-        tessellator.clearQuads();
+    public static void post(DirectTessellator tessellator, VertexBuffer vbo) {
+        tessellator.allocateToVBO(vbo);
+        TessellatorManager.stopCapturingDirect();
         vbo.render();
     }
 
@@ -127,7 +101,7 @@ public class ItemRenderListManager {
         private int expiry;
 
         public CachedVBO() {
-            this.vertexBuffer = VAOManager.createVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
+            this.vertexBuffer = VAOManager.createMutableVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
         }
 
         private void render(int elapsedTicks) {
@@ -136,7 +110,7 @@ public class ItemRenderListManager {
         }
 
         private void delete() {
-            vertexBuffer.close();
+            vertexBuffer.delete();
             vertexBuffer = null;
         }
     }

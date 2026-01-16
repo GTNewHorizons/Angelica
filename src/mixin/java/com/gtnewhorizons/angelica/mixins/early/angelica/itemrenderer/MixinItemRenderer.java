@@ -26,7 +26,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizons.angelica.rendering.ItemRenderListManager;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -46,7 +48,7 @@ public abstract class MixinItemRenderer {
     private static void angelica$cacheItem(Tessellator tessellator, float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness, Operation<Void> original) {
         final VertexBuffer vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
         if (vbo != null) {
-            final CapturingTessellator tess = (CapturingTessellator) TessellatorManager.get();
+            final DirectTessellator tess = TessellatorManager.startCapturingDirect();
             original.call(tess, minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
             ItemRenderListManager.post(tess, vbo);
         }

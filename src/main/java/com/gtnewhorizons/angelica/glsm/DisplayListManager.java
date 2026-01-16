@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
@@ -101,7 +102,6 @@ public class DisplayListManager {
     @Getter
     private static int stateGeneration = 0;  // Increments at draw barriers (state commands); used for draw merging
     private static Matrix4f lastFlushedTransform = null;  // The transform that was flushed; consecutive same-gen draws share this
-    @Getter private static ImmediateModeRecorder immediateModeRecorder = null;  // Records glBegin/glEnd/glVertex during compilation
     private static StackTraceElement[] compilationStackTrace = null;  // For logging: captured at glNewList()
 
     // Debug logging: track sources of MULT_MATRIX commands and draw origins; only populated when LOG_DISPLAY_LIST_COMPILATION is true
@@ -129,7 +129,6 @@ public class DisplayListManager {
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
         Matrix4fStack transform,
-        ImmediateModeRecorder immediateRecorder,
         StackTraceElement[] stackTrace,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
@@ -773,11 +772,6 @@ public class DisplayListManager {
      *   GL_COMPILE_AND_EXECUTE: Commands are recorded AND executed (GLSM cache updated)
      */
     public static void glNewList(int list, int mode) {
-        // Assert main thread for display list compilation
-        if (!Thread.currentThread().equals(GLStateManager.getMainThread())) {
-            throw new IllegalStateException("Display list compilation must happen on main thread");
-        }
-
         // Handle nested compilation - push current context onto stack
         final boolean isNested = glListMode > 0;
 
@@ -785,7 +779,7 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform, immediateModeRecorder,
+                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform,
                 compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
@@ -802,7 +796,6 @@ public class DisplayListManager {
         lastFlushedGeneration = -1;  // Reset so first draw triggers flush
         lastFlushedTransform = null;  // Will be set on first flush
         stateGeneration = 0;  // Reset state generation for fresh list
-        immediateModeRecorder = new ImmediateModeRecorder();  // For glBegin/glEnd/glVertex
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
@@ -890,7 +883,6 @@ public class DisplayListManager {
             currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
             relativeTransform = parentContext.transform;
-            immediateModeRecorder = parentContext.immediateRecorder;
             compilationStackTrace = parentContext.stackTrace;
             pendingTransformOps = parentContext.pendingOps;
             multMatrixSources = parentContext.matrixSources;
@@ -904,7 +896,6 @@ public class DisplayListManager {
             recordingThread = null;
             accumulatedDraws = null;
             relativeTransform = null;
-            immediateModeRecorder = null;
             compilationStackTrace = null;
             pendingTransformOps = null;
             multMatrixSources = null;
