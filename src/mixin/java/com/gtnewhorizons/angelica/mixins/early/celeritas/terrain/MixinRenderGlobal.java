@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -212,6 +213,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Unique
     public void angelica$reload() {
+        CeleritasSetup.ensureInitialized();
         RenderDevice.enterManagedCode();
         try {
             this.celeritas$renderer.reload();
