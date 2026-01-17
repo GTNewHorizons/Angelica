@@ -6,8 +6,10 @@ import static com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedCh
 
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Setter;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.coderbot.iris.vertices.NormalHelper;
 import net.coderbot.iris.vertices.NormI8;
@@ -30,11 +32,10 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     private final ChunkVertexEncoder baseEncoder = IrisExtendedChunkVertexType.BASE_TYPE.createEncoder();
     private final CeleritasQuadView quad = new CeleritasQuadView();
     private final Vector3f normal = new Vector3f();
-    private final Object2IntMap<Block> blockMatches;
+    private final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
 
     public IrisExtendedChunkVertexEncoder() {
-        final IrisShaderProvider provider = IrisShaderProviderHolder.getProvider();
-        this.blockMatches = provider != null ? provider.getBlockMatches() : null;
+        this.blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
     }
 
     // Per-quad accumulators
@@ -46,9 +47,10 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     private BlockRenderContext context;
 
     @Override
-    public void prepareToRenderBlock(BlockRenderContext ctx, Block block, short renderType, byte lightValue) {
+    public void prepareToRenderBlock(BlockRenderContext ctx, Block block, int metadata, short renderType, byte lightValue) {
         this.context = ctx;
-        ctx.blockId = (short) (blockMatches != null ? blockMatches.getOrDefault(block, -1) : -1);
+        Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(block) : null;
+        ctx.blockId = (short) (metaMap != null ? metaMap.get(metadata) : -1);
         ctx.renderType = renderType;
         ctx.lightValue = lightValue;
     }
@@ -56,7 +58,8 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     @Override
     public void prepareToRenderFluid(BlockRenderContext ctx, Block block, byte lightValue) {
         this.context = ctx;
-        ctx.blockId = (short) (blockMatches != null ? blockMatches.getOrDefault(block, -1) : -1);
+        Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(block) : null;
+        ctx.blockId = (short) (metaMap != null ? metaMap.get(0) : -1);
         ctx.renderType = ExtendedDataHelper.FLUID_RENDER_TYPE;
         ctx.lightValue = lightValue;
     }

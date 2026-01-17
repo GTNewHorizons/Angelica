@@ -163,7 +163,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                     continue;
                                 }
 
-                                renderBlock(block, x, y, z, pass, tessellator, renderBlocks,
+                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks,
                                     buffers, buildContext, blockRenderContext, minX, minY, minZ);
                             }
                         }
@@ -207,7 +207,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         }
     }
 
-    protected void renderBlock(Block block, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ) {
+    protected void renderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ) {
 
         final Material blockMaterial = block.getMaterial();
         final boolean isFluid = blockMaterial == Material.water || blockMaterial == Material.lava;
@@ -226,7 +226,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             if (isFluid) {
                 contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
             } else {
-                contextEncoder.prepareToRenderBlock(blockRenderContext, block,
+                contextEncoder.prepareToRenderBlock(blockRenderContext, block, metadata,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);
             }
         }
@@ -255,7 +255,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             mainTessellator.setTranslation(-minX, -minY, -minZ);
 
             for (DeferredBlock deferred : deferredBlocks) {
-                renderBlock(deferred.block(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
+                renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
                     mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
                     blockRenderContext, minX, minY, minZ);
             }

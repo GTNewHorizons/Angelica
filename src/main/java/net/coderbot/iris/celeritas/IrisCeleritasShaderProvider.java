@@ -69,7 +69,7 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
     @Override
     @Nullable
     public Object2IntMap<Block> getBlockMatches() {
-        return BlockRenderingSettings.INSTANCE.getBlockMatches();
+        return null;
     }
 
     public void deleteShaders() {

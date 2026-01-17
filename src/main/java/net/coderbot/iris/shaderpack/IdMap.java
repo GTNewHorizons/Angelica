@@ -132,6 +132,77 @@ public class IdMap {
 		return parseIdMap(properties, "entity.", "entity.properties");
 	}
 
+    /**
+	 * Parses a space-delimited list of identifiers.
+	 * Identifiers with spaces or special characters can be enclosed in double quotes.
+	 * Use backslash to escape quotes or backslashes within quoted strings.
+	 *
+	 * Examples (input -> parsed result):
+	 *   minecraft:stone natura:berry
+	 *     -> minecraft:stone, natura:berry
+	 *
+	 *   minecraft:stone "Natura:N Crops"
+	 *     -> minecraft:stone, Natura:N Crops
+	 *
+	 *   "SomeDumbMod:Foo\\ \"Bar\":3"
+	 *     -> SomeDumbMod:Foo\ "Bar":3
+	 *
+	 * @param value The space-delimited string to parse
+	 * @param fileName The name of the properties file (for error messages)
+	 * @param key The property key being parsed (for error messages)
+	 * @return List of parsed identifiers
+	 */
+	private static List<String> parseIdentifierList(String value, String fileName, String key) {
+		if (value.indexOf('"') == -1) {
+			String[] parts = value.split("\\s+");
+			List<String> result = new ArrayList<>(parts.length);
+			for (String part : parts) {
+				if (!part.isEmpty()) {
+					result.add(part);
+				}
+			}
+			return result;
+		}
+
+		// Found quote, start of a dumb block ID
+		List<String> result = new ArrayList<>();
+		StringBuilder current = new StringBuilder();
+		boolean inQuotes = false;
+		boolean escaped = false;
+
+		for (int i = 0; i < value.length(); i++) {
+			char c = value.charAt(i);
+
+			if (escaped) {
+				current.append(c);
+				escaped = false;
+			} else if (c == '\\') {
+				escaped = true;
+			} else if (c == '"') {
+				inQuotes = !inQuotes;
+			} else if (Character.isWhitespace(c) && !inQuotes) {
+				if (current.length() > 0) {
+					result.add(current.toString());
+					current.setLength(0);
+				}
+			} else {
+				current.append(c);
+			}
+		}
+
+		// Didn't close a quote, warn
+		if (inQuotes) {
+			Iris.logger.warn(fileName + " [" + key + "]: Unclosed quote");
+		}
+
+		// Add final token
+		if (current.length() > 0) {
+			result.add(current.toString());
+		}
+
+		return result;
+	}
+
 	/**
 	 * Parses a NamespacedId map in OptiFine format
 	 */
@@ -158,8 +229,8 @@ public class IdMap {
 				return;
 			}
 
-			// Split on any whitespace
-			for (String part : value.split("\\s+")) {
+			// Parse identifiers
+			for (String part : parseIdentifierList(value, fileName, key)) {
 				if (part.contains("=")) {
 					// Avoid tons of logspam for now
 					Iris.logger.warn("Failed to parse an ResourceLocation in " + fileName + " for the key " + key + ": state properties are currently not supported: " + part);
@@ -209,8 +280,8 @@ public class IdMap {
 				}
 			}
 
-			// Split on whitespace groups, not just single spaces
-			for (String part : value.toString().split("\\s+")) {
+			// Parse identifiers
+			for (String part : parseIdentifierList(value.toString(), fileName, key)) {
 				if (part.isEmpty()) {
 					continue;
 				}
@@ -255,7 +326,7 @@ public class IdMap {
 				return;
 			}
 
-			for (String part : value.split("\\s+")) {
+			for (String part : parseIdentifierList(value, fileName, key)) {
 				// Note: NamespacedId performs no validation on the content. That will need to be done by whatever is
 				//       converting these things to ResourceLocations.
 				overrides.put(new NamespacedId(part), renderType);
