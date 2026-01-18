@@ -30,10 +30,29 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = SkyProviderCelestial.class, priority = 100)
 public class MixinSkyProviderCelestial_ShaderCompat {
 	
+	/// Simple white 2x2 texture
 	@Unique
-	private static ResourceLocation GL_TEXTURE_2D_WORKAROUND = new ResourceLocation("angelica:textures/shaders_workaround.png"); /// Simple white 2x2 texture
+	private static ResourceLocation GL_TEXTURE_2D_WORKAROUND = new ResourceLocation("angelica:textures/shaders_workaround.png"); 
 	
-	/// Fixes
+	// Fixes
+	
+	/**
+	 * Disables {@link GL11#glDisable(int GL_TEXTURE_2D)} call
+	 * @see #iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)
+	 */
+	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 0), remap = false)
+	private boolean iris$sunset$revertTextureDisable(int i) {
+		return false;
+	}
+	
+	/**
+	 * Disables {@link GL11#glEnable(int GL_TEXTURE_2D)} call
+	 * @see #iris$atmosphereBlend$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)
+	 */
+	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", ordinal = 0), remap = false)
+	private boolean iris$sunsetBlend$revertTextureEnable(int i) {
+		return false;
+	}
 	
 	/**
 	 * Forces sunset to render with the default program
@@ -41,13 +60,14 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	 * Fixes sunset not rendering at all with shaders enabled
 	 */
 	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V"), remap = false)
-	public void iris$sunset$renderInDefaultProgram(CallbackInfo ci, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
+	public void iris$sunset$renderInDefaultProgram(CallbackInfo ci, @Local(argsOnly = true) Minecraft mc, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
 		sunset$previousProgram.set(GLStateManager.getActiveProgram());
 		GLStateManager.glUseProgram(0);
+		mc.getTextureManager().bindTexture(GL_TEXTURE_2D_WORKAROUND);
 	}
 	
 	/**
-	 * Sets the program back before {@link #iris$sunset$renderInDefaultProgram(CallbackInfo, LocalIntRef)} call
+	 * Sets the program back before {@link #iris$sunset$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)} call
 	 */
 	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V", shift = At.Shift.AFTER), remap = false)
 	public void iris$sunset$restorePreviousProgram(CallbackInfo ci, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
@@ -200,7 +220,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 		GLStateManager.glUseProgram(ringsFront$previousProgram.get());
 	}
 	
-	/// Pipeline setup
+	// Pipeline setup
 	
 	@Inject(method = "render", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
 	private void iris$renderSky$beginNormalSky(CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
