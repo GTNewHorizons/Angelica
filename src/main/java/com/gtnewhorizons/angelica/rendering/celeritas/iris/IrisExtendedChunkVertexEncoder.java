@@ -4,8 +4,6 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 import static com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType.STRIDE;
 import static com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType.encodeMidTexture;
 
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Setter;

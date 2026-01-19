@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.model.ModelBase;
@@ -23,7 +21,6 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(RenderHorse.class)
 public abstract class MixinRenderHorse {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
-    private static final IntSet WARNED_UNKNOWN_ARMOR_INDICES = new IntOpenHashSet();
 
     /**
      * Set the item ID when rendering the horse model if it has armor.
@@ -58,8 +55,8 @@ public abstract class MixinRenderHorse {
                     default:
                         // Unknown armor index - likely from a mod
                         // Warn once per unique index to avoid spam
-                        if (!WARNED_UNKNOWN_ARMOR_INDICES.contains(armorIndex)) {
-                            WARNED_UNKNOWN_ARMOR_INDICES.add(armorIndex);
+                        if (!ItemMaterialHelper.WARNED_UNKNOWN_ARMOR_INDICES.contains(armorIndex)) {
+                            ItemMaterialHelper.WARNED_UNKNOWN_ARMOR_INDICES.add(armorIndex);
                             LOGGER.warn("Unknown horse armor index detected: {}. " +
                                 "This is likely from a mod. Vanilla horse armor uses indices 1-3 (iron/gold/diamond). " +
                                 "Modded horse armor material IDs are not currently supported.", armorIndex);

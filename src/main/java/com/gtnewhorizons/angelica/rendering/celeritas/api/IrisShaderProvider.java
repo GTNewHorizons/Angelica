@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.rendering.celeritas.api;
 
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.block.Block;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
@@ -28,7 +27,4 @@ public interface IrisShaderProvider {
 
     /** Block render layer overrides from shader pack */
     @Nullable Map<Block, RenderLayer> getBlockTypeIds();
-
-    /** Block ID matches for extended vertex data */
-    @Nullable Object2IntMap<Block> getBlockMatches();
 }

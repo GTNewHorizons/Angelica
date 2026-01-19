@@ -2,7 +2,6 @@ package net.coderbot.iris.celeritas;
 
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.shadows.ShadowRenderingState;
@@ -64,12 +63,6 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
     @Nullable
     public Map<Block, RenderLayer> getBlockTypeIds() {
         return BlockRenderingSettings.INSTANCE.getBlockTypeIds();
-    }
-
-    @Override
-    @Nullable
-    public Object2IntMap<Block> getBlockMatches() {
-        return null;
     }
 
     public void deleteShaders() {

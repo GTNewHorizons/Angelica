@@ -195,6 +195,11 @@ public class IdMap {
 			Iris.logger.warn(fileName + " [" + key + "]: Unclosed quote");
 		}
 
+		// Trailing backslash, warn
+		if (escaped) {
+			Iris.logger.warn(fileName + " [" + key + "]: Trailing backslash");
+		}
+
 		// Add final token
 		if (current.length() > 0) {
 			result.add(current.toString());
