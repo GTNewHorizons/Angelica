@@ -18,6 +18,7 @@ import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -64,9 +65,9 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     }
 
     @Redirect(method = "<init>(Lnet/minecraft/client/Minecraft;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
-    private int celeritas$skipDisplayListAllocation(int count) {
-        // Skip allocation - celeritas replaces WorldRenderer with its own rendering system
-        return 0;
+    private int celeritas$minimizeDisplayListAllocation(int count) {
+        // Minimize allocation - celeritas replaces WorldRenderer with its own rendering system
+        return GLAllocation.generateDisplayLists(3);
     }
 
     @Redirect(method = "loadRenderers", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderDistanceChunks:I", opcode = Opcodes.GETFIELD, ordinal = 0))
