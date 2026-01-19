@@ -1,9 +1,12 @@
 package net.coderbot.iris.block_rendering;
 
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
@@ -14,14 +17,19 @@ import net.minecraft.util.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class BlockMaterialMapping {
-	public static Object2IntMap<Block> createBlockStateIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
-		Object2IntMap<Block> blockMatches = new Object2IntOpenHashMap<>();
+	/**
+	 * Creates a two-level map structure for block material IDs.
+	 * Based on Iris's BlockState mapping approach adapted for 1.7.10's metadata system.
+	 */
+	public static Reference2ObjectMap<Block, Int2IntMap> createBlockMetaIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
+		Reference2ObjectMap<Block, Int2IntMap> blockMatches = new Reference2ObjectOpenHashMap<>();
 
 		blockPropertiesMap.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
-				addBlock(entry, blockMatches, intId);
+				addBlockMetas(entry, blockMatches, intId);
 			}
 		});
 
@@ -57,7 +65,11 @@ public class BlockMaterialMapping {
         };
 	}
 
-	private static void addBlock(BlockEntry entry, Object2IntMap<Block> idMap, int intId) {
+	/**
+	 * Adds block+metadata combinations to the material ID map.
+	 * Based on Iris's addBlockStates method, adapted for 1.7.10 metadata system.
+	 */
+	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
 		final NamespacedId id = entry.getId();
 		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
 
@@ -69,40 +81,25 @@ public class BlockMaterialMapping {
 			return;
 		}
 
-        idMap.put(block, intId);
+		Set<Integer> metas = entry.getMetas();
 
-//        Set<Integer> metas = entry.getMetas();
-//        // All metas match
-//		if (metas.isEmpty()) {
-//            idMap.putIfAbsent(new BlockMatch(block, null), intId);
-//			return;
-//		}
-//
-//        // A subset of metas match
-//        for(int meta : metas) {
-//            idMap.putIfAbsent(new BlockMatch(block, meta), intId);
-//        }
+		Int2IntMap metaMap = idMap.get(block);
+		if (metaMap == null) {
+			metaMap = new Int2IntOpenHashMap();
+			metaMap.defaultReturnValue(-1);
+			idMap.put(block, metaMap);
+		}
+
+		if (metas.isEmpty()) {
+			// Add all metadata values (0-15) if there aren't any specific ones
+			for (int meta = 0; meta < 16; meta++) {
+				metaMap.putIfAbsent(meta, intId);
+			}
+		} else {
+			// Add only specific metadata values
+			for (int meta : metas) {
+				metaMap.putIfAbsent(meta, intId);
+			}
+		}
 	}
-
-	// We ignore generics here, the actual types don't matter because we just convert
-	// them to strings anyways, and the compiler checks just get in the way.
-	//
-	// If you're able to rewrite this function without SuppressWarnings, feel free.
-	// But otherwise it works fine.
-    // TODO: BlockStateIdMap
-//	@SuppressWarnings({"rawtypes", "unchecked"})
-//	private static boolean checkState(BlockState state, Map<Property<?>, String> expectedValues) {
-//		for (Map.Entry<Property<?>, String> condition : expectedValues.entrySet()) {
-//			Property property = condition.getKey();
-//			String expectedValue = condition.getValue();
-//
-//			String actualValue = property.getName(state.getValue(property));
-//
-//			if (!expectedValue.equals(actualValue)) {
-//				return false;
-//			}
-//		}
-//
-//		return true;
-//	}
 }
