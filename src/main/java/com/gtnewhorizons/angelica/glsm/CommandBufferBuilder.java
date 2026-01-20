@@ -46,12 +46,6 @@ public final class CommandBufferBuilder {
             cmdIndex++;
         }
 
-        // Emit remaining draw ranges at end of command stream
-        while (rangeIndex < accumulatedDraws.size()) {
-            emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), opt, finalBuffer, rangeIndex);
-            rangeIndex++;
-        }
-
         // Emit residual transform if not identity
         if (!opt.isIdentity()) {
             opt.emitPendingTransform(finalBuffer);
@@ -82,12 +76,6 @@ public final class CommandBufferBuilder {
             // Copy the command directly
             CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
             cmdIndex++;
-        }
-
-        // Emit remaining draw ranges at end of command stream
-        while (rangeIndex < accumulatedDraws.size()) {
-            finalBuffer.writeDrawRange(rangeIndex);
-            rangeIndex++;
         }
     }
 

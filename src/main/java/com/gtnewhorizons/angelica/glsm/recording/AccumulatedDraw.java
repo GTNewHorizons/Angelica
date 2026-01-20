@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import org.joml.Matrix4f;
@@ -49,7 +50,7 @@ public final class AccumulatedDraw {
      * Holds last vertex attribute values for GL state restoration after VBO draw.
      * Used to sync GLSM cache with actual GL state after VBO rendering.
      */
-    public static class RestoreData {
+    public static final class RestoreData {
         public final int lastColor;
         public final int lastNormal;
         public final float lastTexCoordU;

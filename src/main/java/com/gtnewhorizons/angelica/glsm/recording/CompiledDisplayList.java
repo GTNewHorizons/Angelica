@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -99,6 +100,7 @@ public final class CompiledDisplayList {
         final long end = ptr + commandBuffer.limit();
         while (ptr < end) {
             final int cmd = memGetInt(ptr);
+            System.out.println("cmd: " + cmd + ", remaining: " + (end - ptr));
             counts.mergeInt(cmd, 1, Integer::sum);
             ptr += getCommandSize(cmd, ptr);
         }
@@ -157,9 +159,8 @@ public final class CompiledDisplayList {
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
 
-            // DRAW_RANGE_RESTORE: 56 bytes
-            // [cmd:4][vboIndex:4][start:4][count:4][flags:4][color:16f][normal:12f][texcoord:8f]
-            case GLCommand.DRAW_RANGE_RESTORE -> 36;
+            // DRAW_RANGE_RESTORE: 28 bytes
+            case GLCommand.DRAW_RANGE_RESTORE -> 28;
 
             // DRAW_BUFFER: 8 bytes [cmd:4][mode:4]
             case GLCommand.DRAW_BUFFER -> 8;
@@ -188,5 +189,10 @@ public final class CompiledDisplayList {
 
             default -> throw new IllegalStateException("Unknown command: " + cmd);
         };
+    }
+
+    @Override
+    public String toString() {
+        return DisplayListManager.getCompiledDisplayListString(0, this, null);
     }
 }

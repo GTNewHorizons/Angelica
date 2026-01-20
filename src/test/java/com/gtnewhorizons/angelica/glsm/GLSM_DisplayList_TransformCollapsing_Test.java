@@ -663,6 +663,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled);
+        System.out.println(compiled);
 
         IntList opcodes = compiled.getCommandOpcodes();
         int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
@@ -817,8 +818,9 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
             CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
             assertNotNull(compiled);
+            System.out.println(compiled);
 
-            Int2IntMap counts = compiled.getCommandCounts();
+            Int2IntMap counts = compiled.getCommandCounts(); //TODO
             assertEquals(1, counts.getOrDefault(GLCommand.MULT_MATRIX, 0), "1 MultMatrix for mode " + mode);
             assertEquals(1, counts.getOrDefault(GLCommand.DRAW_RANGE, 0), "1 DrawRange for mode " + mode);
 
@@ -869,6 +871,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled);
+        System.out.println(compiled);
 
         Int2IntMap counts = compiled.getCommandCounts();
         IntList opcodes = compiled.getCommandOpcodes();

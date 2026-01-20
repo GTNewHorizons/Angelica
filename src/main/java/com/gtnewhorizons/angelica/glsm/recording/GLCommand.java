@@ -93,16 +93,16 @@ public final class GLCommand {
     public static final int DRAW_ARRAYS = 102;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
     public static final int DRAW_BUFFER = 103;       // [cmd:4][mode:4] = 8 bytes
     public static final int DRAW_BUFFERS = 104;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
-
-    // === Bind commands ===
-    public static final int BIND_VBO = 110;
-    public static final int BIND_VAO = 111;
     /**
      * Draw VBO range with attribute restoration after draw.
      * Used for immediate mode VBOs to restore GL current state (color, normal, texcoord).
      */
     public static final int DRAW_RANGE_RESTORE = 105; // [cmd:4][vboIndex:4][flags:4]
-                                                      // [color:4][normal:4][lastTexCoord:8f] = 28 bytes
+    // [color:4][normal:4][lastTexCoord:8f] = 28 bytes
+
+    // === Bind commands ===
+    public static final int BIND_VBO = 110;
+    public static final int BIND_VAO = 111;
 
     // === Complex object reference ===
     public static final int COMPLEX_REF = 255;       // [cmd:4][index:4] = 8 bytes
@@ -177,6 +177,7 @@ public final class GLCommand {
             case DRAW_BUFFER -> "DRAW_BUFFER";
             case DRAW_BUFFERS -> "DRAW_BUFFERS";
             case COMPLEX_REF -> "COMPLEX_REF";
+            case DRAW_RANGE_RESTORE -> "DRAW_RANGE_RESTORE";
             default -> "UNKNOWN(" + opcode + ")";
         };
     }

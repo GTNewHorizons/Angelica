@@ -236,7 +236,7 @@ public final class CommandBufferProcessor {
      * with the relativeTransform tracking in DisplayListManager - both systems must reset
      * at the same barriers (MatrixMode, LoadIdentity, LoadMatrix, Push/Pop).</p>
      */
-    public static class BufferTransformOptimizer {
+    public static final class BufferTransformOptimizer {
         private final Matrix4f accumulated = new Matrix4f();
         private final Matrix4f lastEmitted = new Matrix4f();
         private final Matrix4f delta = new Matrix4f();  // Reused for delta computation

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
 import net.minecraft.client.renderer.Tessellator;
@@ -42,17 +43,21 @@ import java.nio.ShortBuffer;
  * </ul>
  */
 public final class ImmediateModeRecorder {
-    private static final DirectTessellator tessellator = new DirectTessellator(0x4000);
+    private static final DirectTessellator tessellator = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
 
-    public ImmediateModeRecorder() {
+    private ImmediateModeRecorder() {
         // Recorder is ready to capture geometry
+    }
+
+    public static DirectTessellator getInternalTessellator() {
+        return tessellator;
     }
 
     /**
      * Set the current texture coordinate.
      * Called by GLStateManager.glTexCoord*.
      */
-    public void setTexCoord(float s, float t) {
+    public static void setTexCoord(float s, float t) {
         tessellator.setTextureUV(s, t);
     }
 
@@ -60,14 +65,14 @@ public final class ImmediateModeRecorder {
      * Set the current normal vector.
      * Called by GLStateManager.glNormal*.
      */
-    public void setNormal(float x, float y, float z) {
+    public static void setNormal(float x, float y, float z) {
         tessellator.setNormal(x, y, z);
     }
 
     /**
      * Start recording a new primitive.
      */
-    public void begin(int primitiveType) {
+    public static void begin(int primitiveType) {
         tessellator.startDrawing(primitiveType);
     }
 
@@ -77,7 +82,7 @@ public final class ImmediateModeRecorder {
      *
      * @return Result containing quads, lines, and flags, or null if no geometry was produced
      */
-    public DirectTessellator end() { //TODO
+    public static DirectTessellator end() { //TODO
         if (!tessellator.isDrawing) {
             throw new IllegalStateException("glEnd called without glBegin");
         }
@@ -93,7 +98,7 @@ public final class ImmediateModeRecorder {
      * Record a vertex with current attributes.
      * Color is read from GLStateManager at call time.
      */
-    public void vertex(float x, float y, float z) {
+    public static void vertex(float x, float y, float z) {
         if (!tessellator.isDrawing) {
             throw new IllegalStateException("glVertex called outside glBegin/glEnd");
         }
@@ -107,15 +112,15 @@ public final class ImmediateModeRecorder {
      * is returned from end() immediately. This method is kept for edge cases
      * where primitives might fail to convert (e.g., incomplete quads).
      */
-    public boolean hasGeometry() {
-        return tessellator.rawBufferIndex != 0;
+    public static boolean hasGeometry() {
+        return tessellator.vertexCount != 0;
     }
 
     /**
      * Reset all state including current texcoord/normal.
      * Called when starting a new display list.
      */
-    public void reset() {
+    public static void reset() {
         tessellator.reset();
     }
 
@@ -128,7 +133,7 @@ public final class ImmediateModeRecorder {
      * @param count Number of vertices
      * @return Result containing converted geometry, or null if no geometry produced
      */
-    public DirectTessellator processDrawArrays(int mode, int first, int count) {
+    public static DirectTessellator processDrawArrays(int mode, int first, int count) {
         final ClientArrayState cas = GLStateManager.getClientArrayState();
         final Buffer vertexPointer = cas.isVertexArrayEnabled() ? cas.getVertexPointer() : null;
         final Buffer colorPointer = cas.isColorArrayEnabled() ? cas.getColorPointer() : null;
@@ -160,7 +165,7 @@ public final class ImmediateModeRecorder {
      * @param colorStride Stride in bytes (0 for tightly packed)
      * @return Result containing converted geometry, or null if no geometry produced
      */
-    public DirectTessellator convertClientArrays(
+    public static DirectTessellator convertClientArrays(
         int mode, int first, int count,
         java.nio.Buffer vertexPointer, int vertexType, int vertexSize, int vertexStride,
         java.nio.Buffer colorPointer, int colorType, int colorSize, int colorStride

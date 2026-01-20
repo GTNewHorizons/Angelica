@@ -1075,32 +1075,31 @@ public class GLStateManager {
 
     // Records glBegin/glEnd/glVertex and compiles them to a VBO
     // Currently only used inside of display lists
-    private static final ImmediateModeRecorder immediateModeRecorder = new ImmediateModeRecorder();
 
     public static void glNormal3b(byte nx, byte ny, byte nz) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setNormal(b2f(nx), b2f(ny), b2f(nz));
+            ImmediateModeRecorder.setNormal(b2f(nx), b2f(ny), b2f(nz));
             return;
         }
         GL11.glNormal3b(nx, ny, nz);
     }
     public static void glNormal3d(double nx, double ny, double nz) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
+            ImmediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
             return;
         }
         GL11.glNormal3d(nx, ny, nz);
     }
     public static void glNormal3f(float nx, float ny, float nz) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setNormal(nx, ny, nz);
+            ImmediateModeRecorder.setNormal(nx, ny, nz);
             return;
         }
         GL11.glNormal3f(nx, ny, nz);
     }
     public static void glNormal3i(int nx, int ny, int nz) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
+            ImmediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
             return;
         }
         GL11.glNormal3i(nx, ny, nz);
@@ -1536,56 +1535,56 @@ public class GLStateManager {
 
     public static void glTexCoord1f(float s) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord(s, 0.0f);
+            ImmediateModeRecorder.setTexCoord(s, 0.0f);
             return;
         }
         GL11.glTexCoord1f(s);
     }
     public static void glTexCoord1d(double s) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord((float) s, 0.0f);
+            ImmediateModeRecorder.setTexCoord((float) s, 0.0f);
             return;
         }
         GL11.glTexCoord1d(s);
     }
     public static void glTexCoord2f(float s, float t) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord(s, t);
+            ImmediateModeRecorder.setTexCoord(s, t);
             return;
         }
         GL11.glTexCoord2f(s, t);
     }
     public static void glTexCoord2d(double s, double t) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord((float) s, (float) t);
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord2d(s, t);
     }
     public static void glTexCoord3f(float s, float t, float r) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord(s, t);  // Only track s,t for 2D textures
+            ImmediateModeRecorder.setTexCoord(s, t);  // Only track s,t for 2D textures
             return;
         }
         GL11.glTexCoord3f(s, t, r);
     }
     public static void glTexCoord3d(double s, double t, double r) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord((float) s, (float) t);
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord3d(s, t, r);
     }
     public static void glTexCoord4f(float s, float t, float r, float q) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord(s, t);
+            ImmediateModeRecorder.setTexCoord(s, t);
             return;
         }
         GL11.glTexCoord4f(s, t, r, q);
     }
     public static void glTexCoord4d(double s, double t, double r, double q) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.setTexCoord((float) s, (float) t);
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord4d(s, t, r, q);
@@ -1725,7 +1724,7 @@ public class GLStateManager {
     public static void glBegin(int mode) {
         if (DisplayListManager.isRecording()) {
             // Record to immediate mode recorder
-            immediateModeRecorder.begin(mode);
+            ImmediateModeRecorder.begin(mode);
             return;  // Don't call actual GL during recording
         }
         GL11.glBegin(mode);
@@ -1734,7 +1733,7 @@ public class GLStateManager {
     public static void glEnd() {
         if (DisplayListManager.isRecording()) {
             // Record to immediate mode recorder and flush geometry immediately
-            final DirectTessellator result = immediateModeRecorder.end();
+            final DirectTessellator result = ImmediateModeRecorder.end();
             if (result != null) {
                 // Add draw at current command position for correct interleaving
                 DisplayListManager.addImmediateModeDraw(result);
@@ -1749,7 +1748,7 @@ public class GLStateManager {
     public static void glVertex2f(float x, float y) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            immediateModeRecorder.vertex(x, y, 0.0f);
+            ImmediateModeRecorder.vertex(x, y, 0.0f);
             return;
         }
         GL11.glVertex2f(x, y);
@@ -1757,7 +1756,7 @@ public class GLStateManager {
 
     public static void glVertex2d(double x, double y) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.vertex((float) x, (float) y, 0.0f);
+            ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
             return;
         }
         GL11.glVertex2d(x, y);
@@ -1765,7 +1764,7 @@ public class GLStateManager {
 
     public static void glVertex3f(float x, float y, float z) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.vertex(x, y, z);
+            ImmediateModeRecorder.vertex(x, y, z);
             return;
         }
         GL11.glVertex3f(x, y, z);
@@ -1773,7 +1772,7 @@ public class GLStateManager {
 
     public static void glVertex3d(double x, double y, double z) {
         if (DisplayListManager.isRecording()) {
-            immediateModeRecorder.vertex((float) x, (float) y, (float) z);
+            ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
             return;
         }
         GL11.glVertex3d(x, y, z);

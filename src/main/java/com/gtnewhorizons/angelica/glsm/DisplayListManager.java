@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.github.bsideup.jabel.Desugar;
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
@@ -809,7 +811,7 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-        TessellatorManager.startCapturingDirect((tessellator) -> {
+        TessellatorManager.startCapturingCallback((tessellator) -> {
             if (!tessellator.isEmpty()) {
                 addAccumulatedDraw(tessellator, relativeTransform, false);
             }
@@ -990,7 +992,11 @@ public class DisplayListManager {
 
     // ==================== DEBUG LOGGING ====================
 
-    private static void logCompiledDisplayList(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
+    public static void logCompiledDisplayList(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
+        LOGGER.debug(getCompiledDisplayListString(listId, compiled, stackTrace));
+    }
+
+    public static String getCompiledDisplayListString(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
         final StringBuilder sb = new StringBuilder();
         sb.append("\n========== Display List Compiled: ID=").append(listId).append(" ==========\n");
 
@@ -1006,7 +1012,7 @@ public class DisplayListManager {
                 sb.append("Contents: No commands\n");
             } else {
                 sb.append("Commands (").append(buffer.limit()).append(" bytes):\n");
-                 dumpCommandBuffer(buffer, compiled.getComplexObjects(), sb);
+                dumpCommandBuffer(buffer, compiled.getComplexObjects(), sb);
             }
         }
 
@@ -1021,7 +1027,7 @@ public class DisplayListManager {
         }
 
         sb.append("========== End Display List ").append(listId).append(" ==========\n");
-        LOGGER.debug(sb.toString());
+        return sb.toString();
     }
 
     private static String identifySourceFromStackTrace(StackTraceElement[] stackTrace) {
@@ -1136,7 +1142,7 @@ public class DisplayListManager {
                     final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
                     final int brightness = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16);
                     sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
-                      .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
+                        .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
                     // Show draw source if available
                     if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
                         sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
@@ -1144,12 +1150,32 @@ public class DisplayListManager {
                     drawRangeIdx++;
                     ptr += 20;
                 }
+                case GLCommand.DRAW_RANGE_RESTORE -> {
+                    final int vboIdx = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int start = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
+                    final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
+                    final int brightness = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16);
+                    sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
+                        .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
+                    // Show draw source if available
+                    if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
+                        sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
+                    }
+                    drawRangeIdx++;
+                    ptr += 28;
+                }
                 case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> {
                     // Show source ops if available (only for MULT_MATRIX from recording phase)
-                    if (opcode == GLCommand.MULT_MATRIX && multMatrixSources != null && multMatrixIdx < multMatrixSources.size()) {
-                        final List<String> sources = multMatrixSources.get(multMatrixIdx);
-                        sb.append(" [from: ").append(String.join(" -> ", sources)).append("]");
+//                    if (opcode == GLCommand.MULT_MATRIX && multMatrixSources != null && multMatrixIdx < multMatrixSources.size()) {
+//                        final List<String> sources = multMatrixSources.get(multMatrixIdx);
+//                        sb.append(" [from: ").append(String.join(" -> ", sources)).append("]");
+//                    }
+                    sb.append("(");
+                    for (int i = 0; i < 16; i++) {
+                        float value = MemoryUtilities.memGetFloat(ptr + 4 + i * 4);
+                        sb.append(i == 0 ? value : ", " + value);
                     }
+                    sb.append(")");
                     multMatrixIdx++;
                     ptr += 68;  // cmd + 16 floats
                 }
