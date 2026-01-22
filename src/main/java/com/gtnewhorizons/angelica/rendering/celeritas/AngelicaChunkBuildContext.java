@@ -6,13 +6,20 @@ import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
+import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
+import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
+import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
+import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import lombok.Getter;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.tileentity.TileEntity;
+import org.embeddedt.embeddium.impl.model.light.data.QuadLightData;
 import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFacing;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
@@ -26,20 +33,43 @@ import org.embeddedt.embeddium.impl.util.QuadUtil;
 public class AngelicaChunkBuildContext extends ChunkBuildContext {
     public static final int NUM_PASSES = 2;
 
-    private final TextureMap textureMap;
+    private final TextureMapExtension textureAtlas;
     private final ChunkVertexEncoder.Vertex[] vertices = ChunkVertexEncoder.Vertex.uninitializedQuad();
     @Getter
     private final WorldSlice worldSlice;
+    @Getter
     private final BlockRenderContext blockRenderContext = new BlockRenderContext();
 
-    /** Pre-filtered light sources for the current chunk being built. Null if dynamic lights disabled. */
     private List<IDynamicLightSource> chunkLightSources;
     private DynamicLights dynamicLightsInstance;
 
+    private final LightDataCache lightDataCache = new LightDataCache();
+    private final SmoothLightPipeline smoothLightPipeline;
+    private final QuadLightData quadLightData = new QuadLightData();
+    private final VertexArrayQuadView quadView;
+    private boolean lightPipelineReady = false;
+    private int originX, originY, originZ;
+
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
-        this.textureMap = Minecraft.getMinecraft().getTextureMapBlocks();
+        this.textureAtlas = (TextureMapExtension) Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
+        this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
+        this.quadView = new VertexArrayQuadView(vertices);
+    }
+
+    public void setupLightPipeline(int minBlockX, int minBlockY, int minBlockZ) {
+        setupLightPipeline(worldSlice, minBlockX, minBlockY, minBlockZ);
+    }
+
+    public void setupLightPipeline(IBlockAccess blockAccess, int minBlockX, int minBlockY, int minBlockZ) {
+        this.originX = minBlockX;
+        this.originY = minBlockY;
+        this.originZ = minBlockZ;
+        lightDataCache.setWorld(blockAccess);
+        lightDataCache.reset(minBlockX, minBlockY, minBlockZ);
+        smoothLightPipeline.reset();
+        lightPipelineReady = true;
     }
 
     public void setupDynamicLights(int chunkOriginX, int chunkOriginY, int chunkOriginZ) {
@@ -52,18 +82,12 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         }
     }
 
-    public BlockRenderContext getBlockRenderContext() {
-        return this.blockRenderContext;
-    }
-
     private Material selectMaterial(Material material, TextureAtlasSprite sprite) {
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
             final var transparencyLevel = ((SpriteExtension)sprite).celeritas$getTransparencyLevel();
             if (transparencyLevel == SpriteTransparencyLevel.OPAQUE && material == AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL) {
-                // Downgrade to solid
                 return AngelicaRenderPassConfiguration.SOLID_MATERIAL;
             } else if (material == AngelicaRenderPassConfiguration.TRANSLUCENT_MATERIAL && transparencyLevel != SpriteTransparencyLevel.TRANSLUCENT) {
-                // Downgrade to cutout
                 return AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL;
             }
         }
@@ -71,8 +95,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     @SuppressWarnings("unchecked")
-    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material,
-                              int originX, int originY, int originZ) {
+    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material) {
         if (vertexCount == 0) {
             return;
         }
@@ -84,11 +107,10 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         }
 
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
-
-        final var encoder = buffers.get(material).getEncoder();
-        if (encoder instanceof IrisExtendedChunkVertexEncoder iris) {
-            iris.setContext(blockRenderContext);
-        }
+        final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
+        final boolean sodiumAo = SodiumClientMod.options().quality.useSodiumAO;
+        final boolean useAoCalculation = lightPipelineReady && (separateAo || sodiumAo);
+        final ChunkColorWriter colorEncoder = separateAo ? ChunkColorWriter.SEPARATE_AO : ChunkColorWriter.EMBEDDIUM;
 
         int ptr = 0;
         final int numQuads = vertexCount / 4;
@@ -112,26 +134,48 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 vertex.color = rawBuffer[ptr++];
                 vertex.vanillaNormal = rawBuffer[ptr++];
                 vertex.light = rawBuffer[ptr++];
+            }
 
-                if (hasDynamicLights) {
+            final int trueNormal = QuadUtil.calculateNormal(vertices);
+            final ModelQuadFacing facing = QuadUtil.findNormalFace(trueNormal);
+            final TextureAtlasSprite sprite = this.textureAtlas.celeritas$findFromUV(uSum * 0.25f, vSum * 0.25f);
+
+            if (sprite != null && sprite.hasAnimationMetadata()) {
+                animatedSprites.add(sprite);
+            }
+
+            if (useAoCalculation) {
+                final int blockX = blockRenderContext.localPosX;
+                final int blockY = blockRenderContext.localPosY;
+                final int blockZ = blockRenderContext.localPosZ;
+
+                quadView.setup(trueNormal, blockX, blockY, blockZ);
+                final ModelQuadFacing lightFace = quadView.getLightFace();
+
+                smoothLightPipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, lightFace, lightFace, false, true);
+
+                for (int vIdx = 0; vIdx < 4; vIdx++) {
+                    final var vertex = vertices[vIdx];
+                    vertex.trueNormal = trueNormal;
+                    vertex.color = colorEncoder.writeColor(vertex.color, quadLightData.br[vIdx]);
+                    vertex.light = quadLightData.lm[vIdx];
+                }
+            } else {
+                for (int vIdx = 0; vIdx < 4; vIdx++) {
+                    vertices[vIdx].trueNormal = trueNormal;
+                }
+            }
+
+            // Apply dynamic lights after AO calculation so they're not overwritten
+            if (hasDynamicLights) {
+                for (int vIdx = 0; vIdx < 4; vIdx++) {
+                    final var vertex = vertices[vIdx];
                     final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(
                         originX + vertex.x, originY + vertex.y, originZ + vertex.z, chunkLightSources);
                     if (dynamicLevel > 0) {
                         vertex.light = dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, vertex.light);
                     }
                 }
-            }
-
-            final int trueNormal = QuadUtil.calculateNormal(vertices);
-            for (int vIdx = 0; vIdx < 4; vIdx++) {
-                vertices[vIdx].trueNormal = trueNormal;
-            }
-
-            final ModelQuadFacing facing = QuadUtil.findNormalFace(trueNormal);
-            final TextureAtlasSprite sprite = ((TextureMapExtension) textureMap).celeritas$findFromUV(uSum * 0.25f, vSum * 0.25f);
-
-            if (sprite != null && sprite.hasAnimationMetadata()) {
-                animatedSprites.add(sprite);
             }
 
             final Material correctMaterial = selectMaterial(material, sprite);
