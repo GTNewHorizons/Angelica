@@ -1,6 +1,7 @@
 package net.coderbot.iris.shaderpack;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import org.joml.Vector4f;
@@ -29,7 +30,7 @@ public class PackShadowDirectives {
 	private final boolean shouldRenderEntities;
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
-	private final OptionalBoolean cullingState;
+	@Getter private final ShadowCullState cullingState;
 
 	private final ImmutableList<DepthSamplingSettings> depthSamplingSettings;
 	private final ImmutableList<SamplingSettings> colorSamplingSettings;
@@ -159,11 +160,7 @@ public class PackShadowDirectives {
 		return shouldRenderBlockEntities;
 	}
 
-	public OptionalBoolean getCullingState() {
-		return cullingState;
-	}
-
-	public OptionalBoolean isShadowEnabled() {
+    public OptionalBoolean isShadowEnabled() {
 		return shadowEnabled;
 	}
 

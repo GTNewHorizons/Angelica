@@ -1,12 +1,14 @@
 package net.coderbot.iris.samplers;
 
 import com.google.common.collect.ImmutableSet;
+import net.coderbot.iris.gl.image.GlImage;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 
+import java.util.Set;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -16,10 +18,14 @@ public class IrisImages {
 		for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
 			final int index = i;
 
+			final String name = "colorimg" + i;
+
+			if (!images.hasImage(name)) continue;
+
 			// Note: image bindings *are* impacted by buffer flips.
-			IntSupplier textureID = () -> {
-				ImmutableSet<Integer> flippedBuffers = flipped.get();
-				RenderTarget target = renderTargets.get(index);
+			final IntSupplier textureID = () -> {
+				final ImmutableSet<Integer> flippedBuffers = flipped.get();
+				final RenderTarget target = renderTargets.get(index);
 
 				if (flippedBuffers.contains(index)) {
 					return target.getAltTexture();
@@ -29,7 +35,6 @@ public class IrisImages {
 			};
 
 			final InternalTextureFormat internalFormat = renderTargets.get(i).getInternalFormat();
-			final String name = "colorimg" + i;
 
 			images.addTextureImage(textureID, internalFormat, name);
 		}
@@ -37,17 +42,43 @@ public class IrisImages {
 
 	public static boolean hasShadowImages(ImageHolder images) {
 		// TODO: Generalize
+		if (images == null) {
+			return false;
+		}
 		return images.hasImage("shadowcolorimg0") || images.hasImage("shadowcolorimg1");
 	}
 
-	public static void addShadowColorImages(ImageHolder images, ShadowRenderTargets shadowRenderTargets) {
+	public static boolean hasRenderTargetImages(ImageHolder images, RenderTargets targets) {
+		for (int i = 0; i < targets.getRenderTargetCount(); i++) {
+			if (images != null && images.hasImage("colorimg" + i)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void addShadowColorImages(ImageHolder images, ShadowRenderTargets shadowRenderTargets, ImmutableSet<Integer> flipped) {
+		if (images == null) {
+			return;
+		}
 		for (int i = 0; i < shadowRenderTargets.getNumColorTextures(); i++) {
 			final int index = i;
 
-			IntSupplier textureID = () -> shadowRenderTargets.getColorTextureId(index);
+			IntSupplier textureID;
+			if (flipped == null) {
+				textureID = () -> shadowRenderTargets.getColorTextureId(index);
+			} else {
+				textureID = () -> flipped.contains(index) ? shadowRenderTargets.get(index).getAltTexture() : shadowRenderTargets.get(index).getMainTexture();
+			}
 			InternalTextureFormat format = shadowRenderTargets.getColorTextureFormat(index);
 
 			images.addTextureImage(textureID, format, "shadowcolorimg" + i);
 		}
+	}
+
+	public static void addCustomImages(ImageHolder images, Set<GlImage> customImages) {
+		customImages.forEach(image -> {
+			images.addTextureImage(image::getId, image.getInternalFormat(), image.getName());
+		});
 	}
 }
