@@ -22,6 +22,7 @@ public class GbufferPrograms {
 	public static void beginEntities() {
 		checkReentrancy();
 		setPhase(WorldRenderingPhase.ENTITIES);
+		setBlockEntityDefaults();
 		entities = true;
 	}
 
@@ -52,6 +53,7 @@ public class GbufferPrograms {
 	public static void beginBlockEntities() {
 		checkReentrancy();
 		setPhase(WorldRenderingPhase.BLOCK_ENTITIES);
+		setBlockEntityDefaults();
 		blockEntities = true;
 	}
 
@@ -68,6 +70,7 @@ public class GbufferPrograms {
 		GL20.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
 		GL20.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
 		GL20.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+		GL20.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {

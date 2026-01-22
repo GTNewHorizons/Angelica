@@ -10,14 +10,23 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.ARBBufferStorage;
+import org.lwjgl.opengl.ARBClearBufferObject;
+import org.lwjgl.opengl.ARBClearTexture;
+import org.lwjgl.opengl.ARBShaderImageLoadStore;
+import org.lwjgl.opengl.ARBShaderStorageBufferObject;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL33;
 import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GL44;
+import org.lwjgl.opengl.NVXGpuMemoryInfo;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -31,6 +40,16 @@ public class RenderSystem {
     private static final Logger LOGGER = LogManager.getLogger("RenderSystem");
 	private static DSAAccess dsaState;
 	private static boolean supportsCompute;
+	private static boolean supportsImageLoadStore;
+	private static boolean supportsSSBO;
+	private static boolean supportsBufferStorage;
+	private static boolean supportsClearTexture;
+	private static boolean supportsSamplerObjects;
+	private static int maxImageUnits;
+	private static int maxSSBOBindings;
+
+	// Sampler object state tracking (null if unsupported)
+	private static int[] samplers;
 
     private RenderSystem() {}
 
@@ -54,6 +73,46 @@ public class RenderSystem {
         }
 
 		supportsCompute = supportsCompute();
+
+		supportsImageLoadStore = GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_shader_image_load_store || GLStateManager.capabilities.GL_EXT_shader_image_load_store;
+		supportsSSBO = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_shader_storage_buffer_object;
+		supportsBufferStorage = GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_buffer_storage;
+		supportsClearTexture = GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_clear_texture;
+
+		// Cache maximum image units
+		if (supportsImageLoadStore) {
+			if (GLStateManager.capabilities.OpenGL42) {
+				maxImageUnits = GL11.glGetInteger(GL42.GL_MAX_IMAGE_UNITS);
+			} else if (GLStateManager.capabilities.GL_ARB_shader_image_load_store) {
+				maxImageUnits = GL11.glGetInteger(ARBShaderImageLoadStore.GL_MAX_IMAGE_UNITS);
+			} else {
+				maxImageUnits = GL11.glGetInteger(EXTShaderImageLoadStore.GL_MAX_IMAGE_UNITS_EXT);
+			}
+		} else {
+			maxImageUnits = 0;
+		}
+
+		// Cache maximum SSBO bindings
+		if (supportsSSBO) {
+			if (GLStateManager.capabilities.OpenGL43) {
+				maxSSBOBindings = GL11.glGetInteger(GL43.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
+			} else {
+				maxSSBOBindings = GL11.glGetInteger(ARBShaderStorageBufferObject.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
+			}
+		} else {
+			maxSSBOBindings = 0;
+		}
+
+		// Check for sampler objects support (GL 3.3+ or ARB extension)
+		supportsSamplerObjects = GLStateManager.capabilities.OpenGL33
+			|| GLStateManager.capabilities.GL_ARB_sampler_objects;
+		if (supportsSamplerObjects) {
+			samplers = new int[GL11.glGetInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)];
+		}
+
+		LOGGER.info("Image Load/Store: {}, Max Image Units: {}", supportsImageLoadStore, maxImageUnits);
+		LOGGER.info("SSBO: {}, Max SSBO Bindings: {}", supportsSSBO, maxSSBOBindings);
+		LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
 	}
 
 	public static void generateMipmaps(int texture, int mipmapTarget) {
@@ -65,8 +124,8 @@ public class RenderSystem {
 	}
 
 	public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+		GL11.glBindTexture(target, texture);
+		GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
@@ -147,6 +206,17 @@ public class RenderSystem {
 		dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
 	}
 
+
+	public static void texImage1D(int texture, int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
+		GL11.glBindTexture(target, texture);
+		GL11.glTexImage1D(target, level, internalformat, width, border, format, type, pixels);
+	}
+
+	public static void texImage3D(int texture, int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
+		GL11.glBindTexture(target, texture);
+		GL12.glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+	}
+
     public static String getProgramInfoLog(int program) {
         return GL20.glGetProgramInfoLog(program, GL20.glGetProgrami(program, GL20.GL_INFO_LOG_LENGTH));
     }
@@ -208,13 +278,27 @@ public class RenderSystem {
 	}
 
 	public static int getMaxImageUnits() {
-		if (GLStateManager.capabilities.OpenGL42) {
-			return GL11.glGetInteger(GL42.GL_MAX_IMAGE_UNITS);
-		} else if (GLStateManager.capabilities.GL_EXT_shader_image_load_store) {
-			return GL11.glGetInteger(EXTShaderImageLoadStore.GL_MAX_IMAGE_UNITS_EXT);
-		} else {
-			return 0;
-		}
+		return maxImageUnits;
+	}
+
+	public static boolean supportsImageLoadStore() {
+		return supportsImageLoadStore;
+	}
+
+	public static boolean supportsSSBO() {
+		return supportsSSBO;
+	}
+
+	public static boolean supportsBufferStorage() {
+		return supportsBufferStorage;
+	}
+
+	public static boolean supportsClearTexture() {
+		return supportsClearTexture;
+	}
+
+	public static int getMaxSSBOBindings() {
+		return maxSSBOBindings;
 	}
 
 	public static void getProgramiv(int program, int value, IntBuffer storage) {
@@ -227,6 +311,14 @@ public class RenderSystem {
 
 	public static void dispatchCompute(Vector3i workGroups) {
 		GL43.glDispatchCompute(workGroups.x, workGroups.y, workGroups.z);
+	}
+
+	public static void dispatchComputeIndirect(long offset) {
+		GL43.glDispatchComputeIndirect(offset);
+	}
+
+	public static void bindBuffer(int target, int buffer) {
+		GL15.glBindBuffer(target, buffer);
 	}
 
 	public static void memoryBarrier(int barriers) {
@@ -253,6 +345,10 @@ public class RenderSystem {
 
 	public static void bindTextureToUnit(int unit, int texture) {
 		dsaState.bindTextureToUnit(unit, texture);
+	}
+
+	public static void bindTextureToUnit(int target, int unit, int texture) {
+		dsaState.bindTextureToUnit(target, unit, texture);
 	}
 
     public static final FloatBuffer PROJECTION_MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
@@ -289,5 +385,101 @@ public class RenderSystem {
         } catch(Exception ignored) {
             return false;
         }
+	}
+
+	public static int createBuffers() {
+		return GL15.glGenBuffers();
+	}
+
+	public static void bindBufferBase(int target, int index, int buffer) {
+		GL30.glBindBufferBase(target, index, buffer);
+	}
+
+	public static void bufferStorage(int target, long size, int flags) {
+		if (GLStateManager.capabilities.OpenGL44) {
+			GL44.glBufferStorage(target, size, flags);
+		} else if (GLStateManager.capabilities.GL_ARB_buffer_storage) {
+			ARBBufferStorage.glBufferStorage(target, size, flags);
+		} else {
+			// Fallback: use mutable storage
+			GL15.glBufferData(target, size, GL15.GL_DYNAMIC_DRAW);
+		}
+	}
+
+	public static void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, int[] data) {
+		if (GLStateManager.capabilities.OpenGL43) {
+			GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, (ByteBuffer) null);
+		} else if (GLStateManager.capabilities.GL_ARB_clear_buffer_object) {
+			ARBClearBufferObject.glClearBufferSubData(target, internalFormat, offset, size, format, type, (ByteBuffer) null);
+		}
+	}
+
+	public static void deleteBuffers(int buffer) {
+		GL15.glDeleteBuffers(buffer);
+	}
+
+	public static long getVRAM() {
+		if (GLStateManager.capabilities.GL_NVX_gpu_memory_info) {
+			return GL11.glGetInteger(NVXGpuMemoryInfo.GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1024L;
+		} else {
+			// Default to 4GB if we can't query VRAM
+			return 4294967296L;
+		}
+	}
+
+	public static void clearTexImage(int texture, int target, int level, int format, int type) {
+		if (GLStateManager.capabilities.OpenGL44) {
+			GL44.glClearTexImage(texture, level, format, type, (ByteBuffer) null);
+		} else {
+			ARBClearTexture.glClearTexImage(texture, level, format, type, (ByteBuffer) null);
+		}
+	}
+
+	public static void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
+		dsaState.textureStorage1D(texture, target, levels, internalFormat, width);
+	}
+
+	public static void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
+		dsaState.textureStorage2D(texture, target, levels, internalFormat, width, height);
+	}
+
+	public static void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
+		dsaState.textureStorage3D(texture, target, levels, internalFormat, width, height, depth);
+	}
+
+	public static boolean supportsSamplerObjects() {
+		return supportsSamplerObjects;
+	}
+
+	public static int genSampler() {
+		if (!supportsSamplerObjects) return 0;
+		return GL33.glGenSamplers();
+	}
+
+	public static void destroySampler(int sampler) {
+		if (!supportsSamplerObjects || sampler == 0) return;
+		GL33.glDeleteSamplers(sampler);
+	}
+
+	public static void samplerParameteri(int sampler, int pname, int param) {
+		if (!supportsSamplerObjects || sampler == 0) return;
+		GL33.glSamplerParameteri(sampler, pname, param);
+	}
+
+	public static void bindSamplerToUnit(int unit, int sampler) {
+		if (!supportsSamplerObjects) return;
+		if (samplers[unit] == sampler) return;
+		GL33.glBindSampler(unit, sampler);
+		samplers[unit] = sampler;
+	}
+
+	public static void unbindAllSamplers() {
+		if (!supportsSamplerObjects) return;
+		for (int i = 0; i < samplers.length; i++) {
+			if (samplers[i] != 0) {
+				GL33.glBindSampler(i, 0);
+				samplers[i] = 0;
+			}
+		}
 	}
 }

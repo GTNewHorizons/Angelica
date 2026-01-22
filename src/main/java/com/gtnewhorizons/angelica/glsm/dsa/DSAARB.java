@@ -95,6 +95,11 @@ public class DSAARB extends DSAUnsupported {
     }
 
     @Override
+    public void bindTextureToUnit(int target, int unit, int texture) {
+        bindTextureToUnit(unit, texture);
+    }
+
+    @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
         final int buffer = GL45.glCreateBuffers();
         GL45.glNamedBufferData(buffer, data, usage);
@@ -120,5 +125,20 @@ public class DSAARB extends DSAUnsupported {
     @Override
     public int createTexture(int target) {
         return ARBDirectStateAccess.glCreateTextures(target);
+    }
+
+    @Override
+    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
+        ARBDirectStateAccess.glTextureStorage1D(texture, levels, internalFormat, width);
+    }
+
+    @Override
+    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
+        ARBDirectStateAccess.glTextureStorage2D(texture, levels, internalFormat, width, height);
+    }
+
+    @Override
+    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
+        ARBDirectStateAccess.glTextureStorage3D(texture, levels, internalFormat, width, height, depth);
     }
 }

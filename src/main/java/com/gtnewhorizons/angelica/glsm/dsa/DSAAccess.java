@@ -28,6 +28,7 @@ public interface DSAAccess {
     void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height);
 
     void bindTextureToUnit(int unit, int texture);
+    void bindTextureToUnit(int target, int unit, int texture);
 
     int bufferStorage(int target, FloatBuffer data, int usage);
 
@@ -37,4 +38,9 @@ public interface DSAAccess {
 
     int createFramebuffer();
     int createTexture(int target);
+
+    // Texture storage methods for custom images
+    void textureStorage1D(int texture, int target, int levels, int internalFormat, int width);
+    void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height);
+    void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth);
 }

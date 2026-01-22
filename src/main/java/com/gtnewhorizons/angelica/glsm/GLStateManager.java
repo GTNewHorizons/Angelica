@@ -421,6 +421,7 @@ public class GLStateManager {
 
     public static void init() {
         RenderSystem.initRenderer();
+        IrisSamplers.initRenderer();
 
         if(BYPASS_CACHE) {
             LOGGER.info("GLStateManager cache bypassed");

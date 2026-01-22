@@ -4,10 +4,13 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL42;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -114,6 +117,12 @@ public class DSAUnsupported implements DSAAccess {
     }
 
     @Override
+    public void bindTextureToUnit(int target, int unit, int texture) {
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        GLStateManager.glBindTexture(target, texture);
+    }
+
+    @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
         final int buffer = GL15.glGenBuffers();
         GL15.glBindBuffer(target, buffer);
@@ -149,5 +158,29 @@ public class DSAUnsupported implements DSAAccess {
         final int texture = GL11.glGenTextures();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         return texture;
+    }
+
+    @Override
+    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
+        final int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_1D);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage1D(target, levels, internalFormat, width);
+        GL11.glBindTexture(target, previous);
+    }
+
+    @Override
+    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
+        final int previous = (target == GL11.GL_TEXTURE_2D) ? GLStateManager.getBoundTextureForServerState() : GL11.glGetInteger(GL31.GL_TEXTURE_BINDING_RECTANGLE);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage2D(target, levels, internalFormat, width, height);
+        GL11.glBindTexture(target, previous);
+    }
+
+    @Override
+    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
+        final int previous = GL11.glGetInteger(GL12.GL_TEXTURE_BINDING_3D);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage3D(target, levels, internalFormat, width, height, depth);
+        GL11.glBindTexture(target, previous);
     }
 }

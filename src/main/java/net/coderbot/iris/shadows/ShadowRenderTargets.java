@@ -18,6 +18,7 @@ import java.util.List;
 
 public class ShadowRenderTargets {
 	private final RenderTarget[] targets;
+	private final PackShadowDirectives shadowDirectives;
 	private final DepthTexture mainDepth;
 	private final DepthTexture noTranslucents;
 	private final GlFramebuffer depthSourceFb;
@@ -29,41 +30,40 @@ public class ShadowRenderTargets {
 
 	private boolean fullClearRequired;
 	private boolean translucentDepthDirty;
-	private boolean[] hardwareFiltered;
-	private InternalTextureFormat[] formats;
-	private IntList buffersToBeCleared;
+	private final boolean[] hardwareFiltered;
+	private final boolean[] linearFiltered;
+	private final InternalTextureFormat[] formats;
+	private final IntList buffersToBeCleared;
 
 	public ShadowRenderTargets(int resolution, PackShadowDirectives shadowDirectives) {
-		targets = new RenderTarget[shadowDirectives.getColorSamplingSettings().size()];
-		formats = new InternalTextureFormat[shadowDirectives.getColorSamplingSettings().size()];
-		flipped = new boolean[shadowDirectives.getColorSamplingSettings().size()];
-		hardwareFiltered = new boolean[shadowDirectives.getColorSamplingSettings().size()];
+		this.shadowDirectives = shadowDirectives;
+		this.resolution = resolution;
+
+		final int size = shadowDirectives.getColorSamplingSettings().size();
+		targets = new RenderTarget[size];
+		formats = new InternalTextureFormat[size];
+		flipped = new boolean[size];
+		hardwareFiltered = new boolean[shadowDirectives.getDepthSamplingSettings().size()];
+		linearFiltered = new boolean[shadowDirectives.getDepthSamplingSettings().size()];
 		buffersToBeCleared = new IntArrayList();
 
 		this.mainDepth = new DepthTexture(resolution, resolution, DepthBufferFormat.DEPTH);
 		this.noTranslucents = new DepthTexture(resolution, resolution, DepthBufferFormat.DEPTH);
 
-		for (int i = 0; i < shadowDirectives.getColorSamplingSettings().size(); i++) {
-			PackShadowDirectives.SamplingSettings settings = shadowDirectives.getColorSamplingSettings().get(i);
-			targets[i] = RenderTarget.builder().setDimensions(resolution, resolution)
-				.setInternalFormat(settings.getFormat())
-				.setPixelFormat(settings.getFormat().getPixelFormat()).build();
-			formats[i] = settings.getFormat();
-
-			if (settings.getClear()) {
-				buffersToBeCleared.add(i);
-			}
-
-			this.hardwareFiltered[i] = shadowDirectives.getDepthSamplingSettings().get(i).getHardwareFiltering();
-		}
-
-		this.resolution = resolution;
-
 		this.ownedFramebuffers = new ArrayList<>();
+
+		// Populate hardware/linear filtering settings from depth sampling settings
+		for (int i = 0; i < shadowDirectives.getDepthSamplingSettings().size(); i++) {
+			this.hardwareFiltered[i] = shadowDirectives.getDepthSamplingSettings().get(i).getHardwareFiltering();
+			this.linearFiltered[i] = !shadowDirectives.getDepthSamplingSettings().get(i).getNearest();
+		}
 
 		// NB: Make sure all buffers are cleared so that they don't contain undefined
 		// data. Otherwise very weird things can happen.
 		fullClearRequired = true;
+
+		// Create target 0 eagerly - it's needed for framebuffer creation and almost always used
+		createIfEmpty(0);
 
 		this.depthSourceFb = createFramebufferWritingToMain(new int[] {0});
 
@@ -71,6 +71,36 @@ public class ShadowRenderTargets {
 		this.noTranslucentsDestFb.addDepthAttachment(this.noTranslucents.getTextureId());
 
 		this.translucentDepthDirty = true;
+	}
+
+	private void create(int index) {
+		if (index >= targets.length) {
+			throw new IllegalStateException("Tried to create shadow color buffer " + index + " but only " + targets.length + " are supported.");
+		}
+
+		PackShadowDirectives.SamplingSettings settings = shadowDirectives.getColorSamplingSettings().get(index);
+		targets[index] = RenderTarget.builder()
+			.setDimensions(resolution, resolution)
+			.setInternalFormat(settings.getFormat())
+			.setPixelFormat(settings.getFormat().getPixelFormat()).build();
+		formats[index] = settings.getFormat();
+
+		if (settings.getClear()) {
+			buffersToBeCleared.add(index);
+		}
+
+		fullClearRequired = true;
+	}
+
+	public void createIfEmpty(int index) {
+		if (targets[index] == null) {
+			create(index);
+		}
+	}
+
+	public RenderTarget getOrCreate(int index) {
+		createIfEmpty(index);
+		return targets[index];
 	}
 
 	// TODO: Actually flip. This is required for shadow composites!
@@ -88,9 +118,12 @@ public class ShadowRenderTargets {
 		}
 
 		for (RenderTarget target : targets) {
-			target.destroy();
+			if (target != null) {
+				target.destroy();
+			}
 		}
 
+		mainDepth.destroy();
 		noTranslucents.destroy();
 	}
 
@@ -165,7 +198,7 @@ public class ShadowRenderTargets {
 
 		// NB: Before OpenGL 3.0, all framebuffers are required to have a color
 		// attachment no matter what.
-		framebuffer.addColorAttachment(0, get(0).getMainTexture());
+		framebuffer.addColorAttachment(0, getOrCreate(0).getMainTexture());
 		framebuffer.noDrawBuffers();
 
 		return framebuffer;
@@ -224,7 +257,7 @@ public class ShadowRenderTargets {
 					+ getRenderTargetCount() + " render targets are supported.");
 			}
 
-			RenderTarget target = this.get(drawBuffers[i]);
+			RenderTarget target = this.getOrCreate(drawBuffers[i]);
 
 			int textureId = stageWritesToMain.contains(drawBuffers[i]) ? target.getMainTexture() : target.getAltTexture();
 
@@ -242,11 +275,19 @@ public class ShadowRenderTargets {
 	}
 
 	public int getColorTextureId(int i) {
-		return isFlipped(i) ? get(i).getAltTexture() : get(i).getMainTexture();
+		RenderTarget target = get(i);
+		if (target == null) {
+			return 0;
+		}
+		return isFlipped(i) ? target.getAltTexture() : target.getMainTexture();
 	}
 
 	public boolean isHardwareFiltered(int i) {
 		return hardwareFiltered[i];
+	}
+
+	public boolean isLinearFiltered(int i) {
+		return linearFiltered[i];
 	}
 
 	public int getNumColorTextures() {
