@@ -152,7 +152,7 @@ public class IdMap {
 	 * @param key The property key being parsed (for error messages)
 	 * @return List of parsed identifiers
 	 */
-	private static List<String> parseIdentifierList(String value, String fileName, String key) {
+	static List<String> parseIdentifierList(String value, String fileName, String key) {
 		if (value.indexOf('"') == -1) {
 			String[] parts = value.split("\\s+");
 			List<String> result = new ArrayList<>(parts.length);

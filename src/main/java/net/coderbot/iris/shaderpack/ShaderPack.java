@@ -20,6 +20,7 @@ import net.coderbot.iris.shaderpack.option.menu.OptionMenuContainer;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
 import net.coderbot.iris.shaderpack.preprocessor.JcppProcessor;
+import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.coderbot.iris.shaderpack.texture.TextureFilteringData;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -38,23 +40,38 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ShaderPack {
 	private static final Gson GSON = new Gson();
+	private static final Set<String> PINNED_DIMENSIONS = Set.of("Overworld", "Nether", "The End");
+	// Configurable via -Diris.dimensionCacheSize=X (default: 12)
+	// Set to 0 to disable caching entirely (only vanilla dimensions kept)
+	// Minimum effective cache size is 3
+	private static final int MAX_DIMENSION_CACHE;
+	static {
+		int configured = Math.max(0, Integer.getInteger("iris.dimensionCacheSize", 12));
+		MAX_DIMENSION_CACHE = configured == 0 ? 0 : Math.max(PINNED_DIMENSIONS.size(), configured);
+	}
 
     public final CustomUniforms.Builder customUniforms;
 
 	private final ProgramSet base;
-	@Nullable
-	private final ProgramSet overworld;
-	private final ProgramSet nether;
-	private final ProgramSet end;
+
+	private final Map<String, String> dimensionMap;
+	private final Map<String, ProgramSet> dimensionProgramSets;
+	private final Function<AbsolutePackPath, String> sourceProvider;
+	private final ShaderProperties shaderProperties;
+	private boolean hasLoggedCacheLimitReached = false;
 
 	@Getter
     private final IdMap idMap;
@@ -94,14 +111,79 @@ public class ShaderPack {
 		ShaderPackSourceNames.findPresentSources(starts, root, AbsolutePackPath.fromAbsolutePath("/"),
 				potentialFileNames);
 
-		boolean hasWorld0 = ShaderPackSourceNames.findPresentSources(starts, root,
-				AbsolutePackPath.fromAbsolutePath("/world0"), potentialFileNames);
+		// Parse dimension.properties to get dimension name -> folder mappings
+		this.dimensionMap = new HashMap<>();
 
-		boolean hasNether = ShaderPackSourceNames.findPresentSources(starts, root,
-				AbsolutePackPath.fromAbsolutePath("/world-1"), potentialFileNames);
+		Iris.logger.info("Dimension shader cache size: {} (3 vanilla pinned + {} modded), configurable via -Diris.dimensionCacheSize",
+			MAX_DIMENSION_CACHE, Math.max(0, MAX_DIMENSION_CACHE - PINNED_DIMENSIONS.size()));
 
-		boolean hasEnd = ShaderPackSourceNames.findPresentSources(starts, root,
-				AbsolutePackPath.fromAbsolutePath("/world1"), potentialFileNames);
+		// LRU cache to prevent memory leaks in modpacks with many dimensions (Mystcraft, Galacticraft, etc.)
+		// Vanilla dimensions (Overworld, Nether, End) are pinned and never evicted
+		this.dimensionProgramSets = new LinkedHashMap<>(Math.max(12, MAX_DIMENSION_CACHE), 0.75f, true);
+
+		Optional<Properties> dimensionProperties = loadPropertiesFile(root, "dimension.properties");
+		boolean hasDimensionProperties = dimensionProperties.isPresent();
+
+		List<String> dimensionFolders = new ArrayList<>();
+
+		if (hasDimensionProperties) {
+			// Extract folder names from dimension.properties (e.g., "world0", "world-1", "custom_dim")
+			dimensionFolders.addAll(parseDimensionMap(dimensionProperties.get(), "dimension."));
+		}
+
+		if (!dimensionFolders.isEmpty()) {
+			for (String folderName : dimensionFolders) {
+				boolean folderExists = checkAndAddDimensionFolder(starts, root, potentialFileNames, folderName);
+				if (!folderExists) {
+					Iris.logger.warn("dimension.properties references folder '{}' but it doesn't exist or has no shader files", folderName);
+				}
+			}
+
+			// Warn if dimension.properties has no wildcard and no explicit Overworld/Nether/End mappings
+			if (!dimensionMap.containsKey("*") && !dimensionMap.containsKey("Overworld")
+				&& !dimensionMap.containsKey("Nether") && !dimensionMap.containsKey("The End")) {
+				Iris.logger.warn("dimension.properties exists but doesn't define mappings for vanilla dimensions (Overworld/Nether/End) or a wildcard (*)");
+			}
+		} else {
+            // No dimension.properties or it has no valid dimension mappings
+			if (hasDimensionProperties) {
+				Iris.logger.warn("dimension.properties exists but has no valid dimension mappings, falling back to legacy folder detection");
+			}
+
+			// Scan for all world{ID} folders to support old OptiFine packs with dimension IDs
+			Set<String> foundFolders = new HashSet<>();
+			try {
+				Files.list(root)
+					.filter(Files::isDirectory)
+					.map(Path::getFileName)
+					.map(Path::toString)
+					.filter(name -> name.matches("world-?\\d+"))
+					.forEach(folderName -> {
+						try {
+							boolean exists = checkAndAddDimensionFolder(starts, root, potentialFileNames, folderName);
+							if (exists) {
+								foundFolders.add(folderName);
+							}
+						} catch (IOException e) {
+							Iris.logger.warn("Failed to scan dimension folder: {}", folderName, e);
+						}
+					});
+			} catch (IOException e) {
+				Iris.logger.warn("Failed to scan for dimension folders", e);
+			}
+
+			// Set up default name mappings for vanilla dimensions only
+			// Other world{ID} folders are handled via dimension ID fallback at runtime
+			if (foundFolders.contains("world0")) {
+				dimensionMap.put("Overworld", "world0");
+			}
+			if (foundFolders.contains("world-1")) {
+				dimensionMap.put("Nether", "world-1");
+			}
+			if (foundFolders.contains("world1")) {
+				dimensionMap.put("The End", "world1");
+			}
+		}
 
 		// Read all files and included files recursively
 		IncludeGraph graph = new IncludeGraph(root, starts.build());
@@ -121,7 +203,7 @@ public class ShaderPack {
 		graph = this.shaderPackOptions.getIncludes();
 
 		Iterable<StringPair> finalEnvironmentDefines = environmentDefines;
-		ShaderProperties shaderProperties = loadProperties(root, "shaders.properties")
+		this.shaderProperties = Optional.ofNullable(readProperties(root, "shaders.properties"))
 				.map(source -> new ShaderProperties(source, shaderPackOptions, finalEnvironmentDefines))
 				.orElseGet(ShaderProperties::empty);
 
@@ -180,7 +262,7 @@ public class ShaderPack {
 
 		// Set up our source provider for creating ProgramSets
 		Iterable<StringPair> finalEnvironmentDefines1 = environmentDefines;
-		Function<AbsolutePackPath, String> sourceProvider = (path) -> {
+		this.sourceProvider = (path) -> {
 			String pathString = path.getPathString();
 			// Removes the first "/" in the path if present, and the file
 			// extension in order to represent the path as its program name
@@ -218,10 +300,6 @@ public class ShaderPack {
 
 		this.base = new ProgramSet(AbsolutePackPath.fromAbsolutePath("/"), sourceProvider, shaderProperties, this);
 
-		this.overworld = loadOverrides(hasWorld0, AbsolutePackPath.fromAbsolutePath("/world0"), sourceProvider, shaderProperties, this);
-		this.nether = loadOverrides(hasNether, AbsolutePackPath.fromAbsolutePath("/world-1"), sourceProvider, shaderProperties, this);
-		this.end = loadOverrides(hasEnd, AbsolutePackPath.fromAbsolutePath("/world1"), sourceProvider, shaderProperties, this);
-
 		this.idMap = new IdMap(root, shaderPackOptions, environmentDefines);
 
 		customNoiseTexture = shaderProperties.getNoiseTexturePath().map(path -> {
@@ -258,24 +336,84 @@ public class ShaderPack {
 		return profileInfo;
 	}
 
-	@Nullable
-	private static ProgramSet loadOverrides(boolean has, AbsolutePackPath path, Function<AbsolutePackPath, String> sourceProvider,
-											ShaderProperties shaderProperties, ShaderPack pack) {
-		if (has) {
-			return new ProgramSet(path, sourceProvider, shaderProperties, pack);
-		}
-
-		return null;
-	}
-
-	// TODO: Copy-paste from IdMap, find a way to deduplicate this
-	private static Optional<String> loadProperties(Path shaderPath, String name) {
+    // TODO: Copy-paste from IdMap, find a way to deduplicate this
+	private static Optional<Properties> loadPropertiesFile(Path shaderPath, String name) {
 		String fileContents = readProperties(shaderPath, name);
 		if (fileContents == null) {
 			return Optional.empty();
 		}
 
-		return Optional.of(fileContents);
+		StringReader propertiesReader = new StringReader(fileContents);
+
+		Properties properties = new OrderBackedProperties();
+		try {
+			properties.load(propertiesReader);
+		} catch (IOException e) {
+			Iris.logger.error("Error loading " + name + " at " + shaderPath, e);
+			return Optional.empty();
+		}
+
+		return Optional.of(properties);
+	}
+
+  /**
+   * Parses dimension mappings from dimension.properties and populates the dimensionMap field.
+   *
+   * Format: dimension.<folder> = <dimension names...>
+   * Example: dimension.world0 = Overworld "Twilight Forest" minecraft:overworld
+   *
+   * For each entry, creates mappings from each dimension name to its folder name in dimensionMap.
+   *
+   * @param properties The properties to parse
+   * @param keyPrefix The prefix to filter keys by (typically "dimension.")
+   * @return List of folder names found in the properties (e.g., ["world0", "world-1", "custom_dim"])
+   */
+	private List<String> parseDimensionMap(Properties properties, String keyPrefix) {
+		List<String> folderNames = new ArrayList<>();
+
+		properties.forEach((keyObject, valueObject) -> {
+			String key = (String) keyObject;
+			String value = (String) valueObject;
+
+			if (!key.startsWith(keyPrefix)) {
+				return;
+			}
+
+			// Extract folder name (e.g., "world0" from "dimension.world0")
+			String folderName = key.substring(keyPrefix.length());
+
+			// Skip empty folder names
+			if (folderName.isEmpty()) {
+				Iris.logger.warn("Ignoring dimension.properties entry with empty folder name: {}", key);
+				return;
+			}
+
+			// Parse dimension names
+			List<String> dimensionNames = IdMap.parseIdentifierList(value, "dimension.properties", key);
+
+			// Skip if no dimension names are specified
+			if (dimensionNames.isEmpty()) {
+				Iris.logger.warn("Ignoring dimension.properties entry '{}' with no dimension names", key);
+				return;
+			}
+
+			folderNames.add(folderName);
+
+			for (String dimensionName : dimensionNames) {
+				dimensionMap.put(dimensionName, folderName);
+			}
+		});
+
+		return folderNames;
+	}
+
+	/**
+	 * Checks if a dimension folder exists and adds it to the starts list
+	 */
+	private boolean checkAndAddDimensionFolder(ImmutableList.Builder<AbsolutePackPath> starts, Path root,
+											   ImmutableList<String> potentialFileNames, String folderName) throws IOException {
+		return ShaderPackSourceNames.findPresentSources(starts, root,
+				AbsolutePackPath.fromAbsolutePath("/" + folderName), potentialFileNames);
 	}
 
 	// TODO: Implement raw texture data types
@@ -352,15 +490,133 @@ public class ShaderPack {
 		}
 	}
 
-	public ProgramSet getProgramSet(DimensionId dimension) {
-		ProgramSet overrides = switch (dimension) {
-            case OVERWORLD -> overworld;
-            case NETHER -> nether;
-            case END -> end;
-            default -> throw new IllegalArgumentException("Unknown dimension " + dimension);
-        };
+	/**
+	 * Evicts the least recently used non-pinned dimension from the cache if it exceeds the size limit.
+	 * Pinned dimensions (Overworld, Nether, The End) are never evicted.
+	 * The LinkedHashMap maintains access order, so oldest entries are at the front.
+	 */
+	private void evictOldDimensions() {
+		// If cache is disabled, evict everything except pinned
+		if (MAX_DIMENSION_CACHE == 0) {
+			dimensionProgramSets.entrySet().removeIf(e -> !PINNED_DIMENSIONS.contains(e.getKey()));
+			return;
+		}
 
-        // NB: If a dimension overrides directory is present, none of the files from the parent directory are "merged"
+		// Count non-pinned entries
+		long nonPinnedCount = dimensionProgramSets.entrySet().stream()
+			.filter(e -> !PINNED_DIMENSIONS.contains(e.getKey()))
+			.count();
+
+		int maxNonPinned = Math.max(0, MAX_DIMENSION_CACHE - PINNED_DIMENSIONS.size());
+
+		// Evict oldest non-pinned dimensions until we're at the limit
+		while (nonPinnedCount > maxNonPinned) {
+			// Log once when we first hit the limit
+			if (!hasLoggedCacheLimitReached) {
+				Iris.logger.info("Dimension shader cache limit reached (max {} total: {} vanilla + {} modded). Now evicting least recently used dimensions.",
+					MAX_DIMENSION_CACHE, PINNED_DIMENSIONS.size(), maxNonPinned);
+				hasLoggedCacheLimitReached = true;
+			}
+
+			// Find the first (oldest/least recently used) non-pinned entry
+			String toEvict = null;
+			for (Map.Entry<String, ProgramSet> entry : dimensionProgramSets.entrySet()) {
+				if (!PINNED_DIMENSIONS.contains(entry.getKey())) {
+					toEvict = entry.getKey();
+					break;
+				}
+			}
+
+			if (toEvict != null) {
+				dimensionProgramSets.remove(toEvict);
+				nonPinnedCount--;
+			} else {
+				// Shouldn't happen, but break to avoid infinite loop
+				break;
+			}
+		}
+	}
+
+    /**
+     * Gets or creates the appropriate ProgramSet for the given dimension.
+     *
+     * Resolution order:
+     *
+     *   Exact match in dimension.properties (dimension.<folder> = dimensionName)
+     *   Wildcard match (dimension.<folder> = *)
+     *   Legacy world{ID} folder (e.g., world0, world-1)
+     *   Fallback to base ProgramSet
+     *
+     *
+     * ProgramSets are lazily created and cached. When cache exceeds limit,
+     * least recently used non-vanilla dimensions are evicted.
+     *
+     * @param dimensionName The dimension name from WorldProvider.getDimensionName()
+     * @return The ProgramSet for this dimension, or base ProgramSet if no override exists
+     */
+    public ProgramSet getProgramSet(String dimensionName) {
+		int dimensionId = Iris.getCurrentDimensionId();
+
+		// First, try to find an exact match in the dimension map
+		String folderName = dimensionMap.get(dimensionName);
+		boolean foundExactMatch = folderName != null;
+
+		// If no exact match, try wildcard
+		if (folderName == null) {
+			folderName = dimensionMap.get("*");
+		}
+
+		// If still no match, try world{ID} folder as fallback for backward compatibility
+		if (folderName == null) {
+			folderName = "world" + dimensionId;
+		}
+
+		// If we have a folder name, try to get or create its ProgramSet
+		if (folderName != null) {
+			ProgramSet programSet = dimensionProgramSets.get(folderName);
+
+			if (programSet == null) {
+				// Create ProgramSet on-demand for any dimension folder
+				try {
+					programSet = new ProgramSet(
+						AbsolutePackPath.fromAbsolutePath("/" + folderName),
+						sourceProvider,
+						shaderProperties,
+						this
+					);
+				} catch (Exception e) {
+					// If the folder doesn't exist, just fall back to base silently.
+                    // Expected since I don't think literally anyone has ever done custom dimension shaders
+					String message = e.getMessage();
+					if (message != null && (message.contains("does not contain") || message.contains("No sources found"))) {
+						Iris.logger.debug("Dimension folder '" + folderName + "' not found, using base shaders");
+					} else {
+						Iris.logger.error("Failed to create ProgramSet for dimension folder '{}', falling back to base", folderName, e);
+					}
+					programSet = null;
+				}
+
+				if (programSet != null) {
+					dimensionProgramSets.put(folderName, programSet);
+
+                    // Check cache size limit and evict LRU dimensions if needed
+					evictOldDimensions();
+				}
+			}
+
+			if (programSet != null) {
+				return programSet;
+			}
+		}
+
+		// Warn if dimension.properties exists but this dimension has no mapping and no wildcard
+		if (!dimensionMap.isEmpty() && !foundExactMatch && !dimensionMap.containsKey("*")) {
+			Iris.logger.warn("Dimension '{}' has no shader mapping in dimension.properties and no wildcard (*) fallback is defined. " +
+					"Falling back to base shaders. Consider adding 'dimension.<folder>={}' or 'dimension.<folder>=*' to dimension.properties",
+					dimensionName, dimensionName);
+		}
+
+		// NB: If a dimension overrides directory is present, none of the files from the parent directory are "merged"
 		//     into the override. Rather, we act as if the overrides directory contains a completely different set of
 		//     shader programs unrelated to that of the base shader pack.
 		//
@@ -368,11 +624,8 @@ public class ShaderPack {
 		//     impossible to "un-define" the composite pass. It also removes a lot of complexity related to "merging"
 		//     program sets. At the same time, this might be desired behavior by shader pack authors. It could make
 		//     sense to bring it back as a configurable option, and have a more maintainable set of code backing it.
-		if (overrides != null) {
-			return overrides;
-		} else {
-			return base;
-		}
+
+		return base;
 	}
 
     public Optional<CustomTextureData> getCustomNoiseTexture() {
