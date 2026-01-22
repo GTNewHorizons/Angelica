@@ -218,10 +218,11 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final var encoder = buffers.get(passMaterial).getEncoder();
         final ContextAwareChunkVertexEncoder contextEncoder = (encoder instanceof ContextAwareChunkVertexEncoder) ? (ContextAwareChunkVertexEncoder) encoder : null;
 
+        blockRenderContext.localPosX = x & 15;
+        blockRenderContext.localPosY = y & 15;
+        blockRenderContext.localPosZ = z & 15;
+
         if (contextEncoder != null) {
-            blockRenderContext.localPosX = x & 15;
-            blockRenderContext.localPosY = y & 15;
-            blockRenderContext.localPosZ = z & 15;
             final byte lightValue = (byte) block.getLightValue();
             if (isFluid) {
                 contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
@@ -236,7 +237,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial, originX, originY, originZ);
+        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial);
         tessellator.reset();
         tessellator.isDrawing = false;
 
