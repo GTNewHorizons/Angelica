@@ -811,7 +811,7 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-        TessellatorManager.startCapturingCallback((tessellator) -> {
+        TessellatorManager.startCapturingDirect((tessellator) -> {
             if (!tessellator.isEmpty()) {
                 addAccumulatedDraw(tessellator, relativeTransform, false);
             }
