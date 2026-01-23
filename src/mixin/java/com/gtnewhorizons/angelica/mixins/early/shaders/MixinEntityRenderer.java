@@ -41,7 +41,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
         Program.unbind();
 
-        pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension()));
+        pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName()));
 
         pipeline.get().beginLevelRendering();
     }
