@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
@@ -121,6 +122,13 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	public FrameUpdateNotifier getFrameUpdateNotifier() {
 		// return a dummy notifier
 		return new FrameUpdateNotifier();
+	}
+
+	private static final DHCompat DH_COMPAT = new DHCompat();
+
+	@Override
+	public DHCompat getDHCompat() {
+		return DH_COMPAT;
 	}
 
 	@Override

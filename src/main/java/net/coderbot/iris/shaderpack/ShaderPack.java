@@ -5,11 +5,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.stream.JsonReader;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.features.FeatureFlags;
+import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
+import net.coderbot.iris.gl.image.ImageInformation;
+import net.coderbot.iris.gl.texture.TextureDefinition;
 import net.coderbot.iris.shaderpack.include.AbsolutePackPath;
 import net.coderbot.iris.shaderpack.include.IncludeGraph;
 import net.coderbot.iris.shaderpack.include.IncludeProcessor;
@@ -73,17 +77,15 @@ public class ShaderPack {
 	private final ShaderProperties shaderProperties;
 	private boolean hasLoggedCacheLimitReached = false;
 
-	@Getter
-    private final IdMap idMap;
-	@Getter
-    private final LanguageMap languageMap;
-	@Getter
-    private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
+	@Getter private final IdMap idMap;
+	@Getter private final LanguageMap languageMap;
+	@Getter private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
+	@Getter private final Object2ObjectMap<String, CustomTextureData> irisCustomTextureDataMap = new Object2ObjectOpenHashMap<>();
 	private final CustomTextureData customNoiseTexture;
-	@Getter
-    private final ShaderPackOptions shaderPackOptions;
-	@Getter
-    private final OptionMenuContainer menuContainer;
+	@Getter private final Object2ObjectMap<String, ImageInformation> customImages;
+	@Getter private final Int2ObjectMap<ShaderStorageInfo> bufferObjects;
+	@Getter private final ShaderPackOptions shaderPackOptions;
+	@Getter private final OptionMenuContainer menuContainer;
 
 	private final ProfileSet.ProfileResult profile;
 	private final String profileInfo;
@@ -105,11 +107,10 @@ public class ShaderPack {
 		Objects.requireNonNull(root);
 
 
-		ImmutableList.Builder<AbsolutePackPath> starts = ImmutableList.builder();
-		ImmutableList<String> potentialFileNames = ShaderPackSourceNames.POTENTIAL_STARTS;
+		final ImmutableList.Builder<AbsolutePackPath> starts = ImmutableList.builder();
+		final ImmutableList<String> potentialFileNames = ShaderPackSourceNames.POTENTIAL_STARTS;
 
-		ShaderPackSourceNames.findPresentSources(starts, root, AbsolutePackPath.fromAbsolutePath("/"),
-				potentialFileNames);
+		ShaderPackSourceNames.findPresentSources(starts, root, AbsolutePackPath.fromAbsolutePath("/"), potentialFileNames);
 
 		// Parse dimension.properties to get dimension name -> folder mappings
 		this.dimensionMap = new HashMap<>();
@@ -314,18 +315,30 @@ public class ShaderPack {
 
 		shaderProperties.getCustomTextures().forEach((textureStage, customTexturePropertiesMap) -> {
 			Object2ObjectMap<String, CustomTextureData> innerCustomTextureDataMap = new Object2ObjectOpenHashMap<>();
-			customTexturePropertiesMap.forEach((samplerName, path) -> {
+			customTexturePropertiesMap.forEach((samplerName, definition) -> {
 				try {
-					innerCustomTextureDataMap.put(samplerName, readTexture(root, path));
+					innerCustomTextureDataMap.put(samplerName, readTexture(root, definition));
 				} catch (IOException e) {
-					Iris.logger.error("Unable to read the custom texture at " + path, e);
+					Iris.logger.error("Unable to read the custom texture at " + definition.getName(), e);
 				}
 			});
 
 			customTextureDataMap.put(textureStage, innerCustomTextureDataMap);
 		});
 
+		// Process irisCustomTextures (direct custom textures via customTexture.<name>=<path>)
+		shaderProperties.getIrisCustomTextures().forEach((samplerName, definition) -> {
+			try {
+				irisCustomTextureDataMap.put(samplerName, readTexture(root, definition));
+				Iris.logger.debug("[CustomTextures] Loaded customTexture.{} from {}", samplerName, definition.getName());
+			} catch (IOException e) {
+				Iris.logger.error("Unable to read custom texture for sampler " + samplerName + " at " + definition.getName(), e);
+			}
+		});
+
         this.customUniforms = shaderProperties.getCustomUniforms();
+		this.customImages = shaderProperties.getCustomImages();
+		this.bufferObjects = shaderProperties.getBufferObjects();
 	}
 
 	private String getCurrentProfileName() {
@@ -416,7 +429,73 @@ public class ShaderPack {
 				AbsolutePackPath.fromAbsolutePath("/" + folderName), potentialFileNames);
 	}
 
-	// TODO: Implement raw texture data types
+	/**
+	 * Reads a texture from a TextureDefinition. Handles both PNG and raw texture types.
+	 */
+	public CustomTextureData readTexture(Path root, TextureDefinition definition) throws IOException {
+		if (definition instanceof TextureDefinition.RawDefinition rawDef) {
+			return readRawTexture(root, rawDef);
+		} else {
+			// PNG definition - use the path-based method
+			return readTexture(root, definition.getName());
+		}
+	}
+
+	/**
+	 * Reads a raw texture from a RawDefinition.
+	 */
+	private CustomTextureData readRawTexture(Path root, TextureDefinition.RawDefinition rawDef) throws IOException {
+		String path = rawDef.getName();
+
+		if (path.startsWith("/")) {
+			path = path.substring(1);
+		}
+
+		// Read mcmeta for filtering data
+		boolean blur = false;
+		boolean clamp = false;
+
+		String mcMetaPath = path + ".mcmeta";
+		Path mcMetaResolvedPath = root.resolve(mcMetaPath);
+
+		if (Files.exists(mcMetaResolvedPath)) {
+			try {
+				JsonObject meta = loadMcMeta(mcMetaResolvedPath);
+				if (meta.get("texture") != null) {
+					if (meta.get("texture").getAsJsonObject().get("blur") != null) {
+						blur = meta.get("texture").getAsJsonObject().get("blur").getAsBoolean();
+					}
+					if (meta.get("texture").getAsJsonObject().get("clamp") != null) {
+						clamp = meta.get("texture").getAsJsonObject().get("clamp").getAsBoolean();
+					}
+				}
+			} catch (IOException e) {
+				Iris.logger.error("Unable to read the custom texture mcmeta at " + mcMetaPath + ", ignoring: " + e);
+			}
+		}
+
+		byte[] content = Files.readAllBytes(root.resolve(path));
+		TextureFilteringData filteringData = new TextureFilteringData(blur, clamp);
+
+		return switch (rawDef.getTarget()) {
+			case TEXTURE_1D -> new CustomTextureData.RawData1D(content, filteringData,
+					rawDef.getInternalFormat(), rawDef.getFormat(), rawDef.getPixelType(),
+					rawDef.getSizeX());
+			case TEXTURE_2D -> new CustomTextureData.RawData2D(content, filteringData,
+					rawDef.getInternalFormat(), rawDef.getFormat(), rawDef.getPixelType(),
+					rawDef.getSizeX(), rawDef.getSizeY());
+			case TEXTURE_3D -> new CustomTextureData.RawData3D(content, filteringData,
+					rawDef.getInternalFormat(), rawDef.getFormat(), rawDef.getPixelType(),
+					rawDef.getSizeX(), rawDef.getSizeY(), rawDef.getSizeZ());
+			case TEXTURE_RECTANGLE -> new CustomTextureData.RawDataRect(content, filteringData,
+					rawDef.getInternalFormat(), rawDef.getFormat(), rawDef.getPixelType(),
+					rawDef.getSizeX(), rawDef.getSizeY());
+		};
+	}
+
+	/**
+	 * Reads a texture from a path string (for PNG textures and resource locations).
+	 */
 	public CustomTextureData readTexture(Path root, String path) throws IOException {
 		CustomTextureData customTextureData;
 		if (path.contains(":")) {
@@ -432,7 +511,6 @@ public class ShaderPack {
 				customTextureData = new CustomTextureData.ResourceData(parts[0], parts[1]);
 			}
 		} else {
-			// TODO: Make sure the resulting path is within the shaderpack?
 			if (path.startsWith("/")) {
 				// NB: This does not guarantee the resulting path is in the shaderpack as a double slash could be used,
 				// this just fixes shaderpacks like Continuum 2.0.4 that use a leading slash in texture paths

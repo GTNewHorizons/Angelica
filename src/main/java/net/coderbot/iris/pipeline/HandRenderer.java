@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -114,6 +115,8 @@ public class HandRenderer {
 
         setupGlState(gameRenderer, camera, tickDelta);
 
+        GbufferPrograms.setBlockEntityDefaults();
+
         renderingSolid = true;
         mc.entityRenderer.enableLightmap(tickDelta);
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
@@ -150,6 +153,8 @@ public class HandRenderer {
         mc.mcProfiler.startSection("iris_hand_translucent");
 
         setupGlState(gameRenderer, camera, tickDelta);
+
+        GbufferPrograms.setBlockEntityDefaults();
 
         mc.entityRenderer.enableLightmap(tickDelta);
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);

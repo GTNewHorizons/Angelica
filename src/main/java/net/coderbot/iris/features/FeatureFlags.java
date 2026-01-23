@@ -13,6 +13,8 @@ public enum FeatureFlags {
 	COMPUTE_SHADERS(() -> true, RenderSystem::supportsCompute),
 	ENTITY_TRANSLUCENT(() -> true, () -> true),
 	BLOCK_EMISSION_ATTRIBUTE(() -> true, () -> true),
+	CUSTOM_IMAGES(() -> true, RenderSystem::supportsImageLoadStore),
+	SSBO(() -> true, RenderSystem::supportsSSBO),
 	UNKNOWN(() -> false, () -> false);
 
 	private final BooleanSupplier irisRequirement;
