@@ -35,8 +35,16 @@ public class LightDataCache extends LightDataAccess {
         // Opacity check - true if block is view-blocking (solid blocks)
         final boolean op = block.getMaterial().isOpaque() && block.getLightOpacity() > 0;
 
-        // Emissive check - full bright if lightmap coords would be max (15, 15)
-        final boolean em = lu == 15;
+        boolean em;
+        if (lu > 0) {
+            em = true;
+        } else {
+            try {
+                em = block.getMixedBrightnessForBlock(EmptyBlockAccess.INSTANCE, x, y, z) == QuadLightingHelper.FULL_BRIGHT_15;
+            } catch (Exception e) {
+                em = false;
+            }
+        }
 
         return packFC(fc) | packFO(fo) | packOP(op) | packEM(em) | packAO(ao) | packLU(lu) | packSL(sl) | packBL(bl);
     }

@@ -3,22 +3,26 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 
+import java.util.Arrays;
 import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
+import com.gtnewhorizons.angelica.rendering.celeritas.light.QuadLightingHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
 import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.tileentity.TileEntity;
+import org.embeddedt.embeddium.impl.model.light.data.LightDataAccess;
 import org.embeddedt.embeddium.impl.model.light.data.QuadLightData;
 import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFacing;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
@@ -108,8 +112,11 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
         final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
-        final boolean sodiumAo = SodiumClientMod.options().quality.useSodiumAO;
-        final boolean useAoCalculation = lightPipelineReady && (separateAo || sodiumAo);
+        final boolean celeritasSmoothLighting = SodiumClientMod.options().quality.useCeleritasSmoothLighting;
+        final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
+        final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
+        final boolean stripDiffuse = shaderActive && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
+        final boolean shade = false; // Vanilla bakes it, or we remove it - so no need to shade
         final ChunkColorWriter colorEncoder = separateAo ? ChunkColorWriter.SEPARATE_AO : ChunkColorWriter.EMBEDDIUM;
 
         int ptr = 0;
@@ -144,15 +151,37 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 animatedSprites.add(sprite);
             }
 
+            // Strip vanilla's baked diffuse when shaders want oldLighting=false - multiply by an inversion factor
+            // instead of attempting to mixin/asm all the places that bake it in
+            if (stripDiffuse) {
+                final float inverseDiffuse = VanillaDiffuseProvider.INSTANCE.getInverseDiffuse(facing);
+                for (int vIdx = 0; vIdx < 4; vIdx++) {
+                    vertices[vIdx].color = VanillaDiffuseProvider.multiplyColor(vertices[vIdx].color, inverseDiffuse);
+                }
+            }
+
             if (useAoCalculation) {
                 final int blockX = blockRenderContext.localPosX;
                 final int blockY = blockRenderContext.localPosY;
                 final int blockZ = blockRenderContext.localPosZ;
 
-                quadView.setup(trueNormal, blockX, blockY, blockZ);
-                final ModelQuadFacing lightFace = quadView.getLightFace();
+                final boolean isEmissive = LightDataAccess.unpackEM(lightDataCache.get(originX + blockX, originY + blockY, originZ + blockZ));
+                final boolean quadIsFullBright = QuadLightingHelper.isQuadFullBright(vertices);
 
-                smoothLightPipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, lightFace, lightFace, false, true);
+                if (isEmissive || quadIsFullBright) {
+                    Arrays.fill(quadLightData.br, 1.0f);
+                    if (isEmissive) {
+                        Arrays.fill(quadLightData.lm, LightDataAccess.FULL_BRIGHT);
+                    } else {
+                        for (int i = 0; i < 4; i++) {
+                            quadLightData.lm[i] = vertices[i].light;
+                        }
+                    }
+                } else {
+                    quadView.setup(trueNormal, blockX, blockY, blockZ);
+                    final ModelQuadFacing lightFace = quadView.getLightFace();
+                    smoothLightPipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, lightFace, lightFace, shade, true);
+                }
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
@@ -170,8 +199,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             if (hasDynamicLights) {
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
-                    final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(
-                        originX + vertex.x, originY + vertex.y, originZ + vertex.z, chunkLightSources);
+                    final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(originX + vertex.x, originY + vertex.y, originZ + vertex.z, chunkLightSources);
                     if (dynamicLevel > 0) {
                         vertex.light = dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, vertex.light);
                     }
