@@ -2,12 +2,14 @@ package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL42;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -74,13 +76,13 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public void readBuffer(int framebuffer, int buffer) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         GL11.glReadBuffer(buffer);
     }
 
     @Override
     public void drawBuffers(int framebuffer, IntBuffer buffers) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         GL20.glDrawBuffers(buffers);
     }
 
@@ -114,6 +116,12 @@ public class DSAUnsupported implements DSAAccess {
     }
 
     @Override
+    public void bindTextureToUnit(int target, int unit, int texture) {
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        GLStateManager.glBindTexture(target, texture);
+    }
+
+    @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
         final int buffer = GL15.glGenBuffers();
         GL15.glBindBuffer(target, buffer);
@@ -126,21 +134,21 @@ public class DSAUnsupported implements DSAAccess {
     @Override
     public void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2,
         int bufferChoice, int filter) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, source);
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, dest);
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, source);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, dest);
         GL30.glBlitFramebuffer(offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
     }
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(fbtarget, fb);
+        GLStateManager.glBindFramebuffer(fbtarget, fb);
         GL30.glFramebufferTexture2D(fbtarget, attachment, target, texture, levels);
     }
 
     @Override
     public int createFramebuffer() {
-        final int framebuffer = OpenGlHelper.func_153165_e/*glGenFramebuffers*/();
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        final int framebuffer = GLStateManager.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         return framebuffer;
     }
 
@@ -149,5 +157,29 @@ public class DSAUnsupported implements DSAAccess {
         final int texture = GL11.glGenTextures();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         return texture;
+    }
+
+    @Override
+    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
+        final int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_1D);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage1D(target, levels, internalFormat, width);
+        GL11.glBindTexture(target, previous);
+    }
+
+    @Override
+    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
+        final int previous = (target == GL11.GL_TEXTURE_2D) ? GLStateManager.getBoundTextureForServerState() : GL11.glGetInteger(GL31.GL_TEXTURE_BINDING_RECTANGLE);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage2D(target, levels, internalFormat, width, height);
+        GL11.glBindTexture(target, previous);
+    }
+
+    @Override
+    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
+        final int previous = GL11.glGetInteger(GL12.GL_TEXTURE_BINDING_3D);
+        GL11.glBindTexture(target, texture);
+        GL42.glTexStorage3D(target, levels, internalFormat, width, height, depth);
+        GL11.glBindTexture(target, previous);
     }
 }

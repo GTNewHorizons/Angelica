@@ -17,8 +17,8 @@ import java.util.Objects;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
-import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
+import net.coderbot.iris.shaderpack.ShadowCullState;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadow.ShadowMatrices;
@@ -36,7 +36,6 @@ import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -79,7 +78,7 @@ public class ShadowRenderer {
 	private final float intervalSize;
 	private final Float fov;
 	private final ShadowRenderTargets targets;
-	private final OptionalBoolean packCullingState;
+	private final ShadowCullState packCullingState;
 	private boolean packHasVoxelization;
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
@@ -141,7 +140,7 @@ public class ShadowRenderer {
 			this.packCullingState = shadowDirectives.getCullingState();
 		} else {
 			this.packHasVoxelization = false;
-			this.packCullingState = OptionalBoolean.DEFAULT;
+			this.packCullingState = ShadowCullState.DEFAULT;
 		}
 
 		this.sunPathRotation = directives.getSunPathRotation();
@@ -286,12 +285,12 @@ public class ShadowRenderer {
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
 		String distanceInfo;
 		String cullingInfo;
-		if ((packCullingState == OptionalBoolean.FALSE || packHasVoxelization) && packCullingState != OptionalBoolean.TRUE) {
+		if ((packCullingState == ShadowCullState.DISTANCE || packHasVoxelization) && packCullingState != ShadowCullState.ADVANCED) {
 			double distance = halfPlaneLength * renderMultiplier;
 
 			String reason;
 
-			if (packCullingState == OptionalBoolean.FALSE) {
+			if (packCullingState == ShadowCullState.DISTANCE) {
 				reason = "(set by shader pack)";
 			} else /*if (packHasVoxelization)*/ {
 				reason = "(voxelization detected)";
@@ -538,7 +537,7 @@ public class ShadowRenderer {
             return;
         }
         int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
-        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float) brightness % 65536, (float) brightness / 65536);
+        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
             (double)tile.xCoord - cameraX,

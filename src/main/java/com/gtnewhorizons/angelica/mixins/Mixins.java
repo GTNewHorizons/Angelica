@@ -200,11 +200,14 @@ public enum Mixins implements IMixins {
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
             , "shaders.MixinLocale"
-            , "shaders.MixinOpenGlHelper"
             , "shaders.MixinRender"
+            , "shaders.MixinRenderBiped"
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
+            , "shaders.MixinRenderHorse"
+            , "shaders.MixinRenderItem"
+            , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
         )
     ),

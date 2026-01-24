@@ -204,8 +204,12 @@ public class ShaderTransformer {
                 hacky120Patches.add(transformer);
             }
 
+            // Extract extensions from the pre-parsed content (version + extensions before main code)
+            // This preserves #extension directives that the shader pack declares
+            var extensions = versionPattern.matcher(getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
+
             types.put(type, transformer);
-            prepatched.put(type, profileString);
+            prepatched.put(type, profileString + (extensions.isEmpty() ? "" : "\n" + extensions));
         }
         CompatibilityTransformer.transformGrouped(types, parameters);
         for (var entry : types.entrySet()) {
@@ -394,8 +398,10 @@ public class ShaderTransformer {
                     stringBuilder.deleteCharAt(stringBuilder.length() - 2);
                 }
                 tabHolder[0] = "";
+                stringBuilder.append(" \n");
+            } else {
+                stringBuilder.append(text.equals(";") ? " \n" + tabHolder[0] : " ");
             }
-            stringBuilder.append(text.equals(";") ? " \n" + tabHolder[0] : " ");
         } else {
             for (int i = 0; i < tree.getChildCount(); ++i) {
                 getFormattedShader(tree.getChild(i), stringBuilder, tabHolder);
