@@ -68,13 +68,16 @@ public class AngelicaRenderPassConfiguration {
         CUTOUT_MIPPED_MATERIAL = new Material(CUTOUT_MIPPED_PASS, AlphaCutoffParameter.ONE_TENTH, true);
 
         final ImmutableListMultimap.Builder<BlockRenderLayer, TerrainRenderPass> vanillaRenderStages = ImmutableListMultimap.builder();
-        vanillaRenderStages.put(BlockRenderLayer.TRANSLUCENT, TRANSLUCENT_PASS);
         vanillaRenderStages.put(BlockRenderLayer.SOLID, SOLID_PASS);
-        vanillaRenderStages.put(BlockRenderLayer.SOLID, CUTOUT_MIPPED_PASS);
+        vanillaRenderStages.put(BlockRenderLayer.CUTOUT, CUTOUT_MIPPED_PASS);
+        vanillaRenderStages.put(BlockRenderLayer.CUTOUT_MIPPED, CUTOUT_MIPPED_PASS);
+        vanillaRenderStages.put(BlockRenderLayer.TRANSLUCENT, TRANSLUCENT_PASS);
 
         // Material lookup by terrain layer
         final Map<BlockRenderLayer, Material> renderTypeToMaterialMap = new Reference2ReferenceOpenHashMap<>(4, Reference2ReferenceOpenHashMap.VERY_FAST_LOAD_FACTOR);
-        renderTypeToMaterialMap.put(BlockRenderLayer.SOLID, CUTOUT_MIPPED_MATERIAL);
+        renderTypeToMaterialMap.put(BlockRenderLayer.SOLID, SOLID_MATERIAL);
+        renderTypeToMaterialMap.put(BlockRenderLayer.CUTOUT, CUTOUT_MIPPED_MATERIAL);
+        renderTypeToMaterialMap.put(BlockRenderLayer.CUTOUT_MIPPED, CUTOUT_MIPPED_MATERIAL);
         renderTypeToMaterialMap.put(BlockRenderLayer.TRANSLUCENT, TRANSLUCENT_MATERIAL);
 
         return new RenderPassConfiguration<>(renderTypeToMaterialMap, vanillaRenderStages.build().asMap(), CUTOUT_MIPPED_MATERIAL, CUTOUT_MIPPED_MATERIAL, TRANSLUCENT_MATERIAL);

@@ -36,7 +36,6 @@ import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -538,7 +537,7 @@ public class ShadowRenderer {
             return;
         }
         int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
-        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float) brightness % 65536, (float) brightness / 65536);
+        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
             (double)tile.xCoord - cameraX,

@@ -200,7 +200,6 @@ public enum Mixins implements IMixins {
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
             , "shaders.MixinLocale"
-            , "shaders.MixinOpenGlHelper"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
             , "shaders.MixinRenderEntityFlame"
@@ -315,7 +314,7 @@ public enum Mixins implements IMixins {
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
             .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat")),
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat", "client.ntmSpace.MixinSkyProviderLaytheSunset")),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)

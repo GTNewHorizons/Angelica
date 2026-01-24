@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
+import org.embeddedt.embeddium.impl.model.light.LightPipeline;
+import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.QuadLightingHelper;
@@ -49,6 +51,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     private final LightDataCache lightDataCache = new LightDataCache();
     private final SmoothLightPipeline smoothLightPipeline;
+    private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
     private final VertexArrayQuadView quadView;
     private boolean lightPipelineReady = false;
@@ -59,6 +62,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         this.textureAtlas = (TextureMapExtension) Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
         this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
+        this.flatLightPipeline = new FlatLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
         this.quadView = new VertexArrayQuadView(vertices);
     }
 
@@ -73,6 +77,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         lightDataCache.setWorld(blockAccess);
         lightDataCache.reset(minBlockX, minBlockY, minBlockZ);
         smoothLightPipeline.reset();
+        flatLightPipeline.reset();
         lightPipelineReady = true;
     }
 
@@ -86,7 +91,11 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         }
     }
 
-    private Material selectMaterial(Material material, TextureAtlasSprite sprite) {
+    private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
+        // Don't apply transparency-based optimization when shader pack explicitly overrides the material
+        if (isShaderPackOverride) {
+            return material;
+        }
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
             final var transparencyLevel = ((SpriteExtension)sprite).celeritas$getTransparencyLevel();
             if (transparencyLevel == SpriteTransparencyLevel.OPAQUE && material == AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL) {
@@ -99,7 +108,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     @SuppressWarnings("unchecked")
-    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material) {
+    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
+                              boolean blockAllowsSmoothLighting) {
         if (vertexCount == 0) {
             return;
         }
@@ -121,6 +131,14 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
         int ptr = 0;
         final int numQuads = vertexCount / 4;
+
+        final int blockX = blockRenderContext.localPosX;
+        final int blockY = blockRenderContext.localPosY;
+        final int blockZ = blockRenderContext.localPosZ;
+        final int worldX = originX + blockX;
+        final int worldY = originY + blockY;
+        final int worldZ = originZ + blockZ;
+        final boolean isEmissive = useAoCalculation && QuadLightingHelper.isBlockEmissive(worldSlice, worldX, worldY, worldZ);
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
@@ -161,11 +179,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             }
 
             if (useAoCalculation) {
-                final int blockX = blockRenderContext.localPosX;
-                final int blockY = blockRenderContext.localPosY;
-                final int blockZ = blockRenderContext.localPosZ;
-
-                final boolean isEmissive = LightDataAccess.unpackEM(lightDataCache.get(originX + blockX, originY + blockY, originZ + blockZ));
                 final boolean quadIsFullBright = QuadLightingHelper.isQuadFullBright(vertices);
 
                 if (isEmissive || quadIsFullBright) {
@@ -180,7 +193,9 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 } else {
                     quadView.setup(trueNormal, blockX, blockY, blockZ);
                     final ModelQuadFacing lightFace = quadView.getLightFace();
-                    smoothLightPipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, lightFace, lightFace, shade, true);
+                    final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
+                    final ModelQuadFacing cullFace = quadView.getCullFace();
+                    pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shade, true);
                 }
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
@@ -206,7 +221,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
 
-            final Material correctMaterial = selectMaterial(material, sprite);
+            final Material correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
             final var builder = buffers.get(correctMaterial);
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {

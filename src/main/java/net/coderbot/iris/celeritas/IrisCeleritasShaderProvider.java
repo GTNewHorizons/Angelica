@@ -1,5 +1,6 @@
 package net.coderbot.iris.celeritas;
 
+import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import net.coderbot.iris.Iris;
@@ -11,7 +12,6 @@ import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderInterface;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -61,7 +61,7 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
 
     @Override
     @Nullable
-    public Map<Block, RenderLayer> getBlockTypeIds() {
+    public Map<Block, BlockRenderLayer> getBlockTypeIds() {
         return BlockRenderingSettings.INSTANCE.getBlockTypeIds();
     }
 

@@ -1,10 +1,9 @@
 package net.coderbot.iris.block_rendering;
 
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
@@ -36,33 +35,37 @@ public class BlockMaterialMapping {
 		return blockMatches;
 	}
 
-	public static Map<Block, RenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
-		Map<Block, RenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
+	public static Map<Block, BlockRenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
+		Map<Block, BlockRenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
 
 		blockPropertiesMap.forEach((id, blockType) -> {
-			ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+			final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+			final Block block = Block.getBlockFromName(resourceLocation.toString());
 
-			Block block = Block.getBlockFromName(resourceLocation.toString());
+			if (block == null || block == Blocks.air) {
+				return;
+			}
 
-			blockTypeIds.put(block, convertBlockToRenderType(blockType));
+			final BlockRenderLayer layer = convertBlockToRenderLayer(blockType);
+			if (layer != null) {
+				blockTypeIds.put(block, layer);
+			}
 		});
 
 		return blockTypeIds;
 	}
 
-	private static RenderLayer convertBlockToRenderType(BlockRenderType type) {
+	private static BlockRenderLayer convertBlockToRenderLayer(BlockRenderType type) {
 		if (type == null) {
 			return null;
 		}
 
-        return switch (type) {
-            // Everything renders in cutout or translucent in 1.7.10
-            case SOLID, CUTOUT, CUTOUT_MIPPED -> RenderLayer.cutout();
-            // case SOLID -> RenderLayer.solid();
-            // case CUTOUT_MIPPED -> RenderLayer.cutoutMipped();
-            case TRANSLUCENT -> RenderLayer.translucent();
-            default -> null;
-        };
+		return switch (type) {
+			case SOLID -> BlockRenderLayer.SOLID;
+			case CUTOUT -> BlockRenderLayer.CUTOUT;
+			case CUTOUT_MIPPED -> BlockRenderLayer.CUTOUT_MIPPED;
+			case TRANSLUCENT -> BlockRenderLayer.TRANSLUCENT;
+		};
 	}
 
 	/**

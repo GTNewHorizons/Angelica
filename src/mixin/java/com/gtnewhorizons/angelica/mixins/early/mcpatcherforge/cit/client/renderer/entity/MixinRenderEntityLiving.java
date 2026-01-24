@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cit.client.renderer.entity;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
@@ -13,6 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -224,9 +225,9 @@ public abstract class MixinRenderEntityLiving extends Render {
             this.renderEquippedItems(entity, p_76986_9_);
             float f14 = entity.getBrightness(p_76986_9_);
             j = this.getColorMultiplier(entity, f14, p_76986_9_);
-            OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+            GLStateManager.setActiveTexture(GL13.GL_TEXTURE1);
             GL11.glDisable(GL11.GL_TEXTURE_2D);
-            OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+            GLStateManager.setActiveTexture(GL13.GL_TEXTURE0);
 
             if ((j >> 24 & 255) > 0 || entity.hurtTime > 0 || entity.deathTime > 0) {
                 GL11.glDisable(GL11.GL_TEXTURE_2D);
@@ -274,9 +275,9 @@ public abstract class MixinRenderEntityLiving extends Render {
             logger.error("Couldn't render entity", exception);
         }
 
-        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLStateManager.setActiveTexture(GL13.GL_TEXTURE1);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
-        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLStateManager.setActiveTexture(GL13.GL_TEXTURE0);
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL11.glPopMatrix();
         this.passSpecialRender(entity, x, y, z);

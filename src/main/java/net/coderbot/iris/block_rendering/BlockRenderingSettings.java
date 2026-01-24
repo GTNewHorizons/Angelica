@@ -1,6 +1,6 @@
 package net.coderbot.iris.block_rendering;
 
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
@@ -18,7 +18,7 @@ public class BlockRenderingSettings {
 	@Getter
     private boolean reloadRequired;
 	private Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
-	private Map<Block, RenderLayer> blockTypeIds;
+	private Map<Block, BlockRenderLayer> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
 	private Object2IntFunction<NamespacedId> itemIds;
 	private float ambientOcclusionLevel;
@@ -55,7 +55,7 @@ public class BlockRenderingSettings {
 	}
 
 	@Nullable
-	public Map<Block, RenderLayer> getBlockTypeIds() {
+	public Map<Block, BlockRenderLayer> getBlockTypeIds() {
 		return blockTypeIds;
 	}
 
@@ -74,7 +74,7 @@ public class BlockRenderingSettings {
 		this.blockMetaMatches = blockMetaIds;
 	}
 
-	public void setBlockTypeIds(Map<Block, RenderLayer> blockTypeIds) {
+	public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
 		if (this.blockTypeIds != null && this.blockTypeIds.equals(blockTypeIds)) {
 			return;
 		}
