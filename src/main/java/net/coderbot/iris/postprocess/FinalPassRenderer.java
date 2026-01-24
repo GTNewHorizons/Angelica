@@ -453,5 +453,6 @@ public class FinalPassRenderer {
 		if (finalPass != null) {
 			finalPass.destroy();
 		}
+		colorHolder.destroy();
 	}
 }

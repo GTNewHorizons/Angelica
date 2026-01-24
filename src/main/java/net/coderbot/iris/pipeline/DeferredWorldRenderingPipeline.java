@@ -930,10 +930,20 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// Destroy the composite rendering pipeline
 		//
 		// This destroys all the loaded composite programs as well.
+		prepareRenderer.destroy();
 		compositeRenderer.destroy();
 		deferredRenderer.destroy();
 		finalPassRenderer.destroy();
 		centerDepthSampler.destroy();
+
+		// Destroy shadow compute programs
+		if (shadowComputes != null) {
+			for (ComputeProgram compute : shadowComputes) {
+				if (compute != null) {
+					compute.destroy();
+				}
+			}
+		}
 
 		horizonRenderer.destroy();
 
@@ -957,7 +967,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		// Destroy custom textures and the static samplers (normals, specular, and noise)
 		customTextureManager.destroy();
-//		whitePixel.releaseId();
+		whitePixel.deleteGlTexture();
 
 		// Destroy custom images
 		for (GlImage image : customImages) {
