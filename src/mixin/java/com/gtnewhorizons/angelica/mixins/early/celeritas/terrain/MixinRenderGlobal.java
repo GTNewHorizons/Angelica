@@ -158,8 +158,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final double camZ = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
-            mc.mcProfiler.endStartSection("draw_chunk_layer_" + pass);
-            this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.fromVanillaPass(pass), camX, camY, camZ);
+            if (pass == 0) {
+                mc.mcProfiler.endStartSection("draw_chunk_layer_solid");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.SOLID, camX, camY, camZ);
+                mc.mcProfiler.endStartSection("draw_chunk_layer_cutout_mipped");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
+            } else {
+                mc.mcProfiler.endStartSection("draw_chunk_layer_translucent");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
+            }
         } finally {
             RenderDevice.exitManagedCode();
         }
