@@ -3789,8 +3789,6 @@ public class GLStateManager {
 
     @Getter protected static int drawFramebuffer = 0;
     @Getter protected static int readFramebuffer = 0;
-    public static float lastBrightnessX = 0.0f;
-    public static float lastBrightnessY = 0.0f;
 
     public static void glBindFramebuffer(int target, int framebuffer) {
         if (target == GL30.GL_FRAMEBUFFER) {
@@ -3832,8 +3830,8 @@ public class GLStateManager {
     public static void setLightmapTextureCoords(int unit, float x, float y) {
         GL13.glMultiTexCoord2f(unit, x, y);
         if (unit == GL13.GL_TEXTURE1) {
-            lastBrightnessX = x;
-            lastBrightnessY = y;
+            OpenGlHelper.lastBrightnessX = x;
+            OpenGlHelper.lastBrightnessY = y;
         }
     }
 
