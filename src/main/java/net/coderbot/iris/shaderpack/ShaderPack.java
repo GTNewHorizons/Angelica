@@ -203,7 +203,14 @@ public class ShaderPack {
 		this.shaderPackOptions = new ShaderPackOptions(graph, changedConfigs);
 		graph = this.shaderPackOptions.getIncludes();
 
-		Iterable<StringPair> finalEnvironmentDefines = environmentDefines;
+		List<StringPair> finalEnvironmentDefines = new ArrayList<>();
+		environmentDefines.forEach(finalEnvironmentDefines::add);
+		for (FeatureFlags flag : FeatureFlags.values()) {
+			if (flag.isUsable()) {
+				finalEnvironmentDefines.add(new StringPair("IRIS_FEATURE_" + flag.name(), ""));
+			}
+		}
+
 		this.shaderProperties = Optional.ofNullable(readProperties(root, "shaders.properties"))
 				.map(source -> new ShaderProperties(source, shaderPackOptions, finalEnvironmentDefines))
 				.orElseGet(ShaderProperties::empty);
@@ -218,15 +225,6 @@ public class ShaderPack {
 //					.collect(Collectors.joining(", ", ": ", ".")))));
 //			}
 			IrisApi.getInstance().getConfig().setShadersEnabledAndApply(false);
-		}
-
-		List<String> optionalFeatureFlags = shaderProperties.getOptionalFeatureFlags().stream().filter(flag -> !FeatureFlags.isInvalid(flag)).collect(Collectors.toList());
-
-		if (!optionalFeatureFlags.isEmpty()) {
-			List<StringPair> newEnvDefines = new ArrayList<>();
-			environmentDefines.forEach(newEnvDefines::add);
-			optionalFeatureFlags.forEach(flag -> newEnvDefines.add(new StringPair("IRIS_FEATURE_" + flag, "")));
-			environmentDefines = ImmutableList.copyOf(newEnvDefines);
 		}
 
 		ProfileSet profiles = ProfileSet.fromTree(shaderProperties.getProfiles(), this.shaderPackOptions.getOptionSet());
