@@ -12,6 +12,7 @@ public class VertexArrayQuadView implements ModelQuadView {
     private int trueNormal;
     private int blockX, blockY, blockZ;
     private ModelQuadFacing lightFace;
+    private int flags;
 
     public VertexArrayQuadView(ChunkVertexEncoder.Vertex[] vertices) {
         this.vertices = vertices;
@@ -23,6 +24,7 @@ public class VertexArrayQuadView implements ModelQuadView {
         this.blockY = blockY;
         this.blockZ = blockZ;
         this.lightFace = null; // Reset cached lightFace
+        this.flags = 0;
     }
 
     @Override
@@ -62,7 +64,10 @@ public class VertexArrayQuadView implements ModelQuadView {
 
     @Override
     public int getFlags() {
-        return ModelQuadFlags.getQuadFlags(this, getLightFace());
+        if (flags == 0) {
+            flags = ModelQuadFlags.getQuadFlags(this, getLightFace());
+        }
+        return flags;
     }
 
     @Override
@@ -96,6 +101,21 @@ public class VertexArrayQuadView implements ModelQuadView {
     @Override
     public int getComputedFaceNormal() {
         return trueNormal;
+    }
+
+    /**
+     * Gets the cull face of a quad. This is distinct from the light face, as it will not be set for non-axis-aligned
+     * and non-block-grid-aligned quads (i.e. quads on the surface of the 1x1x1 cube).
+     * @return the cull face if present, or UNASSIGNED
+     */
+    public ModelQuadFacing getCullFace() {
+        // In modern, only quads that are aligned to the block grid can have a cull face, as otherwise
+        // they should not participate in face culling (an adjacent block wouldn't obscure an inset quad)
+        if ((getFlags() & ModelQuadFlags.IS_ALIGNED) == 0) {
+            return ModelQuadFacing.UNASSIGNED;
+        }
+
+        return getNormalFace();
     }
 
     private static ModelQuadFacing computeLightFace(int normal) {
