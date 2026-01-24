@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
+import org.embeddedt.embeddium.impl.model.light.LightPipeline;
+import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.QuadLightingHelper;
@@ -49,6 +51,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     private final LightDataCache lightDataCache = new LightDataCache();
     private final SmoothLightPipeline smoothLightPipeline;
+    private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
     private final VertexArrayQuadView quadView;
     private boolean lightPipelineReady = false;
@@ -59,6 +62,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         this.textureAtlas = (TextureMapExtension) Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
         this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
+        this.flatLightPipeline = new FlatLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
         this.quadView = new VertexArrayQuadView(vertices);
     }
 
@@ -73,6 +77,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         lightDataCache.setWorld(blockAccess);
         lightDataCache.reset(minBlockX, minBlockY, minBlockZ);
         smoothLightPipeline.reset();
+        flatLightPipeline.reset();
         lightPipelineReady = true;
     }
 
@@ -103,7 +108,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     @SuppressWarnings("unchecked")
-    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride) {
+    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
+                              boolean blockAllowsSmoothLighting) {
         if (vertexCount == 0) {
             return;
         }
@@ -184,7 +190,9 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 } else {
                     quadView.setup(trueNormal, blockX, blockY, blockZ);
                     final ModelQuadFacing lightFace = quadView.getLightFace();
-                    smoothLightPipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, lightFace, lightFace, shade, true);
+                    final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
+                    final ModelQuadFacing cullFace = quadView.getCullFace();
+                    pipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, cullFace, lightFace, shade, true);
                 }
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
