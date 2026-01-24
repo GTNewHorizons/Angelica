@@ -524,19 +524,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final GlFramebuffer celeritasShadowFb = (shadowRenderTargets != null && shadowRenderer != null)
 			? shadowRenderTargets.createShadowFramebuffer(shadowRenderTargets.snapshot(), new int[] {0, 1})
 			: null;
-		final int[] celeritasTerrainDrawBuffers = terrainSource
-			.map(source -> source.getDirectives().getDrawBuffers())
-			.orElse(new int[] {0});
 
 		this.celeritasTerrainPipeline = new CeleritasTerrainPipeline(createTerrainSamplers,
 			shadowRenderer == null ? null : createShadowTerrainSamplers, createTerrainImages,
 			shadowRenderer == null ? null : createShadowTerrainImages, this.customUniforms,
-			terrainSource.map(ProgramSource::getName).orElse(null),
-			translucentSource.map(ProgramSource::getName).orElse(null),
-			shadowSource.map(ProgramSource::getName).orElse(null),
+			terrainSource,
+			translucentSource,
+			shadowSource,
 			celeritasTerrainFuture, celeritasTranslucentFuture, celeritasShadowFuture,
 			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
-			celeritasShadowFb, celeritasTerrainDrawBuffers);
+			celeritasShadowFb);
 
 		this.dhCompat = new DHCompat();
 	}
