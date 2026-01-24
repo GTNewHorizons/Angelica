@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -10,7 +9,6 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVert
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -30,6 +28,7 @@ import org.embeddedt.embeddium.impl.render.chunk.data.BuiltSectionMeshParts;
 import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.SectionVisibilityBuilder;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
+import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.util.task.CancellationToken;
 import org.joml.Vector3d;
 
@@ -49,7 +48,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
     private static final long DEFERRED_BLOCK_TIMEOUT_MS = 10_000; // 10 seconds
     private static final int MAX_RETRIES = 2;
 
-    protected record DeferredBlock(int x, int y, int z, Block block, int meta, int pass) {}
+    protected record DeferredBlock(int x, int y, int z, Block block, int meta, int pass, Material materialOverride, boolean isShaderPackOverride) {}
 
     public AngelicaChunkBuilderMeshingTask(RenderSection render, int time, Vector3d camera) {
         this.render = render;
@@ -108,7 +107,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             SmoothBiomeColorCache.setActiveCache(biomeColorCache);
 
             final IrisShaderProvider provider = IrisShaderProviderHolder.getProvider();
-            final Map<Block, RenderLayer> blockTypeIds = provider != null ? provider.getBlockTypeIds() : null;
+            final Map<Block, BlockRenderLayer> blockTypeIds = provider != null ? provider.getBlockTypeIds() : null;
             final BlockRenderContext blockRenderContext = buildContext.getBlockRenderContext();
 
             final boolean threaded = isThreaded();
@@ -142,29 +141,32 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
                         final boolean canRenderOffThread = !threaded || canRenderOffThread(block);
 
-                        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
-                            boolean canRender = block.canRenderInPass(pass);
+                        // Check for shader pack override
+                        final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
 
-                            // Shader pack can override render layer via block.properties
-                            if (blockTypeIds != null) {
-                                final RenderLayer overrideLayer = blockTypeIds.get(block);
-                                if (overrideLayer != null) {
-                                    canRender = switch (pass) {
-                                        case 0 -> overrideLayer == RenderLayer.cutout();
-                                        case 1 -> overrideLayer == RenderLayer.translucent();
-                                        default -> canRender;
-                                    };
+                        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
+                            final boolean canRender;
+                            Material materialOverride = null;
+
+                            if (override != null) {
+                                // Shader pack override controls both pass and material
+                                canRender = (pass == override.toVanillaPass());
+                                if (canRender) {
+                                    materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
                                 }
+                            } else {
+                                // Normal block rendering
+                                canRender = block.canRenderInPass(pass);
                             }
 
                             if (canRender) {
+                                final boolean isShaderPackOverride = materialOverride != null;
                                 if (!canRenderOffThread) {
-                                    deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass));
+                                    deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass, materialOverride, isShaderPackOverride));
                                     continue;
                                 }
 
-                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks,
-                                    buffers, buildContext, blockRenderContext, minX, minY, minZ);
+                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, materialOverride, isShaderPackOverride);
                             }
                         }
 
@@ -207,13 +209,21 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         }
     }
 
-    protected void renderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ) {
+    protected void renderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ, Material materialOverride, boolean isShaderPackOverride) {
 
-        final Material blockMaterial = block.getMaterial();
-        final boolean isFluid = blockMaterial == Material.water || blockMaterial == Material.lava;
+        final var blockMaterial = block.getMaterial();
+        final boolean isFluid = blockMaterial == net.minecraft.block.material.Material.water || blockMaterial == net.minecraft.block.material.Material.lava;
 
+        // Use material override if provided, otherwise derive from pass
         // Lava is opaque - use solid to skip unnecessary alpha testing
-        final var passMaterial = blockMaterial == Material.lava ? AngelicaRenderPassConfiguration.SOLID_MATERIAL : buffers.getRenderPassConfiguration().getMaterialForRenderType(BlockRenderLayer.fromVanillaPass(pass));
+        final Material passMaterial;
+        if (materialOverride != null) {
+            passMaterial = materialOverride;
+        } else if (blockMaterial == net.minecraft.block.material.Material.lava) {
+            passMaterial = AngelicaRenderPassConfiguration.SOLID_MATERIAL;
+        } else {
+            passMaterial = buffers.getRenderPassConfiguration().getMaterialForRenderType(BlockRenderLayer.fromVanillaPass(pass));
+        }
 
         final var encoder = buffers.get(passMaterial).getEncoder();
         final ContextAwareChunkVertexEncoder contextEncoder = (encoder instanceof ContextAwareChunkVertexEncoder) ? (ContextAwareChunkVertexEncoder) encoder : null;
@@ -237,7 +247,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial);
+        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial, isShaderPackOverride);
         tessellator.reset();
         tessellator.isDrawing = false;
 
@@ -258,7 +268,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             for (DeferredBlock deferred : deferredBlocks) {
                 renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
                     mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
-                    blockRenderContext, minX, minY, minZ);
+                    blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride());
             }
 
             mainTessellator.setTranslation(0, 0, 0);

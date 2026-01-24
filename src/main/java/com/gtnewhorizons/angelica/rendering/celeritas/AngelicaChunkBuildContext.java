@@ -86,7 +86,11 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         }
     }
 
-    private Material selectMaterial(Material material, TextureAtlasSprite sprite) {
+    private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
+        // Don't apply transparency-based optimization when shader pack explicitly overrides the material
+        if (isShaderPackOverride) {
+            return material;
+        }
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
             final var transparencyLevel = ((SpriteExtension)sprite).celeritas$getTransparencyLevel();
             if (transparencyLevel == SpriteTransparencyLevel.OPAQUE && material == AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL) {
@@ -99,7 +103,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     @SuppressWarnings("unchecked")
-    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material) {
+    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride) {
         if (vertexCount == 0) {
             return;
         }
@@ -206,7 +210,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
 
-            final Material correctMaterial = selectMaterial(material, sprite);
+            final Material correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
             final var builder = buffers.get(correctMaterial);
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {

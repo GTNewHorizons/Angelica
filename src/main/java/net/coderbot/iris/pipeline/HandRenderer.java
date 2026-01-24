@@ -3,9 +3,9 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -81,14 +81,12 @@ public class HandRenderer {
     public boolean isHandTranslucent(InteractionHand hand) {
         ItemStack heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
 
-        if (heldItem == null) {
-            return false;
-        }
-        Item item = heldItem.getItem();
+        if (heldItem == null) return false;
+        final Item item = heldItem.getItem();
 
         if (item instanceof ItemBlock itemBlock) {
-            Map<Block, RenderLayer> blockTypeIds = BlockRenderingSettings.INSTANCE.getBlockTypeIds();
-            return blockTypeIds != null && blockTypeIds.get(itemBlock.field_150939_a) == RenderLayer.translucent();
+            final Map<Block, BlockRenderLayer> blockTypeIds = BlockRenderingSettings.INSTANCE.getBlockTypeIds();
+            return blockTypeIds != null && blockTypeIds.get(itemBlock.field_150939_a) == BlockRenderLayer.TRANSLUCENT;
         }
 
         return false;
