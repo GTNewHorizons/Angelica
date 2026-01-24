@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -77,13 +76,13 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public void readBuffer(int framebuffer, int buffer) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         GL11.glReadBuffer(buffer);
     }
 
     @Override
     public void drawBuffers(int framebuffer, IntBuffer buffers) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         GL20.glDrawBuffers(buffers);
     }
 
@@ -135,21 +134,21 @@ public class DSAUnsupported implements DSAAccess {
     @Override
     public void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2,
         int bufferChoice, int filter) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, source);
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, dest);
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, source);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, dest);
         GL30.glBlitFramebuffer(offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
     }
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(fbtarget, fb);
+        GLStateManager.glBindFramebuffer(fbtarget, fb);
         GL30.glFramebufferTexture2D(fbtarget, attachment, target, texture, levels);
     }
 
     @Override
     public int createFramebuffer() {
-        final int framebuffer = OpenGlHelper.func_153165_e/*glGenFramebuffers*/();
-        OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, framebuffer);
+        final int framebuffer = GLStateManager.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
         return framebuffer;
     }
 

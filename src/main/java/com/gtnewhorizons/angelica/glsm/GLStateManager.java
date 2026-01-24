@@ -66,6 +66,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
@@ -3784,6 +3785,60 @@ public class GLStateManager {
 
     public static boolean vendorIsNVIDIA() {
         return VENDOR == NVIDIA;
+    }
+
+    @Getter protected static int drawFramebuffer = 0;
+    @Getter protected static int readFramebuffer = 0;
+    public static float lastBrightnessX = 0.0f;
+    public static float lastBrightnessY = 0.0f;
+
+    public static void glBindFramebuffer(int target, int framebuffer) {
+        if (target == GL30.GL_FRAMEBUFFER) {
+            if (drawFramebuffer == framebuffer && readFramebuffer == framebuffer) return;
+            drawFramebuffer = framebuffer;
+            readFramebuffer = framebuffer;
+        } else if (target == GL30.GL_DRAW_FRAMEBUFFER) {
+            if (drawFramebuffer == framebuffer) return;
+            drawFramebuffer = framebuffer;
+        } else if (target == GL30.GL_READ_FRAMEBUFFER) {
+            if (readFramebuffer == framebuffer) return;
+            readFramebuffer = framebuffer;
+        }
+        GL30.glBindFramebuffer(target, framebuffer);
+    }
+
+    public static void glDeleteFramebuffers(int framebuffer) {
+        if (drawFramebuffer == framebuffer) drawFramebuffer = 0;
+        if (readFramebuffer == framebuffer) readFramebuffer = 0;
+        GL30.glDeleteFramebuffers(framebuffer);
+    }
+
+    public static int glGenFramebuffers() {
+        return GL30.glGenFramebuffers();
+    }
+
+    public static int glCheckFramebufferStatus(int target) {
+        return GL30.glCheckFramebufferStatus(target);
+    }
+
+    public static void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
+        GL30.glFramebufferTexture2D(target, attachment, textarget, texture, level);
+    }
+
+    public static void setActiveTexture(int textureUnit) {
+        glActiveTexture(textureUnit);
+    }
+
+    public static void setLightmapTextureCoords(int unit, float x, float y) {
+        GL13.glMultiTexCoord2f(unit, x, y);
+        if (unit == GL13.GL_TEXTURE1) {
+            lastBrightnessX = x;
+            lastBrightnessY = y;
+        }
+    }
+
+    public static boolean isFramebufferEnabled() {
+        return OpenGlHelper.framebufferSupported && Minecraft.getMinecraft().gameSettings.fboEnable;
     }
 
 }
