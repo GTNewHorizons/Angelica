@@ -132,6 +132,14 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         int ptr = 0;
         final int numQuads = vertexCount / 4;
 
+        final int blockX = blockRenderContext.localPosX;
+        final int blockY = blockRenderContext.localPosY;
+        final int blockZ = blockRenderContext.localPosZ;
+        final int worldX = originX + blockX;
+        final int worldY = originY + blockY;
+        final int worldZ = originZ + blockZ;
+        final boolean isEmissive = useAoCalculation && QuadLightingHelper.isBlockEmissive(worldSlice, worldX, worldY, worldZ);
+
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
 
@@ -171,11 +179,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             }
 
             if (useAoCalculation) {
-                final int blockX = blockRenderContext.localPosX;
-                final int blockY = blockRenderContext.localPosY;
-                final int blockZ = blockRenderContext.localPosZ;
-
-                final boolean isEmissive = LightDataAccess.unpackEM(lightDataCache.get(originX + blockX, originY + blockY, originZ + blockZ));
                 final boolean quadIsFullBright = QuadLightingHelper.isQuadFullBright(vertices);
 
                 if (isEmissive || quadIsFullBright) {
@@ -192,7 +195,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                     final ModelQuadFacing lightFace = quadView.getLightFace();
                     final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
                     final ModelQuadFacing cullFace = quadView.getCullFace();
-                    pipeline.calculate(quadView, originX + blockX, originY + blockY, originZ + blockZ, quadLightData, cullFace, lightFace, shade, true);
+                    pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shade, true);
                 }
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
