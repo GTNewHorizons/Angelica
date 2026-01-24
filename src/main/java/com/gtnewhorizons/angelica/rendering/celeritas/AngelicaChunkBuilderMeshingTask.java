@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVert
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -247,7 +248,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial, isShaderPackOverride);
+        // In modern versions, block models can specify whether to enable AO or not, but here we must
+        // rely on render ID heuristics to figure out which models would have turned it off
+        int vanillaRenderId = block.getRenderType();
+        boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
+            && block.getLightValue() == 0 // does not emit real block light
+            && vanillaRenderId != 1 // is not a "cross" block
+            && vanillaRenderId != 40; // is not a double plant block
+        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial,
+            isShaderPackOverride, blockAllowsSmoothLighting);
         tessellator.reset();
         tessellator.isDrawing = false;
 
