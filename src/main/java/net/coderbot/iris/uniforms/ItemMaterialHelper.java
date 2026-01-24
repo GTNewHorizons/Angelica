@@ -26,10 +26,11 @@ public class ItemMaterialHelper {
 
     /**
      * Get the material ID for an ItemStack.
-     * Checks item.properties first, then block.properties if the item is an ItemBlock.
+     * For ItemBlock: checks block.properties first, then item.properties.
+     * For other items: checks item.properties only.
      *
      * @param itemStack The item stack to get material ID for
-     * @return The material ID, or -1 if not found in either map
+     * @return The material ID, or -1 if not found
      */
     public static int getMaterialId(ItemStack itemStack) {
         if (itemStack == null || itemStack.getItem() == null) {
@@ -68,50 +69,42 @@ public class ItemMaterialHelper {
 
     /**
      * Perform the actual material ID lookup without caching.
+     *
+     * For block items (ItemBlock): use block.properties first, then fall back to item.properties.
+     * For non-block items: use item.properties only.
+     *
+     * This matches modern Iris behavior where block items use block IDs and non-block items use item IDs.
      */
     private static int lookupMaterialId(Item item, int metadata) {
-        String itemIdString = (String) Item.itemRegistry.getNameForObject(item);
-        if (itemIdString == null) {
-            return -1;
-        }
-
-        ResourceLocation itemId = new ResourceLocation(itemIdString);
-        NamespacedId namespacedId = new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath());
-
-        // First, check item.properties
-        Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
-        if (itemIds != null) {
-            int id = itemIds.applyAsInt(namespacedId);
-            if (id != -1) {
-                return id;
-            }
-        }
-
-        // Second, check block.properties if this is an ItemBlock
+        // For ItemBlock: check block.properties first
         if (item instanceof ItemBlock) {
-            ItemBlock itemBlock = (ItemBlock) item;
-            Block block = itemBlock.field_150939_a; // The block this item places
+            final ItemBlock itemBlock = (ItemBlock) item;
+            final Block block = itemBlock.field_150939_a; // The block this item places
 
-            if (block == null) {
-                return -1;
-            }
-
-            // Convert item damage to block metadata
-            int blockMeta = itemBlock.getMetadata(metadata);
-
-            Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-            if (blockMetaMatches != null) {
-                Int2IntMap metaMap = blockMetaMatches.get(block);
-                if (metaMap != null) {
-                    int id = metaMap.get(blockMeta);
-                    if (id != -1) {
-                        return id;
+            if (block != null) {
+                Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+                if (blockMetaMatches != null) {
+                    Int2IntMap metaMap = blockMetaMatches.get(block);
+                    if (metaMap != null) {
+                        int id = metaMap.get(itemBlock.getMetadata(metadata));
+                        if (id != -1) {
+                            return id;
+                        }
                     }
                 }
             }
         }
 
-        // Not found in either map
+        // Fall back to item.properties
+        Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
+        if (itemIds != null) {
+            String itemIdString = (String) Item.itemRegistry.getNameForObject(item);
+            if (itemIdString != null) {
+                ResourceLocation itemId = new ResourceLocation(itemIdString);
+                return itemIds.applyAsInt(new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath()));
+            }
+        }
+
         return -1;
     }
 
