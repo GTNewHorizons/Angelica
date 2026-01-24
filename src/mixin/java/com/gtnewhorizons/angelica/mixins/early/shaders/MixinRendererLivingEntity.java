@@ -20,6 +20,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RendererLivingEntity.class)
 public class MixinRendererLivingEntity {
+    /**
+     * Reset currentRenderedItemId at the start of rendering each living entity, otherwise entity materials don't apply.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At("HEAD")
+    )
+    private void iris$resetItemIdAtStart(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+    }
+
     @WrapOperation(
         method="doRender",
         at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RendererLivingEntity;getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I")
