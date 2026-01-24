@@ -17,7 +17,6 @@ import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
@@ -31,6 +30,7 @@ import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderFogComponent;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -144,7 +144,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         RenderHelper.disableStandardItemLighting();
 
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
         GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
 

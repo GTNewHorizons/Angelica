@@ -200,7 +200,6 @@ public enum Mixins implements IMixins {
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
             , "shaders.MixinLocale"
-            , "shaders.MixinOpenGlHelper"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
             , "shaders.MixinRenderEntityFlame"
