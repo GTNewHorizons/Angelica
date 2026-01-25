@@ -40,12 +40,6 @@ public final class FontProviderCustom implements FontProvider {
     private FontProviderCustom(byte id) {
         this.id = id;
         Font[] availableFonts = FontStrategist.getAvailableFonts();
-        if (availableFonts.length == 0) {
-            LOGGER.fatal("There seem to be no fonts available on this system! Disabling custom font and throwing an exception in an attempt to restore the session.");
-            FontConfig.enableCustomFont = false;
-            ConfigurationManager.save(FontConfig.class);
-            throw new RuntimeException();
-        }
         String myFontName = switch (this.id) {
             case 0 -> FontConfig.customFontNamePrimary;
             case 1 -> FontConfig.customFontNameFallback;

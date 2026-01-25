@@ -1,11 +1,13 @@
 package net.coderbot.iris.block_rendering;
 
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -15,9 +17,10 @@ public class BlockRenderingSettings {
 
 	@Getter
     private boolean reloadRequired;
-	private Object2IntMap<Block> blockMatches;
-	private Map<Block, RenderLayer> blockTypeIds;
+	private Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
+	private Map<Block, BlockRenderLayer> blockTypeIds;
 	private Object2IntFunction<NamespacedId> entityIds;
+	private Object2IntFunction<NamespacedId> itemIds;
 	private float ambientOcclusionLevel;
 	private boolean disableDirectionalShading;
 	private boolean useSeparateAo;
@@ -25,7 +28,7 @@ public class BlockRenderingSettings {
 
 	public BlockRenderingSettings() {
 		reloadRequired = false;
-		blockMatches = null;
+		blockMetaMatches = null;
 		blockTypeIds = null;
 		ambientOcclusionLevel = 1.0F;
 		disableDirectionalShading = false;
@@ -37,13 +40,22 @@ public class BlockRenderingSettings {
 		reloadRequired = false;
 	}
 
+	public void reloadRendererIfRequired() {
+		if (isReloadRequired()) {
+			if (Minecraft.getMinecraft().renderGlobal != null) {
+				Minecraft.getMinecraft().renderGlobal.loadRenderers();
+			}
+			clearReloadRequired();
+		}
+	}
+
     @Nullable
-	public Object2IntMap<Block> getBlockMatches() {
-		return blockMatches;
+	public Reference2ObjectMap<Block, Int2IntMap> getBlockMetaMatches() {
+		return blockMetaMatches;
 	}
 
 	@Nullable
-	public Map<Block, RenderLayer> getBlockTypeIds() {
+	public Map<Block, BlockRenderLayer> getBlockTypeIds() {
 		return blockTypeIds;
 	}
 
@@ -52,16 +64,17 @@ public class BlockRenderingSettings {
 		return entityIds;
 	}
 
-	public void setBlockMatches(Object2IntMap<Block> blockIds) {
-		if (this.blockMatches != null && this.blockMatches.equals(blockIds)) {
-			return;
-		}
-
-		this.reloadRequired = true;
-		this.blockMatches = blockIds;
+	@Nullable
+	public Object2IntFunction<NamespacedId> getItemIds() {
+		return itemIds;
 	}
 
-	public void setBlockTypeIds(Map<Block, RenderLayer> blockTypeIds) {
+	public void setBlockMetaMatches(Reference2ObjectMap<Block, Int2IntMap> blockMetaIds) {
+		this.reloadRequired = true;
+		this.blockMetaMatches = blockMetaIds;
+	}
+
+	public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
 		if (this.blockTypeIds != null && this.blockTypeIds.equals(blockTypeIds)) {
 			return;
 		}
@@ -73,6 +86,11 @@ public class BlockRenderingSettings {
 	public void setEntityIds(Object2IntFunction<NamespacedId> entityIds) {
 		// note: no reload needed, entities are rebuilt every frame.
 		this.entityIds = entityIds;
+	}
+
+	public void setItemIds(Object2IntFunction<NamespacedId> itemIds) {
+		// note: no reload needed, items are rendered every frame.
+		this.itemIds = itemIds;
 	}
 
 	public float getAmbientOcclusionLevel() {

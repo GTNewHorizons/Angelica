@@ -4,8 +4,8 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -51,6 +51,8 @@ public abstract class MixinEntity implements IDynamicLightSource {
     private double angelica$prevZ;
     @Unique
     private LongOpenHashSet angelica$trackedLitChunkPos = new LongOpenHashSet();
+    @Unique
+    private LongOpenHashSet angelica$prevTrackedLitChunkPos = new LongOpenHashSet();
 
 
     @Override
@@ -76,6 +78,11 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Inject(method = "onEntityUpdate", at = @At("TAIL"))
     public void angelica$onUpdate(CallbackInfo ci) {
+        this.angelica$updateLights();
+    }
+
+    @Unique
+    public void angelica$updateLights() {
         if (worldObj != null && worldObj.isRemote) {
             if (isDead) {
                 angelica$setDynamicLightEnabled(false);
@@ -97,7 +104,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer) {
+    public boolean angelica$updateDynamicLight(@NotNull IDynamicLightWorldRenderer renderer) {
         double deltaX = this.posX - this.angelica$prevX;
         double deltaY = this.posY - this.angelica$prevY;
         double deltaZ = this.posZ - this.angelica$prevZ;
@@ -110,17 +117,21 @@ public abstract class MixinEntity implements IDynamicLightSource {
             this.angelica$prevZ = this.posZ;
             this.angelica$lastLuminance = luminance;
 
-            var newPos = new LongOpenHashSet();
+            final LongOpenHashSet newPos = this.angelica$prevTrackedLitChunkPos;
+            newPos.clear();
 
             if (luminance > 0) {
-                IBlockPos chunkPos = new BlockPos(chunkCoordX, MathHelper.floor_double(posY + getEyeHeight()) >> 4, chunkCoordZ);
+                final float eyeHeight = getEyeHeight();
+                final double eyeY = posY + eyeHeight;
+
+                IBlockPos chunkPos = new BlockPos(chunkCoordX, MathHelper.floor_double(eyeY) >> 4, chunkCoordZ);
 
                 DynamicLights.scheduleChunkRebuild(renderer, chunkPos);
                 DynamicLights.updateTrackedChunks(chunkPos, this.angelica$trackedLitChunkPos, newPos);
 
-                var directionX = ((MathHelper.floor_double(posX) & 15) >= 8) ? ForgeDirection.EAST : ForgeDirection.WEST;
-                var directionY = ((MathHelper.floor_double(posY + getEyeHeight()) & 15) >= 8) ? ForgeDirection.UP : ForgeDirection.DOWN;
-                var directionZ = ((MathHelper.floor_double(posZ) & 15) >= 8) ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
+                final var directionX = ((MathHelper.floor_double(posX) & 15) >= 8) ? ForgeDirection.EAST : ForgeDirection.WEST;
+                final var directionY = ((MathHelper.floor_double(eyeY) & 15) >= 8) ? ForgeDirection.UP : ForgeDirection.DOWN;
+                final var directionZ = ((MathHelper.floor_double(posZ) & 15) >= 8) ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
 
                 for (int i = 0; i < 7; i++) {
                     if (i % 4 == 0) {
@@ -140,7 +151,8 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
             // Schedules the rebuild of removed chunks.
             this.angelica$scheduleTrackedChunksRebuild(renderer);
-            // Update tracked lit chunks.
+            // Swap tracked sets
+            this.angelica$prevTrackedLitChunkPos = this.angelica$trackedLitChunkPos;
             this.angelica$trackedLitChunkPos = newPos;
             return true;
         }
@@ -148,9 +160,41 @@ public abstract class MixinEntity implements IDynamicLightSource {
     }
 
     @Override
-    public void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer) {
-        for (long pos : this.angelica$trackedLitChunkPos) {
-            DynamicLights.scheduleChunkRebuild(renderer, pos);
+    public void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer) {
+        if (this.angelica$trackedLitChunkPos.isEmpty()) {
+            angelica$scheduleRebuildAroundCurrentPosition(renderer);
+        } else {
+            var iter = this.angelica$trackedLitChunkPos.iterator();
+            while (iter.hasNext()) {
+                DynamicLights.scheduleChunkRebuildForRemoval(renderer, iter.nextLong());
+            }
+        }
+    }
+
+    @Unique
+    private void angelica$scheduleRebuildAroundCurrentPosition(@NotNull IDynamicLightWorldRenderer renderer) {
+        final float eyeHeight = getEyeHeight();
+        final double eyeY = posY + eyeHeight;
+
+        IBlockPos chunkPos = new BlockPos(chunkCoordX, MathHelper.floor_double(eyeY) >> 4, chunkCoordZ);
+        DynamicLights.scheduleChunkRebuildForRemoval(renderer, chunkPos.asLong());
+
+        final var directionX = ((MathHelper.floor_double(posX) & 15) >= 8) ? ForgeDirection.EAST : ForgeDirection.WEST;
+        final var directionY = ((MathHelper.floor_double(eyeY) & 15) >= 8) ? ForgeDirection.UP : ForgeDirection.DOWN;
+        final var directionZ = ((MathHelper.floor_double(posZ) & 15) >= 8) ? ForgeDirection.SOUTH : ForgeDirection.NORTH;
+
+        for (int i = 0; i < 7; i++) {
+            if (i % 4 == 0) {
+                chunkPos = chunkPos.offset(directionX);
+            } else if (i % 4 == 1) {
+                chunkPos = chunkPos.offset(directionZ);
+            } else if (i % 4 == 2) {
+                chunkPos = chunkPos.offset(directionX.getOpposite());
+            } else {
+                chunkPos = chunkPos.offset(directionZ.getOpposite());
+                chunkPos = chunkPos.offset(directionY);
+            }
+            DynamicLights.scheduleChunkRebuildForRemoval(renderer, chunkPos.asLong());
         }
     }
 }

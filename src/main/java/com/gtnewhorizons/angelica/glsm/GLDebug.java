@@ -103,6 +103,9 @@ public final class GLDebug {
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
             GL43.glDebugMessageCallback(proc);
 
+            // Enable synchronous debug output so errors are reported immediately with accurate stack traces
+            GL11.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
             if ((GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & GL43.GL_CONTEXT_FLAG_DEBUG_BIT) == 0) {
                 LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
                 GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
@@ -125,6 +128,9 @@ public final class GLDebug {
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
             ARBDebugOutput.glDebugMessageCallbackARB(proc);
+
+            // Enable synchronous debug output so errors are reported immediately with accurate stack traces
+            GL11.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
             return 1;
         } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
             LOGGER.info("[GL] Using AMD_debug_output for error logging.");

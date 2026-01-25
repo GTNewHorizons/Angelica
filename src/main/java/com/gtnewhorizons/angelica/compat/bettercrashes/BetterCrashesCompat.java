@@ -27,7 +27,7 @@ public class BetterCrashesCompat implements StateManager.IResettable {
     @Override
     public void resetState() {
         LOGGER.info("Reloading SodiumRenderer");
-        ((IRenderGlobalExt) Minecraft.getMinecraft().renderGlobal).reload();
+        ((IRenderGlobalExt) Minecraft.getMinecraft().renderGlobal).angelica$reload();
         LOGGER.info("Resetting GLStateManager");
         GLStateManager.reset();
     }

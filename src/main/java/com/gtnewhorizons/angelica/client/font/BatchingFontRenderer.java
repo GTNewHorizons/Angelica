@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import cpw.mods.fml.client.SplashProgress;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
@@ -508,10 +507,16 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                if (FontConfig.enableCustomFont) {
+                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
                     if (chrReplacement != null) {
-                        chr = chrReplacement.charAt(0);
+                        char replacement = chrReplacement.charAt(0);
+                        boolean isReplacementCharAvailable =
+                            FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
+                                || FontProviderCustom.getFallback().isGlyphAvailable(replacement);
+                        if (isReplacementCharAvailable) {
+                            chr = replacement;
+                        }
                     }
                 }
 
@@ -538,7 +543,6 @@ public class BatchingFontRenderer {
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
-                final float xShift = (fontProvider instanceof FontProviderCustom ? getGlyphScaleX() * FontConfig.customFontScale : 0.0f); // corrective factor to improve text alignment
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
                 final ResourceLocation texture = fontProvider.getTexture(chr);
@@ -547,20 +551,20 @@ public class BatchingFontRenderer {
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart - xShift, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart - xShift, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                            pushTexRect(curX + 2.0f * shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
                         }
                     }
                 }
 
-                pushTexRect(curX - xShift, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                pushTexRect(curX, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(curX + shadowOffsetPart - xShift, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                        pushTexRect(curX + shadowOffsetPart, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
                     }
                 }
 

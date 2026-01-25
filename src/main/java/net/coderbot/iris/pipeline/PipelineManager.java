@@ -3,10 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import net.coderbot.iris.shaderpack.DimensionId;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
-import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -18,32 +15,32 @@ import java.util.function.Function;
 
 public class PipelineManager {
 
-	private final Function<DimensionId, WorldRenderingPipeline> pipelineFactory;
-	private final Map<DimensionId, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
+	private final Function<String, WorldRenderingPipeline> pipelineFactory;
+	private final Map<String, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
 	private WorldRenderingPipeline pipeline = new FixedFunctionWorldRenderingPipeline();
+	private String lastPreparedDimension = null;
     @Getter
 	private int versionCounterForSodiumShaderReload = 0;
 
-	public PipelineManager(Function<DimensionId, WorldRenderingPipeline> pipelineFactory) {
+	public PipelineManager(Function<String, WorldRenderingPipeline> pipelineFactory) {
 		this.pipelineFactory = pipelineFactory;
 	}
 
-	public WorldRenderingPipeline preparePipeline(DimensionId currentDimension) {
+	public WorldRenderingPipeline preparePipeline(String currentDimension) {
+		// Detect dimension change and do full teardown/recreation
+		if (lastPreparedDimension != null && !lastPreparedDimension.equals(currentDimension)) {
+			Iris.logger.info("Dimension changed from '{}' to '{}', reloading pipeline", lastPreparedDimension, currentDimension);
+			destroyPipeline();
+		}
+		lastPreparedDimension = currentDimension;
+
 		if (!pipelinesPerDimension.containsKey(currentDimension)) {
 			SystemTimeUniforms.COUNTER.reset();
 			SystemTimeUniforms.TIMER.reset();
 
-			Iris.logger.info("Creating pipeline for dimension {}", currentDimension);
+			Iris.logger.info("Creating pipeline for dimension '{}'", currentDimension);
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
-
-			if (BlockRenderingSettings.INSTANCE.isReloadRequired()) {
-				if (Minecraft.getMinecraft().renderGlobal != null) {
-					Minecraft.getMinecraft().renderGlobal.loadRenderers();
-				}
-
-				BlockRenderingSettings.INSTANCE.clearReloadRequired();
-			}
 		} else {
 			pipeline = pipelinesPerDimension.get(currentDimension);
 		}
@@ -73,14 +70,15 @@ public class PipelineManager {
 	 * @see <a href="https://github.com/IrisShaders/Iris/issues/1330">this GitHub issue</a>
 	 */
 	public void destroyPipeline() {
-		pipelinesPerDimension.forEach((dimensionId, pipeline) -> {
-			Iris.logger.info("Destroying pipeline {}", dimensionId);
+		pipelinesPerDimension.forEach((dimensionName, pipeline) -> {
+			Iris.logger.info("Destroying pipeline for dimension '{}'", dimensionName);
 			resetTextureState();
 			pipeline.destroy();
 		});
 
 		pipelinesPerDimension.clear();
 		pipeline = null;
+		lastPreparedDimension = null;
 		versionCounterForSodiumShaderReload++;
 	}
 

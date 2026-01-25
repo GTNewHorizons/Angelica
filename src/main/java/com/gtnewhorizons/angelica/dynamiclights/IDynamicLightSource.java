@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,11 +26,13 @@ public interface IDynamicLightSource {
     double angelica$getDynamicLightZ();
 
     /**
-     * Returns the dynamic light source world.
+     * Returns the dynamic light source world renderer.
      *
-     * @return the world instance
+     * @return the world renderer instance
      */
-    SodiumWorldRenderer angelica$getDynamicLightWorld();
+    default IDynamicLightWorldRenderer angelica$getDynamicLightWorld() {
+        return DynamicLights.getActiveRenderer();
+    }
 
     /**
      * Returns whether the dynamic light is enabled or not.
@@ -72,8 +73,9 @@ public interface IDynamicLightSource {
      * Executed at each tick.
      */
     void angelica$dynamicLightTick();
+    default void angelica$updateLights() {}
 
-    boolean angelica$updateDynamicLight(@NotNull SodiumWorldRenderer renderer);
+    boolean angelica$updateDynamicLight(@NotNull IDynamicLightWorldRenderer renderer);
 
-    void angelica$scheduleTrackedChunksRebuild(@NotNull SodiumWorldRenderer renderer);
+    void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer);
 }

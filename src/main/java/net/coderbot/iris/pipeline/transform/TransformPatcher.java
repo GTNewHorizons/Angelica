@@ -113,8 +113,8 @@ public class TransformPatcher {
         return transform(vertex, geometry, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs));
     }
 
-    public static Map<PatchShaderType, String> patchSodiumTerrain(String vertex, String geometry, String fragment) {
-        return transform(vertex, geometry, fragment, new Parameters(Patch.SODIUM_TERRAIN));
+    public static Map<PatchShaderType, String> patchCeleritasTerrain(String vertex, String geometry, String fragment) {
+        return transform(vertex, geometry, fragment, new Parameters(Patch.CELERITAS_TERRAIN));
     }
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment) {

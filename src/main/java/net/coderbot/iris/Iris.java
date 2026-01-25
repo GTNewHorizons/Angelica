@@ -9,9 +9,14 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -22,7 +27,6 @@ import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.shaderpack.DimensionId;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ShaderPack;
@@ -31,7 +35,7 @@ import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
-import net.coderbot.iris.sodium.block_context.BlockContextHolder;
+import net.coderbot.iris.block_context.BlockContextHolder;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -378,6 +382,11 @@ public class Iris {
             return;
         }
 
+        // Register the Celeritas shader provider for Iris integration (only when Celeritas is enabled)
+        if (AngelicaConfig.enableCeleritas) {
+            IrisShaderProviderHolder.setProvider(new IrisCeleritasShaderProvider());
+        }
+
         // Warm up the threadpool so shader transformations are faster when we need them
         ShaderTransformExecutor.warmup();
 
@@ -400,8 +409,10 @@ public class Iris {
         // Initialize the pipeline now so that we don't increase world loading time. Just going to guess that
         // the player is in the overworld.
         // See: https://github.com/IrisShaders/Iris/issues/323
-        lastDimension = DimensionId.OVERWORLD;
-        Iris.getPipelineManager().preparePipeline(DimensionId.OVERWORLD);
+        lastDimensionName = "Overworld";
+        Iris.getPipelineManager().preparePipeline("Overworld");
+
+        BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
     }
 
     public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
@@ -703,7 +714,9 @@ public class Iris {
         // Very important - we need to re-create the pipeline straight away.
         // https://github.com/IrisShaders/Iris/issues/1330
         if (Minecraft.getMinecraft().theWorld != null) {
-            Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+            Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
+
+            BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
         }
     }
 
@@ -729,44 +742,64 @@ public class Iris {
         }
     }
 
-    public static DimensionId lastDimension = null;
+    public static String lastDimensionName = null;
+    public static int lastDimensionId = 0;
 
-    public static DimensionId getCurrentDimension() {
+    /**
+     * Gets the dimension name for the current world.
+     * Returns the dimension name from WorldProvider.getDimensionName() if available.
+     * Falls back to lastDimensionName when no world is loaded.
+     */
+    public static String getCurrentDimensionName() {
         final WorldClient level = Minecraft.getMinecraft().theWorld;
 
-        if (level != null) {
-            if (level.provider == null) return DimensionId.OVERWORLD;
-
-            if (level.provider.isHellWorld || level.provider.dimensionId == -1) {
-                return DimensionId.NETHER;
-            } else if (level.provider.dimensionId == 1) {
-                return DimensionId.END;
-            } else {
-                return DimensionId.OVERWORLD;
+        if (level != null && level.provider != null) {
+            String dimensionName = level.provider.getDimensionName();
+            if (dimensionName == null) {
+                dimensionName = "Overworld";
+                logger.warn("WorldProvider.getDimensionName() returned null for dimension ID {}, defaulting to 'Overworld'", level.provider.dimensionId);
             }
+            lastDimensionName = dimensionName;
+            lastDimensionId = level.provider.dimensionId;
+            return dimensionName;
         } else {
-            // This prevents us from reloading the shaderpack unless we need to. Otherwise, if the player is in the
-            // nether and quits the game, we might end up reloading the shaders on exit and on entry to the level
+            // This prevents us from reloading the shaderpack unless we need to. Otherwise, if the player is in
+            // another dimension and quits the game, we might end up reloading the shaders on exit and on entry to the level
             // because the code thinks that the dimension changed.
-            return lastDimension;
+            return lastDimensionName != null ? lastDimensionName : "Overworld";
         }
     }
 
-    private static WorldRenderingPipeline createPipeline(DimensionId dimensionId) {
+    /**
+     * Gets the current dimension ID.
+     */
+    public static int getCurrentDimensionId() {
+        final WorldClient level = Minecraft.getMinecraft().theWorld;
+        if (level != null && level.provider != null) {
+            return level.provider.dimensionId;
+        }
+        return lastDimensionId;
+    }
+
+
+    /**
+     * Creates a pipeline for a dimension using the dimension name from WorldProvider.getDimensionName().
+     * Supports dimension.properties mappings with wildcard fallback.
+     */
+    private static WorldRenderingPipeline createPipeline(String dimensionName) {
         if (currentPack == null) {
             // Completely disables shader-based rendering
             return new FixedFunctionWorldRenderingPipeline();
         }
 
-        final ProgramSet programs = currentPack.getProgramSet(dimensionId);
-
+        final ProgramSet programs = currentPack.getProgramSet(dimensionName);
 
         try {
             shaderPackLoadId++;
             long startTime = System.nanoTime();
             WorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
             long endTime = System.nanoTime();
-            logger.info("[Load #{}] Total shaderpack load time for '{}': {} ms", shaderPackLoadId, currentPackName, String.format("%.1f", (endTime - startTime) / 1_000_000.0));
+            logger.info("[Load #{}] Total shaderpack load time for '{}' in dimension '{}': {} ms", shaderPackLoadId, currentPackName, dimensionName, String.format("%.1f", (endTime - startTime) / 1_000_000.0));
             return pipeline;
         } catch (Exception e) {
             logger.error("Failed to create shader rendering pipeline, disabling shaders!", e);
@@ -848,14 +881,14 @@ public class Iris {
 
     private static int getShaderMaterialOverrideId(Block block, int meta) {
         if (contextHolder == null) {
-            final Object2IntMap<Block> blockMatches = BlockRenderingSettings.INSTANCE.getBlockMatches();
-            if (blockMatches == null) {
+            final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+            if (blockMetaMatches == null) {
                 return -1;
             }
-            contextHolder = new BlockContextHolder(blockMatches);
+            contextHolder = new BlockContextHolder(blockMetaMatches);
 
         }
-        contextHolder.set(block, (short) block.getRenderType());
+        contextHolder.set(block, meta, (short) block.getRenderType());
         return contextHolder.blockId;
     }
 

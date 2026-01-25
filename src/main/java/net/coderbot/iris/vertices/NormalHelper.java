@@ -44,14 +44,6 @@ public abstract class NormalHelper {
 	 * Expects convex quads with all points co-planar.
 	 */
 	public static void computeFaceNormal(@NotNull Vector3f saveTo, IrisQuadView q) {
-//		final Direction nominalFace = q.nominalFace();
-//
-//		if (GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
-//			Vec3i vec = nominalFace.getVector();
-//			saveTo.set(vec.getX(), vec.getY(), vec.getZ());
-//			return;
-//		}
-
 		final float x0 = q.x(0);
 		final float y0 = q.y(0);
 		final float z0 = q.z(0);
@@ -76,7 +68,7 @@ public abstract class NormalHelper {
 		float normY = dz0 * dx1 - dx0 * dz1;
 		float normZ = dx0 * dy1 - dy0 * dx1;
 
-		float l = (float) Math.sqrt(normX * normX + normY * normY + normZ * normZ);
+		final float l = (float) Math.sqrt(normX * normX + normY * normY + normZ * normZ);
 
 		if (l != 0) {
 			normX /= l;
@@ -93,14 +85,6 @@ public abstract class NormalHelper {
 	 * <p>Assumes counter-clockwise winding order, which is the norm.
 	 */
 	public static void computeFaceNormalTri(@NotNull Vector3f saveTo, TriView t) {
-//		final Direction nominalFace = q.nominalFace();
-//
-//		if (GeometryHelper.isQuadParallelToFace(nominalFace, q)) {
-//			Vec3i vec = nominalFace.getVector();
-//			saveTo.set(vec.getX(), vec.getY(), vec.getZ());
-//			return;
-//		}
-
 		final float x0 = t.x(0);
 		final float y0 = t.y(0);
 		final float z0 = t.z(0);
@@ -155,9 +139,9 @@ public abstract class NormalHelper {
 		// project v onto normal
 		// offset v by the projection to get the point on the plane
 		// project x0, y0, z0 onto normal
-		float d0 = x0 * normalX + y0 * normalY + z0 * normalZ;
-		float d1 = x1 * normalX + y1 * normalY + z1 * normalZ;
-		float d2 = x2 * normalX + y2 * normalY + z2 * normalZ;
+		final float d0 = x0 * normalX + y0 * normalY + z0 * normalZ;
+		final float d1 = x1 * normalX + y1 * normalY + z1 * normalZ;
+		final float d2 = x2 * normalX + y2 * normalY + z2 * normalZ;
 
 		// offset x, y, z by the projection to get the projected point on the normal plane
 		x0 -= d0 * normalX;
@@ -173,30 +157,30 @@ public abstract class NormalHelper {
 		z2 -= d2 * normalZ;
 
 
-		float edge1x = x1 - x0;
-		float edge1y = y1 - y0;
-		float edge1z = z1 - z0;
+		final float edge1x = x1 - x0;
+		final float edge1y = y1 - y0;
+		final float edge1z = z1 - z0;
 
-		float edge2x = x2 - x0;
-		float edge2y = y2 - y0;
-		float edge2z = z2 - z0;
+		final float edge2x = x2 - x0;
+		final float edge2y = y2 - y0;
+		final float edge2z = z2 - z0;
 
-		float u0 = t.u(0);
-		float v0 = t.v(0);
+		final float u0 = t.u(0);
+		final float v0 = t.v(0);
 
-		float u1 = t.u(1);
-		float v1 = t.v(1);
+		final float u1 = t.u(1);
+		final float v1 = t.v(1);
 
-		float u2 = t.u(2);
-		float v2 = t.v(2);
+		final float u2 = t.u(2);
+		final float v2 = t.v(2);
 
-		float deltaU1 = u1 - u0;
-		float deltaV1 = v1 - v0;
-		float deltaU2 = u2 - u0;
-		float deltaV2 = v2 - v0;
+		final float deltaU1 = u1 - u0;
+		final float deltaV1 = v1 - v0;
+		final float deltaU2 = u2 - u0;
+		final float deltaV2 = v2 - v0;
 
-		float fdenom = deltaU1 * deltaV2 - deltaU2 * deltaV1;
-		float f;
+		final float fdenom = deltaU1 * deltaV2 - deltaU2 * deltaV1;
+		final float f;
 
 		if (fdenom == 0.0) {
 			f = 1.0f;
@@ -207,7 +191,7 @@ public abstract class NormalHelper {
 		float tangentx = f * (deltaV2 * edge1x - deltaV1 * edge2x);
 		float tangenty = f * (deltaV2 * edge1y - deltaV1 * edge2y);
 		float tangentz = f * (deltaV2 * edge1z - deltaV1 * edge2z);
-		float tcoeff = rsqrt(tangentx * tangentx + tangenty * tangenty + tangentz * tangentz);
+		final float tcoeff = rsqrt(tangentx * tangentx + tangenty * tangenty + tangentz * tangentz);
 		tangentx *= tcoeff;
 		tangenty *= tcoeff;
 		tangentz *= tcoeff;
@@ -215,7 +199,7 @@ public abstract class NormalHelper {
 		float bitangentx = f * (-deltaU2 * edge1x + deltaU1 * edge2x);
 		float bitangenty = f * (-deltaU2 * edge1y + deltaU1 * edge2y);
 		float bitangentz = f * (-deltaU2 * edge1z + deltaU1 * edge2z);
-		float bitcoeff = rsqrt(bitangentx * bitangentx + bitangenty * bitangenty + bitangentz * bitangentz);
+		final float bitcoeff = rsqrt(bitangentx * bitangentx + bitangenty * bitangenty + bitangentz * bitangentz);
 		bitangentx *= bitcoeff;
 		bitangenty *= bitcoeff;
 		bitangentz *= bitcoeff;
@@ -230,12 +214,12 @@ public abstract class NormalHelper {
 		// such as vector cross products! The calculation for pbitangentz
 		// used to be broken because it multiplied values in the wrong order.
 
-		float pbitangentx = tangenty * normalZ - tangentz * normalY;
-		float pbitangenty = tangentz * normalX - tangentx * normalZ;
-		float pbitangentz = tangentx * normalY - tangenty * normalX;
+		final float pbitangentx = tangenty * normalZ - tangentz * normalY;
+		final float pbitangenty = tangentz * normalX - tangentx * normalZ;
+		final float pbitangentz = tangentx * normalY - tangenty * normalX;
 
-		float dot = (bitangentx * pbitangentx) + (bitangenty * pbitangenty) + (bitangentz * pbitangentz);
-		float tangentW;
+		final float dot = (bitangentx * pbitangentx) + (bitangenty * pbitangenty) + (bitangentz * pbitangentz);
+		final float tangentW;
 
 		if (dot < 0) {
 			tangentW = -1.0F;
@@ -248,42 +232,42 @@ public abstract class NormalHelper {
 
 	public static int computeTangent(float normalX, float normalY, float normalZ, TriView t) {
 		// Capture all of the relevant vertex positions
-		float x0 = t.x(0);
-		float y0 = t.y(0);
-		float z0 = t.z(0);
+		final float x0 = t.x(0);
+		final float y0 = t.y(0);
+		final float z0 = t.z(0);
 
-		float x1 = t.x(1);
-		float y1 = t.y(1);
-		float z1 = t.z(1);
+		final float x1 = t.x(1);
+		final float y1 = t.y(1);
+		final float z1 = t.z(1);
 
-		float x2 = t.x(2);
-		float y2 = t.y(2);
-		float z2 = t.z(2);
+		final float x2 = t.x(2);
+		final float y2 = t.y(2);
+		final float z2 = t.z(2);
 
-		float edge1x = x1 - x0;
-		float edge1y = y1 - y0;
-		float edge1z = z1 - z0;
+		final float edge1x = x1 - x0;
+		final float edge1y = y1 - y0;
+		final float edge1z = z1 - z0;
 
-		float edge2x = x2 - x0;
-		float edge2y = y2 - y0;
-		float edge2z = z2 - z0;
+		final float edge2x = x2 - x0;
+		final float edge2y = y2 - y0;
+		final float edge2z = z2 - z0;
 
-		float u0 = t.u(0);
-		float v0 = t.v(0);
+		final float u0 = t.u(0);
+		final float v0 = t.v(0);
 
-		float u1 = t.u(1);
-		float v1 = t.v(1);
+		final float u1 = t.u(1);
+		final float v1 = t.v(1);
 
-		float u2 = t.u(2);
-		float v2 = t.v(2);
+		final float u2 = t.u(2);
+		final float v2 = t.v(2);
 
-		float deltaU1 = u1 - u0;
-		float deltaV1 = v1 - v0;
-		float deltaU2 = u2 - u0;
-		float deltaV2 = v2 - v0;
+		final float deltaU1 = u1 - u0;
+		final float deltaV1 = v1 - v0;
+		final float deltaU2 = u2 - u0;
+		final float deltaV2 = v2 - v0;
 
-		float fdenom = deltaU1 * deltaV2 - deltaU2 * deltaV1;
-		float f;
+		final float fdenom = deltaU1 * deltaV2 - deltaU2 * deltaV1;
+		final float f;
 
 		if (fdenom == 0.0) {
 			f = 1.0f;
@@ -294,7 +278,7 @@ public abstract class NormalHelper {
 		float tangentx = f * (deltaV2 * edge1x - deltaV1 * edge2x);
 		float tangenty = f * (deltaV2 * edge1y - deltaV1 * edge2y);
 		float tangentz = f * (deltaV2 * edge1z - deltaV1 * edge2z);
-		float tcoeff = rsqrt(tangentx * tangentx + tangenty * tangenty + tangentz * tangentz);
+		final float tcoeff = rsqrt(tangentx * tangentx + tangenty * tangenty + tangentz * tangentz);
 		tangentx *= tcoeff;
 		tangenty *= tcoeff;
 		tangentz *= tcoeff;
@@ -302,7 +286,7 @@ public abstract class NormalHelper {
 		float bitangentx = f * (-deltaU2 * edge1x + deltaU1 * edge2x);
 		float bitangenty = f * (-deltaU2 * edge1y + deltaU1 * edge2y);
 		float bitangentz = f * (-deltaU2 * edge1z + deltaU1 * edge2z);
-		float bitcoeff = rsqrt(bitangentx * bitangentx + bitangenty * bitangenty + bitangentz * bitangentz);
+		final float bitcoeff = rsqrt(bitangentx * bitangentx + bitangenty * bitangenty + bitangentz * bitangentz);
 		bitangentx *= bitcoeff;
 		bitangenty *= bitcoeff;
 		bitangentz *= bitcoeff;
@@ -317,12 +301,12 @@ public abstract class NormalHelper {
 		// such as vector cross products! The calculation for pbitangentz
 		// used to be broken because it multiplied values in the wrong order.
 
-		float pbitangentx = tangenty * normalZ - tangentz * normalY;
-		float pbitangenty = tangentz * normalX - tangentx * normalZ;
-		float pbitangentz = tangentx * normalY - tangenty * normalX;
+		final float pbitangentx = tangenty * normalZ - tangentz * normalY;
+		final float pbitangenty = tangentz * normalX - tangentx * normalZ;
+		final float pbitangentz = tangentx * normalY - tangenty * normalX;
 
-		float dot = (bitangentx * pbitangentx) + (bitangenty * pbitangenty) + (bitangentz * pbitangentz);
-		float tangentW;
+		final float dot = (bitangentx * pbitangentx) + (bitangenty * pbitangenty) + (bitangentz * pbitangentz);
+		final float tangentW;
 
 		if (dot < 0) {
 			tangentW = -1.0F;

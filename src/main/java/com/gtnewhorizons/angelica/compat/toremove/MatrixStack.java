@@ -34,8 +34,15 @@ public class MatrixStack {
     public void pop() {
         this.matrixStack.removeLast();
     }
-    public boolean clear() {
+    public boolean isEmpty() {
         return this.matrixStack.size() == 1;
+    }
+
+    public void reset() {
+        while (this.matrixStack.size() > 1) {
+            this.matrixStack.removeLast();
+        }
+        loadIdentity();
     }
 
     public void translate(double d, double e, double f) {

@@ -1,9 +1,11 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
+import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -19,13 +21,10 @@ public interface WorldRenderingPipeline {
 
 	WorldRenderingPhase getPhase();
 
-	void beginSodiumTerrainRendering();
-	void endSodiumTerrainRendering();
 	void setOverridePhase(WorldRenderingPhase phase);
 	void setPhase(WorldRenderingPhase phase);
 	void setInputs(InputAvailability availability);
 	void setSpecialCondition(SpecialCondition special);
-	void syncProgram();
 	RenderTargetStateListener getRenderTargetStateListener();
 
 	int getCurrentNormalTexture();
@@ -39,8 +38,9 @@ public interface WorldRenderingPipeline {
 	void finalizeLevelRendering();
 	void destroy();
 
-	SodiumTerrainPipeline getSodiumTerrainPipeline();
+	CeleritasTerrainPipeline getCeleritasTerrainPipeline();
 	FrameUpdateNotifier getFrameUpdateNotifier();
+	DHCompat getDHCompat();
 
 	boolean shouldDisableVanillaEntityShadows();
 	boolean shouldDisableDirectionalShading();

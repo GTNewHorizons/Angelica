@@ -2,7 +2,6 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components;
 
 import lombok.Getter;
 import lombok.Setter;
-import me.flashyreese.mods.reeses_sodium_options.client.gui.OptionExtended;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.flashyreese.mods.reeses_sodium_options.util.StringUtils;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
@@ -18,8 +17,10 @@ import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -34,7 +35,6 @@ public class SearchTextFieldComponent extends AbstractWidget {
     private final int tabDimHeight;
     private final ReeseSodiumVideoOptionsScreen sodiumVideoOptionsScreen;
     private final AtomicReference<String> lastSearch;
-    private final AtomicReference<Integer> lastSearchIndex;
     protected boolean selecting;
     protected String text = "";
     protected int maxLength = 100;
@@ -50,7 +50,10 @@ public class SearchTextFieldComponent extends AbstractWidget {
     private boolean focused;
     private int lastCursorPosition = this.getCursor();
 
-    public SearchTextFieldComponent(Dim2i dim, List<OptionPage> pages, AtomicReference<String> tabFrameSelectedTab, AtomicReference<Integer> tabFrameScrollBarOffset, AtomicReference<Integer> optionPageScrollBarOffset, int tabDimHeight, ReeseSodiumVideoOptionsScreen sodiumVideoOptionsScreen, AtomicReference<String> lastSearch, AtomicReference<Integer> lastSearchIndex) {
+    // Set of options matching the current search query (null = show all)
+    private Set<Option<?>> matchingOptions = null;
+
+    public SearchTextFieldComponent(Dim2i dim, List<OptionPage> pages, AtomicReference<String> tabFrameSelectedTab, AtomicReference<Integer> tabFrameScrollBarOffset, AtomicReference<Integer> optionPageScrollBarOffset, int tabDimHeight, ReeseSodiumVideoOptionsScreen sodiumVideoOptionsScreen, AtomicReference<String> lastSearch) {
         this.dim = dim;
         this.pages = pages;
         this.tabFrameSelectedTab = tabFrameSelectedTab;
@@ -59,10 +62,28 @@ public class SearchTextFieldComponent extends AbstractWidget {
         this.tabDimHeight = tabDimHeight;
         this.sodiumVideoOptionsScreen = sodiumVideoOptionsScreen;
         this.lastSearch = lastSearch;
-        this.lastSearchIndex = lastSearchIndex;
-        if (!lastSearch.get().trim().isEmpty()) {
-            this.write(lastSearch.get());
+
+        // Initialize text from lastSearch without triggering rebuild
+        String initialSearch = lastSearch.get().trim();
+        if (!initialSearch.isEmpty()) {
+            this.text = initialSearch;
+            this.selectionStart = initialSearch.length();
+            this.selectionEnd = initialSearch.length();
+            // Initialize matching options for the restored search
+            this.matchingOptions = new HashSet<>(StringUtils.fuzzySearch(this.pages, initialSearch, 2));
         }
+    }
+
+    public Predicate<Option<?>> getOptionPredicate() {
+        return matchingOptions == null ? opt -> true : matchingOptions::contains;
+    }
+
+    public boolean hasSearchQuery() {
+        return !this.text.trim().isEmpty();
+    }
+
+    public boolean hasNoResults() {
+        return hasSearchQuery() && matchingOptions != null && matchingOptions.isEmpty();
     }
 
     @Override
@@ -118,17 +139,22 @@ public class SearchTextFieldComponent extends AbstractWidget {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Right-click to clear search
+        if (button == 1 && this.dim.containsCursor(mouseX, mouseY)) {
+            this.text = "";
+            this.selectionStart = 0;
+            this.selectionEnd = 0;
+            this.firstCharacterIndex = 0;
+            this.onChanged("");
+            this.setFocused(true);
+            return true;
+        }
+
         final int i = MathHelper.floor_double(mouseX) - this.dim.getOriginX() - 6;
         final String string = this.textRenderer.trimStringToWidth(this.text.substring(this.firstCharacterIndex), this.getInnerWidth());
         this.setCursor(this.textRenderer.trimStringToWidth(string, i).length() + this.firstCharacterIndex);
 
         this.setFocused(this.dim.containsCursor(mouseX, mouseY));
-        this.pages.forEach(page -> page
-            .getOptions()
-            .stream()
-            .filter(OptionExtended.class::isInstance)
-            .map(OptionExtended.class::cast)
-            .forEach(optionExtended -> optionExtended.setSelected(false)));
         return this.isFocused();
     }
 
@@ -192,22 +218,16 @@ public class SearchTextFieldComponent extends AbstractWidget {
     }
 
     private void onChanged(String newText) {
-        this.pages.forEach(page -> page
-            .getOptions()
-            .stream()
-            .filter(OptionExtended.class::isInstance)
-            .map(OptionExtended.class::cast)
-            .forEach(optionExtended -> optionExtended.setHighlight(false)));
-
         this.lastSearch.set(newText.trim());
-        if (this.editable && (!newText.trim().isEmpty())) {
-            final List<Option<?>> fuzzy = StringUtils.fuzzySearch(this.pages, newText, 2);
-            fuzzy.stream()
-                .filter(OptionExtended.class::isInstance)
-                .map(OptionExtended.class::cast)
-                .forEach(optionExtended -> optionExtended.setHighlight(true));
 
+        if (this.editable && !newText.trim().isEmpty()) {
+            final List<Option<?>> fuzzy = StringUtils.fuzzySearch(this.pages, newText, 2);
+            this.matchingOptions = new HashSet<>(fuzzy);
+        } else {
+            this.matchingOptions = null;
         }
+
+        this.sodiumVideoOptionsScreen.rebuildGUI();
     }
 
     private void erase(int offset) {
@@ -296,8 +316,6 @@ public class SearchTextFieldComponent extends AbstractWidget {
         if (!this.selecting) {
             this.setSelectionEnd(this.selectionStart);
         }
-
-        this.onChanged(this.text);
     }
 
     public void moveCursor(int offset) {
@@ -368,12 +386,6 @@ public class SearchTextFieldComponent extends AbstractWidget {
 //
     @Override
     public boolean keyTyped(char typedChar, int keyCode) {
-        this.pages.forEach(page2 -> page2
-            .getOptions()
-            .stream()
-            .filter(OptionExtended.class::isInstance)
-            .map(OptionExtended.class::cast)
-            .forEach(optionExtended2 -> optionExtended2.setSelected(false)));
         if (!this.isActive()) {
             return false;
         } else {
@@ -404,42 +416,6 @@ public class SearchTextFieldComponent extends AbstractWidget {
                 return true;
             } else {
                 switch (keyCode) {
-                    case Keyboard.KEY_RETURN: // GLFW.GLFW_KEY_ENTER
-                        if (this.editable) {
-                            int count = 0;
-                            for (OptionPage page : this.pages) {
-                                for (Option<?> option : page.getOptions()) {
-                                    if(option instanceof OptionExtended<?> optionExtended) {
-                                        if (optionExtended.isHighlight() && optionExtended.getParentDimension() != null) {
-                                            if (count == this.lastSearchIndex.get()) {
-                                                final Dim2i optionDim = optionExtended.getDim2i();
-                                                final Dim2i parentDim = optionExtended.getParentDimension();
-                                                final int maxOffset = parentDim.getHeight() - this.tabDimHeight;
-                                                final int input = optionDim.getOriginY() - parentDim.getOriginY();
-                                                final int inputOffset = input + optionDim.getHeight() == parentDim.getHeight() ? parentDim.getHeight() : input;
-                                                final int offset = inputOffset * maxOffset / parentDim.getHeight();
-
-                                                int total = this.pages.stream().mapToInt(page2 -> Math.toIntExact(page2.getOptions().stream().filter(OptionExtended.class::isInstance).map(OptionExtended.class::cast).filter(OptionExtended::isHighlight).count())).sum();
-
-                                                final int value = total == this.lastSearchIndex.get() + 1 ? 0 : this.lastSearchIndex.get() + 1;
-                                                optionExtended.setSelected(true);
-                                                this.lastSearchIndex.set(value);
-                                                this.tabFrameSelectedTab.set(page.getName());
-                                                // todo: calculate tab frame scroll bar offset
-                                                this.tabFrameScrollBarOffset.set(0);
-
-                                                this.optionPageScrollBarOffset.set(offset);
-                                                this.setFocused(false);
-                                                this.sodiumVideoOptionsScreen.rebuildGUI();
-                                                return true;
-                                            }
-                                            count++;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        return true;
                     case Keyboard.KEY_BACK: // GLFW.GLFW_KEY_BACKSPACE
                         if (this.editable) {
                             this.selecting = false;
@@ -481,9 +457,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
                     default:
                         if (ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
                             if (this.editable) {
-                                this.lastSearch.set(this.text.trim());
                                 this.write(Character.toString(typedChar));
-                                this.lastSearchIndex.set(0);
                             }
                             return true;
                         }

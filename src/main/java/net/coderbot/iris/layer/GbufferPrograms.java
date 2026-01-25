@@ -2,15 +2,15 @@ package net.coderbot.iris.layer;
 
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
-import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import org.lwjgl.opengl.GL20;
 
 public class GbufferPrograms {
 	private static boolean entities;
 	private static boolean blockEntities;
 	private static boolean outline;
-	private static Runnable phaseChangeListener;
 
 	private static void checkReentrancy() {
 		if (entities || blockEntities || outline) {
@@ -22,6 +22,7 @@ public class GbufferPrograms {
 	public static void beginEntities() {
 		checkReentrancy();
 		setPhase(WorldRenderingPhase.ENTITIES);
+		setBlockEntityDefaults();
 		entities = true;
 	}
 
@@ -52,6 +53,7 @@ public class GbufferPrograms {
 	public static void beginBlockEntities() {
 		checkReentrancy();
 		setPhase(WorldRenderingPhase.BLOCK_ENTITIES);
+		setBlockEntityDefaults();
 		blockEntities = true;
 	}
 
@@ -62,6 +64,13 @@ public class GbufferPrograms {
 
 		setPhase(WorldRenderingPhase.NONE);
 		blockEntities = false;
+	}
+
+	public static void setBlockEntityDefaults() {
+		GL20.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
+		GL20.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
+		GL20.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+		GL20.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {
@@ -90,22 +99,12 @@ public class GbufferPrograms {
 		}
 	}
 
-	public static void runPhaseChangeNotifier() {
-		if (phaseChangeListener != null) {
-			phaseChangeListener.run();
-		}
-	}
-
 	public static void setupSpecialRenderCondition(SpecialCondition override) {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(override));
 	}
 
 	public static void teardownSpecialRenderCondition() {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(null));
-	}
-
-	static {
-		StateUpdateNotifiers.phaseChangeNotifier = listener -> phaseChangeListener = listener;
 	}
 
 	public static void init() {

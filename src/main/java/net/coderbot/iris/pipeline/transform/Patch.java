@@ -2,6 +2,6 @@ package net.coderbot.iris.pipeline.transform;
 
 public enum Patch {
 	ATTRIBUTES,
-	SODIUM_TERRAIN,
+	CELERITAS_TERRAIN,
 	COMPOSITE
 }
