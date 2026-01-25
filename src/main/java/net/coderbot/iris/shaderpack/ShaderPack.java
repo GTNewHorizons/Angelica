@@ -179,7 +179,7 @@ public class ShaderPack {
 			}
 
 			// Set up dimension mappings
-			// If world0 folder exists with shader files, use it for Overworld. Otherwise Overworld uses root (base).
+            // If world0 folder exists with shader files, use it for Overworld. Otherwise use base for all oher dims.
 			if (foundFolders.contains("world0")) {
 				dimensionMap.put("Overworld", "world0");
 			}
