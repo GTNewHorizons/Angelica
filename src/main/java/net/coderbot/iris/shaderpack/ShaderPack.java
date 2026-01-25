@@ -73,6 +73,7 @@ public class ShaderPack {
 
 	private final Map<String, String> dimensionMap;
 	private final Map<String, ProgramSet> dimensionProgramSets;
+	private final Set<String> foldersWithShaderFiles;
 	private final Function<AbsolutePackPath, String> sourceProvider;
 	private final ShaderProperties shaderProperties;
 	private boolean hasLoggedCacheLimitReached = false;
@@ -114,6 +115,7 @@ public class ShaderPack {
 
 		// Parse dimension.properties to get dimension name -> folder mappings
 		this.dimensionMap = new HashMap<>();
+		this.foldersWithShaderFiles = new HashSet<>();
 
 		Iris.logger.info("Dimension shader cache size: {} (3 vanilla pinned + {} modded), configurable via -Diris.dimensionCacheSize",
 			MAX_DIMENSION_CACHE, Math.max(0, MAX_DIMENSION_CACHE - PINNED_DIMENSIONS.size()));
@@ -135,7 +137,9 @@ public class ShaderPack {
 		if (!dimensionFolders.isEmpty()) {
 			for (String folderName : dimensionFolders) {
 				boolean folderExists = checkAndAddDimensionFolder(starts, root, potentialFileNames, folderName);
-				if (!folderExists) {
+				if (folderExists) {
+					foldersWithShaderFiles.add(folderName);
+				} else {
 					Iris.logger.warn("dimension.properties references folder '{}' but it doesn't exist or has no shader files", folderName);
 				}
 			}
@@ -164,6 +168,7 @@ public class ShaderPack {
 							boolean exists = checkAndAddDimensionFolder(starts, root, potentialFileNames, folderName);
 							if (exists) {
 								foundFolders.add(folderName);
+								foldersWithShaderFiles.add(folderName);
 							}
 						} catch (IOException e) {
 							Iris.logger.warn("Failed to scan dimension folder: {}", folderName, e);
@@ -173,8 +178,8 @@ public class ShaderPack {
 				Iris.logger.warn("Failed to scan for dimension folders", e);
 			}
 
-			// Set up default name mappings for vanilla dimensions only
-			// Other world{ID} folders are handled via dimension ID fallback at runtime
+			// Set up dimension mappings
+			// If world0 folder exists with shader files, use it for Overworld. Otherwise Overworld uses root (base).
 			if (foundFolders.contains("world0")) {
 				dimensionMap.put("Overworld", "world0");
 			}
@@ -572,15 +577,24 @@ public class ShaderPack {
 	 * The LinkedHashMap maintains access order, so oldest entries are at the front.
 	 */
 	private void evictOldDimensions() {
-		// If cache is disabled, evict everything except pinned
+		// Build set of pinned folders (folders that vanilla dimensions map to)
+		Set<String> pinnedFolders = new HashSet<>();
+		for (String pinnedDimName : PINNED_DIMENSIONS) {
+			String folder = dimensionMap.get(pinnedDimName);
+			if (folder != null) {
+				pinnedFolders.add(folder);
+			}
+		}
+
+		// If cache is disabled, evict everything except pinned folders
 		if (MAX_DIMENSION_CACHE == 0) {
-			dimensionProgramSets.entrySet().removeIf(e -> !PINNED_DIMENSIONS.contains(e.getKey()));
+			dimensionProgramSets.entrySet().removeIf(e -> !pinnedFolders.contains(e.getKey()));
 			return;
 		}
 
 		// Count non-pinned entries
 		long nonPinnedCount = dimensionProgramSets.entrySet().stream()
-			.filter(e -> !PINNED_DIMENSIONS.contains(e.getKey()))
+			.filter(e -> !pinnedFolders.contains(e.getKey()))
 			.count();
 
 		int maxNonPinned = Math.max(0, MAX_DIMENSION_CACHE - PINNED_DIMENSIONS.size());
@@ -597,7 +611,7 @@ public class ShaderPack {
 			// Find the first (oldest/least recently used) non-pinned entry
 			String toEvict = null;
 			for (Map.Entry<String, ProgramSet> entry : dimensionProgramSets.entrySet()) {
-				if (!PINNED_DIMENSIONS.contains(entry.getKey())) {
+				if (!pinnedFolders.contains(entry.getKey())) {
 					toEvict = entry.getKey();
 					break;
 				}
@@ -643,16 +657,20 @@ public class ShaderPack {
 		}
 
 		// If still no match, try world{ID} folder as fallback for backward compatibility
+		// But only if that folder actually has shader files!
 		if (folderName == null) {
-			folderName = "world" + dimensionId;
+			String worldFolder = "world" + dimensionId;
+			if (foldersWithShaderFiles.contains(worldFolder)) {
+				folderName = worldFolder;
+			}
 		}
 
-		// If we have a folder name, try to get or create its ProgramSet
-		if (folderName != null) {
+		// If we have a folder name that contains shader files, try to get or create its ProgramSet
+		if (folderName != null && foldersWithShaderFiles.contains(folderName)) {
 			ProgramSet programSet = dimensionProgramSets.get(folderName);
 
 			if (programSet == null) {
-				// Create ProgramSet on-demand for any dimension folder
+				// Create ProgramSet on-demand for dimension folder
 				try {
 					programSet = new ProgramSet(
 						AbsolutePackPath.fromAbsolutePath("/" + folderName),
@@ -660,23 +678,14 @@ public class ShaderPack {
 						shaderProperties,
 						this
 					);
-				} catch (Exception e) {
-					// If the folder doesn't exist, just fall back to base silently.
-                    // Expected since I don't think literally anyone has ever done custom dimension shaders
-					String message = e.getMessage();
-					if (message != null && (message.contains("does not contain") || message.contains("No sources found"))) {
-						Iris.logger.debug("Dimension folder '" + folderName + "' not found, using base shaders");
-					} else {
-						Iris.logger.error("Failed to create ProgramSet for dimension folder '{}', falling back to base", folderName, e);
-					}
-					programSet = null;
-				}
-
-				if (programSet != null) {
 					dimensionProgramSets.put(folderName, programSet);
 
-                    // Check cache size limit and evict LRU dimensions if needed
+					// Check cache size limit and evict LRU dimensions if needed
 					evictOldDimensions();
+				} catch (Exception e) {
+					// This shouldn't happen but just in case.
+					Iris.logger.error("Failed to create ProgramSet for dimension folder '{}', falling back to base", folderName, e);
+					programSet = null;
 				}
 			}
 
