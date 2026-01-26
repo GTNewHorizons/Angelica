@@ -233,7 +233,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         if (!teCache.angelica$isInfiniteExtent()) {
             final AxisAlignedBB aabb = teCache.angelica$getCachedRenderBoundingBox();
-            if (!TileEntityRenderBoundsRegistry.isInfiniteExtentsBox(aabb) && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
+            if (aabb != null && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
                 return;
             }
         }
