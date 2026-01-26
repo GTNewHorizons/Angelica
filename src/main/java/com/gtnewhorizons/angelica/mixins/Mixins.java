@@ -210,6 +210,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
             , "shaders.MixinRenderManager"
+            , "shaders.MixinRenderNameTag"
             , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
         )
