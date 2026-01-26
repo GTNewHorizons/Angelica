@@ -68,6 +68,6 @@ public class MixinRenderItem {
         at = @At("RETURN")
     )
     private void iris$resetItemIdAfterRender(net.minecraft.entity.item.EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 }

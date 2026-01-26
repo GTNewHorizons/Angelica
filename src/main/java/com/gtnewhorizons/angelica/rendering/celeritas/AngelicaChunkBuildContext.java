@@ -56,6 +56,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final VertexArrayQuadView quadView;
     private boolean lightPipelineReady = false;
     private int originX, originY, originZ;
+    private IBlockAccess blockAccess;
 
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
@@ -71,6 +72,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     public void setupLightPipeline(IBlockAccess blockAccess, int minBlockX, int minBlockY, int minBlockZ) {
+        this.blockAccess = blockAccess;
         this.originX = minBlockX;
         this.originY = minBlockY;
         this.originZ = minBlockZ;
@@ -138,7 +140,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final int worldX = originX + blockX;
         final int worldY = originY + blockY;
         final int worldZ = originZ + blockZ;
-        final boolean isEmissive = useAoCalculation && QuadLightingHelper.isBlockEmissive(worldSlice, worldX, worldY, worldZ);
+        final boolean isEmissive = useAoCalculation && QuadLightingHelper.isBlockEmissive(blockAccess, worldX, worldY, worldZ);
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;

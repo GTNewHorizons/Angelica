@@ -397,6 +397,12 @@ public class SodiumGameOptionPages {
         groups.add(OptionGroup.createBuilder()
                 .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(Settings.GUI_BACKGROUND.option)
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.disablef3"))
+                        .setTooltip(I18n.format("options.angelica.disablef3.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.disableF3Additions = value, opts -> AngelicaConfig.disableF3Additions)
+                        .build())
             .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.advanced"), ImmutableList.copyOf(groups));
