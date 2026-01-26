@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
@@ -20,7 +21,7 @@ public class CeleritasDebugScreenHandler {
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
         final Minecraft mc = Minecraft.getMinecraft();
-        if (!mc.gameSettings.showDebugInfo) {
+        if (!mc.gameSettings.showDebugInfo || AngelicaConfig.disableF3Additions) {
             return;
         }
 

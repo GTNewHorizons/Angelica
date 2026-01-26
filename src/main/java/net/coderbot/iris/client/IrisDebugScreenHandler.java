@@ -37,7 +37,7 @@ public class IrisDebugScreenHandler {
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
         final Minecraft mc = Minecraft.getMinecraft();
-        if (mc.gameSettings.showDebugInfo) {
+        if (mc.gameSettings.showDebugInfo && !AngelicaConfig.disableF3Additions) {
             event.right.add(Math.min(event.right.size(), 2), "Direct Buffers: +" + iris$humanReadableByteCountBin(iris$directPool.getMemoryUsed()));
 
             if (Iris.getIrisConfig().areShadersEnabled()) {
