@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -16,7 +17,7 @@ import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -29,6 +30,7 @@ import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderFogComponent;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -63,9 +65,9 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     }
 
     @Redirect(method = "<init>(Lnet/minecraft/client/Minecraft;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GLAllocation;generateDisplayLists(I)I", ordinal = 0))
-    private int celeritas$skipDisplayListAllocation(int count) {
-        // Skip allocation - celeritas replaces WorldRenderer with its own rendering system
-        return 0;
+    private int celeritas$minimizeDisplayListAllocation(int count) {
+        // Minimize allocation - celeritas replaces WorldRenderer with its own rendering system
+        return GLAllocation.generateDisplayLists(3);
     }
 
     @Redirect(method = "loadRenderers", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderDistanceChunks:I", opcode = Opcodes.GETFIELD, ordinal = 0))
@@ -142,7 +144,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         RenderHelper.disableStandardItemLighting();
 
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
         GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
 
@@ -156,8 +158,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final double camZ = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
-            mc.mcProfiler.endStartSection("draw_chunk_layer_" + pass);
-            this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.fromVanillaPass(pass), camX, camY, camZ);
+            if (pass == 0) {
+                mc.mcProfiler.endStartSection("draw_chunk_layer_solid");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.SOLID, camX, camY, camZ);
+                mc.mcProfiler.endStartSection("draw_chunk_layer_cutout_mipped");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
+            } else {
+                mc.mcProfiler.endStartSection("draw_chunk_layer_translucent");
+                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
+            }
         } finally {
             RenderDevice.exitManagedCode();
         }
@@ -212,6 +221,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Unique
     public void angelica$reload() {
+        CeleritasSetup.ensureInitialized();
         RenderDevice.enterManagedCode();
         try {
             this.celeritas$renderer.reload();

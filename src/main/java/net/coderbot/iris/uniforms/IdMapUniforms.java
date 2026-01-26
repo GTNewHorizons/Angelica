@@ -44,6 +44,9 @@ public final class IdMapUniforms {
 
         uniforms.uniform1i("blockEntityId", CapturedRenderingState.INSTANCE::getCurrentRenderedBlockEntity,
             CapturedRenderingState.INSTANCE.getBlockEntityIdNotifier());
+
+        uniforms.uniform1i("currentRenderedItemId", CapturedRenderingState.INSTANCE::getCurrentRenderedItem,
+            CapturedRenderingState.INSTANCE.getItemIdNotifier());
     }
 
 	/**

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.startup;
 
+import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.Display;
@@ -15,5 +16,6 @@ public class MixinInitGLStateManager {
         GLStateManager.setDrawableGL(Display.getDrawable());
         GLStateManager.preInit();
         GLStateManager.init();
+        DriverCompatabilityCheck.checkDriverCompatibility();
     }
 }

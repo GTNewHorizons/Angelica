@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas.threading;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaChunkBuilderMeshingTask;
 import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.WorldClientExtension;
@@ -39,7 +40,8 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
 
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
-        initBlockAccess((AngelicaChunkBuildContext) context);
+        final AngelicaChunkBuildContext buildContext = (AngelicaChunkBuildContext) context;
+        initBlockAccess(buildContext);
         return super.execute(context, cancellationToken);
     }
 
@@ -54,12 +56,14 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
             this.blockAccess = worldSlice;
             this.biomeColorCache = new SmoothBiomeColorCache(worldSlice);
             this.biomeColorCache.update(new SectionPos(this.render.getChunkX(), this.render.getChunkY(), this.render.getChunkZ()));
+            buildContext.setupLightPipeline(minX, minY, minZ);
         } else {
             // Fallback: direct world access (main thread only)
             final var world = Minecraft.getMinecraft().theWorld;
             this.biomeColorCache = ((WorldClientExtension) world).celeritas$getSmoothBiomeColorCache();
             this.biomeColorCache.update(new SectionPos(this.render.getChunkX(), this.render.getChunkY(), this.render.getChunkZ()));
             this.blockAccess = new ChunkCache(world, minX - 1, minY - 1, minZ - 1, minX + 17, minY + 17, minZ + 17, 1);
+            buildContext.setupLightPipeline(this.blockAccess, minX, minY, minZ);
         }
     }
 
@@ -100,12 +104,16 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
         enteredLocalMode = !TessellatorManager.isOnMainThread();
         if (enteredLocalMode) {
             TessellatorManager.enterLocalMode();
+            if (blockAccess instanceof WorldSlice worldSlice) {
+                RenderThreadContext.set(worldSlice);
+            }
         }
     }
 
     @Override
     protected void onExitExecute() {
         if (enteredLocalMode) {
+            RenderThreadContext.clear();
             RenderPassHelper.resetWorldRenderPass();
             TessellatorManager.exitLocalMode();
         }

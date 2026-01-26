@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -227,10 +229,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             return;
         }
 
-        final AxisAlignedBB aabb = tileEntity.getRenderBoundingBox();
+        final ITileEntityBoundingBoxCache teCache = (ITileEntityBoundingBoxCache) tileEntity;
 
-        if (aabb != TileEntity.INFINITE_EXTENT_AABB && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
-            return;
+        if (!teCache.angelica$isInfiniteExtent()) {
+            final AxisAlignedBB aabb = teCache.angelica$getCachedRenderBoundingBox();
+            if (aabb != null && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
+                return;
+            }
         }
 
         try {
@@ -244,11 +249,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         }
     }
 
-    private static boolean isInfiniteExtentsBox(AxisAlignedBB box) {
-        return box == null || Double.isInfinite(box.minX) || Double.isInfinite(box.minY) || Double.isInfinite(box.minZ)
-                || Double.isInfinite(box.maxX) || Double.isInfinite(box.maxY) || Double.isInfinite(box.maxZ);
-    }
-
     public boolean isEntityVisible(Entity entity) {
         // During shadow pass, don't cull entities - shadow rendering uses different frustum
         if (!this.useEntityCulling || this.renderSectionManager.isInShadowPass()) {
@@ -260,7 +260,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             box = entity.boundingBox;
         }
 
-        if (isInfiniteExtentsBox(box)) {
+        if (TileEntityRenderBoundsRegistry.isInfiniteExtentsBox(box)) {
             return true;
         }
 

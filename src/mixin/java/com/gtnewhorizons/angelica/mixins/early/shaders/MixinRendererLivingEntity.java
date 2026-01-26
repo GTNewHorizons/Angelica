@@ -14,10 +14,23 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RendererLivingEntity.class)
 public class MixinRendererLivingEntity {
+    /**
+     * Reset currentRenderedItemId at the start of rendering each living entity, otherwise entity materials don't apply.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At("HEAD")
+    )
+    private void iris$resetItemIdAtStart(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+    }
+
     @WrapOperation(
         method="doRender",
         at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RendererLivingEntity;getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I")
@@ -48,5 +61,31 @@ public class MixinRendererLivingEntity {
         } else {
             original.call(instance, entity, p_78088_2_, p_78088_3_, p_78088_4_, p_78088_5_, p_78088_6_, p_78088_7_);
         }
+    }
+
+    /**
+     * Activate GLINT shader before rendering armor enchantment glint.
+     * Injects at the first glDepthFunc inside the armor glint rendering block.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
+    )
+    private void iris$activateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+    }
+
+    /**
+     * Deactivate GLINT shader after rendering armor enchantment glint.
+     * Injects at the last glDepthFunc inside the armor glint rendering block.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
+    )
+    private void iris$deactivateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
     }
 }

@@ -22,6 +22,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
@@ -66,9 +67,7 @@ import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
-import org.embeddedt.embeddium.impl.gl.device.GLRenderDevice;
 import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.GL15;
 
 public class ClientProxy extends CommonProxy {
 
@@ -116,8 +115,10 @@ public class ClientProxy extends CommonProxy {
             HUDCaching.init();
         }
         if (AngelicaConfig.enableCeleritas) {
-            GLRenderDevice.VANILLA_STATE_RESETTER = () -> GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            CeleritasSetup.ensureInitialized();
             MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
+        } else {
+            LOGGER.info("Celeritas is disabled, skipping initialization from init()");
         }
         if (AngelicaConfig.enableIris) {
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);

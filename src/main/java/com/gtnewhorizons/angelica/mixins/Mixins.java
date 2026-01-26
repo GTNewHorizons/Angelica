@@ -188,6 +188,7 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLeaves"
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.threading.MixinForgeHooksClient"
+            , "celeritas.terrain.MixinChunk"
         )
     ),
 
@@ -195,16 +196,22 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
-            "shaders.MixinEntityRenderer"
+              "shaders.MixinEntityPickupFX"
+            , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
             , "shaders.MixinLocale"
-            , "shaders.MixinOpenGlHelper"
             , "shaders.MixinRender"
+            , "shaders.MixinRenderBiped"
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
+            , "shaders.MixinRenderHorse"
+            , "shaders.MixinRenderItem"
+            , "shaders.MixinRenderManager"
+            , "shaders.MixinRenderNameTag"
+            , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
         )
     ),
@@ -311,7 +318,7 @@ public enum Mixins implements IMixins {
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
             .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat")),
+            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat", "client.ntmSpace.MixinSkyProviderLaytheSunset")),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)

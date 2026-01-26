@@ -52,6 +52,7 @@ public class DynamicLights {
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
+    private volatile int lightSourceCount = 0;
     private final ChunkRebuildManager chunkRebuildManager = new ChunkRebuildManager();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
@@ -68,6 +69,10 @@ public class DynamicLights {
             // if shader force is enabled then true
             // if not, then true when shaders are not in use
             (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
+    }
+
+    public boolean hasLightSources() {
+        return lightSourceCount > 0;
     }
 
     public static IDynamicLightWorldRenderer getActiveRenderer() {
@@ -142,7 +147,9 @@ public class DynamicLights {
 
     public void addLightSource(IDynamicLightSource lightSource) {
         this.lightSourcesLock.writeLock().lock();
-        this.dynamicLightSources.add(lightSource);
+        if (this.dynamicLightSources.add(lightSource)) {
+            this.lightSourceCount = this.dynamicLightSources.size();
+        }
         this.lightSourcesLock.writeLock().unlock();
     }
 
@@ -160,6 +167,7 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (it.equals(lightSource)) {
                 dynamicLightSources.remove();
+                this.lightSourceCount = this.dynamicLightSources.size();
                 if (activeRenderer != null)
                     lightSource.angelica$scheduleTrackedChunksRebuild(activeRenderer);
                 break;
@@ -183,6 +191,7 @@ public class DynamicLights {
             it = dynamicLightSources.next();
             if (filter.test(it)) {
                 dynamicLightSources.remove();
+                this.lightSourceCount = this.dynamicLightSources.size();
                 if (activeRenderer != null) {
                     if (it.angelica$getLuminance() > 0)
                         it.angelica$resetDynamicLight();
@@ -212,6 +221,7 @@ public class DynamicLights {
                 it.angelica$scheduleTrackedChunksRebuild(activeRenderer);
             }
         }
+        this.lightSourceCount = 0;
 
         this.lightSourcesLock.writeLock().unlock();
     }

@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
@@ -39,6 +40,7 @@ public interface WorldRenderingPipeline {
 
 	CeleritasTerrainPipeline getCeleritasTerrainPipeline();
 	FrameUpdateNotifier getFrameUpdateNotifier();
+	DHCompat getDHCompat();
 
 	boolean shouldDisableVanillaEntityShadows();
 	boolean shouldDisableDirectionalShading();

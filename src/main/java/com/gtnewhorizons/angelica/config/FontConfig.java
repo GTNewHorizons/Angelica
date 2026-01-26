@@ -70,4 +70,11 @@ public class FontConfig {
     @Config.DefaultFloat(1.5F)
     @Config.RangeFloat(min = 0.1F, max = 3F)
     public static float customFontScale;
+
+    @Config.Comment({"Mods can provide Angelica with a mapping of special characters to either get replaced with " +
+        "different characters or rendered using the default Unicode font. Setting this to false disables the " +
+        "replacement, which is useful in cases where custom fonts have direct support for these special characters. ",
+        "See for additional details: https://github.com/GTNewHorizons/Angelica/issues/1239#issuecomment-3729877936"})
+    @Config.DefaultBoolean(true)
+    public static boolean enableGlyphReplacements;
 }

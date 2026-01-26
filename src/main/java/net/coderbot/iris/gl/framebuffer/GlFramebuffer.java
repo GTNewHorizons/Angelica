@@ -104,7 +104,7 @@ public class GlFramebuffer extends GlResource {
 
 	@Override
     protected void destroyInternal() {
-		OpenGlHelper.func_153184_g/*glDeleteFramebuffers*/(getGlId());
+		OpenGlHelper.func_153174_h/*glDeleteFramebuffers*/(getGlId());
 	}
 
 	public boolean isComplete() {

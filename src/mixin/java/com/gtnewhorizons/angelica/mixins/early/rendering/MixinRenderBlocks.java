@@ -87,7 +87,7 @@ public abstract class MixinRenderBlocks {
 
     @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
     private boolean checkAOEnabled() {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && SodiumClientMod.options().quality.useSodiumAO) ||
+        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && SodiumClientMod.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             return false; // Force sodium pipeline with Iris or for standard blocks rendered from renderBlockByRenderType when using AO
         }

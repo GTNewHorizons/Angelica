@@ -70,6 +70,7 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
@@ -331,6 +332,7 @@ public class GLStateManager {
     @Getter protected static final ViewPortStateStack viewportState = new ViewPortStateStack();
 
     @Getter protected static int activeProgram = 0;
+    @Getter protected static int listBase = 0;
 
     @Getter protected static int boundVBO;
     @Getter protected static int boundVAO;
@@ -426,6 +428,7 @@ public class GLStateManager {
 
     public static void init() {
         RenderSystem.initRenderer();
+        IrisSamplers.initRenderer();
 
         if(BYPASS_CACHE) {
             LOGGER.info("GLStateManager cache bypassed");
@@ -810,6 +813,7 @@ public class GLStateManager {
         return switch (pname) {
             case GL11.GL_ALPHA_TEST_FUNC -> alphaState.getFunction();
             case GL11.GL_DEPTH_FUNC -> depthState.getFunc();
+            case GL11.GL_LIST_BASE -> listBase;
             case GL11.GL_LIST_MODE -> DisplayListManager.getListMode();
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
@@ -3567,24 +3571,28 @@ public class GLStateManager {
 
     // Display List Commands
     public static void glCallLists(IntBuffer lists) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCallLists in display lists not yet implemented - if you see this, please report!");
+        while (lists.hasRemaining()) {
+            final int listId = lists.get() + listBase;
+            glCallList(listId);
         }
-        GL11.glCallLists(lists);
+    }
+
+    public static void glCallLists(ShortBuffer lists) {
+        while (lists.hasRemaining()) {
+            final int listId = (lists.get() & 0xFFFF) + listBase;
+            glCallList(listId);
+        }
     }
 
     public static void glCallLists(ByteBuffer lists) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCallLists in display lists not yet implemented - if you see this, please report!");
+        while (lists.hasRemaining()) {
+            final int listId = (lists.get() & 0xFF) + listBase;
+            glCallList(listId);
         }
-        GL11.glCallLists(lists);
     }
 
     public static void glListBase(int base) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glListBase in display lists not yet implemented - if you see this, please report!");
-        }
-        GL11.glListBase(base);
+        listBase = base;
     }
 
     // Clip Plane Commands
@@ -3800,6 +3808,58 @@ public class GLStateManager {
 
     public static boolean vendorIsNVIDIA() {
         return VENDOR == NVIDIA;
+    }
+
+    @Getter protected static int drawFramebuffer = 0;
+    @Getter protected static int readFramebuffer = 0;
+
+    public static void glBindFramebuffer(int target, int framebuffer) {
+        if (target == GL30.GL_FRAMEBUFFER) {
+            if (drawFramebuffer == framebuffer && readFramebuffer == framebuffer) return;
+            drawFramebuffer = framebuffer;
+            readFramebuffer = framebuffer;
+        } else if (target == GL30.GL_DRAW_FRAMEBUFFER) {
+            if (drawFramebuffer == framebuffer) return;
+            drawFramebuffer = framebuffer;
+        } else if (target == GL30.GL_READ_FRAMEBUFFER) {
+            if (readFramebuffer == framebuffer) return;
+            readFramebuffer = framebuffer;
+        }
+        GL30.glBindFramebuffer(target, framebuffer);
+    }
+
+    public static void glDeleteFramebuffers(int framebuffer) {
+        if (drawFramebuffer == framebuffer) drawFramebuffer = 0;
+        if (readFramebuffer == framebuffer) readFramebuffer = 0;
+        GL30.glDeleteFramebuffers(framebuffer);
+    }
+
+    public static int glGenFramebuffers() {
+        return GL30.glGenFramebuffers();
+    }
+
+    public static int glCheckFramebufferStatus(int target) {
+        return GL30.glCheckFramebufferStatus(target);
+    }
+
+    public static void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
+        GL30.glFramebufferTexture2D(target, attachment, textarget, texture, level);
+    }
+
+    public static void setActiveTexture(int textureUnit) {
+        glActiveTexture(textureUnit);
+    }
+
+    public static void setLightmapTextureCoords(int unit, float x, float y) {
+        GL13.glMultiTexCoord2f(unit, x, y);
+        if (unit == GL13.GL_TEXTURE1) {
+            OpenGlHelper.lastBrightnessX = x;
+            OpenGlHelper.lastBrightnessY = y;
+        }
+    }
+
+    public static boolean isFramebufferEnabled() {
+        return OpenGlHelper.framebufferSupported && Minecraft.getMinecraft().gameSettings.fboEnable;
     }
 
 }

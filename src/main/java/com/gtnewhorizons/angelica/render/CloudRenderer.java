@@ -40,6 +40,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 public class CloudRenderer implements IResourceManagerReloadListener {
     // Shared constants.
@@ -340,12 +341,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             texColor = newColor;
         }
 
-        GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
         GLStateManager.enableTexture();
 
         // Bind the clouds texture last so the shader's sampler2D is correct.
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         mc.renderEngine.bindTexture(texture);
 
         vbo.setupState();
@@ -387,9 +388,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         vbo.cleanupState(); // Unbind buffer and disable pointers.
 
         // Disable our coloring.
-        GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
         GLStateManager.disableTexture();
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
         // Reset texture matrix.
         GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
