@@ -100,7 +100,6 @@ public final class CompiledDisplayList {
         final long end = ptr + commandBuffer.limit();
         while (ptr < end) {
             final int cmd = memGetInt(ptr);
-            System.out.println("cmd: " + cmd + ", remaining: " + (end - ptr));
             counts.mergeInt(cmd, 1, Integer::sum);
             ptr += getCommandSize(cmd, ptr);
         }

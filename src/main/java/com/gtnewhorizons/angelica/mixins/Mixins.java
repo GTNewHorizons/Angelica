@@ -253,7 +253,7 @@ public enum Mixins implements IMixins {
 
     HUD_CACHING(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> false)
+        .setApplyIf(() -> AngelicaConfig.enableHudCaching)
         .addClientMixins(
             "angelica.hudcaching.MixinGuiIngame",
             "angelica.hudcaching.MixinGuiIngameForge",

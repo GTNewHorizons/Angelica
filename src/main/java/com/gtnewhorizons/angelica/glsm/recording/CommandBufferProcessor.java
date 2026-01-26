@@ -314,6 +314,7 @@ public final class CommandBufferProcessor {
                 out.writeMultMatrix(delta);
             }
             lastEmitted.set(target);
+            accumulated.identity();
         }
     }
 }
