@@ -40,7 +40,7 @@ public class MixinItemRenderer {
         ItemStack itemStack = mc.thePlayer.getCurrentEquippedItem();
 
         if (itemStack == null || itemStack.getItem() == null) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
             return;
         }
 
@@ -83,6 +83,6 @@ public class MixinItemRenderer {
         at = @At("RETURN")
     )
     private void iris$resetHeldItemId(float partialTicks, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 }

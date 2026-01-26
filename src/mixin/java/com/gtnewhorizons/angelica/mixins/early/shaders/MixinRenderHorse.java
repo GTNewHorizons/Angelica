@@ -78,7 +78,7 @@ public abstract class MixinRenderHorse {
 
         // Reset only if we set it
         if (hasArmor) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
         }
     }
 }
