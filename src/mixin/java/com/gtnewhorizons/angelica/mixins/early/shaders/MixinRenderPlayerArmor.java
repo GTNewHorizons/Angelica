@@ -32,7 +32,7 @@ public class MixinRenderPlayerArmor {
         ItemStack itemStack = player.getCurrentArmor(3 - armorSlot);
 
         if (itemStack == null || itemStack.getItem() == null) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
             original.call(instance, model);
             return;
         }
@@ -54,7 +54,7 @@ public class MixinRenderPlayerArmor {
         at = @At("HEAD")
     )
     private void iris$resetAtStart(AbstractClientPlayer player, double x, double y, double z, float entityYaw, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 
     /**
@@ -66,7 +66,7 @@ public class MixinRenderPlayerArmor {
         at = @At("HEAD")
     )
     private void iris$resetInEquippedItems(AbstractClientPlayer player, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 
     /**
@@ -90,6 +90,6 @@ public class MixinRenderPlayerArmor {
         original.call(itemRenderer, entity, itemStack, renderPass);
 
         // Reset after rendering the held item
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(-1);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 }
