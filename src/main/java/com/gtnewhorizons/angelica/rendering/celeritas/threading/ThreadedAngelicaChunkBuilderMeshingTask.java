@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas.threading;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaChunkBuilderMeshingTask;
 import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.WorldClientExtension;
@@ -103,12 +104,16 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
         enteredLocalMode = !TessellatorManager.isOnMainThread();
         if (enteredLocalMode) {
             TessellatorManager.enterLocalMode();
+            if (blockAccess instanceof WorldSlice worldSlice) {
+                RenderThreadContext.set(worldSlice);
+            }
         }
     }
 
     @Override
     protected void onExitExecute() {
         if (enteredLocalMode) {
+            RenderThreadContext.clear();
             RenderPassHelper.resetWorldRenderPass();
             TessellatorManager.exitLocalMode();
         }

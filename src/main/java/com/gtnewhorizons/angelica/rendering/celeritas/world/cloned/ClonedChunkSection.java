@@ -4,8 +4,11 @@ import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
+import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
 
@@ -78,25 +81,26 @@ public class ClonedChunkSection {
     private void copyBlockEntities(Chunk chunk, ChunkSectionPos pos) {
         this.tileEntities.clear();
 
-        final Object2ObjectMap<ChunkPosition, TileEntity> chunkTEMap = (Object2ObjectMap<ChunkPosition, TileEntity>) chunk.chunkTileEntityMap;
+        final ConcurrentTileEntityMap map = ((IChunkTileEntityMapHolder) chunk).angelica$getConcurrentTEMap();
 
-        if (chunkTEMap.isEmpty()) {
-            this.tileEntities.trim();
-            return;
-        }
+        map.withReadLock(() -> {
+            final Object2ObjectOpenHashMap<ChunkPosition, TileEntity> delegate = map.getDelegate();
 
-        final int minY = pos.getMinY();
-        final int maxY = pos.getMaxY();
+            if (delegate.isEmpty()) return;
 
-        for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(chunkTEMap)) {
-            final ChunkPosition tePos = entry.getKey();
-            if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
+            final int minY = pos.getMinY();
+            final int maxY = pos.getMaxY();
 
-            final TileEntity te = entry.getValue();
-            if (te != null && !te.isInvalid()) {
-                this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
+            for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
+                final ChunkPosition tePos = entry.getKey();
+                if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
+
+                final TileEntity te = entry.getValue();
+                if (te != null && !te.isInvalid()) {
+                    this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
+                }
             }
-        }
+        });
 
         this.tileEntities.trim();
     }
