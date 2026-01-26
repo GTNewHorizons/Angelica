@@ -196,7 +196,8 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
-            "shaders.MixinEntityRenderer"
+              "shaders.MixinEntityPickupFX"
+            , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
@@ -208,6 +209,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderGlobal"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
+            , "shaders.MixinRenderManager"
             , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
         )
