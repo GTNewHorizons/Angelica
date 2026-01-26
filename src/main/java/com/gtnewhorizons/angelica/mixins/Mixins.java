@@ -204,6 +204,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinLocale"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
+            , "shaders.MixinRenderDragon"
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
