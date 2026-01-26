@@ -15,7 +15,6 @@ import java.util.List;
  * The matrix will be applied at runtime, not baked into vertices.
  */
 public final class AccumulatedDraw {
-    public final Matrix4f transform;
     public final VertexFormat format;
     public final List<ByteBuffer> drawBuffers;
     public final int drawMode;
@@ -23,8 +22,7 @@ public final class AccumulatedDraw {
     public final int stateGeneration; // Position in command list for state tracking
     public RestoreData restoreData;
 
-    public AccumulatedDraw(DirectTessellator tessellator, Matrix4f transform, int commandIndex, int stateGeneration, boolean copyLast) {
-        this.transform = transform; // Snapshot for runtime application
+    public AccumulatedDraw(DirectTessellator tessellator, int commandIndex, int stateGeneration, boolean copyLast) {
         this.format = tessellator.getVertexFormat();
         this.drawMode = tessellator.drawMode;
         this.drawBuffers = new ArrayList<>();

@@ -240,6 +240,7 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glBindFramebuffer")
         );
 
         // MINECRAFT

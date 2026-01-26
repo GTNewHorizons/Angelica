@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBufferProcessor;
-import com.gtnewhorizons.angelica.glsm.recording.CommandBufferProcessor.BufferTransformOptimizer;
 
 import java.util.List;
 
@@ -25,30 +24,22 @@ public final class CommandBufferBuilder {
             List<AccumulatedDraw> accumulatedDraws,
             CommandBuffer finalBuffer) {
 
-        // Buffer optimizer state
-        final BufferTransformOptimizer opt = new BufferTransformOptimizer();
-
         rawBuffer.resetRead();
         int cmdIndex = 0;
         int rangeIndex = 0;
 
         AccumulatedDraw draw;
         while (rawBuffer.hasRemaining()) {
+            // Read and process the command
+            CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
+
             // Emit draw ranges at this command position
             while (rangeIndex < accumulatedDraws.size() && (draw = accumulatedDraws.get(rangeIndex)).commandIndex == cmdIndex) {
-                emitDrawRangeToBuffer(draw, opt, finalBuffer, rangeIndex);
+                emitDrawRangeToBuffer(draw, finalBuffer, rangeIndex);
                 rangeIndex++;
             }
 
-            // Read and process the command
-            final int opcode = rawBuffer.readInt();
-            CommandBufferProcessor.processCommandForOptimization(opcode, rawBuffer, opt, finalBuffer);
             cmdIndex++;
-        }
-
-        // Emit residual transform if not identity
-        if (!opt.isIdentity()) {
-            opt.emitPendingTransform(finalBuffer);
         }
     }
 
@@ -67,14 +58,15 @@ public final class CommandBufferBuilder {
         int rangeIndex = 0;
 
         while (rawBuffer.hasRemaining()) {
+            // Copy the command directly
+            CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
+
             // Emit draw ranges at this command position
             while (rangeIndex < accumulatedDraws.size() && accumulatedDraws.get(rangeIndex).commandIndex == cmdIndex) {
                 finalBuffer.writeDrawRange(rangeIndex);
                 rangeIndex++;
             }
 
-            // Copy the command directly
-            CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
             cmdIndex++;
         }
     }
@@ -84,11 +76,8 @@ public final class CommandBufferBuilder {
      */
     private static void emitDrawRangeToBuffer(
             AccumulatedDraw draw,
-            BufferTransformOptimizer opt,
             CommandBuffer out,
             int vboIdx) {
-        // Emit transform to reach the draw's expected transform
-        opt.emitTransformTo(out, draw.transform);
 
         if (draw.restoreData != null) {
             out.writeDrawRangeRestore(vboIdx, draw.restoreData);

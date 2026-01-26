@@ -2,12 +2,11 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
-import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
@@ -15,7 +14,6 @@ import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
-import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -155,15 +153,18 @@ public class DisplayListManager {
         return glListMode == GL11.GL_COMPILE_AND_EXECUTE;
     }
 
-    /** Emit accumulated transform as MultMatrix if non-identity, then reset. */
-    public static boolean flushMatrix() {
+    /**
+     * Emit accumulated transform as MultMatrix if non-identity, then reset.
+     */
+    public static void flushMatrix() {
         if (relativeTransform == null || isIdentity(relativeTransform)) {
             // Clear pending ops even if we don't emit - they were no-ops (identity)
             if (pendingTransformOps != null) {
                 pendingTransformOps.clear();
             }
-            return false;
+            return;
         }
+
 
         // Save pending transform ops for logging (before we clear them)
         if (multMatrixSources != null && pendingTransformOps != null) {
@@ -179,6 +180,7 @@ public class DisplayListManager {
         // Record the collapsed MultMatrix command (for playback)
         if (currentRecorder != null) {
             currentRecorder.recordMultMatrix(relativeTransform);
+            stateGeneration++;
         }
 
         // COMPILE_AND_EXECUTE: execute now. Bypass GLSM to avoid re-entering recording path.
@@ -192,7 +194,6 @@ public class DisplayListManager {
         // Reset to identity - we're now synchronized with GL
         relativeTransform.identity();
 
-        return true;
     }
 
     public static void matrixBarrier() {
@@ -598,7 +599,7 @@ public class DisplayListManager {
     public static void addImmediateModeDraw(DirectTessellator tessellator) {
         if (!tessellator.isEmpty()) {
             // Get relative transform (changes since glNewList, not absolute matrix state)
-            addAccumulatedDraw(tessellator, relativeTransform, true);
+            addAccumulatedDraw(tessellator, tessellator.getVertexFormat() != DefaultVertexFormat.POSITION);
         }
         tessellator.reset();
     }
@@ -813,7 +814,7 @@ public class DisplayListManager {
 
         TessellatorManager.startCapturingDirect((tessellator) -> {
             if (!tessellator.isEmpty()) {
-                addAccumulatedDraw(tessellator, relativeTransform, false);
+                addAccumulatedDraw(tessellator, false);
             }
             return true;
         });
@@ -907,22 +908,14 @@ public class DisplayListManager {
         }
     }
 
-    private static void addAccumulatedDraw(DirectTessellator tessellator, Matrix4f relativeTransform, boolean copyLast) {
-        final Matrix4f currentTransform = new Matrix4f(relativeTransform);
+    private static void addAccumulatedDraw(DirectTessellator tessellator, boolean copyLast) {
         final int cmdIndex = getCommandCount();
-        if (matrixGeneration != lastFlushedGeneration) {
-            if (lastFlushedTransform == null) {
-                lastFlushedTransform = new Matrix4f();
-            }
-            lastFlushedTransform.set(relativeTransform);
-            flushMatrix();
-            lastFlushedGeneration = matrixGeneration;
-        }
+        matrixBarrier();
 
         if (accumulatedDraws.isEmpty()) {
             accumulatedDraws.add(
                 new AccumulatedDraw(
-                    tessellator, currentTransform, cmdIndex, stateGeneration, copyLast
+                    tessellator, cmdIndex, stateGeneration, copyLast
                 )
             );
             return;
@@ -936,7 +929,7 @@ public class DisplayListManager {
         }
 
         accumulatedDraws.add(
-            new AccumulatedDraw(tessellator, currentTransform, cmdIndex, stateGeneration, copyLast)
+            new AccumulatedDraw(tessellator, cmdIndex, stateGeneration, copyLast)
         );
     }
 
