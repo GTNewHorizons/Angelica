@@ -67,8 +67,13 @@ public class ShaderTransformer {
 
     private record VersionRequirement(String keyword, int minVersion, BooleanSupplier supported) {}
 
+    // Sorted descending by minVersion for early exit in getRequiredVersion
     private static final VersionRequirement[] VERSION_REQUIREMENTS = {
-        new VersionRequirement("std430", 430, RenderSystem::supportsSSBO)
+        new VersionRequirement("std430", 430, RenderSystem::supportsSSBO),
+        new VersionRequirement("iimage", 420, RenderSystem::supportsImageLoadStore),
+        new VersionRequirement("uimage", 420, RenderSystem::supportsImageLoadStore),
+        new VersionRequirement("imageLoad", 420, RenderSystem::supportsImageLoadStore),
+        new VersionRequirement("imageStore", 420, RenderSystem::supportsImageLoadStore)
     };
 
     private static Pattern hoistPattern;
