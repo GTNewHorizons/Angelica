@@ -48,7 +48,7 @@ import net.minecraft.tileentity.TileEntity;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
-import org.joml.Vector3dc;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
@@ -162,24 +162,21 @@ public class ShadowRenderer {
 	}
 
 	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
-		// Determine the camera position
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
-
-		final double cameraX = cameraPos.x();
-		final double cameraY = cameraPos.y();
-		final double cameraZ = cameraPos.z();
+		// Use entity position for shadow matrix
+		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 
 		// Set up our modelview matrix stack
 		final MatrixStack modelView = new MatrixStack();
-		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
+		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 
 		return modelView;
 	}
 
 	private MatrixStack getShadowModelView() {
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
+
 		shadowModelView.reset();
-		ShadowMatrices.createModelViewMatrix(shadowModelView, getShadowAngle(), this.intervalSize, this.sunPathRotation, cameraPos.x(), cameraPos.y(), cameraPos.z());
+		ShadowMatrices.createModelViewMatrix(shadowModelView, getShadowAngle(), this.intervalSize, this.sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 		return shadowModelView;
 	}
 
@@ -635,15 +632,14 @@ public class ShadowRenderer {
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
 
-		// Determine the player camera position
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		// Use the player/entity position for shadow rendering
+		final Vector3d entityPos = playerCamera.getEntityPos();
+		final double entityX = entityPos.x;
+		final double entityY = entityPos.y;
+		final double entityZ = entityPos.z;
 
-		final double cameraX = cameraPos.x();
-		final double cameraY = cameraPos.y();
-		final double cameraZ = cameraPos.z();
-
-		// Center the frustum on the player camera position
-		terrainFrustumHolder.getFrustum().setPosition(cameraX, cameraY, cameraZ);
+		// Center the frustum on the player position
+		terrainFrustumHolder.getFrustum().setPosition(entityX, entityY, entityZ);
 
 		profiler.endSection();
 
@@ -699,7 +695,7 @@ public class ShadowRenderer {
 		}
 
 		Frustrum entityShadowFrustum = entityFrustumHolder.getFrustum();
-		entityShadowFrustum.setPosition(cameraX, cameraY, cameraZ);
+		entityShadowFrustum.setPosition(entityX, entityY, entityZ);
 
 		// Set viewport for entity visibility checks during shadow pass (matches modern Celeritas)
 		if (AngelicaConfig.enableCeleritas) {
@@ -709,13 +705,13 @@ public class ShadowRenderer {
 		// Render nearby entities
 
 		if (shouldRenderEntities) {
-			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, entityX, entityY, entityZ, tickDelta);
 		} else if (shouldRenderPlayer) {
-			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, entityX, entityY, entityZ, tickDelta);
 		}
 
 		if (shouldRenderBlockEntities) {
-			renderTileEntities(null, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+			renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
