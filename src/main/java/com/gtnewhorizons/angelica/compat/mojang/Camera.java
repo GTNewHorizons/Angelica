@@ -19,6 +19,7 @@ public class Camera {
     public static final Camera INSTANCE = new Camera();
 
     private final Vector3d pos = new Vector3d();
+    private final Vector3d entityPos = new Vector3d();
     private final BlockPos blockPos = new BlockPos();
     private final Vector3f offset = new Vector3f();
     private final Matrix4f inverseModelView = new Matrix4f();
@@ -42,11 +43,13 @@ public class Camera {
         this.partialTicks = partialTicks;
         this.entity = entity;
 
-        // Entity position (interpolated, at feet level)
+        // Entity position (interpolated, at eye level)
         final double entityX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks;
         final double entityY = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks;
         final double entityZ = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * partialTicks;
         final double eyeHeight = entity.getEyeHeight();
+
+        entityPos.set(entityX, entityY + eyeHeight, entityZ);
 
         thirdPerson = Minecraft.getMinecraft().gameSettings.thirdPersonView > 0;
 

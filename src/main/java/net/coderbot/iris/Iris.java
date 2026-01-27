@@ -390,6 +390,9 @@ public class Iris {
         // Warm up the threadpool so shader transformations are faster when we need them
         ShaderTransformExecutor.warmup();
 
+        // Initialize version hoisting pattern based on GL capabilities
+        ShaderTransformer.init();
+
         PBRTextureManager.INSTANCE.init();
 
         // Only load the shader pack when we can access OpenGL
