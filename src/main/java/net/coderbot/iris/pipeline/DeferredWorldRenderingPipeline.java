@@ -754,6 +754,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
+		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+		IrisImages.addCustomImages(builder, customImages);
+
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 			if (!shadow) {
 				shadowTargetsSupplier.get();
@@ -1130,12 +1134,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
+				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 					if (shadowRenderTargets != null) {
 						IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true);
 						IrisImages.addShadowColorImages(builder, shadowRenderTargets, null);
 					}
 				}
+
+				IrisImages.addCustomImages(builder, customImages);
 
 				programs[i] = builder.buildCompute();
 
