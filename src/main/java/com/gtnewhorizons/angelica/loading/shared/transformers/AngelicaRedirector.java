@@ -45,6 +45,7 @@ public final class AngelicaRedirector {
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
+    private static final String GL30 = "org/lwjgl/opengl/GL30";
     private static final String Project = "org/lwjgl/util/glu/Project";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
@@ -231,6 +232,9 @@ public final class AngelicaRedirector {
             .add("glStencilOpSeparate")
             .add("glUseProgram")
         );
+        methodRedirects.put(GL30, RedirectMap.newMap()
+            .add("glBindFramebuffer")
+        );
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
             .add("glBlendFunc", "tryBlendFuncSeparate")
             .add("func_148821_a", "tryBlendFuncSeparate")
@@ -241,7 +245,8 @@ public final class AngelicaRedirector {
             .add("func_153188_a", "glFramebufferTexture2D")
             .add("setActiveTexture")
             .add("setLightmapTextureCoords")
-            .add("isFramebufferEnabled"));
+            .add("isFramebufferEnabled")
+        );
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));

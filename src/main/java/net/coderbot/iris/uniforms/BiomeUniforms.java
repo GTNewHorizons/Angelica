@@ -25,9 +25,11 @@ import net.minecraft.world.biome.BiomeGenSnow;
 import net.minecraft.world.biome.BiomeGenStoneBeach;
 import net.minecraft.world.biome.BiomeGenSwamp;
 import net.minecraft.world.biome.BiomeGenTaiga;
+import net.minecraftforge.common.BiomeDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -107,6 +109,9 @@ public class BiomeUniforms {
         return biome != null ? biome.temperature : 0.0F;
     }
 
+    /**
+     * Biome ids in 1.7.10 are not unique, instead of this the biome category should be used
+     */
     public static int getBiomeId() {
         final BiomeGenBase biome = getCachedBiome();
         return biome != null ? biome.biomeID : 0;
@@ -142,36 +147,51 @@ public class BiomeUniforms {
     }
 
     private static int determineBiomeCategory(BiomeGenBase biome) {
-        // Tier 1: Hardcoded vanilla biome IDs
         BiomeGenBase lookupBiome = biome;
         if (biome instanceof BiomeGenMutated mutated && mutated.baseBiome != null) {
             lookupBiome = mutated.baseBiome;
         }
 
-        BiomeCategories category = getVanillaBiomeCategory(lookupBiome.biomeID);
+        BiomeCategories category = null;
+
+        // Tier 1: Hardcoded vanilla biome IDs
+        // biomes not in the biomeGenArray are also not registered to the forge biomeDictionary
+        if (Arrays.asList(BiomeGenBase.getBiomeGenArray()).contains(biome)) {
+            category = getVanillaBiomeCategory(lookupBiome.biomeID);
+
+            if (category != null) {
+                return category.ordinal();
+            }
+
+            // Tier 2: forge BiomeDictionary detection
+            if (BiomeDictionary.isBiomeRegistered(biome)) {
+                category = detectBiomeByBiomeDictionary(biome);
+            }
+        }
+
         if (category != null) {
             return category.ordinal();
         }
 
-        // Tier 2: Class-based detection for vanilla biome types
+        // Tier 3: Class-based detection for vanilla biome types
         category = detectVanillaBiomeByClass(biome);
         if (category != null) {
             return category.ordinal();
         }
 
-        // Tier 3: Modded biome detection (BiomesOPlenty, Realistic World Gen)
+        // Tier 4: Modded biome detection (BiomesOPlenty, Realistic World Gen, lotr)
         category = detectModdedBiome(biome);
         if (category != null) {
             return category.ordinal();
         }
 
-        // Tier 4: Name pattern matching
+        // Tier 5: Name pattern matching
         category = detectBiomeByName(biome);
         if (category != null) {
             return category.ordinal();
         }
 
-        // Tier 5: Temperature/rainfall heuristics
+        // Tier 6: Temperature/rainfall heuristics
         category = detectBiomeByProperties(biome);
         if (category != null) {
             return category.ordinal();
@@ -362,6 +382,44 @@ public class BiomeUniforms {
         // Default to plains for temperate, moderate biomes
         if (temp >= 0.4F && temp <= 1.0F && rain >= 0.3F && rain <= 0.6F) {
             return BiomeCategories.PLAINS;
+        }
+
+        return null;
+    }
+
+    /**
+     * Use the forge BiomeDictionary when available
+     */
+    private static BiomeCategories detectBiomeByBiomeDictionary(BiomeGenBase biome) {
+
+        var biomeDictTypes = Arrays.asList(BiomeDictionary.getTypesForBiome(biome));
+
+        if (biomeDictTypes.contains(BiomeDictionary.Type.SAVANNA)) {
+            return BiomeCategories.SAVANNA;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.JUNGLE)) {
+            return BiomeCategories.JUNGLE;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.NETHER)) {
+            return BiomeCategories.NETHER;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.END)) {
+            return BiomeCategories.THE_END;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.MUSHROOM)) {
+            return BiomeCategories.MUSHROOM;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.OCEAN)) {
+            return BiomeCategories.OCEAN;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.RIVER)) {
+            return BiomeCategories.RIVER;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.MESA)) {
+            return BiomeCategories.MESA;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.FOREST)) {
+            return BiomeCategories.FOREST;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.PLAINS)) {
+            return BiomeCategories.PLAINS;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.MOUNTAIN)) {
+            return BiomeCategories.MOUNTAIN;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.SWAMP)) {
+            return BiomeCategories.SWAMP;
+        } else if (biomeDictTypes.contains(BiomeDictionary.Type.SANDY)) {
+            return BiomeCategories.DESERT;
         }
 
         return null;

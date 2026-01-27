@@ -37,7 +37,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         this.allTileOverrides = allTileOverrides;
     }
 
-    synchronized void clear() {
+     void clear() {
         currentIcon = null;
         blockOverrides = null;
         tileOverrides = null;
@@ -46,7 +46,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         skipOverrides.clear();
     }
 
-    private synchronized void resetForNextPass() {
+    private void resetForNextPass() {
         blockOverrides = null;
         tileOverrides = allTileOverrides.get(currentIcon.getIconName());
         blockPos = 0;
@@ -55,7 +55,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
     }
 
     @Override
-    public synchronized boolean hasNext() {
+    public boolean hasNext() {
         if (foundNext) {
             return true;
         }
@@ -80,7 +80,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
     }
 
     @Override
-    public synchronized TileOverride next() {
+    public TileOverride next() {
         if (!foundNext) {
             throw new IllegalStateException("next called before hasNext() == true");
         }
@@ -89,11 +89,11 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
     }
 
     @Override
-    public synchronized void remove() {
+    public void remove() {
         throw new UnsupportedOperationException("remove not supported");
     }
 
-    private synchronized boolean checkOverride(TileOverride override) {
+    private boolean checkOverride(TileOverride override) {
         if (override != null && !override.isDisabled() && !skipOverrides.contains(override)) {
             foundNext = true;
             nextOverride = override;
@@ -103,7 +103,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         }
     }
 
-    public synchronized TileOverride go(RenderBlockState renderBlockState, IIcon origIcon) {
+    public TileOverride go(RenderBlockState renderBlockState, IIcon origIcon) {
         this.renderBlockState = renderBlockState;
         renderBlockState.setFilter(null);
         currentIcon = origIcon;
@@ -133,7 +133,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         return lastMatchedOverride;
     }
 
-    public synchronized IIcon getIcon() {
+    public IIcon getIcon() {
         return currentIcon;
     }
 
@@ -146,7 +146,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         }
 
         @Override
-        protected synchronized IIcon getTile(TileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
+        protected IIcon getTile(TileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
             return override.getTileWorld(renderBlockState, origIcon);
         }
     }
@@ -158,7 +158,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         }
 
         @Override
-        protected synchronized IIcon getTile(TileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
+        protected IIcon getTile(TileOverride override, RenderBlockState renderBlockState, IIcon origIcon) {
             return override.getTileHeld(renderBlockState, origIcon);
         }
     }

@@ -200,7 +200,7 @@ public class AngelicaConfig {
             "net.minecraft.block.BlockStairs"
     })
     public static String[] blockCrackFixBlacklist;
-    
+
     @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated.",
                      "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
     })
@@ -220,5 +220,9 @@ public class AngelicaConfig {
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;
+
+    @Config.Comment("Disables additional F3 information added by Angelica.")
+    @Config.DefaultBoolean(false)
+    public static boolean disableF3Additions;
 
 }
