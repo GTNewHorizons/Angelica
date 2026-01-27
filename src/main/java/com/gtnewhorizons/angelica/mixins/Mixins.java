@@ -196,7 +196,8 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
-              "shaders.MixinEntityPickupFX"
+              "shaders.MixinEnchantmentGlint"
+            , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"

@@ -2,13 +2,14 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemIdManager;
 import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.RenderHorse;
 import net.minecraft.entity.passive.EntityHorse;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
@@ -65,9 +66,9 @@ public abstract class MixinRenderHorse {
                 }
 
                 if (armorItem != null) {
-                    // Get material ID from item.properties
-                    int id = ItemMaterialHelper.getMaterialId(armorItem, 0);
-                    CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+                    // Set material ID using ItemIdManager
+                    ItemStack armorStack = new ItemStack(armorItem);
+                    ItemIdManager.setItemId(armorStack);
                     hasArmor = true;
                 }
             }
@@ -78,7 +79,7 @@ public abstract class MixinRenderHorse {
 
         // Reset only if we set it
         if (hasArmor) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+            ItemIdManager.resetItemId();
         }
     }
 }
