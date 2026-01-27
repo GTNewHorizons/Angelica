@@ -2,6 +2,8 @@ package net.coderbot.iris.pipeline.transform;
 
 import com.google.common.base.Stopwatch;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
@@ -15,13 +17,15 @@ import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,7 +62,58 @@ public class ShaderTransformer {
         fullReservedWords.add("texture");
 
         // sample was added as a keyword in GLSL 400, many shaders use it
-        versionedReservedWords.put(400, Arrays.asList("sample"));
+        versionedReservedWords.put(400, List.of("sample"));
+    }
+
+    private record VersionRequirement(String keyword, int minVersion, BooleanSupplier supported) {}
+
+    private static final VersionRequirement[] VERSION_REQUIREMENTS = {
+        new VersionRequirement("std430", 430, RenderSystem::supportsSSBO)
+    };
+
+    private static Pattern hoistPattern;
+    private static Object2IntMap<String> keywordToVersion;
+    private static int maxSupportedHoistVersion;
+
+    public static void init() {
+        final StringBuilder patternBuilder = new StringBuilder();
+        final Object2IntOpenHashMap<String> versionMap = new Object2IntOpenHashMap<>();
+        int maxVersion = 0;
+
+        for (VersionRequirement req : VERSION_REQUIREMENTS) {
+            if (req.supported.getAsBoolean()) {
+                if (!patternBuilder.isEmpty()) patternBuilder.append('|');
+
+                patternBuilder.append(Pattern.quote(req.keyword));
+                versionMap.put(req.keyword, req.minVersion);
+                maxVersion = Math.max(maxVersion, req.minVersion);
+            }
+        }
+
+        if (!patternBuilder.isEmpty()) {
+            hoistPattern = Pattern.compile(patternBuilder.toString());
+            keywordToVersion = versionMap;
+        }
+        maxSupportedHoistVersion = maxVersion;
+
+        Iris.logger.info("Shader version hoisting: {} feature(s) GLSL {}", versionMap.size(), maxVersion > 0 ? maxVersion : "N/A");
+    }
+
+    private static int getRequiredVersion(String shaderSource, int declaredVersion) {
+        if (hoistPattern == null || declaredVersion >= maxSupportedHoistVersion) {
+            return declaredVersion;
+        }
+
+        final Matcher m = hoistPattern.matcher(shaderSource);
+        int required = declaredVersion;
+        while (m.find()) {
+            final int ver = keywordToVersion.getInt(m.group());
+            if (ver > required) {
+                required = ver;
+                if (required >= maxSupportedHoistVersion) break;
+            }
+        }
+        return required;
     }
 
     private static final class TransformKey<P extends Parameters> {
@@ -164,10 +219,19 @@ public class ShaderTransformer {
 
             String profile = "";
             int versionInt = Integer.parseInt(versionString);
+
+            // Check if shader uses features requiring a higher GLSL version
+            int requiredVersion = getRequiredVersion(input, versionInt);
+            if (requiredVersion > versionInt) {
+                Iris.logger.debug("Shader requires GLSL {} for detected features, hoisting from {}", requiredVersion, versionInt);
+                versionInt = requiredVersion;
+                versionString = String.valueOf(versionInt);
+            }
+
             if (versionInt >= 150) {
                 profile = matcher.group(2);
                 if (profile == null) {
-                    profile = "core";
+                    profile = "compatibility";
                 }
             }
 
