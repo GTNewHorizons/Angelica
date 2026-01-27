@@ -19,9 +19,6 @@ import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjgl.opengl.KHRDebugCallback;
 
-import java.io.PrintStream;
-import java.util.function.Consumer;
-
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
 
@@ -35,19 +32,8 @@ public final class GLDebug {
             LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
             return 0;
         }
-        return setupDebugMessageCallback(System.err);
+        return setupDebugMessageCallbackImpl();
     }
-
-    private static void trace(Consumer<String> output) {
-		/*
-		 * We can not just use a fixed stacktrace element offset, because some methods
-		 * are intercepted and some are not. So, check the package name.
-		 */
-		StackTraceElement[] elems = filterStackTrace(new Throwable(), 4).getStackTrace();
-		for (StackTraceElement ste : elems) {
-			output.accept(ste.toString());
-		}
-	}
 
 	public static Throwable filterStackTrace(Throwable throwable, int offset) {
 		StackTraceElement[] elems = throwable.getStackTrace();
@@ -66,36 +52,48 @@ public final class GLDebug {
 		return throwable;
 	}
 
-	public static void printTrace(PrintStream stream) {
-		trace(new Consumer<String>() {
-			boolean first = true;
+	private static String buildStackTrace() {
+		StackTraceElement[] elems = filterStackTrace(new Throwable(), 4).getStackTrace();
+		StringBuilder sb = new StringBuilder();
+		for (StackTraceElement elem : elems) {
+			sb.append("\n\t").append(elem.toString());
+		}
+		return sb.toString();
+	}
 
-			public void accept(String str) {
-				if (first) {
-					printDetail(stream, "Stacktrace", str);
-					first = false;
-				} else {
-					printDetailLine(stream, "Stacktrace", str);
-				}
-			}
-		});
+	private static void logDebugMessage(int id, String source, String type, String severity, String message) {
+		String fullMessage = String.format("[GL] %s %s (0x%X) from %s: %s%s", severity, type, id, source, message, buildStackTrace());
+
+		if ("HIGH".equals(severity)) {
+			LOGGER.error(fullMessage);
+		} else if ("MEDIUM".equals(severity)) {
+			LOGGER.warn(fullMessage);
+		} else {
+			LOGGER.info(fullMessage);
+		}
+	}
+
+	private static void logDebugMessageAMD(int id, String category, String severity, String message) {
+		String fullMessage = String.format("[GL] %s %s (0x%X): %s%s", severity, category, id, message, buildStackTrace());
+
+		if ("HIGH".equals(severity)) {
+			LOGGER.error(fullMessage);
+		} else if ("MEDIUM".equals(severity)) {
+			LOGGER.warn(fullMessage);
+		} else {
+			LOGGER.info(fullMessage);
+		}
 	}
 
     /**
      * Sets up debug callbacks
      * @return 0 for failure, 1 for success, 2 for restart required.
      */
-    public static int setupDebugMessageCallback(PrintStream stream) {
+    private static int setupDebugMessageCallbackImpl() {
         if (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_KHR_debug) {
             LOGGER.info("[GL] Using OpenGL 4.3 for error logging.");
-            KHRDebugCallback proc = new KHRDebugCallback((source, type, id, severity, message) -> {
-                stream.println("[LWJGL] OpenGL debug message");
-                printDetail(stream, "ID", String.format("0x%X", id));
-                printDetail(stream, "Source", getDebugSource(source));
-                printDetail(stream, "Type", getDebugType(type));
-                printDetail(stream, "Severity", getDebugSeverity(severity));
-                printDetail(stream, "Message", message);
-                printTrace(stream);
+            final KHRDebugCallback proc = new KHRDebugCallback((source, type, id, severity, message) -> {
+                logDebugMessage(id, getDebugSource(source), getDebugType(type), getDebugSeverity(severity), message);
             });
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
@@ -114,14 +112,8 @@ public final class GLDebug {
             return 1;
         } else if (GLStateManager.capabilities.GL_ARB_debug_output) {
             LOGGER.info("[GL] Using ARB_debug_output for error logging.");
-            ARBDebugOutputCallback proc = new ARBDebugOutputCallback((source, type, id, severity, message) -> {
-                stream.println("[LWJGL] ARB_debug_output message");
-                printDetail(stream, "ID", String.format("0x%X", id));
-                printDetail(stream, "Source", getSourceARB(source));
-                printDetail(stream, "Type", getTypeARB(type));
-                printDetail(stream, "Severity", getSeverityARB(severity));
-                printDetail(stream, "Message", message);
-                printTrace(stream);
+            final ARBDebugOutputCallback proc = new ARBDebugOutputCallback((source, type, id, severity, message) -> {
+                logDebugMessage(id, getSourceARB(source), getTypeARB(type), getSeverityARB(severity), message);
             });
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
@@ -134,13 +126,8 @@ public final class GLDebug {
             return 1;
         } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
             LOGGER.info("[GL] Using AMD_debug_output for error logging.");
-            AMDDebugOutputCallback proc = new AMDDebugOutputCallback((id, category, severity, message) -> {
-                stream.println("[LWJGL] AMD_debug_output message");
-                printDetail(stream, "ID", String.format("0x%X", id));
-                printDetail(stream, "Category", getCategoryAMD(category));
-                printDetail(stream, "Severity", getSeverityAMD(severity));
-                printDetail(stream, "Message", message);
-                printTrace(stream);
+            final AMDDebugOutputCallback proc = new AMDDebugOutputCallback((id, category, severity, message) -> {
+                logDebugMessageAMD(id, getCategoryAMD(category), getSeverityAMD(severity), message);
             });
             AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
@@ -176,17 +163,6 @@ public final class GLDebug {
 		}
 	}
 
-	private static void printDetail(PrintStream stream, String type, String message) {
-		stream.printf("\t%s: %s\n", type, message);
-	}
-
-	private static void printDetailLine(PrintStream stream, String type, String message) {
-		stream.append("    ");
-		for (int i = 0; i < type.length(); i++) {
-			stream.append(" ");
-		}
-		stream.append(message).append("\n");
-	}
 
 	private static String getDebugSource(int source) {
         return switch (source) {
