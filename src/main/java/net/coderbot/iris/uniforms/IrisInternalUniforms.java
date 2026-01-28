@@ -1,6 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
@@ -13,7 +14,7 @@ public class IrisInternalUniforms {
     private IrisInternalUniforms() {
     }
 
-    public static void addFogUniforms(DynamicUniformHolder uniforms) {
+    public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
         uniforms.uniform4f(PER_FRAME, "iris_FogColor", () -> {
             final Vector3d color = GLStateManager.getFogState().getFogColor();
             return FOG_COLOR.set((float) color.x, (float) color.y, (float) color.z, GLStateManager.getFogState().getFogAlpha());

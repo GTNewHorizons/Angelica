@@ -1,37 +1,59 @@
 package net.coderbot.iris.pipeline.transform.parameter;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import net.coderbot.iris.gl.blending.AlphaTest;
+import net.coderbot.iris.gl.shader.ShaderType;
+import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.Patch;
-import net.coderbot.iris.pipeline.transform.PatchShaderType;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 
-public class Parameters implements JobParameters {
-    public final Patch patch;
-    public PatchShaderType type;
-    // WARNING: adding new fields requires updating hashCode and equals methods!
+public abstract class Parameters {
+	public final Patch patch;
+	private final Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap;
+	public ShaderType type;
+	// WARNING: adding new fields requires updating hashCode and equals methods!
 
-    // name of the shader, this should not be part of hash/equals
-    public String name; // set by TransformPatcher
+	public Parameters(Patch patch, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+		this.patch = patch;
+		this.textureMap = textureMap;
+	}
 
-    public Parameters(Patch patch) {
-        this.patch = patch;
-    }
+	public AlphaTest getAlphaTest() {
+		return AlphaTest.ALWAYS;
+	}
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((patch == null) ? 0 : patch.hashCode());
-        return result;
-    }
+	public abstract TextureStage getTextureStage();
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Parameters other = (Parameters) obj;
-        return patch == other.patch;
-    }
+	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
+		return textureMap;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((patch == null) ? 0 : patch.hashCode());
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		result = prime * result + ((textureMap == null) ? 0 : textureMap.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Parameters other = (Parameters) obj;
+		if (patch != other.patch)
+			return false;
+		if (type != other.type)
+			return false;
+		if (textureMap == null) {
+			return other.textureMap == null;
+		} else return textureMap.equals(other.textureMap);
+	}
 }

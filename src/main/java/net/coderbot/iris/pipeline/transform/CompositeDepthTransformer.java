@@ -1,15 +1,17 @@
 package net.coderbot.iris.pipeline.transform;
 
+import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 
 class CompositeDepthTransformer {
 
-    public static void transform(Transformer transformer) {
-		// replace original declaration
-        int type = transformer.findType("centerDepthSmooth");
-        if (type != 0) {
-            transformer.injectVariable("uniform sampler2D iris_centerDepthSmooth;");
-            transformer.replaceExpression("centerDepthSmooth", "texture2D(iris_centerDepthSmooth, vec2(0.5)).r");
-        }
+	public static void transform(Transformer transformer, Parameters parameters) {
+		CommonTransformer.transform(transformer, parameters, false);
+
+		int type = transformer.findType("centerDepthSmooth");
+		if (type != 0) {
+			transformer.injectVariable("uniform sampler2D iris_centerDepthSmooth;");
+			transformer.replaceExpression("centerDepthSmooth", "texture2D(iris_centerDepthSmooth, vec2(0.5)).r");
+		}
 	}
 }

@@ -15,8 +15,7 @@ public class CompatibilityTransformer {
 
 
     public static void transformEach(Transformer transformer, Parameters parameters) {
-        if (parameters.type == PatchShaderType.VERTEX) {
-            ;
+        if (parameters.type == ShaderType.VERTEX) {
             // TODO: sildur's jankness
             // This is a hacky patch for sildur's shaders that changes the way it does it's waving water to make it work better?
             // Why is this the GLSL transformation code in Iris, tell sildur to fix it and remove this?
