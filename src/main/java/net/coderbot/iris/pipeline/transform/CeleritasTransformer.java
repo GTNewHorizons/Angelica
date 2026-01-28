@@ -1,18 +1,17 @@
 package net.coderbot.iris.pipeline.transform;
 
+import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static net.coderbot.iris.pipeline.transform.PatchShaderType.FRAGMENT;
-import static net.coderbot.iris.pipeline.transform.PatchShaderType.VERTEX;
-
 class CeleritasTransformer {
     public static void transform(Transformer transformer, Parameters parameters) {
+        CommonTransformer.transform(transformer, parameters, false);
+
         switch (parameters.type) {
-            // For Celeritas patching, treat fragment and geometry the same
             case FRAGMENT:
             case GEOMETRY:
                 transformFragment(transformer, parameters);
@@ -26,7 +25,7 @@ class CeleritasTransformer {
     }
 
     public static void transformVertex(Transformer transformer, Parameters parameters) {
-        transformer.injectVariable("uniform vec3 u_RegionOffset;"); // Per-region offset from setRegionOffset()
+        transformer.injectVariable("uniform vec3 u_RegionOffset;");
         transformer.injectVariable("vec4 iris_LightTexCoord;");
         transformer.injectFunction("vec4 iris_ftransform() { return gl_ModelViewProjectionMatrix * _celeritas_getVertexPosition(); }");
         transformer.injectFunction(
@@ -57,7 +56,6 @@ class CeleritasTransformer {
     }
 
     public static void transformFragment(Transformer transformer, Parameters parameters) {
-        // interestingly there is nothing that isn't shared
         transformShared(transformer, parameters);
     }
 
@@ -82,31 +80,5 @@ class CeleritasTransformer {
         sharedReplacements.put("gl_TextureMatrix[1]", "iris_LightmapTextureMatrix");
         sharedReplacements.put("gl_ModelViewProjectionMatrix", "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
         sharedReplacements.forEach(transformer::replaceExpression);
-
-        transformFog(transformer, parameters);
-    }
-
-    private static void transformFog(Transformer transformer, Parameters parameters) {
-        transformer.injectVariable("uniform float iris_FogDensity;");
-        transformer.injectVariable("uniform float iris_FogStart;");
-        transformer.injectVariable("uniform float iris_FogEnd;");
-        transformer.injectVariable("uniform vec4 iris_FogColor;");
-
-        transformer.injectFunction("struct iris_FogParameters { vec4 color; float density; float start; float end; float scale; };");
-        transformer.injectFunction(
-            "iris_FogParameters iris_Fog = iris_FogParameters(iris_FogColor, iris_FogDensity, " +
-            "iris_FogStart, iris_FogEnd, 1.0 / (iris_FogEnd - iris_FogStart));");
-
-        final Map<String, String> fogRenames = new HashMap<>();
-        fogRenames.put("gl_Fog", "iris_Fog");
-        fogRenames.put("gl_FogFragCoord", "iris_FogFragCoord");
-        transformer.rename(fogRenames);
-
-        if (parameters.type == VERTEX) {
-            transformer.injectVariable("out float iris_FogFragCoord;");
-            transformer.prependMain("iris_FogFragCoord = 0.0;");
-        } else if (parameters.type == FRAGMENT) {
-            transformer.injectVariable("in float iris_FogFragCoord;");
-        }
     }
 }

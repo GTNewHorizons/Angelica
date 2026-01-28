@@ -82,7 +82,7 @@ public class CenterDepthSampler {
 		this.framebuffer.bind();
 		this.program.use();
 
-		GL11.glViewport(0, 0, 1, 1);
+		GLStateManager.glViewport(0, 0, 1, 1);
 
 		FullScreenQuadRenderer.INSTANCE.render();
 

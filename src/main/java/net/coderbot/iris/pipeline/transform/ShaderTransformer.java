@@ -195,6 +195,117 @@ public class ShaderTransformer {
         }
     }
 
+    public static <P extends Parameters> Map<PatchShaderType, String> transformCompute(String compute, P parameters) {
+        if (compute == null) {
+            return null;
+        } else {
+            Map<PatchShaderType, String> result;
+
+            var patchType = parameters.patch;
+
+            EnumMap<PatchShaderType, String> inputs = new EnumMap<>(PatchShaderType.class);
+            inputs.put(PatchShaderType.COMPUTE, compute);
+
+            var key = new TransformKey<>(patchType, inputs, parameters);
+
+            synchronized (shaderTransformationCache) {
+                result = shaderTransformationCache.getAndMoveToLast(key);
+            }
+            if (result == null || !useCache) {
+                result = transformComputeInternal(compute, patchType, parameters);
+                // Clear this, we don't want whatever random type was last transformed being considered for the key
+                parameters.type = null;
+                synchronized (shaderTransformationCache) {
+                    // Double-check in case another thread added it while we were transforming
+                    Map<PatchShaderType, String> existing = shaderTransformationCache.getAndMoveToLast(key);
+                    if (existing != null) {
+                        return existing;
+                    }
+                    if (shaderTransformationCache.size() >= CACHE_SIZE) {
+                        shaderTransformationCache.removeFirst();
+                    }
+                    shaderTransformationCache.putAndMoveToLast(key, result);
+                }
+            }
+
+            return result;
+        }
+    }
+
+    private static <P extends Parameters> Map<PatchShaderType, String> transformComputeInternal(String compute, Patch patchType, P parameters) {
+        EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
+
+        Stopwatch watch = Stopwatch.createStarted();
+
+        parameters.type = ShaderType.COMPUTE;
+
+        Matcher matcher = versionPattern.matcher(compute);
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("No #version directive found in compute shader source code!");
+        }
+
+        String versionString = matcher.group(1);
+        int versionInt = Integer.parseInt(versionString);
+
+        // Check if shader uses features requiring a higher GLSL version
+        int requiredVersion = getRequiredVersion(compute, versionInt);
+        if (requiredVersion > versionInt) {
+            Iris.logger.debug("Compute shader requires GLSL {} for detected features, hoisting from {}", requiredVersion, versionInt);
+            versionInt = requiredVersion;
+            versionString = String.valueOf(versionInt);
+        }
+
+        // Compute shaders always use core profile, minimum 330
+        if (versionInt < 330) {
+            versionString = "330";
+            versionInt = 330;
+        }
+        String profileString = "#version " + versionString + " core\n";
+
+        // Rename reserved words
+        String input = compute;
+        for (String reservedWord : fullReservedWords) {
+            String newName = "iris_renamed_" + reservedWord;
+            input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+        }
+        for (int version : versionedReservedWords.keySet()) {
+            if (versionInt < version) {
+                for (String reservedWord : versionedReservedWords.get(version)) {
+                    String newName = "iris_renamed_" + reservedWord;
+                    input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
+                }
+            }
+        }
+
+        var parsedShader = ShaderParser.parseShader(input);
+        var transformer = new Transformer(parsedShader.full());
+
+        doTransform(transformer, patchType, parameters, "core", versionInt);
+
+        // Extract extensions
+        var extensions = versionPattern.matcher(getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
+        String header = profileString + (extensions.isEmpty() ? "" : "\n" + extensions);
+
+        final String finalHeader = header;
+        final StringBuilder formattedShaderBuilder = new StringBuilder();
+
+        transformer.mutateTree(tree -> {
+            formattedShaderBuilder.append(getFormattedShader(tree, finalHeader));
+        });
+
+        String formattedShader = formattedShaderBuilder.toString();
+
+        // Restore identifiers that were temporarily renamed
+        formattedShader = formattedShader.replace("iris_renamed_texture", "texture");
+        formattedShader = formattedShader.replace("iris_renamed_sample", "sample");
+
+        result.put(PatchShaderType.COMPUTE, formattedShader);
+
+        watch.stop();
+        Iris.logger.info("[Load #{}] Transformed compute shader for {} in {}", Iris.getShaderPackLoadId(), patchType.name(), watch);
+        return result;
+    }
+
     private static <P extends Parameters> Map<PatchShaderType, String> transformInternal(EnumMap<PatchShaderType, String> inputs, Patch patchType, P parameters) {
         EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
         EnumMap<PatchShaderType, Transformer> types = new EnumMap<>(PatchShaderType.class);
@@ -205,7 +316,7 @@ public class ShaderTransformer {
         Stopwatch watch = Stopwatch.createStarted();
 
         for (PatchShaderType type : PatchShaderType.VALUES) {
-            parameters.type = type;
+            parameters.type = type.glShaderType;
             if (inputs.get(type) == null) {
                 continue;
             }
@@ -352,10 +463,13 @@ public class ShaderTransformer {
                 applyIntelHd4000Workaround(transformer);
                 break;
             case COMPOSITE:
-                CompositeDepthTransformer.transform(transformer);
+                CompositeDepthTransformer.transform(transformer, parameters);
                 break;
             case ATTRIBUTES:
                 AttributeTransformer.transform(transformer, (AttributeParameters) parameters, profile, versionInt);
+                break;
+            case COMPUTE:
+                ComputeTransformer.transform(transformer, parameters);
                 break;
             default:
                 throw new IllegalStateException("Unknown patch type: " + patchType.name());
@@ -375,7 +489,7 @@ public class ShaderTransformer {
     }
 
     public static void patchMultiTexCoord3(Transformer transformer, Parameters parameters) {
-        if (parameters.type.glShaderType == ShaderType.VERTEX && transformer.hasVariable("gl_MultiTexCoord3") && !transformer.hasVariable("mc_midTexCoord")) {
+        if (parameters.type == ShaderType.VERTEX && transformer.hasVariable("gl_MultiTexCoord3") && !transformer.hasVariable("mc_midTexCoord")) {
             transformer.rename("gl_MultiTexCoord3", "mc_midTexCoord");
             transformer.injectVariable("attribute vec4 mc_midTexCoord;");
         }

@@ -23,6 +23,7 @@ import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
+import net.coderbot.iris.shadows.ShadowCompositeRenderer;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
@@ -79,6 +80,7 @@ public class ShadowRenderer {
 	private final Float fov;
 	private final ShadowRenderTargets targets;
 	private final ShadowCullState packCullingState;
+	private final ShadowCompositeRenderer compositeRenderer;
 	private boolean packHasVoxelization;
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
@@ -108,7 +110,7 @@ public class ShadowRenderer {
 	private double lastAdvancedBoxCullerDistance = -1;
 	private double lastTileEntityCullerDistance = -1;
 
-	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets) {
+	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets, ShadowCompositeRenderer compositeRenderer) {
 
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
@@ -124,6 +126,8 @@ public class ShadowRenderer {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities();
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer();
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities();
+
+		this.compositeRenderer = compositeRenderer;
 
 		debugStringOverall = "half plane = " + halfPlaneLength + " meters @ " + resolution + "x" + resolution;
 
@@ -382,7 +386,7 @@ public class ShadowRenderer {
 	private void setupGlState(Matrix4f projMatrix) {
 		// Bind shadow framebuffer and set viewport to shadow resolution
 		targets.getDepthSourceFb().bind();
-		GL11.glViewport(0, 0, resolution, resolution);
+		GLStateManager.glViewport(0, 0, resolution, resolution);
 
 		// Set up our projection matrix and load it into the legacy matrix stack
 		RenderSystem.setupProjectionMatrix(projMatrix);
@@ -407,7 +411,7 @@ public class ShadowRenderer {
 		// Restore main framebuffer and viewport
 		Minecraft mc = Minecraft.getMinecraft();
 		mc.getFramebuffer().bindFramebuffer(false);
-		GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+		GLStateManager.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 	}
 
 	private void copyPreTranslucentDepth() {
@@ -675,7 +679,7 @@ public class ShadowRenderer {
 		}
 
 		// Reset viewport in case terrain rendering changed it
-		GL11.glViewport(0, 0, resolution, resolution);
+		GLStateManager.glViewport(0, 0, resolution, resolution);
 
 		profiler.endStartSection("entities");
 
@@ -749,6 +753,10 @@ public class ShadowRenderer {
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).restoreState();
 		}
+
+		profiler.endStartSection("shadowcomp");
+
+		if (compositeRenderer != null) compositeRenderer.renderAll();
 
 		ACTIVE = false;
 		CURRENT_TARGETS = null;

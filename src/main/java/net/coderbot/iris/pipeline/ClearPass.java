@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.minecraft.client.Minecraft;
 import org.joml.Vector4f;
@@ -24,7 +25,7 @@ public class ClearPass {
 	}
 
 	public void execute(Vector4f defaultClearColor) {
-		GL11.glViewport(0, 0, viewportX.getAsInt(), viewportY.getAsInt());
+		GLStateManager.glViewport(0, 0, viewportX.getAsInt(), viewportY.getAsInt());
 		framebuffer.bind();
 
 		Vector4f color = Objects.requireNonNull(defaultClearColor);

@@ -12,6 +12,7 @@ import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.rendertarget.RenderTargets;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.coderbot.iris.shaderpack.ProgramSource;
@@ -146,7 +147,7 @@ public class CeleritasTerrainPipeline {
     public ProgramUniforms.Builder initUniforms(int programId) {
         final ProgramUniforms.Builder uniforms = ProgramUniforms.builder("<celeritas shaders>", programId);
 
-        CommonUniforms.addDynamicUniforms(uniforms);
+        CommonUniforms.addDynamicUniforms(uniforms, FogMode.PER_VERTEX);
         customUniforms.assignTo(uniforms);
 
         BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniforms);
