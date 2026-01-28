@@ -1,12 +1,16 @@
 package com.prupe.mcpatcher.ctm;
 
 import net.minecraft.block.Block;
+import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
 
 final class BlockOrientation extends RenderBlockState {
+
+    private static final boolean fixedBottomFaceUV = (boolean) Launch.blackboard
+        .getOrDefault("hodgepodge.FixesConfig.fixBottomFaceUV", Boolean.FALSE);
 
     // NEIGHBOR_OFFSETS[a][b][c] = offset from starting block
     // a: face 0-5
@@ -16,7 +20,11 @@ final class BlockOrientation extends RenderBlockState {
     // 1 2 3
     // c: coordinate (x,y,z) 0-2
     private static final int[][][] NEIGHBOR_OFFSET = new int[][][] {
-        makeNeighborOffset(WEST_FACE, SOUTH_FACE, EAST_FACE, NORTH_FACE), // BOTTOM_FACE
+        (
+            fixedBottomFaceUV
+                ? makeNeighborOffset(EAST_FACE, SOUTH_FACE, WEST_FACE, NORTH_FACE) // BOTTOM_FACE fixedBottomFaceUV
+                : makeNeighborOffset(WEST_FACE, SOUTH_FACE, EAST_FACE, NORTH_FACE) // BOTTOM_FACE not fixed
+        ),
         makeNeighborOffset(WEST_FACE, SOUTH_FACE, EAST_FACE, NORTH_FACE), // TOP_FACE
         makeNeighborOffset(EAST_FACE, BOTTOM_FACE, WEST_FACE, TOP_FACE), // NORTH_FACE
         makeNeighborOffset(WEST_FACE, BOTTOM_FACE, EAST_FACE, TOP_FACE), // SOUTH_FACE
