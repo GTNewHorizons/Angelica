@@ -28,7 +28,7 @@ public class MixinLayerBetterElytra {
     @Unique
     private static final NamespacedId ELYTRA = new NamespacedId("etfuturum", "elytra");
     @Unique
-    private static final ThreadLocal<Boolean> iris$didSetId = ThreadLocal.withInitial(() -> false);
+    private static boolean iris$didSetId = false;
 
     /**
      * Before rendering the elytra model, set the appropriate material ID based on whether
@@ -41,7 +41,7 @@ public class MixinLayerBetterElytra {
     )
     private static void iris$setElytraId(EntityLivingBase entityIn, float limbSwing, float limbSwingAmount,
                                           float partialTicks, float ageInTicks, float scale, CallbackInfo ci) {
-        iris$didSetId.set(false);
+        iris$didSetId = false;
 
         if (entityIn instanceof AbstractClientPlayer player) {
             if (BlockRenderingSettings.INSTANCE.getItemIds() != null) {
@@ -49,7 +49,7 @@ public class MixinLayerBetterElytra {
                 NamespacedId elytraId = player.func_152122_n() ? ELYTRA_WITH_CAPE : ELYTRA;
                 int materialId = Objects.requireNonNull(BlockRenderingSettings.INSTANCE.getItemIds()).applyAsInt(elytraId);
                 CapturedRenderingState.INSTANCE.setCurrentRenderedItem(materialId);
-                iris$didSetId.set(true);
+                iris$didSetId = true;
             }
         }
     }
@@ -65,9 +65,8 @@ public class MixinLayerBetterElytra {
     private static void iris$resetElytraId(EntityLivingBase entityIn, float limbSwing, float limbSwingAmount,
                                             float partialTicks, float ageInTicks, float scale, CallbackInfo ci) {
         // Reset only if we set it
-        if (iris$didSetId.get()) {
+        if (iris$didSetId) {
             ItemIdManager.resetItemId();
-            iris$didSetId.remove();
         }
     }
 }
