@@ -125,7 +125,11 @@ public class TransformPatcher {
     }
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment) {
-        return transform(vertex, geometry, fragment, new TextureStageParameters(Patch.COMPOSITE, TextureStage.COMPOSITE_AND_FINAL, null));
+        return patchComposite(vertex, geometry, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
+    }
+
+    public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+        return transform(vertex, geometry, fragment, new TextureStageParameters(Patch.COMPOSITE, stage, textureMap));
     }
 
     public static String patchCompute(String name, String compute, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {

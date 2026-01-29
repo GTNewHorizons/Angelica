@@ -65,6 +65,7 @@ public class CompositeRenderer {
 	@Nullable private final Set<GlImage> customImages;
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
+	private final TextureStage textureStage;
 	@Getter
     private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
 
@@ -75,10 +76,10 @@ public class CompositeRenderer {
 							 Object2ObjectMap<String, TextureAccess> customTextureIds, ImmutableMap<Integer, Boolean> explicitPreFlips,
 							 CustomUniforms customUniforms,
 							 Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures) {
-		this(sources, computes, bufferFlipper, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms, null, null, null), explicitPreFlips, precomputedTransformFutures, "unknown");
+		this(sources, computes, bufferFlipper, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms, null, null, null), explicitPreFlips, precomputedTransformFutures, "unknown", TextureStage.COMPOSITE_AND_FINAL);
 	}
 
-	public CompositeRenderer(ProgramSource[] sources, ComputeSource[][] computes, BufferFlipper bufferFlipper, ProgramBuildContext context, ImmutableMap<Integer, Boolean> explicitPreFlips, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures, String stageName) {
+	public CompositeRenderer(ProgramSource[] sources, ComputeSource[][] computes, BufferFlipper bufferFlipper, ProgramBuildContext context, ImmutableMap<Integer, Boolean> explicitPreFlips, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures, String stageName, TextureStage textureStage) {
 		this.noiseTexture = context.noiseTexture();
 		this.updateNotifier = context.updateNotifier();
 		this.centerDepthSampler = context.centerDepthSampler();
@@ -88,6 +89,7 @@ public class CompositeRenderer {
 		this.customImages = context.customImages();
 		this.irisCustomTextures = context.irisCustomTextures();
 		this.pipeline = context.pipeline();
+		this.textureStage = textureStage;
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -171,7 +173,7 @@ public class CompositeRenderer {
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
-	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> transformFutures, int index, String stageName) {
+	private Map<PatchShaderType, String> getTransformed(ProgramSource source, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> transformFutures, int index, String stageName) {
 		if (transformFutures != null) {
 			final CompletableFuture<Map<PatchShaderType, String>> future = transformFutures.get(index);
 			if (future != null) {
@@ -187,7 +189,7 @@ public class CompositeRenderer {
 		}
 
 		// Fallback: transform synchronously
-		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
+		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new), this.textureStage, pipeline != null ? pipeline.getTextureMap() : null);
 	}
 
     public void recalculateSizes() {
@@ -399,7 +401,7 @@ public class CompositeRenderer {
 				ProgramBuilder builder;
 
 				try {
-					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.COMPOSITE_AND_FINAL, pipeline != null ? pipeline.getTextureMap() : null);
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), this.textureStage, pipeline != null ? pipeline.getTextureMap() : null);
 					PatchedShaderPrinter.debugPatchedShaders(source.getName() + "_compute", null, null, null, transformed);
 					builder = ProgramBuilder.beginCompute(source.getName(), transformed, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
 				} catch (RuntimeException e) {
