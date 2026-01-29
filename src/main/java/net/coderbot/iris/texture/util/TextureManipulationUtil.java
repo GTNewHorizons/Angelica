@@ -38,7 +38,7 @@ public class TextureManipulationUtil {
             for (int level = 0; level <= maxLevel; ++level) {
                 final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
                 final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
-                GL11.glViewport(0, 0, width, height);
+                GLStateManager.glViewport(0, 0, width, height);
                 GL30.glFramebufferTexture2D(
                     GL30.GL_FRAMEBUFFER,
                     GL30.GL_COLOR_ATTACHMENT0,
@@ -65,7 +65,7 @@ public class TextureManipulationUtil {
                 previousClearColorBuffer.get(2),
                 previousClearColorBuffer.get(3));
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureId);
-            GL11.glViewport(
+            GLStateManager.glViewport(
                 previousViewportBuffer.get(0),
                 previousViewportBuffer.get(1),
                 previousViewportBuffer.get(2),

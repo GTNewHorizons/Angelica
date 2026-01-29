@@ -2,42 +2,49 @@ package net.coderbot.iris.pipeline.transform.parameter;
 
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.Patch;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 
 public class AttributeParameters extends Parameters {
-    public final boolean hasGeometry;
-    public final InputAvailability inputs;
+	public final boolean hasGeometry;
+	public final InputAvailability inputs;
+	// WARNING: adding new fields requires updating hashCode and equals methods!
 
-    public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs) {
-        super(patch);
-        this.hasGeometry = hasGeometry;
-        this.inputs = inputs;
-    }
+	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs) {
+		super(patch, null);
+		this.hasGeometry = hasGeometry;
+		this.inputs = inputs;
+	}
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + (hasGeometry ? 1231 : 1237);
-        result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
-        return result;
-    }
+	@Override
+	public TextureStage getTextureStage() {
+		return TextureStage.GBUFFERS_AND_SHADOW;
+	}
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        AttributeParameters other = (AttributeParameters) obj;
-        if (hasGeometry != other.hasGeometry)
-            return false;
-        if (inputs == null) {
-            if (other.inputs != null)
-                return false;
-        } else if (!inputs.equals(other.inputs))
-            return false;
-        return true;
-    }
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (hasGeometry ? 1231 : 1237);
+		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AttributeParameters other = (AttributeParameters) obj;
+		if (hasGeometry != other.hasGeometry)
+			return false;
+		if (inputs == null) {
+			if (other.inputs != null)
+				return false;
+		} else if (!inputs.equals(other.inputs))
+			return false;
+		return true;
+	}
 }

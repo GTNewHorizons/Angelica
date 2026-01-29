@@ -9,15 +9,13 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
-import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
-import net.coderbot.iris.gl.image.GlImage;
-import net.coderbot.iris.gl.image.ImageInformation;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
 import net.coderbot.iris.compat.dh.DHCompat;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
 import net.coderbot.iris.gbuffer_overrides.matching.RenderCondition;
@@ -26,14 +24,20 @@ import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
+import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
+import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
+import net.coderbot.iris.gl.image.GlImage;
+import net.coderbot.iris.gl.image.ImageInformation;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
-import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -48,7 +52,6 @@ import net.coderbot.iris.samplers.IrisImages;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.shaderpack.ComputeSource;
-import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
@@ -58,6 +61,7 @@ import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shaderpack.loading.ProgramId;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
+import net.coderbot.iris.shadows.ShadowCompositeRenderer;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
@@ -121,6 +125,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Nullable
 	private final ShadowRenderer shadowRenderer;
+	@Nullable
+	private final ShadowCompositeRenderer shadowCompositeRenderer;
 
     private final CustomUniforms customUniforms;
 
@@ -176,6 +182,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private int currentNormalTexture;
 	private int currentSpecularTexture;
 	private PackDirectives packDirectives;
+	private final Set<FeatureFlags> activeFeatures;
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -217,6 +224,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.updateNotifier = new FrameUpdateNotifier();
 
 		this.packDirectives = programs.getPackDirectives();
+		this.activeFeatures = programs.getPack().getActiveFeatures();
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
@@ -430,9 +438,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			this.shadowClearPasses = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, false, shadowDirectives);
 			this.shadowClearPassesFull = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, true, shadowDirectives);
 
+			this.shadowCompositeRenderer = new ShadowCompositeRenderer(this, programs.getPackDirectives(),
+				programs.getShadowComposite(), programs.getShadowCompCompute(), this.shadowRenderTargets,
+				ssboHolder,
+				customTextureManager.getNoiseTexture(), updateNotifier,
+				customTextureManager.getCustomTextureIdMap(TextureStage.SHADOWCOMP),
+				customImages, programs.getPackDirectives().getExplicitFlips("shadowcomp_pre"),
+				customTextureManager.getIrisCustomTextures(), customUniforms);
+
 			if (programs.getPackDirectives().getShadowDirectives().isShadowEnabled().orElse(true)) {
 				this.shadowRenderer = new ShadowRenderer(programs.getShadow().orElse(null),
-					programs.getPackDirectives(), shadowRenderTargets);
+					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer);
 				Program shadowProgram = table.match(RenderCondition.SHADOW, new InputAvailability(true, true)).getProgram();
 				shadowRenderer.setUsesImages(shadowProgram != null && shadowProgram.getActiveImages() > 0);
 			} else {
@@ -441,6 +457,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		} else {
 			this.shadowClearPasses = ImmutableList.of();
 			this.shadowClearPassesFull = ImmutableList.of();
+			this.shadowCompositeRenderer = null;
 			this.shadowRenderer = null;
 		}
 
@@ -606,6 +623,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return sunPathRotation;
 	}
 
+	@Override
+	public boolean hasFeature(FeatureFlags flag) {
+		return activeFeatures.contains(flag);
+	}
+
+	@Override
+	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
+		return packDirectives.getTextureMap();
+	}
+
 	private RenderCondition getCondition(WorldRenderingPhase phase) {
 		if (isRenderingShadow) {
 			return RenderCondition.SHADOW;
@@ -722,7 +749,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
 
-		CommonUniforms.addDynamicUniforms(builder);
+		CommonUniforms.addDynamicUniforms(builder, FogMode.PER_VERTEX);
         this.customUniforms.assignTo(builder);
 
 		Supplier<ImmutableSet<Integer>> flipped;
@@ -868,10 +895,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 
 			if (shadowViewport) {
-				GL11.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
+				GLStateManager.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
 			} else {
                 final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
-				GL11.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
+				GLStateManager.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
 			if (program != null) {
@@ -944,6 +971,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					compute.destroy();
 				}
 			}
+		}
+
+		// Destroy shadow composite renderer
+		if (shadowCompositeRenderer != null) {
+			shadowCompositeRenderer.destroy();
 		}
 
 		horizonRenderer.destroy();
@@ -1109,13 +1141,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				ProgramBuilder builder;
 
 				try {
-					builder = ProgramBuilder.beginCompute(source.getName(), source.getSource().orElse(null), IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.GBUFFERS_AND_SHADOW, getTextureMap());
+					PatchedShaderPrinter.debugPatchedShaders(source.getName() + "_compute", null, null, null, transformed);
+					builder = ProgramBuilder.beginCompute(source.getName(), transformed, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 				} catch (RuntimeException e) {
 					// TODO: Better error handling
 					throw new RuntimeException("Shader compilation failed!", e);
 				}
 
-				CommonUniforms.addDynamicUniforms(builder);
+				CommonUniforms.addDynamicUniforms(builder, FogMode.PER_VERTEX);
                 this.customUniforms.assignTo(builder);
 
 				Supplier<ImmutableSet<Integer>> flipped;

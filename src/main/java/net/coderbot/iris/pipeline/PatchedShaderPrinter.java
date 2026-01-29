@@ -27,6 +27,10 @@ public class PatchedShaderPrinter {
 	}
 
 	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment) {
+		debugPatchedShaders(name, vertex, geometry, fragment, null);
+	}
+
+	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment, String compute) {
 		if (prettyPrintShaders) {
 			final Path debugOutDir = Minecraft.getMinecraft().mcDataDir.toPath().resolve("patched_shaders");
 			if (!outputLocationCleared) {
@@ -61,6 +65,9 @@ public class PatchedShaderPrinter {
 				}
 				if (fragment != null) {
 					Files.write(debugOutDir.resolve(prefix + name + ".fsh"), fragment.getBytes(StandardCharsets.UTF_8));
+				}
+				if (compute != null) {
+					Files.write(debugOutDir.resolve(prefix + name + ".csh"), compute.getBytes(StandardCharsets.UTF_8));
 				}
 			} catch (IOException e) {
 				Iris.logger.warn("Failed to write debug patched shader source", e);
