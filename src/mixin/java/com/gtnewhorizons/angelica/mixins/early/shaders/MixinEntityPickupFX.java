@@ -20,7 +20,7 @@ public class MixinEntityPickupFX {
 
     @WrapOperation(
         method = "renderParticle",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderManager;func_147940_a(Lnet/minecraft/entity/Entity;DDDFF)Z")
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderManager;renderEntityWithPosYaw(Lnet/minecraft/entity/Entity;DDDFF)Z")
     )
     private boolean iris$wrapPickupRender(RenderManager renderManager, Entity entity, double x, double y, double z, float yaw, float partialTicks, Operation<Boolean> original) {
         GbufferPrograms.beginEntities();

@@ -196,7 +196,9 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
-              "shaders.MixinEntityPickupFX"
+              "shaders.MixinDroppedItemGlintEdges"
+            , "shaders.MixinEnchantmentGlint"
+            , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
@@ -204,6 +206,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinLocale"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
+            , "shaders.MixinRenderDragon"
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
@@ -450,6 +453,12 @@ public enum Mixins implements IMixins {
             // TODO: Verify 2.3.8.18 or later to support non NH builds?
             "MixinBlockTFMagicLeaves"
         ))
+    ),
+    ET_FUTURUM_ELYTRA_CAPE(new MixinBuilder("Set custom item ID for elytra with cape texture")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.etfuturum.MixinLayerBetterElytra")
     ),
     MCPATCHER_FORGE(new MixinBuilder()
         .setPhase(Phase.EARLY)

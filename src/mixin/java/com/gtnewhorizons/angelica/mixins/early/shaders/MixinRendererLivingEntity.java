@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.RenderDragon;
 import net.minecraft.client.renderer.entity.RenderEnderman;
@@ -21,19 +22,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RendererLivingEntity.class)
 public class MixinRendererLivingEntity {
     /**
-     * Reset currentRenderedItemId at the start of rendering each living entity, otherwise entity materials don't apply.
+     * Reset currentRenderedItemId at the start of rendering each living entity.
      */
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At("HEAD")
     )
     private void iris$resetItemIdAtStart(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        ItemIdManager.resetItemId();
     }
 
+    /**
+     * Capture entity color for shader access.
+     */
     @WrapOperation(
-        method="doRender",
-        at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RendererLivingEntity;getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I")
+        method = "doRender",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I")
     )
     private int iris$setEntityColor(RendererLivingEntity instance, EntityLivingBase elb, float f0, float f1, Operation<Integer> original) {
         final int j = original.call(instance, elb, f0, f1);
@@ -45,6 +49,9 @@ public class MixinRendererLivingEntity {
         return j;
     }
 
+    /**
+     * Handle special render conditions for entity eyes (spiders, endermen, ender dragon).
+     */
     @WrapOperation(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
@@ -63,29 +70,4 @@ public class MixinRendererLivingEntity {
         }
     }
 
-    /**
-     * Activate GLINT shader before rendering armor enchantment glint.
-     * Injects at the first glDepthFunc inside the armor glint rendering block.
-     */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
-        remap = false
-    )
-    private void iris$activateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
-    }
-
-    /**
-     * Deactivate GLINT shader after rendering armor enchantment glint.
-     * Injects at the last glDepthFunc inside the armor glint rendering block.
-     */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
-        remap = false
-    )
-    private void iris$deactivateArmorGlintShader(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        GbufferPrograms.teardownSpecialRenderCondition();
-    }
 }
