@@ -115,6 +115,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
+    compileOnly(rfg.deobf("curse.maven:et-futurum-requiem-441392:5873837"))
 
 //    runtimeOnlyNonPublishable("com.github.GTNewHorizons:CoreTweaks:0.3.3.6-GTNH")
     // For testing alternative splash screens, can be sourced from https://github.com/MalTeeez/ModernSplash/releases

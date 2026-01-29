@@ -454,6 +454,12 @@ public enum Mixins implements IMixins {
             "MixinBlockTFMagicLeaves"
         ))
     ),
+    ET_FUTURUM_ELYTRA_CAPE(new MixinBuilder("Set custom item ID for elytra with cape texture")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.etfuturum.MixinLayerBetterElytra")
+    ),
     MCPATCHER_FORGE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures)
