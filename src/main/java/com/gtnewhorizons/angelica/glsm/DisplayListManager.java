@@ -827,7 +827,7 @@ public class DisplayListManager {
         final boolean hasCommands = !rawCommandBuffer.isEmpty();
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
 
-        if (true) {
+        if (hasCommands || hasDraws) {
             // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
 

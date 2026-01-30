@@ -9,7 +9,7 @@ import java.nio.IntBuffer;
 /**
  * Records GL commands to a CommandBuffer during display list compilation.
  */
-public class CommandRecorder {
+public final class CommandRecorder {
     private final CommandBuffer buffer;
     private int commandCount;
 
