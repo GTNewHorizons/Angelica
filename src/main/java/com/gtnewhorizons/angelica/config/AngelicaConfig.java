@@ -221,4 +221,8 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;
 
+    @Config.Comment("Disables additional F3 information added by Angelica.")
+    @Config.DefaultBoolean(false)
+    public static boolean disableF3Additions;
+
 }

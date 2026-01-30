@@ -23,6 +23,7 @@ import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
+import net.coderbot.iris.shadows.ShadowCompositeRenderer;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
@@ -48,7 +49,7 @@ import net.minecraft.tileentity.TileEntity;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
-import org.joml.Vector3dc;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
@@ -79,6 +80,7 @@ public class ShadowRenderer {
 	private final Float fov;
 	private final ShadowRenderTargets targets;
 	private final ShadowCullState packCullingState;
+	private final ShadowCompositeRenderer compositeRenderer;
 	private boolean packHasVoxelization;
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
@@ -108,7 +110,7 @@ public class ShadowRenderer {
 	private double lastAdvancedBoxCullerDistance = -1;
 	private double lastTileEntityCullerDistance = -1;
 
-	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets) {
+	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets, ShadowCompositeRenderer compositeRenderer) {
 
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
@@ -124,6 +126,8 @@ public class ShadowRenderer {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities();
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer();
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities();
+
+		this.compositeRenderer = compositeRenderer;
 
 		debugStringOverall = "half plane = " + halfPlaneLength + " meters @ " + resolution + "x" + resolution;
 
@@ -162,24 +166,21 @@ public class ShadowRenderer {
 	}
 
 	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
-		// Determine the camera position
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
-
-		final double cameraX = cameraPos.x();
-		final double cameraY = cameraPos.y();
-		final double cameraZ = cameraPos.z();
+		// Use entity position for shadow matrix
+		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 
 		// Set up our modelview matrix stack
 		final MatrixStack modelView = new MatrixStack();
-		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
+		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 
 		return modelView;
 	}
 
 	private MatrixStack getShadowModelView() {
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
+
 		shadowModelView.reset();
-		ShadowMatrices.createModelViewMatrix(shadowModelView, getShadowAngle(), this.intervalSize, this.sunPathRotation, cameraPos.x(), cameraPos.y(), cameraPos.z());
+		ShadowMatrices.createModelViewMatrix(shadowModelView, getShadowAngle(), this.intervalSize, this.sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 		return shadowModelView;
 	}
 
@@ -385,7 +386,7 @@ public class ShadowRenderer {
 	private void setupGlState(Matrix4f projMatrix) {
 		// Bind shadow framebuffer and set viewport to shadow resolution
 		targets.getDepthSourceFb().bind();
-		GL11.glViewport(0, 0, resolution, resolution);
+		GLStateManager.glViewport(0, 0, resolution, resolution);
 
 		// Set up our projection matrix and load it into the legacy matrix stack
 		RenderSystem.setupProjectionMatrix(projMatrix);
@@ -410,7 +411,7 @@ public class ShadowRenderer {
 		// Restore main framebuffer and viewport
 		Minecraft mc = Minecraft.getMinecraft();
 		mc.getFramebuffer().bindFramebuffer(false);
-		GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+		GLStateManager.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 	}
 
 	private void copyPreTranslucentDepth() {
@@ -635,15 +636,14 @@ public class ShadowRenderer {
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
 
-		// Determine the player camera position
-		final Vector3dc cameraPos = CameraUniforms.getUnshiftedCameraPosition();
+		// Use the player/entity position for shadow rendering
+		final Vector3d entityPos = playerCamera.getEntityPos();
+		final double entityX = entityPos.x;
+		final double entityY = entityPos.y;
+		final double entityZ = entityPos.z;
 
-		final double cameraX = cameraPos.x();
-		final double cameraY = cameraPos.y();
-		final double cameraZ = cameraPos.z();
-
-		// Center the frustum on the player camera position
-		terrainFrustumHolder.getFrustum().setPosition(cameraX, cameraY, cameraZ);
+		// Center the frustum on the player position
+		terrainFrustumHolder.getFrustum().setPosition(entityX, entityY, entityZ);
 
 		profiler.endSection();
 
@@ -679,7 +679,7 @@ public class ShadowRenderer {
 		}
 
 		// Reset viewport in case terrain rendering changed it
-		GL11.glViewport(0, 0, resolution, resolution);
+		GLStateManager.glViewport(0, 0, resolution, resolution);
 
 		profiler.endStartSection("entities");
 
@@ -699,7 +699,7 @@ public class ShadowRenderer {
 		}
 
 		Frustrum entityShadowFrustum = entityFrustumHolder.getFrustum();
-		entityShadowFrustum.setPosition(cameraX, cameraY, cameraZ);
+		entityShadowFrustum.setPosition(entityX, entityY, entityZ);
 
 		// Set viewport for entity visibility checks during shadow pass (matches modern Celeritas)
 		if (AngelicaConfig.enableCeleritas) {
@@ -709,13 +709,13 @@ public class ShadowRenderer {
 		// Render nearby entities
 
 		if (shouldRenderEntities) {
-			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderEntities(levelRenderer, entityShadowFrustum, null, modelView, entityX, entityY, entityZ, tickDelta);
 		} else if (shouldRenderPlayer) {
-			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, entityX, entityY, entityZ, tickDelta);
 		}
 
 		if (shouldRenderBlockEntities) {
-			renderTileEntities(null, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+			renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
@@ -753,6 +753,10 @@ public class ShadowRenderer {
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).restoreState();
 		}
+
+		profiler.endStartSection("shadowcomp");
+
+		if (compositeRenderer != null) compositeRenderer.renderAll();
 
 		ACTIVE = false;
 		CURRENT_TARGETS = null;

@@ -70,6 +70,7 @@ public class ShaderPack {
     public final CustomUniforms.Builder customUniforms;
 
 	private final ProgramSet base;
+	private final Set<FeatureFlags> activeFeatures;
 
 	private final Map<String, String> dimensionMap;
 	private final Map<String, ProgramSet> dimensionProgramSets;
@@ -211,14 +212,28 @@ public class ShaderPack {
 		List<StringPair> finalEnvironmentDefines = new ArrayList<>();
 		environmentDefines.forEach(finalEnvironmentDefines::add);
 		for (FeatureFlags flag : FeatureFlags.values()) {
-			if (flag.isUsable()) {
+			boolean usable = flag.isUsable();
+			Iris.logger.info("FeatureFlag {} usable: {}", flag.name(), usable);
+			if (usable) {
 				finalEnvironmentDefines.add(new StringPair("IRIS_FEATURE_" + flag.name(), ""));
 			}
 		}
+		Iris.logger.info("Environment defines: {}", finalEnvironmentDefines.stream()
+			.map(p -> p.getKey() + "=" + p.getValue())
+			.collect(java.util.stream.Collectors.joining(", ")));
 
 		this.shaderProperties = Optional.ofNullable(readProperties(root, "shaders.properties"))
 				.map(source -> new ShaderProperties(source, shaderPackOptions, finalEnvironmentDefines))
 				.orElseGet(ShaderProperties::empty);
+
+		// Build the set of active feature flags from required and optional flags
+		this.activeFeatures = new HashSet<>();
+		for (String flag : shaderProperties.getRequiredFeatureFlags()) {
+			activeFeatures.add(FeatureFlags.getValue(flag));
+		}
+		for (String flag : shaderProperties.getOptionalFeatureFlags()) {
+			activeFeatures.add(FeatureFlags.getValue(flag));
+		}
 
 		List<FeatureFlags> invalidFlagList = shaderProperties.getRequiredFeatureFlags().stream().filter(FeatureFlags::isInvalid).map(FeatureFlags::getValue).collect(Collectors.toList());
 		List<String> invalidFeatureFlags = invalidFlagList.stream().map(FeatureFlags::getHumanReadableName).collect(Collectors.toList());
@@ -265,7 +280,7 @@ public class ShaderPack {
 		IncludeProcessor includeProcessor = new IncludeProcessor(graph);
 
 		// Set up our source provider for creating ProgramSets
-		Iterable<StringPair> finalEnvironmentDefines1 = environmentDefines;
+		Iterable<StringPair> finalEnvironmentDefines1 = finalEnvironmentDefines;
 		this.sourceProvider = (path) -> {
 			String pathString = path.getPathString();
 			// Removes the first "/" in the path if present, and the file
@@ -717,4 +732,11 @@ public class ShaderPack {
 		return Optional.ofNullable(customNoiseTexture);
 	}
 
+	public Set<FeatureFlags> getActiveFeatures() {
+		return activeFeatures;
+	}
+
+	public boolean hasFeature(FeatureFlags feature) {
+		return activeFeatures.contains(feature);
+	}
 }

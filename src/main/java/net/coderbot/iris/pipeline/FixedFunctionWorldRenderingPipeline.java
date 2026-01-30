@@ -1,13 +1,19 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
 import net.coderbot.iris.compat.dh.DHCompat;
+import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
+import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.shaderpack.CloudSetting;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -185,5 +191,15 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	public float getSunPathRotation() {
 		// No sun tilt
 		return 0;
+	}
+
+	@Override
+	public boolean hasFeature(FeatureFlags flag) {
+		return false;
+	}
+
+	@Override
+	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
+		return Object2ObjectMaps.emptyMap();
 	}
 }

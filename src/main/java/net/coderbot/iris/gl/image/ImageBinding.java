@@ -19,6 +19,6 @@ public class ImageBinding {
 	public void update() {
 		// We can assume that image bindings are supported here as either the EXT extension or 4.2 core, as otherwise ImageLimits
 		// would report that zero image units are supported.
-		RenderSystem.bindImageTexture(imageUnit, textureID.getAsInt(), 0, false, 0, GL15.GL_READ_WRITE, internalFormat);
+		RenderSystem.bindImageTexture(imageUnit, textureID.getAsInt(), 0, true, 0, GL15.GL_READ_WRITE, internalFormat);
 	}
 }

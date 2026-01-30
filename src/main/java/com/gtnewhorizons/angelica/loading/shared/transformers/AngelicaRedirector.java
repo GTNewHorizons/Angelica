@@ -254,7 +254,8 @@ public final class AngelicaRedirector {
             .add("func_153188_a", "glFramebufferTexture2D")
             .add("setActiveTexture")
             .add("setLightmapTextureCoords")
-            .add("isFramebufferEnabled"));
+            .add("isFramebufferEnabled")
+        );
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
 
         // ARB

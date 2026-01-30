@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import lombok.Getter;
+import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.framebuffer.ViewportData;
 import net.coderbot.iris.gl.image.GlImage;
@@ -29,7 +30,9 @@ import net.coderbot.iris.shaderpack.ComputeSource;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.ProgramDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
@@ -41,6 +44,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL42;
 
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +65,7 @@ public class CompositeRenderer {
 	@Nullable private final Set<GlImage> customImages;
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
+	private final TextureStage textureStage;
 	@Getter
     private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
 
@@ -71,10 +76,10 @@ public class CompositeRenderer {
 							 Object2ObjectMap<String, TextureAccess> customTextureIds, ImmutableMap<Integer, Boolean> explicitPreFlips,
 							 CustomUniforms customUniforms,
 							 Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures) {
-		this(sources, computes, bufferFlipper, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms, null, null, null), explicitPreFlips, precomputedTransformFutures, "unknown");
+		this(sources, computes, bufferFlipper, new ProgramBuildContext(renderTargets, noiseTexture, updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureIds, customUniforms, null, null, null), explicitPreFlips, precomputedTransformFutures, "unknown", TextureStage.COMPOSITE_AND_FINAL);
 	}
 
-	public CompositeRenderer(ProgramSource[] sources, ComputeSource[][] computes, BufferFlipper bufferFlipper, ProgramBuildContext context, ImmutableMap<Integer, Boolean> explicitPreFlips, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures, String stageName) {
+	public CompositeRenderer(ProgramSource[] sources, ComputeSource[][] computes, BufferFlipper bufferFlipper, ProgramBuildContext context, ImmutableMap<Integer, Boolean> explicitPreFlips, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> precomputedTransformFutures, String stageName, TextureStage textureStage) {
 		this.noiseTexture = context.noiseTexture();
 		this.updateNotifier = context.updateNotifier();
 		this.centerDepthSampler = context.centerDepthSampler();
@@ -84,6 +89,7 @@ public class CompositeRenderer {
 		this.customImages = context.customImages();
 		this.irisCustomTextures = context.irisCustomTextures();
 		this.pipeline = context.pipeline();
+		this.textureStage = textureStage;
 
 		final ImmutableList.Builder<Pass> passes = ImmutableList.builder();
 		final ImmutableSet.Builder<Integer> flippedAtLeastOnce = new ImmutableSet.Builder<>();
@@ -167,7 +173,7 @@ public class CompositeRenderer {
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
-	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> transformFutures, int index, String stageName) {
+	private Map<PatchShaderType, String> getTransformed(ProgramSource source, Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> transformFutures, int index, String stageName) {
 		if (transformFutures != null) {
 			final CompletableFuture<Map<PatchShaderType, String>> future = transformFutures.get(index);
 			if (future != null) {
@@ -183,7 +189,7 @@ public class CompositeRenderer {
 		}
 
 		// Fallback: transform synchronously
-		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
+		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new), this.textureStage, pipeline != null ? pipeline.getTextureMap() : null);
 	}
 
     public void recalculateSizes() {
@@ -258,7 +264,7 @@ public class CompositeRenderer {
 			}
 
 			if (ranCompute) {
-				RenderSystem.memoryBarrier(40);
+				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
 			}
 
 			Program.unbind();
@@ -279,7 +285,7 @@ public class CompositeRenderer {
 			final float scaledHeight = renderPass.viewHeight * renderPass.viewportScale.scale();
 			final float viewportX = renderPass.viewWidth * renderPass.viewportScale.viewportX();
 			final float viewportY = renderPass.viewHeight * renderPass.viewportScale.viewportY();
-			GL11.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
+			GLStateManager.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
 
 			renderPass.framebuffer.bind();
 			renderPass.program.use();
@@ -353,7 +359,7 @@ public class CompositeRenderer {
 			throw new RuntimeException("Shader compilation failed!", e);
 		}
 
-        CommonUniforms.addDynamicUniforms(builder);
+        CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
         this.customUniforms.assignTo(builder);
 
 		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
@@ -369,7 +375,7 @@ public class CompositeRenderer {
 		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, false);
+			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 		}
 
@@ -395,7 +401,9 @@ public class CompositeRenderer {
 				ProgramBuilder builder;
 
 				try {
-					builder = ProgramBuilder.beginCompute(source.getName(), source.getSource().orElse(null), IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), this.textureStage, pipeline != null ? pipeline.getTextureMap() : null);
+					PatchedShaderPrinter.debugPatchedShaders(source.getName() + "_compute", null, null, null, transformed);
+					builder = ProgramBuilder.beginCompute(source.getName(), transformed, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
 				} catch (RuntimeException e) {
 					// TODO: Better error handling
 					throw new RuntimeException("Shader compilation failed!", e);
@@ -403,7 +411,7 @@ public class CompositeRenderer {
 
 				ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
-				CommonUniforms.addDynamicUniforms(builder);
+				CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
 
                 this.customUniforms.assignTo(builder);
 
@@ -418,7 +426,7 @@ public class CompositeRenderer {
 				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, false);
+					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 				}
 
