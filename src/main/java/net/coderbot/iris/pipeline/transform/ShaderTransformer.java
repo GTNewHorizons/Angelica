@@ -9,13 +9,17 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
+import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.ShaderParser;
+import org.taumc.glsl.StorageCollector;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
+import org.taumc.glsl.grammar.GLSLParser;
 
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 
@@ -31,9 +35,9 @@ import java.util.regex.Pattern;
 
 public class ShaderTransformer {
     private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
-    private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^\\s*(in|out)(\\s+)");
-    private static final Pattern inPattern = Pattern.compile("(?m)^\\s*(in)(\\s+)");
-    private static final Pattern outPattern = Pattern.compile("(?m)^\\s*(out)(\\s+)");
+    private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(in|out)(\\s+)");
+    private static final Pattern inPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(in)(\\s+)");
+    private static final Pattern outPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(out)(\\s+)");
 
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey<?>, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -372,6 +376,10 @@ public class ShaderTransformer {
             var parsedShader = ShaderParser.parseShader(input);
             var transformer = new Transformer(parsedShader.full());
 
+            if (parameters.type == ShaderType.VERTEX || parameters.type == ShaderType.FRAGMENT) {
+                upgradeStorageQualifiers(transformer, parameters);
+            }
+
             doTransform(transformer, patchType, parameters, profile, versionInt);
 
             // Check if we need to patch in texture LOD extension enabling
@@ -436,13 +444,13 @@ public class ShaderTransformer {
                 if (entry.getKey() == PatchShaderType.VERTEX) {
                     // In vertex shaders, "in" declarations are vertex attributes, not varyings
                     Matcher inMatcher = inPattern.matcher(formattedShader);
-                    formattedShader = inMatcher.replaceAll("attribute$2");
+                    formattedShader = inMatcher.replaceAll("$1attribute$3");
                     Matcher outMatcher = outPattern.matcher(formattedShader);
-                    formattedShader = outMatcher.replaceAll("varying$2");
+                    formattedShader = outMatcher.replaceAll("$1varying$3");
                 } else {
                     // In fragment (and geometry) shaders, both in/out become varying
                     Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
-                    formattedShader = inOutVaryingMatcher.replaceAll("varying$2");
+                    formattedShader = inOutVaryingMatcher.replaceAll("$1varying$3");
                 }
             }
 
@@ -456,20 +464,20 @@ public class ShaderTransformer {
     private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, String profile, int versionInt) {
         switch (patchType) {
             case CELERITAS_TERRAIN:
-                CeleritasTransformer.transform(transformer, parameters);
+                CeleritasTransformer.transform(transformer, parameters, versionInt);
                 // Handle mc_midTexCoord for Celeritas
                 patchMultiTexCoord3(transformer, parameters);
                 replaceMidTexCoord(transformer, IrisExtendedChunkVertexType.MID_TEX_SCALE);
                 applyIntelHd4000Workaround(transformer);
                 break;
             case COMPOSITE:
-                CompositeDepthTransformer.transform(transformer, parameters);
+                CompositeDepthTransformer.transform(transformer, parameters, versionInt);
                 break;
             case ATTRIBUTES:
                 AttributeTransformer.transform(transformer, (AttributeParameters) parameters, profile, versionInt);
                 break;
             case COMPUTE:
-                ComputeTransformer.transform(transformer, parameters);
+                ComputeTransformer.transform(transformer, parameters, versionInt);
                 break;
             default:
                 throw new IllegalStateException("Unknown patch type: " + patchType.name());
@@ -551,6 +559,33 @@ public class ShaderTransformer {
 
 
         return "\n\n" + chunkVertexHeader + "\n\n";
+    }
+
+    /**
+     * Converts GLSL 120 storage qualifiers (varying/attribute) to modern in/out tokens so downstream AST transforms (e.g. CompatibilityTransformer) can find them.
+     * The hacky120Patches regex pass converts them back for the final output.
+     */
+    public static void upgradeStorageQualifiers(Transformer root, Parameters parameters) {
+        final List<TerminalNode> tokens = new ArrayList<>();
+        root.mutateTree(tree -> ParseTreeWalker.DEFAULT.walk(new StorageCollector(tokens), tree));
+
+        for (TerminalNode node : tokens) {
+            if (!(node.getSymbol() instanceof CommonToken token)) {
+                return;
+            }
+            if (token.getType() == GLSLParser.ATTRIBUTE) {
+                token.setType(GLSLParser.IN);
+                token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.IN).replace("'", ""));
+            } else if (token.getType() == GLSLParser.VARYING) {
+                if (parameters.type == ShaderType.VERTEX) {
+                    token.setType(GLSLParser.OUT);
+                    token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.OUT).replace("'", ""));
+                } else {
+                    token.setType(GLSLParser.IN);
+                    token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.IN).replace("'", ""));
+                }
+            }
+        }
     }
 
     public static String getFormattedShader(ParseTree tree, String string) {
