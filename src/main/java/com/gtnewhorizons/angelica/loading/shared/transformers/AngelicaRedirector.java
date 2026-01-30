@@ -327,7 +327,7 @@ public final class AngelicaRedirector {
                         } else {
                             redirects = methodRedirects.get(owner);
                         }
-                        if (redirects != null && redirects.containsKey(mNode.name)) {
+                        if (redirects != null) {
                             final String glsmName = redirects.get(mNode.name);
                             if (glsmName != null) {
                                 if (LOG_SPAM) {
