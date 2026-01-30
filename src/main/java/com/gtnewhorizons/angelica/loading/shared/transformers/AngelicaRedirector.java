@@ -251,6 +251,14 @@ public final class AngelicaRedirector {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+
+        final String glPrefix = "org/lwjgl/opengl/GL";
+        for (var entry : new HashMap<>(methodRedirects).entrySet()) {
+            if (entry.getKey().startsWith(glPrefix)) {
+                methodRedirects.put(entry.getKey() + "C", entry.getValue());
+                cstPoolParser.addString(entry.getKey() + "C");
+            }
+        }
     }
 
     public String[] getTransformerExclusions() {
@@ -321,19 +329,13 @@ public final class AngelicaRedirector {
                             LOGGER.info("Redirecting call in {} to GLStateManager.makeCurrent()", transformedName);
                         }
                     } else {
-                        final String owner = mNode.owner;
-                        final Map<String, String> redirects;
-                        if (owner.charAt(owner.length() - 1) == 'C') { // Replace GLxxC with GLxx (lwjgl3ify fix)
-                            redirects = methodRedirects.get(owner.substring(0, owner.length() - 1));
-                        } else {
-                            redirects = methodRedirects.get(owner);
-                        }
+                        final Map<String, String> redirects = methodRedirects.get(mNode.owner);
                         if (redirects != null) {
                             final String glsmName = redirects.get(mNode.name);
                             if (glsmName != null) {
                                 if (LOG_SPAM) {
                                     final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
                                 }
                                 mNode.owner = GLStateManager;
                                 mNode.name = glsmName;
