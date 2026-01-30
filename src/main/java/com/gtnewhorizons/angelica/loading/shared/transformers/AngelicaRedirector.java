@@ -320,16 +320,25 @@ public final class AngelicaRedirector {
                             LOGGER.info("Redirecting call in {} to GLStateManager.makeCurrent()", transformedName);
                         }
                     } else {
-                        final Map<String, String> redirects = methodRedirects.get(mNode.owner);
+                        final String owner = mNode.owner;
+                        final Map<String, String> redirects;
+                        if (owner.charAt(owner.length() - 1) == 'C') { // Replace GLxxC with GLxx (lwjgl3ify fix)
+                            redirects = methodRedirects.get(owner.substring(0, owner.length() - 1));
+                        } else {
+                            redirects = methodRedirects.get(owner);
+                        }
                         if (redirects != null && redirects.containsKey(mNode.name)) {
-                            if (LOG_SPAM) {
-                                final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                            final String glsmName = redirects.get(mNode.name);
+                            if (glsmName != null) {
+                                if (LOG_SPAM) {
+                                    final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                                }
+                                mNode.owner = GLStateManager;
+                                mNode.name = glsmName;
+                                changed = true;
+                                redirectInMethod = true;
                             }
-                            mNode.owner = GLStateManager;
-                            mNode.name = redirects.get(mNode.name);
-                            changed = true;
-                            redirectInMethod = true;
                         }
                     }
                 }
