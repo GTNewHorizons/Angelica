@@ -41,6 +41,7 @@ public final class AngelicaRedirector {
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
+    private static final String GL11C = "org/lwjgl/opengl/GL11C";
     private static final String GL12 = "org/lwjgl/opengl/GL12";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
@@ -280,7 +281,7 @@ public final class AngelicaRedirector {
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {
-                    if (mNode.owner.equals(GL11) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
+                    if ((mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
                         if (prevNode instanceof LdcInsnNode ldcNode) {
