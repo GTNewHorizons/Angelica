@@ -70,4 +70,29 @@ public class MixinRendererLivingEntity {
         }
     }
 
+    /**
+     * Activate GLINT shader before rendering enchantment glint on armor.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
+    )
+    private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.resetItemId();
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+    }
+
+    /**
+     * Deactivate GLINT shader after rendering enchantment glint on armor.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
+    )
+    private void iris$glintEnd(CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
+    }
+
 }

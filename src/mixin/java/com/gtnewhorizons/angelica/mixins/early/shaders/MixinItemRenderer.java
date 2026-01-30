@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -52,5 +54,30 @@ public class MixinItemRenderer {
     )
     private void iris$resetFirstPersonItemId(float partialTicks, CallbackInfo ci) {
         ItemIdManager.resetItemId();
+    }
+
+    /**
+     * Activate GLINT shader before rendering enchantment glint on held items (third person).
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
+    )
+    private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.resetItemId();
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+    }
+
+    /**
+     * Deactivate GLINT shader after rendering enchantment glint on held items (third person).
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
+    )
+    private void iris$glintEnd(CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
     }
 }

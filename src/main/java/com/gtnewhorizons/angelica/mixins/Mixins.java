@@ -197,7 +197,6 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
               "shaders.MixinDroppedItemGlintEdges"
-            , "shaders.MixinEnchantmentGlint"
             , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
