@@ -72,7 +72,6 @@ public class FontStrategist {
         DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
         List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
         defaultResourcePacks.add(fontResourcePack);
-        Minecraft.getMinecraft().refreshResources();
     }
 
     /**
