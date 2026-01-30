@@ -21,6 +21,7 @@ public class ProgramDirectives {
 	private static final ImmutableList<String> LEGACY_RENDER_TARGETS = PackRenderTargetDirectives.LEGACY_RENDER_TARGETS;
 
 	private final int[] drawBuffers;
+	private boolean unknownDrawBuffers;
 	private final ViewportData viewportScale;
 	@Nullable
 	private final AlphaTestOverride alphaTestOverride;
@@ -40,6 +41,7 @@ public class ProgramDirectives {
 		this.bufferBlendInformations = bufferBlendInformations;
 		this.mipmappedBuffers = mipmappedBuffers;
 		this.explicitFlips = explicitFlips;
+		this.unknownDrawBuffers = false;
 	}
 
 	ProgramDirectives(ProgramSource source, ShaderProperties properties, Set<Integer> supportedRenderTargets, @Nullable BlendModeOverride defaultBlendOverride) {
@@ -53,7 +55,7 @@ public class ProgramDirectives {
 		final Optional<CommentDirective> optionalDrawbuffersDirective = findDrawbuffersDirective(source.getFragmentSource());
 		final Optional<CommentDirective> optionalRendertargetsDirective = findRendertargetsDirective(source.getFragmentSource());
 
-		final Optional<CommentDirective> optionalCommentDirective = getAppliedDirective(optionalDrawbuffersDirective, optionalRendertargetsDirective);
+		Optional<CommentDirective> optionalCommentDirective = getAppliedDirective(optionalDrawbuffersDirective, optionalRendertargetsDirective);
 		drawBuffers = optionalCommentDirective.map(commentDirective -> {
 			if (commentDirective.getType() == CommentDirective.Type.DRAWBUFFERS) {
 				return parseDigits(commentDirective.getDirective().toCharArray());
@@ -62,7 +64,10 @@ public class ProgramDirectives {
 			} else {
 				throw new IllegalStateException("Unhandled comment directive type!");
 			}
-		}).orElse(new int[] { 0 });
+		}).orElseGet(() -> {
+			unknownDrawBuffers = true;
+			return new int[]{0};
+		});
 
 		if (properties != null) {
 			viewportScale = properties.getViewportScaleOverrides().getOrDefault(source.getName(), ViewportData.defaultValue());
@@ -158,6 +163,10 @@ public class ProgramDirectives {
 
 	public int[] getDrawBuffers() {
 		return drawBuffers;
+	}
+
+	public boolean hasUnknownDrawBuffers() {
+		return unknownDrawBuffers;
 	}
 
 	public ViewportData getViewportScale() {

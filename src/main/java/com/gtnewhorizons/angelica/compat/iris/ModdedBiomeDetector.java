@@ -114,7 +114,7 @@ public class ModdedBiomeDetector {
         }
 
         // lotr
-        if (lotrBiomeClass.isInstance(biome)) {
+        if (lotrBiomeClass!= null && lotrBiomeClass.isInstance(biome)) {
             return detectLOTRBiome(biome);
         }
 

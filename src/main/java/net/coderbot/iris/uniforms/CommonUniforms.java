@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import net.coderbot.iris.gl.uniform.UniformHolder;
@@ -64,11 +65,11 @@ public final class CommonUniforms {
     }
 
 	// Needs to use a LocationalUniformHolder as we need it for the common uniforms
-	public static void addDynamicUniforms(DynamicUniformHolder uniforms) {
+	public static void addDynamicUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
 		ExternallyManagedUniforms.addExternallyManagedUniforms116(uniforms);
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
-		FogUniforms.addFogUniforms(uniforms);
-		IrisInternalUniforms.addFogUniforms(uniforms);
+		FogUniforms.addFogUniforms(uniforms, fogMode);
+		IrisInternalUniforms.addFogUniforms(uniforms, fogMode);
 
 		uniforms.uniform2i("atlasSize", () -> {
 			final int glId = GLStateManager.getBoundTextureForServerState(0);
