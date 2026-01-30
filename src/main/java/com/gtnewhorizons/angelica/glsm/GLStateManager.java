@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
+import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
@@ -1802,18 +1803,18 @@ public class GLStateManager {
         GL11.glDrawElements(mode, indices);
     }
 
-    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
-        }
-        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
-    }
-
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
         GL11.glDrawElements(mode, count, type, indices);
+    }
+
+    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        if (DisplayListManager.isRecording()) {
+            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+        }
+        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
     public static void glDrawBuffer(int mode) {
@@ -2319,7 +2320,22 @@ public class GLStateManager {
 
     public static void glCallList(int list) {
         GLDebug.pushGroup("glCallList " + list);
-        DisplayListManager.glCallList(list);
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordCallList(list);
+
+            if (DisplayListManager.getListMode() == GL11.GL_COMPILE) {
+                return;
+            }
+
+            CommandRecorder recorder = DisplayListManager.currentRecorder;
+            DisplayListManager.currentRecorder = null;
+
+            DisplayListManager.glCallList(list);
+
+            DisplayListManager.currentRecorder = recorder;
+        } else {
+            DisplayListManager.glCallList(list);
+        }
         GLDebug.popGroup();
     }
 
@@ -3756,11 +3772,13 @@ public class GLStateManager {
 
     public static void glBindBuffer(int target, int buffer) {
         if (target == GL15.GL_ARRAY_BUFFER) {
-            if (DisplayListManager.isRecording()) {
-                // TODO this should get replaced by vao compilation.. this doesn't really work
-                DisplayListManager.recordBindVBO(buffer);
-            }
-            if (boundVBO == buffer) return;
+//            if (DisplayListManager.isRecording() && !isVAOBound()) {
+//                // TODO this should get replaced by vao compilation.. this doesn't really work
+//                DisplayListManager.recordBindVBO(buffer);
+//                System.out.println("Recording glBindBuffer.");
+//                new Exception().printStackTrace();
+//            }
+//            if (boundVBO == buffer) return;
             boundVBO = buffer;
         }
         GL15.glBindBuffer(target, buffer);

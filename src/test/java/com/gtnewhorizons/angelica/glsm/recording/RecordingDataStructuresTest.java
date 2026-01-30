@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.recording.commands.DrawCommand;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,14 +32,6 @@ class RecordingDataStructuresTest {
             GLStateManager.glDeleteLists(testList, 1);
             testList = -1;
         }
-    }
-
-    @Test
-    void testDrawCommandCreation() {
-        DrawCommand cmd = new DrawCommand(0, 4, GL11.GL_QUADS);
-        assertEquals(0, cmd.firstVertex());
-        assertEquals(4, cmd.vertexCount());
-        assertEquals(GL11.GL_QUADS, cmd.primitiveType());
     }
 
     @Test

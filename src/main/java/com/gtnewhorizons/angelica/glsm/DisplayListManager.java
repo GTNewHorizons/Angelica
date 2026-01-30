@@ -84,24 +84,16 @@ public class DisplayListManager {
     // Display list compilation state (current/active context)
     private static int glListMode = 0;
     private static int glListId = -1;
-    private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
+    public static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static Matrix4fStack relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
-    /**
-     * -- GETTER --
-     * Get the current matrix generation (for draw batching).
-     */
-    @Getter
-    private static int matrixGeneration = 0;  // Increments when relativeTransform changes; used for draw batching
-    private static int lastFlushedGeneration = -1;  // Generation at last flush; draws trigger flush when gen changes
     /**
      * -- GETTER --
      * Get the current state generation (for draw merging).
      */
     @Getter
     private static int stateGeneration = 0;  // Increments at draw barriers (state commands); used for draw merging
-    private static Matrix4f lastFlushedTransform = null;  // The transform that was flushed; consecutive same-gen draws share this
     private static StackTraceElement[] compilationStackTrace = null;  // For logging: captured at glNewList()
 
     // Debug logging: track sources of MULT_MATRIX commands and draw origins; only populated when LOG_DISPLAY_LIST_COMPILATION is true
@@ -356,8 +348,6 @@ public class DisplayListManager {
         // Flush any pending delta, then record pop.
         flushMatrix();
         currentRecorder.recordPopMatrix();
-        // Invalidate cached transform
-        matrixGeneration++;
     }
 
     public static void recordViewport(int x, int y, int width, int height) {
@@ -629,7 +619,6 @@ public class DisplayListManager {
         }
 
         applyTransformOp(relativeTransform, x, y, z, op, rotationAxis);
-        matrixGeneration++;
 
         if (pendingTransformOps != null) {
             final String log = switch (op) {
@@ -670,7 +659,6 @@ public class DisplayListManager {
         }
 
         relativeTransform.mul(matrix);
-        matrixGeneration++;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add("glMultMatrixf(...)");
@@ -698,7 +686,6 @@ public class DisplayListManager {
         }
 
         relativeTransform.mul(orthoFrustumTemp);
-        matrixGeneration++;
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
@@ -722,7 +709,6 @@ public class DisplayListManager {
         }
 
         relativeTransform.mul(orthoFrustumTemp);
-        matrixGeneration++;
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
@@ -793,11 +779,8 @@ public class DisplayListManager {
         glListMode = mode;
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentRecorder = new CommandRecorder();  // Create command recorder
-        accumulatedDraws = new ArrayList<>(64);   // Fewer draws than commands typically
+        accumulatedDraws = new ArrayList<>(16);   // Fewer draws than commands typically
         relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
-        // relativeTransform.identity();  // Track relative transforms from identity
-        lastFlushedGeneration = -1;  // Reset so first draw triggers flush
-        lastFlushedTransform = null;  // Will be set on first flush
         stateGeneration = 0;  // Reset state generation for fresh list
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
@@ -844,17 +827,13 @@ public class DisplayListManager {
         final boolean hasCommands = !rawCommandBuffer.isEmpty();
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
 
-        if (hasCommands || hasDraws) {
+        if (true) {
             // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
 
             // Build to CommandBuffer - optimize raw buffer to final buffer
             final CommandBuffer finalBuffer = new CommandBuffer();
-            if (DEBUG_DISPLAY_LISTS) {
-                CommandBufferBuilder.buildUnoptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
-            } else {
-                CommandBufferBuilder.buildOptimizedFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
-            }
+            CommandBufferBuilder.buildFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
 
             // Free the recorder (and its buffer) after optimization
             currentRecorder.free();
@@ -937,13 +916,13 @@ public class DisplayListManager {
      * Execute a compiled display list.
      */
     public static void glCallList(int list) {
-        if (currentRecorder != null) {
-            recordCallList(list);
-
-            if (glListMode == GL11.GL_COMPILE) {
-                return;
-            }
-        }
+//        if (currentRecorder != null) {
+//            recordCallList(list);
+//
+//            if (glListMode == GL11.GL_COMPILE) {
+//                return;
+//            }
+//        }
 
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
@@ -1108,7 +1087,6 @@ public class DisplayListManager {
         long ptr = basePtr;
         final long end = basePtr + buffer.limit();
         int cmdNum = 0;
-        int multMatrixIdx = 0;  // Index into multMatrixSources for source tracking
         int drawRangeIdx = 0;   // Index into drawRangeSources for source tracking
 
         while (ptr < end) {
@@ -1158,18 +1136,12 @@ public class DisplayListManager {
                     ptr += 28;
                 }
                 case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> {
-                    // Show source ops if available (only for MULT_MATRIX from recording phase)
-//                    if (opcode == GLCommand.MULT_MATRIX && multMatrixSources != null && multMatrixIdx < multMatrixSources.size()) {
-//                        final List<String> sources = multMatrixSources.get(multMatrixIdx);
-//                        sb.append(" [from: ").append(String.join(" -> ", sources)).append("]");
-//                    }
                     sb.append("(");
                     for (int i = 0; i < 16; i++) {
                         float value = MemoryUtilities.memGetFloat(ptr + 4 + i * 4);
                         sb.append(i == 0 ? value : ", " + value);
                     }
                     sb.append(")");
-                    multMatrixIdx++;
                     ptr += 68;  // cmd + 16 floats
                 }
                 case GLCommand.COLOR -> {

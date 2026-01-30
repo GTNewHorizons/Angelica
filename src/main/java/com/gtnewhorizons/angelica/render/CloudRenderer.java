@@ -23,6 +23,7 @@ package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -59,7 +60,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final ResourceLocation texture = new ResourceLocation("textures/environment/clouds.png");
 
-    private IVertexBuffer vbo;
+    private IVertexArrayObject vao;
     private int cloudMode = -1;
     private int renderDistance = -1;
     private int cloudElevation = -1;
@@ -217,16 +218,16 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private void dispose() {
-        if (vbo != null) {
-            vbo.delete();
-            vbo = null;
+        if (vao != null) {
+            vao.delete();
+            vao = null;
         }
     }
 
     private void build() {
         final DirectTessellator tessellator = TessellatorManager.startCapturingDirect();
         this.vertices(tessellator);
-        this.vbo = DirectTessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
+        this.vao = DirectTessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
     }
 
     private int fullCoord(double coord, int scale) {   // Corrects misalignment of UV offset when on negative coords.
@@ -234,7 +235,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private boolean isBuilt() {
-        return vbo != null;
+        return vao != null;
     }
 
     public void checkSettings() {
@@ -349,12 +350,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         mc.renderEngine.bindTexture(texture);
 
-        vbo.setupState();
+        vao.bind();
 
         // Depth pass to prevent insides rendering from the outside.
         GLStateManager.glColorMask(false, false, false, false);
 
-        vbo.draw();
+        vao.draw();
 
         // Full render.
         if (!mc.gameSettings.anaglyph) {
@@ -377,15 +378,15 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             GLStateManager.disableTexture();
             GLStateManager.glDepthMask(false);
             GLStateManager.disableFog();
-            vbo.draw();
+            vao.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
             GLStateManager.enableTexture();
             GLStateManager.enableFog();
         }
 
-        vbo.draw();
-        vbo.cleanupState(); // Unbind buffer and disable pointers.
+        vao.draw();
+        vao.unbind(); // Unbind buffer.
 
         // Disable our coloring.
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);

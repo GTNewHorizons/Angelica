@@ -1,11 +1,16 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import akka.util.Index;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IEmptyVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -48,7 +53,8 @@ public final class DisplayListVBOBuilder {
             if (formatData == null) continue;
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             int start = 0;
-            IEmptyVertexBuffer vbo = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
+            final IVertexArrayObject vao = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
+            final IEmptyVertexBuffer vbo = vao.getVBO();
             for (FormatData data : formatData) {
                 int vertexCount;
                 final List<ByteBuffer> drawBuffers = data.buffers;
@@ -64,8 +70,14 @@ public final class DisplayListVBOBuilder {
                     }
                     vertexCount = format.getVertexCount(size);
                 }
+                if (data.drawMode == GL11.GL_QUADS) {
+                    IVertexArrayObject indexedVAO = new IndexedVAO(vbo, IndexBuffer.convertQuadsToTrigs(start, start + vertexCount));
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(indexedVAO, GL11.GL_TRIANGLES, start, vertexCount / 4 * 6);
+                } else {
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, data.drawMode, start, vertexCount);
+                }
 
-                vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vbo, data.drawMode, start, vertexCount);
+
                 start += vertexCount;
             }
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);

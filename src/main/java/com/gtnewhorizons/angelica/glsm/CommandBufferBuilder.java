@@ -19,7 +19,7 @@ public final class CommandBufferBuilder {
      * Accumulates MODELVIEW transforms and emits MultMatrix at barriers (draws, CallList).
      * Uses mergedRanges where consecutive same-transform draws are combined.
      */
-    public static void buildOptimizedFromRawBuffer(
+    public static void buildFromRawBuffer(
             CommandBuffer rawBuffer,
             List<AccumulatedDraw> accumulatedDraws,
             CommandBuffer finalBuffer) {
@@ -41,33 +41,10 @@ public final class CommandBufferBuilder {
 
             cmdIndex++;
         }
-    }
 
-    /**
-     * Build commands without transform collapsing.
-     * Copies state commands directly (no transform optimization), but still uses
-     * merged draw ranges (draws already collapsed by format + transform in VBO compilation).
-     */
-    public static void buildUnoptimizedFromRawBuffer(
-            CommandBuffer rawBuffer,
-            List<AccumulatedDraw> accumulatedDraws,
-            CommandBuffer finalBuffer) {
-
-        rawBuffer.resetRead();
-        int cmdIndex = 0;
-        int rangeIndex = 0;
-
-        while (rawBuffer.hasRemaining()) {
-            // Copy the command directly
-            CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
-
-            // Emit draw ranges at this command position
-            while (rangeIndex < accumulatedDraws.size() && accumulatedDraws.get(rangeIndex).commandIndex == cmdIndex) {
-                finalBuffer.writeDrawRange(rangeIndex);
-                rangeIndex++;
-            }
-
-            cmdIndex++;
+        while (rangeIndex < accumulatedDraws.size()) {
+            emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), finalBuffer, rangeIndex);
+            rangeIndex++;
         }
     }
 

@@ -178,6 +178,8 @@ public final class GLCommand {
             case DRAW_BUFFERS -> "DRAW_BUFFERS";
             case COMPLEX_REF -> "COMPLEX_REF";
             case DRAW_RANGE_RESTORE -> "DRAW_RANGE_RESTORE";
+            case BIND_VAO -> "BIND_VAO";
+            case BIND_VBO -> "BIND_VBO";
             default -> "UNKNOWN(" + opcode + ")";
         };
     }

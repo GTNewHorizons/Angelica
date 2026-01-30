@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
+import org.lwjgl.opengl.GL15;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.
@@ -25,24 +27,26 @@ public final class DisplayListVBO {
 
     static final class SubVBO {
 
-        private final IVertexBuffer vbo;
+        private final IVertexArrayObject vao;
         private final int drawMode;
         private final int start;
         private final int count;
 
-        public SubVBO(IVertexBuffer vbo, int drawMode, int start, int count) {
-            this.vbo = vbo;
+        public SubVBO(IVertexArrayObject vao, int drawMode, int start, int count) {
+            this.vao = vao;
             this.drawMode = drawMode;
             this.start = start;
             this.count = count;
         }
 
         public void delete() {
-            vbo.delete();
+            vao.delete();
         }
 
         public void render() {
-            vbo.render(drawMode, start, count);
+            vao.bind();
+            vao.draw(drawMode, start, count);
+            vao.unbind();
         }
     }
 }
