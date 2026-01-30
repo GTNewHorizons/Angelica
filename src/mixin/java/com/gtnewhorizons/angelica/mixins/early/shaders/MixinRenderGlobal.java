@@ -4,27 +4,19 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.RenderGlobal;
-import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EntityList;
-import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovingObjectPosition;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
@@ -32,13 +24,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal {
-    @Unique private static final NamespacedId LIGHTNING_BOLT_ID = new NamespacedId("minecraft", "lightning_bolt");
-    @Unique private static final Object2IntOpenHashMap<String> angelica$entityIdCache = new Object2IntOpenHashMap<>();
-    @Unique private static Object2IntFunction<NamespacedId> angelica$cachedEntityIdMap;
-
-    static {
-        angelica$entityIdCache.defaultReturnValue(Integer.MIN_VALUE);
-    }
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
     private void iris$renderSky$beginNormalSky(float partialTicks, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
@@ -89,55 +74,7 @@ public class MixinRenderGlobal {
 
     @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
     private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        int entityId = entity.getEntityId();
-
-        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-        if (entityIdMap != null) {
-            // Invalidate cache if the map changed (shader reload)
-            if (entityIdMap != angelica$cachedEntityIdMap) {
-                angelica$entityIdCache.clear();
-                angelica$cachedEntityIdMap = entityIdMap;
-            }
-
-            String entityType = EntityList.getEntityString(entity);
-            String cacheKey;
-
-            if (entityType != null) {
-                // Use registered entity name
-                cacheKey = entityType;
-                int cached = angelica$entityIdCache.getInt(cacheKey);
-                if (cached == Integer.MIN_VALUE) {
-                    cached = entityIdMap.applyAsInt(new NamespacedId(entityType));
-                    angelica$entityIdCache.put(cacheKey, cached);
-                }
-                entityId = cached;
-            } else {
-                // Unregistered entity check
-                Class<?> entityClass = entity.getClass();
-                String className = entityClass.getName();
-                cacheKey = className;
-
-                int cached = angelica$entityIdCache.getInt(cacheKey);
-                if (cached == Integer.MIN_VALUE) {
-                    // Try simple class name first (e.g., "EntityLightningBolt")
-                    String simpleClassName = entityClass.getSimpleName();
-                    cached = entityIdMap.applyAsInt(new NamespacedId(simpleClassName));
-
-                    // If not found, try FQN (e.g., "net.minecraft.entity.effect.EntityLightningBolt")
-                    if (cached == -1) {
-                        cached = entityIdMap.applyAsInt(new NamespacedId(className));
-                    }
-
-                    // Special case: Shaderpacks have "minecraft:lightning_bolt" so we should continue to provide this
-                    if (cached == -1 && entity instanceof EntityLightningBolt) {
-                        cached = entityIdMap.applyAsInt(LIGHTNING_BOLT_ID);
-                    }
-
-                    angelica$entityIdCache.put(cacheKey, cached);
-                }
-                entityId = cached;
-            }
-        }
+        int entityId = EntityIdHelper.getEntityId(entity);
 
         CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
         GbufferPrograms.beginEntities();

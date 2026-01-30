@@ -2,94 +2,54 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.coderbot.iris.uniforms.ItemMaterialHelper;
+import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.model.ModelBase;
+import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.RenderBiped;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 
 /**
- * Mixin to set the currentRenderedItem ID when rendering armor on entities.
- * This allows shaders to identify and apply different materials to armor pieces.
+ * Mixin to set currentRenderedItem ID when rendering armor and equipment on biped entities.
+ * RENDER ORDER:
+ * 1. doRender() starts (parent resets item ID to 0)
+ * 2. Main entity body
+ * 3. Armor loop (4 slots) - we set ID per armor piece
+ * 4. renderEquippedItems(): - Handled via ItemRenderer
+ * - Held item
  */
 @Mixin(RenderBiped.class)
 public class MixinRenderBiped {
 
     /**
-     * Set the item ID when rendering armor.
-     * Wraps the setRenderPassModel call to inject our ID setting logic.
+     * Set item ID when rendering armor on biped entities.
+     * Wraps setRenderPassModel() which is called inside shouldRenderPass().
      */
     @WrapOperation(
         method = "shouldRenderPass(Lnet/minecraft/entity/EntityLiving;IF)I",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderBiped;setRenderPassModel(Lnet/minecraft/client/model/ModelBase;)V")
     )
     private void iris$setArmorItemId(RenderBiped instance, ModelBase model, Operation<Void> original, EntityLiving entity, int armorSlot, float partialTicks) {
-        // Get the armor item stack for this slot
+        // Get the armor item stack for this slot (slot 0=boots, 1=legs, 2=chest, 3=helmet)
         ItemStack itemStack = entity.func_130225_q(3 - armorSlot);
+        ItemIdManager.setItemId(itemStack);
 
-        if (itemStack == null || itemStack.getItem() == null) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
-            original.call(instance, model);
-            return;
-        }
-
-        // Get material ID from item.properties or block.properties
-        int id = ItemMaterialHelper.getMaterialId(itemStack);
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
-
-        // Call original method
         original.call(instance, model);
     }
 
     /**
-     * Reset the item ID at the start of rendering each entity.
-     * This ensures a clean slate and prevents ID bleed between entities.
-     */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLiving;DDDFF)V",
-        at = @At("HEAD")
-    )
-    private void iris$resetAtStart(EntityLiving entity, double x, double y, double z, float entityYaw, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
-    }
-
-    /**
-     * Reset the item ID at the start of renderEquippedItems.
-     * This prevents armor IDs from bleeding into held item rendering.
-     */
-    @Inject(
-        method = "renderEquippedItems(Lnet/minecraft/entity/EntityLiving;F)V",
-        at = @At("HEAD")
-    )
-    private void iris$resetInEquippedItems(EntityLiving entity, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
-    }
-
-    /**
-     * Set the item ID when rendering held items in third person.
-     * Wraps renderItem calls to set the ID based on the held item.
+     * Set item ID when rendering held items on entities (third person).
      */
     @WrapOperation(
         method = "renderEquippedItems(Lnet/minecraft/entity/EntityLiving;F)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;I)V")
     )
-    private void iris$setHeldItemId(net.minecraft.client.renderer.ItemRenderer itemRenderer, net.minecraft.entity.EntityLivingBase entity, ItemStack itemStack, int renderPass, Operation<Void> original) {
-        if (itemStack == null || itemStack.getItem() == null) {
-            original.call(itemRenderer, entity, itemStack, renderPass);
-            return;
-        }
-
-        // Get material ID from item.properties or block.properties
-        int id = ItemMaterialHelper.getMaterialId(itemStack);
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+    private void iris$setHeldItemId(ItemRenderer itemRenderer, EntityLivingBase entity, ItemStack itemStack, int renderPass, Operation<Void> original) {
+        ItemIdManager.setItemId(itemStack);
 
         original.call(itemRenderer, entity, itemStack, renderPass);
-
-        // Reset after rendering the held item
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
     }
 }
