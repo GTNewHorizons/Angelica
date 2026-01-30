@@ -20,6 +20,9 @@ public class ProgramSet {
 
 	private final ProgramSource[] shadowcomp;
 	private final ComputeSource[][] shadowCompCompute;
+	private final ComputeSource[] setup;
+	private final ProgramSource[] begin;
+	private final ComputeSource[][] beginCompute;
 	private final ProgramSource[] prepare;
 	private final ComputeSource[][] prepareCompute;
 
@@ -80,6 +83,14 @@ public class ProgramSet {
 		this.shadowCompCompute = new ComputeSource[shadowcomp.length][];
 		for (int i = 0; i < shadowcomp.length; i++) {
 			this.shadowCompCompute[i] = readComputeArray(directory, sourceProvider, "shadowcomp" + ((i == 0) ? "" : i));
+		}
+
+		this.setup = readComputeProgramArray(directory, sourceProvider, "setup");
+
+		this.begin = readProgramArray(directory, sourceProvider, "begin", shaderProperties);
+		this.beginCompute = new ComputeSource[begin.length][];
+		for (int i = 0; i < begin.length; i++) {
+			this.beginCompute[i] = readComputeArray(directory, sourceProvider, "begin" + ((i == 0) ? "" : i));
 		}
 
 		this.prepare = readProgramArray(directory, sourceProvider, "prepare", shaderProperties);
@@ -162,6 +173,18 @@ public class ProgramSet {
 		return programs;
 	}
 
+	private ComputeSource[] readComputeProgramArray(AbsolutePackPath directory, Function<AbsolutePackPath, String> sourceProvider, String name) {
+		ComputeSource[] programs = new ComputeSource[100];
+
+		for (int i = 0; i < programs.length; i++) {
+			String suffix = i == 0 ? "" : Integer.toString(i);
+
+			programs[i] = readComputeSource(directory, sourceProvider, name + suffix, this);
+		}
+
+		return programs;
+	}
+
 	private ComputeSource[] readComputeArray(AbsolutePackPath directory,
 											 Function<AbsolutePackPath, String> sourceProvider, String name) {
 		ComputeSource[] programs = new ComputeSource[27];
@@ -187,6 +210,7 @@ public class ProgramSet {
 
 		programs.add(shadow);
 		programs.addAll(Arrays.asList(shadowcomp));
+		programs.addAll(Arrays.asList(begin));
 		programs.addAll(Arrays.asList(prepare));
 
 		programs.addAll (Arrays.asList(
@@ -209,6 +233,16 @@ public class ProgramSet {
 		}
 
 		for (ComputeSource[] computeSources : shadowCompCompute) {
+			computes.addAll(Arrays.asList(computeSources));
+		}
+
+		for (ComputeSource computeSource : setup) {
+			if (computeSource != null) {
+				computes.add(computeSource);
+			}
+		}
+
+		for (ComputeSource[] computeSources : beginCompute) {
 			computes.addAll(Arrays.asList(computeSources));
 		}
 
@@ -261,6 +295,18 @@ public class ProgramSet {
 
 	public ProgramSource[] getShadowComposite() {
 		return shadowcomp;
+	}
+
+	public ComputeSource[] getSetup() {
+		return setup;
+	}
+
+	public ProgramSource[] getBegin() {
+		return begin;
+	}
+
+	public ComputeSource[][] getBeginCompute() {
+		return beginCompute;
 	}
 
 	public ProgramSource[] getPrepare() {

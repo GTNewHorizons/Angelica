@@ -84,6 +84,7 @@ import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL42;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -121,6 +122,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private ImmutableList<ClearPass> shadowClearPasses;
 	private ImmutableList<ClearPass> shadowClearPassesFull;
 
+	private final ComputeProgram[] setup;
+	private final CompositeRenderer beginRenderer;
 	private final CompositeRenderer prepareRenderer;
 
 	@Nullable
@@ -312,8 +315,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
-		this.flippedBeforeShadow = ImmutableSet.of();
-
 		BufferFlipper flipper = new BufferFlipper();
 
 		this.centerDepthSampler = new CenterDepthSampler(() -> getRenderTargets().getDepthTexture(), programs.getPackDirectives().getCenterDepthHalfLife());
@@ -330,18 +331,26 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		PatchedShaderPrinter.resetPrintState();
 
+		final ProgramBuildContext beginBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.BEGIN), customUniforms, customImages, customTextureManager.getIrisCustomTextures(), this);
 		final ProgramBuildContext prepareBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.PREPARE), customUniforms, customImages, customTextureManager.getIrisCustomTextures(), this);
 		final ProgramBuildContext deferredBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.DEFERRED), customUniforms, customImages, customTextureManager.getIrisCustomTextures(), this);
 		final ProgramBuildContext compositeBuildContext = new ProgramBuildContext(renderTargets, customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, shadowTargetsSupplier, customTextureManager.getCustomTextureIdMap(TextureStage.COMPOSITE_AND_FINAL), customUniforms, customImages, customTextureManager.getIrisCustomTextures(), this);
-		this.prepareRenderer = new CompositeRenderer(programs.getPrepare(), programs.getPrepareCompute(), flipper, prepareBuildContext, programs.getPackDirectives().getExplicitFlips("prepare_pre"), prepareTransformFutures, "prepare");
+
+		this.setup = createSetupComputes(programs.getSetup());
+
+		this.beginRenderer = new CompositeRenderer(programs.getBegin(), programs.getBeginCompute(), flipper, beginBuildContext, programs.getPackDirectives().getExplicitFlips("begin_pre"), null, "begin", TextureStage.BEGIN);
+
+		this.flippedBeforeShadow = flipper.snapshot();
+
+		this.prepareRenderer = new CompositeRenderer(programs.getPrepare(), programs.getPrepareCompute(), flipper, prepareBuildContext, programs.getPackDirectives().getExplicitFlips("prepare_pre"), prepareTransformFutures, "prepare", TextureStage.PREPARE);
 
 		flippedAfterPrepare = flipper.snapshot();
 
-		this.deferredRenderer = new CompositeRenderer(programs.getDeferred(), programs.getDeferredCompute(), flipper, deferredBuildContext, programs.getPackDirectives().getExplicitFlips("deferred_pre"), deferredTransformFutures, "deferred");
+		this.deferredRenderer = new CompositeRenderer(programs.getDeferred(), programs.getDeferredCompute(), flipper, deferredBuildContext, programs.getPackDirectives().getExplicitFlips("deferred_pre"), deferredTransformFutures, "deferred", TextureStage.DEFERRED);
 
 		flippedAfterTranslucent = flipper.snapshot();
 
-		this.compositeRenderer = new CompositeRenderer(programs.getComposite(), programs.getCompositeCompute(), flipper, compositeBuildContext, programs.getPackDirectives().getExplicitFlips("composite_pre"), compositeTransformFutures, "composite");
+		this.compositeRenderer = new CompositeRenderer(programs.getComposite(), programs.getCompositeCompute(), flipper, compositeBuildContext, programs.getPackDirectives().getExplicitFlips("composite_pre"), compositeTransformFutures, "composite", TextureStage.COMPOSITE_AND_FINAL);
 		this.finalPassRenderer = new FinalPassRenderer(programs, compositeBuildContext, flipper.snapshot(), this.compositeRenderer.getFlippedAtLeastOnceFinal(), finalTransformFuture, "final");
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
@@ -465,6 +474,25 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		this.clearPassesFull = ClearPassCreator.createClearPasses(renderTargets, true, programs.getPackDirectives().getRenderTargetDirectives());
 		this.clearPasses = ClearPassCreator.createClearPasses(renderTargets, false, programs.getPackDirectives().getRenderTargetDirectives());
+
+		boolean hasSetup = false;
+		for (ComputeProgram program : setup) {
+			if (program != null) {
+				if (!hasSetup) {
+					hasSetup = true;
+					renderTargets.onFullClear();
+					final Vector4f fogColor = new Vector4f(1.0F, 1.0F, 1.0F, 1.0F);
+					clearPassesFull.forEach(clearPass -> clearPass.execute(fogColor));
+				}
+				program.use();
+				customUniforms.push(program);
+				program.dispatch(1, 1);
+			}
+		}
+		if (hasSetup) {
+			ComputeProgram.unbind();
+			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
+		}
 
 		// Terrain pipeline sampler/image factory setup follows.
 
@@ -958,11 +986,21 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// Destroy the composite rendering pipeline
 		//
 		// This destroys all the loaded composite programs as well.
+		beginRenderer.destroy();
 		prepareRenderer.destroy();
 		compositeRenderer.destroy();
 		deferredRenderer.destroy();
 		finalPassRenderer.destroy();
 		centerDepthSampler.destroy();
+
+		// Destroy setup compute programs
+		if (setup != null) {
+			for (ComputeProgram compute : setup) {
+				if (compute != null) {
+					compute.destroy();
+				}
+			}
+		}
 
 		// Destroy shadow compute programs
 		if (shadowComputes != null) {
@@ -1086,6 +1124,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             main.framebufferHeight, depthBufferFormat, packDirectives);
 
 		if (changed) {
+			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();
 			compositeRenderer.recalculateSizes();
@@ -1105,6 +1144,21 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			// Resize SSBOs if needed
 			if (ssboHolder != null) {
 				ssboHolder.hasResizedScreen(main.framebufferWidth, main.framebufferHeight);
+			}
+
+			// Re-run setup computes after resize (SETUP dispatches with 1,1 workgroups)
+			boolean ranSetup = false;
+			for (ComputeProgram program : setup) {
+				if (program != null) {
+					ranSetup = true;
+					program.use();
+					customUniforms.push(program);
+					program.dispatch(1, 1);
+				}
+			}
+			if (ranSetup) {
+				ComputeProgram.unbind();
+				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
 			}
 		}
 
@@ -1188,6 +1242,60 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		}
 
+
+		return programs;
+	}
+
+	private ComputeProgram[] createSetupComputes(ComputeSource[] compute) {
+		ComputeProgram[] programs = new ComputeProgram[compute.length];
+		for (int i = 0; i < programs.length; i++) {
+			ComputeSource source = compute[i];
+			if (source == null || !source.getSource().isPresent()) {
+				continue;
+			} else {
+				ProgramBuilder builder;
+
+				try {
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.SETUP, getTextureMap());
+					PatchedShaderPrinter.debugPatchedShaders(source.getName() + "_compute", null, null, null, transformed);
+					builder = ProgramBuilder.beginCompute(source.getName(), transformed, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
+				} catch (RuntimeException e) {
+					throw new RuntimeException("Shader compilation failed for setup compute " + source.getName() + "!", e);
+				}
+
+				CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
+				this.customUniforms.assignTo(builder);
+
+				ImmutableSet<Integer> empty = ImmutableSet.of();
+				Supplier<ImmutableSet<Integer>> flipped = () -> empty;
+
+				ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor =
+					ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureManager.getCustomTextureIdMap(TextureStage.SETUP));
+
+				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, true, this);
+				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+
+				IrisImages.addRenderTargetImages(builder, flipped, renderTargets);
+				IrisImages.addCustomImages(builder, customImages);
+
+				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
+				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+
+				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
+					if (shadowRenderTargets != null) {
+						IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true);
+						IrisImages.addShadowColorImages(builder, shadowRenderTargets, null);
+					}
+				}
+
+				programs[i] = builder.buildCompute();
+
+				this.customUniforms.mapholderToPass(builder, programs[i]);
+
+				programs[i].setWorkGroupInfo(source.getWorkGroupRelative(), source.getWorkGroups(), null);
+			}
+		}
 
 		return programs;
 	}
@@ -1313,6 +1421,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		for (GlImage image : imagesToClear) {
 			image.clear();
 		}
+
+		isRenderingFullScreenPass = true;
+		beginRenderer.renderAll();
+		isRenderingFullScreenPass = false;
 
 		setPhase(WorldRenderingPhase.SKY);
 
