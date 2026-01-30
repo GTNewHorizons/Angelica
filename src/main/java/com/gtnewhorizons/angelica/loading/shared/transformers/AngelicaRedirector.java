@@ -41,6 +41,7 @@ public final class AngelicaRedirector {
     private static final String Drawable = "org/lwjgl/opengl/Drawable";
     private static final String GLStateManager = "com/gtnewhorizons/angelica/glsm/GLStateManager";
     private static final String GL11 = "org/lwjgl/opengl/GL11";
+    private static final String GL11C = "org/lwjgl/opengl/GL11C";
     private static final String GL12 = "org/lwjgl/opengl/GL12";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
@@ -250,6 +251,14 @@ public final class AngelicaRedirector {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+
+        final String glPrefix = "org/lwjgl/opengl/GL";
+        for (var entry : new HashMap<>(methodRedirects).entrySet()) {
+            if (entry.getKey().startsWith(glPrefix)) {
+                methodRedirects.put(entry.getKey() + "C", entry.getValue());
+                cstPoolParser.addString(entry.getKey() + "C");
+            }
+        }
     }
 
     public String[] getTransformerExclusions() {
@@ -280,7 +289,7 @@ public final class AngelicaRedirector {
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {
-                    if (mNode.owner.equals(GL11) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
+                    if ((mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
                         if (prevNode instanceof LdcInsnNode ldcNode) {
@@ -321,15 +330,18 @@ public final class AngelicaRedirector {
                         }
                     } else {
                         final Map<String, String> redirects = methodRedirects.get(mNode.owner);
-                        if (redirects != null && redirects.containsKey(mNode.name)) {
-                            if (LOG_SPAM) {
-                                final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, redirects.get(mNode.name), mNode.desc);
+                        if (redirects != null) {
+                            final String glsmName = redirects.get(mNode.name);
+                            if (glsmName != null) {
+                                if (LOG_SPAM) {
+                                    final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
+                                }
+                                mNode.owner = GLStateManager;
+                                mNode.name = glsmName;
+                                changed = true;
+                                redirectInMethod = true;
                             }
-                            mNode.owner = GLStateManager;
-                            mNode.name = redirects.get(mNode.name);
-                            changed = true;
-                            redirectInMethod = true;
                         }
                     }
                 }
