@@ -29,6 +29,7 @@ import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
 import net.coderbot.iris.shadows.frustum.FrustumHolder;
 import net.coderbot.iris.shadows.frustum.advanced.AdvancedShadowCullingFrustum;
+import net.coderbot.iris.shadows.frustum.advanced.SafeZoneCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.BoxCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.NonCullingFrustum;
 import net.coderbot.iris.uniforms.CameraUniforms;
@@ -73,6 +74,7 @@ public class ShadowRenderer {
 
 	public static ShadowRenderTargets CURRENT_TARGETS = null;
 	private final float halfPlaneLength;
+	private final float voxelDistance;
 	private final float renderDistanceMultiplier;
 	private final float entityShadowDistanceMultiplier;
 	private final int resolution;
@@ -117,6 +119,7 @@ public class ShadowRenderer {
 		final PackShadowDirectives shadowDirectives = directives.getShadowDirectives();
 
 		this.halfPlaneLength = shadowDirectives.getDistance();
+		this.voxelDistance = shadowDirectives.getVoxelDistance();
 		this.renderDistanceMultiplier = shadowDirectives.getDistanceRenderMul();
 		this.entityShadowDistanceMultiplier = shadowDirectives.getEntityShadowDistanceMul();
 		this.resolution = shadowDirectives.getResolution();
@@ -225,7 +228,8 @@ public class ShadowRenderer {
 
 		configureDepthSampler(targets.getDepthTextureNoTranslucents().getTextureId(), depthSamplingSettings.get(1));
 
-		for (int i = 0; i < colorSamplingSettings.size(); i++) {
+		for (int i = 0; i < Math.min(colorSamplingSettings.size(), targets.getNumColorTextures()); i++) {
+			if (targets.get(i) == null) continue;
 			int glTextureId = targets.get(i).getMainTexture();
 
 			configureSampler(glTextureId, colorSamplingSettings.get(i));
@@ -286,7 +290,7 @@ public class ShadowRenderer {
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
 		String distanceInfo;
 		String cullingInfo;
-		if ((packCullingState == ShadowCullState.DISTANCE || packHasVoxelization) && packCullingState != ShadowCullState.ADVANCED) {
+		if ((packCullingState == ShadowCullState.DISTANCE || packHasVoxelization) && packCullingState != ShadowCullState.ADVANCED && packCullingState != ShadowCullState.SAFE_ZONE) {
 			double distance = halfPlaneLength * renderMultiplier;
 
 			String reason;
@@ -308,26 +312,29 @@ public class ShadowRenderer {
 				holder.setInfo(getOrCreateBoxCullingFrustum(distance), distanceInfo, cullingInfo);
 			}
 		} else {
-			final BoxCuller boxCuller;
+			BoxCuller boxCuller;
 
-			double distance = halfPlaneLength * renderMultiplier;
+			boolean hasSafeZone = packCullingState == ShadowCullState.SAFE_ZONE;
+
+			if (hasSafeZone && renderMultiplier < 0) renderMultiplier = 1.0f;
+
+			double distance = (hasSafeZone ? voxelDistance : halfPlaneLength) * renderMultiplier;
 			String setter = "(set by shader pack)";
 
 			if (renderMultiplier < 0) {
                 // TODO: GUI
 				distance = IrisVideoSettings.shadowDistance * 16; // can be zero :(
-				//distance = 32 * 16;
 				setter = "(set by user)";
 			}
 
-			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
+			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16 && !hasSafeZone) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
 					+ " blocks (capped by normal render distance)";
 				boxCuller = null;
 			} else {
 				distanceInfo = distance + " blocks " + setter;
 
-				if (distance == 0.0) {
+				if (distance == 0.0 && !hasSafeZone) {
 					cullingInfo = "no shadows rendered";
 					return holder.setInfo(CULL_EVERYTHING_FRUSTUM, distanceInfo, cullingInfo);
 				}
@@ -335,15 +342,22 @@ public class ShadowRenderer {
 				boxCuller = getOrCreateAdvancedBoxCuller(distance);
 			}
 
-			cullingInfo = "Advanced Frustum Culling enabled";
+			cullingInfo = (hasSafeZone ? "Safe Zone" : "Advanced") + " Frustum Culling enabled";
 
 			final Vector4f shadowLightPosition = celestialUniforms.getShadowLightPositionInWorldSpace();
 			shadowLightVectorCache.set(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
 			shadowLightVectorCache.normalize();
 
-			cachedAdvancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(), shadowLightVectorCache, boxCuller);
-			return holder.setInfo(cachedAdvancedFrustum, distanceInfo, cullingInfo);
-
+			if (hasSafeZone) {
+				BoxCuller distanceCuller = new BoxCuller(halfPlaneLength * renderMultiplier);
+				SafeZoneCullingFrustum safeZoneFrustum = new SafeZoneCullingFrustum(
+					RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(),
+					shadowLightVectorCache, boxCuller, distanceCuller);
+				return holder.setInfo(safeZoneFrustum, distanceInfo, cullingInfo);
+			} else {
+				cachedAdvancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(), shadowLightVectorCache, boxCuller);
+				return holder.setInfo(cachedAdvancedFrustum, distanceInfo, cullingInfo);
+			}
 		}
 
 		return holder;

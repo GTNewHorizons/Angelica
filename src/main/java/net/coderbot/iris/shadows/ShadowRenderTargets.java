@@ -9,6 +9,8 @@ import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.rendertarget.DepthTexture;
+import net.coderbot.iris.features.FeatureFlags;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import org.lwjgl.opengl.GL11;
@@ -35,11 +37,11 @@ public class ShadowRenderTargets {
 	private final InternalTextureFormat[] formats;
 	private final IntList buffersToBeCleared;
 
-	public ShadowRenderTargets(int resolution, PackShadowDirectives shadowDirectives) {
+	public ShadowRenderTargets(WorldRenderingPipeline pipeline, int resolution, PackShadowDirectives shadowDirectives) {
 		this.shadowDirectives = shadowDirectives;
 		this.resolution = resolution;
 
-		final int size = shadowDirectives.getColorSamplingSettings().size();
+		final int size = pipeline.hasFeature(FeatureFlags.HIGHER_SHADOWCOLOR) ? PackShadowDirectives.MAX_SHADOW_COLOR_BUFFERS_IRIS : PackShadowDirectives.MAX_SHADOW_COLOR_BUFFERS_OF;
 		targets = new RenderTarget[size];
 		formats = new InternalTextureFormat[size];
 		flipped = new boolean[size];

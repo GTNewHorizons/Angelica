@@ -106,7 +106,7 @@ public class IrisSamplers {
 		final ImmutableList.Builder<String> shadowSamplers = ImmutableList.<String>builder()
 			.add("shadowtex0", "shadowtex0HW", "shadowtex0DH", "shadowtex1", "shadowtex1HW", "shadowtex1DH", "shadow", "watershadow", "shadowcolor");
 
-		for (int i = 0; i < PackShadowDirectives.MAX_SHADOW_COLOR_BUFFERS; i++) {
+		for (int i = 0; i < PackShadowDirectives.MAX_SHADOW_COLOR_BUFFERS_IRIS; i++) {
 			shadowSamplers.add("shadowcolor" + i);
 			shadowSamplers.add("shadowcolorimg" + i);
 		}

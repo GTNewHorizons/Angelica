@@ -74,7 +74,7 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 	private int planeCount = 0;
 
 	private final Vector3f shadowLightVectorFromOrigin = new Vector3f();
-	private BoxCuller boxCuller;
+	protected BoxCuller boxCuller;
 	private final Vector3d position = new Vector3d();
 
 	private final BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes();
@@ -277,13 +277,13 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}
 
-	private boolean isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+	protected boolean isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
 		return this.checkCornerVisibility((float)(minX - xPosition), (float)(minY - yPosition), (float)(minZ - zPosition),
 				                          (float)(maxX - xPosition), (float)(maxY - yPosition), (float)(maxZ - zPosition));
 	}
 
 	// view-relative coordinates.
-	private boolean checkCornerVisibility(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+	protected boolean checkCornerVisibility(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
 		for (int i = 0; i < planeCount; ++i) {
 			final Vector4f plane = this.planes[i];
 

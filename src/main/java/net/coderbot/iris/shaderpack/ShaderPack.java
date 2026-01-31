@@ -216,6 +216,9 @@ public class ShaderPack {
 			Iris.logger.info("FeatureFlag {} usable: {}", flag.name(), usable);
 			if (usable) {
 				finalEnvironmentDefines.add(new StringPair("IRIS_FEATURE_" + flag.name(), ""));
+				if (flag == FeatureFlags.TESSELLATION_SHADERS) {
+					finalEnvironmentDefines.add(new StringPair("IRIS_FEATURE_TESSELATION_SHADERS", ""));
+				}
 			}
 		}
 		Iris.logger.info("Environment defines: {}", finalEnvironmentDefines.stream()

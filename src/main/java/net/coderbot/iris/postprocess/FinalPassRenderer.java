@@ -159,7 +159,7 @@ public class FinalPassRenderer {
 				throw new RuntimeException("Shader transformation failed for '" + source.getName() + "' in stage '" + stageName + "'", e.getCause() != null ? e.getCause() : e);
 			}
 		}
-		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
+		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
 	}
 
 	private static final class Pass {
@@ -353,14 +353,16 @@ public class FinalPassRenderer {
 												 Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
 		final String vertex = transformed.get(PatchShaderType.VERTEX);
 		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
+		final String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
+		final String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
 		final String fragment = transformed.get(PatchShaderType.FRAGMENT);
-		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, fragment);
+		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, tessControl, tessEval, fragment);
 
 		Objects.requireNonNull(flipped);
 		final ProgramBuilder builder;
 
 		try {
-			builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
+			builder = ProgramBuilder.begin(source.getName(), vertex, geometry, tessControl, tessEval, fragment,
 				IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
 		} catch (RuntimeException e) {
 			// TODO: Better error handling
