@@ -54,6 +54,10 @@ public class CommonTransformer {
 			root.rename("texture", "gtexture");
 		}
 
+		if (root.hasVariable("iris_renamed_texture")) {
+			root.rename("iris_renamed_texture", "gtexture");
+		}
+
 		if (root.containsCall("gcolor") && root.hasVariable("gcolor")) {
 			root.rename("gcolor", "gtexture");
 		}

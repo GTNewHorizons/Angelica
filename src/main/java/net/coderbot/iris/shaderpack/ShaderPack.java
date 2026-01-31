@@ -315,6 +315,10 @@ public class ShaderPack {
 			// directly. This removes one obstacle to accurate reporting of line numbers for errors,
 			// though there exist many more (such as relocating all #extension directives and similar things)
 			String source = builder.toString();
+
+			// Apply shader pack workarounds for version compatibility (before preprocessing)
+			source = ShaderPackWorkarounds.apply(source);
+
 			source = JcppProcessor.glslPreprocessSource(source, finalEnvironmentDefines1);
 
 			return source;

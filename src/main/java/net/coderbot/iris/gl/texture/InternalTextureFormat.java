@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl.texture;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlVersion;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -104,5 +105,30 @@ public enum InternalTextureFormat {
 
 	public GlVersion getMinimumGlVersion() {
 		return minimumGlVersion;
+	}
+
+	public InternalTextureFormat getColorRenderableFallback() {
+		if (!RenderSystem.supportsSnormFormats()) {
+			return switch (this) {
+				case R8_SNORM, RG8_SNORM, RGB8_SNORM, RGBA8_SNORM -> RGBA16F;
+				case R16_SNORM, RG16_SNORM, RGB16_SNORM, RGBA16_SNORM -> RGBA16F;
+				default -> this.getPackedFloatFallback();
+			};
+		}
+		return this.getPackedFloatFallback();
+	}
+
+	private InternalTextureFormat getPackedFloatFallback() {
+		if (!RenderSystem.supportsPackedFloatRenderable()) {
+			return switch (this) {
+				case R11F_G11F_B10F, RGB9_E5 -> RGBA16F;
+				case RGB8 -> RGBA8;
+				case RGB16 -> RGBA16;
+				case RGB16F -> RGBA16F;
+				case RGB32F -> RGBA32F;
+				default -> this;
+			};
+		}
+		return this;
 	}
 }
