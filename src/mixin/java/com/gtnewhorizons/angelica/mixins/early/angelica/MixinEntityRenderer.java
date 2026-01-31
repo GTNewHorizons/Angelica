@@ -32,11 +32,11 @@ public abstract class MixinEntityRenderer implements EntityRendererAccessor {
 
         Camera.INSTANCE.update(viewEntity, partialTicks);
 
-        // Set RenderingState to use the correct camera position
+        // Use entity eye position for cameraPosition uniform, not the third-person camera position.
         RenderingState.INSTANCE.setCameraPosition(
-            Camera.INSTANCE.getPos().x,
-            Camera.INSTANCE.getPos().y,
-            Camera.INSTANCE.getPos().z
+            Camera.INSTANCE.getEntityPos().x,
+            Camera.INSTANCE.getEntityPos().y,
+            Camera.INSTANCE.getEntityPos().z
         );
     }
 
