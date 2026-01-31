@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 class CeleritasTransformer {
-    public static void transform(Transformer transformer, Parameters parameters) {
-        CommonTransformer.transform(transformer, parameters, false);
+    public static void transform(Transformer transformer, Parameters parameters, int glslVersion) {
+        CommonTransformer.transform(transformer, parameters, false, glslVersion);
 
         switch (parameters.type) {
             case FRAGMENT:

@@ -44,6 +44,7 @@ public class RenderSystem {
 	private static boolean supportsSSBO;
 	private static boolean supportsBufferStorage;
 	private static boolean supportsClearTexture;
+	private static boolean supportsTesselation;
 	private static boolean supportsSamplerObjects;
 	private static int maxImageUnits;
 	private static int maxSSBOBindings;
@@ -73,6 +74,7 @@ public class RenderSystem {
         }
 
 		supportsCompute = supportsCompute();
+		supportsTesselation = GLStateManager.capabilities.GL_ARB_tessellation_shader || GLStateManager.capabilities.OpenGL40;
 
 		supportsImageLoadStore = GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_shader_image_load_store || GLStateManager.capabilities.GL_EXT_shader_image_load_store;
 		supportsSSBO = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_shader_storage_buffer_object;
@@ -445,6 +447,10 @@ public class RenderSystem {
 
 	public static void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
 		dsaState.textureStorage3D(texture, target, levels, internalFormat, width, height, depth);
+	}
+
+	public static boolean supportsTesselation() {
+		return supportsTesselation;
 	}
 
 	public static boolean supportsSamplerObjects() {

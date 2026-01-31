@@ -12,7 +12,7 @@ import org.lwjgl.opengl.KHRDebug;
 
 public class ProgramCreator {
 
-	private static final Logger LOGGER = LogManager.getLogger(ProgramCreator.class);
+	private static final Logger LOGGER = LogManager.getLogger("ProgramCreator");
 
 	public static final int MC_ENTITY = 11;
 	public static final int MC_MID_TEX_COORD = 12;

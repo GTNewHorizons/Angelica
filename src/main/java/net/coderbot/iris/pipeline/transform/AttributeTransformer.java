@@ -16,7 +16,11 @@ class AttributeTransformer {
 		boolean isCore = profile.equals("core") || (version > 140 && !profile.equals("compatibility"));
 
 		// Common patches (compatibility profile)
-		CommonTransformer.transform(transformer, parameters, isCore);
+		CommonTransformer.transform(transformer, parameters, isCore, version);
+
+		// Entity ID and overlay color patching (uniform path)
+		EntityPatcher.patchEntityId(transformer, parameters);
+		EntityPatcher.patchOverlayColor(transformer, parameters);
 
 		if (isCore) {
 			if (parameters.type == ShaderType.VERTEX) {

@@ -165,6 +165,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean shouldRenderVignette;
 	private final boolean shouldRenderSun;
 	private final boolean shouldRenderMoon;
+	private final boolean shouldRenderStars;
+	private final boolean shouldRenderSkyDisc;
+	private final boolean shouldRenderWeather;
+	private final boolean shouldRenderWeatherParticles;
 	private final boolean shouldWriteRainAndSnowToDepthBuffer;
 	private final boolean shouldRenderParticlesBeforeDeferred;
 	private final boolean shouldRenderPrepareBeforeShadow;
@@ -217,6 +221,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.shouldRenderVignette = programs.getPackDirectives().vignette();
 		this.shouldRenderSun = programs.getPackDirectives().shouldRenderSun();
 		this.shouldRenderMoon = programs.getPackDirectives().shouldRenderMoon();
+		this.shouldRenderStars = programs.getPackDirectives().shouldRenderStars();
+		this.shouldRenderSkyDisc = programs.getPackDirectives().shouldRenderSkyDisc();
+		this.shouldRenderWeather = programs.getPackDirectives().shouldRenderWeather();
+		this.shouldRenderWeatherParticles = programs.getPackDirectives().shouldRenderWeatherParticles();
 		this.shouldWriteRainAndSnowToDepthBuffer = programs.getPackDirectives().rainDepth();
 		this.shouldRenderParticlesBeforeDeferred = programs.getPackDirectives().getParticleRenderingSettings()
 			.map(s -> s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.BEFORE || s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.MIXED)
@@ -323,7 +331,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		this.shadowTargetsSupplier = () -> {
 			if (shadowRenderTargets == null) {
-				this.shadowRenderTargets = new ShadowRenderTargets(shadowMapResolution, shadowDirectives);
+				this.shadowRenderTargets = new ShadowRenderTargets(this, shadowMapResolution, shadowDirectives);
 			}
 
 			return shadowRenderTargets;
@@ -440,7 +448,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			});
 		});
 		if (shadowRenderTargets == null && shadowDirectives.isShadowEnabled() == OptionalBoolean.TRUE) {
-			shadowRenderTargets = new ShadowRenderTargets(shadowMapResolution, shadowDirectives);
+			shadowRenderTargets = new ShadowRenderTargets(this, shadowMapResolution, shadowDirectives);
 		}
 
 		if (shadowRenderTargets != null) {
@@ -632,6 +640,26 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
+	public boolean shouldRenderStars() {
+		return shouldRenderStars;
+	}
+
+	@Override
+	public boolean shouldRenderSkyDisc() {
+		return shouldRenderSkyDisc;
+	}
+
+	@Override
+	public boolean shouldRenderWeather() {
+		return shouldRenderWeather;
+	}
+
+	@Override
+	public boolean shouldRenderWeatherParticles() {
+		return shouldRenderWeatherParticles;
+	}
+
+	@Override
 	public boolean shouldWriteRainAndSnowToDepthBuffer() {
 		return shouldWriteRainAndSnowToDepthBuffer;
 	}
@@ -759,17 +787,21 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			transformed = TransformPatcher.patchAttributes(
 				source.getVertexSource().orElseThrow(NullPointerException::new),
 				source.getGeometrySource().orElse(null),
+				source.getTessControlSource().orElse(null),
+				source.getTessEvalSource().orElse(null),
 				source.getFragmentSource().orElseThrow(NullPointerException::new),
 				availability);
 		}
 
 		String vertex = transformed.get(PatchShaderType.VERTEX);
 		String geometry = transformed.get(PatchShaderType.GEOMETRY);
+		String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
+		String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
 		String fragment = transformed.get(PatchShaderType.FRAGMENT);
 
-		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, fragment);
+		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, tessControl, tessEval, fragment);
 
-		ProgramBuilder builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment,
+		ProgramBuilder builder = ProgramBuilder.begin(source.getName(), vertex, geometry, tessControl, tessEval, fragment,
 			IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 
 		return createPassInner(builder, source.getDirectives(), availability, shadow, id);
@@ -1559,7 +1591,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private static final InputAvailability[] INPUT_AVAILABILITIES = { INPUT_NONE, INPUT_TEXTURE, INPUT_TEXTURE_LIGHTMAP };
 
 	private static CompletableFuture<Map<PatchShaderType, String>> submitCompositeTransform(ProgramSource source) {
-		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null)));
+		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElse(null)));
 	}
 
 	private static Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> submitCompositeTransforms(ProgramSource[] sources) {
@@ -1587,7 +1619,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				processedSourceNames.add(source.getName());
 				for (InputAvailability avail : INPUT_AVAILABILITIES) {
 					Pair<String, InputAvailability> key = Pair.of(source.getName(), avail);
-					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getFragmentSource().orElse(null), avail)));
+					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElse(null), avail)));
 				}
 			}
 		}

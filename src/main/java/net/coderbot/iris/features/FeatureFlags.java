@@ -15,6 +15,10 @@ public enum FeatureFlags {
 	BLOCK_EMISSION_ATTRIBUTE(() -> true, () -> true),
 	CUSTOM_IMAGES(() -> true, RenderSystem::supportsImageLoadStore),
 	SSBO(() -> true, RenderSystem::supportsSSBO),
+	HIGHER_SHADOWCOLOR(() -> true, () -> true),
+	TESSELLATION_SHADERS(() -> true, RenderSystem::supportsTesselation),
+	REVERSED_CULLING(() -> true, () -> true),
+	CAN_DISABLE_WEATHER(() -> true, () -> true),
 	UNKNOWN(() -> false, () -> false);
 
 	private final BooleanSupplier irisRequirement;
@@ -55,16 +59,16 @@ public enum FeatureFlags {
 	}
 
 	public static boolean isInvalid(String name) {
-		try {
-			return !FeatureFlags.valueOf(name).isUsable();
-		} catch (IllegalArgumentException e) {
-			return true;
-		}
+		FeatureFlags flag = getValue(name);
+		return flag == UNKNOWN || !flag.isUsable();
 	}
 
 	public static FeatureFlags getValue(String value) {
+		if (value.equalsIgnoreCase("TESSELATION_SHADERS")) {
+			value = "TESSELLATION_SHADERS";
+		}
 		try {
-			return FeatureFlags.valueOf(value);
+			return FeatureFlags.valueOf(value.toUpperCase(java.util.Locale.US));
 		} catch (IllegalArgumentException e) {
 			return FeatureFlags.UNKNOWN;
 		}

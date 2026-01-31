@@ -5,8 +5,8 @@ import org.taumc.glsl.Transformer;
 
 class CompositeDepthTransformer {
 
-	public static void transform(Transformer transformer, Parameters parameters) {
-		CommonTransformer.transform(transformer, parameters, false);
+	public static void transform(Transformer transformer, Parameters parameters, int glslVersion) {
+		CommonTransformer.transform(transformer, parameters, false, glslVersion);
 
 		int type = transformer.findType("centerDepthSmooth");
 		if (type != 0) {

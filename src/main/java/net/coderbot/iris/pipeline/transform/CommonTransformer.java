@@ -24,7 +24,7 @@ public class CommonTransformer {
 		Map.entry("textureSize2D", "textureSize")
 	);
 
-	public static void transform(Transformer root, Parameters parameters, boolean core) {
+	public static void transform(Transformer root, Parameters parameters, boolean core, int glslVersion) {
 		root.rename("gl_FogFragCoord", "iris_FogFragCoord");
 		if (parameters.type == ShaderType.VERTEX) {
 			root.injectVariable("out float iris_FogFragCoord;");
@@ -66,8 +66,11 @@ public class CommonTransformer {
 		root.injectFunction("struct iris_FogParameters {vec4 color;float density;float start;float end;float scale;};");
 		root.injectFunction("iris_FogParameters iris_Fog = iris_FogParameters(iris_FogColor, iris_FogDensity, iris_FogStart, iris_FogEnd, 1.0f / (iris_FogEnd - iris_FogStart));");
 
-		root.renameFunctionCall(COMMON_TEXTURE_RENAMES);
-		root.renameAndWrapShadow("shadow2D", "texture");
-		root.renameAndWrapShadow("shadow2DLod", "textureLod");
+		// GLSL 120 natively uses texture2D/shadow2D etc. Ttexture/textureLod don't exist in 120, so only rename for versions that support them.
+		if (glslVersion > 120) {
+			root.renameFunctionCall(COMMON_TEXTURE_RENAMES);
+			root.renameAndWrapShadow("shadow2D", "texture");
+			root.renameAndWrapShadow("shadow2DLod", "textureLod");
+		}
 	}
 }
