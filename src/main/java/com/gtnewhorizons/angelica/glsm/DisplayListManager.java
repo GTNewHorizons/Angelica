@@ -1019,11 +1019,22 @@ public class DisplayListManager {
         if (currentRecorder != null) {
             recordCallList(list);
 
-            if (glListMode == GL11.GL_COMPILE) {
-                return;
+            if (getListMode() != GL11.GL_COMPILE) {
+                // Don't record the GL calls, we already recorded glCallList
+                final CommandRecorder recorder = currentRecorder;
+                currentRecorder = null;
+
+                executeDisplayList(list);
+
+                currentRecorder = recorder;
             }
+            return;
         }
 
+        executeDisplayList(list);
+    }
+
+    private static void executeDisplayList(int list) {
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
             final int prevList = currentRenderingList;
