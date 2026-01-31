@@ -9,10 +9,8 @@ import org.joml.Vector4f;
 import java.util.Optional;
 
 public class PackShadowDirectives {
-	// Bump this up if you want more shadow color buffers!
-	// This is currently set at 2 for ShadersMod / OptiFine parity but can theoretically be bumped up to 8.
-	// TODO: Make this configurable?
-	public static final int MAX_SHADOW_COLOR_BUFFERS = 2;
+	public static final int MAX_SHADOW_COLOR_BUFFERS_IRIS = 8;
+	public static final int MAX_SHADOW_COLOR_BUFFERS_OF = 2;
 
 	private final OptionalBoolean shadowEnabled;
 
@@ -20,6 +18,7 @@ public class PackShadowDirectives {
 	// Use a boxed form so we can use null to indicate that there is not an FOV specified.
 	private Float fov;
 	private float distance;
+	private float voxelDistance;
 	private float distanceRenderMul;
 	private float entityShadowDistanceMul;
 	private boolean explicitRenderDistance;
@@ -54,6 +53,7 @@ public class PackShadowDirectives {
 		// shadowRenderDistanceMul to a nonzero value, since having a high shadow render distance will impact
 		// performance quite heavily on most systems.
 		this.distance = 160.0f;
+		this.voxelDistance = 0.0f;
 
 		// By default, shadows are not culled based on distance from the player. However, pack authors may
 		// enable this by setting shadowRenderDistanceMul to a nonzero value.
@@ -86,7 +86,7 @@ public class PackShadowDirectives {
 
 		ImmutableList.Builder<SamplingSettings> colorSamplingSettings = ImmutableList.builder();
 
-		for (int i = 0; i < MAX_SHADOW_COLOR_BUFFERS; i++) {
+		for (int i = 0; i < MAX_SHADOW_COLOR_BUFFERS_IRIS; i++) {
 			colorSamplingSettings.add(new SamplingSettings());
 		}
 
@@ -97,6 +97,7 @@ public class PackShadowDirectives {
 		this.resolution = shadowDirectives.resolution;
 		this.fov = shadowDirectives.fov;
 		this.distance = shadowDirectives.distance;
+		this.voxelDistance = shadowDirectives.voxelDistance;
 		this.distanceRenderMul = shadowDirectives.distanceRenderMul;
 		this.entityShadowDistanceMul = shadowDirectives.entityShadowDistanceMul;
 		this.explicitRenderDistance = shadowDirectives.explicitRenderDistance;
@@ -122,6 +123,10 @@ public class PackShadowDirectives {
 
 	public float getDistance() {
 		return distance;
+	}
+
+	public float getVoxelDistance() {
+		return voxelDistance;
 	}
 
 	public float getDistanceRenderMul() {
@@ -191,6 +196,8 @@ public class PackShadowDirectives {
 
 		directives.acceptConstFloatDirective("shadowIntervalSize",
 				intervalSize -> this.intervalSize = intervalSize);
+
+		directives.acceptConstFloatDirective("voxelDistance", distance -> this.voxelDistance = distance);
 
 		acceptHardwareFilteringSettings(directives, depthSamplingSettings);
 		acceptDepthMipmapSettings(directives, depthSamplingSettings);

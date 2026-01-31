@@ -95,17 +95,24 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     }
 
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V"))
-    private void iris$beginWeatherAndwriteRainAndSnowToDepthBuffer(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V"))
+    private void iris$wrapWeather(EntityRenderer instance, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.RAIN_SNOW);
         if (pipeline.get().shouldWriteRainAndSnowToDepthBuffer()) {
             GLStateManager.glDepthMask(true);
         }
+        if (pipeline.get().shouldRenderWeather()) {
+            original.call(instance, partialTicks);
+        }
+        pipeline.get().setPhase(WorldRenderingPhase.NONE);
     }
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V", shift = At.Shift.AFTER))
-    private void iris$endWeather(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.NONE);
+    @WrapOperation(method = "updateRenderer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;addRainParticles()V"))
+    private void iris$wrapRainParticles(EntityRenderer instance, Operation<Void> original) {
+        WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        if (pipeline == null || pipeline.shouldRenderWeatherParticles()) {
+            original.call(instance);
+        }
     }
 
     @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V", remap = false))

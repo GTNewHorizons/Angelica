@@ -160,8 +160,8 @@ public class ShaderTransformer {
         }
     }
 
-    public static <P extends Parameters> Map<PatchShaderType, String> transform(String vertex, String geometry, String fragment, P parameters) {
-        if (vertex == null && geometry == null && fragment == null) {
+    public static <P extends Parameters> Map<PatchShaderType, String> transform(String vertex, String geometry, String tessControl, String tessEval, String fragment, P parameters) {
+        if (vertex == null && geometry == null && tessControl == null && tessEval == null && fragment == null) {
             return null;
         } else {
             Map<PatchShaderType, String> result;
@@ -171,6 +171,8 @@ public class ShaderTransformer {
             EnumMap<PatchShaderType, String> inputs = new EnumMap<>(PatchShaderType.class);
             inputs.put(PatchShaderType.VERTEX, vertex);
             inputs.put(PatchShaderType.GEOMETRY, geometry);
+            inputs.put(PatchShaderType.TESS_CONTROL, tessControl);
+            inputs.put(PatchShaderType.TESS_EVAL, tessEval);
             inputs.put(PatchShaderType.FRAGMENT, fragment);
 
             var key = new TransformKey<>(patchType, inputs, parameters);

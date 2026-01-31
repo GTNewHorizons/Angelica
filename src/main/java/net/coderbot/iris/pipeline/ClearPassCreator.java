@@ -86,7 +86,7 @@ public class ClearPassCreator {
 		// Sort buffers by their clear color so we can group up glClear calls.
 		Map<Vector4f, IntList> clearByColor = new HashMap<>();
 
-		for (int i = 0; i < renderTargetDirectives.getColorSamplingSettings().size(); i++) {
+		for (int i = 0; i < Math.min(renderTargetDirectives.getColorSamplingSettings().size(), renderTargets.getNumColorTextures()); i++) {
 			// unboxed
 			PackShadowDirectives.SamplingSettings settings = renderTargetDirectives.getColorSamplingSettings().get(i);
 

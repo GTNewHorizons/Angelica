@@ -73,6 +73,10 @@ public class ShaderProperties {
 	@Getter private OptionalBoolean underwaterOverlay = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean sun = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean moon = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean stars = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean sky = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean weather = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean weatherParticles = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean vignette = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean backFaceSolid = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean backFaceCutout = OptionalBoolean.DEFAULT;
@@ -184,8 +188,8 @@ public class ShaderProperties {
 					shadowCulling = ShadowCullState.DISTANCE;
 				} else if ("true".equals(value)) {
 					shadowCulling = ShadowCullState.ADVANCED;
-				} else if ("reversed".equals(value)) {
-					shadowCulling = ShadowCullState.REVERSED;
+				} else if ("reversed".equals(value) || "safe_zone".equals(value)) {
+					shadowCulling = ShadowCullState.SAFE_ZONE;
 				} else {
 					Iris.logger.error("Unrecognized shadow culling setting: " + value);
 				}
@@ -203,6 +207,8 @@ public class ShaderProperties {
 			handleBooleanDirective(key, value, "underwaterOverlay", bool -> underwaterOverlay = bool);
 			handleBooleanDirective(key, value, "sun", bool -> sun = bool);
 			handleBooleanDirective(key, value, "moon", bool -> moon = bool);
+			handleBooleanDirective(key, value, "stars", bool -> stars = bool);
+			handleBooleanDirective(key, value, "sky", bool -> sky = bool);
 			handleBooleanDirective(key, value, "vignette", bool -> vignette = bool);
 			handleBooleanDirective(key, value, "backFace.solid", bool -> backFaceSolid = bool);
 			handleBooleanDirective(key, value, "backFace.cutout", bool -> backFaceCutout = bool);
@@ -226,6 +232,14 @@ public class ShaderProperties {
 			handleBooleanDirective(key, value, "prepareBeforeShadow", bool -> prepareBeforeShadow = bool);
 			handleBooleanDirective(key, value, "supportsColorCorrection", bool -> supportsColorCorrection = bool);
 			handleIntDirective(key, value, "fallbackTex", val -> fallbackTex = val);
+
+			if ("weather".equals(key)) {
+				String[] parts = value.split(" ");
+				weather = parts[0].equals("true") ? OptionalBoolean.TRUE : OptionalBoolean.FALSE;
+				if (parts.length > 1) {
+					weatherParticles = parts[1].equals("true") ? OptionalBoolean.TRUE : OptionalBoolean.FALSE;
+				}
+			}
 
 			if (key.startsWith("particles.ordering")) {
 				Optional<ParticleRenderingSettings> settings = ParticleRenderingSettings.fromString(value.trim().toUpperCase(Locale.ROOT));

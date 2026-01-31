@@ -477,11 +477,21 @@ public class ProgramSet {
 		AbsolutePackPath geometryPath = directory.resolve(program + ".gsh");
 		String geometrySource = sourceProvider.apply(geometryPath);
 
+		String tessControlSource = null;
+		String tessEvalSource = null;
+		if (programSet.pack.hasFeature(net.coderbot.iris.features.FeatureFlags.TESSELLATION_SHADERS)) {
+			AbsolutePackPath tessControlPath = directory.resolve(program + ".tcs");
+			tessControlSource = sourceProvider.apply(tessControlPath);
+
+			AbsolutePackPath tessEvalPath = directory.resolve(program + ".tes");
+			tessEvalSource = sourceProvider.apply(tessEvalPath);
+		}
+
 		AbsolutePackPath fragmentPath = directory.resolve(program + ".fsh");
 		String fragmentSource = sourceProvider.apply(fragmentPath);
 
-		return new ProgramSource(program, vertexSource, geometrySource, fragmentSource, programSet, properties,
-				defaultBlendModeOverride);
+		return new ProgramSource(program, vertexSource, geometrySource, tessControlSource, tessEvalSource,
+				fragmentSource, programSet, properties, defaultBlendModeOverride);
 	}
 
 	private static ComputeSource readComputeSource(AbsolutePackPath directory,

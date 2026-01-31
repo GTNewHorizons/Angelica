@@ -217,6 +217,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
 
+    @Config.Comment("Define IS_IRIS in shader macros.")
+    @Config.DefaultBoolean(true)
+    public static boolean defineIsIris;
+
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;

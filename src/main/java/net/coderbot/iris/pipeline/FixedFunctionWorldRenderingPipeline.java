@@ -173,6 +173,26 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
+	public boolean shouldRenderStars() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderSkyDisc() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderWeather() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderWeatherParticles() {
+		return true;
+	}
+
+	@Override
 	public boolean shouldWriteRainAndSnowToDepthBuffer() {
 		return false;
 	}
