@@ -2,6 +2,7 @@ package net.coderbot.iris.gl.shader;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.Loader;
 import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -75,6 +76,9 @@ public class StandardMacros {
 		define(standardDefines, "MC_RENDER_QUALITY", "1.0");
 		define(standardDefines, "MC_SHADOW_QUALITY", "1.0");
         define(standardDefines, "IS_ANGELICA");
+        if (AngelicaConfig.defineIsIris) {
+            define(standardDefines, "IS_IRIS");
+        }
         define(standardDefines, "ANGELICA_VERSION", makeAngelicaVersion());
 		define(standardDefines, "MC_HAND_DEPTH", Float.toString(HandRenderer.DEPTH));
 
