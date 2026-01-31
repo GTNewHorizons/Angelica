@@ -553,6 +553,57 @@ public final class GLDebug {
         };
 	}
 
+	public static String getFramebufferStatusName(int status) {
+        return switch (status) {
+            case GL30.GL_FRAMEBUFFER_COMPLETE -> "COMPLETE";
+            case GL30.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT -> "INCOMPLETE_ATTACHMENT";
+            case GL30.GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT -> "INCOMPLETE_MISSING_ATTACHMENT";
+            case GL30.GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER -> "INCOMPLETE_DRAW_BUFFER";
+            case GL30.GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER -> "INCOMPLETE_READ_BUFFER";
+            case GL30.GL_FRAMEBUFFER_UNSUPPORTED -> "UNSUPPORTED";
+            case GL30.GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE -> "INCOMPLETE_MULTISAMPLE";
+            case 0 -> "NO_FRAMEBUFFER_BOUND";
+            default -> String.format("UNKNOWN(0x%X)", status);
+        };
+	}
+
+	public static String getInternalFormatName(int format) {
+        return switch (format) {
+            // Basic
+            case GL11.GL_RGBA -> "RGBA";
+            case GL11.GL_RGB -> "RGB";
+            // 8-bit normalized
+            case GL30.GL_R8 -> "R8";
+            case GL30.GL_RG8 -> "RG8";
+            case GL11.GL_RGB8 -> "RGB8";
+            case GL11.GL_RGBA8 -> "RGBA8";
+            // 8-bit signed normalized
+            case 0x8F94 -> "R8_SNORM";
+            case 0x8F95 -> "RG8_SNORM";
+            case 0x8F96 -> "RGB8_SNORM";
+            case 0x8F97 -> "RGBA8_SNORM";
+            // 16-bit normalized
+            case GL30.GL_R16 -> "R16";
+            case GL30.GL_RG16 -> "RG16";
+            case GL11.GL_RGB16 -> "RGB16";
+            case GL11.GL_RGBA16 -> "RGBA16";
+            // 16-bit float
+            case GL30.GL_R16F -> "R16F";
+            case GL30.GL_RG16F -> "RG16F";
+            case GL30.GL_RGB16F -> "RGB16F";
+            case GL30.GL_RGBA16F -> "RGBA16F";
+            // 32-bit float
+            case GL30.GL_R32F -> "R32F";
+            case GL30.GL_RG32F -> "RG32F";
+            case GL30.GL_RGB32F -> "RGB32F";
+            case GL30.GL_RGBA32F -> "RGBA32F";
+            // Packed
+            case GL30.GL_R11F_G11F_B10F -> "R11F_G11F_B10F";
+            case GL11.GL_RGB10_A2 -> "RGB10_A2";
+            default -> String.format("0x%X", format);
+        };
+	}
+
 	private static DebugState debugState;
 
     private interface DebugState {
