@@ -470,14 +470,14 @@ public final class CommandBufferExecutor {
                         byte r = (byte) ((color >> 16) & 0xFF);
                         byte g = (byte) ((color >> 8) & 0xFF);
                         byte b = (byte) ((color & 0xFF));
-                        GL11.glColor4ub(r, g, b, a);
+                        GLStateManager.glColor4ub(r, g, b, a);
                     }
                     if ((flags & VertexFlags.NORMAL_BIT) != 0) {
                         final int normal = memGetInt(ptr + 12);
                         float nx = (byte)(normal)       / 127.0f;
                         float ny = (byte)(normal >> 8)  / 127.0f;
                         float nz = (byte)(normal >> 16) / 127.0f;
-                        GL11.glNormal3f(nx, ny, nz);
+                        GLStateManager.glNormal3f(nx, ny, nz);
                     }
                     if ((flags & VertexFlags.TEXTURE_BIT) != 0) {
                         final float s = memGetFloat(ptr + 16);

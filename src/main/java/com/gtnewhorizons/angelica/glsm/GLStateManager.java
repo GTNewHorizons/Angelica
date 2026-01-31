@@ -93,6 +93,8 @@ import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
 import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
+import static com.gtnewhorizon.gtnhlib.client.opengl.GLCaps.*;
+
 /**
  * OpenGL State Manager - Provides cached state tracking and management for OpenGL operations.
  *
@@ -2320,22 +2322,7 @@ public class GLStateManager {
 
     public static void glCallList(int list) {
         GLDebug.pushGroup("glCallList " + list);
-        if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordCallList(list);
-
-            if (DisplayListManager.getListMode() == GL11.GL_COMPILE) {
-                return;
-            }
-
-            CommandRecorder recorder = DisplayListManager.currentRecorder;
-            DisplayListManager.currentRecorder = null;
-
-            DisplayListManager.glCallList(list);
-
-            DisplayListManager.currentRecorder = recorder;
-        } else {
-            DisplayListManager.glCallList(list);
-        }
+        DisplayListManager.glCallList(list);
         GLDebug.popGroup();
     }
 
@@ -3772,13 +3759,7 @@ public class GLStateManager {
 
     public static void glBindBuffer(int target, int buffer) {
         if (target == GL15.GL_ARRAY_BUFFER) {
-//            if (DisplayListManager.isRecording() && !isVAOBound()) {
-//                // TODO this should get replaced by vao compilation.. this doesn't really work
-//                DisplayListManager.recordBindVBO(buffer);
-//                System.out.println("Recording glBindBuffer.");
-//                new Exception().printStackTrace();
-//            }
-//            if (boundVBO == buffer) return;
+            if (boundVBO == buffer) return;
             boundVBO = buffer;
         }
         GL15.glBindBuffer(target, buffer);
@@ -3873,6 +3854,12 @@ public class GLStateManager {
         if (unit == GL13.GL_TEXTURE1) {
             OpenGlHelper.lastBrightnessX = x;
             OpenGlHelper.lastBrightnessY = y;
+        }
+    }
+
+    private static void checkMismatch(int cap) {
+        if (GLStateManager.glGetInteger(cap) != GL11.glGetInteger(cap)) {
+            throw new IllegalStateException("GLSM Mismatch! Cached: " + GLStateManager.glGetInteger(cap) + ", actual: " + GL11.glGetInteger(cap));
         }
     }
 

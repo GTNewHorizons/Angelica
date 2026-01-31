@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IEmptyVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
@@ -54,7 +53,7 @@ public final class DisplayListVBOBuilder {
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             int start = 0;
             final IVertexArrayObject vao = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
-            final IEmptyVertexBuffer vbo = vao.getVBO();
+            final IVertexBuffer vbo = vao.getVBO();
             for (FormatData data : formatData) {
                 int vertexCount;
                 final List<ByteBuffer> drawBuffers = data.buffers;
@@ -81,7 +80,7 @@ public final class DisplayListVBOBuilder {
                 start += vertexCount;
             }
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);
-            vbo.allocate(bigBuffer, false);
+            vbo.allocate(bigBuffer, start, 0);
             memFree(bigBuffer);
 
             allBuffers.clear();

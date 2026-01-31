@@ -34,6 +34,8 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+
 /**
  * VBO-based display list emulation with command recording, transform collapsing, and format-based batching.
  *
@@ -211,7 +213,7 @@ public class DisplayListManager {
     }
 
     // Draw barriers: state commands that prevent draw merging
-    private static void drawBarrier() {
+    static void drawBarrier() {
         stateGeneration++;
     }
 
@@ -916,13 +918,13 @@ public class DisplayListManager {
      * Execute a compiled display list.
      */
     public static void glCallList(int list) {
-//        if (currentRecorder != null) {
-//            recordCallList(list);
-//
-//            if (glListMode == GL11.GL_COMPILE) {
-//                return;
-//            }
-//        }
+        if (currentRecorder != null) {
+            recordCallList(list);
+
+            if (glListMode == GL11.GL_COMPILE) {
+                return;
+            }
+        }
 
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
@@ -1083,49 +1085,42 @@ public class DisplayListManager {
     private static void dumpCommandBuffer(ByteBuffer buffer, Object[] complexObjects, StringBuilder sb) {
         if (buffer == null) return;
 
-        final long basePtr = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress(buffer);
+        final long basePtr = memAddress(buffer);
         long ptr = basePtr;
         final long end = basePtr + buffer.limit();
         int cmdNum = 0;
         int drawRangeIdx = 0;   // Index into drawRangeSources for source tracking
 
         while (ptr < end) {
-            final int opcode = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr);
+            final int opcode = memGetInt(ptr);
             final String cmdName = GLCommand.getName(opcode);
             sb.append("  ").append(cmdNum++).append(": ").append(cmdName);
 
             // Add command-specific details
             switch (opcode) {
                 case GLCommand.ENABLE, GLCommand.DISABLE -> {
-                    final int cap = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int cap = memGetInt(ptr + 4);
                     sb.append("(").append(GLDebug.getCapabilityName(cap)).append(")");
-                    ptr += 8;
                 }
                 case GLCommand.BIND_TEXTURE -> {
-                    final int target = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
-                    final int texture = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
+                    final int target = memGetInt(ptr + 4);
+                    final int texture = memGetInt(ptr + 8);
                     sb.append("(target=").append(target).append(", texture=").append(texture).append(")");
-                    ptr += 12;
                 }
                 case GLCommand.DRAW_RANGE -> {
-                    final int vboIdx = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
-                    final int start = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
-                    final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
-                    final int brightness = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16);
-                    sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
-                        .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
+                    final int vboIdx = memGetInt(ptr + 4);
+                    sb.append("(vbo=").append(vboIdx).append(")");
                     // Show draw source if available
                     if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
                         sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
                     }
                     drawRangeIdx++;
-                    ptr += 20;
                 }
                 case GLCommand.DRAW_RANGE_RESTORE -> {
-                    final int vboIdx = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
-                    final int start = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
-                    final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
-                    final int brightness = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16);
+                    final int vboIdx = memGetInt(ptr + 4);
+                    final int start = memGetInt(ptr + 8);
+                    final int count = memGetInt(ptr + 12);
+                    final int brightness = memGetInt(ptr + 16);
                     sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
                         .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
                     // Show draw source if available
@@ -1133,7 +1128,6 @@ public class DisplayListManager {
                         sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
                     }
                     drawRangeIdx++;
-                    ptr += 28;
                 }
                 case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> {
                     sb.append("(");
@@ -1142,94 +1136,43 @@ public class DisplayListManager {
                         sb.append(i == 0 ? value : ", " + value);
                     }
                     sb.append(")");
-                    ptr += 68;  // cmd + 16 floats
                 }
                 case GLCommand.COLOR -> {
-                    final float r = Float.intBitsToFloat(com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4));
-                    final float g = Float.intBitsToFloat(com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8));
-                    final float b = Float.intBitsToFloat(com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12));
-                    final float a = Float.intBitsToFloat(com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16));
+                    final float r = Float.intBitsToFloat(memGetInt(ptr + 4));
+                    final float g = Float.intBitsToFloat(memGetInt(ptr + 8));
+                    final float b = Float.intBitsToFloat(memGetInt(ptr + 12));
+                    final float a = Float.intBitsToFloat(memGetInt(ptr + 16));
                     sb.append("(").append(r).append(", ").append(g).append(", ").append(b).append(", ").append(a).append(")");
-                    ptr += 20;
                 }
                 case GLCommand.DEPTH_MASK -> {
-                    final int flag = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int flag = memGetInt(ptr + 4);
                     sb.append("(").append(flag != 0).append(")");
-                    ptr += 8;
                 }
                 case GLCommand.BLEND_FUNC -> {
-                    final int srcRgb = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
-                    final int dstRgb = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
-                    final int srcAlpha = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
-                    final int dstAlpha = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 16);
+                    final int srcRgb = memGetInt(ptr + 4);
+                    final int dstRgb = memGetInt(ptr + 8);
+                    final int srcAlpha = memGetInt(ptr + 12);
+                    final int dstAlpha = memGetInt(ptr + 16);
                     sb.append("(srcRgb=").append(srcRgb).append(", dstRgb=").append(dstRgb)
                       .append(", srcAlpha=").append(srcAlpha).append(", dstAlpha=").append(dstAlpha).append(")");
-                    ptr += 20;
                 }
                 case GLCommand.CALL_LIST -> {
-                    final int calledList = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int calledList = memGetInt(ptr + 4);
                     sb.append("(").append(calledList).append(")");
-                    ptr += 8;
                 }
                 case GLCommand.MATRIX_MODE -> {
-                    final int mode = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int mode = memGetInt(ptr + 4);
                     sb.append("(").append(mode == GL11.GL_MODELVIEW ? "MODELVIEW" : mode == GL11.GL_PROJECTION ? "PROJECTION" : mode).append(")");
-                    ptr += 8;
                 }
-                case GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX, GLCommand.LOAD_IDENTITY -> ptr += 4;
                 case GLCommand.COMPLEX_REF -> {
-                    final int idx = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 4);
+                    final int idx = memGetInt(ptr + 4);
                     final Object obj = complexObjects != null && idx < complexObjects.length ? complexObjects[idx] : null;
                     sb.append("(idx=").append(idx).append(", type=").append(obj != null ? obj.getClass().getSimpleName() : "null").append(")");
-                    ptr += 8;
-                }
-                default -> {
-                    // Skip based on command size (from CompiledDisplayList.getCommandSize logic)
-                    ptr += getCommandSize(opcode, ptr);
                 }
             }
+            ptr += GLCommand.getCommandSize(opcode, ptr);
             sb.append("\n");
         }
-    }
-
-    /**
-     * Get the size of a command in bytes for buffer iteration.
-     */
-    private static int getCommandSize(int cmd, long ptr) {
-        return switch (cmd) {
-            case GLCommand.LOAD_IDENTITY, GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX -> 4;
-            case GLCommand.ENABLE, GLCommand.DISABLE, GLCommand.CLEAR, GLCommand.CLEAR_STENCIL,
-                 GLCommand.CULL_FACE, GLCommand.DEPTH_FUNC, GLCommand.SHADE_MODEL, GLCommand.LOGIC_OP,
-                 GLCommand.MATRIX_MODE, GLCommand.ACTIVE_TEXTURE, GLCommand.USE_PROGRAM,
-                 GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.STENCIL_MASK,
-                 GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
-                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_BUFFER -> 8;
-            case GLCommand.BIND_TEXTURE, GLCommand.POLYGON_MODE, GLCommand.COLOR_MATERIAL,
-                 GLCommand.LINE_STIPPLE, GLCommand.STENCIL_MASK_SEPARATE, GLCommand.FOGI,
-                 GLCommand.HINT, GLCommand.POLYGON_OFFSET, GLCommand.ALPHA_FUNC, GLCommand.FOGF,
-                 GLCommand.LIGHT_MODELF, GLCommand.LIGHT_MODELI, GLCommand.CLEAR_DEPTH -> 12;
-            case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
-                 GLCommand.LIGHTF, GLCommand.LIGHTI, GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF,
-                 GLCommand.NORMAL -> 16;
-            case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
-                 GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
-                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR,
-                 GLCommand.DRAW_RANGE -> 20;
-            case GLCommand.TRANSLATE, GLCommand.SCALE -> 28;
-            case GLCommand.ROTATE -> 36;
-            case GLCommand.ORTHO, GLCommand.FRUSTUM -> 52;
-            case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> 68;
-            case GLCommand.FOG, GLCommand.LIGHT_MODEL -> {
-                final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 8);
-                yield 12 + count * 4;
-            }
-            case GLCommand.LIGHT, GLCommand.MATERIAL -> {
-                final int count = com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt(ptr + 12);
-                yield 16 + count * 4;
-            }
-            case GLCommand.DRAW_BUFFERS -> 40;
-            default -> 8;  // Default to 8 bytes to avoid infinite loop
-        };
     }
 
 }

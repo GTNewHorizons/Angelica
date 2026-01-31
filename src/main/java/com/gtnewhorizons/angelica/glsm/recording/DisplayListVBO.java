@@ -21,11 +21,15 @@ public final class DisplayListVBO {
         }
     }
 
+    public SubVBO[] getVBOs() {
+        return vbos;
+    }
+
     public void render(int index) {
         vbos[index].render();
     }
 
-    static final class SubVBO {
+    public static final class SubVBO {
 
         private final IVertexArrayObject vao;
         private final int drawMode;
@@ -47,6 +51,10 @@ public final class DisplayListVBO {
             vao.bind();
             vao.draw(drawMode, start, count);
             vao.unbind();
+        }
+
+        public IVertexArrayObject getVAO() {
+            return vao;
         }
     }
 }
