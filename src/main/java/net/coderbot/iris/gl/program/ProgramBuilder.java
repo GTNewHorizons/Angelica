@@ -34,35 +34,30 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 
 	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
 									   @Nullable String fragmentSource, ImmutableSet<Integer> reservedTextureUnits) {
-		GlShader vertex;
-		GlShader geometry;
-		GlShader fragment;
+		return begin(name, vertexSource, geometrySource, null, null, fragmentSource, reservedTextureUnits);
+	}
 
-		vertex = buildShader(ShaderType.VERTEX, name + ".vsh", vertexSource);
+	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
+									   @Nullable String tessControlSource, @Nullable String tessEvalSource,
+									   @Nullable String fragmentSource, ImmutableSet<Integer> reservedTextureUnits) {
+		GlShader vertex = buildShader(ShaderType.VERTEX, name + ".vsh", vertexSource);
+		GlShader geometry = geometrySource != null ? buildShader(ShaderType.GEOMETRY, name + ".gsh", geometrySource) : null;
+		GlShader tessControl = tessControlSource != null ? buildShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControlSource) : null;
+		GlShader tessEval = tessEvalSource != null ? buildShader(ShaderType.TESSELATION_EVAL, name + ".tes", tessEvalSource) : null;
+		GlShader fragment = buildShader(ShaderType.FRAGMENT, name + ".fsh", fragmentSource);
 
-		if (geometrySource != null) {
-			geometry = buildShader(ShaderType.GEOMETRY, name + ".gsh", geometrySource);
-		} else {
-			geometry = null;
+		java.util.List<GlShader> shaders = new java.util.ArrayList<>();
+		shaders.add(vertex);
+		if (geometry != null) shaders.add(geometry);
+		if (tessControl != null) shaders.add(tessControl);
+		if (tessEval != null) shaders.add(tessEval);
+		shaders.add(fragment);
+
+		int programId = ProgramCreator.create(name, shaders.toArray(new GlShader[0]));
+
+		for (GlShader shader : shaders) {
+			shader.destroy();
 		}
-
-		fragment = buildShader(ShaderType.FRAGMENT, name + ".fsh", fragmentSource);
-
-		int programId;
-
-		if (geometry != null) {
-			programId = ProgramCreator.create(name, vertex, geometry, fragment);
-		} else {
-			programId = ProgramCreator.create(name, vertex, fragment);
-		}
-
-		vertex.destroy();
-
-		if (geometry != null) {
-			geometry.destroy();
-		}
-
-		fragment.destroy();
 
 		return new ProgramBuilder(name, programId, reservedTextureUnits);
 	}

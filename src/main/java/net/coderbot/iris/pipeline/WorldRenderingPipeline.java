@@ -54,6 +54,10 @@ public interface WorldRenderingPipeline {
 	boolean shouldRenderVignette();
 	boolean shouldRenderSun();
 	boolean shouldRenderMoon();
+	boolean shouldRenderStars();
+	boolean shouldRenderSkyDisc();
+	boolean shouldRenderWeather();
+	boolean shouldRenderWeatherParticles();
 	boolean shouldWriteRainAndSnowToDepthBuffer();
 	boolean shouldRenderParticlesBeforeDeferred();
 	boolean allowConcurrentCompute();

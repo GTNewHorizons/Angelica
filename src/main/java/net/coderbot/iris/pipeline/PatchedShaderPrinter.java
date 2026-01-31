@@ -27,10 +27,18 @@ public class PatchedShaderPrinter {
 	}
 
 	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment) {
-		debugPatchedShaders(name, vertex, geometry, fragment, null);
+		debugPatchedShaders(name, vertex, geometry, null, null, fragment, null);
+	}
+
+	public static void debugPatchedShaders(String name, String vertex, String geometry, String tessControl, String tessEval, String fragment) {
+		debugPatchedShaders(name, vertex, geometry, tessControl, tessEval, fragment, null);
 	}
 
 	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment, String compute) {
+		debugPatchedShaders(name, vertex, geometry, null, null, fragment, compute);
+	}
+
+	public static void debugPatchedShaders(String name, String vertex, String geometry, String tessControl, String tessEval, String fragment, String compute) {
 		if (prettyPrintShaders) {
 			final Path debugOutDir = Minecraft.getMinecraft().mcDataDir.toPath().resolve("patched_shaders");
 			if (!outputLocationCleared) {
@@ -62,6 +70,12 @@ public class PatchedShaderPrinter {
 				}
 				if (geometry != null) {
 					Files.write(debugOutDir.resolve(prefix + name + ".gsh"), geometry.getBytes(StandardCharsets.UTF_8));
+				}
+				if (tessControl != null) {
+					Files.write(debugOutDir.resolve(prefix + name + ".tcs"), tessControl.getBytes(StandardCharsets.UTF_8));
+				}
+				if (tessEval != null) {
+					Files.write(debugOutDir.resolve(prefix + name + ".tes"), tessEval.getBytes(StandardCharsets.UTF_8));
 				}
 				if (fragment != null) {
 					Files.write(debugOutDir.resolve(prefix + name + ".fsh"), fragment.getBytes(StandardCharsets.UTF_8));

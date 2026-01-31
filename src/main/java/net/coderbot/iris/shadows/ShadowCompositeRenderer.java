@@ -261,17 +261,21 @@ public class ShadowCompositeRenderer {
         Map<PatchShaderType, String> transformed = TransformPatcher.patchComposite(
                 source.getVertexSource().orElseThrow(NullPointerException::new),
                 source.getGeometrySource().orElse(null),
+                source.getTessControlSource().orElse(null),
+                source.getTessEvalSource().orElse(null),
                 source.getFragmentSource().orElseThrow(NullPointerException::new));
         String vertex = transformed.get(PatchShaderType.VERTEX);
         String geometry = transformed.get(PatchShaderType.GEOMETRY);
+        String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
+        String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
         String fragment = transformed.get(PatchShaderType.FRAGMENT);
-        PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, fragment);
+        PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, tessControl, tessEval, fragment);
 
         Objects.requireNonNull(flipped);
         ProgramBuilder builder;
 
         try {
-            builder = ProgramBuilder.begin(source.getName(), vertex, geometry, fragment, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
+            builder = ProgramBuilder.begin(source.getName(), vertex, geometry, tessControl, tessEval, fragment, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
         } catch (RuntimeException e) {
             // TODO: Better error handling
             throw new RuntimeException("Shader compilation failed for shadow composite " + source.getName() + "!", e);

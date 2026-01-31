@@ -30,12 +30,16 @@ public class TransformPatcher {
         final Parameters parameters;
         final String vertex;
         final String geometry;
+        final String tessControl;
+        final String tessEval;
         final String fragment;
 
-        public CacheKey(Parameters parameters, String vertex, String geometry, String fragment) {
+        public CacheKey(Parameters parameters, String vertex, String geometry, String tessControl, String tessEval, String fragment) {
             this.parameters = parameters;
             this.vertex = vertex;
             this.geometry = geometry;
+            this.tessControl = tessControl;
+            this.tessEval = tessEval;
             this.fragment = fragment;
         }
 
@@ -45,6 +49,8 @@ public class TransformPatcher {
             int result = 1;
             result = prime * result + ((fragment == null) ? 0 : fragment.hashCode());
             result = prime * result + ((geometry == null) ? 0 : geometry.hashCode());
+            result = prime * result + ((tessControl == null) ? 0 : tessControl.hashCode());
+            result = prime * result + ((tessEval == null) ? 0 : tessEval.hashCode());
             result = prime * result + ((parameters == null) ? 0 : parameters.hashCode());
             result = prime * result + ((vertex == null) ? 0 : vertex.hashCode());
             return result;
@@ -52,39 +58,20 @@ public class TransformPatcher {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
             final TransformPatcher.CacheKey other = (TransformPatcher.CacheKey) obj;
-            if (fragment == null) {
-                if (other.fragment != null)
-                    return false;
-            } else if (!fragment.equals(other.fragment))
-                return false;
-            if (geometry == null) {
-                if (other.geometry != null)
-                    return false;
-            } else if (!geometry.equals(other.geometry))
-                return false;
-            if (parameters == null) {
-                if (other.parameters != null)
-                    return false;
-            } else if (!parameters.equals(other.parameters))
-                return false;
-            if (vertex == null) {
-                if (other.vertex != null)
-                    return false;
-            } else if (!vertex.equals(other.vertex))
-                return false;
-            return true;
+            return java.util.Objects.equals(fragment, other.fragment)
+                && java.util.Objects.equals(geometry, other.geometry)
+                && java.util.Objects.equals(tessControl, other.tessControl)
+                && java.util.Objects.equals(tessEval, other.tessEval)
+                && java.util.Objects.equals(parameters, other.parameters)
+                && java.util.Objects.equals(vertex, other.vertex);
         }
     }
 
-    private static Map<PatchShaderType, String> transform(String vertex, String geometry, String fragment, Parameters parameters) {
-        if (vertex == null && geometry == null && fragment == null) {
+    private static Map<PatchShaderType, String> transform(String vertex, String geometry, String tessControl, String tessEval, String fragment, Parameters parameters) {
+        if (vertex == null && geometry == null && tessControl == null && tessEval == null && fragment == null) {
             return null;
         }
 
@@ -92,7 +79,7 @@ public class TransformPatcher {
         TransformPatcher.CacheKey key = null;
         Map<PatchShaderType, String> result = null;
         if (useCache) {
-            key = new TransformPatcher.CacheKey(parameters, vertex, geometry, fragment);
+            key = new TransformPatcher.CacheKey(parameters, vertex, geometry, tessControl, tessEval, fragment);
             synchronized (cache) {
                 result = cache.get(key);
             }
@@ -100,7 +87,7 @@ public class TransformPatcher {
 
         // if there is no cache result, transform the shaders
         if (result == null) {
-            result = ShaderTransformer.transform(vertex, geometry, fragment, parameters);
+            result = ShaderTransformer.transform(vertex, geometry, tessControl, tessEval, fragment, parameters);
             if (useCache) {
                 synchronized (cache) {
                     // Double-check in case another thread added it while we were transforming
@@ -116,20 +103,32 @@ public class TransformPatcher {
         return result;
     }
 
+    public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs));
+    }
+
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String fragment, InputAvailability inputs) {
-        return transform(vertex, geometry, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs));
+        return patchAttributes(vertex, geometry, null, null, fragment, inputs);
     }
 
     public static Map<PatchShaderType, String> patchCeleritasTerrain(String vertex, String geometry, String fragment) {
-        return transform(vertex, geometry, fragment, new CeleritasTerrainParameters(Patch.CELERITAS_TERRAIN));
+        return transform(vertex, geometry, null, null, fragment, new CeleritasTerrainParameters(Patch.CELERITAS_TERRAIN));
     }
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment) {
-        return patchComposite(vertex, geometry, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
+        return patchComposite(vertex, geometry, null, null, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
+    }
+
+    public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String tessControl, String tessEval, String fragment) {
+        return patchComposite(vertex, geometry, tessControl, tessEval, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
+    }
+
+    public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String tessControl, String tessEval, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new TextureStageParameters(Patch.COMPOSITE, stage, textureMap));
     }
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
-        return transform(vertex, geometry, fragment, new TextureStageParameters(Patch.COMPOSITE, stage, textureMap));
+        return patchComposite(vertex, geometry, null, null, fragment, stage, textureMap);
     }
 
     public static String patchCompute(String name, String compute, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
