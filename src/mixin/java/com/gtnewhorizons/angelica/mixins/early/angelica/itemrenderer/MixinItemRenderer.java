@@ -25,7 +25,6 @@
 
 package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;

@@ -1,9 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
