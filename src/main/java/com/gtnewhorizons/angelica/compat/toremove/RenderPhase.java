@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.compat.toremove;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -147,7 +147,7 @@ public abstract class RenderPhase {
         FOG = new Fog("fog", () -> {
             // Unclear what this should do
             // BackgroundRenderer.setFogBlack(), also levelFogColor()
-            SodiumClientMod.LOGGER.debug("Fog - Not setting level fog color");
+            AngelicaMod.LOGGER.debug("Fog - Not setting level fog color");
             GLStateManager.enableFog();
         }, GLStateManager::disableFog);
         BLACK_FOG = new Fog("black_fog", () -> {
@@ -156,7 +156,7 @@ public abstract class RenderPhase {
         }, () -> {
             // Unclear what this should do
             // BackgroundRenderer.setFogBlack(), also levelFogColor()
-            SodiumClientMod.LOGGER.debug("Fog - Not setting level fog color");
+            AngelicaMod.LOGGER.debug("Fog - Not setting level fog color");
             GLStateManager.disableFog();
         });
         MAIN_TARGET = new Target("main_target", () -> {
@@ -164,7 +164,7 @@ public abstract class RenderPhase {
         });
         OUTLINE_TARGET = new Target("outline_target", () -> {
             // TODO: Sodium
-            SodiumClientMod.LOGGER.debug("NOT enabling the entity outline framebuffer");
+            AngelicaMod.LOGGER.debug("NOT enabling the entity outline framebuffer");
             //MinecraftClient.getInstance().worldRenderer.getEntityOutlinesFramebuffer().beginWrite(false);
         }, () -> {
             Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
@@ -172,7 +172,7 @@ public abstract class RenderPhase {
         TRANSLUCENT_TARGET = new Target("translucent_target", () -> {
             if (Minecraft.isFancyGraphicsEnabled()) {
                 // TODO: Sodium
-                SodiumClientMod.LOGGER.debug("NOT enabling the translucent framebuffer");
+                AngelicaMod.LOGGER.debug("NOT enabling the translucent framebuffer");
                 // MinecraftClient.getInstance().worldRenderer.getTranslucentFramebuffer().beginWrite(false);
             }
 
@@ -345,7 +345,7 @@ public abstract class RenderPhase {
             super("lightmap", () -> {
                 if (lightmap) {
                     // TODO: Sodium - LightmapTextureManager
-                    SodiumClientMod.LOGGER.debug("Lightmap - enable (not implemented)");
+                    AngelicaMod.LOGGER.debug("Lightmap - enable (not implemented)");
 //                    throw new RuntimeException("Not Implemented Yet");
 //                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().enable();
 
@@ -354,7 +354,7 @@ public abstract class RenderPhase {
             }, () -> {
                 if (lightmap) {
                     // TODO: Sodium - LightmapTextureManager
-                    SodiumClientMod.LOGGER.debug("Lightmap - disable (not implemented)");
+                    AngelicaMod.LOGGER.debug("Lightmap - disable (not implemented)");
 //                    throw new RuntimeException("Not Implemented Yet");
 //                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().disable();
                 }

@@ -1,32 +1,29 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
-
-import java.util.Arrays;
-import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
-import org.embeddedt.embeddium.impl.model.light.LightPipeline;
-import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
-import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.QuadLightingHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
-import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import lombok.Getter;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.IBlockAccess;
+import org.embeddedt.embeddium.impl.model.light.LightPipeline;
 import org.embeddedt.embeddium.impl.model.light.data.LightDataAccess;
 import org.embeddedt.embeddium.impl.model.light.data.QuadLightData;
+import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
+import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
 import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFacing;
+import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildContext;
@@ -35,6 +32,9 @@ import org.embeddedt.embeddium.impl.render.chunk.sprite.SpriteTransparencyLevel;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.embeddedt.embeddium.impl.util.QuadUtil;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class AngelicaChunkBuildContext extends ChunkBuildContext {
     public static final int NUM_PASSES = 2;
@@ -95,7 +95,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
         // Don't apply transparency-based optimization when shader pack explicitly overrides the material
-        if (isShaderPackOverride) {
+        if (!AngelicaMod.options().performance.useRenderPassOptimization || isShaderPackOverride) {
             return material;
         }
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
@@ -124,7 +124,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
         final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
-        final boolean celeritasSmoothLighting = SodiumClientMod.options().quality.useCeleritasSmoothLighting;
+        final boolean celeritasSmoothLighting = AngelicaMod.options().quality.useCeleritasSmoothLighting;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
         final boolean stripDiffuse = shaderActive && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
