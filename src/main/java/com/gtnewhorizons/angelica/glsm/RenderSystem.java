@@ -421,10 +421,12 @@ public class RenderSystem {
 	}
 
 	public static void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, int[] data) {
+		final ByteBuffer buf = BufferUtils.createByteBuffer(data.length * 4);
+		buf.asIntBuffer().put(data);
 		if (GLStateManager.capabilities.OpenGL43) {
-			GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, (ByteBuffer) null);
+			GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
 		} else if (GLStateManager.capabilities.GL_ARB_clear_buffer_object) {
-			ARBClearBufferObject.glClearBufferSubData(target, internalFormat, offset, size, format, type, (ByteBuffer) null);
+			ARBClearBufferObject.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
 		}
 	}
 
