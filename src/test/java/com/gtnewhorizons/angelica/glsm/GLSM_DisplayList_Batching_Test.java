@@ -213,7 +213,6 @@ class GLSM_DisplayList_Batching_Test {
             createSimpleDraw();  // A
             createSimpleDraw();  // A
         });
-        System.out.println(compiled);
         Int2IntMap counts = compiled.getCommandCounts();
         int drawCount = counts.getOrDefault(GLCommand.DRAW_RANGE, 0);
         int drawRestoreCount = counts.getOrDefault(GLCommand.DRAW_RANGE_RESTORE, 0);

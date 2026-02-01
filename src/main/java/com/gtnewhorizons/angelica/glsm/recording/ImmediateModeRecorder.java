@@ -17,36 +17,15 @@ import java.nio.ShortBuffer;
 
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) during display list compilation.
- * Converts immediate mode geometry to ModelQuad format for VBO compilation.
- *
- * <p>Tracks current immediate mode state:
- * <ul>
- *   <li>TexCoord: Set by glTexCoord* calls</li>
- *   <li>Normal: Set by glNormal* calls</li>
- *   <li>Color: Read from GLStateManager.getColor() at vertex emission time</li>
- * </ul>
- *
- * <p>Supported primitive types:
- * <ul>
- *   <li>GL_QUADS: 4 vertices per quad (native support)</li>
- *   <li>GL_TRIANGLES: 3 vertices per triangle (converted to degenerate quad)</li>
- *   <li>GL_TRIANGLE_FAN: Fan of triangles (converted to individual quads)</li>
- *   <li>GL_TRIANGLE_STRIP: Strip of triangles (converted to individual quads)</li>
- *   <li>GL_QUAD_STRIP: Strip of quads (converted to individual quads)</li>
- *   <li>GL_POLYGON: Polygon (treated as triangle fan)</li>
- * </ul>
- *
- * <p>Unsupported primitive types (logged warning, geometry discarded):
- * <ul>
- *   <li>GL_LINES, GL_LINE_STRIP, GL_LINE_LOOP: Line primitives</li>
- *   <li>GL_POINTS: Point primitives</li>
- * </ul>
+ * Converts immediate mode geometry to ByteBuffer directly via {@link DirectTessellator}
+ * <p>
+ * Currently only used for display list compilation, should be perfectly usable outside of display lists too though.
  */
 public final class ImmediateModeRecorder {
     private static final DirectTessellator tessellator = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
 
     private ImmediateModeRecorder() {
-        // Recorder is ready to capture geometry
+
     }
 
     public static DirectTessellator getInternalTessellator() {
@@ -82,7 +61,7 @@ public final class ImmediateModeRecorder {
      *
      * @return Result containing quads, lines, and flags, or null if no geometry was produced
      */
-    public static DirectTessellator end() { //TODO
+    public static DirectTessellator end() {
         if (!tessellator.isDrawing) {
             throw new IllegalStateException("glEnd called without glBegin");
         }

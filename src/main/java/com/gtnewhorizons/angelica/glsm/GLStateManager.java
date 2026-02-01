@@ -1836,13 +1836,10 @@ public class GLStateManager {
                 DisplayListManager.recordDrawArrays(mode, first, count);
                 return;
             }
-//            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-//            if (recorder != null) {
-//                final DirectTessellator result = recorder.processDrawArrays(mode, first, count);
-//                if (result != null) {
-//                    DisplayListManager.addImmediateModeDraw(result);
-//                }
-//            }
+            final DirectTessellator result = ImmediateModeRecorder.processDrawArrays(mode, first, count);
+            if (result != null) {
+                DisplayListManager.addImmediateModeDraw(result);
+            }
             return;
         }
         GL11.glDrawArrays(mode, first, count);

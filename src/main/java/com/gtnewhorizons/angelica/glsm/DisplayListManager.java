@@ -969,10 +969,10 @@ public class DisplayListManager {
             CompiledDisplayList compiled = displayListCache.remove(i);
             if (compiled != null) {
                 compiled.delete();
+            } else {
+                GL11.glDeleteLists(i, 1);
             }
         }
-        // Also call legacy glDeleteLists for any lists we didn't handle
-        GL11.glDeleteLists(list, range);
     }
 
     // ==================== DEBUG LOGGING ====================
