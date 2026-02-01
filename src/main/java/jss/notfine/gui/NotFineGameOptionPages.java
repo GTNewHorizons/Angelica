@@ -1,7 +1,6 @@
 package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
@@ -297,7 +296,7 @@ public class NotFineGameOptionPages {
                 .setTooltip(I18n.format("sodium.options.use_block_face_culling.tooltip"))
                 .setControl(TickBoxControl::new)
                 .setImpact(OptionImpact.MEDIUM)
-                .setBinding((opts, value) -> opts.advanced.useBlockFaceCulling = value, opts -> opts.advanced.useBlockFaceCulling)
+                .setBinding((opts, value) -> opts.performance.useBlockFaceCulling = value, opts -> opts.performance.useBlockFaceCulling)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
             .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
@@ -305,14 +304,14 @@ public class NotFineGameOptionPages {
                 .setTooltip(I18n.format("sodium.options.use_compact_vertex_format.tooltip"))
                 .setControl(TickBoxControl::new)
                 .setImpact(OptionImpact.MEDIUM)
-                .setBinding((opts, value) -> opts.advanced.useCompactVertexFormat = value, opts -> opts.advanced.useCompactVertexFormat)
+                .setBinding((opts, value) -> opts.performance.useCompactVertexFormat = value, opts -> opts.performance.useCompactVertexFormat)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
             .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                 .setName(I18n.format("sodium.options.use_fog_occlusion.name"))
                 .setTooltip(I18n.format("sodium.options.use_fog_occlusion.tooltip"))
                 .setControl(TickBoxControl::new)
-                .setBinding((opts, value) -> opts.advanced.useFogOcclusion = value, opts -> opts.advanced.useFogOcclusion)
+                .setBinding((opts, value) -> opts.performance.useFogOcclusion = value, opts -> opts.performance.useFogOcclusion)
                 .setImpact(OptionImpact.MEDIUM)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
@@ -320,7 +319,7 @@ public class NotFineGameOptionPages {
                 .setName(I18n.format("sodium.options.translucency_sorting.name"))
                 .setTooltip(I18n.format("sodium.options.translucency_sorting.tooltip"))
                 .setControl(TickBoxControl::new)
-                .setBinding((opts, value) -> opts.advanced.translucencySorting = value, opts -> opts.advanced.translucencySorting)
+                .setBinding((opts, value) -> opts.performance.translucencySorting = value, opts -> opts.performance.translucencySorting)
                 .setImpact(OptionImpact.MEDIUM)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
@@ -329,7 +328,7 @@ public class NotFineGameOptionPages {
                 .setTooltip(I18n.format("sodium.options.use_entity_culling.tooltip"))
                 .setControl(TickBoxControl::new)
                 .setImpact(OptionImpact.MEDIUM)
-                .setBinding((opts, value) -> opts.advanced.useEntityCulling = value, opts -> opts.advanced.useEntityCulling)
+                .setBinding((opts, value) -> opts.performance.useEntityCulling = value, opts -> opts.performance.useEntityCulling)
                 .build())
             .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                 .setName(I18n.format("sodium.options.use_particle_culling.name"))
@@ -345,7 +344,7 @@ public class NotFineGameOptionPages {
                 .setTooltip(I18n.format("sodium.options.animate_only_visible_textures.tooltip"))
                 .setControl(TickBoxControl::new)
                 .setImpact(OptionImpact.MEDIUM)
-                .setBinding((opts, value) -> opts.advanced.animateOnlyVisibleTextures = value, opts -> opts.advanced.animateOnlyVisibleTextures)
+                .setBinding((opts, value) -> opts.performance.animateOnlyVisibleTextures = value, opts -> opts.performance.animateOnlyVisibleTextures)
                 .build())
             .build());
         groups.add(OptionGroup.createBuilder()

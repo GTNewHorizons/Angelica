@@ -58,6 +58,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private CeleritasWorldRenderer celeritas$renderer;
     @Unique private int celeritas$frame;
     @Unique private float celeritas$lastFov;
+    @Unique private int celeritas$lastThirdPersonView = -1;
 
     @Unique
     private boolean angelica$isSpectatorMode() {
@@ -190,14 +191,20 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             final Entity viewEntity = this.mc.renderViewEntity;
             final float fogDistance = ChunkShaderFogComponent.FOG_SERVICE.getFogCutoff();
 
-            final double camX = viewEntity.posX;
-            final double camY = viewEntity.posY + viewEntity.getEyeHeight();
-            final double camZ = viewEntity.posZ;
+            final double camX = lerp(viewEntity.lastTickPosX, viewEntity.posX, partialTicks);
+            final double camY = lerp(viewEntity.lastTickPosY, viewEntity.posY, partialTicks) + viewEntity.getEyeHeight();
+            final double camZ = lerp(viewEntity.lastTickPosZ, viewEntity.posZ, partialTicks);
 
             final float currentFov = RenderingState.INSTANCE.getFov();
             if (currentFov != this.celeritas$lastFov) {
                 this.celeritas$renderer.scheduleTerrainUpdate();
                 this.celeritas$lastFov = currentFov;
+            }
+
+            final int currentThirdPerson = this.mc.gameSettings.thirdPersonView;
+            if (currentThirdPerson != this.celeritas$lastThirdPersonView) {
+                this.celeritas$renderer.scheduleTerrainUpdate();
+                this.celeritas$lastThirdPersonView = currentThirdPerson;
             }
 
             final SimpleWorldRenderer.CameraState cameraState = new SimpleWorldRenderer.CameraState(

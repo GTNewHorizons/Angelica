@@ -4,9 +4,11 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import net.coderbot.iris.Iris;
+import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -26,21 +28,26 @@ public class SodiumGameOptions {
         public boolean useVertexArrayObjects = true;
         public boolean useChunkMultidraw = true;
 
-        public boolean animateOnlyVisibleTextures = true;
-        public boolean useEntityCulling = true;
         public boolean useParticleCulling = true;
-        public boolean useFogOcclusion = true;
-        public boolean useCompactVertexFormat = true;
-        public boolean useBlockFaceCulling = true;
         public boolean allowDirectMemoryAccess = true;
         public boolean ignoreDriverBlacklist = false;
-        public boolean translucencySorting = true;
     }
 
     public static class PerformanceSettings {
         public int chunkBuilderThreads = 0;
         public boolean alwaysDeferChunkUpdates = true;
         public boolean useNoErrorGLContext = true;
+        public AsyncOcclusionMode asyncOcclusionMode = AsyncOcclusionMode.EVERYTHING;
+        public boolean useOcclusionCulling = true;
+
+        public boolean animateOnlyVisibleTextures = true;
+        public boolean useEntityCulling = true;
+        public boolean useFogOcclusion = true;
+        public boolean useBlockFaceCulling = true;
+        public boolean useCompactVertexFormat = true;
+        public boolean translucencySorting = true;
+        public boolean useRenderPassOptimization = true;
+        public int cpuRenderAheadLimit = 3;
     }
 
     public static class EntityRenderDistance {
@@ -74,7 +81,7 @@ public class SodiumGameOptions {
             } catch (IOException e) {
                 throw new RuntimeException("Could not parse config", e);
             } catch (JsonSyntaxException e) {
-                SodiumClientMod.logger().error("Could not parse config, will fallback to default settings", e);
+                AngelicaMod.LOGGER.error("Could not parse config, will fallback to default settings", e);
                 config = new SodiumGameOptions();
                 resaveConfig = false;
             }
@@ -83,6 +90,11 @@ public class SodiumGameOptions {
         }
 
         config.configPath = path;
+
+        // Clamp render-ahead to 0 if GL 3.2 fences aren't available
+        if (GLStateManager.capabilities == null || !GLStateManager.capabilities.OpenGL32) {
+            config.performance.cpuRenderAheadLimit = 0;
+        }
 
         try {
             if(resaveConfig)

@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui.options.storage;
 
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 
@@ -20,6 +20,6 @@ public class MinecraftOptionsStorage implements OptionStorage<GameSettings> {
     public void save() {
         this.getData().saveOptions();
 
-        SodiumClientMod.logger().info("Flushed changes to Minecraft configuration");
+        AngelicaMod.LOGGER.info("Flushed changes to Minecraft configuration");
     }
 }

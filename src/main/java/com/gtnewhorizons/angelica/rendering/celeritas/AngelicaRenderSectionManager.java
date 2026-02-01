@@ -1,11 +1,12 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -15,7 +16,6 @@ import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
-import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SectionTicker;
@@ -23,11 +23,10 @@ import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.GenericSectionSpriteTicker;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
+import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.util.PositionUtil;
 import org.jetbrains.annotations.Nullable;
-
-import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,7 +87,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected AsyncOcclusionMode getAsyncOcclusionMode() {
-        return AsyncOcclusionMode.EVERYTHING;
+        return AngelicaMod.options().performance.asyncOcclusionMode;
     }
 
     @Override
@@ -98,7 +97,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean useFogOcclusion() {
-        return true;
+        return AngelicaMod.options().performance.useFogOcclusion && !IrisShaderProviderHolder.isActive();
     }
 
     @Override
@@ -108,10 +107,13 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean shouldUseOcclusionCulling(Viewport positionedViewport, boolean spectator) {
-        if (!spectator) return true;
-
-        final var camBlockPos = positionedViewport.getBlockCoord();
-        return !this.world.getBlock(camBlockPos.x(), camBlockPos.y(), camBlockPos.z()).isOpaqueCube();
+        if (spectator) {
+            final var camBlockPos = positionedViewport.getBlockCoord();
+            if (this.world.getBlock(camBlockPos.x(), camBlockPos.y(), camBlockPos.z()).isOpaqueCube()) {
+                return false;
+            }
+        }
+        return AngelicaMod.options().performance.useOcclusionCulling;
     }
 
     @Override
@@ -150,7 +152,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean allowImportantRebuilds() {
-        return !SodiumClientMod.options().performance.alwaysDeferChunkUpdates;
+        return !AngelicaMod.options().performance.alwaysDeferChunkUpdates;
     }
 
     @Override

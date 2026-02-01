@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.client.gui.FontConfigScreen;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import jss.notfine.gui.GuiCustomMenu;
-import net.coderbot.iris.Iris;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.BasicFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components.SearchTextFieldComponent;
@@ -19,6 +18,7 @@ import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.gui.GuiScreen;
@@ -283,7 +283,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         }
         if (keyCode == Keyboard.KEY_P) {
             if(isShiftKeyDown()){
-                this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(), SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
+                this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(), SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(), SodiumGameOptionPages.appearance(), SodiumGameOptionPages.debug()));
             } else if (isCtrlKeyDown()) {
                 this.mc.displayGuiScreen(new SodiumOptionsGUI(this.prevScreen));
             }
