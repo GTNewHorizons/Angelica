@@ -91,19 +91,23 @@ public final class GLCommand {
 
     // === Draw commands ===
     public static final int DRAW_RANGE = 100;        // [cmd:4][vboIndex:4] = 8 bytes
-    public static final int CALL_LIST = 101;         // [cmd:4][listId:4] = 8 bytes
-    public static final int DRAW_ARRAYS = 102;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
-    public static final int DRAW_BUFFER = 103;       // [cmd:4][mode:4] = 8 bytes
-    public static final int DRAW_BUFFERS = 104;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
+    public static final int DRAW_RANGE_RESTORE = 101; // [cmd:4][vboIndex:4][flags:4][color:4][normal:4][lastTexCoord:8f] = 28 bytes
+    public static final int CALL_LIST = 102;         // [cmd:4][listId:4] = 8 bytes
+
+
+    public static final int DRAW_ARRAYS = 110;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
+    public static final int DRAW_ELEMENTS = 111;     // [cmd:4][mode:4][indices_count:4][type:4][indices_buffer_offset:8] = 28 bytes
+    public static final int DRAW_BUFFER = 112;       // [cmd:4][mode:4] = 8 bytes
+    public static final int DRAW_BUFFERS = 113;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
     /**
      * Draw VBO range with attribute restoration after draw.
      * Used for immediate mode VBOs to restore GL current state (color, normal, texcoord).
      */
-    public static final int DRAW_RANGE_RESTORE = 105; // [cmd:4][vboIndex:4][flags:4][color:4][normal:4][lastTexCoord:8f] = 28 bytes
+
 
     // === Bind commands ===
-    public static final int BIND_VBO = 110;
-    public static final int BIND_VAO = 111;
+    public static final int BIND_VBO = 120;
+    public static final int BIND_VAO = 121;
 
     // === Complex object reference ===
     public static final int COMPLEX_REF = 255;       // [cmd:4][index:4] = 8 bytes
@@ -217,6 +221,8 @@ public final class GLCommand {
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
+
+            case GLCommand.DRAW_ELEMENTS -> 24;
 
             // DRAW_RANGE_RESTORE: 28 bytes
             case GLCommand.DRAW_RANGE_RESTORE -> 28;

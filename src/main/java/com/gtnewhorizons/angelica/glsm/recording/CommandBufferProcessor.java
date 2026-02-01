@@ -146,6 +146,7 @@ public final class CommandBufferProcessor {
             case GLCommand.DRAW_RANGE -> out.writeDrawRange(raw.readInt());
             case GLCommand.CALL_LIST -> out.writeCallList(raw.readInt());
             case GLCommand.DRAW_ARRAYS -> out.writeDrawArrays(raw.readInt(), raw.readInt(), raw.readInt());
+            case GLCommand.DRAW_ELEMENTS -> out.writeDrawElements(raw.readInt(), raw.readInt(), raw.readInt(), raw.readLong());
             case GLCommand.BIND_VBO -> out.writeBindVBO(raw.readInt());
             case GLCommand.BIND_VAO -> out.writeBindVAO(raw.readInt());
 

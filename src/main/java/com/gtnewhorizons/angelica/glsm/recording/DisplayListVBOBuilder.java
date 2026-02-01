@@ -52,7 +52,7 @@ public final class DisplayListVBOBuilder {
             if (formatData == null) continue;
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             int start = 0;
-            final IVertexArrayObject vao = VAOManager.createStorageVAO(format, -1); // drawMode will be ignored
+            final IVertexArrayObject vao = VAOManager.createStorageVAO(format, -1, 0); // drawMode will be ignored
             final IVertexBuffer vbo = vao.getVBO();
             for (FormatData data : formatData) {
                 int vertexCount;
@@ -80,7 +80,7 @@ public final class DisplayListVBOBuilder {
                 start += vertexCount;
             }
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);
-            vbo.allocate(bigBuffer, start, 0);
+            vbo.allocate(bigBuffer, start);
             memFree(bigBuffer);
 
             allBuffers.clear();

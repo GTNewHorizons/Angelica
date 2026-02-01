@@ -45,7 +45,7 @@ public abstract class MixinItemRenderer {
 
     @WrapMethod(method = "renderItemIn2D")
     private static void angelica$cacheItem(Tessellator tessellator, float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness, Operation<Void> original) {
-        final VertexBuffer vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
+        final ItemRenderListManager.CachedVBO vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
         if (vbo != null) {
             final DirectTessellator tess = TessellatorManager.startCapturingDirect();
             original.call(tess, minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);

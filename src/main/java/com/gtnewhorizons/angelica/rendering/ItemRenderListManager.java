@@ -27,6 +27,9 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
@@ -47,7 +50,7 @@ public class ItemRenderListManager {
 
     private static final ItemProp prop = new ItemProp();
 
-    public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
+    public static CachedVBO pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
 
         if (!vboCache.isEmpty()) {
@@ -83,25 +86,35 @@ public class ItemRenderListManager {
 
         vbo.expiry = getElapsedTicks() + EXPIRY_TICKS;
 
-        return vbo.vertexBuffer;
+        return vbo;
     }
 
-    public static void post(DirectTessellator tessellator, VertexBuffer vbo) {
-        tessellator.allocateToVBO(vbo);
+    public static void post(DirectTessellator tessellator, CachedVBO vbo) {
+        vbo.allocate(tessellator);
         TessellatorManager.stopCapturingDirect();
-        vbo.render();
+        vbo.vertexBuffer.render();
     }
 
     private static int getElapsedTicks() {
         return Minecraft.getMinecraft().thePlayer.ticksExisted;
     }
 
-    private static final class CachedVBO {
-        private VertexBuffer vertexBuffer;
+    public static final class CachedVBO {
+        private final IVertexArrayObject vertexBuffer;
+        private final IndexBuffer ebo;
         private int expiry;
 
         public CachedVBO() {
-            this.vertexBuffer = VAOManager.createMutableVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
+            this.ebo = new IndexBuffer();
+            this.vertexBuffer = VAOManager.createMutableVAO(
+                DefaultVertexFormat.POSITION_TEXTURE_NORMAL,
+                GL11.GL_TRIANGLES,
+                ebo
+            );
+        }
+
+        private void allocate(DirectTessellator tessellator) {
+            tessellator.allocateToVBO(vertexBuffer, ebo);
         }
 
         private void render(int elapsedTicks) {
@@ -111,7 +124,7 @@ public class ItemRenderListManager {
 
         private void delete() {
             vertexBuffer.delete();
-            vertexBuffer = null;
+            // EBO gets deleted by vertexBuffer.delete()
         }
     }
 

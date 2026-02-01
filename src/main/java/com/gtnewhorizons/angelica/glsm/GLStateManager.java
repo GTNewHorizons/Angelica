@@ -1813,8 +1813,16 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+        final RecordMode recordMode = DisplayListManager.getRecordMode();
+        if (recordMode != RecordMode.NONE) {
+            if (isVAOBound()) {
+                DisplayListManager.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
+            } else {
+                throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            }
+            if (recordMode == RecordMode.COMPILE) {
+                return;
+            }
         }
         GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
@@ -1832,7 +1840,7 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         if (DisplayListManager.isRecording()) {
-            if (isVAOBound() || isVBOBound()) {
+            if (isVAOBound() || isVBOBound()) { // TODO VBO rendering needs to be replaced with proper VAO compilation
                 DisplayListManager.recordDrawArrays(mode, first, count);
                 return;
             }

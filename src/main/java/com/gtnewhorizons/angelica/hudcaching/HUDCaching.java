@@ -199,7 +199,7 @@ public class HUDCaching {
         if (quadVAO == null) {
             quadVAO = tessellator.uploadToVBO(VertexBufferType.MUTABLE);
         } else {
-            tessellator.updateToVBO(quadVAO);
+            tessellator.updateToVBO(quadVAO.getVBO());
         }
         TessellatorManager.stopCapturingDirect();
     }

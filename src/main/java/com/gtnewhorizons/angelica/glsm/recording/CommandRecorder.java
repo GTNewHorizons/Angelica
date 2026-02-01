@@ -342,6 +342,11 @@ public final class CommandRecorder {
         commandCount++;
     }
 
+    public void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        buffer.writeDrawElements(mode, indices_count, type, indices_buffer_offset);
+        commandCount++;
+    }
+
     public void recordBindVBO(int vbo) {
         buffer.writeBindVBO(vbo);
         commandCount++;

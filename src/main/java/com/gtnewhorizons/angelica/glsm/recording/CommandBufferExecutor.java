@@ -510,6 +510,10 @@ public final class CommandBufferExecutor {
                     GL11.glDrawArrays(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8));
                     ptr += 12;
                 }
+                case GLCommand.DRAW_ELEMENTS -> {
+                    GL11.glDrawElements(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8), memGetLong(ptr + 12));
+                    ptr += 20;
+                }
                 case GLCommand.BIND_VBO -> {
                     GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, memGetInt(ptr));
                     ptr += 4;

@@ -86,7 +86,7 @@ public class DisplayListManager {
     // Display list compilation state (current/active context)
     private static int glListMode = 0;
     private static int glListId = -1;
-    public static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
+    private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static Matrix4fStack relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
@@ -571,7 +571,14 @@ public class DisplayListManager {
         if (currentRecorder != null) currentRecorder.recordLoadIdentity();
     }
 
-    public static void recordDrawArrays(int mode, int start, int count) { if (currentRecorder != null) currentRecorder.recordDrawArrays(mode, start, count); }
+    public static void recordDrawArrays(int mode, int start, int count) {
+        if (currentRecorder != null) currentRecorder.recordDrawArrays(mode, start, count);
+    }
+
+    public static void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        currentRecorder.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
+    }
+
     public static void recordBindVBO(int vbo) { if (currentRecorder != null) currentRecorder.recordBindVBO(vbo); }
     public static void recordBindVAO(int vao) { if (currentRecorder != null) currentRecorder.recordBindVAO(vao); }
 
@@ -803,11 +810,6 @@ public class DisplayListManager {
             }
             return true;
         });
-//
-//        // We hijack display list compilation completely - no GL11.glNewList() calls
-//        // During compile don't actually apply any changes to GL, but do track them
-//        GLStateManager.getModelViewMatrix().pushMatrix();  // Save current model view matrix state
-//        GLStateManager.pushState(GL11.GL_ALL_ATTRIB_BITS);
     }
 
     /**
