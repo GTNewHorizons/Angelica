@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
@@ -46,9 +47,15 @@ public class RenderTargets {
 		renderTargets.forEach((index, settings) -> {
 			// TODO: Handle mipmapping?
 			Vector2i dimensions = packDirectives.getTextureScaleOverride(index, width, height);
+			// Apply format fallback for opengl versions with limited color-renderable format support (e.g., macOS GL 2.1)
+			var requestedFormat = settings.getInternalFormat();
+			var actualFormat = requestedFormat.getColorRenderableFallback();
+			if (actualFormat != requestedFormat) {
+				Iris.logger.info("Render target {} using fallback format {} (requested {})", index, actualFormat, requestedFormat);
+			}
 			targets[index] = RenderTarget.builder().setDimensions(dimensions.x, dimensions.y)
-					.setInternalFormat(settings.getInternalFormat())
-					.setPixelFormat(settings.getInternalFormat().getPixelFormat()).build();
+					.setInternalFormat(actualFormat)
+					.setPixelFormat(actualFormat.getPixelFormat()).build();
 		});
 		this.currentDepthTexture = depthTexture;
 		this.currentDepthFormat = depthFormat;

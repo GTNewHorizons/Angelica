@@ -321,7 +321,8 @@ public class ShaderProperties {
 				if (pass.contains(".")) {
 
 					if (!RenderSystem.supportsBufferBlending()) {
-						throw new RuntimeException("Buffer blending is not supported on this platform, however it was attempted to be used!");
+						Iris.logger.warn("Per-buffer blending directive '{}' ignored - buffer blending requires OpenGL 4.0 or GL_ARB_draw_buffers_blend", key);
+						return;
 					}
 
 					final String[] parts = pass.split("\\.");

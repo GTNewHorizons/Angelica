@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +29,8 @@ import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GL44;
 import org.lwjgl.opengl.NVXGpuMemoryInfo;
 
+import net.coderbot.iris.gl.shader.StandardMacros;
+
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -48,6 +51,8 @@ public class RenderSystem {
 	private static boolean supportsSamplerObjects;
 	private static int maxImageUnits;
 	private static int maxSSBOBindings;
+	private static int maxGlslVersion;
+	private static boolean supportsGpuShader4;
 
 	// Sampler object state tracking (null if unsupported)
 	private static int[] samplers;
@@ -112,6 +117,10 @@ public class RenderSystem {
 			samplers = new int[GL11.glGetInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)];
 		}
 
+		maxGlslVersion = Integer.parseInt(StandardMacros.getGlVersion(GL20.GL_SHADING_LANGUAGE_VERSION));
+		supportsGpuShader4 = GLStateManager.capabilities.GL_EXT_gpu_shader4;
+
+		LOGGER.info("Max GLSL version: {}, GPU Shader4: {}", maxGlslVersion, supportsGpuShader4);
 		LOGGER.info("Image Load/Store: {}, Max Image Units: {}", supportsImageLoadStore, maxImageUnits);
 		LOGGER.info("SSBO: {}, Max SSBO Bindings: {}", supportsSSBO, maxSSBOBindings);
 		LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
@@ -126,8 +135,11 @@ public class RenderSystem {
 	}
 
 	public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
-		GL11.glBindTexture(target, texture);
+		GLStateManager.glBindTexture(target, texture);
 		GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+		if (target == GL11.GL_TEXTURE_2D && level == 0) {
+			TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+		}
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
@@ -447,6 +459,22 @@ public class RenderSystem {
 
 	public static void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
 		dsaState.textureStorage3D(texture, target, levels, internalFormat, width, height, depth);
+	}
+
+	public static int getMaxGlslVersion() {
+		return maxGlslVersion;
+	}
+
+	public static boolean supportsGpuShader4() {
+		return supportsGpuShader4;
+	}
+
+	public static boolean supportsSnormFormats() {
+		return GLStateManager.capabilities.OpenGL31;
+	}
+
+	public static boolean supportsPackedFloatRenderable() {
+		return GLStateManager.capabilities.OpenGL30 && maxGlslVersion >= 130;
 	}
 
 	public static boolean supportsTesselation() {
