@@ -1,19 +1,21 @@
 package com.gtnewhorizons.angelica;
 
-import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
-
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
 @Mod(
         modid = MOD_ID,
@@ -32,6 +34,15 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 public class AngelicaMod {
     public static final String MOD_ID = "angelica";
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
+
+    private static SodiumGameOptions CONFIG;
+
+    public static SodiumGameOptions options() {
+        if (CONFIG == null) {
+            CONFIG = SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
+        }
+        return CONFIG;
+    }
 
     @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;

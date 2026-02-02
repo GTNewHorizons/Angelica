@@ -1,11 +1,14 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -23,9 +26,6 @@ import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SortedRenderLists;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.joml.Matrix4f;
@@ -118,7 +118,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
         }
 
-        if (SodiumClientMod.options().advanced.useCompactVertexFormat) {
+        if (AngelicaMod.options().performance.useCompactVertexFormat) {
             return ChunkMeshFormats.COMPACT;
         }
         return ChunkMeshFormats.VANILLA_LIKE;
@@ -146,7 +146,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         renderSectionManager.setCameraPosition(transform.x, transform.y, transform.z);
 
-        this.useEntityCulling = true;
+        this.useEntityCulling = AngelicaMod.options().performance.useEntityCulling;
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 

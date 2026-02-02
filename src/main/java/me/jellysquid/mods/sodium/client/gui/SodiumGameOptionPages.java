@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
@@ -28,6 +27,7 @@ import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
+import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 import org.lwjgl.opengl.Display;
 
 import java.io.IOException;
@@ -80,19 +80,6 @@ public class SodiumGameOptionPages {
                 .setControl(opt -> new SliderControl(opt, 0, 100, 1, ControlValueFormatter.brightness()))
                 .setBinding((opts, value) -> opts.gammaSetting = value * 0.01F, (opts) -> (int) (opts.gammaSetting / 0.01F))
                 .build());
-        firstGroupBuilder.add(Settings.MODE_LIGHT_FLICKER.option)
-            .add(Settings.MODE_SKY.option)
-            .add(Settings.MODE_SUN_MOON.option)
-            .add(Settings.RENDER_DISTANCE_CLOUDS.option)
-            .add(Settings.CLOUD_HEIGHT.option)
-            .add(Settings.CLOUD_SCALE.option)
-            .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
-            .add(Settings.MODE_STARS.option)
-            .add(Settings.TOTAL_STARS.option)
-            .add(Settings.HORIZON_DISABLE.option)
-            .add(Settings.FOG_DISABLE.option)
-            .add(Settings.FOG_NEAR_DISTANCE.option)
-            .add(Settings.VOID_FOG.option);
         groups.add(firstGroupBuilder.build());
 
         int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
@@ -166,24 +153,6 @@ public class SodiumGameOptionPages {
                 .add(Settings.DYNAMIC_FOV.option)
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
-                .add(
-                    OptionImpl.createBuilder(int.class, angelicaOpts)
-                        .setName(I18n.format("options.angelica.droppedItemLimit"))
-                        .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
-                        .setControl(option -> new SliderControl(option, 32, 2048, 32, ControlValueFormatter.droppedItemLimitLimit()))
-                        .setBinding((options, value) -> AngelicaConfig.droppedItemLimit = value, options -> AngelicaConfig.droppedItemLimit)
-                        .setImpact(OptionImpact.MEDIUM)
-                        .build()
-                )
-                .add(
-                    OptionImpl.createBuilder(int.class, angelicaOpts)
-                        .setName(I18n.format("options.angelica.mobSpawnerRenderDistance"))
-                        .setTooltip(I18n.format("options.angelica.mobSpawnerRenderDistance.tooltip"))
-                        .setControl(option -> new SliderControl(option, 16, 64, 1, ControlValueFormatter.number()))
-                        .setBinding((options, value) -> AngelicaConfig.mobSpawnerRenderDistance = value, options -> (int) AngelicaConfig.mobSpawnerRenderDistance)
-                        .setImpact(OptionImpact.MEDIUM)
-                        .build()
-                )
                 .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
@@ -305,7 +274,7 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.use_block_face_culling.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.MEDIUM)
-                        .setBinding((opts, value) -> opts.advanced.useBlockFaceCulling = value, opts -> opts.advanced.useBlockFaceCulling)
+                        .setBinding((opts, value) -> opts.performance.useBlockFaceCulling = value, opts -> opts.performance.useBlockFaceCulling)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
                 )
@@ -314,7 +283,7 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.use_compact_vertex_format.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.MEDIUM)
-                        .setBinding((opts, value) -> opts.advanced.useCompactVertexFormat = value, opts -> opts.advanced.useCompactVertexFormat)
+                        .setBinding((opts, value) -> opts.performance.useCompactVertexFormat = value, opts -> opts.performance.useCompactVertexFormat)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
                 )
@@ -322,7 +291,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.use_fog_occlusion.name"))
                         .setTooltip(I18n.format("sodium.options.use_fog_occlusion.tooltip"))
                         .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.advanced.useFogOcclusion = value, opts -> opts.advanced.useFogOcclusion)
+                        .setBinding((opts, value) -> opts.performance.useFogOcclusion = value, opts -> opts.performance.useFogOcclusion)
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
@@ -331,7 +300,7 @@ public class SodiumGameOptionPages {
                     .setName(I18n.format("sodium.options.translucency_sorting.name"))
                     .setTooltip(I18n.format("sodium.options.translucency_sorting.tooltip"))
                     .setControl(TickBoxControl::new)
-                    .setBinding((opts, value) -> opts.advanced.translucencySorting = value, opts -> opts.advanced.translucencySorting)
+                    .setBinding((opts, value) -> opts.performance.translucencySorting = value, opts -> opts.performance.translucencySorting)
                     .setImpact(OptionImpact.MEDIUM)
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build()
@@ -341,7 +310,7 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.use_entity_culling.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.MEDIUM)
-                        .setBinding((opts, value) -> opts.advanced.useEntityCulling = value, opts -> opts.advanced.useEntityCulling)
+                        .setBinding((opts, value) -> opts.performance.useEntityCulling = value, opts -> opts.performance.useEntityCulling)
                         .build()
                 )
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
@@ -357,7 +326,34 @@ public class SodiumGameOptionPages {
                         .setTooltip(I18n.format("sodium.options.animate_only_visible_textures.tooltip"))
                         .setControl(TickBoxControl::new)
                         .setImpact(OptionImpact.MEDIUM)
-                        .setBinding((opts, value) -> opts.advanced.animateOnlyVisibleTextures = value, opts -> opts.advanced.animateOnlyVisibleTextures)
+                        .setBinding((opts, value) -> opts.performance.animateOnlyVisibleTextures = value, opts -> opts.performance.animateOnlyVisibleTextures)
+                        .build()
+                )
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.use_render_pass_optimization.name"))
+                        .setTooltip(I18n.format("sodium.options.use_render_pass_optimization.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> opts.performance.useRenderPassOptimization = value, opts -> opts.performance.useRenderPassOptimization)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build()
+                )
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.use_occlusion_culling.name"))
+                        .setTooltip(I18n.format("sodium.options.use_occlusion_culling.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.EXTREME)
+                        .setBinding((opts, value) -> opts.performance.useOcclusionCulling = value, opts -> opts.performance.useOcclusionCulling)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build()
+                )
+                .add(OptionImpl.createBuilder(AsyncOcclusionMode.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.async_occlusion_mode.name"))
+                        .setTooltip(I18n.format("sodium.options.async_occlusion_mode.tooltip"))
+                        .setControl(o -> new CyclingControl<>(o, AsyncOcclusionMode.class, new String[]{"None", "Only Shadow", "Everything"}))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> opts.performance.asyncOcclusionMode = value, opts -> opts.performance.asyncOcclusionMode)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
                 )
                 .build());
@@ -382,28 +378,6 @@ public class SodiumGameOptionPages {
                         .build()
                 )
                 .build());
-
-        groups.add(OptionGroup.createBuilder()
-            .add(OptionImpl.createBuilder(int.class, angelicaOpts)
-                .setName(I18n.format("options.angelica.itemdisplaylistcount"))
-                .setTooltip(I18n.format("options.angelica.itemdisplaylistcount.tooltip"))
-                .setControl(o -> new SliderControl(o, 256, 1024, 16, ControlValueFormatter.number()))
-                .setImpact(OptionImpact.MEDIUM)
-                .setBinding((opts, value) -> AngelicaConfig.itemRendererCacheSize = value, options -> AngelicaConfig.itemRendererCacheSize)
-                .build()
-            )
-            .build());
-
-        groups.add(OptionGroup.createBuilder()
-                .add(Settings.MODE_GUI_BACKGROUND.option)
-                .add(Settings.GUI_BACKGROUND.option)
-                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
-                        .setName(I18n.format("options.angelica.disablef3"))
-                        .setTooltip(I18n.format("options.angelica.disablef3.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> AngelicaConfig.disableF3Additions = value, opts -> AngelicaConfig.disableF3Additions)
-                        .build())
-            .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.advanced"), ImmutableList.copyOf(groups));
     }
@@ -446,14 +420,6 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.performance.useNoErrorGLContext = value, opts -> opts.performance.useNoErrorGLContext)
                         .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                        .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.EXTREME)
-                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.aggressiveChunkLoading"))
                         .setTooltip(I18n.format("options.angelica.aggressiveChunkLoading.tooltip"))
@@ -462,9 +428,94 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> AngelicaConfig.useVanillaChunkTracking = value, opts -> AngelicaConfig.useVanillaChunkTracking)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.cpu_render_ahead_limit.name"))
+                        .setTooltip(I18n.format("sodium.options.cpu_render_ahead_limit.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 9, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> opts.performance.cpuRenderAheadLimit = value, opts -> opts.performance.cpuRenderAheadLimit)
+                        .setEnabled(GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL32)
+                        .build())
 
                 .build());
 
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.droppedItemLimit"))
+                        .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
+                        .setControl(option -> new SliderControl(option, 32, 2048, 32, ControlValueFormatter.droppedItemLimitLimit()))
+                        .setBinding((options, value) -> AngelicaConfig.droppedItemLimit = value, options -> AngelicaConfig.droppedItemLimit)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.mobSpawnerRenderDistance"))
+                        .setTooltip(I18n.format("options.angelica.mobSpawnerRenderDistance.tooltip"))
+                        .setControl(option -> new SliderControl(option, 16, 64, 1, ControlValueFormatter.number()))
+                        .setBinding((options, value) -> AngelicaConfig.mobSpawnerRenderDistance = value, options -> (int) AngelicaConfig.mobSpawnerRenderDistance)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.itemdisplaylistcount"))
+                        .setTooltip(I18n.format("options.angelica.itemdisplaylistcount.tooltip"))
+                        .setControl(o -> new SliderControl(o, 256, 1024, 16, ControlValueFormatter.number()))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.itemRendererCacheSize = value, options -> AngelicaConfig.itemRendererCacheSize)
+                        .build())
+                .build());
+
         return new OptionPage(I18n.format("sodium.options.pages.performance"), ImmutableList.copyOf(groups));
+    }
+
+    public static OptionPage appearance() {
+        final List<OptionGroup> groups = new ArrayList<>();
+
+        groups.add(OptionGroup.createBuilder()
+                .add(Settings.MODE_SKY.option)
+                .add(Settings.MODE_SUN_MOON.option)
+                .add(Settings.RENDER_DISTANCE_CLOUDS.option)
+                .add(Settings.CLOUD_HEIGHT.option)
+                .add(Settings.CLOUD_SCALE.option)
+                .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
+                .add(Settings.MODE_STARS.option)
+                .add(Settings.TOTAL_STARS.option)
+                .add(Settings.HORIZON_DISABLE.option)
+                .add(Settings.MODE_LIGHT_FLICKER.option)
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(Settings.FOG_DISABLE.option)
+                .add(Settings.FOG_NEAR_DISTANCE.option)
+                .add(Settings.VOID_FOG.option)
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(Settings.MODE_GUI_BACKGROUND.option)
+                .add(Settings.GUI_BACKGROUND.option)
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.disablef3"))
+                        .setTooltip(I18n.format("options.angelica.disablef3.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.disableF3Additions = value, opts -> AngelicaConfig.disableF3Additions)
+                        .build())
+                .build());
+
+        return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
+    }
+
+    public static OptionPage debug() {
+        final List<OptionGroup> groups = new ArrayList<>();
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
+                        .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.EXTREME)
+                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build())
+                .build());
+
+        return new OptionPage(I18n.format("sodium.options.pages.debug"), ImmutableList.copyOf(groups));
     }
 }

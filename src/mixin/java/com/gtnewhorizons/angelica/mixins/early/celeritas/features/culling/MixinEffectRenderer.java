@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.features.culling;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.particle.EntityFX;
@@ -26,7 +27,7 @@ public class MixinEffectRenderer {
 
     @Unique
     private void setupCullingViewport() {
-        final boolean useCulling = true;// TODO: boolean useCulling = SodiumClientMod.options().advanced.useParticleCulling;
+        final boolean useCulling = AngelicaMod.options().advanced.useParticleCulling;
         if(useCulling) {
             this.cullingViewport = CeleritasWorldRenderer.getInstance().getLastViewport();
         } else {

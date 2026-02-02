@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import jss.notfine.gui.GuiCustomMenu;
-import net.coderbot.iris.Iris;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -19,6 +18,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.element.SodiumContro
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import me.jellysquid.mods.sodium.client.gui.widgets.FlatButtonWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
@@ -62,6 +62,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         this.pages.add(SodiumGameOptionPages.quality());
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
+        this.pages.add(SodiumGameOptionPages.appearance());
 
         // Add Dynamic Lights page if enabled
         if (DynamicLights.configEnabled) {
@@ -75,6 +76,8 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
             shaderPacks = new OptionPage(I18n.format("options.iris.shaderPackSelection"), ImmutableList.of());
             this.pages.add(shaderPacks);
         }
+
+        this.pages.add(SodiumGameOptionPages.debug());
     }
 
     public void setPage(OptionPage page) {
@@ -298,7 +301,8 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
         if (keyCode == Keyboard.KEY_P && isShiftKeyDown()) {
             this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(),
-                SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance()));
+                SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(),
+                SodiumGameOptionPages.appearance(), SodiumGameOptionPages.debug()));
         }
     }
 

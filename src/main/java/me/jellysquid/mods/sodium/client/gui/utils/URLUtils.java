@@ -1,6 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui.utils;
 
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import net.minecraft.util.Util;
 
 import java.io.IOException;
@@ -19,7 +19,7 @@ public class URLUtils {
         try {
             Runtime.getRuntime().exec(getURLOpenCommand(url));
         } catch (IOException exception) {
-            SodiumClientMod.logger().error("Couldn't open url '{}'", url, exception);
+            AngelicaMod.LOGGER.error("Couldn't open url '{}'", url, exception);
         }
 
     }
