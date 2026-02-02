@@ -59,7 +59,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	 * <p> 
 	 * Fixes sunset not rendering at all with shaders enabled
 	 */
-	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V"), remap = false)
+	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;FFLnet/minecraft/util/ResourceLocation;)V"), remap = false)
 	public void iris$sunset$renderInDefaultProgram(CallbackInfo ci, @Local(argsOnly = true) Minecraft mc, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
 		sunset$previousProgram.set(GLStateManager.getActiveProgram());
 		GLStateManager.glUseProgram(0);
@@ -69,7 +69,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	/**
 	 * Sets the program back before {@link #iris$sunset$renderInDefaultProgram(CallbackInfo, Minecraft, LocalIntRef)} call
 	 */
-	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;)V", shift = At.Shift.AFTER), remap = false)
+	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;renderSunset(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;FFLnet/minecraft/util/ResourceLocation;)V", shift = At.Shift.AFTER), remap = false)
 	public void iris$sunset$restorePreviousProgram(CallbackInfo ci, @Share("sunset$previousProgram") LocalIntRef sunset$previousProgram) {
 		GLStateManager.glUseProgram(sunset$previousProgram.get());
 	}
@@ -246,7 +246,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setPhase(WorldRenderingPhase.SUN));
 	}
 	
-	@Inject(method = "renderSunset", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldProvider;calcSunriseSunsetColors(FF)[F"))
+	@Inject(method = "renderSunset", at = @At(value = "INVOKE", target = "Lcom/hbm/dim/SkyProviderCelestial;calcSunriseSunsetColors(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;FF)[F"), remap = false)
 	private void iris$setSunsetRenderStage(CallbackInfo ci) {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setPhase(WorldRenderingPhase.SUNSET));
 	}
