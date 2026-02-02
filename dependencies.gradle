@@ -111,7 +111,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev") // Mixin Version
     compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
 
-    compileOnly(rfg.deobf("curse.maven:ntm-space-1121235:6974420"))
+    compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5593_H261"))
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
