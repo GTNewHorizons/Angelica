@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import akka.util.Index;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
