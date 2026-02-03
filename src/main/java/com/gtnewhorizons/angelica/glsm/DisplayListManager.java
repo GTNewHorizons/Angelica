@@ -576,7 +576,7 @@ public class DisplayListManager {
     }
 
     public static void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        currentRecorder.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
+        if (currentRecorder != null) currentRecorder.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
     public static void recordBindVBO(int vbo) { if (currentRecorder != null) currentRecorder.recordBindVBO(vbo); }
