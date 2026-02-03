@@ -572,7 +572,7 @@ public final class CommandBuffer {
         writeInt(restoreData.lastNormal);
         // Last texcoord (2 floats = 8 bytes)
         writeFloat(restoreData.lastTexCoordU);
-        writeFloat(restoreData.lastTexCoordU);
+        writeFloat(restoreData.lastTexCoordV);
     }
 
     public void writeCallList(int listId) {
