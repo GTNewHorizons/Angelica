@@ -3764,7 +3764,7 @@ public class GLStateManager {
 
     public static void glBindBuffer(int target, int buffer) {
         if (target == GL15.GL_ARRAY_BUFFER) {
-            if (boundVBO == buffer) return;
+            // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
             boundVBO = buffer;
         }
         GL15.glBindBuffer(target, buffer);
@@ -3773,6 +3773,8 @@ public class GLStateManager {
     public static void glBindVertexArray(int array) {
         if (DisplayListManager.isRecording()) {
             DisplayListManager.recordBindVAO(array);
+            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
+            // This is technically wrong, but I'm not sure if there's a better solution here.
         }
         if (boundVAO != array) {
             boundVAO = array;
@@ -3783,6 +3785,8 @@ public class GLStateManager {
     public static void glBindVertexArrayAPPLE(int array) {
         if (DisplayListManager.isRecording()) {
             DisplayListManager.recordBindVAO(array);
+            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
+            // This is technically wrong, but I'm not sure if there's a better solution here.
         }
         if (boundVAO != array) {
             boundVAO = array;
