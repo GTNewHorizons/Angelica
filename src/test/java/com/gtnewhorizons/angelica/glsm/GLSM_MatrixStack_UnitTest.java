@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -16,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(AngelicaExtension.class)
-public class GLMS_MatrixStack_UnitTest {
+public class GLSM_MatrixStack_UnitTest {
 
     final static FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
     Matrix4f getMatrix(int matrix, boolean cached) {

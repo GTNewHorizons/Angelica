@@ -332,7 +332,7 @@ public class RenderSystem {
 	}
 
 	public static void bindBuffer(int target, int buffer) {
-		GL15.glBindBuffer(target, buffer);
+		GLStateManager.glBindBuffer(target, buffer);
 	}
 
 	public static void memoryBarrier(int barriers) {

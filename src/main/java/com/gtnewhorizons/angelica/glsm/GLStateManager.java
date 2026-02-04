@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
+import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
@@ -23,7 +25,6 @@ import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
-import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
@@ -57,14 +58,17 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.APPLEVertexArrayObject;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.Display;
@@ -88,6 +92,8 @@ import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
 import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
 import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
+
+import static com.gtnewhorizon.gtnhlib.client.opengl.GLCaps.*;
 
 /**
  * OpenGL State Manager - Provides cached state tracking and management for OpenGL operations.
@@ -330,6 +336,9 @@ public class GLStateManager {
 
     @Getter protected static int activeProgram = 0;
     @Getter protected static int listBase = 0;
+
+    @Getter protected static int boundVBO;
+    @Getter protected static int boundVAO;
 
     public static void reset() {
         runningSplash = true;
@@ -812,15 +821,21 @@ public class GLStateManager {
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             case GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
+            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
+            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
+            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
+            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
+
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
             case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
             case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
-            case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
-            case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
+
+            case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
+
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
-            case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
-            case GL11.GL_PROJECTION_STACK_DEPTH -> getMatrixStackDepth(projectionMatrix);
+
+            case GL30.GL_VERTEX_ARRAY_BINDING -> boundVAO;
 
             default -> GL11.glGetInteger(pname);
         };
@@ -1064,42 +1079,34 @@ public class GLStateManager {
             throw new UnsupportedOperationException("Not yet implemented (" + name + ")");
         }
     }
+
+    // Records glBegin/glEnd/glVertex and compiles them to a VBO
+    // Currently only used inside of display lists
+
     public static void glNormal3b(byte nx, byte ny, byte nz) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setNormal(b2f(nx), b2f(ny), b2f(nz));
-            }
+            ImmediateModeRecorder.setNormal(b2f(nx), b2f(ny), b2f(nz));
             return;
         }
         GL11.glNormal3b(nx, ny, nz);
     }
     public static void glNormal3d(double nx, double ny, double nz) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setNormal((float) nx, (float) ny, (float) nz);
-            }
+            ImmediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
             return;
         }
         GL11.glNormal3d(nx, ny, nz);
     }
     public static void glNormal3f(float nx, float ny, float nz) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setNormal(nx, ny, nz);
-            }
+            ImmediateModeRecorder.setNormal(nx, ny, nz);
             return;
         }
         GL11.glNormal3f(nx, ny, nz);
     }
     public static void glNormal3i(int nx, int ny, int nz) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setNormal((float) nx, (float) ny, (float) nz);
-            }
+            ImmediateModeRecorder.setNormal((float) nx, (float) ny, (float) nz);
             return;
         }
         GL11.glNormal3i(nx, ny, nz);
@@ -1535,80 +1542,56 @@ public class GLStateManager {
 
     public static void glTexCoord1f(float s) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord(s, 0.0f);
-            }
+            ImmediateModeRecorder.setTexCoord(s, 0.0f);
             return;
         }
         GL11.glTexCoord1f(s);
     }
     public static void glTexCoord1d(double s) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord((float) s, 0.0f);
-            }
+            ImmediateModeRecorder.setTexCoord((float) s, 0.0f);
             return;
         }
         GL11.glTexCoord1d(s);
     }
     public static void glTexCoord2f(float s, float t) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord(s, t);
-            }
+            ImmediateModeRecorder.setTexCoord(s, t);
             return;
         }
         GL11.glTexCoord2f(s, t);
     }
     public static void glTexCoord2d(double s, double t) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord((float) s, (float) t);
-            }
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord2d(s, t);
     }
     public static void glTexCoord3f(float s, float t, float r) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord(s, t);  // Only track s,t for 2D textures
-            }
+            ImmediateModeRecorder.setTexCoord(s, t);  // Only track s,t for 2D textures
             return;
         }
         GL11.glTexCoord3f(s, t, r);
     }
     public static void glTexCoord3d(double s, double t, double r) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord((float) s, (float) t);
-            }
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord3d(s, t, r);
     }
     public static void glTexCoord4f(float s, float t, float r, float q) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord(s, t);
-            }
+            ImmediateModeRecorder.setTexCoord(s, t);
             return;
         }
         GL11.glTexCoord4f(s, t, r, q);
     }
     public static void glTexCoord4d(double s, double t, double r, double q) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.setTexCoord((float) s, (float) t);
-            }
+            ImmediateModeRecorder.setTexCoord((float) s, (float) t);
             return;
         }
         GL11.glTexCoord4d(s, t, r, q);
@@ -1748,10 +1731,7 @@ public class GLStateManager {
     public static void glBegin(int mode) {
         if (DisplayListManager.isRecording()) {
             // Record to immediate mode recorder
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.begin(mode);
-            }
+            ImmediateModeRecorder.begin(mode);
             return;  // Don't call actual GL during recording
         }
         GL11.glBegin(mode);
@@ -1760,14 +1740,10 @@ public class GLStateManager {
     public static void glEnd() {
         if (DisplayListManager.isRecording()) {
             // Record to immediate mode recorder and flush geometry immediately
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                // end() returns quads immediately (like tessellator callback)
-                final ImmediateModeRecorder.Result result = recorder.end();
-                if (result != null) {
-                    // Add draw at current command position for correct interleaving
-                    DisplayListManager.addImmediateModeDraw(result);
-                }
+            final DirectTessellator result = ImmediateModeRecorder.end();
+            if (result != null) {
+                // Add draw at current command position for correct interleaving
+                DisplayListManager.addImmediateModeDraw(result);
             }
             return;  // Don't call actual GL during recording
         }
@@ -1779,10 +1755,7 @@ public class GLStateManager {
     public static void glVertex2f(float x, float y) {
         final boolean recording = DisplayListManager.isRecording();
         if (recording) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.vertex(x, y, 0.0f);
-            }
+            ImmediateModeRecorder.vertex(x, y, 0.0f);
             return;
         }
         GL11.glVertex2f(x, y);
@@ -1790,10 +1763,7 @@ public class GLStateManager {
 
     public static void glVertex2d(double x, double y) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.vertex((float) x, (float) y, 0.0f);
-            }
+            ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
             return;
         }
         GL11.glVertex2d(x, y);
@@ -1801,10 +1771,7 @@ public class GLStateManager {
 
     public static void glVertex3f(float x, float y, float z) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.vertex(x, y, z);
-            }
+            ImmediateModeRecorder.vertex(x, y, z);
             return;
         }
         GL11.glVertex3f(x, y, z);
@@ -1812,10 +1779,7 @@ public class GLStateManager {
 
     public static void glVertex3d(double x, double y, double z) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                recorder.vertex((float) x, (float) y, (float) z);
-            }
+            ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
             return;
         }
         GL11.glVertex3d(x, y, z);
@@ -1841,18 +1805,26 @@ public class GLStateManager {
         GL11.glDrawElements(mode, indices);
     }
 
-    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
-        }
-        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
-    }
-
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
         GL11.glDrawElements(mode, count, type, indices);
+    }
+
+    public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        final RecordMode recordMode = DisplayListManager.getRecordMode();
+        if (recordMode != RecordMode.NONE) {
+            if (isVAOBound()) {
+                DisplayListManager.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
+            } else {
+                throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            }
+            if (recordMode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
     public static void glDrawBuffer(int mode) {
@@ -1868,12 +1840,13 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         if (DisplayListManager.isRecording()) {
-            final ImmediateModeRecorder recorder = DisplayListManager.getImmediateModeRecorder();
-            if (recorder != null) {
-                final ImmediateModeRecorder.Result result = recorder.processDrawArrays(mode, first, count);
-                if (result != null) {
-                    DisplayListManager.addImmediateModeDraw(result);
-                }
+            if (isVAOBound() || isVBOBound()) { // TODO VBO rendering needs to be replaced with proper VAO compilation
+                DisplayListManager.recordDrawArrays(mode, first, count);
+                return;
+            }
+            final DirectTessellator result = ImmediateModeRecorder.processDrawArrays(mode, first, count);
+            if (result != null) {
+                DisplayListManager.addImmediateModeDraw(result);
             }
             return;
         }
@@ -1884,52 +1857,70 @@ public class GLStateManager {
     // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
+        }
         GL11.glVertexPointer(size, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        clientArrayState.setVertexPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setVertexPointer(size, type, stride, pointer);
+        }
         GL11.glVertexPointer(size, type, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        // VBO offset - can't track buffer reference, clear it
-        clientArrayState.setVertexPointer(size, type, stride, null);
+        if (!isVAOBound()) {
+            // VBO offset - can't track buffer reference, clear it
+            clientArrayState.setVertexPointer(size, type, stride, null);
+        }
         GL11.glVertexPointer(size, type, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
+        }
         GL11.glColorPointer(size, stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        clientArrayState.setColorPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            clientArrayState.setColorPointer(size, type, stride, pointer);
+        }
         GL11.glColorPointer(size, type, stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
-        final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-        clientArrayState.setColorPointer(size, type, stride, pointer);
+        if (!isVAOBound()) {
+            final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
+            clientArrayState.setColorPointer(size, type, stride, pointer);
+        }
         GL11.glColorPointer(size, unsigned, stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        // VBO offset - can't track buffer reference, clear it
-        clientArrayState.setColorPointer(size, type, stride, null);
+        if (!isVAOBound()) {
+            // VBO offset - can't track buffer reference, clear it
+            clientArrayState.setColorPointer(size, type, stride, null);
+        }
         GL11.glColorPointer(size, type, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
-        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
-        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
+        if (!isVAOBound()) {
+            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
+            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
+        }
         GL11.glEnableClientState(cap);
     }
 
     public static void glDisableClientState(int cap) {
-        if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
-        else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
+        if (!isVAOBound()) {
+            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
+            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
+        }
         GL11.glDisableClientState(cap);
     }
 
@@ -2816,7 +2807,7 @@ public class GLStateManager {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(String.format(
                     "glGetTexParameteri called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", texture));
+                        "Cannot query OpenGL state during compilation!", texture));
             }
             return defaultSupplier.getAsInt();
         }
@@ -2832,7 +2823,7 @@ public class GLStateManager {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
                         "glGetTexParameteri called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), texture));
+                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), texture));
                 }
                 yield defaultSupplier.getAsInt();
             }
@@ -3771,6 +3762,46 @@ public class GLStateManager {
         }
     }
 
+    public static void glBindBuffer(int target, int buffer) {
+        if (target == GL15.GL_ARRAY_BUFFER) {
+            // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
+            boundVBO = buffer;
+        }
+        GL15.glBindBuffer(target, buffer);
+    }
+
+    public static void glBindVertexArray(int array) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordBindVAO(array);
+            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
+            // This is technically wrong, but I'm not sure if there's a better solution here.
+        }
+        if (boundVAO != array) {
+            boundVAO = array;
+            GL30.glBindVertexArray(array);
+        }
+    }
+
+    public static void glBindVertexArrayAPPLE(int array) {
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordBindVAO(array);
+            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
+            // This is technically wrong, but I'm not sure if there's a better solution here.
+        }
+        if (boundVAO != array) {
+            boundVAO = array;
+            APPLEVertexArrayObject.glBindVertexArrayAPPLE(array);
+        }
+    }
+
+    public static boolean isVBOBound() {
+        return boundVBO != 0;
+    }
+
+    public static boolean isVAOBound() {
+        return boundVAO != 0;
+    }
+
     public static boolean vendorIsAMD() {
         return VENDOR == AMD;
     }
@@ -3832,6 +3863,12 @@ public class GLStateManager {
         if (unit == GL13.GL_TEXTURE1) {
             OpenGlHelper.lastBrightnessX = x;
             OpenGlHelper.lastBrightnessY = y;
+        }
+    }
+
+    private static void checkMismatch(int cap) {
+        if (GLStateManager.glGetInteger(cap) != GL11.glGetInteger(cap)) {
+            throw new IllegalStateException("GLSM Mismatch! Cached: " + GLStateManager.glGetInteger(cap) + ", actual: " + GL11.glGetInteger(cap));
         }
     }
 

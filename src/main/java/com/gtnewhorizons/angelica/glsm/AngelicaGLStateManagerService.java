@@ -171,7 +171,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glBindBuffer(int target, int buffer) {
-        GL15.glBindBuffer(target, buffer);
+        GLStateManager.glBindBuffer(target, buffer);
     }
 
     @Override

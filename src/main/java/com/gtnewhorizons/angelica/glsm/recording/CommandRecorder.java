@@ -9,7 +9,7 @@ import java.nio.IntBuffer;
 /**
  * Records GL commands to a CommandBuffer during display list compilation.
  */
-public class CommandRecorder {
+public final class CommandRecorder {
     private final CommandBuffer buffer;
     private int commandCount;
 
@@ -334,6 +334,26 @@ public class CommandRecorder {
 
     public void recordDrawBuffers(int count, IntBuffer bufs) {
         buffer.writeDrawBuffers(count, bufs);
+        commandCount++;
+    }
+
+    public void recordDrawArrays(int mode, int start, int count) {
+        buffer.writeDrawArrays(mode, start, count);
+        commandCount++;
+    }
+
+    public void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        buffer.writeDrawElements(mode, indices_count, type, indices_buffer_offset);
+        commandCount++;
+    }
+
+    public void recordBindVBO(int vbo) {
+        buffer.writeBindVBO(vbo);
+        commandCount++;
+    }
+
+    public void recordBindVAO(int vao) {
+        buffer.writeBindVAO(vao);
         commandCount++;
     }
 

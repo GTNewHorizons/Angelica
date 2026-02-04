@@ -1,17 +1,19 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
-import static com.gtnewhorizons.angelica.glsm.recording.CommandBuffer.*;
 
 /**
  * Executes commands from a CommandBuffer
@@ -34,7 +36,7 @@ public final class CommandBufferExecutor {
      * @param complexObjects Array of complex objects (TexImage2DCmd, etc.)
      * @param ownedVbos Array of VBOs owned by the display list (indexed by DrawRange commands)
      */
-    public static void execute(ByteBuffer buffer, Object[] complexObjects, VertexBuffer[] ownedVbos) {
+    public static void execute(ByteBuffer buffer, Object[] complexObjects, DisplayListVBO ownedVbos) {
         long ptr = memAddress(buffer);
         final long end = ptr + buffer.limit();
 
@@ -450,48 +452,39 @@ public final class CommandBufferExecutor {
                 // === Draw commands ===
                 case GLCommand.DRAW_RANGE -> {
                     final int vboIndex = memGetInt(ptr);
-                    final int start = memGetInt(ptr + 4);
-                    final int count = memGetInt(ptr + 8);
-                    final boolean hasBrightness = memGetInt(ptr + 12) != 0;
-                    ptr += 16;
-                    final VertexBuffer vbo = ownedVbos[vboIndex];
-                    vbo.setupState();
-                    vbo.draw(start, count);
-                    vbo.cleanupState();
+                    ptr += 4;
+                    ownedVbos.render(vboIndex);
                 }
                 case GLCommand.DRAW_RANGE_RESTORE -> {
                     // Draw VBO range then restore GL current state from last vertex attributes
                     final int vboIndex = memGetInt(ptr);
-                    final int start = memGetInt(ptr + 4);
-                    final int count = memGetInt(ptr + 8);
-                    final int flags = memGetInt(ptr + 12);
+                    final int flags = memGetInt(ptr + 4);
 
                     // Draw the VBO
-                    final VertexBuffer vbo = ownedVbos[vboIndex];
-                    vbo.setupState();
-                    vbo.draw(start, count);
-                    vbo.cleanupState();
+                    ownedVbos.render(vboIndex);
 
                     // Restore attributes based on flags
-                    if ((flags & FLAG_HAS_COLOR) != 0) {
-                        final float r = memGetFloat(ptr + 16);
-                        final float g = memGetFloat(ptr + 20);
-                        final float b = memGetFloat(ptr + 24);
-                        final float a = memGetFloat(ptr + 28);
-                        GLStateManager.glColor4f(r, g, b, a);
+                    if ((flags & VertexFlags.COLOR_BIT) != 0) {
+                        final int color = memGetInt(ptr + 8);
+                        byte a = (byte) ((color >> 24) & 0xFF);
+                        byte r = (byte) ((color >> 16) & 0xFF);
+                        byte g = (byte) ((color >> 8) & 0xFF);
+                        byte b = (byte) ((color & 0xFF));
+                        GLStateManager.glColor4ub(r, g, b, a);
                     }
-                    if ((flags & FLAG_HAS_NORMALS) != 0) {
-                        final float nx = memGetFloat(ptr + 32);
-                        final float ny = memGetFloat(ptr + 36);
-                        final float nz = memGetFloat(ptr + 40);
+                    if ((flags & VertexFlags.NORMAL_BIT) != 0) {
+                        final int normal = memGetInt(ptr + 12);
+                        float nx = (byte)(normal)       / 127.0f;
+                        float ny = (byte)(normal >> 8)  / 127.0f;
+                        float nz = (byte)(normal >> 16) / 127.0f;
                         GLStateManager.glNormal3f(nx, ny, nz);
                     }
-                    if ((flags & FLAG_HAS_TEXTURE) != 0) {
-                        final float s = memGetFloat(ptr + 44);
-                        final float t = memGetFloat(ptr + 48);
+                    if ((flags & VertexFlags.TEXTURE_BIT) != 0) {
+                        final float s = memGetFloat(ptr + 16);
+                        final float t = memGetFloat(ptr + 20);
                         GLStateManager.glTexCoord2f(s, t);
                     }
-                    ptr += 52;  // Skip full command size (56 - 4 for cmd already read)
+                    ptr += 24;  // Skip full command size (28 - 4 for cmd already read)
                 }
                 case GLCommand.CALL_LIST -> {
                     final int listId = memGetInt(ptr);
@@ -512,6 +505,22 @@ public final class CommandBufferExecutor {
                     DRAW_BUFFERS_BUFFER.flip();
                     ptr += 4 * MAX_DRAW_BUFFERS;
                     GLStateManager.glDrawBuffers(DRAW_BUFFERS_BUFFER);
+                }
+                case GLCommand.DRAW_ARRAYS -> {
+                    GLStateManager.glDrawArrays(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8));
+                    ptr += 12;
+                }
+                case GLCommand.DRAW_ELEMENTS -> {
+                    GLStateManager.glDrawElements(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8), memGetLong(ptr + 12));
+                    ptr += 20;
+                }
+                case GLCommand.BIND_VBO -> {
+                    GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, memGetInt(ptr));
+                    ptr += 4;
+                }
+                case GLCommand.BIND_VAO -> {
+                    VAOManager.VAO.glBindVertexArray(memGetInt(ptr));
+                    ptr += 4;
                 }
 
                 // === Complex object reference ===

@@ -1,8 +1,10 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
+import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 
 import net.minecraft.client.Minecraft;
@@ -42,7 +44,7 @@ public class HorizonRenderer {
 	 * Sine of 22.5 degrees.
 	 */
 	private static final double SIN_22_5 = Math.sin(Math.toRadians(22.5));
-	private VertexBuffer vertexBuffer;
+	private IVertexArrayObject vao;
 	private int currentRenderDistance;
 
 	public HorizonRenderer() {
@@ -52,13 +54,17 @@ public class HorizonRenderer {
 	}
 
 	private void rebuildBuffer() {
-        final CapturingTessellator tessellator = TessellatorManager.startCapturingAndGet();
+        if (this.vao != null) {
+            this.vao.delete();
+        }
+
+        final DirectTessellator tessellator = TessellatorManager.startCapturingDirect(DefaultVertexFormat.POSITION);
 
 		// Build the horizon quads into a buffer
         tessellator.startDrawingQuads(); //(GL11.GL_QUADS, DefaultVertexFormat.POSITION);
 		buildHorizon(currentRenderDistance * 16, tessellator);
 
-        this.vertexBuffer = TessellatorManager.stopCapturingToVAO(vertexBuffer, DefaultVertexFormat.POSITION);
+        this.vao = DirectTessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
 	}
 
     private void buildQuad(Tessellator consumer, double x1, double z1, double x2, double z2) {
@@ -145,18 +151,24 @@ public class HorizonRenderer {
 		buildBottomPlane(consumer, 384);
 	}
 
-	public void renderHorizon(FloatBuffer floatBuffer) {
+	public void renderHorizon(FloatBuffer matrix) {
 		if (currentRenderDistance != Minecraft.getMinecraft().gameSettings.renderDistanceChunks) {
 			currentRenderDistance = Minecraft.getMinecraft().gameSettings.renderDistanceChunks;
 			rebuildBuffer();
 		}
 
-		vertexBuffer.setupState();
-		vertexBuffer.draw(floatBuffer);
-		vertexBuffer.cleanupState();
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        GL11.glMultMatrix(matrix);
+
+        vao.bind();
+        vao.draw();
+        vao.unbind();
+
+        GL11.glPopMatrix();
 	}
 
 	public void destroy() {
-		vertexBuffer.close();
+        vao.delete();
 	}
 }

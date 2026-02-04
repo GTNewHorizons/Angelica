@@ -45,8 +45,11 @@ public final class AngelicaRedirector {
     private static final String GL12 = "org/lwjgl/opengl/GL12";
     private static final String GL13 = "org/lwjgl/opengl/GL13";
     private static final String GL14 = "org/lwjgl/opengl/GL14";
+    private static final String GL15 = "org/lwjgl/opengl/GL15";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
     private static final String GL30 = "org/lwjgl/opengl/GL30";
+    private static final String ARBVertexArrayObject = "org/lwjgl/opengl/ARBVertexArrayObject";
+    private static final String APPLEVertexArrayObject = "org/lwjgl/opengl/APPLEVertexArrayObject";
     private static final String Project = "org/lwjgl/util/glu/Project";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
@@ -225,6 +228,9 @@ public final class AngelicaRedirector {
             .add("glBlendColor")
             .add("glBlendEquation")
         );
+        methodRedirects.put(GL15, RedirectMap.newMap()
+            .add("glBindBuffer")
+        );
         methodRedirects.put(GL20, RedirectMap.newMap()
             .add("glBlendEquationSeparate")
             .add("glDrawBuffers")
@@ -234,8 +240,11 @@ public final class AngelicaRedirector {
             .add("glUseProgram")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
+            .add("glBindVertexArray")
             .add("glBindFramebuffer")
         );
+
+        // MINECRAFT
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
             .add("glBlendFunc", "tryBlendFuncSeparate")
             .add("func_148821_a", "tryBlendFuncSeparate")
@@ -249,7 +258,22 @@ public final class AngelicaRedirector {
             .add("isFramebufferEnabled")
         );
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
-        methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
+
+        // ARB
+        methodRedirects.put(ARBMultiTexture, RedirectMap.newMap()
+            .add("glActiveTextureARB")
+        );
+        methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
+            .add("glBindVertexArray")
+        );
+
+
+        // APPLE
+        methodRedirects.put(APPLEVertexArrayObject, RedirectMap.newMap()
+            .add("glBindVertexArrayAPPLE")
+        );
+
+        // OTHER
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
 
         final String glPrefix = "org/lwjgl/opengl/GL";
@@ -354,7 +378,7 @@ public final class AngelicaRedirector {
         return changed;
     }
 
-    private static class RedirectMap<K> extends HashMap<K, K> {
+    private static final class RedirectMap<K> extends HashMap<K, K> {
 
         public static RedirectMap<String> newMap() {
             return new RedirectMap<>();

@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 

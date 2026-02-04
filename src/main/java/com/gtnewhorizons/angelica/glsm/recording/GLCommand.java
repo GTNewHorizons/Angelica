@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
+
 /**
  * Command opcodes for ByteBuffer-based display list serialization.
  * Each command has a fixed layout described in comments.
@@ -88,16 +90,24 @@ public final class GLCommand {
     public static final int MATERIAL = 93;           // [cmd:4][face:4][pname:4][count:4][params:16f] = 32 bytes
 
     // === Draw commands ===
-    public static final int DRAW_RANGE = 100;        // [cmd:4][vboIndex:4][start:4][count:4][hasBrightness:4] = 20 bytes
-    public static final int CALL_LIST = 101;         // [cmd:4][listId:4] = 8 bytes
-    public static final int DRAW_BUFFER = 102;       // [cmd:4][mode:4] = 8 bytes
-    public static final int DRAW_BUFFERS = 103;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
+    public static final int DRAW_RANGE = 100;        // [cmd:4][vboIndex:4] = 8 bytes
+    public static final int DRAW_RANGE_RESTORE = 101; // [cmd:4][vboIndex:4][flags:4][color:4][normal:4][lastTexCoord:8f] = 28 bytes
+    public static final int CALL_LIST = 102;         // [cmd:4][listId:4] = 8 bytes
+
+
+    public static final int DRAW_ARRAYS = 110;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
+    public static final int DRAW_ELEMENTS = 111;     // [cmd:4][mode:4][indices_count:4][type:4][indices_buffer_offset:8] = 28 bytes
+    public static final int DRAW_BUFFER = 112;       // [cmd:4][mode:4] = 8 bytes
+    public static final int DRAW_BUFFERS = 113;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
     /**
      * Draw VBO range with attribute restoration after draw.
      * Used for immediate mode VBOs to restore GL current state (color, normal, texcoord).
      */
-    public static final int DRAW_RANGE_RESTORE = 104; // [cmd:4][vboIndex:4][start:4][count:4][flags:4]
-                                                      // [lastColor:16f][lastNormal:12f][lastTexCoord:8f] = 56 bytes
+
+
+    // === Bind commands ===
+    public static final int BIND_VBO = 120;
+    public static final int BIND_VAO = 121;
 
     // === Complex object reference ===
     public static final int COMPLEX_REF = 255;       // [cmd:4][index:4] = 8 bytes
@@ -171,9 +181,78 @@ public final class GLCommand {
             case CALL_LIST -> "CALL_LIST";
             case DRAW_BUFFER -> "DRAW_BUFFER";
             case DRAW_BUFFERS -> "DRAW_BUFFERS";
-            case DRAW_RANGE_RESTORE -> "DRAW_RANGE_RESTORE";
             case COMPLEX_REF -> "COMPLEX_REF";
+            case DRAW_RANGE_RESTORE -> "DRAW_RANGE_RESTORE";
+            case BIND_VAO -> "BIND_VAO";
+            case BIND_VBO -> "BIND_VBO";
             default -> "UNKNOWN(" + opcode + ")";
+        };
+    }
+
+    /**
+     * Get size of a command in bytes (including the opcode).
+     */
+    public static int getCommandSize(int cmd, long ptr) {
+        return switch (cmd) {
+            // Opcode-only commands (4 bytes)
+            case GLCommand.LOAD_IDENTITY, GLCommand.PUSH_MATRIX, GLCommand.POP_MATRIX -> 4;
+
+            // Single int commands (8 bytes)
+            case GLCommand.ENABLE, GLCommand.DISABLE, GLCommand.CLEAR, GLCommand.CLEAR_STENCIL,
+                 GLCommand.CULL_FACE, GLCommand.DEPTH_FUNC, GLCommand.SHADE_MODEL, GLCommand.LOGIC_OP,
+                 GLCommand.MATRIX_MODE, GLCommand.ACTIVE_TEXTURE, GLCommand.USE_PROGRAM,
+                 GLCommand.PUSH_ATTRIB, GLCommand.POP_ATTRIB, GLCommand.STENCIL_MASK,
+                 GLCommand.DEPTH_MASK, GLCommand.FRONT_FACE, GLCommand.POINT_SIZE, GLCommand.LINE_WIDTH,
+                 GLCommand.CALL_LIST, GLCommand.COMPLEX_REF, GLCommand.DRAW_RANGE, GLCommand.BIND_VBO,
+                 GLCommand.BIND_VAO -> 8;
+
+            // Two int commands (12 bytes)
+            case GLCommand.BIND_TEXTURE, GLCommand.POLYGON_MODE, GLCommand.COLOR_MATERIAL,
+                 GLCommand.LINE_STIPPLE, GLCommand.STENCIL_MASK_SEPARATE, GLCommand.FOGI,
+                 GLCommand.HINT, GLCommand.POLYGON_OFFSET, GLCommand.ALPHA_FUNC, GLCommand.FOGF,
+                 GLCommand.LIGHT_MODELF, GLCommand.LIGHT_MODELI -> 12;
+
+            // Three int commands (16 bytes)
+            case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
+                 GLCommand.LIGHTF, GLCommand.LIGHTI,
+                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF, GLCommand.DRAW_ARRAYS -> 16;
+
+            // Four int commands (20 bytes)
+            case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
+                 GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
+                 GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
+
+            case GLCommand.DRAW_ELEMENTS -> 24;
+
+            // DRAW_RANGE_RESTORE: 28 bytes
+            case GLCommand.DRAW_RANGE_RESTORE -> 28;
+
+            // DRAW_BUFFER: 8 bytes [cmd:4][mode:4]
+            case GLCommand.DRAW_BUFFER -> 8;
+
+            // DRAW_BUFFERS: 40 bytes [cmd:4][count:4][bufs:4*8]
+            case GLCommand.DRAW_BUFFERS -> 40;
+
+            // Double commands
+            case GLCommand.TRANSLATE, GLCommand.SCALE -> 28;  // cmd + 3 doubles
+            case GLCommand.CLEAR_DEPTH -> 12;  // cmd + 1 double
+            case GLCommand.ROTATE -> 36;  // cmd + 4 doubles
+            case GLCommand.ORTHO, GLCommand.FRUSTUM -> 52;  // cmd + 6 doubles
+
+            // Matrix commands
+            case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> 68;  // cmd + 16 floats
+
+            // Buffer commands (variable, read count)
+            case GLCommand.FOG, GLCommand.LIGHT_MODEL -> {
+                final int count = memGetInt(ptr + 8);  // pname at +4, count at +8
+                yield 12 + count * 4;
+            }
+            case GLCommand.LIGHT, GLCommand.MATERIAL -> {
+                final int count = memGetInt(ptr + 12);  // light/face at +4, pname at +8, count at +12
+                yield 16 + count * 4;
+            }
+
+            default -> throw new IllegalStateException("Unknown command: " + cmd);
         };
     }
 }

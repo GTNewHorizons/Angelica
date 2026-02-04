@@ -25,30 +25,24 @@
 
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import java.nio.ByteBuffer;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 public class ItemRenderListManager {
     // Least used element is at position 0. This is in theory slightly faster.
     private static final Object2ObjectLinkedOpenHashMap<ItemProp, CachedVBO> vboCache = new Object2ObjectLinkedOpenHashMap<>(64);
-
-    // Formula: (widthSubdivisions * 2 + heightSubdivisions * 2 + 2) * 4 * vertexSize
-    // Using 256 as both variables due to enchants, to prevent later re-allocations.
-    private static ByteBuffer quadBuffer = BufferUtils.createByteBuffer(
-        (1026 * DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize()) << 2
-    );
 
     // 1 minute
     private static final int EXPIRY_TICKS = 1_200;
@@ -56,7 +50,7 @@ public class ItemRenderListManager {
 
     private static final ItemProp prop = new ItemProp();
 
-    public static VertexBuffer pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
+    public static CachedVBO pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
 
         if (!vboCache.isEmpty()) {
@@ -92,42 +86,35 @@ public class ItemRenderListManager {
 
         vbo.expiry = getElapsedTicks() + EXPIRY_TICKS;
 
-        TessellatorManager.startCapturing();
-
-        return vbo.vertexBuffer;
+        return vbo;
     }
 
-    public static void post(CapturingTessellator tessellator, VertexBuffer vbo) {
-        final var quads = TessellatorManager.stopCapturingToPooledQuads();
-        final int size = quads.size();
-
-        final int needed = (DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexSize() * size) << 2;
-        if (quadBuffer.capacity() < needed) {
-            quadBuffer = BufferUtils.createByteBuffer(HashCommon.nextPowerOfTwo(needed));
-        }
-
-        for (int i = 0; i < size; i++) {
-            DefaultVertexFormat.POSITION_TEXTURE_NORMAL.writeQuad(quads.get(i), quadBuffer);
-        }
-
-        quadBuffer.flip();
-        vbo.upload(quadBuffer);
-        quadBuffer.clear();
-
-        tessellator.clearQuads();
-        vbo.render();
+    public static void post(DirectTessellator tessellator, CachedVBO vbo) {
+        vbo.allocate(tessellator);
+        TessellatorManager.stopCapturingDirect();
+        vbo.vertexBuffer.render();
     }
 
     private static int getElapsedTicks() {
         return Minecraft.getMinecraft().thePlayer.ticksExisted;
     }
 
-    private static final class CachedVBO {
-        private VertexBuffer vertexBuffer;
+    public static final class CachedVBO {
+        private final IVertexArrayObject vertexBuffer;
+        private final IndexBuffer ebo;
         private int expiry;
 
         public CachedVBO() {
-            this.vertexBuffer = VAOManager.createVAO(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS);
+            this.ebo = new IndexBuffer();
+            this.vertexBuffer = VAOManager.createMutableVAO(
+                DefaultVertexFormat.POSITION_TEXTURE_NORMAL,
+                GL11.GL_TRIANGLES,
+                ebo
+            );
+        }
+
+        private void allocate(DirectTessellator tessellator) {
+            tessellator.allocateToVBO(vertexBuffer, ebo);
         }
 
         private void render(int elapsedTicks) {
@@ -136,8 +123,8 @@ public class ItemRenderListManager {
         }
 
         private void delete() {
-            vertexBuffer.close();
-            vertexBuffer = null;
+            vertexBuffer.delete();
+            // EBO gets deleted by vertexBuffer.delete()
         }
     }
 
