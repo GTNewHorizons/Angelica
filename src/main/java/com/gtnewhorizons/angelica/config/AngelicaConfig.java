@@ -93,7 +93,7 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 1, max = 60)
     public static int hudCachingFPS = 20;
 
-    @Config.Comment("Batch drawScreen fonts [Experimental]")
+    @Config.Comment("Batch drawScreen fonts")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
