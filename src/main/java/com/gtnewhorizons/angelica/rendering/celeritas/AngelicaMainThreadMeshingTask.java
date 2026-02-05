@@ -28,9 +28,9 @@ public class AngelicaMainThreadMeshingTask extends AngelicaChunkBuilderMeshingTa
         final int minZ = this.render.getOriginZ();
 
         final var world = Minecraft.getMinecraft().theWorld;
+        this.blockAccess = new ChunkCache(world, minX - 1, minY - 1, minZ - 1, minX + 17, minY + 17, minZ + 17, 1);
         this.biomeColorCache = ((WorldClientExtension) world).celeritas$getSmoothBiomeColorCache();
         this.biomeColorCache.update(new SectionPos(this.render.getChunkX(), this.render.getChunkY(), this.render.getChunkZ()));
-        this.blockAccess = new ChunkCache(world, minX - 1, minY - 1, minZ - 1, minX + 17, minY + 17, minZ + 17, 1);
     }
 
     @Override
