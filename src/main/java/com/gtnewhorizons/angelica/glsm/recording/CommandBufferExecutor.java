@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
+import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -519,7 +519,7 @@ public final class CommandBufferExecutor {
                     ptr += 4;
                 }
                 case GLCommand.BIND_VAO -> {
-                    VAOManager.VAO.glBindVertexArray(memGetInt(ptr));
+                    UniversalVAO.bindVertexArray(memGetInt(ptr));
                     ptr += 4;
                 }
 

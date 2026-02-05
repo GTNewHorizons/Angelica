@@ -54,6 +54,18 @@ public final class AngelicaRedirector {
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
+
+    // Redirect VAO related calls from NHLib and LWJGLService
+    private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
+    private static final String UniversalVAODot = "com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO";
+    private static final String VaoFunctions = "com/gtnewhorizon/gtnhlib/client/opengl/VaoFunctions";
+    private static final String LWJGLService = "com/mitchej123/lwjgl/LWJGLService";
+
+    // Don't redirect these items inside of UniversalVAO, since we might be delegating to them
+    private static final Set<String> UniversalVAOSkippedMethods = ImmutableSet.of(
+        "glBindVertexArray", "glGenVertexArrays", "glDeleteVertexArrays", "glIsVertexArray"
+    );
+
     private static final String MinecraftClient = "net.minecraft.client";
     private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
     private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
@@ -63,6 +75,7 @@ public final class AngelicaRedirector {
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL12, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
+    private static final Map<String, Map<String, String>> interfaceRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 
     static {
@@ -270,11 +283,28 @@ public final class AngelicaRedirector {
 
         // APPLE
         methodRedirects.put(APPLEVertexArrayObject, RedirectMap.newMap()
-            .add("glBindVertexArrayAPPLE")
+            .add("glBindVertexArrayAPPLE", "glBindVertexArray")
+        );
+
+        // GTNHLib VAO
+        methodRedirects.put(UniversalVAO, RedirectMap.newMap()
+            .add("bindVertexArray", "glBindVertexArray")
         );
 
         // OTHER
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+
+        // Interface/virtual redirects — callers invoke these on a receiver object
+        interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
+            .add("glBindVertexArray")
+        );
+        interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
+            .add("glBindVertexArray")
+        );
+
+        cstPoolParser.addString(UniversalVAO);
+        cstPoolParser.addString(VaoFunctions);
+        cstPoolParser.addString(LWJGLService);
 
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
@@ -356,7 +386,8 @@ public final class AngelicaRedirector {
                         final Map<String, String> redirects = methodRedirects.get(mNode.owner);
                         if (redirects != null) {
                             final String glsmName = redirects.get(mNode.name);
-                            if (glsmName != null) {
+                            // Skip VAO method redirects inside UniversalVAO
+                            if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
                                 if (LOG_SPAM) {
                                     final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                     LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
@@ -365,6 +396,30 @@ public final class AngelicaRedirector {
                                 mNode.name = glsmName;
                                 changed = true;
                                 redirectInMethod = true;
+                            }
+                        }
+                        // Interface/virtual redirects: rewrite receiver-based calls to static GLStateManager calls
+                        if ((mNode.getOpcode() == Opcodes.INVOKEINTERFACE || mNode.getOpcode() == Opcodes.INVOKEVIRTUAL) && mNode.desc.equals("(I)V")) {
+                            final Map<String, String> ifaceRedirects = interfaceRedirects.get(mNode.owner);
+                            if (ifaceRedirects != null) {
+                                final String glsmName = ifaceRedirects.get(mNode.name);
+                                if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
+                                    if (LOG_SPAM) {
+                                        final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                        LOGGER.info("Redirecting interface call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, "(I)V");
+                                    }
+                                    // Stack is: [receiver, int_arg]. We need just [int_arg] for static call.
+                                    // Insert SWAP + POP before the call to remove the receiver.
+                                    mn.instructions.insertBefore(mNode, new InsnNode(Opcodes.SWAP));
+                                    mn.instructions.insertBefore(mNode, new InsnNode(Opcodes.POP));
+                                    mNode.setOpcode(Opcodes.INVOKESTATIC);
+                                    mNode.owner = GLStateManager;
+                                    mNode.name = glsmName;
+                                    mNode.desc = "(I)V";
+                                    mNode.itf = false;
+                                    changed = true;
+                                    redirectInMethod = true;
+                                }
                             }
                         }
                     }

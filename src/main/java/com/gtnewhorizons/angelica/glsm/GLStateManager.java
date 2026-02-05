@@ -58,7 +58,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.APPLEVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
@@ -3778,20 +3778,12 @@ public class GLStateManager {
         }
         if (boundVAO != array) {
             boundVAO = array;
-            GL30.glBindVertexArray(array);
+            UniversalVAO.bindVertexArray(array);
         }
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
-        if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordBindVAO(array);
-            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
-            // This is technically wrong, but I'm not sure if there's a better solution here.
-        }
-        if (boundVAO != array) {
-            boundVAO = array;
-            APPLEVertexArrayObject.glBindVertexArrayAPPLE(array);
-        }
+        glBindVertexArray(array);
     }
 
     public static boolean isVBOBound() {
