@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.mitchej123.glsm.GLStateManagerService;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -149,17 +150,17 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public int glGenVertexArrays() {
-        return GL30.glGenVertexArrays();
+        return UniversalVAO.genVertexArrays();
     }
 
     @Override
     public void glBindVertexArray(int array) {
-        GL30.glBindVertexArray(array);
+        GLStateManager.glBindVertexArray(array);
     }
 
     @Override
     public void glDeleteVertexArrays(int array) {
-        GL30.glDeleteVertexArrays(array);
+        UniversalVAO.deleteVertexArrays(array);
     }
 
     // ===================== BUFFER OPERATIONS =====================

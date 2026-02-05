@@ -6,11 +6,13 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 
 import java.util.List;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
+import org.embeddedt.embeddium.impl.util.position.SectionPos;
 import cpw.mods.fml.common.Optional;
 import mega.fluidlogged.api.FLBlockAccess;
 import net.minecraft.block.Block;
@@ -98,6 +100,8 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private ChunkSectionPos origin;
     private StructureBoundingBox volume;
 
+    private final SmoothBiomeColorCache biomeColorCache;
+
     private List<IDynamicLightSource> chunkLightSources;
     private DynamicLights dynamicLightsInstance;
 
@@ -175,12 +179,16 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
                 }
             }
         }
+
+        this.biomeColorCache = new SmoothBiomeColorCache(this);
     }
 
     public void copyData(ChunkRenderContext context) {
         this.origin = context.getOrigin();
         this.sections = context.getSections();
         this.volume = context.getVolume();
+
+        this.biomeColorCache.update(new SectionPos(origin.x, origin.y, origin.z));
 
         this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;
         this.baseY = (this.origin.y - NEIGHBOR_CHUNK_RADIUS) << 4;
@@ -219,6 +227,10 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     public ChunkSectionPos getOrigin() {
         return this.origin;
+    }
+
+    public SmoothBiomeColorCache getBiomeColorCache() {
+        return this.biomeColorCache;
     }
 
     @Override
