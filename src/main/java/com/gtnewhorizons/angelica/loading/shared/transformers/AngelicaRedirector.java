@@ -58,7 +58,7 @@ public final class AngelicaRedirector {
     // Redirect VAO related calls from NHLib and LWJGLService
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
     private static final String UniversalVAODot = "com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO";
-    private static final String VaoFunctions = "com/gtnewhorizon/gtnhlib/client/opengl/VaoFunctions";
+    private static final String VaoFunctions = "com/gtnewhorizon/gtnhlib/client/renderer/vao/VaoFunctions";
     private static final String LWJGLService = "com/mitchej123/lwjgl/LWJGLService";
 
     // Don't redirect these items inside of UniversalVAO, since we might be delegating to them
