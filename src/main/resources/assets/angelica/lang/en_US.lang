@@ -224,3 +224,9 @@ options.angelica.aggressiveChunkLoading=Aggressive Chunk Loading
 options.angelica.aggressiveChunkLoading.tooltip=Renders chunks immediately when loaded, even if neighbors aren't ready yet. Improves perceived loading speed at render distance edges. Chunks rebuild automatically when neighbors load. Useful for low render distance servers.
 options.angelica.disablef3=Disable F3 Additions
 options.angelica.disablef3.tooltip=Disables Angelica's additions to the F3 debug screen.
+
+sodium.options.multidraw_mode.name=Multi-Draw Mode
+sodium.options.multidraw_mode.tooltip=Controls how draw commands are dispatched for terrain rendering. §lDirect§r uses glMultiDrawElementsBaseVertex (default, GL 3.2+). §lIndirect§r uses GPU indirect rendering (GL 4.3+), may reduce CPU overhead on some hardware. §lIndividual§r issues individual draw calls.
+sodium.options.multidraw_mode.direct=Direct
+sodium.options.multidraw_mode.indirect=Indirect
+sodium.options.multidraw_mode.individual=Individual
