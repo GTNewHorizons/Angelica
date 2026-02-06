@@ -210,6 +210,8 @@ public class AngelicaConfig {
             "shukaro.artifice.block.world.BlockOre",
             "bartworks.system.material.BWMetaGeneratedOres",
             "gtPlusPlus.core.block.base.BlockBaseOre",
+            "org.pfaa.geologica.block.BrokenGeoBlock",
+            "org.pfaa.geologica.block.BrickGeoBlock",
     })
     public static String[] blockCrackFixRenderPassWhitelist__;
 
