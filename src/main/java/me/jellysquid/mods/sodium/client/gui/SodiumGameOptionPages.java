@@ -18,6 +18,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
@@ -265,6 +266,19 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.advanced.useVertexArrayObjects = value, opts -> opts.advanced.useVertexArrayObjects)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(MultiDrawMode.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.multidraw_mode.name"))
+                        .setTooltip(I18n.format("sodium.options.multidraw_mode.tooltip"))
+                        .setControl(o -> {
+                            boolean indirectSupported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);
+                            MultiDrawMode[] allowed = indirectSupported ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
+                            return new CyclingControl<>(o, MultiDrawMode.class, allowed);
+                        })
+                        .setBinding((opts, value) -> opts.advanced.multiDrawMode = value, opts -> opts.advanced.multiDrawMode)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setImpact(OptionImpact.VARIES)
+                        .setEnabled(GLStateManager.capabilities != null)
                         .build())
                 .build());
 

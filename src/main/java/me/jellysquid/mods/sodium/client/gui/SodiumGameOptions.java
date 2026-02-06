@@ -7,6 +7,7 @@ import com.google.gson.JsonSyntaxException;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import net.coderbot.iris.Iris;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 
@@ -27,6 +28,7 @@ public class SodiumGameOptions {
     public static class AdvancedSettings {
         public boolean useVertexArrayObjects = true;
         public boolean useChunkMultidraw = true;
+        public MultiDrawMode multiDrawMode = MultiDrawMode.DIRECT;
 
         public boolean useParticleCulling = true;
         public boolean allowDirectMemoryAccess = true;
@@ -94,6 +96,10 @@ public class SodiumGameOptions {
         // Clamp render-ahead to 0 if GL 3.2 fences aren't available
         if (GLStateManager.capabilities == null || !GLStateManager.capabilities.OpenGL32) {
             config.performance.cpuRenderAheadLimit = 0;
+        }
+
+        if (config.advanced.multiDrawMode == MultiDrawMode.INDIRECT && (GLStateManager.capabilities == null || (!GLStateManager.capabilities.OpenGL43 && !GLStateManager.capabilities.GL_ARB_multi_draw_indirect))) {
+            config.advanced.multiDrawMode = MultiDrawMode.DIRECT;
         }
 
         try {
