@@ -454,6 +454,14 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.hudCaching"))
+                        .setTooltip(I18n.format("options.angelica.hudCaching.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.hudCachingActive = value, opts -> AngelicaConfig.hudCachingActive)
+                        .setEnabled(AngelicaConfig.enableHudCaching)
+                        .build())
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.droppedItemLimit"))
                         .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))
