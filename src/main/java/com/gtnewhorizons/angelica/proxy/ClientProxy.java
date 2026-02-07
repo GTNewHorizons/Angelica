@@ -119,7 +119,7 @@ public class ClientProxy extends CommonProxy {
     public void init(FMLInitializationEvent event) {
         super.init(event);
 
-        if (AngelicaConfig.enableHudCaching) {
+        if (false) {
             HUDCaching.init();
         }
         if (AngelicaConfig.enableCeleritas) {
