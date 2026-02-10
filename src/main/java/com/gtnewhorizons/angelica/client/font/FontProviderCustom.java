@@ -135,7 +135,7 @@ public final class FontProviderCustom implements FontProvider {
         void construct(Font font) {
             int atlasChars = 0;
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) { atlasChars++; }
             }
             if (atlasChars == 0) { return; }
@@ -188,7 +188,7 @@ public final class FontProviderCustom implements FontProvider {
             int imgX = (int) charSeparator; // position in pixels
 
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                final char ch = (char) (i + ATLAS_SIZE * this.id);
                 if (!font.canDisplay(ch)) { continue; }
 
                 if (tileX >= atlasTilesX) {
