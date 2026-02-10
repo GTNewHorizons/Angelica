@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import lombok.Setter;
 import lombok.Value;
@@ -134,48 +133,44 @@ public final class FontProviderCustom implements FontProvider {
         }
 
         void construct(Font font) {
-            float separator = currentFontQuality / 3f;
+            int atlasChars = 0;
+            for (int i = 0; i < ATLAS_SIZE; i++) {
+                final char ch = (char)(i + ATLAS_SIZE * this.id);
+                if (font.canDisplay(ch)) { atlasChars++; }
+            }
+            if (atlasChars == 0) { return; }
 
             BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = image.createGraphics();
             g2d.setFont(font);
             FontMetrics fm = g2d.getFontMetrics();
             g2d.dispose();
-            int width = 0;
-            int actualChars = 0;
-            for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
-                if (font.canDisplay(ch)) {
-                    width += (int) (separator + fm.charWidth(ch));
-                    actualChars++;
-                }
-            }
-            if (actualChars == 0) {
-                return;
-            }
-            final int atlasTilesX = (int) Math.ceil(Math.sqrt(actualChars) * 1.5f);
-            final int atlasTilesY = (int) Math.ceil((double) actualChars / atlasTilesX);
-            width = 0;
-            actualChars = 0;
+
+            final int atlasTilesX = (int) Math.ceil(Math.sqrt(atlasChars) * 1.5f);
+            final int atlasTilesY = (int) Math.ceil((double) atlasChars / atlasTilesX);
+            final float charSeparator = currentFontQuality / 3f;
+            int rowWidth = 0;
             int maxRowWidth = 0;
+            atlasChars = 0;
+
             for (int i = 0; i < ATLAS_SIZE; i++) {
-                if (actualChars % atlasTilesX == 0) {
-                    maxRowWidth = Math.max(maxRowWidth, width);
-                    width = 0;
+                if (atlasChars % atlasTilesX == 0) {
+                    maxRowWidth = Math.max(maxRowWidth, rowWidth);
+                    rowWidth = 0;
                 }
                 final char ch = (char)(i + ATLAS_SIZE * this.id);
                 if (font.canDisplay(ch)) {
-                    width += (int) (separator + fm.charWidth(ch));
-                    actualChars++;
+                    rowWidth += (int) (charSeparator + fm.charWidth(ch));
+                    atlasChars++;
                 }
             }
-            maxRowWidth = Math.max(maxRowWidth, width);
+            maxRowWidth = Math.max(maxRowWidth, rowWidth);
 
             final int lineHeight = fm.getHeight();
             final float desc = fm.getDescent();
 
-            final int imageWidth = (int) (maxRowWidth + separator);
-            final int imageHeight = (int) ((separator + lineHeight) * atlasTilesY + separator);
+            final int imageWidth = (int) (maxRowWidth + charSeparator);
+            final int imageHeight = (int) ((charSeparator + lineHeight) * atlasTilesY + charSeparator);
 
             image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
             g2d = image.createGraphics();
@@ -190,7 +185,7 @@ public final class FontProviderCustom implements FontProvider {
             fm = g2d.getFontMetrics();
 
             int tileX = 0, tileY = 0; // position in atlas tiles
-            int imgX = (int) separator; // position in pixels
+            int imgX = (int) charSeparator; // position in pixels
 
             for (int i = 0; i < ATLAS_SIZE; i++) {
                 final char ch = (char)(i + ATLAS_SIZE * this.id);
@@ -198,22 +193,22 @@ public final class FontProviderCustom implements FontProvider {
 
                 if (tileX >= atlasTilesX) {
                     tileX = 0;
-                    imgX = (int) separator;
+                    imgX = (int) charSeparator;
                     tileY++;
                 }
 
                 final int charWidth = fm.charWidth(ch);
                 final float charAspectRatio = (float) charWidth / lineHeight;
                 final float inset = currentFontQuality / 16;
-                g2d.drawString(Character.toString(ch), imgX, (lineHeight + separator) * (tileY + 1) - desc);
+                g2d.drawString(Character.toString(ch), imgX, (lineHeight + charSeparator) * (tileY + 1) - desc);
                 final float uStart = (float) (imgX - inset * charAspectRatio) / imageWidth;
-                final float vStart = ((lineHeight + separator) * (tileY + 1) - lineHeight - inset) / imageHeight;
+                final float vStart = ((lineHeight + charSeparator) * (tileY + 1) - lineHeight - inset) / imageHeight;
                 final float xAdvance = charAspectRatio * 8 * charWidth / (charWidth + 2 * inset * charAspectRatio);
                 final float glyphW = charAspectRatio * 8 + 1;
                 final float uSz = (float) (charWidth + 2 * inset * charAspectRatio) / imageWidth;
                 final float vSz = (float) (lineHeight + 2 * inset) / imageHeight;
                 glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
-                imgX += (int) (charWidth + separator);
+                imgX += (int) (charWidth + charSeparator);
                 tileX++;
             }
             g2d.dispose();
