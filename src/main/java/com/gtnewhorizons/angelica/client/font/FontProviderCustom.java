@@ -155,8 +155,6 @@ public final class FontProviderCustom implements FontProvider {
             }
             final int atlasTilesX = (int) Math.ceil(Math.sqrt(actualChars) * 1.5f);
             final int atlasTilesY = (int) Math.ceil((double) actualChars / atlasTilesX);
-            LOGGER.info("constructing custom font atlas (ID {}) of nominal size {} chars, actual: {}, {} rows by {} columns",
-                this.id, ATLAS_SIZE, actualChars, atlasTilesX, atlasTilesY);
             width = 0;
             actualChars = 0;
             int maxRowWidth = 0;
@@ -220,7 +218,6 @@ public final class FontProviderCustom implements FontProvider {
             }
             g2d.dispose();
             try {
-                LOGGER.info("writing custom font atlas texture ({}x{} px) to {}", imageWidth, imageHeight, getAtlasFullPath(this.id));
                 Files.createDirectories(Paths.get(getFontDir()));
                 ImageIO.write(image, "png", new File(getAtlasFullPath(this.id)));
             } catch (IOException e) {
