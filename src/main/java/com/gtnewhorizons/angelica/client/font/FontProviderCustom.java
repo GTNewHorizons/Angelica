@@ -45,7 +45,7 @@ public final class FontProviderCustom implements FontProvider {
             default -> null;
         };
         if (Objects.equals(myFontName, "(none)")) {
-            font = null;
+            this.font = null;
             return;
         }
         int fontPos = -1;
@@ -57,10 +57,10 @@ public final class FontProviderCustom implements FontProvider {
         }
         if (fontPos == -1) {
             LOGGER.info("Could not find previously set font \"{}\". ", myFontName);
-            font = null;
+            this.font = null;
             return;
         }
-        font = availableFonts[fontPos].deriveFont(currentFontQuality);
+        this.font = availableFonts[fontPos].deriveFont(this.currentFontQuality);
     }
     private static class InstLoader {
         static final FontProviderCustom instance0 = new FontProviderCustom((byte)0);
@@ -70,8 +70,8 @@ public final class FontProviderCustom implements FontProvider {
     public static FontProviderCustom getFallback() { return InstLoader.instance1; }
 
     public void reloadFont(int fontID) {
-        currentFontQuality = FontConfig.customFontQuality;
-        font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
+        this.currentFontQuality = FontConfig.customFontQuality;
+        this.font = FontStrategist.getAvailableFonts()[fontID].deriveFont(this.currentFontQuality);
 
         File[] files = new File(getFontDir()).listFiles();
         if (files != null) {
@@ -93,7 +93,7 @@ public final class FontProviderCustom implements FontProvider {
             }
         }
 
-        fontAtlases = new FontAtlas[ATLAS_COUNT];
+        this.fontAtlases = new FontAtlas[ATLAS_COUNT];
     }
 
     private String getFontDir() {
@@ -207,7 +207,7 @@ public final class FontProviderCustom implements FontProvider {
                 final float glyphW = charAspectRatio * 8 + 1;
                 final float uSz = (float) (charWidth + 2 * inset * charAspectRatio) / imageWidth;
                 final float vSz = (float) (lineHeight + 2 * inset) / imageHeight;
-                glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
+                this.glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
                 imgX += (int) (charWidth + charSeparator);
                 tileX++;
             }
@@ -224,18 +224,18 @@ public final class FontProviderCustom implements FontProvider {
 
     private FontAtlas getAtlas(char chr) {
         int id = chr / ATLAS_SIZE;
-        FontAtlas fa = fontAtlases[id];
+        FontAtlas fa = this.fontAtlases[id];
         if (fa == null) {
             fa = new FontAtlas(id);
-            fa.construct(font);
+            fa.construct(this.font);
+            this.fontAtlases[id] = fa;
         }
-        fontAtlases[id] = fa;
         return fa;
     }
 
     @Override
     public boolean isGlyphAvailable(char chr) {
-        if (font == null) { return false; }
+        if (this.font == null) { return false; }
         return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
     }
 
