@@ -178,6 +178,8 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinRenderGlobal"
             , "celeritas.terrain.MixinRenderSectionManager"
             , "celeritas.terrain.MixinWorldClient"
+            , "celeritas.frustum.MixinClippingHelper"
+            , "celeritas.frustum.MixinClippingHelperImpl"
             , "celeritas.frustum.MixinFrustrum"
             , "celeritas.features.culling.MixinEffectRenderer"
             , "celeritas.features.mipmaps.MixinTextureAtlasSprite"
