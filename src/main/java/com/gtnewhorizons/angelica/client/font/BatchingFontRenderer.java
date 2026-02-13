@@ -19,7 +19,6 @@ import org.lwjgl.opengl.GL20;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
@@ -194,7 +193,7 @@ public class BatchingFontRenderer {
         pushVtx(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
         pushVtx(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
         pushVtx(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
-        idxWriterIndex += 6;
+        pushQuadIdx();
     }
 
     private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
@@ -202,6 +201,10 @@ public class BatchingFontRenderer {
         pushVtx(x - itOff, y + h, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushQuadIdx();
+    }
+
+    private void pushQuadIdx() {
         idxWriterIndex += 6;
     }
 
@@ -363,7 +366,7 @@ public class BatchingFontRenderer {
                 lastTexture = cmd.texture;
             }
             ebo.bind();
-            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, 0);
+            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, cmd.startVtx * 2L);
             ebo.unbind();
         }
         if (canUseAA) {
