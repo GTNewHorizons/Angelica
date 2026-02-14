@@ -76,65 +76,6 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
     protected void addExtraCrashInfo(CrashReportCategory category) {}
 
-    private void executeBlockLoop(int x, int y, int z, BlockPos blockPos, IBlockAccess region,
-                             MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity> renderData,
-                             boolean threaded, Map<Block, BlockRenderLayer> blockTypeIds, ChunkBuildBuffers buffers,
-                             List<DeferredBlock> deferredBlocks, Tessellator tessellator, RenderBlocks renderBlocks,
-                             AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext,
-                             int minX, int minY, int minZ, SectionVisibilityBuilder occluder) {
-        blockPos.set(x, y, z);
-
-        final Block block = region.getBlock(x, y, z);
-
-        if (block == Blocks.air) {
-            return;
-        }
-
-        final int meta = region.getBlockMetadata(x, y, z);
-
-        if (block.hasTileEntity(meta)) {
-            final TileEntity tileEntity = region.getTileEntity(x, y, z);
-            if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
-                renderData.globalBlockEntities.add(tileEntity);
-            }
-        }
-
-        final boolean canRenderOffThread = !threaded || canRenderOffThread(block);
-
-        // Check for shader pack override
-        final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
-
-        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
-            final boolean canRender;
-            Material materialOverride = null;
-
-            if (override != null) {
-                // Shader pack override controls both pass and material
-                canRender = (pass == override.toVanillaPass());
-                if (canRender) {
-                    materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
-                }
-            } else {
-                // Normal block rendering
-                canRender = block.canRenderInPass(pass);
-            }
-
-            if (canRender) {
-                final boolean isShaderPackOverride = materialOverride != null;
-                if (!canRenderOffThread) {
-                    deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass, materialOverride, isShaderPackOverride));
-                    continue;
-                }
-
-                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, materialOverride, isShaderPackOverride);
-            }
-        }
-
-        if (block.isOpaqueCube()) {
-            occluder.markOpaque(x, y, z);
-        }
-    }
-
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
         final AngelicaChunkBuildContext buildContext = (AngelicaChunkBuildContext) context;
@@ -148,13 +89,9 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final int minY = this.render.getOriginY();
         final int minZ = this.render.getOriginZ();
 
-        final int maxX = minX + 15;
-        final int maxY = minY + 15;
-        final int maxZ = minZ + 15;
-
-        final int camX = (int) Math.clamp(camera.x, minX, maxX);
-        final int camY = (int) Math.clamp(camera.y, minY, maxY);
-        final int camZ = (int) Math.clamp(camera.z, minZ, maxZ);
+        final int maxX = minX + 16;
+        final int maxY = minY + 16;
+        final int maxZ = minZ + 16;
 
         buildContext.setupDynamicLights(minX, minY, minZ);
 
@@ -179,65 +116,64 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             final RenderBlocks renderBlocks = new RenderBlocks(region);
 
-            // Loop through the chunk from corners towards the camera
-            // Same iterations as going from origin to max, but presorts transparent TESRs
-            for (int y = minY; y < camY; y++) {
+            for (int y = minY; y < maxY; y++) {
                 if (cancellationToken.isCancelled()) {
                     return null;
                 }
 
-                for (int z = minZ; z < camZ; z++) {
-                    for (int x = minX; x < camX; x++) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                    for (int x = maxX; x >= camX; x--) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                }
-                for (int z = maxZ; z >= camZ; z--) {
-                    for (int x = minX; x < camX; x++) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                    for (int x = maxX; x >= camX; x--) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                }
-            }
-            for (int y = maxY; y >= camY; y--) {
-                if (cancellationToken.isCancelled()) {
-                    return null;
-                }
+                for (int z = minZ; z < maxZ; z++) {
+                    for (int x = minX; x < maxX; x++) {
+                        blockPos.set(x, y, z);
 
-                for (int z = minZ; z < camZ; z++) {
-                    for (int x = minX; x < camX; x++) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                    for (int x = maxX; x >= camX; x--) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                }
-                for (int z = maxZ; z >= camZ; z--) {
-                    for (int x = minX; x < camX; x++) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
-                    }
-                    for (int x = maxX; x >= camX; x--) {
-                        executeBlockLoop(x, y, z, blockPos, region, renderData, threaded, blockTypeIds, buffers,
-                            deferredBlocks, tessellator, renderBlocks, buildContext, blockRenderContext,
-                            minX, minY, minZ, occluder);
+                        final Block block = region.getBlock(x, y, z);
+
+                        if (block == Blocks.air) {
+                            continue;
+                        }
+
+                        final int meta = region.getBlockMetadata(x, y, z);
+
+                        if (block.hasTileEntity(meta)) {
+                            final TileEntity tileEntity = region.getTileEntity(x, y, z);
+                            if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
+                                renderData.globalBlockEntities.add(tileEntity);
+                            }
+                        }
+
+                        final boolean canRenderOffThread = !threaded || canRenderOffThread(block);
+
+                        // Check for shader pack override
+                        final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
+
+                        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
+                            final boolean canRender;
+                            Material materialOverride = null;
+
+                            if (override != null) {
+                                // Shader pack override controls both pass and material
+                                canRender = (pass == override.toVanillaPass());
+                                if (canRender) {
+                                    materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
+                                }
+                            } else {
+                                // Normal block rendering
+                                canRender = block.canRenderInPass(pass);
+                            }
+
+                            if (canRender) {
+                                final boolean isShaderPackOverride = materialOverride != null;
+                                if (!canRenderOffThread) {
+                                    deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass, materialOverride, isShaderPackOverride));
+                                    continue;
+                                }
+
+                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, materialOverride, isShaderPackOverride);
+                            }
+                        }
+
+                        if (block.isOpaqueCube()) {
+                            occluder.markOpaque(x, y, z);
+                        }
                     }
                 }
             }
