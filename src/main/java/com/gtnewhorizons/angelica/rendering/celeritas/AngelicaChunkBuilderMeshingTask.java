@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
@@ -135,8 +136,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
-                            if (TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
-                                renderData.globalBlockEntities.add(tileEntity);
+                            if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
+                                (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity) ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
                             }
                         }
 
