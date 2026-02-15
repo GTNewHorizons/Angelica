@@ -51,6 +51,12 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     // the volume of a section multiplied by the number of sections to be checked at most
     private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
 
+    // For sorting transparent TESRs
+    private RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
+    private TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
+    private ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
+    private ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
+
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
         this.mc = mc;
@@ -258,26 +264,25 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                     continue;
                 }
 
-                ArrayList<TileEntity> renderTEs = new ArrayList<>();
                 for (TileEntity te : blockEntities) {
-                    if (te.shouldRenderInPass(renderContext.pass)) renderTEs.add(te);
+                    if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
                 }
-
-                count += renderTEs.size();
-
-                renderTEs.sort(new TileEntityOrderer(lastCameraState));
-                this.renderBlockEntityList(renderTEs, renderContext);
             }
         }
 
-        return count;
+        sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+        this.renderBlockEntityList(sortedTileEntities, renderContext);
+
+        return sortedTileEntities.size();
     }
 
     private int renderGlobalTileEntities(TileEntityRenderContext renderContext) {
         int count = 0;
-        ArrayList<RenderSection> renderSections = new ArrayList<>(renderSectionManager.getSectionsWithGlobalEntities());
-        renderSections.sort(new RenderSectionOrderer(lastCameraState));
-        for (var renderSection : renderSections) {
+        sortedRenderSections.clear();
+        sortedRenderSections.addAll(renderSectionManager.getSectionsWithGlobalEntities());
+        sortedRenderSections.sort(renderSectionOrderer.setLastCameraState(lastCameraState));
+        for (var renderSection : sortedRenderSections) {
+            sortedTileEntities.clear();
             var builtContext = renderSection.getBuiltContext();
 
             if (!(builtContext instanceof MinecraftBuiltRenderSectionData<?, ?> mcData)) {
@@ -291,15 +296,14 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 continue;
             }
 
-            ArrayList<TileEntity> renderTEs = new ArrayList<>();
             for (TileEntity te : blockEntities) {
-                if (te.shouldRenderInPass(renderContext.pass)) renderTEs.add(te);
+                if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
             }
 
-            count += renderTEs.size();
+            count += sortedTileEntities.size();
 
-            renderTEs.sort(new TileEntityOrderer(lastCameraState));
-            this.renderBlockEntityList(renderTEs, renderContext);
+            sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+            this.renderBlockEntityList(sortedTileEntities, renderContext);
         }
 
         return count;
@@ -382,9 +386,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         public CameraState lastCameraState;
 
-        public RenderSectionOrderer(CameraState lastCameraState) {
+        public RenderSectionOrderer() {
             super();
+        }
+
+        public RenderSectionOrderer setLastCameraState(CameraState lastCameraState) {
             this.lastCameraState = lastCameraState;
+            return this;
         }
 
         @Override
@@ -401,9 +409,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static class TileEntityOrderer implements Comparator<TileEntity> {
         public CameraState lastCameraState;
 
-        public TileEntityOrderer(CameraState lastCameraState) {
+        public TileEntityOrderer() {
             super();
+        }
+
+        public TileEntityOrderer setLastCameraState(CameraState lastCameraState) {
             this.lastCameraState = lastCameraState;
+            return this;
         }
 
         @Override
