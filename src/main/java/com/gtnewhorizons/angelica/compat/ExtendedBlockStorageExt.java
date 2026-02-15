@@ -6,7 +6,6 @@ import com.gtnewhorizons.neid.mixins.interfaces.IExtendedBlockStorageMixin;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import ru.fewizz.idextender.Hooks;
 
 public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
     public boolean hasSky;
@@ -38,12 +37,6 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
                     final short[] block16BMetaArray = ((IExtendedBlockStorageMixin)(Object)this).getBlock16BMetaArray();
                     System.arraycopy(((IExtendedBlockStorageMixin)(Object)storage).getBlock16BMetaArray(), 0, block16BMetaArray, 0, block16BMetaArray.length);
                 }
-            }
-            else if (ModStatus.isOldNEIDLoaded){
-                final short[] blockLSBArray = Hooks.get(this);
-                System.arraycopy(Hooks.get(storage), 0, blockLSBArray, 0, blockLSBArray.length);
-                // getBlockMSBArray is nuked in asm version
-                arrayLen = blockLSBArray.length;
             }
             else {
                 final byte[] blockLSBArray = this.getBlockLSBArray();
