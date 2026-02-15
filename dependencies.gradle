@@ -108,8 +108,7 @@ dependencies {
 
     compileOnly("curse.maven:minefactory-reloaded-66672:2277486")
 
-    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev") // Mixin Version
-    compileOnly("com.github.GTNewHorizons:NotEnoughIds-Legacy:1.4.7:dev") // ASM Version
+    compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev")
 
     compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5593_H261"))
 
@@ -126,7 +125,7 @@ dependencies {
     transformedMod("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
 
     // Better Crashes
-    compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.0-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.1-GTNH:dev")
 
     afterEvaluate {
         dependencies {

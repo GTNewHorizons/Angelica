@@ -12,15 +12,8 @@ public class ModStatus {
     public static final Logger LOGGER = LogManager.getLogger("ModCompat");
 
     public static BackhandReflectionCompat backhandCompat;
-    /**
-     * Mixin Version
-     */
-    public static boolean isNEIDLoaded;
-    /**
-     * ASM Version
-     */
-    public static boolean isOldNEIDLoaded;
     public static boolean isBetterCrashesLoaded;
+    public static boolean isNEIDLoaded;
     public static boolean isNEIDMetadataExtended;
     public static boolean isLotrLoaded;
     public static boolean isChunkAPILoaded;
@@ -42,7 +35,6 @@ public class ModStatus {
 
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
         isNEIDLoaded = Loader.isModLoaded("neid");
-        isOldNEIDLoaded = Loader.isModLoaded("notenoughIDs");
         isLotrLoaded = Loader.isModLoaded("lotr");
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
