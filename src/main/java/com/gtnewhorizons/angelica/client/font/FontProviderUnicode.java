@@ -1,16 +1,31 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public final class FontProviderUnicode implements FontProvider {
 
-    private FontProviderUnicode() {}
+    private FontProviderUnicode() {
+        try {
+            InputStream inputstream = Minecraft.getMinecraft().getResourceManager()
+                .getResource(new ResourceLocation("font/glyph_sizes.bin")).getInputStream();
+            //noinspection ResultOfMethodCallIgnored
+            inputstream.read(this.glyphWidth);
+        }
+        catch (IOException ioexception) {
+            throw new RuntimeException(ioexception);
+        }
+    }
+
     private static class InstLoader { static final FontProviderUnicode instance = new FontProviderUnicode(); }
     public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
 
     private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
-    public byte[] glyphWidth;
+    private final byte[] glyphWidth = new byte[65536];
 
     private ResourceLocation getUnicodePageLocation(int page) {
         final ResourceLocation lookup = unicodePageLocations[page];
