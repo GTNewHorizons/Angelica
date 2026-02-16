@@ -162,6 +162,7 @@ public enum Mixins implements IMixins {
             , "rendering.MixinPlayerManager"
             , "rendering.MixinRenderBlocks"
             , "rendering.MixinRenderingRegistry"
+            , "rendering.MixinTessellator"
             , "rendering.MixinTileEntity"
             , "rendering.MixinTileEntityMobSpawner"
             , "rendering.MixinTileEntityRendererDispatcher"

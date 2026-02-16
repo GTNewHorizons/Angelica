@@ -3,10 +3,10 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
-import com.gtnewhorizons.angelica.rendering.celeritas.light.QuadLightingHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import lombok.Getter;
@@ -110,7 +110,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     @SuppressWarnings("unchecked")
-    public void copyRawBuffer(int[] rawBuffer, int vertexCount, ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
+    public void copyRawBuffer(int[] rawBuffer, int vertexCount, int[] vertexStates,
+                              ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
                               boolean blockAllowsSmoothLighting) {
         if (vertexCount == 0) {
             return;
@@ -127,8 +128,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final boolean celeritasSmoothLighting = AngelicaMod.options().quality.useCeleritasSmoothLighting;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
-        final boolean stripDiffuse = shaderActive && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
-        final boolean shade = false; // Vanilla bakes it, or we remove it - so no need to shade
         final ChunkColorWriter colorEncoder = separateAo ? ChunkColorWriter.SEPARATE_AO : ChunkColorWriter.EMBEDDIUM;
 
         int ptr = 0;
@@ -140,10 +139,13 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final int worldX = originX + blockX;
         final int worldY = originY + blockY;
         final int worldZ = originZ + blockZ;
-        final boolean isEmissive = useAoCalculation && QuadLightingHelper.isBlockEmissive(blockAccess, worldX, worldY, worldZ);
+
+        int stateIdx = 0;
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
+
+            int quadState = -1;
 
             for (int vIdx = 0; vIdx < 4; vIdx++) {
                 final var vertex = vertices[vIdx];
@@ -161,6 +163,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 vertex.color = rawBuffer[ptr++];
                 vertex.vanillaNormal = rawBuffer[ptr++];
                 vertex.light = rawBuffer[ptr++];
+
+                quadState &= vertexStates[stateIdx++];
             }
 
             final int trueNormal = QuadUtil.calculateNormal(vertices);
@@ -171,34 +175,16 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 animatedSprites.add(sprite);
             }
 
-            // Strip vanilla's baked diffuse when shaders want oldLighting=false - multiply by an inversion factor
-            // instead of attempting to mixin/asm all the places that bake it in
-            if (stripDiffuse) {
-                final float inverseDiffuse = VanillaDiffuseProvider.INSTANCE.getInverseDiffuse(facing);
-                for (int vIdx = 0; vIdx < 4; vIdx++) {
-                    vertices[vIdx].color = VanillaDiffuseProvider.multiplyColor(vertices[vIdx].color, inverseDiffuse);
-                }
-            }
-
-            if (useAoCalculation) {
-                final boolean quadIsFullBright = QuadLightingHelper.isQuadFullBright(vertices);
-
-                if (isEmissive || quadIsFullBright) {
-                    Arrays.fill(quadLightData.br, 1.0f);
-                    if (isEmissive) {
-                        Arrays.fill(quadLightData.lm, LightDataAccess.FULL_BRIGHT);
-                    } else {
-                        for (int i = 0; i < 4; i++) {
-                            quadLightData.lm[i] = vertices[i].light;
-                        }
-                    }
-                } else {
-                    quadView.setup(trueNormal, blockX, blockY, blockZ);
-                    final ModelQuadFacing lightFace = quadView.getLightFace();
-                    final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
-                    final ModelQuadFacing cullFace = quadView.getCullFace();
-                    pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shade, true);
-                }
+            // If block used vanilla AO, then we can safely compute our own lighting data and ignore what vanilla
+            // computed. We suppress vanilla emitting the brightness/color in MixinRenderBlocks.
+            // Otherwise, we need to use the block's lightmap values as they are as the ISBRH may have
+            // specified its own lightmaps for visual purposes (e.g. fullbright)
+            if (useAoCalculation && (quadState & StateAwareTessellator.RENDERED_WITH_VANILLA_AO) != 0) {
+                quadView.setup(trueNormal, blockX, blockY, blockZ);
+                final ModelQuadFacing lightFace = quadView.getLightFace();
+                final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
+                final ModelQuadFacing cullFace = quadView.getCullFace();
+                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, true, true);
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
