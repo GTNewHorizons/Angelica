@@ -128,6 +128,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final boolean celeritasSmoothLighting = AngelicaMod.options().quality.useCeleritasSmoothLighting;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
+        final boolean shouldApplyDiffuse = !BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
         final ChunkColorWriter colorEncoder = separateAo ? ChunkColorWriter.SEPARATE_AO : ChunkColorWriter.EMBEDDIUM;
 
         int ptr = 0;
@@ -184,7 +185,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 final ModelQuadFacing lightFace = quadView.getLightFace();
                 final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
                 final ModelQuadFacing cullFace = quadView.getCullFace();
-                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, true, true);
+                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shouldApplyDiffuse, true);
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
@@ -193,6 +194,14 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                     vertex.light = quadLightData.lm[vIdx];
                 }
             } else {
+                if (!shouldApplyDiffuse) {
+                    // Calculate the inverse of the expected diffuse constant and apply it to the color to fake
+                    // diffuse not having been applied
+                    final float inverseDiffuse = VanillaDiffuseProvider.INSTANCE.getInverseDiffuse(facing);
+                    for (int vIdx = 0; vIdx < 4; vIdx++) {
+                        vertices[vIdx].color = VanillaDiffuseProvider.multiplyColor(vertices[vIdx].color, inverseDiffuse);
+                    }
+                }
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     vertices[vIdx].trueNormal = trueNormal;
                 }
