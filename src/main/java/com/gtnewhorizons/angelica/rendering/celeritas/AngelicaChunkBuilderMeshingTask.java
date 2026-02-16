@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -249,15 +250,11 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
-        // In modern versions, block models can specify whether to enable AO or not, but here we must
-        // rely on render ID heuristics to figure out which models would have turned it off
-        int vanillaRenderId = block.getRenderType();
         boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
-            && block.getLightValue() == 0 // does not emit real block light
-            && vanillaRenderId != 1 // is not a "cross" block
-            && vanillaRenderId != 40; // is not a double plant block
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount, buffers, passMaterial,
-            isShaderPackOverride, blockAllowsSmoothLighting);
+            && block.getLightValue() == 0; // does not emit real block light
+        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
+            ((StateAwareTessellator)tessellator).angelica$getVertexStates(),
+            buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
         tessellator.reset();
         tessellator.isDrawing = false;
 
