@@ -75,11 +75,9 @@ public class BatchingFontRenderer {
         }
     }
 
-    public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, byte[] glyphWidth,
-                                int[] colorCode, ResourceLocation locationFontTexture) {
+    public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
         this.charWidth = charWidth;
-        this.glyphWidth = glyphWidth;
         this.colorCode = colorCode;
         this.locationFontTexture = locationFontTexture;
 
@@ -92,7 +90,6 @@ public class BatchingFontRenderer {
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
-        FontProviderUnicode.get().glyphWidth = this.glyphWidth;
 
         //noinspection deprecation
         fontShaderId = FontAAShader.getProgram().getProgramId();
