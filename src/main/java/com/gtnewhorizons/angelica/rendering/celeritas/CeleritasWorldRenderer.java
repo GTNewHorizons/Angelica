@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
+import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
 import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SortedRenderLists;
@@ -31,6 +32,8 @@ import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -47,6 +50,12 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     // the volume of a section multiplied by the number of sections to be checked at most
     private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
+
+    // For sorting transparent TESRs
+    private RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
+    private TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
+    private ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
+    private ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -219,9 +228,97 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         GLStateManager.glColor4f(1, 1, 1, 1);
     }
 
+    private int renderCulledTileEntities(TileEntityRenderContext renderContext) {
+        int count = 0;
+        SortedRenderLists renderLists = renderSectionManager.getRenderLists();
+        Iterator<ChunkRenderList> renderListIterator = renderLists.iterator();
+
+        while (renderListIterator.hasNext()) {
+            var renderList = renderListIterator.next();
+
+            var renderRegion = renderList.getRegion();
+            var renderSectionIterator = renderList.sectionsWithEntitiesIterator();
+
+            if (renderSectionIterator == null) {
+                continue;
+            }
+
+            while (renderSectionIterator.hasNext()) {
+                var renderSectionId = renderSectionIterator.nextByteAsInt();
+                var renderSection = renderRegion.getSection(renderSectionId);
+
+                if (renderSection == null) {
+                    continue;
+                }
+
+                var context = renderSection.getBuiltContext();
+
+                if (!(context instanceof MinecraftBuiltRenderSectionData<?, ?> mcData)) {
+                    continue;
+                }
+
+                // noinspection unchecked
+                var blockEntities = (List<TileEntity>) mcData.culledBlockEntities;
+
+                if (blockEntities.isEmpty()) {
+                    continue;
+                }
+
+                for (TileEntity te : blockEntities) {
+                    if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
+                }
+            }
+        }
+
+        sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+        this.renderBlockEntityList(sortedTileEntities, renderContext);
+
+        return sortedTileEntities.size();
+    }
+
+    private int renderGlobalTileEntities(TileEntityRenderContext renderContext) {
+        int count = 0;
+        sortedRenderSections.clear();
+        sortedRenderSections.addAll(renderSectionManager.getSectionsWithGlobalEntities());
+        sortedRenderSections.sort(renderSectionOrderer.setLastCameraState(lastCameraState));
+        for (var renderSection : sortedRenderSections) {
+            sortedTileEntities.clear();
+            var builtContext = renderSection.getBuiltContext();
+
+            if (!(builtContext instanceof MinecraftBuiltRenderSectionData<?, ?> mcData)) {
+                continue;
+            }
+
+            // noinspection unchecked
+            var blockEntities = (List<TileEntity>) mcData.globalBlockEntities;
+
+            if (blockEntities.isEmpty()) {
+                continue;
+            }
+
+            for (TileEntity te : blockEntities) {
+                if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
+            }
+
+            count += sortedTileEntities.size();
+
+            sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+            this.renderBlockEntityList(sortedTileEntities, renderContext);
+        }
+
+        return count;
+    }
+
     public int renderBlockEntities(float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
-        return super.renderBlockEntities(teRenderContext.set(partialTicks, pass));
+        teRenderContext.set(partialTicks, pass);
+        if (pass == 0 || !AngelicaMod.options().performance.translucencySorting) {
+            return super.renderBlockEntities(teRenderContext);
+        }
+        int count = 0;
+        count += this.renderCulledTileEntities(teRenderContext);
+        count += this.renderGlobalTileEntities(teRenderContext);
+        return count;
     }
 
     private void renderTE(TileEntity tileEntity, int pass, float partialTicks) {
@@ -282,6 +379,53 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.partialTicks = partialTicks;
             this.pass = pass;
             return this;
+        }
+    }
+
+    private static class RenderSectionOrderer implements Comparator<RenderSection> {
+
+        public CameraState lastCameraState;
+
+        public RenderSectionOrderer() {
+            super();
+        }
+
+        public RenderSectionOrderer setLastCameraState(CameraState lastCameraState) {
+            this.lastCameraState = lastCameraState;
+            return this;
+        }
+
+        @Override
+        public int compare(RenderSection render1, RenderSection render2) {
+            final float x = (float) this.lastCameraState.x();
+            final float y = (float) this.lastCameraState.y();
+            final float z = (float) this.lastCameraState.z();
+            final float d1 = render1.getSquaredDistance(x, y, z);
+            final float d2 = render2.getSquaredDistance(x, y, z);
+            return Float.compare(d2, d1);
+        }
+    }
+
+    private static class TileEntityOrderer implements Comparator<TileEntity> {
+        public CameraState lastCameraState;
+
+        public TileEntityOrderer() {
+            super();
+        }
+
+        public TileEntityOrderer setLastCameraState(CameraState lastCameraState) {
+            this.lastCameraState = lastCameraState;
+            return this;
+        }
+
+        @Override
+        public int compare(TileEntity te1, TileEntity te2) {
+            final double x = this.lastCameraState.x();
+            final double y = this.lastCameraState.y();
+            final double z = this.lastCameraState.z();
+            final double d1 = te1.getDistanceFrom(x, y, z);
+            final double d2 = te2.getDistanceFrom(x, y, z);
+            return Double.compare(d2, d1);
         }
     }
 }
