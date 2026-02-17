@@ -69,4 +69,5 @@ options.total_stars=Star Density
 options.total_stars.tooltip=Star Density
 options.void_fog=Void Fog
 options.void_fog.tooltip=Void Fog
+options.hurt_shake=Hurt Screen Shake
 options.background.random=Random
