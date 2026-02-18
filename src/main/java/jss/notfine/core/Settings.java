@@ -50,7 +50,7 @@ public enum Settings {
         }
     },
     DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
-    HURT_SHAKE(new NotFineOptionSliderPercentage(100, 0, 100, 5, OptionImpact.LOW)),
+    HURT_SHAKE(new NotFineOptionSliderPercentage(100, 0, 300, 5, OptionImpact.LOW)),
     DYNAMIC_LIGHTS(new NotFineOptionCycling<>(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
         @Override
         public void applyChanges() {
