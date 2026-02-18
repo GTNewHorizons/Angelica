@@ -152,6 +152,7 @@ public class SodiumGameOptionPages {
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
                 .add(Settings.DYNAMIC_FOV.option)
+                .add(Settings.HURT_SHAKE.option)
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
                 .build());
