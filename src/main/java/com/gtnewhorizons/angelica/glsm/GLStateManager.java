@@ -1788,6 +1788,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1795,6 +1796,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1802,6 +1804,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1809,6 +1812,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, count, type, indices);
     }
 
@@ -1824,6 +1828,7 @@ public class GLStateManager {
                 return;
             }
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
@@ -1850,6 +1855,7 @@ public class GLStateManager {
             }
             return;
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawArrays(mode, first, count);
     }
 
