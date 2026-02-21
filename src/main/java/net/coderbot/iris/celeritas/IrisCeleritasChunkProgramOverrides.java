@@ -2,6 +2,7 @@ package net.coderbot.iris.celeritas;
 
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.shadows.ShadowRenderingState;
@@ -15,6 +16,7 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -82,11 +84,11 @@ public class IrisCeleritasChunkProgramOverrides {
                 builder.bindAttribute(attr.getName(), attrIndex++);
             }
 
-            // Get blend from PassInfo
             final CeleritasTerrainPipeline.PassInfo passInfo = pipeline.getPassInfo(pass);
             final BlendModeOverride blendOverride = passInfo.blendModeOverride();
+            final List<BufferBlendOverride> bufferOverrides = passInfo.bufferBlendOverrides();
 
-            return builder.link(context -> new IrisCeleritasChunkShaderInterface(((GlObject) context).handle(), context, pipeline, pass.isShadow(), blendOverride, pipeline.getCustomUniforms()));
+            return builder.link(context -> new IrisCeleritasChunkShaderInterface(((GlObject) context).handle(), context, pipeline, pass.isShadow(), blendOverride, bufferOverrides, pipeline.getCustomUniforms()));
         } finally {
             vertShader.delete();
             if (geomShader != null) geomShader.delete();
