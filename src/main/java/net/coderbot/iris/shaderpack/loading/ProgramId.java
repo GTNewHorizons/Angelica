@@ -1,7 +1,5 @@
 package net.coderbot.iris.shaderpack.loading;
 
-import com.gtnewhorizons.angelica.glsm.states.BlendState;
-import net.coderbot.iris.gl.blending.BlendModeFunction;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 
 import java.util.Objects;
@@ -34,11 +32,8 @@ public enum ProgramId {
 	Entities(ProgramGroup.Gbuffers, "entities", TexturedLit),
 	EntitiesTrans(ProgramGroup.Gbuffers, "entities_translucent", Entities),
 	EntitiesGlowing(ProgramGroup.Gbuffers, "entities_glowing", Entities),
-	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured,
-			new BlendModeOverride(new BlendState(BlendModeFunction.SRC_COLOR.getGlId(), BlendModeFunction.ONE.getGlId(), BlendModeFunction.ONE.getGlId(), BlendModeFunction.ZERO.getGlId()))),
-    // TODO: Figure out why this is needed in 2.x, this worked properly before without needing an override
-	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured,
-			new BlendModeOverride(new BlendState(BlendModeFunction.SRC_ALPHA.getGlId(), BlendModeFunction.ONE.getGlId(), BlendModeFunction.ZERO.getGlId(), BlendModeFunction.ONE.getGlId()))),
+	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured),
+	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured),
 
 	Hand(ProgramGroup.Gbuffers, "hand", TexturedLit),
 	Weather(ProgramGroup.Gbuffers, "weather", TexturedLit),
