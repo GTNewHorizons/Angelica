@@ -58,7 +58,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.APPLEVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import org.lwjgl.opengl.ARBMultitexture;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
@@ -1788,6 +1788,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1795,6 +1796,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1802,6 +1804,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices);
     }
 
@@ -1809,6 +1812,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, count, type, indices);
     }
 
@@ -1824,6 +1828,7 @@ public class GLStateManager {
                 return;
             }
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
@@ -1850,6 +1855,7 @@ public class GLStateManager {
             }
             return;
         }
+        BlendModeStorage.flushDeferredBlend();
         GL11.glDrawArrays(mode, first, count);
     }
 
@@ -3778,20 +3784,12 @@ public class GLStateManager {
         }
         if (boundVAO != array) {
             boundVAO = array;
-            GL30.glBindVertexArray(array);
+            UniversalVAO.bindVertexArray(array);
         }
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
-        if (DisplayListManager.isRecording()) {
-            DisplayListManager.recordBindVAO(array);
-            // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
-            // This is technically wrong, but I'm not sure if there's a better solution here.
-        }
-        if (boundVAO != array) {
-            boundVAO = array;
-            APPLEVertexArrayObject.glBindVertexArrayAPPLE(array);
-        }
+        glBindVertexArray(array);
     }
 
     public static boolean isVBOBound() {

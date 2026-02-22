@@ -18,6 +18,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
@@ -151,6 +152,7 @@ public class SodiumGameOptionPages {
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
                 .add(Settings.DYNAMIC_FOV.option)
+                .add(Settings.HURT_SHAKE.option)
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
                 .build());
@@ -265,6 +267,19 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.advanced.useVertexArrayObjects = value, opts -> opts.advanced.useVertexArrayObjects)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(MultiDrawMode.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.multidraw_mode.name"))
+                        .setTooltip(I18n.format("sodium.options.multidraw_mode.tooltip"))
+                        .setControl(o -> {
+                            boolean indirectSupported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);
+                            MultiDrawMode[] allowed = indirectSupported ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
+                            return new CyclingControl<>(o, MultiDrawMode.class, allowed);
+                        })
+                        .setBinding((opts, value) -> opts.advanced.multiDrawMode = value, opts -> opts.advanced.multiDrawMode)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setImpact(OptionImpact.VARIES)
+                        .setEnabled(GLStateManager.capabilities != null)
                         .build())
                 .build());
 
@@ -440,6 +455,14 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.hudCaching"))
+                        .setTooltip(I18n.format("options.angelica.hudCaching.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.hudCachingActive = value, opts -> AngelicaConfig.hudCachingActive)
+                        .setEnabled(AngelicaConfig.enableHudCaching)
+                        .build())
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.droppedItemLimit"))
                         .setTooltip(I18n.format("options.angelica.droppedItemLimit.tooltip"))

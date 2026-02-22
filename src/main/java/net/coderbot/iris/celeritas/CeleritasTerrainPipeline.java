@@ -1,11 +1,14 @@
 package net.coderbot.iris.celeritas;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.primitives.Ints;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
+import net.coderbot.iris.shaderpack.loading.ProgramId;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
@@ -19,7 +22,10 @@ import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +49,7 @@ public class CeleritasTerrainPipeline {
         private final EnumMap<PatchShaderType, Optional<String>> sources = new EnumMap<>(PatchShaderType.class);
         private GlFramebuffer framebuffer;
         private BlendModeOverride blendModeOverride;
+        private List<BufferBlendOverride> bufferBlendOverrides;
         private float alphaReference;
 
         private PassInfo() {
@@ -91,21 +98,41 @@ public class CeleritasTerrainPipeline {
             PassInfo passInfo = new PassInfo();
             passInfoMap.put(pass, passInfo);
 
-            // Set up framebuffer
+            // Set up framebuffer, blend mode, and buffer blend overrides
+            final ProgramId programId = switch (pass) {
+                case GBUFFER_TRANSLUCENT -> ProgramId.Water;
+                case SHADOW, SHADOW_CUTOUT -> ProgramId.Shadow;
+                default -> ProgramId.Terrain;
+            };
+
             if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
                 passInfo.framebuffer = shadowFramebuffer;
+                passInfo.blendModeOverride = programId.getBlendModeOverride();
+                passInfo.bufferBlendOverrides = Collections.emptyList();
             } else if (renderTargets != null) {
                 ImmutableSet<Integer> flipped = pass == IrisTerrainPass.GBUFFER_TRANSLUCENT ? flippedAfterTranslucent : flippedAfterPrepare;
 
                 Optional<ProgramSource> programSource = gbufferProgramSource.get(pass);
-                programSource.ifPresentOrElse(source -> passInfo.framebuffer = renderTargets.createGbufferFramebuffer(flipped, source.getDirectives().getDrawBuffers()), () -> passInfo.framebuffer = renderTargets.createGbufferFramebuffer(flipped, new int[] {0}));
-            }
+                programSource.ifPresentOrElse(source -> {
+                    passInfo.framebuffer = renderTargets.createGbufferFramebuffer(flipped, source.getDirectives().getDrawBuffers());
+                    passInfo.blendModeOverride = source.getDirectives().getBlendModeOverride().orElse(programId.getBlendModeOverride());
 
-            // Set blend mode override
-            passInfo.blendModeOverride = switch (pass) {
-                case GBUFFER_TRANSLUCENT -> null; // Default blending
-                default -> BlendModeOverride.OFF;
-            };
+                    passInfo.bufferBlendOverrides = new ArrayList<>();
+                    source.getDirectives().getBufferBlendOverrides().forEach(information -> {
+                        int index = Ints.indexOf(source.getDirectives().getDrawBuffers(), information.getIndex());
+                        if (index > -1) {
+                            passInfo.bufferBlendOverrides.add(new BufferBlendOverride(index, information.getBlendMode()));
+                        }
+                    });
+                }, () -> {
+                    passInfo.framebuffer = renderTargets.createGbufferFramebuffer(flipped, new int[] {0});
+                    passInfo.blendModeOverride = programId.getBlendModeOverride();
+                    passInfo.bufferBlendOverrides = Collections.emptyList();
+                });
+            } else {
+                passInfo.blendModeOverride = programId.getBlendModeOverride();
+                passInfo.bufferBlendOverrides = Collections.emptyList();
+            }
 
             // Set alpha reference
             passInfo.alphaReference = switch (pass) {

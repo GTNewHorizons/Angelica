@@ -8,9 +8,14 @@ public class BooleanState implements ISettableState<BooleanState> {
     protected final int glCap;
 
     @Getter protected boolean enabled;
+    protected boolean stateUnknown;
 
     public BooleanState(int glCap) {
         this.glCap = glCap;
+    }
+
+    public void setUnknownState() {
+        stateUnknown = true;
     }
 
     public void disable() {
@@ -23,7 +28,8 @@ public class BooleanState implements ISettableState<BooleanState> {
 
     public void setEnabled(boolean enabled) {
         final boolean bypass = GLStateManager.shouldBypassCache();
-        if (bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
+        if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
+            stateUnknown = false;
             if (!bypass) {
                 this.enabled = enabled;
             }

@@ -31,7 +31,7 @@ public class CyclingControlElement<T extends Enum<T>> extends NotFineControlElem
     @Override
     public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
         if(super.mousePressed(mc, mouseX, mouseY)) {
-            currentIndex = (option.getValue().ordinal() + 1) % allowedValues.length;
+            currentIndex = (currentIndex + 1) % allowedValues.length;
             option.setValue(allowedValues[currentIndex]);
             onOptionValueChanged();
             return true;

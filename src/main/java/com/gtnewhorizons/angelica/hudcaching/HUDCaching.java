@@ -68,7 +68,7 @@ public class HUDCaching {
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
 
-        if (!GLStateManager.isFramebufferEnabled()) {
+        if (!AngelicaConfig.hudCachingActive || !GLStateManager.isFramebufferEnabled()) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }

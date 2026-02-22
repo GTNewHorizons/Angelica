@@ -59,7 +59,7 @@ public class SodiumControlElementFactory implements ControlElementFactory {
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if(AngelicaConfig.enableReesesSodiumOptions) {
                 if (this.option.isAvailable() && this.dim.containsCursor(mouseX, mouseY) && (button == 0 || button == 1)) {
-                    this.currentIndex = Math.floorMod(this.option.getValue().ordinal() + (button == 0 ? 1 : -1), this.allowedValues.length);
+                    this.currentIndex = Math.floorMod(this.currentIndex + (button == 0 ? 1 : -1), this.allowedValues.length);
                     this.option.setValue(this.allowedValues[this.currentIndex]);
                     this.playClickSound();
 
@@ -67,7 +67,7 @@ public class SodiumControlElementFactory implements ControlElementFactory {
                 }
             } else {
                 if (this.option.isAvailable() && button == 0 && this.dim.containsCursor(mouseX, mouseY)) {
-                    this.currentIndex = (this.option.getValue().ordinal() + 1) % this.allowedValues.length;
+                    this.currentIndex = (this.currentIndex + 1) % this.allowedValues.length;
                     this.option.setValue(this.allowedValues[this.currentIndex]);
                     this.playClickSound();
 

@@ -26,27 +26,29 @@ public final class TileEntityRenderBoundsRegistry {
 
     public static boolean isAlwaysInfiniteExtent(TileEntity te) {
         final Class<? extends TileEntity> clazz = te.getClass();
-        byte result = classRegistry.getByte(clazz);
-
-        if (result != UNKNOWN) {
-            return result == INFINITE;
+        synchronized (classRegistry) {
+            final byte result = classRegistry.getByte(clazz);
+            if (result != UNKNOWN) return result == INFINITE;
         }
-
         return probeAndCache(te, clazz);
     }
 
     private static boolean probeAndCache(TileEntity te, Class<? extends TileEntity> clazz) {
         boolean isInfinite = false;
         try {
-            AxisAlignedBB aabb = te.getRenderBoundingBox();
+            final AxisAlignedBB aabb = te.getRenderBoundingBox();
             isInfinite = isInfiniteExtentsBox(aabb);
         } catch (Exception ignored) {}
 
-        classRegistry.put(clazz, isInfinite ? INFINITE : FINITE);
+        synchronized (classRegistry) {
+            classRegistry.put(clazz, isInfinite ? INFINITE : FINITE);
+        }
         return isInfinite;
     }
 
     public static void clear() {
-        classRegistry.clear();
+        synchronized (classRegistry) {
+            classRegistry.clear();
+        }
     }
 }

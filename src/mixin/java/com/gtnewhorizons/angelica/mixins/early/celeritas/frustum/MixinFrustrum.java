@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.frustum;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.ClippingHelperExt;
 import net.minecraft.client.renderer.culling.ClippingHelper;
 import net.minecraft.client.renderer.culling.Frustrum;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
@@ -19,7 +20,7 @@ public abstract class MixinFrustrum implements ViewportProvider {
         // Shadow frustum subclasses override this via their own ViewportProvider impl.
         // This default handles vanilla Frustrum only.
         return new Viewport(
-            this.clippingHelper::isBoxInFrustum,
+            ((ClippingHelperExt) this.clippingHelper).celeritas$getFrustumIntersection()::testAab,
             new Vector3d(this.xPosition, this.yPosition, this.zPosition)
         );
     }

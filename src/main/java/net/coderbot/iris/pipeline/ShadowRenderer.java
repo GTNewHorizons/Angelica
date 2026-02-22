@@ -689,7 +689,7 @@ public class ShadowRenderer {
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
             mc.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
-            rg.sortAndRender(mc.thePlayer, 0, playerCamera.getPartialTicks());
+            rg.sortAndRender(mc.renderViewEntity, 0, playerCamera.getPartialTicks());
 		}
 
 		// Reset viewport in case terrain rendering changed it
@@ -746,7 +746,7 @@ public class ShadowRenderer {
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-            rg.sortAndRender(mc.thePlayer, 1, playerCamera.getPartialTicks());
+            rg.sortAndRender(mc.renderViewEntity, 1, playerCamera.getPartialTicks());
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.

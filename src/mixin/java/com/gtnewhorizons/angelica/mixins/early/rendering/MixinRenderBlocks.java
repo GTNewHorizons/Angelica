@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -11,16 +14,23 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks {
+    @Shadow
+    public abstract boolean renderStandardBlockWithColorMultiplier(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_);
 
     @Unique
     private static final ObjectOpenHashSet<String> isbrhExceptionCache = new ObjectOpenHashSet<>();
@@ -35,6 +45,8 @@ public abstract class MixinRenderBlocks {
 
     @Unique
     private boolean isRenderingByType = false;
+
+    private boolean applyingCeleritasAO = false;
 
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
     private void renderingByTypeEnable(CallbackInfoReturnable<Boolean> ci) {
@@ -84,14 +96,37 @@ public abstract class MixinRenderBlocks {
         return handleISBRHException(rb, world, x, y, z, block, modelId);
     }
 
-    @Redirect(method = "renderStandardBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
-    private boolean checkAOEnabled() {
+    /**
+     * @author embeddedt
+     * @reason When vanilla would render with AO, hijack the rendering logic and render using flat lighting instead.
+     */
+    @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
+    private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
         if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
-            return false; // Force sodium pipeline with Iris or for standard blocks rendered from renderBlockByRenderType when using AO
+            this.applyingCeleritasAO = true;
+            try {
+                cir.setReturnValue(this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b));
+            } finally {
+                this.applyingCeleritasAO = false;
+            }
         }
+    }
 
-        return Minecraft.isAmbientOcclusionEnabled();
+    /* Disable diffuse when celeritas AO is in use */
+    @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier", at = @At(value = "CONSTANT", args = "floatValue=0.5", ordinal = 0))
+    private float noBottomDiffuse(float original) {
+        return this.applyingCeleritasAO ? 1.0f : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier", at = @At(value = "CONSTANT", args = "floatValue=0.6", ordinal = 0))
+    private float noXDiffuse(float original) {
+        return this.applyingCeleritasAO ? 1.0f : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier", at = @At(value = "CONSTANT", args = "floatValue=0.8", ordinal = 0))
+    private float noZDiffuse(float original) {
+        return this.applyingCeleritasAO ? 1.0f : original;
     }
 
     @SuppressWarnings("deprecation")
@@ -112,5 +147,21 @@ public abstract class MixinRenderBlocks {
             }
         }
         return false;
+    }
+
+    @ModifyExpressionValue(method = { "renderFaceXPos", "renderFaceYPos", "renderFaceZPos",
+                              "renderFaceXNeg", "renderFaceYNeg", "renderFaceZNeg" },
+                    at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;enableAO:Z"))
+    private boolean applyAOBrightness(boolean original, @Local(ordinal = 0) Tessellator tessellator) {
+        ((StateAwareTessellator)tessellator).angelica$setAppliedAo(this.applyingCeleritasAO);
+        return original;
+    }
+
+    @Inject(method = { "renderFaceXPos", "renderFaceYPos", "renderFaceZPos",
+        "renderFaceXNeg", "renderFaceYNeg", "renderFaceZNeg" },
+        at = @At("RETURN"))
+    private void resetAOFlag(Block p_147764_1_, double p_147764_2_, double p_147764_4_, double p_147764_6_, IIcon p_147764_8_, CallbackInfo ci,
+                             @Local(ordinal = 0) Tessellator tessellator) {
+        ((StateAwareTessellator)tessellator).angelica$setAppliedAo(false);
     }
 }

@@ -88,6 +88,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableHudCachingEventTransformer;
 
+    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Experimental]")
+    @Config.DefaultBoolean(false)
+    public static boolean hudCachingActive;
+
     @Config.Comment("The amount of frames to wait before updating the HUD elements. [Experimental]")
     @Config.DefaultInt(20)
     @Config.RangeInt(min = 1, max = 60)
@@ -210,6 +214,8 @@ public class AngelicaConfig {
             "shukaro.artifice.block.world.BlockOre",
             "bartworks.system.material.BWMetaGeneratedOres",
             "gtPlusPlus.core.block.base.BlockBaseOre",
+            "org.pfaa.geologica.block.BrokenGeoBlock",
+            "org.pfaa.geologica.block.BrickGeoBlock",
     })
     public static String[] blockCrackFixRenderPassWhitelist__;
 

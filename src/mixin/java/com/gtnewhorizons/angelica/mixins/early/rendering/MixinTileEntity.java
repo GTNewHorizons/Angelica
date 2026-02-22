@@ -2,7 +2,10 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
@@ -20,7 +23,27 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Shadow public int yCoord;
     @Shadow public int zCoord;
 
-    @Shadow public abstract AxisAlignedBB getRenderBoundingBox();
+    @Shadow(remap = false) public static final AxisAlignedBB INFINITE_EXTENT_AABB = null;
+
+    /**
+     * @author mitchej123
+     * @reason Less fallback to INFINITE_EXTENT_AABB for blocks like signs,
+     */
+    @Overwrite(remap = false)
+    @SideOnly(Side.CLIENT)
+    public AxisAlignedBB getRenderBoundingBox() {
+        final Block type = getBlockType();
+        AxisAlignedBB bb = INFINITE_EXTENT_AABB;
+        if (type == Blocks.enchanting_table) {
+            bb = AxisAlignedBB.getBoundingBox(xCoord, yCoord, zCoord, xCoord + 1, yCoord + 1, zCoord + 1);
+        } else if (type == Blocks.chest || type == Blocks.trapped_chest) {
+            bb = AxisAlignedBB.getBoundingBox(xCoord - 1, yCoord, zCoord - 1, xCoord + 2, yCoord + 2, zCoord + 2);
+        } else if (type != null && type != Blocks.beacon) {
+            final AxisAlignedBB cbb = type.getCollisionBoundingBoxFromPool(worldObj, xCoord, yCoord, zCoord);
+            bb = cbb != null ? cbb : AxisAlignedBB.getBoundingBox(xCoord, yCoord, zCoord, xCoord + 1, yCoord + 1, zCoord + 1);
+        }
+        return bb;
+    }
 
     @Unique private int angelica$cachedBBX = Integer.MIN_VALUE;
     @Unique private int angelica$cachedBBY = Integer.MIN_VALUE;
