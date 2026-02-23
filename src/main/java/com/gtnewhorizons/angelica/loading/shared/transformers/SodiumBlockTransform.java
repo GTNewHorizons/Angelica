@@ -18,32 +18,40 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SodiumBlockTransform {
+public final class SodiumBlockTransform {
+
+    private final List<String> blockFieldNames = new ArrayList<>();
+    private final Map<String, String> blockFieldRedirects = new HashMap<>();
 
     public SodiumBlockTransform(boolean isObf) {
-        this.IS_OBF = isObf;
+        final List<Pair<String, String>> mappings = ImmutableList.of(
+            Pair.of("minX", "field_149759_B"),
+            Pair.of("minY", "field_149760_C"),
+            Pair.of("minZ", "field_149754_D"),
+            Pair.of("maxX", "field_149755_E"),
+            Pair.of("maxY", "field_149756_F"),
+            Pair.of("maxZ", "field_149757_G")
+        );
+        for (Pair<String, String> pair : mappings) {
+            final String name = isObf ? pair.getRight() : pair.getLeft();
+            this.blockFieldNames.add(name);
+            this.blockFieldRedirects.put(name, pair.getLeft());
+        }
     }
-
-    private final boolean IS_OBF;
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
     private static final Logger LOGGER = LogManager.getLogger("SodiumBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String BlockPackage = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    private static final List<Pair<String, String>> BlockBoundsFields = ImmutableList.of(
-        Pair.of("minX", "field_149759_B"),
-        Pair.of("minY", "field_149760_C"),
-        Pair.of("minZ", "field_149754_D"),
-        Pair.of("maxX", "field_149755_E"),
-        Pair.of("maxY", "field_149756_F"),
-        Pair.of("maxZ", "field_149757_G")
-    );
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final String[] VanillaBlockExclusions = {
         "net/minecraft/block/IGrowable",
@@ -95,10 +103,6 @@ public class SodiumBlockTransform {
         return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
-    private String getFieldName(Pair<String, String> fieldPair) {
-        return IS_OBF ? fieldPair.getRight() : fieldPair.getLeft();
-    }
-
     public String[] getTransformerExclusions() {
         return new String[]{
             "org.lwjgl",
@@ -120,7 +124,7 @@ public class SodiumBlockTransform {
         }
 
         if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
-            cn.fields.removeIf(field -> BlockBoundsFields.stream().anyMatch(pair -> field.name.equals(pair.getLeft()) || field.name.equals(pair.getRight())));
+            cn.fields.removeIf(field -> blockFieldNames.stream().anyMatch(name -> field.name.equals(name)));
         }
 
         // Track subclasses of Block
@@ -133,26 +137,17 @@ public class SodiumBlockTransform {
         if (moddedBlockSubclasses.contains(cn.name)) {
             // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
             // superclass
-            boolean doWeShadow;
+            boolean doWeShadow = false;
             if (blockOwnerExclusions.contains(cn.superName)) {
                 doWeShadow = true;
             } else {
                 // Check if we declare any known field names
-                boolean b = false;
-                for (Pair<String, String> pair : BlockBoundsFields) {
-                    boolean result = false;
-                    for (FieldNode field : cn.fields) {
-                        if (field.name.equals(getFieldName(pair))) {
-                            result = true;
-                            break;
-                        }
-                    }
-                    if (result) {
-                        b = true;
+                for (FieldNode field : cn.fields) {
+                    if (blockFieldNames.contains(field.name)) {
+                        doWeShadow = true;
                         break;
                     }
                 }
-                doWeShadow = b;
             }
             if (doWeShadow) {
                 LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
@@ -160,21 +155,22 @@ public class SodiumBlockTransform {
             }
         }
 
+        if (!isCeleritasEnabled()) {
+            return false;
+        }
+
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isCeleritasEnabled()) {
-                        Pair<String, String> fieldToRedirect = BlockBoundsFields.stream()
-                            .filter(pair -> fNode.name.equals(getFieldName(pair)))
-                            .findFirst()
-                            .orElse(null);
-                        if (fieldToRedirect != null) {
+                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
+                        String fieldRedirect = blockFieldRedirects.get(fNode.name);
+                        if (fieldRedirect != null) {
                             if (LOG_SPAM) {
                                 LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
                             }
                             // Perform the redirect
-                            fNode.name = fieldToRedirect.getLeft(); // use unobfuscated name
+                            fNode.name = fieldRedirect; // use unobfuscated name
                             fNode.owner = ThreadedBlockData;
                             // Inject getter before the field access, to turn Block -> ThreadedBlockData
                             final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);

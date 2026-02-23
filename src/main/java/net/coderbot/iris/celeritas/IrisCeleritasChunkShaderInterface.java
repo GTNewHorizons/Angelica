@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -16,6 +17,7 @@ import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
+import java.util.List;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderBindingContext;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat3v;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix3f;
@@ -51,13 +53,15 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     // Rendering state
     private final BlendModeOverride blendModeOverride;
+    private final List<BufferBlendOverride> bufferBlendOverrides;
+    private final boolean hasOverrides;
 
     // Stored matrices for inverse and normal matrix computation
     private final Matrix4f projectionMatrixInverse = new Matrix4f();
     private final Matrix4f modelViewMatrixInverse = new Matrix4f();
     private final Matrix3f normalMatrix = new Matrix3f();
 
-    public IrisCeleritasChunkShaderInterface(int handle, ShaderBindingContext context, CeleritasTerrainPipeline pipeline, boolean isShadowPass, BlendModeOverride blendModeOverride, CustomUniforms customUniforms) {
+    public IrisCeleritasChunkShaderInterface(int handle, ShaderBindingContext context, CeleritasTerrainPipeline pipeline, boolean isShadowPass, BlendModeOverride blendModeOverride, List<BufferBlendOverride> bufferBlendOverrides, CustomUniforms customUniforms) {
         this.uniformModelViewMatrix = context.bindUniformIfPresent("iris_ModelViewMatrix", GlUniformMatrix4f::new);
         this.uniformModelViewMatrixInverse = context.bindUniformIfPresent("iris_ModelViewMatrixInverse", GlUniformMatrix4f::new);
         this.uniformProjectionMatrix = context.bindUniformIfPresent("iris_ProjectionMatrix", GlUniformMatrix4f::new);
@@ -66,6 +70,8 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         this.uniformRegionOffset = context.bindUniformIfPresent("u_RegionOffset", GlUniformFloat3v::new);
 
         this.blendModeOverride = blendModeOverride;
+        this.bufferBlendOverrides = bufferBlendOverrides;
+        this.hasOverrides = bufferBlendOverrides != null && !bufferBlendOverrides.isEmpty();
         this.customUniforms = customUniforms;
 
         final ProgramUniforms.Builder builder = pipeline.initUniforms(handle);
@@ -94,6 +100,10 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
             blendModeOverride.apply();
         }
 
+        if (hasOverrides) {
+            bufferBlendOverrides.forEach(BufferBlendOverride::apply);
+        }
+
         if (irisProgramUniforms != null) {
             irisProgramUniforms.update();
         }
@@ -109,7 +119,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     @Override
     public void restoreState() {
-        if (blendModeOverride != null) {
+        if (blendModeOverride != null || hasOverrides) {
             BlendModeOverride.restore();
         }
 
