@@ -230,6 +230,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     private int renderCulledTileEntities(TileEntityRenderContext renderContext) {
         int count = 0;
+        sortedTileEntities.clear();
         SortedRenderLists renderLists = renderSectionManager.getRenderLists();
         Iterator<ChunkRenderList> renderListIterator = renderLists.iterator();
 
