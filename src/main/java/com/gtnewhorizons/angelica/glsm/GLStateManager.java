@@ -466,7 +466,8 @@ public class GLStateManager {
         VENDOR = Vendor.getVendor(glVendor.toLowerCase());
 
         // Compute stencil bit mask — driver clamps stencil masks to buffer depth
-        final int stencilBits = GL11.glGetInteger(GL11.GL_STENCIL_BITS);
+        // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
+        final int stencilBits = GL30.glGetFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
         stencilBitMask = stencilBits >= 32 ? 0xFFFFFFFF : (1 << stencilBits) - 1;
 
         // Initialize stencil masks from computed bit mask
@@ -506,6 +507,13 @@ public class GLStateManager {
             GLDebug.initDebugState();
 
             GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+        }
+
+        // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
+        // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
+        int err;
+        while ((err = GL11.glGetError()) != 0) {
+            LOGGER.debug("Drained GL error 0x{} during init", Integer.toHexString(err));
         }
     }
 
