@@ -1,15 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+
 /**
  * Generates GLSL 330 core vertex shaders for FFP emulation.
  * Follows Mesa's ffvertex_prog.c build order.
  *
- * Attribute locations
- *   0 = a_Position (vec3)
- *   1 = a_Color (vec4, ubyte4 normalized)
- *   2 = a_TexCoord0 (vec2)
- *   3 = a_TexCoord1 (vec2, lightmap)
- *   4 = a_Normal (vec3, byte3 normalized)
+ * Attribute locations are sourced from {@link VertexFormatElement.Usage} to stay in sync with GTNHLib's vertex format setup.
  */
 public final class VertexShaderGenerator {
 
@@ -42,18 +39,18 @@ public final class VertexShaderGenerator {
 
     private static void emitAttributes(StringBuilder sb, VertexKey key) {
         sb.append("// Vertex attributes\n");
-        sb.append("layout(location = 0) in vec3 a_Position;\n");
+        sb.append("layout(location = ").append(VertexFormatElement.Usage.POSITION.getAttributeLocation()).append(") in vec3 a_Position;\n");
         if (key.hasVertexColor()) {
-            sb.append("layout(location = 1) in vec4 a_Color;\n");
+            sb.append("layout(location = ").append(VertexFormatElement.Usage.COLOR.getAttributeLocation()).append(") in vec4 a_Color;\n");
         }
         if (key.hasVertexTexCoord()) {
-            sb.append("layout(location = 2) in vec2 a_TexCoord0;\n");
+            sb.append("layout(location = ").append(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord0;\n");
         }
         if (key.hasVertexLightmap()) {
-            sb.append("layout(location = 3) in vec2 a_TexCoord1;\n");
+            sb.append("layout(location = ").append(VertexFormatElement.Usage.SECONDARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord1;\n");
         }
         if (key.hasVertexNormal()) {
-            sb.append("layout(location = 4) in vec3 a_Normal;\n");
+            sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
         }
         sb.append('\n');
     }
