@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import cpw.mods.fml.client.config.GuiUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL14;
 
 import java.util.function.Consumer;
 
@@ -37,7 +36,7 @@ public class IrisImageButton extends IrisButton {
         }
 
         // Sets RenderSystem to use solid white as the tint color for blend mode, and enables blend mode
-        GL14.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+        GLStateManager.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
         GLStateManager.enableBlend();
 
         // Sets RenderSystem to be able to use textures when drawing

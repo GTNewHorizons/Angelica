@@ -49,13 +49,6 @@ public class CenterDepthSampler {
 
 		try {
 			String fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.fsh"))), StandardCharsets.UTF_8);
-
-			if (GLStateManager.capabilities.OpenGL32) {
-				fsh = fsh.replace("VERSIONPLACEHOLDER", "150 compatibility");
-			} else {
-				fsh = fsh.replace("#define IS_GL3", "");
-				fsh = fsh.replace("VERSIONPLACEHOLDER", "120");
-			}
 			String vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.vsh"))), StandardCharsets.UTF_8);
 
 			builder = ProgramBuilder.begin("centerDepthSmooth", vsh, null, fsh, ImmutableSet.of(0, 1, 2));

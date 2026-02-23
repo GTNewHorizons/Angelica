@@ -4,12 +4,10 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
@@ -157,15 +155,15 @@ public class HorizonRenderer {
 			rebuildBuffer();
 		}
 
-        GL11.glPushMatrix();
-        GL11.glLoadIdentity();
-        GL11.glMultMatrix(matrix);
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMultMatrix(matrix);
 
         vao.bind();
         vao.draw();
         vao.unbind();
 
-        GL11.glPopMatrix();
+        GLStateManager.glPopMatrix();
 	}
 
 	public void destroy() {

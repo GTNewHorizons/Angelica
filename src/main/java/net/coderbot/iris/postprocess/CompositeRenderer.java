@@ -17,6 +17,7 @@ import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.sampler.SamplerLimits;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.TextureAccess;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -32,7 +33,6 @@ import net.coderbot.iris.shaderpack.ProgramDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
-import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
@@ -42,7 +42,6 @@ import net.minecraft.client.shader.Framebuffer;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
 
@@ -291,6 +290,7 @@ public class CompositeRenderer {
 			renderPass.program.use();
 
             this.customUniforms.push(renderPass.program);
+			FullScreenQuadRenderer.uploadCompositeMatrices();
 
 			FullScreenQuadRenderer.INSTANCE.renderQuad();
 		}
@@ -302,7 +302,7 @@ public class CompositeRenderer {
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
-		GL20.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 
 		// NB: Unbinding all of these textures is necessary for proper shaderpack reloading.
 		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {

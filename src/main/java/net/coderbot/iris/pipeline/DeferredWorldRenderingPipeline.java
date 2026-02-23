@@ -288,12 +288,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// Initialize custom images
 		this.customImages = new HashSet<>();
 		final var customImageInfos = programs.getPack().getCustomImages();
-		Iris.logger.debug("[CustomImages] Found {} custom image definitions from shader pack", customImageInfos.size());
 		final List<GlImage> clearList = new ArrayList<>();
 		for (var entry : customImageInfos.object2ObjectEntrySet()) {
-			ImageInformation info = entry.getValue();
-			Iris.logger.debug("[CustomImages] Creating GlImage: {} with info: {}", entry.getKey(), info);
-			GlImage image;
+			final ImageInformation info = entry.getValue();
+			final GlImage image;
 			if (info.isRelative()) {
 				image = new GlImage.Relative(info.name(), info.samplerName(), info.format(), info.internalTextureFormat(),
 					info.type(), info.clear(), info.relativeWidth(), info.relativeHeight(),
@@ -302,14 +300,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				image = new GlImage(info.name(), info.samplerName(), info.target(), info.format(), info.internalTextureFormat(),
 					info.type(), info.clear(), info.width(), info.height(), info.depth());
 			}
-			Iris.logger.debug("[CustomImages] Created GlImage: {} with texture ID: {}", entry.getKey(), image.getId());
 			customImages.add(image);
 			if (image.shouldClear()) {
 				clearList.add(image);
 			}
 		}
 		this.imagesToClear = clearList.toArray(new GlImage[0]);
-		Iris.logger.debug("[CustomImages] Total GlImages created: {}, images to clear: {}", customImages.size(), imagesToClear.length);
 
 		// Initialize SSBOs
 		final var bufferObjectInfos = programs.getPack().getBufferObjects();
@@ -747,7 +743,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return;
 		}
 
-		beginPass(table.match(getCondition(getPhase()), inputs));
+		final RenderCondition condition = getCondition(getPhase());
+		final Pass matched = table.match(condition, inputs);
+
+		beginPass(matched);
 	}
 
 	public void beginPass(Pass pass) {
@@ -1117,7 +1116,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			} else {
 				// Clear depth first, regardless of any color clearing.
 				shadowRenderTargets.getDepthSourceFb().bind();
-                GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+                GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                 if (Minecraft.isRunningOnMac) {
                     GL11.glGetError();
                 }
@@ -1467,16 +1466,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 //		DimensionSpecialEffects.SkyType skyType = Minecraft.getMinecraft().theWorld.effects().skyType();
 
 		if (true/*skyType == DimensionSpecialEffects.SkyType.NORMAL*/) {
-            GL11.glDisable(GL11.GL_TEXTURE_2D);
-			GL11.glDepthMask(false);
+            GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+			GLStateManager.glDepthMask(false);
 
 			final Vector3d fogColor = GLStateManager.getFogColor();
-            GL11.glColor4f((float) fogColor.x, (float) fogColor.y, (float) fogColor.z, 1.0F);
+            GLStateManager.glColor4f((float) fogColor.x, (float) fogColor.y, (float) fogColor.z, 1.0F);
 
 			horizonRenderer.renderHorizon(RenderingState.INSTANCE.getModelViewBuffer());
 
-			GL11.glDepthMask(true);
-            GL11.glEnable(GL11.GL_TEXTURE_2D);
+			GLStateManager.glDepthMask(true);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
 		}
 	}
 

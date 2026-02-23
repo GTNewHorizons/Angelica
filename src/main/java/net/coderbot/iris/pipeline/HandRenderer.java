@@ -21,6 +21,8 @@ import org.lwjgl.util.glu.Project;
 
 import java.util.Map;
 
+
+
 public class HandRenderer {
     public static final HandRenderer INSTANCE = new HandRenderer();
 
@@ -31,30 +33,30 @@ public class HandRenderer {
     private void setupGlState(RenderGlobal gameRenderer, Camera camera, float tickDelta) {
         final Minecraft mc = Minecraft.getMinecraft();
 
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
         // We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
-        GL11.glScalef(1.0F, 1.0F, DEPTH);
+        GLStateManager.glScalef(1.0F, 1.0F, DEPTH);
 
         // TODO: Anaglyph
         /*if (this.mc.gameSettings.anaglyph) {
-            GL11.glTranslatef((float) (-(anaglyphChannel * 2 - 1)) * 0.07F, 0.0F, 0.0F);
+            GLStateManager.glTranslatef((float) (-(anaglyphChannel * 2 - 1)) * 0.07F, 0.0F, 0.0F);
         }*/
 
         if (mc.entityRenderer.cameraZoom != 1.0D) {
-            GL11.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
-            GL11.glScaled(mc.entityRenderer.cameraZoom, mc.entityRenderer.cameraZoom, 1.0D);
+            GLStateManager.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
+            GLStateManager.glScaled(mc.entityRenderer.cameraZoom, mc.entityRenderer.cameraZoom, 1.0D);
         }
 
         Project.gluPerspective(mc.entityRenderer.getFOVModifier(tickDelta, false), (float) mc.displayWidth / (float) mc.displayHeight, 0.05F, mc.entityRenderer.farPlaneDistance * 2.0F);
 
 
         if (mc.playerController.enableEverythingIsScrewedUpMode()) {
-            GL11.glScalef(1.0F, 2 / 3f, 1.0F);
+            GLStateManager.glScalef(1.0F, 2 / 3f, 1.0F);
         }
 
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
 
         // TODO: Anaglyph
         /*if (mc.gameSettings.anaglyph) {
@@ -107,8 +109,8 @@ public class HandRenderer {
 
         pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
-        GL11.glPushMatrix();
-        GL11.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
+        GLStateManager.glPushMatrix();
+        GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
 
         mc.mcProfiler.startSection("iris_hand");
 
@@ -117,13 +119,14 @@ public class HandRenderer {
         GbufferPrograms.setBlockEntityDefaults();
 
         renderingSolid = true;
+
         mc.entityRenderer.enableLightmap(tickDelta);
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
         mc.entityRenderer.disableLightmap(tickDelta);
 
         GLStateManager.defaultBlendFunc();
-        GL11.glDepthMask(false);
-        GL11.glPopMatrix();
+        GLStateManager.glDepthMask(false);
+        GLStateManager.glPopMatrix();
 
         mc.mcProfiler.endSection();
 
@@ -147,7 +150,7 @@ public class HandRenderer {
 
         pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 
-        GL11.glPushMatrix();
+        GLStateManager.glPushMatrix();
 
         mc.mcProfiler.startSection("iris_hand_translucent");
 
@@ -159,7 +162,7 @@ public class HandRenderer {
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
         mc.entityRenderer.disableLightmap(tickDelta);
 
-        GL11.glPopMatrix();
+        GLStateManager.glPopMatrix();
 
         resetProjectionMatrix();
 
@@ -171,10 +174,10 @@ public class HandRenderer {
     }
 
     private void resetProjectionMatrix() {
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
-        GL11.glMultMatrix(RenderingState.INSTANCE.getProjectionBuffer());
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMultMatrix(RenderingState.INSTANCE.getProjectionBuffer());
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     public boolean isActive() {

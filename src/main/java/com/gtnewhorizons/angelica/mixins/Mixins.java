@@ -29,6 +29,7 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.MixinActiveRenderInfo"
             , "angelica.MixinEntityRenderer"
+            , "angelica.MixinForgeHooksClient_CoreProfile"
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraftServer"
@@ -37,6 +38,7 @@ public enum Mixins implements IMixins {
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.glsm.MixinSplashProgressCaching"
             , "angelica.debug.MixinMinecraft_FPSCap"
+            , "angelica.ffp.MixinTessellator_CoreProfile"
         )
     ),
 

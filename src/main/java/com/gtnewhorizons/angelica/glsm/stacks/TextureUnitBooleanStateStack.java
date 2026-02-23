@@ -12,12 +12,12 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
     private final int unitIndex;
 
     public TextureUnitBooleanStateStack(int glCap, int unitIndex) {
-        super(glCap);
+        super(glCap, false, true); // All texture enable/disable states are FFP-only
         this.unitIndex = unitIndex;
     }
 
     public TextureUnitBooleanStateStack(int glCap, int unitIndex, boolean initialState) {
-        super(glCap, initialState);
+        super(glCap, initialState, true);
         this.unitIndex = unitIndex;
     }
 
@@ -41,12 +41,14 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
         if (bypass || enabled != this.enabled) {
             if (!bypass) this.enabled = enabled;
 
-            int currentUnit = GLStateManager.getActiveTextureUnit();
-            boolean needsSwitch = currentUnit != unitIndex;
+            if (!ffpStateOnly) {
+                final int currentUnit = GLStateManager.getActiveTextureUnit();
+                final boolean needsSwitch = currentUnit != unitIndex;
 
-            if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + unitIndex);
-            if (enabled) GL11.glEnable(glCap); else GL11.glDisable(glCap);
-            if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + currentUnit);
+                if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + unitIndex);
+                if (enabled) GL11.glEnable(glCap); else GL11.glDisable(glCap);
+                if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + currentUnit);
+            }
         }
     }
 
