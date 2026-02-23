@@ -336,14 +336,16 @@ public final class AngelicaRedirector {
         }
 
         boolean changed = false;
+        final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
+        final boolean isUniversalVAO = transformedName.startsWith(UniversalVAODot);
         for (MethodNode mn : cn.methods) {
-            if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
+            if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {
-                    if ((mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
+                    if (mNode.desc.equals("(I)V") && (mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable"))) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
                         if (prevNode instanceof LdcInsnNode ldcNode) {
@@ -373,7 +375,7 @@ public final class AngelicaRedirector {
                         }
                         changed = true;
                         redirectInMethod = true;
-                    } else if (mNode.owner.startsWith(Drawable) && mNode.name.equals("makeCurrent")) {
+                    } else if (mNode.name.equals("makeCurrent") && mNode.owner.startsWith(Drawable)) {
                         mNode.setOpcode(Opcodes.INVOKESTATIC);
                         mNode.owner = GLStateManager;
                         mNode.desc = "(L" + Drawable + ";)V";
@@ -387,7 +389,7 @@ public final class AngelicaRedirector {
                         if (redirects != null) {
                             final String glsmName = redirects.get(mNode.name);
                             // Skip VAO method redirects inside UniversalVAO
-                            if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
+                            if (glsmName != null && !(isUniversalVAO && UniversalVAOSkippedMethods.contains(glsmName))) {
                                 if (LOG_SPAM) {
                                     final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                     LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
@@ -403,7 +405,7 @@ public final class AngelicaRedirector {
                             final Map<String, String> ifaceRedirects = interfaceRedirects.get(mNode.owner);
                             if (ifaceRedirects != null) {
                                 final String glsmName = ifaceRedirects.get(mNode.name);
-                                if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
+                                if (glsmName != null && !(isUniversalVAO && UniversalVAOSkippedMethods.contains(glsmName))) {
                                     if (LOG_SPAM) {
                                         final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                         LOGGER.info("Redirecting interface call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, "(I)V");

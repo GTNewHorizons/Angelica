@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SodiumBlockTransform {
+public final class SodiumBlockTransform {
 
     public SodiumBlockTransform(boolean isObf) {
         this.IS_OBF = isObf;
@@ -160,11 +160,15 @@ public class SodiumBlockTransform {
             }
         }
 
+        if (!isCeleritasEnabled()) {
+            return false;
+        }
+
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner) && isCeleritasEnabled()) {
+                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
                         Pair<String, String> fieldToRedirect = BlockBoundsFields.stream()
                             .filter(pair -> fNode.name.equals(getFieldName(pair)))
                             .findFirst()
