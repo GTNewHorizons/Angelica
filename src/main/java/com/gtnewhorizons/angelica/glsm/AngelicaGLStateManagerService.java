@@ -160,7 +160,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glDeleteVertexArrays(int array) {
-        UniversalVAO.deleteVertexArrays(array);
+        GLStateManager.glDeleteVertexArrays(array);
     }
 
     // ===================== BUFFER OPERATIONS =====================

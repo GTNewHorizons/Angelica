@@ -265,6 +265,7 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
             .add("glBindFramebuffer")
         );
 
@@ -289,6 +290,7 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
 
 
@@ -300,6 +302,7 @@ public final class AngelicaRedirector {
         // GTNHLib VAO
         methodRedirects.put(UniversalVAO, RedirectMap.newMap()
             .add("bindVertexArray", "glBindVertexArray")
+            .add("deleteVertexArrays", "glDeleteVertexArrays")
         );
 
         // OTHER
@@ -308,6 +311,7 @@ public final class AngelicaRedirector {
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
         interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
             .add("glBindVertexArray")

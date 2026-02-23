@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.opengl.GLCaps;
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
@@ -388,6 +389,7 @@ public class GLStateManager {
 
     @Getter protected static int boundVBO;
     @Getter protected static int boundVAO;
+    private static int defaultVAO; // Non-zero on core profile
 
     public static void reset() {
         runningSplash = true;
@@ -508,6 +510,10 @@ public class GLStateManager {
 
             GLDebug.debugMessage("Angelica Debug Annotator Initialized");
         }
+
+        defaultVAO = GL30.glGenVertexArrays();
+        GL30.glBindVertexArray(defaultVAO);
+        boundVAO = defaultVAO;
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
@@ -4067,10 +4073,22 @@ public class GLStateManager {
             // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
             // This is technically wrong, but I'm not sure if there's a better solution here.
         }
+        if (array == 0) {
+            array = defaultVAO;
+        }
         if (boundVAO != array) {
             boundVAO = array;
             UniversalVAO.bindVertexArray(array);
         }
+    }
+
+    public static void glDeleteVertexArrays(int array) {
+        if (array == boundVAO) {
+            // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
+            boundVAO = defaultVAO;
+            UniversalVAO.bindVertexArray(defaultVAO);
+        }
+        UniversalVAO.deleteVertexArrays(array);
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
