@@ -26,12 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class SodiumBlockTransform {
+public final class CeleritasBlockTransform {
 
     private final List<String> blockFieldNames = new ArrayList<>();
     private final Map<String, String> blockFieldRedirects = new HashMap<>();
 
-    public SodiumBlockTransform(boolean isObf) {
+    public CeleritasBlockTransform(boolean isObf) {
         final List<Pair<String, String>> mappings = ImmutableList.of(
             Pair.of("minX", "field_149759_B"),
             Pair.of("minY", "field_149760_C"),
@@ -48,7 +48,7 @@ public final class SodiumBlockTransform {
     }
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
-    private static final Logger LOGGER = LogManager.getLogger("SodiumBlockTransformer");
+    private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String BlockPackage = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
