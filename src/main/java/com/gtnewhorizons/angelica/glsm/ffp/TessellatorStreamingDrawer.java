@@ -181,7 +181,7 @@ public class TessellatorStreamingDrawer {
      */
     public static void destroy() {
         for (int i = 0; i < FORMAT_COUNT; i++) {
-            if (vaoIds[i] != 0) { GL30.glDeleteVertexArrays(vaoIds[i]); vaoIds[i] = 0; }
+            if (vaoIds[i] != 0) { GLStateManager.glDeleteVertexArrays(vaoIds[i]); vaoIds[i] = 0; }
             if (vboIds[i] != 0) { GL15.glDeleteBuffers(vboIds[i]); vboIds[i] = 0; }
             vboCapacities[i] = 0;
         }
