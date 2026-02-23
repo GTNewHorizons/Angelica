@@ -69,6 +69,16 @@ public final class VertexShaderGenerator {
             sb.append("uniform mat4 u_TextureMatrix0;\n");
         }
 
+        // TexGen plane uniforms
+        if (key.texGenModeS() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneS;\n");
+        if (key.texGenModeS() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneS;\n");
+        if (key.texGenModeT() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneT;\n");
+        if (key.texGenModeT() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneT;\n");
+        if (key.texGenModeR() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneR;\n");
+        if (key.texGenModeR() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneR;\n");
+        if (key.texGenModeQ() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneQ;\n");
+        if (key.texGenModeQ() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneQ;\n");
+
         if (!key.hasVertexNormal() && key.lightingEnabled()) {
             sb.append("uniform vec3 u_CurrentNormal;\n");
         }
@@ -153,7 +163,7 @@ public final class VertexShaderGenerator {
         if (key.separateSpecular()) {
             sb.append("out vec3 v_SpecularColor;\n");
         }
-        if (key.textureEnabled() || key.hasVertexTexCoord()) {
+        if (key.textureEnabled() || key.hasVertexTexCoord() || key.texGenEnabled()) {
             sb.append("out vec2 v_TexCoord0;\n");
         }
         if (key.lightmapEnabled()) {
@@ -170,8 +180,8 @@ public final class VertexShaderGenerator {
         sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
         sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
 
-        // Eye position needed for lighting and fog
-        if (key.lightingEnabled() || key.fogEnabled()) {
+        // Eye position needed for lighting, fog, and EYE_LINEAR texgen
+        if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key)) {
             sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
         }
         sb.append('\n');
@@ -304,7 +314,9 @@ public final class VertexShaderGenerator {
     }
 
     private static void emitTexCoordPassthrough(StringBuilder sb, VertexKey key) {
-        if (key.textureEnabled() || key.hasVertexTexCoord()) {
+        if (key.texGenEnabled()) {
+            emitTexGenCoordGeneration(sb, key);
+        } else if (key.textureEnabled() || key.hasVertexTexCoord()) {
             sb.append("  // Texture coordinates\n");
             if (key.hasVertexTexCoord()) {
                 if (key.textureMatrixEnabled()) {
@@ -327,6 +339,41 @@ public final class VertexShaderGenerator {
                 sb.append("  v_TexCoord1 = (u_LightmapTextureMatrix * vec4(u_CurrentLightmapCoord, 0.0, 1.0)).st;\n");
             }
         }
+    }
+
+    /**
+     * Emit per-coordinate texgen code following Mesa's ffvertex_prog.c build order.
+     * OBJ_LINEAR: dot(pos4, objPlane), EYE_LINEAR: dot(eyePos, eyePlane).
+     * Coordinates without texgen use vertex attrib or default (0,0,0,1).
+     */
+    private static void emitTexGenCoordGeneration(StringBuilder sb, VertexKey key) {
+        sb.append("  // TexGen coordinate generation\n");
+        sb.append("  vec4 texGenCoord = vec4(0.0, 0.0, 0.0, 1.0);\n");
+
+        emitTexGenComponent(sb, key.texGenModeS(), "s", "S", key);
+        emitTexGenComponent(sb, key.texGenModeT(), "t", "T", key);
+        emitTexGenComponent(sb, key.texGenModeR(), "r", "R", key);
+        emitTexGenComponent(sb, key.texGenModeQ(), "q", "Q", key);
+
+        // Always apply texture matrix when texgen is active (forced on in VertexKey)
+        sb.append("  v_TexCoord0 = (u_TextureMatrix0 * texGenCoord).st;\n");
+    }
+
+    private static void emitTexGenComponent(StringBuilder sb, int mode, String swizzle, String coordName, VertexKey key) {
+        switch (mode) {
+            case VertexKey.TG_OBJ_LINEAR ->
+                sb.append("  texGenCoord.").append(swizzle).append(" = dot(pos4, u_TexGenObjPlane").append(coordName).append(");\n");
+            case VertexKey.TG_EYE_LINEAR ->
+                sb.append("  texGenCoord.").append(swizzle).append(" = dot(eyePos, u_TexGenEyePlane").append(coordName).append(");\n");
+            // TG_NONE: keep default (0 for s/t/r, 1 for q) — already set in texGenCoord init
+        }
+    }
+
+    private static boolean texGenNeedsEyePos(VertexKey key) {
+        return key.texGenModeS() == VertexKey.TG_EYE_LINEAR
+            || key.texGenModeT() == VertexKey.TG_EYE_LINEAR
+            || key.texGenModeR() == VertexKey.TG_EYE_LINEAR
+            || key.texGenModeQ() == VertexKey.TG_EYE_LINEAR;
     }
 
     private static void emitFogDistance(StringBuilder sb, VertexKey key) {

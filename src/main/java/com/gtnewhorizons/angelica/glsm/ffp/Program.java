@@ -66,6 +66,16 @@ public class Program {
     // Normal scale (for rescale normals)
     public int locNormalScale = -1;
 
+    // TexGen plane uniforms
+    public int locTexGenObjPlaneS = -1;
+    public int locTexGenObjPlaneT = -1;
+    public int locTexGenObjPlaneR = -1;
+    public int locTexGenObjPlaneQ = -1;
+    public int locTexGenEyePlaneS = -1;
+    public int locTexGenEyePlaneT = -1;
+    public int locTexGenEyePlaneR = -1;
+    public int locTexGenEyePlaneQ = -1;
+
     // Fragment uniforms
     public int locSampler0 = -1;
     public int locSampler1 = -1;
@@ -122,6 +132,16 @@ public class Program {
         locLight1Position = loc("u_Light1Position");
 
         locNormalScale = loc("u_NormalScale");
+
+        // TexGen
+        locTexGenObjPlaneS = loc("u_TexGenObjPlaneS");
+        locTexGenObjPlaneT = loc("u_TexGenObjPlaneT");
+        locTexGenObjPlaneR = loc("u_TexGenObjPlaneR");
+        locTexGenObjPlaneQ = loc("u_TexGenObjPlaneQ");
+        locTexGenEyePlaneS = loc("u_TexGenEyePlaneS");
+        locTexGenEyePlaneT = loc("u_TexGenEyePlaneT");
+        locTexGenEyePlaneR = loc("u_TexGenEyePlaneR");
+        locTexGenEyePlaneQ = loc("u_TexGenEyePlaneQ");
 
         // Fragment
         locSampler0 = loc("u_Sampler0");

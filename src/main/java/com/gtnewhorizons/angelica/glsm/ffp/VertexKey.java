@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -33,6 +34,16 @@ public final class VertexKey {
     private static final int BIT_HAS_VERTEX_TEX      = 17;
     private static final int BIT_HAS_VERTEX_LIGHTMAP = 18;
     private static final int BIT_COLOR_MAT_MODE      = 19;
+    // bits 19-21: colorMaterialMode (3 bits)
+    // TexGen modes: 3 bits each (0=NONE, 1=OBJ_LINEAR, 2=EYE_LINEAR)
+    private static final int BIT_TEXGEN_S            = 22;
+    private static final int BIT_TEXGEN_T            = 25;
+    private static final int BIT_TEXGEN_R            = 28;
+    private static final int BIT_TEXGEN_Q            = 31;
+
+    public static final int TG_NONE                  = 0;
+    public static final int TG_OBJ_LINEAR            = 1;
+    public static final int TG_EYE_LINEAR            = 2;
 
     public static final int CM_AMBIENT               = 0;
     public static final int CM_DIFFUSE               = 1;
@@ -67,6 +78,17 @@ public final class VertexKey {
     /** Color material mode (CM_AMBIENT, CM_DIFFUSE, CM_SPECULAR, CM_EMISSION, CM_AMBIENT_AND_DIFFUSE). Only meaningful when colorMaterialEnabled(). */
     public int colorMaterialMode()        { return (int)((packed >> BIT_COLOR_MAT_MODE) & 0x7); }
 
+    /** TexGen mode for S coordinate (TG_NONE, TG_OBJ_LINEAR, TG_EYE_LINEAR). */
+    public int texGenModeS()              { return (int)((packed >> BIT_TEXGEN_S) & 0x7); }
+    /** TexGen mode for T coordinate. */
+    public int texGenModeT()              { return (int)((packed >> BIT_TEXGEN_T) & 0x7); }
+    /** TexGen mode for R coordinate. */
+    public int texGenModeR()              { return (int)((packed >> BIT_TEXGEN_R) & 0x7); }
+    /** TexGen mode for Q coordinate. */
+    public int texGenModeQ()              { return (int)((packed >> BIT_TEXGEN_Q) & 0x7); }
+    /** Whether any texgen coordinate is enabled. */
+    public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
+
     /** Whether vertex color replaces material ambient in this variant. */
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     /** Whether vertex color replaces material diffuse in this variant. */
@@ -77,6 +99,14 @@ public final class VertexKey {
     public boolean cmReplacesEmission()   { return colorMaterialMode() == CM_EMISSION; }
 
     private boolean bit(int pos) { return ((packed >> pos) & 1) != 0; }
+
+    static int encodeTexGenMode(int glMode) {
+        return switch (glMode) {
+            case GL11.GL_OBJECT_LINEAR -> TG_OBJ_LINEAR;
+            case GL11.GL_EYE_LINEAR -> TG_EYE_LINEAR;
+            default -> TG_NONE;
+        };
+    }
 
     static int encodeColorMaterialMode(int glMode) {
         return switch (glMode) {
@@ -149,6 +179,35 @@ public final class VertexKey {
             bits |= (1L << BIT_TEX_MATRIX);
         }
 
+        // TexGen (unit 0 only) — encode per-coordinate mode if enabled
+        final var texUnit = GLStateManager.getTextures();
+        final TexGenState tg = texUnit.getTexGenState(0);
+        boolean anyTexGen = false;
+        if (texUnit.getTexGenSStates(0).isEnabled() && tg.getMode(GL11.GL_S) != 0) {
+            final int m = encodeTexGenMode(tg.getMode(GL11.GL_S));
+            bits |= ((long) m & 0x7) << BIT_TEXGEN_S;
+            if (m != TG_NONE) anyTexGen = true;
+        }
+        if (texUnit.getTexGenTStates(0).isEnabled() && tg.getMode(GL11.GL_T) != 0) {
+            final int m = encodeTexGenMode(tg.getMode(GL11.GL_T));
+            bits |= ((long) m & 0x7) << BIT_TEXGEN_T;
+            if (m != TG_NONE) anyTexGen = true;
+        }
+        if (texUnit.getTexGenRStates(0).isEnabled() && tg.getMode(GL11.GL_R) != 0) {
+            final int m = encodeTexGenMode(tg.getMode(GL11.GL_R));
+            bits |= ((long) m & 0x7) << BIT_TEXGEN_R;
+            if (m != TG_NONE) anyTexGen = true;
+        }
+        if (texUnit.getTexGenQStates(0).isEnabled() && tg.getMode(GL11.GL_Q) != 0) {
+            final int m = encodeTexGenMode(tg.getMode(GL11.GL_Q));
+            bits |= ((long) m & 0x7) << BIT_TEXGEN_Q;
+            if (m != TG_NONE) anyTexGen = true;
+        }
+        // Force texture matrix on when texgen is active (end portal pattern always uses it)
+        if (anyTexGen) {
+            bits |= (1L << BIT_TEX_MATRIX);
+        }
+
         // Vertex format flags
         if (hasColor) bits |= (1L << BIT_HAS_VERTEX_COLOR);
         if (hasNormal) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
@@ -180,9 +239,10 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%05X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b]",
+        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d]",
             packed, lightingEnabled(), light0Enabled(), light1Enabled(),
             colorMaterialEnabled(), fogEnabled(), textureEnabled(), lightmapEnabled(),
-            hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap());
+            hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
+            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ());
     }
 }

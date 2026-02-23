@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
+import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -53,6 +54,7 @@ public class Uniforms {
     private int lastTexCoordGen = -1;
     private float lastLightmapX = Float.NaN;
     private float lastLightmapY = Float.NaN;
+    private int lastTexGenGen = -1;
 
     /**
      * Upload all relevant uniforms to the given FFP program based on current GLSM state.
@@ -106,6 +108,14 @@ public class Uniforms {
                 uploadCurrentLightmapCoord(program);
                 lastLightmapX = OpenGlHelper.lastBrightnessX;
                 lastLightmapY = OpenGlHelper.lastBrightnessY;
+            }
+        }
+
+        if (program.getVertexKey().texGenEnabled()) {
+            final int tgGen = GLStateManager.texGenGeneration;
+            if (programChanged || tgGen != lastTexGenGen) {
+                uploadTexGen(program);
+                lastTexGenGen = tgGen;
             }
         }
 
@@ -300,6 +310,46 @@ public class Uniforms {
         vec3Buf.put(normal.z);
         vec3Buf.flip();
         GL20.glUniform3(program.locCurrentNormal, vec3Buf);
+    }
+
+    private void uploadTexGen(Program program) {
+        final VertexKey vk = program.getVertexKey();
+        final TexGenState tg = GLStateManager.getTextures().getTexGenState(0);
+
+        if (vk.texGenModeS() == VertexKey.TG_OBJ_LINEAR) {
+            uploadPlane(program.locTexGenObjPlaneS, tg.getObjectPlane(org.lwjgl.opengl.GL11.GL_S));
+        } else if (vk.texGenModeS() == VertexKey.TG_EYE_LINEAR) {
+            uploadPlane(program.locTexGenEyePlaneS, tg.getEyePlane(org.lwjgl.opengl.GL11.GL_S));
+        }
+
+        if (vk.texGenModeT() == VertexKey.TG_OBJ_LINEAR) {
+            uploadPlane(program.locTexGenObjPlaneT, tg.getObjectPlane(org.lwjgl.opengl.GL11.GL_T));
+        } else if (vk.texGenModeT() == VertexKey.TG_EYE_LINEAR) {
+            uploadPlane(program.locTexGenEyePlaneT, tg.getEyePlane(org.lwjgl.opengl.GL11.GL_T));
+        }
+
+        if (vk.texGenModeR() == VertexKey.TG_OBJ_LINEAR) {
+            uploadPlane(program.locTexGenObjPlaneR, tg.getObjectPlane(org.lwjgl.opengl.GL11.GL_R));
+        } else if (vk.texGenModeR() == VertexKey.TG_EYE_LINEAR) {
+            uploadPlane(program.locTexGenEyePlaneR, tg.getEyePlane(org.lwjgl.opengl.GL11.GL_R));
+        }
+
+        if (vk.texGenModeQ() == VertexKey.TG_OBJ_LINEAR) {
+            uploadPlane(program.locTexGenObjPlaneQ, tg.getObjectPlane(org.lwjgl.opengl.GL11.GL_Q));
+        } else if (vk.texGenModeQ() == VertexKey.TG_EYE_LINEAR) {
+            uploadPlane(program.locTexGenEyePlaneQ, tg.getEyePlane(org.lwjgl.opengl.GL11.GL_Q));
+        }
+    }
+
+    private void uploadPlane(int loc, float[] plane) {
+        if (loc == -1) return;
+        vec4Buf.clear();
+        vec4Buf.put(plane[0]);
+        vec4Buf.put(plane[1]);
+        vec4Buf.put(plane[2]);
+        vec4Buf.put(plane[3]);
+        vec4Buf.flip();
+        GL20.glUniform4(loc, vec4Buf);
     }
 
     private void uploadFragmentUniforms(Program program) {

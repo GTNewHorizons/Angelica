@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.opengl.GLCaps;
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
@@ -148,21 +150,21 @@ public class GLStateManager {
     /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
     public static void flushDeferredVertexAttribs() {
         if (dirtyColorAttrib) {
-            GL20.glVertexAttrib4f(1, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+            GL20.glVertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
         if (dirtyNormalAttrib) {
             final var n = ShaderManager.getCurrentNormal();
-            GL20.glVertexAttrib3f(4, n.x, n.y, n.z);
+            GL20.glVertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
             dirtyNormalAttrib = false;
         }
         if (dirtyTexCoordAttrib) {
             final var tc = ShaderManager.getCurrentTexCoord();
-            GL20.glVertexAttrib4f(2, tc.x, tc.y, tc.z, tc.w);
+            GL20.glVertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
         }
         if (dirtyLightmapAttrib) {
-            GL20.glVertexAttrib4f(3, OpenGlHelper.lastBrightnessX, OpenGlHelper.lastBrightnessY, 0.0f, 1.0f);
+            GL20.glVertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), OpenGlHelper.lastBrightnessX, OpenGlHelper.lastBrightnessY, 0.0f, 1.0f);
             dirtyLightmapAttrib = false;
         }
     }
@@ -1988,106 +1990,111 @@ public class GLStateManager {
     // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        if (!isVAOBound()) {
-            clientArrayState.setVertexPointer(size, GL11.GL_FLOAT, stride, pointer);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!isVAOBound()) {
-            clientArrayState.setVertexPointer(size, type, stride, pointer);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!isVAOBound()) {
-            // VBO offset - can't track buffer reference, clear it
-            clientArrayState.setVertexPointer(size, type, stride, null);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        if (!isVAOBound()) {
-            clientArrayState.setColorPointer(size, GL11.GL_FLOAT, stride, pointer);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!isVAOBound()) {
-            clientArrayState.setColorPointer(size, type, stride, pointer);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
-        if (!isVAOBound()) {
-            final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-            clientArrayState.setColorPointer(size, type, stride, pointer);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
+        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!isVAOBound()) {
-            // VBO offset - can't track buffer reference, clear it
-            clientArrayState.setColorPointer(size, type, stride, null);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setNormalPointer(type, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
 
     public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setNormalPointer(GL11.GL_FLOAT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, ShortBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setNormalPointer(GL11.GL_SHORT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setNormalPointer(GL11.GL_INT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
-        if (!isVAOBound()) clientArrayState.setNormalPointer(type, stride, null);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setTexCoordPointer(size, type, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, type, false, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setTexCoordPointer(size, GL11.GL_FLOAT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setTexCoordPointer(size, GL11.GL_SHORT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
-        if (!isVAOBound()) clientArrayState.setTexCoordPointer(size, GL11.GL_INT, stride, pointer);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!isVAOBound()) clientArrayState.setTexCoordPointer(size, type, stride, null);
+        if (!ShaderManager.getInstance().isActive()) return;
+        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
-        if (!isVAOBound()) {
-            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(true);
-            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(true);
-            else if (cap == GL11.GL_NORMAL_ARRAY) clientArrayState.setNormalArrayEnabled(true);
-            else if (cap == GL11.GL_TEXTURE_COORD_ARRAY) clientArrayState.setTexCoordArrayEnabled(true);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        final int location = clientStateToAttributeLocation(cap);
+        if (location >= 0) GL20.glEnableVertexAttribArray(location);
     }
 
     public static void glDisableClientState(int cap) {
-        if (!isVAOBound()) {
-            if (cap == GL11.GL_VERTEX_ARRAY) clientArrayState.setVertexArrayEnabled(false);
-            else if (cap == GL11.GL_COLOR_ARRAY) clientArrayState.setColorArrayEnabled(false);
-            else if (cap == GL11.GL_NORMAL_ARRAY) clientArrayState.setNormalArrayEnabled(false);
-            else if (cap == GL11.GL_TEXTURE_COORD_ARRAY) clientArrayState.setTexCoordArrayEnabled(false);
-        }
+        if (!ShaderManager.getInstance().isActive()) return;
+        final int location = clientStateToAttributeLocation(cap);
+        if (location >= 0) GL20.glDisableVertexAttribArray(location);
+    }
+
+    private static int clientStateToAttributeLocation(int cap) {
+        return switch (cap) {
+            case GL11.GL_VERTEX_ARRAY -> Usage.POSITION.getAttributeLocation();
+            case GL11.GL_COLOR_ARRAY -> Usage.COLOR.getAttributeLocation();
+            case GL11.GL_NORMAL_ARRAY -> Usage.NORMAL.getAttributeLocation();
+            case GL11.GL_TEXTURE_COORD_ARRAY -> Usage.PRIMARY_UV.getAttributeLocation();
+            default -> -1;
+        };
     }
 
     public static void glLogicOp(int opcode) {
@@ -4299,14 +4306,91 @@ public class GLStateManager {
         guardUnsupportedFFP(function, TEXENV_COMBINE_MSG);
     }
 
-    private static final String TEXGEN_MSG = "glTexGen is not implemented in FFP emulation.";
+    // TexGen generation counter for FFP uniform dirty tracking
+    public static int texGenGeneration;
 
-    public static void glTexGeni(int coord, int pname, int param) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
-    public static void glTexGenf(int coord, int pname, float param) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
-    public static void glTexGend(int coord, int pname, double param) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
-    public static void glTexGen(int coord, int pname, FloatBuffer params) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
-    public static void glTexGen(int coord, int pname, DoubleBuffer params) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
-    public static void glTexGen(int coord, int pname, IntBuffer params) { guardUnsupportedFFP("glTexGen", TEXGEN_MSG); }
+    private static final float[] texGenTempPlane = new float[4];
+
+    public static void glTexGeni(int coord, int pname, int param) {
+        if (!isCachingEnabled()) return;
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            final int unit = activeTextureUnit.getValue();
+            textures.getTexGenState(unit).setMode(coord, param);
+            texGenGeneration++;
+        }
+    }
+
+    public static void glTexGenf(int coord, int pname, float param) {
+        // Single-float form only valid for GL_TEXTURE_GEN_MODE
+        glTexGeni(coord, pname, (int) param);
+    }
+
+    public static void glTexGend(int coord, int pname, double param) {
+        glTexGeni(coord, pname, (int) param);
+    }
+
+    public static void glTexGen(int coord, int pname, FloatBuffer params) {
+        if (!isCachingEnabled()) return;
+        final int unit = activeTextureUnit.getValue();
+        final var texGenState = textures.getTexGenState(unit);
+        final int pos = params.position();
+        switch (pname) {
+            case GL11.GL_TEXTURE_GEN_MODE -> {
+                texGenState.setMode(coord, (int) params.get(pos));
+                texGenGeneration++;
+            }
+            case GL11.GL_OBJECT_PLANE -> {
+                texGenTempPlane[0] = params.get(pos);
+                texGenTempPlane[1] = params.get(pos + 1);
+                texGenTempPlane[2] = params.get(pos + 2);
+                texGenTempPlane[3] = params.get(pos + 3);
+                texGenState.setObjectPlane(coord, texGenTempPlane);
+                texGenGeneration++;
+            }
+            case GL11.GL_EYE_PLANE -> {
+                texGenTempPlane[0] = params.get(pos);
+                texGenTempPlane[1] = params.get(pos + 1);
+                texGenTempPlane[2] = params.get(pos + 2);
+                texGenTempPlane[3] = params.get(pos + 3);
+                texGenState.setEyePlane(coord, texGenTempPlane, modelViewMatrix);
+                texGenGeneration++;
+            }
+        }
+    }
+
+    public static void glTexGen(int coord, int pname, DoubleBuffer params) {
+        if (!isCachingEnabled()) return;
+        final int pos = params.position();
+        texGenTempPlane[0] = (float) params.get(pos);
+        texGenTempPlane[1] = (float) params.get(pos + 1);
+        texGenTempPlane[2] = (float) params.get(pos + 2);
+        texGenTempPlane[3] = (float) params.get(pos + 3);
+        final int unit = activeTextureUnit.getValue();
+        final var texGenState = textures.getTexGenState(unit);
+        switch (pname) {
+            case GL11.GL_TEXTURE_GEN_MODE -> {
+                texGenState.setMode(coord, (int) params.get(pos));
+                texGenGeneration++;
+            }
+            case GL11.GL_OBJECT_PLANE -> {
+                texGenState.setObjectPlane(coord, texGenTempPlane);
+                texGenGeneration++;
+            }
+            case GL11.GL_EYE_PLANE -> {
+                texGenState.setEyePlane(coord, texGenTempPlane, modelViewMatrix);
+                texGenGeneration++;
+            }
+        }
+    }
+
+    public static void glTexGen(int coord, int pname, IntBuffer params) {
+        if (!isCachingEnabled()) return;
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            final int unit = activeTextureUnit.getValue();
+            textures.getTexGenState(unit).setMode(coord, params.get(params.position()));
+            texGenGeneration++;
+        }
+    }
 
     public static void glPolygonStipple(ByteBuffer pattern) {
         guardUnsupportedFFP("glPolygonStipple", "glPolygonStipple is not available in GL 3.3 core profile.");

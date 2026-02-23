@@ -17,6 +17,7 @@ public class TextureUnitArray {
     private final TextureUnitBooleanStateStack[] texGenTStates;
     private final TextureUnitBooleanStateStack[] texGenRStates;
     private final TextureUnitBooleanStateStack[] texGenQStates;
+    private final TexGenState[] texGenStates;
     @Getter
     public final Matrix4fStack[] textureMatricies;
 
@@ -29,6 +30,7 @@ public class TextureUnitArray {
         texGenTStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texGenRStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texGenQStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        texGenStates = new TexGenState[GLStateManager.MAX_TEXTURE_UNITS];
         textureMatricies = new Matrix4fStack[GLStateManager.MAX_TEXTURE_UNITS];
 
         for (int i = 0; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
@@ -40,6 +42,7 @@ public class TextureUnitArray {
             texGenTStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_T, i);
             texGenRStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_R, i);
             texGenQStates[i] = new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_Q, i);
+            texGenStates[i] = new TexGenState();
             textureMatricies[i] = new Matrix4fStack(GLStateManager.MAX_TEXTURE_STACK_DEPTH);
         }
     }
@@ -74,6 +77,10 @@ public class TextureUnitArray {
 
     public TextureUnitBooleanStateStack getTexGenQStates(int index) {
         return texGenQStates[index];
+    }
+
+    public TexGenState getTexGenState(int index) {
+        return texGenStates[index];
     }
 
     public Matrix4fStack getTextureUnitMatrix(int index) {
