@@ -1,13 +1,20 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import net.minecraft.launchwrapper.Launch;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +50,9 @@ public class CompatShaderTransformer {
 
     private static final Pattern NEEDS_TRANSFORM_PATTERN = Pattern.compile(String.join("|", COMPAT_BUILTINS));
 
+    /** Legacy storage qualifiers removed in core profile. Checked with word boundaries since these are common words. */
+    private static final Pattern LEGACY_QUALIFIER_PATTERN = Pattern.compile("\\b(attribute|varying)\\b");
+
     private static final Map<String, String> MATRIX_RENAMES = Map.of(
         "gl_ModelViewMatrix", "angelica_ModelViewMatrix",
         "gl_ModelViewMatrixInverse", "angelica_ModelViewMatrixInverse",
@@ -50,6 +60,18 @@ public class CompatShaderTransformer {
         "gl_ProjectionMatrixInverse", "angelica_ProjectionMatrixInverse",
         "gl_NormalMatrix", "angelica_NormalMatrix"
     );
+
+    private static final Path DUMP_DIR;
+    private static final AtomicInteger dumpCounter = new AtomicInteger(0);
+    static {
+        boolean isDev = false;
+        try {
+            final Object deobfEnv = Launch.blackboard != null ? Launch.blackboard.get("fml.deobfuscatedEnvironment") : null;
+            isDev = Boolean.TRUE.equals(deobfEnv);
+        } catch (Exception ignored) {}
+        DUMP_DIR = (isDev || Boolean.parseBoolean(System.getProperty("angelica.compat.dumpShaders", "false")))
+            ? Paths.get("compat_shaders") : null;
+    }
 
     private static final int CACHE_SIZE = 32;
     private record CacheKey(String source, boolean isFragment) {}
@@ -68,26 +90,34 @@ public class CompatShaderTransformer {
      * Transform a mod shader source for core profile compatibility.
      */
     public static String transform(String source, boolean isFragment) {
-        if (!needsTransformation(source)) {
-            return fixupVersion(source);
+        final boolean needsTransform = needsTransformation(source);
+        String result;
+        if (!needsTransform) {
+            result = fixupVersion(source);
+        } else {
+            final CacheKey key = new CacheKey(source, isFragment);
+            final String cached = cache.get(key);
+            if (cached != null) {
+                dumpShader(source, cached, isFragment, needsTransform);
+                return cached;
+            }
+
+            try {
+                result = transformInternal(source, isFragment);
+                cache.put(new CacheKey(source, isFragment), result);
+            } catch (Exception e) {
+                LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
+                result = fixupVersion(source);
+            }
         }
 
-        final CacheKey key = new CacheKey(source, isFragment);
-        final String cached = cache.get(key);
-        if (cached != null) return cached;
-
-        try {
-            final String result = transformInternal(source, isFragment);
-            cache.put(key, result);
-            return result;
-        } catch (Exception e) {
-            LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
-            return fixupVersion(source);
-        }
+        dumpShader(source, result, isFragment, needsTransform);
+        return result;
     }
 
     private static boolean needsTransformation(String source) {
-        return NEEDS_TRANSFORM_PATTERN.matcher(source).find();
+        return NEEDS_TRANSFORM_PATTERN.matcher(source).find()
+            || LEGACY_QUALIFIER_PATTERN.matcher(source).find();
     }
 
     private static String transformInternal(String source, boolean isFragment) {
@@ -145,7 +175,12 @@ public class CompatShaderTransformer {
         transformer.mutateTree(tree -> result.append(GlslTransformUtils.getFormattedShader(tree, header)));
 
         // Restore pre-parse renames
-        return GlslTransformUtils.restoreReservedWords(result.toString());
+        String output = GlslTransformUtils.restoreReservedWords(result.toString());
+
+        // Core profile: attribute → in, varying → out (vertex) / in (fragment)
+        output = fixupQualifiers(output, isFragment);
+
+        return output;
     }
 
     /**
@@ -209,6 +244,43 @@ public class CompatShaderTransformer {
             "angelica_FogParameters angelica_Fog = angelica_FogParameters("
             + "angelica_FogColor, angelica_FogDensity, angelica_FogStart, angelica_FogEnd, "
             + "1.0f / (angelica_FogEnd - angelica_FogStart));");
+    }
+
+    private static void dumpShader(String original, String transformed, boolean isFragment, boolean wasTransformed) {
+        if (DUMP_DIR == null) return;
+        final int id = dumpCounter.getAndIncrement();
+        final String suffix = isFragment ? ".frag.glsl" : ".vert.glsl";
+        try {
+            Files.createDirectories(DUMP_DIR);
+            // Capture caller info for identification
+            final String caller = identifyCaller();
+            final String header = "// Compat shader dump #" + id + " (" + (isFragment ? "fragment" : "vertex") + ")"
+                + "\n// Transformed: " + wasTransformed
+                + "\n// Caller: " + caller + "\n\n";
+            Files.writeString(DUMP_DIR.resolve(id + "_original" + suffix), header + original, StandardCharsets.UTF_8);
+            Files.writeString(DUMP_DIR.resolve(id + "_transformed" + suffix), header + transformed, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            LOGGER.warn("Failed to dump compat shader: {}", e.getMessage());
+        }
+    }
+
+    private static String identifyCaller() {
+        for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
+            final String cls = frame.getClassName();
+            if (!cls.startsWith("com.gtnewhorizons.angelica.glsm.")
+                && !cls.startsWith("java.")
+                && !cls.equals("org.lwjgl.opengl.GL20")) {
+                return cls + "." + frame.getMethodName() + ":" + frame.getLineNumber();
+            }
+        }
+        return "unknown";
+    }
+
+    /** Replace legacy storage qualifiers removed in core profile. Safe on AST-serialized output (no comments). */
+    private static String fixupQualifiers(String source, boolean isFragment) {
+        source = source.replaceAll("\\battribute\\b", "in");
+        source = source.replaceAll("\\bvarying\\b", isFragment ? "in" : "out");
+        return source;
     }
 
     /** Ensure #version is at least 330 core, strip 'compatibility' profile. */
