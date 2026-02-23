@@ -60,6 +60,19 @@ public class ClientArrayState {
         return vertexPointerStride;
     }
 
+    // Normal array state
+    private boolean normalArrayEnabled = false;
+    private Buffer normalPointer = null;
+    private int normalPointerType = GL11.GL_FLOAT;
+    private int normalPointerStride = 0;
+
+    // TexCoord array state
+    private boolean texCoordArrayEnabled = false;
+    private Buffer texCoordPointer = null;
+    private int texCoordPointerSize = 4;
+    private int texCoordPointerType = GL11.GL_FLOAT;
+    private int texCoordPointerStride = 0;
+
     // Color array methods
     public void setColorPointer(int size, int type, int stride, Buffer pointer) {
         this.colorPointerSize = size;
@@ -90,5 +103,64 @@ public class ClientArrayState {
 
     public int getColorPointerStride() {
         return colorPointerStride;
+    }
+
+    // Normal array methods
+    public void setNormalPointer(int type, int stride, Buffer pointer) {
+        this.normalPointerType = type;
+        this.normalPointerStride = stride;
+        this.normalPointer = pointer;
+    }
+
+    public boolean isNormalArrayEnabled() {
+        return normalArrayEnabled;
+    }
+
+    public void setNormalArrayEnabled(boolean enabled) {
+        this.normalArrayEnabled = enabled;
+    }
+
+    public Buffer getNormalPointer() {
+        return normalPointer;
+    }
+
+    public int getNormalPointerType() {
+        return normalPointerType;
+    }
+
+    public int getNormalPointerStride() {
+        return normalPointerStride;
+    }
+
+    // TexCoord array methods
+    public void setTexCoordPointer(int size, int type, int stride, Buffer pointer) {
+        this.texCoordPointerSize = size;
+        this.texCoordPointerType = type;
+        this.texCoordPointerStride = stride;
+        this.texCoordPointer = pointer;
+    }
+
+    public boolean isTexCoordArrayEnabled() {
+        return texCoordArrayEnabled;
+    }
+
+    public void setTexCoordArrayEnabled(boolean enabled) {
+        this.texCoordArrayEnabled = enabled;
+    }
+
+    public Buffer getTexCoordPointer() {
+        return texCoordPointer;
+    }
+
+    public int getTexCoordPointerSize() {
+        return texCoordPointerSize;
+    }
+
+    public int getTexCoordPointerType() {
+        return texCoordPointerType;
+    }
+
+    public int getTexCoordPointerStride() {
+        return texCoordPointerStride;
     }
 }

@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm.states;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.joml.Vector4f;
 import org.joml.Vector4i;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 import java.nio.FloatBuffer;
@@ -32,7 +31,6 @@ public class LightModelState implements ISettableState<LightModelState> {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
         }
     }
 
@@ -41,14 +39,12 @@ public class LightModelState implements ISettableState<LightModelState> {
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, newBuffer);
         }
     }
 
     public void setColorControl(int val) {
         if (GLStateManager.shouldBypassCache() || this.colorControl != val) {
             this.colorControl = val;
-            GL11.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, val);
         }
     }
 
@@ -59,7 +55,6 @@ public class LightModelState implements ISettableState<LightModelState> {
     public void setLocalViewer(float val) {
         if (GLStateManager.shouldBypassCache() || Float.compare(this.localViewer, val) != 0) {
             this.localViewer = val;
-            GL11.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, val);
         }
     }
 
@@ -78,7 +73,6 @@ public class LightModelState implements ISettableState<LightModelState> {
     public void setTwoSide(float val) {
         if (GLStateManager.shouldBypassCache() || Float.compare(this.twoSide, val) != 0) {
             this.twoSide = val;
-            GL11.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, val);
         }
     }
 

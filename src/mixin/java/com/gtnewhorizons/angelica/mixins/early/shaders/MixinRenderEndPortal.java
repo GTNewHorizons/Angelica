@@ -1,13 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import net.coderbot.iris.Iris;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.RenderEndPortal;
 import net.minecraft.tileentity.TileEntityEndPortal;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,8 +27,7 @@ public class MixinRenderEndPortal {
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntityEndPortal;DDDF)V", at = @At("HEAD"), cancellable = true)
     private void iris$renderShaderPortal(TileEntityEndPortal te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        if (!Iris.getCurrentPack().isPresent()) return;
-
+        // Always use shader-based portal rendering — eliminates glTexGen dependency for core profile
         ci.cancel();
 
         float progress = (SystemTimeUniforms.TIMER.getFrameTimeCounter() * 0.01f) % 1.0f;
@@ -42,7 +40,7 @@ public class MixinRenderEndPortal {
         float bottom = (float) y + iris$BOTTOM;
 
         Minecraft.getMinecraft().getTextureManager().bindTexture(iris$END_PORTAL_TEXTURE);
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.enableTexture();
 
         Tessellator tess = Tessellator.instance;
         tess.startDrawingQuads();

@@ -1,44 +1,33 @@
 package com.gtnewhorizons.angelica.debug;
 
-import static org.lwjgl.opengl.GL11.GL_ALPHA_TEST;
-import static org.lwjgl.opengl.GL11.GL_BLEND;
-import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
-import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
-import static org.lwjgl.opengl.GL11.GL_VERTEX_ARRAY;
-import static org.lwjgl.opengl.GL11.glBlendFunc;
-import static org.lwjgl.opengl.GL11.glColor4f;
-import static org.lwjgl.opengl.GL11.glDisable;
-import static org.lwjgl.opengl.GL11.glDisableClientState;
-import static org.lwjgl.opengl.GL11.glDrawArrays;
-import static org.lwjgl.opengl.GL11.glEnable;
-import static org.lwjgl.opengl.GL11.glEnableClientState;
-import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBindBuffer;
-import static org.lwjgl.opengl.GL15.glBufferData;
-import static org.lwjgl.opengl.GL15.glGenBuffers;
-import static org.lwjgl.opengl.GL20.glDisableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glUniform1;
-import static org.lwjgl.opengl.GL20.glUniform1f;
-import static org.lwjgl.opengl.GL20.glUniform1i;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
-
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
-import java.nio.FloatBuffer;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL30;
+
+import java.nio.FloatBuffer;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
+import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBindBuffer;
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
+import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
+import static org.lwjgl.opengl.GL15.glBufferData;
+import static org.lwjgl.opengl.GL15.glGenBuffers;
+import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glUniform1;
+import static org.lwjgl.opengl.GL20.glUniform1f;
+import static org.lwjgl.opengl.GL20.glUniform1i;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 public abstract class F3Graph {
     private static final int NUM_SAMPLES = 240;
@@ -63,6 +52,7 @@ public abstract class F3Graph {
     private int uHeadIdx;
     private int uSamples;
     private int vertBuf;
+    private int vao;
     private final ResourceLocation texture;
     private final float pxPerNs;
     private final boolean left;
@@ -117,8 +107,8 @@ public abstract class F3Graph {
             "shaders/debug_graph.frag.glsl");
         shader.use();
 
-        // Register attributes
-        aPos = shader.getAttribLocation("pos");
+        // Attribute location is declared in shader via layout(location = 0)
+        aPos = 0;
 
         // Register uniforms
         uFBWidth = shader.getUniformLocation("fbWidth");
@@ -129,7 +119,9 @@ public abstract class F3Graph {
         final int uPxPerNs = shader.getUniformLocation("pxPerNs");
         final int uLeft = shader.getUniformLocation("left");
 
-        // Load vertex buffer
+        vao = GL30.glGenVertexArrays();
+        GLStateManager.glBindVertexArray(vao);
+
         vertBuf = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
         try (final MemoryStack stack = stackPush()) {
@@ -146,7 +138,13 @@ public abstract class F3Graph {
 
             glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
         }
+
+        // Configure vertex attribute in the VAO
+        glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
+        glEnableVertexAttribArray(aPos);
+
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindVertexArray(0);
 
         final Minecraft mc = Minecraft.getMinecraft();
         final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
@@ -186,21 +184,21 @@ public abstract class F3Graph {
 
         // Setup GL state
         final Tessellator tess = Tessellator.instance;
-        glDisable(GL_DEPTH_TEST);
-        glEnable(GL_ALPHA_TEST);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GLStateManager.disableDepthTest();
+        GLStateManager.enableAlphaTest();
+        GLStateManager.enableBlend();
+        GLStateManager.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         // Draw background
-        glDisable(GL_TEXTURE_2D);
-        glColor4f(0x50 / 255.0F, 0x50 / 255.0F, 0x50 / 255.0F, 0x90 / 255.0F);
+        GLStateManager.disableTexture();
+        GLStateManager.glColor4f(0x50 / 255.0F, 0x50 / 255.0F, 0x50 / 255.0F, 0x90 / 255.0F);
         tess.startDrawingQuads();
         for (int i = 0; i < 4; ++i) {
             tess.addVertex(getVertX(sr, i), getVertY(sr, i), 0);
         }
         tess.draw();
-        glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        glEnable(GL_TEXTURE_2D);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLStateManager.enableTexture();
 
 
         // Draw samples
@@ -213,21 +211,16 @@ public abstract class F3Graph {
         glUniform1i(uHeadIdx, samplesHead);
         glUniform1(uSamples, sampleBuf);
 
-        glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
-        glEnableVertexAttribArray(aPos);
-        glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
-        glEnableClientState(GL_VERTEX_ARRAY);
+        GLStateManager.glBindVertexArray(vao);
 
         // Left side graphs are inverted, so temporarily disable culling
-        if (!left) glDisable(GL_CULL_FACE);
+        if (!left) GLStateManager.disableCull();
 
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
+        GLStateManager.glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
 
-        if (!left) glEnable(GL_CULL_FACE);
+        if (!left) GLStateManager.enableCull();
 
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableVertexAttribArray(aPos);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindVertexArray(0);
 
         ShaderProgram.clear();
 
@@ -242,9 +235,9 @@ public abstract class F3Graph {
         tess.draw();
 
         // Reset GL state
-        glEnable(GL_DEPTH_TEST);
-        glDisable(GL_ALPHA_TEST);
-        glDisable(GL_BLEND);
+        GLStateManager.enableDepthTest();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.disableBlend();
 
         // Draw text
         // Ensure running counters are reset on first sample

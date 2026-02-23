@@ -10,8 +10,7 @@ public class MatrixMode implements ISettableState<MatrixMode> {
 
     public void setMode(int mode) {
         if(mode != GL11.GL_MODELVIEW && mode != GL11.GL_PROJECTION && mode != GL11.GL_TEXTURE && mode != GL11.GL_COLOR) {
-            // Invalid mode, do nothing on the cache, but pass it along to OGL
-            GL11.glMatrixMode(mode);
+            // Invalid mode, do nothing on the cache
             return;
         }
 
@@ -20,7 +19,6 @@ public class MatrixMode implements ISettableState<MatrixMode> {
             if (!bypass) {
                 this.mode = mode;
             }
-            GL11.glMatrixMode(mode);
         }
     }
 
