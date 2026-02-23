@@ -39,7 +39,7 @@ public class CeleritasBlockTransformer implements IClassTransformer {
         cr.accept(cn, 0);
         final boolean changed = inner.transformClassNode(transformedName, cn);
         if (changed) {
-            final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
             cn.accept(cw);
             final byte[] bytes = cw.toByteArray();
             AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);

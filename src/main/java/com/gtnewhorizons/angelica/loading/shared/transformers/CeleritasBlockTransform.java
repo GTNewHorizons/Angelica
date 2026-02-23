@@ -6,24 +6,19 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.InsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.analysis.Analyzer;
+import org.objectweb.asm.tree.analysis.Frame;
+import org.objectweb.asm.tree.analysis.SourceInterpreter;
+import org.objectweb.asm.tree.analysis.SourceValue;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.lang.reflect.Modifier;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
@@ -87,6 +82,20 @@ public final class CeleritasBlockTransform {
         }
     }
 
+    private static int maxParamSlots(MethodNode mn) {
+        int size = Type.getArgumentsAndReturnSizes(mn.desc) >> 2;
+        if (!Modifier.isStatic(mn.access)) size += 1;
+        return size;
+    }
+
+    private static int getParamSlot(AbstractInsnNode src, MethodNode mn) {
+        if (!(src instanceof VarInsnNode)) return -1;
+        if (src.getOpcode() != Opcodes.ALOAD) return -1;
+        int var = ((VarInsnNode) src).var;
+        int paramSlots = maxParamSlots(mn);
+        return var < paramSlots ? var : -1;
+    }
+
     private boolean isVanillaBlockSubclass(String className) {
         if (className.startsWith(BlockPackage)) {
             for (String exclusion : VanillaBlockExclusions) {
@@ -117,7 +126,9 @@ public final class CeleritasBlockTransform {
         return cstPoolParser.find(basicClass, true);
     }
 
-    /** @return Was the class changed? */
+    /**
+     * @return Was the class changed?
+     */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
         if (cn == null) {
             return false;
@@ -161,41 +172,125 @@ public final class CeleritasBlockTransform {
 
         boolean changed = false;
         for (MethodNode mn : cn.methods) {
-            for (AbstractInsnNode node : mn.instructions.toArray()) {
+            if (mn.instructions.size() == 0) {
+                continue;
+            }
+
+            Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
+            boolean analyzeSuccess = false;
+            try {
+                analyzer.analyze(cn.name, mn);
+                analyzeSuccess = true;
+            } catch (Exception _) {
+            }
+
+            Frame<SourceValue>[] frames = analyzer.getFrames();
+
+            int[] paramUsedCount = new int[maxParamSlots(mn)];
+            ArrayList<Pair<Pair<FieldInsnNode, Integer>, String>> records = new ArrayList<>();
+            for (int i = 0; i < mn.instructions.size(); i++) {
+                AbstractInsnNode node = mn.instructions.get(i);
+                Frame<SourceValue> frame = analyzeSuccess ? frames[i] : null;
+
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
                         String fieldRedirect = blockFieldRedirects.get(fNode.name);
                         if (fieldRedirect != null) {
-                            if (LOG_SPAM) {
-                                LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
+                            if (frame != null) {
+                                int stackSize = frame.getStackSize();
+                                SourceValue receiver;
+                                if (fNode.getOpcode() == Opcodes.GETFIELD) {
+                                    receiver = frame.getStack(stackSize - 1);
+                                } else {
+                                    // FIXME: this code assumes doubles
+                                    receiver = frame.getStack(stackSize - 3);
+                                }
+                                if (receiver.insns.size() == 1) {
+                                    int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
+                                    if (paramSlot >= 0) {
+                                        paramUsedCount[paramSlot]++;
+                                        records.add(Pair.of(Pair.of(fNode, paramSlot), fieldRedirect));
+                                    } else {
+                                        records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
+                                    }
+                                } else {
+                                    records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
+                                }
+                            } else {
+                                records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
                             }
-                            // Perform the redirect
-                            fNode.name = fieldRedirect; // use unobfuscated name
-                            fNode.owner = ThreadedBlockData;
-                            // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                            if (node.getOpcode() == Opcodes.GETFIELD) {
-                                mn.instructions.insertBefore(fNode, getter);
-                            } else if (node.getOpcode() == Opcodes.PUTFIELD) {
-                                // FIXME: this code assumes doubles
-                                // Stack: Block, double
-                                final InsnList beforePut = new InsnList();
-                                beforePut.add(new InsnNode(Opcodes.DUP2_X1));
-                                // Stack: double, Block, double
-                                beforePut.add(new InsnNode(Opcodes.POP2));
-                                // Stack: double, Block
-                                beforePut.add(getter);
-                                // Stack: double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.DUP_X2));
-                                // Stack: ThreadedBlockData, double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.POP));
-                                // Stack: ThreadedBlockData, double
-                                mn.instructions.insertBefore(fNode, beforePut);
-                            }
-                            changed = true;
                         }
                     }
                 }
+            }
+
+            LabelNode methodStart = new LabelNode(new Label());
+            LabelNode methodEnd = new LabelNode(new Label());
+            int[] caches = new int[paramUsedCount.length];
+            final InsnList initCache = new InsnList();
+            for (int i = 0; i < paramUsedCount.length; i++) {
+                if (paramUsedCount[i] > 1) {
+                    caches[i] = mn.maxLocals++;
+                    mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + i, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, caches[i]));
+                    initCache.add(new VarInsnNode(Opcodes.ALOAD, i));
+                    initCache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
+                    initCache.add(new VarInsnNode(Opcodes.ASTORE, caches[i]));
+                }
+            }
+            mn.instructions.insertBefore(mn.instructions.getFirst(), initCache);
+            mn.instructions.insertBefore(mn.instructions.getFirst(), methodStart);
+            mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
+
+            for (Pair<Pair<FieldInsnNode, Integer>, String> record : records) {
+                FieldInsnNode node = record.getLeft().getLeft();
+                int paramSlot = record.getLeft().getRight();
+                String fieldRedirect = record.getRight();
+                if (LOG_SPAM) {
+                    LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper, param slot: {}", node.name, transformedName, paramSlot);
+                }
+                // Perform the redirect
+                node.name = fieldRedirect; // use unobfuscated name
+                node.owner = ThreadedBlockData;
+
+                if (paramSlot >= 0 && paramUsedCount[paramSlot] > 1) {
+                    int cacheSlot = caches[paramSlot];
+                    // Use the cached value instead of calling the getter again
+                    if (node.getOpcode() == Opcodes.GETFIELD) {
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
+                        mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                    } else {
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.DUP2_X1));
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP2));
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
+                        mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.DUP_X2));
+                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
+                    }
+                } else {
+                    // Inject getter before the field access, to turn Block -> ThreadedBlockData
+                    final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+                    if (node.getOpcode() == Opcodes.GETFIELD) {
+                        mn.instructions.insertBefore(node, getter);
+                    } else if (node.getOpcode() == Opcodes.PUTFIELD) {
+                        // FIXME: this code assumes doubles
+                        // Stack: Block, double
+                        final InsnList beforePut = new InsnList();
+                        beforePut.add(new InsnNode(Opcodes.DUP2_X1));
+                        // Stack: double, Block, double
+                        beforePut.add(new InsnNode(Opcodes.POP2));
+                        // Stack: double, Block
+                        beforePut.add(getter);
+                        // Stack: double, ThreadedBlockData
+                        beforePut.add(new InsnNode(Opcodes.DUP_X2));
+                        // Stack: ThreadedBlockData, double, ThreadedBlockData
+                        beforePut.add(new InsnNode(Opcodes.POP));
+                        // Stack: ThreadedBlockData, double
+                        mn.instructions.insertBefore(node, beforePut);
+                    }
+                }
+            }
+            if (!records.isEmpty()) {
+                changed = true;
             }
         }
 

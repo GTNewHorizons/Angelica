@@ -60,6 +60,7 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
         final boolean changed = inner.transformClassNode(className, classNode.getNode());
         if (changed) {
             classNode.computeMaxs();
+            classNode.computeFrames();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
     }
