@@ -34,7 +34,7 @@ void main() {
     float original_alpha = col.a;
     if (texCoord.s != 0 || texCoord.t != 0) {
         if (aaMode == 0) {
-            // No AA — single texture sample
+            // No AA - single texture sample
             col.a = original_alpha * texture(sampler, texCoord).a;
         } else {
             vec2 texScaled = texCoord * strength;
