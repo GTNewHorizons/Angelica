@@ -12,8 +12,6 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
-import org.lwjgl.util.glu.GLU;
-
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -29,7 +27,6 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
     public static String glRenderer;
     public static String glVersion;
 
-    // Expected stack depths (1 = just the base matrix, no pushes)
     private static final int EXPECTED_MODELVIEW_STACK_DEPTH = 1;
     private static final int EXPECTED_PROJECTION_STACK_DEPTH = 1;
 
@@ -45,14 +42,12 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
             final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(8);
             Display.create(format);
 
-            // Set MainThread to the current test thread (the one with the GL context)
             setMainThread(Thread.currentThread());
 
-            // Warm-up State Manager features
             GLStateManager.preInit();
-            GLStateManager.setRunningSplash(false); // So we don't bypass the cache
-            GLStateManager.markSplashComplete(); // Enable caching for tests
-            GLStateManager.BYPASS_CACHE = false; // Just to be sure
+            GLStateManager.setRunningSplash(false);
+            GLStateManager.markSplashComplete();
+            GLStateManager.BYPASS_CACHE = false;
             RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
@@ -88,12 +83,8 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
 
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
-        // Clear any pending GL errors from previous tests
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {
-            // drain errors
-        }
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
 
-        // Reset matrix stacks to known state by popping until we're at base level
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > EXPECTED_MODELVIEW_STACK_DEPTH) {
             GL11.glPopMatrix();
@@ -106,23 +97,17 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
         }
         GL11.glLoadIdentity();
 
-        // Reset to MODELVIEW mode (typical default)
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
 
-        // Clear any errors from cleanup
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {
-            // drain errors
-        }
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {
-        // Check for GL errors first
         int error = GL11.glGetError();
         assertEquals(GL11.GL_NO_ERROR, error,
-            () -> "GL Error: " + GLU.gluErrorString(error));
+            () -> "GL Error: 0x" + Integer.toHexString(error));
 
-        // Check matrix stack depths - unbalanced push/pop is a common bug
         int modelviewDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
         int projectionDepth = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
 
@@ -131,7 +116,6 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
         assertEquals(EXPECTED_PROJECTION_STACK_DEPTH, projectionDepth,
             "PROJECTION stack depth mismatch - unbalanced glPushMatrix/glPopMatrix");
 
-        // Check matrix mode is reset to MODELVIEW
         int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         assertEquals(GL11.GL_MODELVIEW, matrixMode,
             () -> "Matrix mode not reset to MODELVIEW, was: " + GLDebug.getMatrixModeName(matrixMode));

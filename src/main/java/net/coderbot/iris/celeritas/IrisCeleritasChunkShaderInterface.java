@@ -6,18 +6,15 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
-import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.samplers.IrisSamplers;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
-import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderBindingContext;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat3v;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix3f;
@@ -30,6 +27,10 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+
+import java.util.List;
 
 public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     @Nullable
@@ -129,7 +130,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     @Override
     public GlPrimitiveType getPrimitiveType() {
-        return GlPrimitiveType.QUADS;
+        return GlPrimitiveType.TRIANGLES;
     }
 
     @Override

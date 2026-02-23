@@ -4,7 +4,9 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import net.coderbot.iris.gl.shader.StandardMacros;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -22,14 +24,13 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
 import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GL44;
 import org.lwjgl.opengl.NVXGpuMemoryInfo;
-
-import net.coderbot.iris.gl.shader.StandardMacros;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -124,6 +125,15 @@ public class RenderSystem {
 		LOGGER.info("Image Load/Store: {}, Max Image Units: {}", supportsImageLoadStore, maxImageUnits);
 		LOGGER.info("SSBO: {}, Max SSBO Bindings: {}", supportsSSBO, maxSSBOBindings);
 		LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
+
+		if (GLStateManager.capabilities.OpenGL32) {
+			final int profileMask = GL11.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK);
+			if ((profileMask & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0) {
+				LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
+				ShaderManager.getInstance().enable();
+				GLStateManager.lineWidthMax = 1.0f;
+			}
+		}
 	}
 
 	public static void generateMipmaps(int texture, int mipmapTarget) {

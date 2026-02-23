@@ -11,7 +11,6 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(AngelicaExtension.class)
@@ -40,12 +39,8 @@ public class GLSM_MatrixStack_UnitTest {
         assertTrue(matrixEquals(expected, actual), message);
     }
     void validateMatrix(Matrix4f expected, int matrix, String message) {
-        // Be careful of precision here
-        assertAll(message,
-            () -> assertMatrixEquals(expected, getMatrix(matrix, false), "GL State Mismatch"),
-            () -> assertMatrixEquals(expected, getMatrix(matrix, true), "GLSM State Mismatch")
-        );
-
+        // Matrix ops are FFP-only in core profile — verify GLSM cache only
+        assertMatrixEquals(expected, getMatrix(matrix, true), message + " - GLSM State Mismatch");
     }
 
     enum MatrixMode {

@@ -76,7 +76,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_AMBIENT, newBuffer);
         }
     }
 
@@ -85,7 +84,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_AMBIENT, newBuffer);
         }
     }
 
@@ -93,7 +91,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_DIFFUSE, newBuffer);
         }
     }
 
@@ -102,7 +99,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_DIFFUSE, newBuffer);
         }
     }
 
@@ -110,7 +106,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_SPECULAR, newBuffer);
         }
     }
 
@@ -119,7 +114,6 @@ public class LightState implements ISettableState<LightState> {
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
-            GL11.glLight(this.light, GL11.GL_SPECULAR, newBuffer);
         }
     }
 
@@ -129,14 +123,12 @@ public class LightState implements ISettableState<LightState> {
         // with and the untransformed coordinates in addition to the final transformation.
         this.position.set(newBuffer);
         this.position.mul(GLStateManager.getModelViewMatrix());
-        GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
     }
 
     public void setPosition(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         this.position.set((float) vector4i.x, (float) vector4i.y, (float) vector4i.z, (float) vector4i.w);
         this.position.mul(GLStateManager.getModelViewMatrix());
-        GL11.glLight(this.light, GL11.GL_POSITION, newBuffer);
     }
 
     public void setSpotDirection(FloatBuffer newBuffer) {
@@ -146,7 +138,6 @@ public class LightState implements ISettableState<LightState> {
         GLStateManager.getModelViewMatrix().get3x3(matrix3f);
         this.spotDirection.set(newBuffer);
         this.spotDirection.mul(matrix3f);
-        GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
     }
 
     public void setSpotDirection(IntBuffer newBuffer) {
@@ -154,7 +145,6 @@ public class LightState implements ISettableState<LightState> {
         GLStateManager.getModelViewMatrix().get3x3(matrix3f);
         this.spotDirection.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
         this.spotDirection.mul(matrix3f);
-        GL11.glLight(this.light, GL11.GL_SPOT_DIRECTION, newBuffer);
     }
 
     public void setSpotExponent(FloatBuffer newBuffer) {
@@ -172,7 +162,6 @@ public class LightState implements ISettableState<LightState> {
     public void setSpotExponent(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotExponent) != 0) {
             this.spotExponent = f;
-            GL11.glLightf(this.light, GL11.GL_SPOT_EXPONENT, f);
         }
     }
 
@@ -191,7 +180,6 @@ public class LightState implements ISettableState<LightState> {
     public void setSpotCutoff(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotCutoff) != 0) {
             this.spotCutoff = f;
-            GL11.glLightf(this.light, GL11.GL_SPOT_CUTOFF, f);
         }
     }
 
@@ -210,7 +198,6 @@ public class LightState implements ISettableState<LightState> {
     public void setConstantAttenuation(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.constantAttenuation) != 0) {
             this.constantAttenuation = f;
-            GL11.glLightf(this.light, GL11.GL_CONSTANT_ATTENUATION, f);
         }
     }
 
@@ -229,7 +216,6 @@ public class LightState implements ISettableState<LightState> {
     public void setLinearAttenuation(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.linearAttenuation) != 0) {
             this.linearAttenuation = f;
-            GL11.glLightf(this.light, GL11.GL_LINEAR_ATTENUATION, f);
         }
     }
 
@@ -248,7 +234,6 @@ public class LightState implements ISettableState<LightState> {
     public void setQuadraticAttenuation(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.quadraticAttenuation) != 0) {
             this.quadraticAttenuation = f;
-            GL11.glLightf(this.light, GL11.GL_QUADRATIC_ATTENUATION, f);
         }
     }
 

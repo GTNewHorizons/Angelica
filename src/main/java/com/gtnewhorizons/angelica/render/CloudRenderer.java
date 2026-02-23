@@ -25,13 +25,11 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.IReloadableResourceManager;
@@ -374,7 +372,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         // Wireframe for debug.
         if (WIREFRAME) {
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-            GL11.glLineWidth(2.0F);
+            GLStateManager.glLineWidth(2.0F);
             GLStateManager.disableTexture();
             GLStateManager.glDepthMask(false);
             GLStateManager.disableFog();

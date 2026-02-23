@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -17,7 +18,6 @@ import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
-import org.lwjgl.opengl.GL20;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -35,7 +35,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	public void beginLevelRendering() {
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
-		GL20.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 
 	@Override

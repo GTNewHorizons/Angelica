@@ -1,28 +1,14 @@
 package net.coderbot.iris.pipeline.transform;
 
-import net.coderbot.iris.gl.blending.AlphaTest;
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CommonTransformer {
-
-	private static final Map<String, String> COMMON_TEXTURE_RENAMES = Map.ofEntries(
-		Map.entry("texture2D", "texture"),
-		Map.entry("texture3D", "texture"),
-		Map.entry("texture2DLod", "textureLod"),
-		Map.entry("texture3DLod", "textureLod"),
-		Map.entry("texture2DProj", "textureProj"),
-		Map.entry("texture3DProj", "textureProj"),
-		Map.entry("texture2DGrad", "textureGrad"),
-		Map.entry("texture2DGradARB", "textureGrad"),
-		Map.entry("texture3DGrad", "textureGrad"),
-		Map.entry("texelFetch2D", "texelFetch"),
-		Map.entry("texelFetch3D", "texelFetch"),
-		Map.entry("textureSize2D", "textureSize")
-	);
 
 	public static void transform(Transformer root, Parameters parameters, boolean core, int glslVersion) {
 		root.rename("gl_FogFragCoord", "iris_FogFragCoord");
@@ -34,8 +20,12 @@ public class CommonTransformer {
 		}
 
 		if (parameters.type == ShaderType.VERTEX) {
-			root.injectVariable("vec4 iris_FrontColor;");
+			root.injectVariable("out vec4 iris_FrontColor;");
 			root.rename("gl_FrontColor", "iris_FrontColor");
+			root.prependMain("iris_FrontColor = vec4(1.0);");
+		} else if (parameters.type == ShaderType.FRAGMENT) {
+			root.injectVariable("in vec4 iris_FrontColor;");
+			root.rename("gl_Color", "iris_FrontColor");
 		}
 
 		if (parameters.type == ShaderType.FRAGMENT) {
@@ -43,10 +33,21 @@ public class CommonTransformer {
 				root.replaceExpression("gl_FragColor", "gl_FragData[0]");
 			}
 
-			// Note: In compatibility profile, gl_FragData is a built-in array.
-			if (!core && parameters.getAlphaTest() != AlphaTest.ALWAYS) {
-				root.injectVariable("uniform float iris_currentAlphaTest;");
-				root.appendMain(parameters.getAlphaTest().toExpression("gl_FragData[0].a", "iris_currentAlphaTest", ""));
+			if (core) {
+				// Core profile: gl_FragData doesn't exist. Flatten gl_FragData[N] → iris_FragDataN with layout-qualified out declarations.
+				Set<Integer> found = new HashSet<>();
+				root.renameArray("gl_FragData", "iris_FragData", found);
+
+				for (Integer i : found) {
+					root.injectVariable("layout (location = " + i + ") out vec4 iris_FragData" + i + ";");
+				}
+
+				// Core profile: GL_ALPHA_TEST is removed. 1.7.10 engine relies on alpha test to discard transparent fragments. Inject
+				// runtime discard using the GLSM-tracked alpha reference value.
+				if (found.contains(0) && parameters.patch != Patch.COMPOSITE && parameters.patch != Patch.COMPUTE) {
+					root.injectVariable("uniform float iris_currentAlphaTest;");
+					root.appendMain("if (iris_FragData0.a <= iris_currentAlphaTest) discard;");
+				}
 			}
 		}
 
@@ -54,8 +55,8 @@ public class CommonTransformer {
 			root.rename("texture", "gtexture");
 		}
 
-		if (root.hasVariable("iris_renamed_texture")) {
-			root.rename("iris_renamed_texture", "gtexture");
+		if (root.hasVariable("angelica_renamed_texture")) {
+			root.rename("angelica_renamed_texture", "gtexture");
 		}
 
 		if (root.containsCall("gcolor") && root.hasVariable("gcolor")) {
@@ -70,11 +71,8 @@ public class CommonTransformer {
 		root.injectFunction("struct iris_FogParameters {vec4 color;float density;float start;float end;float scale;};");
 		root.injectFunction("iris_FogParameters iris_Fog = iris_FogParameters(iris_FogColor, iris_FogDensity, iris_FogStart, iris_FogEnd, 1.0f / (iris_FogEnd - iris_FogStart));");
 
-		// GLSL 120 natively uses texture2D/shadow2D etc. Ttexture/textureLod don't exist in 120, so only rename for versions that support them.
-		if (glslVersion > 120) {
-			root.renameFunctionCall(COMMON_TEXTURE_RENAMES);
-			root.renameAndWrapShadow("shadow2D", "texture");
-			root.renameAndWrapShadow("shadow2DLod", "textureLod");
-		}
+		root.renameFunctionCall(GlslTransformUtils.TEXTURE_RENAMES);
+		root.renameAndWrapShadow("shadow2D", "texture");
+		root.renameAndWrapShadow("shadow2DLod", "textureLod");
 	}
 }

@@ -1,12 +1,12 @@
 package com.gtnewhorizons.angelica.client.gui;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.AllArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
-import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -123,7 +123,7 @@ public class SliderClone extends GuiButton {
                 this.displayString = displayStringFormatter.apply(f);
             }
 
-            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             this.drawTexturedModalRect(this.xPosition + (int)(this.sliderPercentage * (float)(this.width - 8)), this.yPosition, 0, 66, 4, 20);
             this.drawTexturedModalRect(this.xPosition + (int)(this.sliderPercentage * (float)(this.width - 8)) + 4, this.yPosition, 196, 66, 4, 20);
         }

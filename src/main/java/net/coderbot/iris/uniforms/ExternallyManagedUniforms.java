@@ -10,6 +10,7 @@ public class ExternallyManagedUniforms {
 
 	public static void addExternallyManagedUniforms(UniformHolder uniformHolder) {
 		addMat4(uniformHolder, "iris_ModelViewMatrix");
+		addMat4(uniformHolder, "iris_ProjectionMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
 		addMat4(uniformHolder, "iris_NormalMatrix");
 		uniformHolder.externallyManagedUniform("heavyFog", UniformType.BOOL);

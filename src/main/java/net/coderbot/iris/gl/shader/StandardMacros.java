@@ -15,6 +15,7 @@ import net.minecraft.world.biome.BiomeGenBase;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -262,7 +263,11 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L735-L738">Optifine Doc</a>
 	 */
 	public static Set<String> getGlExtensions() {
-		String[] extensions = Objects.requireNonNull(GL11.glGetString(GL11.GL_EXTENSIONS)).split("\\s+");
+		int numExtensions = GL11.glGetInteger(GL30.GL_NUM_EXTENSIONS);
+		String[] extensions = new String[numExtensions];
+		for (int i = 0; i < numExtensions; i++) {
+			extensions[i] = GL30.glGetStringi(GL11.GL_EXTENSIONS, i);
+		}
 
 		// TODO note that we do not add extensions based on if the shader uses them and if they are supported
 		// see https://github.com/sp614x/optifine/blob/master/OptiFineDoc/doc/shaders.txt#L738

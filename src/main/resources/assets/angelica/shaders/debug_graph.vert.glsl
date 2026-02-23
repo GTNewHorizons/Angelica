@@ -1,6 +1,6 @@
-#version 120
+#version 330 core
 
-attribute vec2 pos;
+layout(location = 0) in vec2 pos;
 
 uniform float fbWidth;
 uniform float fbHeight;

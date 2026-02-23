@@ -27,14 +27,14 @@ import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 
 /**
  * VBO-based display list emulation with command recording, transform collapsing, and format-based batching.
@@ -102,9 +102,6 @@ public class DisplayListManager {
     private static List<String> pendingTransformOps = null;  // Ops accumulated since last flush
     private static List<List<String>> multMatrixSources = null;  // Source ops for each MULT_MATRIX in raw buffer
     private static List<String> drawRangeSources = null;  // Source type for each DRAW_RANGE in final buffer
-
-    // For flushMatrix() - reusable buffer for executing collapsed transforms
-    private static final FloatBuffer flushMatrixBuffer = org.lwjgl.BufferUtils.createFloatBuffer(16);
 
     // Nested compilation support - stack of parent contexts
     private static final Deque<CompilationContext> compilationStack = new ArrayDeque<>();
@@ -177,11 +174,8 @@ public class DisplayListManager {
             stateGeneration++;
         }
 
-        // COMPILE_AND_EXECUTE: execute now. Bypass GLSM to avoid re-entering recording path.
+        // COMPILE_AND_EXECUTE: apply to GLSM software stack
         if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-            flushMatrixBuffer.clear();
-            relativeTransform.get(flushMatrixBuffer);
-            GL11.glMultMatrix(flushMatrixBuffer);
             GLStateManager.getMatrixStack().mul(relativeTransform);
         }
 
@@ -619,9 +613,6 @@ public class DisplayListManager {
             applyTransformOp(singleTransform, x, y, z, op, rotationAxis);
             if (currentRecorder != null) currentRecorder.recordMultMatrix(singleTransform);
             if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                flushMatrixBuffer.clear();
-                singleTransform.get(flushMatrixBuffer);
-                GL11.glMultMatrix(flushMatrixBuffer);
                 GLStateManager.getMatrixStack().mul(singleTransform);
             }
             return;
@@ -659,9 +650,6 @@ public class DisplayListManager {
             }
 
             if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                flushMatrixBuffer.clear();
-                matrix.get(flushMatrixBuffer);
-                GL11.glMultMatrix(flushMatrixBuffer);
                 GLStateManager.getMatrixStack().mul(matrix);
             }
             return;
@@ -686,9 +674,6 @@ public class DisplayListManager {
         if (DEBUG_DISPLAY_LISTS) {
             if (currentRecorder != null) currentRecorder.recordMultMatrix(orthoFrustumTemp);
             if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                flushMatrixBuffer.clear();
-                orthoFrustumTemp.get(flushMatrixBuffer);
-                GL11.glMultMatrix(flushMatrixBuffer);
                 GLStateManager.getMatrixStack().mul(orthoFrustumTemp);
             }
             return;
@@ -709,9 +694,6 @@ public class DisplayListManager {
         if (DEBUG_DISPLAY_LISTS) {
             if (currentRecorder != null) currentRecorder.recordMultMatrix(orthoFrustumTemp);
             if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                flushMatrixBuffer.clear();
-                orthoFrustumTemp.get(flushMatrixBuffer);
-                GL11.glMultMatrix(flushMatrixBuffer);
                 GLStateManager.getMatrixStack().mul(orthoFrustumTemp);
             }
             return;
@@ -956,11 +938,8 @@ public class DisplayListManager {
                 vbo.render();
             }
             // Per OpenGL spec: if list is undefined, glCallList has no effect
-        } else {
-            // Positive IDs - fall back to native GL display lists
-            // This happens for lists allocated but never compiled via glNewList
-            GL11.glCallList(list);
         }
+        // An uncached positive-ID list = no-op (per OpenGL spec)
     }
 
     /**
@@ -971,8 +950,6 @@ public class DisplayListManager {
             CompiledDisplayList compiled = displayListCache.remove(i);
             if (compiled != null) {
                 compiled.delete();
-            } else {
-                GL11.glDeleteLists(i, 1);
             }
         }
     }
