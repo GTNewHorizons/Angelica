@@ -32,7 +32,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -91,7 +91,6 @@ public class ItemRenderListManager {
     public static void post(DirectTessellator tessellator, CachedVBO vbo) {
         vbo.allocate(tessellator);
         TessellatorManager.stopCapturingDirect();
-        ShaderManager.getInstance().preDraw(CachedVBO.VERTEX_FLAGS);
         vbo.vertexBuffer.render();
     }
 
@@ -100,7 +99,6 @@ public class ItemRenderListManager {
     }
 
     public static final class CachedVBO {
-        private static final int VERTEX_FLAGS = DefaultVertexFormat.POSITION_TEXTURE_NORMAL.getVertexFlags();
         private final IVertexArrayObject vertexBuffer;
         private final IndexBuffer ebo;
         private int expiry;
@@ -119,7 +117,6 @@ public class ItemRenderListManager {
         }
 
         private void render(int elapsedTicks) {
-            ShaderManager.getInstance().preDraw(VERTEX_FLAGS);
             vertexBuffer.render();
             expiry = elapsedTicks + EXPIRY_TICKS;
         }

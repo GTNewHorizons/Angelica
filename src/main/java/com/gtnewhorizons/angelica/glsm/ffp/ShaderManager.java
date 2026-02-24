@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import lombok.Getter;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.minecraft.launchwrapper.Launch;
@@ -28,6 +29,7 @@ public class ShaderManager {
 
     private final ShaderCache cache = new ShaderCache();
     private final Uniforms uniforms = new Uniforms();
+    private final Int2IntOpenHashMap vaoVertexFlags = new Int2IntOpenHashMap();
 
     @Getter
     private boolean active = false;
@@ -45,6 +47,7 @@ public class ShaderManager {
     private int currentVertexFlags = VertexFlags.TEXTURE_BIT | VertexFlags.COLOR_BIT | VertexFlags.NORMAL_BIT;
 
     private ShaderManager() {
+        vaoVertexFlags.defaultReturnValue(-1);
         boolean isDev = false;
         try {
             final Object deobfEnv = Launch.blackboard != null ? Launch.blackboard.get("fml.deobfuscatedEnvironment") : null;
@@ -64,6 +67,10 @@ public class ShaderManager {
 
         VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
             currentVertexFlags = format.getVertexFlags();
+            final int boundVao = GLStateManager.getBoundVAO();
+            if (boundVao != 0) {
+                vaoVertexFlags.put(boundVao, currentVertexFlags);
+            }
             return false;
         });
 
@@ -158,6 +165,17 @@ public class ShaderManager {
 
     public static void bumpNormalGeneration() { normalGeneration++; }
     public static void bumpTexCoordGeneration() { texCoordGeneration++; }
+
+    public void onBindVertexArray(int vaoId) {
+        final int flags = vaoVertexFlags.get(vaoId);
+        if (flags != -1) {
+            currentVertexFlags = flags;
+        }
+    }
+
+    public void onDeleteVertexArray(int vaoId) {
+        vaoVertexFlags.remove(vaoId);
+    }
 
     public void destroy() {
         cache.destroy();

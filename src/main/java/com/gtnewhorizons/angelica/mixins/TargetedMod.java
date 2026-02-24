@@ -22,6 +22,7 @@ public enum TargetedMod implements ITargetMod {
     IC2("ic2.core.coremod.IC2core", "IC2"),
     NATURA(null, "Natura"),
     SECURITYCRAFT(null, "securitycraft"),
+    SUPERNOVA("com.mitchej123.supernova.core.SupernovaCore", "supernova"),
     THAUMCRAFT(null, "Thaumcraft"),
     TINKERS_CONSTRUCT(null, "TConstruct"),
     TWILIGHT_FOREST(null, "TwilightForest"),
