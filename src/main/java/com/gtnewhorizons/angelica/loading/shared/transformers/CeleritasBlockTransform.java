@@ -5,6 +5,7 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -95,20 +96,6 @@ public final class CeleritasBlockTransform {
         }
     }
 
-    private static int maxParamSlots(MethodNode mn) {
-        int size = Type.getArgumentsAndReturnSizes(mn.desc) >> 2;
-        if (!Modifier.isStatic(mn.access)) size += 1;
-        return size;
-    }
-
-    private static int getParamSlot(AbstractInsnNode src, MethodNode mn) {
-        if (!(src instanceof VarInsnNode)) return -1;
-        if (src.getOpcode() != Opcodes.ALOAD) return -1;
-        int var = ((VarInsnNode) src).var;
-        int paramSlots = maxParamSlots(mn);
-        return var < paramSlots ? var : -1;
-    }
-
     private boolean isVanillaBlockSubclass(String className) {
         if (className.startsWith(BlockPackage)) {
             for (String exclusion : VanillaBlockExclusions) {
@@ -133,6 +120,24 @@ public final class CeleritasBlockTransform {
             "com.gtnewhorizon.gtnhlib.asm.",
             "me.eigenraven.lwjgl3ify"
         };
+    }
+
+    private record FieldAccessRecord(FieldInsnNode fieldNode, int paramSlot, String fieldRedirect) {}
+
+    private static class FieldAccessInfo {
+        private final int[] paramUsedCount;
+        private final ArrayList<FieldAccessRecord> records = new ArrayList<>();
+
+        FieldAccessInfo(MethodNode mn) {
+            paramUsedCount = new int[maxParamSlots(mn)];
+        }
+
+        private void addRecord(FieldInsnNode fieldNode, int paramSlot, String fieldRedirect) {
+            if (paramSlot >= 0) {
+                paramUsedCount[paramSlot]++;
+            }
+            records.add(new FieldAccessRecord(fieldNode, paramSlot, fieldRedirect));
+        }
     }
 
     /** @return Was the class changed? */
@@ -190,8 +195,7 @@ public final class CeleritasBlockTransform {
 
             Frame<SourceValue>[] frames = analyzer.getFrames();
 
-            int[] paramUsedCount = new int[maxParamSlots(mn)];
-            ArrayList<Pair<Pair<FieldInsnNode, Integer>, String>> records = new ArrayList<>();
+            FieldAccessInfo info = new FieldAccessInfo(mn);
             for (int i = 0; i < mn.instructions.size(); i++) {
                 AbstractInsnNode node = mn.instructions.get(i);
                 Frame<SourceValue> frame = analyzeSuccess ? frames[i] : null;
@@ -202,6 +206,7 @@ public final class CeleritasBlockTransform {
                         if (fieldRedirect == null) {
                             continue;
                         }
+                        int paramSlot = -1;
                         if (frame != null) {
                             int stackSize = frame.getStackSize();
                             SourceValue receiver;
@@ -211,45 +216,24 @@ public final class CeleritasBlockTransform {
                                 receiver = frame.getStack(stackSize - 2);
                             }
                             if (receiver.insns.size() == 1) {
-                                int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
-                                if (paramSlot >= 0) {
-                                    paramUsedCount[paramSlot]++;
-                                    records.add(Pair.of(Pair.of(fNode, paramSlot), fieldRedirect));
-                                } else {
-                                    records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
-                                }
-                            } else {
-                                records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
+                                paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
                             }
-                        } else {
-                            records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
                         }
+                        info.addRecord(fNode, paramSlot, fieldRedirect);
                     }
                 }
             }
 
-            // Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times
-            LabelNode methodStart = new LabelNode(new Label());
-            LabelNode methodEnd = new LabelNode(new Label());
-            int[] caches = new int[paramUsedCount.length];
-            final InsnList initCache = new InsnList();
-            for (int i = 0; i < paramUsedCount.length; i++) {
-                if (paramUsedCount[i] > 1) {
-                    caches[i] = mn.maxLocals++;
-                    mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + i, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, caches[i]));
-                    initCache.add(new VarInsnNode(Opcodes.ALOAD, i));
-                    initCache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
-                    initCache.add(new VarInsnNode(Opcodes.ASTORE, caches[i]));
-                }
-            }
-            mn.instructions.insertBefore(mn.instructions.getFirst(), initCache);
-            mn.instructions.insertBefore(mn.instructions.getFirst(), methodStart);
-            mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
+            if (info.records.isEmpty()) continue;
 
-            for (Pair<Pair<FieldInsnNode, Integer>, String> record : records) {
-                FieldInsnNode node = record.getLeft().getLeft();
-                int paramSlot = record.getLeft().getRight();
-                String fieldRedirect = record.getRight();
+            changed = true;
+
+            int[] caches = prepareCaches(mn, info.paramUsedCount);
+
+            for (FieldAccessRecord record : info.records) {
+                FieldInsnNode node = record.fieldNode;
+                int paramSlot = record.paramSlot;
+                String fieldRedirect = record.fieldRedirect;
                 if (LOG_SPAM) {
                     LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper, param slot: {}", node.name, transformedName, paramSlot);
                 }
@@ -258,7 +242,7 @@ public final class CeleritasBlockTransform {
                 node.owner = ThreadedBlockData;
 
                 final InsnList code = new InsnList();
-                if (paramSlot >= 0 && paramUsedCount[paramSlot] > 1) {
+                if (paramSlot >= 0 && info.paramUsedCount[paramSlot] > 1) {
                     int cacheSlot = caches[paramSlot];
                     // Use the cached value instead of calling the getter again
                     if (node.getOpcode() == Opcodes.GETFIELD) {
@@ -302,12 +286,44 @@ public final class CeleritasBlockTransform {
                 }
                 mn.instructions.insertBefore(node, code);
             }
-            if (!records.isEmpty()) {
-                changed = true;
-            }
         }
 
         return changed;
+    }
+
+    /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+    private static int @NotNull [] prepareCaches(@NotNull MethodNode mn, int @NotNull [] paramUsedCount) {
+        LabelNode methodStart = new LabelNode(new Label());
+        LabelNode methodEnd = new LabelNode(new Label());
+        int[] caches = new int[paramUsedCount.length];
+        final InsnList initCache = new InsnList();
+        for (int i = 0; i < paramUsedCount.length; i++) {
+            if (paramUsedCount[i] > 1) {
+                caches[i] = mn.maxLocals++;
+                mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + i, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, caches[i]));
+                initCache.add(new VarInsnNode(Opcodes.ALOAD, i));
+                initCache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
+                initCache.add(new VarInsnNode(Opcodes.ASTORE, caches[i]));
+            }
+        }
+        mn.instructions.insertBefore(mn.instructions.getFirst(), initCache);
+        mn.instructions.insertBefore(mn.instructions.getFirst(), methodStart);
+        mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
+        return caches;
+    }
+
+    private static int maxParamSlots(@NotNull MethodNode mn) {
+        int size = Type.getArgumentsAndReturnSizes(mn.desc) >> 2;
+        if (!Modifier.isStatic(mn.access)) size += 1;
+        return size;
+    }
+
+    private static int getParamSlot(@NotNull AbstractInsnNode src, @NotNull MethodNode mn) {
+        if (!(src instanceof VarInsnNode)) return -1;
+        if (src.getOpcode() != Opcodes.ALOAD) return -1;
+        int var = ((VarInsnNode) src).var;
+        int paramSlots = maxParamSlots(mn);
+        return var < paramSlots ? var : -1;
     }
 
     public void setCeleritasSetting() {
