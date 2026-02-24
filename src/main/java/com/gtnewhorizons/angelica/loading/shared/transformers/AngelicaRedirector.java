@@ -1,31 +1,23 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import net.minecraft.launchwrapper.Launch;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
@@ -73,10 +65,10 @@ public final class AngelicaRedirector {
         "initializeTextures", "func_77474_a"
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL12, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<String, Map<String, String>> interfaceRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
+    private static final ClassConstantPoolParser cstPoolParser;
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -302,17 +294,27 @@ public final class AngelicaRedirector {
             .add("glBindVertexArray")
         );
 
-        cstPoolParser.addString(UniversalVAO);
-        cstPoolParser.addString(VaoFunctions);
-        cstPoolParser.addString(LWJGLService);
-
+        final List<String> stringsToSearch = new ArrayList<>();
+        stringsToSearch.add(GL11);
+        stringsToSearch.add(GL12);
+        stringsToSearch.add(GL13);
+        stringsToSearch.add(GL14);
+        stringsToSearch.add(GL20);
+        stringsToSearch.add(OpenGlHelper);
+        stringsToSearch.add(EXTBlendFunc);
+        stringsToSearch.add(ARBMultiTexture);
+        stringsToSearch.add(Project);
+        stringsToSearch.add(UniversalVAO);
+        stringsToSearch.add(VaoFunctions);
+        stringsToSearch.add(LWJGLService);
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
             if (entry.getKey().startsWith(glPrefix)) {
                 methodRedirects.put(entry.getKey() + "C", entry.getValue());
-                cstPoolParser.addString(entry.getKey() + "C");
+                stringsToSearch.add(entry.getKey() + "C");
             }
         }
+        cstPoolParser = new ClassConstantPoolParser(stringsToSearch.toArray(new String[0]));
     }
 
     public String[] getTransformerExclusions() {
