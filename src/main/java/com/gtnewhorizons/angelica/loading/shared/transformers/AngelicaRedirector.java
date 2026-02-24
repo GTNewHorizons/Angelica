@@ -331,10 +331,6 @@ public final class AngelicaRedirector {
 
     /** @return Was the class changed? */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if (cn == null) {
-            return false;
-        }
-
         boolean changed = false;
         final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
         final boolean isUniversalVAO = transformedName.startsWith(UniversalVAODot);
