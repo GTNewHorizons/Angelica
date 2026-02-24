@@ -125,8 +125,20 @@ public final class CeleritasBlockTransform {
     private record FieldAccessRecord(FieldInsnNode fieldNode, int paramSlot, String fieldRedirect) {}
 
     private static class FieldAccessInfo {
+        /**
+         * The number of times fields of incoming parameters that need to be redirected are read or written in the function.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
         private final int[] paramUsedCount;
+        /**
+         * Records of instructions that read or write fields requiring redirection.
+         */
         private final ArrayList<FieldAccessRecord> records = new ArrayList<>();
+        /**
+         * **paramSlot -> cacheSlot**
+         */
+        private int[] cacheSlots;
 
         FieldAccessInfo(MethodNode mn) {
             paramUsedCount = new int[maxParamSlots(mn)];
@@ -137,6 +149,11 @@ public final class CeleritasBlockTransform {
                 paramUsedCount[paramSlot]++;
             }
             records.add(new FieldAccessRecord(fieldNode, paramSlot, fieldRedirect));
+        }
+
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+        private void prepareCaches(MethodNode mn) {
+            cacheSlots = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount);
         }
     }
 
@@ -186,6 +203,9 @@ public final class CeleritasBlockTransform {
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             boolean analyzeSuccess = false;
             try {
+                // FIXME The game launches fine but analyze fails on some classes, that's strange.
+                // If analysis fails, fall back to the original implementation.
+                // This will not cause any issues other than potential performance impact.
                 analyzer.analyze(cn.name, mn);
                 analyzeSuccess = true;
             } catch (Exception e) {
@@ -193,102 +213,75 @@ public final class CeleritasBlockTransform {
                 e.printStackTrace();
             }
 
-            Frame<SourceValue>[] frames = analyzer.getFrames();
-
-            FieldAccessInfo info = new FieldAccessInfo(mn);
-            for (int i = 0; i < mn.instructions.size(); i++) {
-                AbstractInsnNode node = mn.instructions.get(i);
-                Frame<SourceValue> frame = analyzeSuccess ? frames[i] : null;
-
-                if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
-                        String fieldRedirect = blockFieldRedirects.get(fNode.name);
-                        if (fieldRedirect == null) {
-                            continue;
-                        }
-                        int paramSlot = -1;
-                        if (frame != null) {
-                            int stackSize = frame.getStackSize();
-                            SourceValue receiver;
-                            if (fNode.getOpcode() == Opcodes.GETFIELD) {
-                                receiver = frame.getStack(stackSize - 1);
-                            } else {
-                                receiver = frame.getStack(stackSize - 2);
-                            }
-                            if (receiver.insns.size() == 1) {
-                                paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
-                            }
-                        }
-                        info.addRecord(fNode, paramSlot, fieldRedirect);
-                    }
-                }
-            }
+            FieldAccessInfo info = getFieldAccessInfo(mn, analyzeSuccess ? analyzer.getFrames() : null); // Pass null to fall back.
 
             if (info.records.isEmpty()) continue;
 
             changed = true;
 
-            int[] caches = prepareCaches(mn, info.paramUsedCount);
+            info.prepareCaches(mn); // Get ThreadedBlockData at the start of the function and cache it.
 
             for (FieldAccessRecord record : info.records) {
                 FieldInsnNode node = record.fieldNode;
-                int paramSlot = record.paramSlot;
-                String fieldRedirect = record.fieldRedirect;
                 if (LOG_SPAM) {
-                    LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper, param slot: {}", node.name, transformedName, paramSlot);
+                    LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper, param slot: {}", node.name, transformedName, record.paramSlot);
                 }
                 // Perform the redirect
-                node.name = fieldRedirect; // use unobfuscated name
+                node.name = record.fieldRedirect; // use unobfuscated name
                 node.owner = ThreadedBlockData;
-
-                final InsnList code = new InsnList();
-                if (paramSlot >= 0 && info.paramUsedCount[paramSlot] > 1) {
-                    int cacheSlot = caches[paramSlot];
-                    // Use the cached value instead of calling the getter again
-                    if (node.getOpcode() == Opcodes.GETFIELD) {
-                        code.add(new InsnNode(Opcodes.POP));
-                        code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
-                    } else {
-                        // FIXME: this code assumes doubles
-                        // Stack: Block, double
-                        code.add(new InsnNode(Opcodes.DUP2_X1));
-                        // Stack: double, Block, double
-                        code.add(new InsnNode(Opcodes.POP2));
-                        // Stack: double, Block
-                        code.add(new InsnNode(Opcodes.POP));
-                        // Stack: double
-                        code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
-                        // Stack: double, ThreadedBlockData
-                        code.add(new InsnNode(Opcodes.DUP_X2));
-                        // Stack: ThreadedBlockData, double, ThreadedBlockData
-                        code.add(new InsnNode(Opcodes.POP));
-                        // Stack: ThreadedBlockData, double
-                    }
-                } else {
-                    // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                    final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                    if (node.getOpcode() == Opcodes.GETFIELD) {
-                        code.add(getter);
-                    } else {
-                        // FIXME: this code assumes doubles
-                        // Stack: Block, double
-                        code.add(new InsnNode(Opcodes.DUP2_X1));
-                        // Stack: double, Block, double
-                        code.add(new InsnNode(Opcodes.POP2));
-                        // Stack: double, Block
-                        code.add(getter);
-                        // Stack: double, ThreadedBlockData
-                        code.add(new InsnNode(Opcodes.DUP_X2));
-                        // Stack: ThreadedBlockData, double, ThreadedBlockData
-                        code.add(new InsnNode(Opcodes.POP));
-                        // Stack: ThreadedBlockData, double
-                    }
-                }
-                mn.instructions.insertBefore(node, code);
+                mn.instructions.insertBefore(node, makeRedirect(node, record.paramSlot, info));
             }
         }
 
         return changed;
+    }
+
+    private static @NotNull InsnList makeRedirect(@NotNull FieldInsnNode node, int paramSlot, @NotNull FieldAccessInfo info) {
+        assert info.cacheSlots != null : "Caches should have been prepared before applying redirects";
+        final InsnList code = new InsnList();
+        if (paramSlot >= 0 && info.paramUsedCount[paramSlot] > 1) {
+            int cacheSlot = info.cacheSlots[paramSlot];
+            // Use the cached value instead of calling the getter again
+            if (node.getOpcode() == Opcodes.GETFIELD) {
+                code.add(new InsnNode(Opcodes.POP));
+                code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+            } else {
+                // FIXME: this code assumes doubles
+                // Stack: Block, double
+                code.add(new InsnNode(Opcodes.DUP2_X1));
+                // Stack: double, Block, double
+                code.add(new InsnNode(Opcodes.POP2));
+                // Stack: double, Block
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: double
+                code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                // Stack: double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.DUP_X2));
+                // Stack: ThreadedBlockData, double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: ThreadedBlockData, double
+            }
+        } else {
+            // Inject getter before the field access, to turn Block -> ThreadedBlockData
+            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+            if (node.getOpcode() == Opcodes.GETFIELD) {
+                code.add(getter);
+            } else {
+                // FIXME: this code assumes doubles
+                // Stack: Block, double
+                code.add(new InsnNode(Opcodes.DUP2_X1));
+                // Stack: double, Block, double
+                code.add(new InsnNode(Opcodes.POP2));
+                // Stack: double, Block
+                code.add(getter);
+                // Stack: double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.DUP_X2));
+                // Stack: ThreadedBlockData, double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: ThreadedBlockData, double
+            }
+        }
+        return code;
     }
 
     /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
@@ -310,6 +303,39 @@ public final class CeleritasBlockTransform {
         mn.instructions.insertBefore(mn.instructions.getFirst(), methodStart);
         mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
         return caches;
+    }
+
+    /** Scan the instructions to find all accesses to fields that need to be redirected, and which parameters they come from (if any) */
+    private @NotNull FieldAccessInfo getFieldAccessInfo(MethodNode mn, Frame<SourceValue>[] frames) {
+        FieldAccessInfo info = new FieldAccessInfo(mn);
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            Frame<SourceValue> frame = frames != null ? frames[i] : null;
+
+            if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
+                    String fieldRedirect = blockFieldRedirects.get(fNode.name);
+                    if (fieldRedirect == null) {
+                        continue;
+                    }
+                    int paramSlot = -1;
+                    if (frame != null) {
+                        int stackSize = frame.getStackSize();
+                        SourceValue receiver;
+                        if (fNode.getOpcode() == Opcodes.GETFIELD) {
+                            receiver = frame.getStack(stackSize - 1);
+                        } else {
+                            receiver = frame.getStack(stackSize - 2);
+                        }
+                        if (receiver.insns.size() == 1) {
+                            paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
+                        }
+                    }
+                    info.addRecord(fNode, paramSlot, fieldRedirect);
+                }
+            }
+        }
+        return info;
     }
 
     private static int maxParamSlots(@NotNull MethodNode mn) {
