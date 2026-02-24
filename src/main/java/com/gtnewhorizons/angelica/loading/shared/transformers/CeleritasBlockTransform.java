@@ -212,34 +212,36 @@ public final class CeleritasBlockTransform {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
                         String fieldRedirect = blockFieldRedirects.get(fNode.name);
-                        if (fieldRedirect != null) {
-                            if (frame != null) {
-                                int stackSize = frame.getStackSize();
-                                SourceValue receiver;
-                                if (fNode.getOpcode() == Opcodes.GETFIELD) {
-                                    receiver = frame.getStack(stackSize - 1);
-                                } else {
-                                    receiver = frame.getStack(stackSize - 2);
-                                }
-                                if (receiver.insns.size() == 1) {
-                                    int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
-                                    if (paramSlot >= 0) {
-                                        paramUsedCount[paramSlot]++;
-                                        records.add(Pair.of(Pair.of(fNode, paramSlot), fieldRedirect));
-                                    } else {
-                                        records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
-                                    }
+                        if (fieldRedirect == null) {
+                            continue;
+                        }
+                        if (frame != null) {
+                            int stackSize = frame.getStackSize();
+                            SourceValue receiver;
+                            if (fNode.getOpcode() == Opcodes.GETFIELD) {
+                                receiver = frame.getStack(stackSize - 1);
+                            } else {
+                                receiver = frame.getStack(stackSize - 2);
+                            }
+                            if (receiver.insns.size() == 1) {
+                                int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
+                                if (paramSlot >= 0) {
+                                    paramUsedCount[paramSlot]++;
+                                    records.add(Pair.of(Pair.of(fNode, paramSlot), fieldRedirect));
                                 } else {
                                     records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
                                 }
                             } else {
                                 records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
                             }
+                        } else {
+                            records.add(Pair.of(Pair.of(fNode, -1), fieldRedirect));
                         }
                     }
                 }
             }
 
+            // Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times
             LabelNode methodStart = new LabelNode(new Label());
             LabelNode methodEnd = new LabelNode(new Label());
             int[] caches = new int[paramUsedCount.length];
@@ -268,42 +270,50 @@ public final class CeleritasBlockTransform {
                 node.name = fieldRedirect; // use unobfuscated name
                 node.owner = ThreadedBlockData;
 
+                final InsnList code = new InsnList();
                 if (paramSlot >= 0 && paramUsedCount[paramSlot] > 1) {
                     int cacheSlot = caches[paramSlot];
                     // Use the cached value instead of calling the getter again
                     if (node.getOpcode() == Opcodes.GETFIELD) {
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
-                        mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                        code.add(new InsnNode(Opcodes.POP));
+                        code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
                     } else {
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.DUP2_X1));
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP2));
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
-                        mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.DUP_X2));
-                        mn.instructions.insertBefore(node, new InsnNode(Opcodes.POP));
+                        // FIXME: this code assumes doubles
+                        // Stack: Block, double
+                        code.add(new InsnNode(Opcodes.DUP2_X1));
+                        // Stack: double, Block, double
+                        code.add(new InsnNode(Opcodes.POP2));
+                        // Stack: double, Block
+                        code.add(new InsnNode(Opcodes.POP));
+                        // Stack: double
+                        code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                        // Stack: double, ThreadedBlockData
+                        code.add(new InsnNode(Opcodes.DUP_X2));
+                        // Stack: ThreadedBlockData, double, ThreadedBlockData
+                        code.add(new InsnNode(Opcodes.POP));
+                        // Stack: ThreadedBlockData, double
                     }
                 } else {
                     // Inject getter before the field access, to turn Block -> ThreadedBlockData
                     final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
                     if (node.getOpcode() == Opcodes.GETFIELD) {
-                        mn.instructions.insertBefore(node, getter);
-                    } else if (node.getOpcode() == Opcodes.PUTFIELD) {
+                        code.add(getter);
+                    } else {
                         // FIXME: this code assumes doubles
                         // Stack: Block, double
-                        final InsnList beforePut = new InsnList();
-                        beforePut.add(new InsnNode(Opcodes.DUP2_X1));
+                        code.add(new InsnNode(Opcodes.DUP2_X1));
                         // Stack: double, Block, double
-                        beforePut.add(new InsnNode(Opcodes.POP2));
+                        code.add(new InsnNode(Opcodes.POP2));
                         // Stack: double, Block
-                        beforePut.add(getter);
+                        code.add(getter);
                         // Stack: double, ThreadedBlockData
-                        beforePut.add(new InsnNode(Opcodes.DUP_X2));
+                        code.add(new InsnNode(Opcodes.DUP_X2));
                         // Stack: ThreadedBlockData, double, ThreadedBlockData
-                        beforePut.add(new InsnNode(Opcodes.POP));
+                        code.add(new InsnNode(Opcodes.POP));
                         // Stack: ThreadedBlockData, double
-                        mn.instructions.insertBefore(node, beforePut);
                     }
                 }
+                mn.instructions.insertBefore(node, code);
             }
             if (!records.isEmpty()) {
                 changed = true;
