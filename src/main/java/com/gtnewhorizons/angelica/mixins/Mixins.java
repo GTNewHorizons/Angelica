@@ -277,6 +277,7 @@ public enum Mixins implements IMixins {
     OPTIMIZE_WORLD_UPDATE_LIGHT(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ARCHAICFIX)
+        .addExcludedMod(TargetedMod.SUPERNOVA)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
