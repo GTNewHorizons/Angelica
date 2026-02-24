@@ -44,14 +44,7 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
     public boolean shouldTransformClass(@NotNull ExtensibleClassLoader classLoader,
                                         @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest, @NotNull String className,
                                         @NotNull ClassNodeHandle classNode) {
-        if (!classNode.isPresent()) {
-            return false;
-        }
-        if (!classNode.isOriginal()) {
-            // If a class is already a transformed ClassNode, conservatively continue processing.
-            return true;
-        }
-        return inner.shouldTransform(classNode.getOriginalBytes());
+        return classNode.isPresent();
     }
 
     @Override

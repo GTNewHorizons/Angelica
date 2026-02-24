@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -71,7 +70,6 @@ public final class CeleritasBlockTransform {
         "net/minecraft/block/material/"
     };
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(BlockPackage);
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -137,18 +135,8 @@ public final class CeleritasBlockTransform {
         };
     }
 
-    public boolean shouldTransform(byte[] basicClass) {
-        return cstPoolParser.find(basicClass, true);
-    }
-
-    /**
-     * @return Was the class changed?
-     */
+    /** @return Was the class changed? */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if (cn == null) {
-            return false;
-        }
-
         if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
             cn.fields.removeIf(field -> blockFieldNames.stream().anyMatch(name -> field.name.equals(name)));
         }
@@ -156,7 +144,6 @@ public final class CeleritasBlockTransform {
         // Track subclasses of Block
         if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
             moddedBlockSubclasses.add(cn.name);
-            cstPoolParser.addString(cn.name);
         }
 
         // Check if this class shadows any fields of the parent class
