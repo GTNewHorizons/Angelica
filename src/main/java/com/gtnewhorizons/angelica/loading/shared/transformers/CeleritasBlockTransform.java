@@ -181,7 +181,9 @@ public final class CeleritasBlockTransform {
             try {
                 analyzer.analyze(cn.name, mn);
                 analyzeSuccess = true;
-            } catch (Exception _) {
+            } catch (Exception e) {
+                LOGGER.warn("Failed to analyze method {} in {}, falling back to the old implementation.", mn.name, transformedName);
+                e.printStackTrace();
             }
 
             Frame<SourceValue>[] frames = analyzer.getFrames();
@@ -202,8 +204,7 @@ public final class CeleritasBlockTransform {
                                 if (fNode.getOpcode() == Opcodes.GETFIELD) {
                                     receiver = frame.getStack(stackSize - 1);
                                 } else {
-                                    // FIXME: this code assumes doubles
-                                    receiver = frame.getStack(stackSize - 3);
+                                    receiver = frame.getStack(stackSize - 2);
                                 }
                                 if (receiver.insns.size() == 1) {
                                     int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn);
