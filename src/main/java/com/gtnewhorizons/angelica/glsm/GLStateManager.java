@@ -4086,10 +4086,14 @@ public class GLStateManager {
         if (boundVAO != array) {
             boundVAO = array;
             UniversalVAO.bindVertexArray(array);
+            if (ShaderManager.getInstance().isEnabled()) {
+                ShaderManager.getInstance().onBindVertexArray(array);
+            }
         }
     }
 
     public static void glDeleteVertexArrays(int array) {
+        ShaderManager.getInstance().onDeleteVertexArray(array);
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
