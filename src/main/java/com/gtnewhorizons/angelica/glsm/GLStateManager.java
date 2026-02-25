@@ -137,7 +137,10 @@ public class GLStateManager {
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
     // Generation counters for FFP uniform dirty tracking. Bumped when the corresponding GLSM state changes.
-    public static int matrixGeneration;
+    // Per-matrix-mode generation counters — avoids re-uploading all matrices when only one mode changed
+    public static int mvGeneration;    // modelview matrix changes
+    public static int projGeneration;  // projection matrix changes
+    public static int texMatrixGeneration; // texture matrix changes
     public static int lightingGeneration;
     public static int fragmentGeneration; // fog + alpha ref
     public static int colorGeneration;    // current vertex color
@@ -250,6 +253,16 @@ public class GLStateManager {
             modifiedAtDepth[i] = new ArrayList<>();
         }
     }
+
+    // Saved generation counters at push time — used to detect whether state actually changed during push/pop scope
+    private static final int[] savedMvGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedProjGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedTexMatGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedLightingGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedFragmentGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedColorGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedNormalGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedTexCoordGen = new int[MAX_ATTRIB_STACK_DEPTH];
 
     /** Register a state stack as modified at the current depth (called from beforeModify). */
     public static void registerModifiedState(IStateStack<?> stack) {
@@ -2707,6 +2720,16 @@ public class GLStateManager {
         }
         attribs.push(mask);
 
+        // Snapshot generation counters so we can detect actual changes at pop time
+        savedMvGen[attribDepth] = mvGeneration;
+        savedProjGen[attribDepth] = projGeneration;
+        savedTexMatGen[attribDepth] = texMatrixGeneration;
+        savedLightingGen[attribDepth] = lightingGeneration;
+        savedFragmentGen[attribDepth] = fragmentGeneration;
+        savedColorGen[attribDepth] = colorGeneration;
+        savedNormalGen[attribDepth] = ShaderManager.getNormalGeneration();
+        savedTexCoordGen[attribDepth] = ShaderManager.getTexCoordGeneration();
+
         // Clear modified list for this depth level
         modifiedAtDepth[attribDepth].clear();
         attribDepth++;
@@ -2798,15 +2821,21 @@ public class GLStateManager {
             GL13.glActiveTexture(GL13.GL_TEXTURE0 + activeTextureUnit.getValue());
         }
 
-        // Bump generation counters so FFP shader re-uploads restored uniforms
-        if ((mask & GL11.GL_LIGHTING_BIT) != 0) lightingGeneration++;
-        if ((mask & GL11.GL_FOG_BIT) != 0) fragmentGeneration++;
-        if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) fragmentGeneration++; // alpha ref
-        if ((mask & GL11.GL_TRANSFORM_BIT) != 0) matrixGeneration++;
+        // Bump generation counters only if state actually changed during this push/pop scope.
+        // If nothing changed, the shader already has the right uniforms — no need to re-upload.
+        final int depth = attribDepth; // already decremented by popState()
+        if ((mask & GL11.GL_LIGHTING_BIT) != 0 && lightingGeneration != savedLightingGen[depth]) lightingGeneration++;
+        if ((mask & GL11.GL_FOG_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++;
+        if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++; // alpha ref
+        if ((mask & GL11.GL_TRANSFORM_BIT) != 0) {
+            if (mvGeneration != savedMvGen[depth]) mvGeneration++;
+            if (projGeneration != savedProjGen[depth]) projGeneration++;
+            if (texMatrixGeneration != savedTexMatGen[depth]) texMatrixGeneration++;
+        }
         if ((mask & GL11.GL_CURRENT_BIT) != 0) {
-            colorGeneration++;
-            ShaderManager.bumpNormalGeneration();
-            ShaderManager.bumpTexCoordGeneration();
+            if (colorGeneration != savedColorGen[depth]) colorGeneration++;
+            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) ShaderManager.bumpNormalGeneration();
+            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) ShaderManager.bumpTexCoordGeneration();
         }
     }
 
@@ -2873,7 +2902,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (isCachingEnabled()) { getMatrixStack().set(m); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().set(m); bumpMatrixGeneration(); }
     }
 
     public static void glLoadMatrix(DoubleBuffer m) {
@@ -2894,7 +2923,7 @@ public class GLStateManager {
         if (isCachingEnabled()) {
             conversionMatrix4d.set(m);
             getMatrixStack().set(conversionMatrix4d);
-            matrixGeneration++;
+            bumpMatrixGeneration();
         }
     }
 
@@ -2913,6 +2942,15 @@ public class GLStateManager {
         }
     }
 
+    /** Bump the generation counter for the currently active matrix mode. */
+    private static void bumpMatrixGeneration() {
+        switch (matrixMode.getMode()) {
+            case GL11.GL_MODELVIEW -> mvGeneration++;
+            case GL11.GL_PROJECTION -> projGeneration++;
+            case GL11.GL_TEXTURE -> texMatrixGeneration++;
+        }
+    }
+
     public static void glLoadIdentity() {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -2923,7 +2961,7 @@ public class GLStateManager {
                 return;
             }
         }
-        if (isCachingEnabled()) { getMatrixStack().identity(); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().identity(); bumpMatrixGeneration(); }
     }
 
     public static void glTranslatef(float x, float y, float z) {
@@ -2932,7 +2970,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.TRANSLATE, null);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().translate(x, y, z); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().translate(x, y, z); bumpMatrixGeneration(); }
     }
 
     public static void glTranslated(double x, double y, double z) {
@@ -2941,7 +2979,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.TRANSLATE, null);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().translate((float) x, (float) y, (float) z); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().translate((float) x, (float) y, (float) z); bumpMatrixGeneration(); }
     }
 
     public static void glScalef(float x, float y, float z) {
@@ -2950,7 +2988,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.SCALE, null);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().scale(x, y, z); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().scale(x, y, z); bumpMatrixGeneration(); }
     }
 
     public static void glScaled(double x, double y, double z) {
@@ -2959,7 +2997,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.SCALE, null);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().scale((float) x, (float) y, (float) z); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().scale((float) x, (float) y, (float) z); bumpMatrixGeneration(); }
     }
 
     private static final Matrix4f multMatrix = new Matrix4f();
@@ -2972,7 +3010,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform(multMatrix);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().mul(multMatrix); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().mul(multMatrix); bumpMatrixGeneration(); }
     }
 
     public static final Matrix4d conversionMatrix4d = new Matrix4d();
@@ -2986,7 +3024,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransform(conversionMatrix4f);
             return;
         }
-        if (isCachingEnabled()) { getMatrixStack().mul(conversionMatrix4f); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().mul(conversionMatrix4f); bumpMatrixGeneration(); }
     }
 
     private static final Vector3f rotation = new Vector3f();
@@ -3002,7 +3040,7 @@ public class GLStateManager {
         if (isCachingEnabled()) {
             rotation.set(x, y, z).normalize();
             getMatrixStack().rotate((float)Math.toRadians(angle), rotation);
-            matrixGeneration++;
+            bumpMatrixGeneration();
         }
     }
 
@@ -3018,7 +3056,7 @@ public class GLStateManager {
         if (isCachingEnabled()) {
             rotation.set((float) x, (float) y, (float) z).normalize();
             getMatrixStack().rotate((float)Math.toRadians(angle), rotation);
-            matrixGeneration++;
+            bumpMatrixGeneration();
         }
     }
 
@@ -3028,7 +3066,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransformOrtho(left, right, bottom, top, zNear, zFar);
             return;  // Transform accumulated, will be emitted at barriers
         }
-        if (isCachingEnabled()) { getMatrixStack().ortho((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().ortho((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar); bumpMatrixGeneration(); }
     }
 
     public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
@@ -3037,7 +3075,7 @@ public class GLStateManager {
             DisplayListManager.updateRelativeTransformFrustum(left, right, bottom, top, zNear, zFar);
             return;  // Transform accumulated, will be emitted at barriers
         }
-        if (isCachingEnabled()) { getMatrixStack().frustum((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar); matrixGeneration++; }
+        if (isCachingEnabled()) { getMatrixStack().frustum((float)left, (float)right, (float)bottom, (float)top, (float)zNear, (float)zFar); bumpMatrixGeneration(); }
     }
     public static void glPushMatrix() {
         final RecordMode mode = DisplayListManager.getRecordMode();
@@ -3070,7 +3108,7 @@ public class GLStateManager {
         if (isCachingEnabled()) {
             try {
                 getMatrixStack().popMatrix();
-                matrixGeneration++;
+                bumpMatrixGeneration();
             } catch(IllegalStateException ignored) {
                 if(AngelicaMod.lwjglDebug)
                     AngelicaTweaker.LOGGER.warn("Matrix stack underflow ", new Throwable());
