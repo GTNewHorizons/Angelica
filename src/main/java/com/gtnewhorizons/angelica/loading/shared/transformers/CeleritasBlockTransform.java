@@ -38,10 +38,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
 
-    private final List<String> blockFieldNames = new ArrayList<>();
-    private final Map<String, String> blockFieldRedirects = new HashMap<>();
+    private static final List<String> blockFieldNames = new ArrayList<>();
+    private static final Map<String, String> blockFieldRedirects = new HashMap<>();
 
-    private final List<String> methodNames = new ArrayList<>();
+    private static final List<String> methodNames = new ArrayList<>();
 
     private static final List<Pair<String, String>> mappingsStatic = ImmutableList.of(
         Pair.of("minX", "field_149759_B"),
@@ -66,15 +66,18 @@ public final class CeleritasBlockTransform {
         Pair.of("getBlockBoundsMaxZ", "func_149693_C")
     );
 
+    /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
-        for (Pair<String, String> pair : mappingsStatic) {
-            final String name = isObf ? pair.getRight() : pair.getLeft();
-            this.blockFieldNames.add(name);
-            this.blockFieldRedirects.put(name, pair.getLeft());
-        }
-        for (Pair<String, String> pair : methodCanOverloadStatic) {
-            final String name = isObf ? pair.getRight() : pair.getLeft();
-            this.methodNames.add(name);
+        if (blockFieldNames.isEmpty()) {
+            for (Pair<String, String> pair : mappingsStatic) {
+                final String name = isObf ? pair.getRight() : pair.getLeft();
+                blockFieldNames.add(name);
+                blockFieldRedirects.put(name, pair.getLeft());
+            }
+            for (Pair<String, String> pair : methodCanOverloadStatic) {
+                final String name = isObf ? pair.getRight() : pair.getLeft();
+                methodNames.add(name);
+            }
         }
     }
 
