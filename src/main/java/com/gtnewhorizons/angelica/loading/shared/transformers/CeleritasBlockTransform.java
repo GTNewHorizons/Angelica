@@ -41,19 +41,39 @@ public final class CeleritasBlockTransform {
     private final List<String> blockFieldNames = new ArrayList<>();
     private final Map<String, String> blockFieldRedirects = new HashMap<>();
 
+    private final List<String> methodNames = new ArrayList<>();
+
+    private static final List<Pair<String, String>> mappingsStatic = ImmutableList.of(
+        Pair.of("minX", "field_149759_B"),
+        Pair.of("minY", "field_149760_C"),
+        Pair.of("minZ", "field_149754_D"),
+        Pair.of("maxX", "field_149755_E"),
+        Pair.of("maxY", "field_149756_F"),
+        Pair.of("maxZ", "field_149757_G")
+    );
+
+    private static final List<Pair<String, String>> methodCanOverloadStatic = ImmutableList.of(
+        Pair.of("setBlockBounds", "func_149676_a"),
+        Pair.of("isVecInsideYZBounds", "func_149654_a"),
+        Pair.of("isVecInsideXZBounds", "func_149687_b"),
+        Pair.of("isVecInsideXYBounds", "func_149661_c"),
+        Pair.of("getBlockBoundsMinX", "func_149704_x"),
+        Pair.of("getBlockBoundsMaxX", "func_149753_y"),
+        Pair.of("getBlockBoundsMinY", "func_149665_z"),
+        Pair.of("getBlockBoundsMaxY", "func_149669_A"),
+        Pair.of("getBlockBoundsMinZ", "func_149706_B"),
+        Pair.of("getBlockBoundsMaxZ", "func_149693_C")
+    );
+
     public CeleritasBlockTransform(boolean isObf) {
-        final List<Pair<String, String>> mappings = ImmutableList.of(
-            Pair.of("minX", "field_149759_B"),
-            Pair.of("minY", "field_149760_C"),
-            Pair.of("minZ", "field_149754_D"),
-            Pair.of("maxX", "field_149755_E"),
-            Pair.of("maxY", "field_149756_F"),
-            Pair.of("maxZ", "field_149757_G")
-        );
-        for (Pair<String, String> pair : mappings) {
+        for (Pair<String, String> pair : mappingsStatic) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
             this.blockFieldNames.add(name);
             this.blockFieldRedirects.put(name, pair.getLeft());
+        }
+        for (Pair<String, String> pair : methodCanOverloadStatic) {
+            final String name = isObf ? pair.getRight() : pair.getLeft();
+            this.methodNames.add(name);
         }
     }
 
@@ -254,11 +274,14 @@ public final class CeleritasBlockTransform {
 
             changed = true;
 
-            if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0) {
+            if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && methodNames.contains(mn.name)) {
                 MethodNode overload = createOverload(mn, info.records, methodCacheSlots);
                 cn.methods.add(overload);
                 overloadedMethods.computeIfAbsent(cn.name, _ -> new HashMap<>()).put(mn.name + mn.desc, overload.desc);
             }
+//            if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && !methodNames.contains(mn.name)) {
+//                LOGGER.warn("Method {} in {} accesses block bounds fields but is not in the overload list.", mn.name, transformedName);
+//            }
 
             info.prepareCaches(mn); // Get ThreadedBlockData at the start of the function and cache it.
 
