@@ -177,8 +177,19 @@ public final class CeleritasBlockTransform {
             records.add(new MethodInvokeRecord(nodeIndex, methodNode, paramSlot, newDesc));
         }
 
-        private void prepareCaches(MethodNode mn) {
-            cacheSlots = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount);
+        private void prepareCaches(MethodNode mn, int[] cacheSlots) {
+            int[] paramUsedCount = this.paramUsedCount.clone();
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) paramUsedCount[i] = 0; // Do not cache it again.
+                }
+            }
+            this.cacheSlots = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount);
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) this.cacheSlots[i] = cacheSlots[i]; // Use the existing cache slot if it exists.
+                }
+            }
         }
     }
 
@@ -220,6 +231,7 @@ public final class CeleritasBlockTransform {
         }
 
         boolean changed = false;
+        Map<String, int[]> methodCacheSlots = new HashMap<>(); // methodName+desc -> cacheSlots
         for (int i = 0; i < cn.methods.size(); i++) {
             MethodNode mn = cn.methods.get(i);
             if (mn.instructions.size() == 0) continue;
@@ -243,12 +255,14 @@ public final class CeleritasBlockTransform {
             changed = true;
 
             if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0) {
-                MethodNode overload = createOverload(mn, info.records);
+                MethodNode overload = createOverload(mn, info.records, methodCacheSlots);
                 cn.methods.add(overload);
                 overloadedMethods.computeIfAbsent(cn.name, _ -> new HashMap<>()).put(mn.name + mn.desc, overload.desc);
             }
 
             info.prepareCaches(mn); // Get ThreadedBlockData at the start of the function and cache it.
+
+            methodCacheSlots.put(mn.name + mn.desc, info.cacheSlots);
 
             for (FieldAccessRecord record : info.records) {
                 FieldInsnNode node = record.fieldNode;
@@ -277,7 +291,7 @@ public final class CeleritasBlockTransform {
 
             if (info.records.isEmpty()) continue;
 
-            info.prepareCaches(mn);
+            info.prepareCaches(mn, methodCacheSlots.get(mn.name + mn.desc)); // Reuse the same cache if this method also accesses fields.
 
             for (MethodInvokeRecord record : info.records) {
                 MethodInsnNode node = record.methodNode;
@@ -386,7 +400,7 @@ public final class CeleritasBlockTransform {
         return caches;
     }
 
-    private static @NotNull MethodNode createOverload(@NotNull MethodNode original, @NotNull List<FieldAccessRecord> records) {
+    private static @NotNull MethodNode createOverload(@NotNull MethodNode original, @NotNull List<FieldAccessRecord> records, @NotNull Map<String, int[]> methodCacheSlots) {
         if (Modifier.isStatic(original.access)) throw new IllegalArgumentException("Can't create overload of static method");
         MethodNode mn = new MethodNode(
             Opcodes.ASM5,
@@ -460,6 +474,8 @@ public final class CeleritasBlockTransform {
             }
             mn.instructions.insertBefore(node, code);
         }
+
+        methodCacheSlots.put(mn.name + mn.desc, new int[]{original.maxLocals});
         return mn;
     }
 
