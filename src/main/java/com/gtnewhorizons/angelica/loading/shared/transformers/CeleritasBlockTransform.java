@@ -236,12 +236,13 @@ public final class CeleritasBlockTransform {
                     if (cacheSlots[i] > 0) paramUsedCount[i] = 0; // Do not cache it again.
                 }
             }
+            Map<VarInsnNode, Integer> varUsedCount = new HashMap<>(this.varUsedCount);
             if (cacheVars != null) {
                 for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
                     if (entry.getValue() > 0) varUsedCount.put(entry.getKey(), 0); // Do not cache it again.
                 }
             }
-            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, this.paramUsedCount, this.varUsedCount);
+            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
             this.cacheSlots = ret.getLeft();
             this.cacheVars = ret.getRight();
             if (cacheSlots != null) {
