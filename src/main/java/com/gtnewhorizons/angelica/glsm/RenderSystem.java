@@ -1,9 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
-import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
-import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
-import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
+import com.gtnewhorizons.angelica.glsm.dsa.*;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import net.coderbot.iris.gl.shader.StandardMacros;
@@ -63,7 +60,7 @@ public class RenderSystem {
 	public static void initRenderer() {
         try {
             if (GLStateManager.capabilities.OpenGL45) {
-                dsaState = new DSACore();
+                dsaState = (GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
                 LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
 
