@@ -46,7 +46,9 @@ public class Uniforms {
     // Dirty tracking: last-uploaded generation per category + program ID.
     // Program change forces full re-upload since uniform locations differ.
     private int lastProgramId = -1;
-    private int lastMatrixGen = -1;
+    private int lastMvGen = -1;
+    private int lastProjGen = -1;
+    private int lastTexMatGen = -1;
     private int lastLightingGen = -1;
     private int lastFragmentGen = -1;
     private int lastColorGen = -1;
@@ -64,10 +66,17 @@ public class Uniforms {
         final boolean programChanged = program.getProgramId() != lastProgramId;
         lastProgramId = program.getProgramId();
 
-        final int matGen = GLStateManager.matrixGeneration;
-        if (programChanged || matGen != lastMatrixGen) {
-            uploadMatrices(program);
-            lastMatrixGen = matGen;
+        final int mvGen = GLStateManager.mvGeneration;
+        final int projGen = GLStateManager.projGeneration;
+        final int texMatGen = GLStateManager.texMatrixGeneration;
+        final boolean mvChanged = programChanged || mvGen != lastMvGen;
+        final boolean projChanged = programChanged || projGen != lastProjGen;
+        final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
+        if (mvChanged || projChanged || texMatChanged) {
+            uploadMatrices(program, mvChanged, projChanged, texMatChanged);
+            lastMvGen = mvGen;
+            lastProjGen = projGen;
+            lastTexMatGen = texMatGen;
         }
 
         if (program.getVertexKey().lightingEnabled()) {
@@ -126,57 +135,64 @@ public class Uniforms {
         }
     }
 
-    private void uploadMatrices(Program program) {
+    private void uploadMatrices(Program program, boolean mvChanged, boolean projChanged, boolean texMatChanged) {
         final Matrix4f mv = GLStateManager.getModelViewMatrix();
         final Matrix4f proj = GLStateManager.getProjectionMatrix();
 
-        // ModelView
-        if (program.locModelViewMatrix != -1) {
-            mv.get(mat4Buf);
-            GL20.glUniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
+        // ModelView + derived (normal matrix, normal scale)
+        if (mvChanged) {
+            if (program.locModelViewMatrix != -1) {
+                mv.get(mat4Buf);
+                GL20.glUniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
+            }
+
+            // Normal matrix = inverse transpose of upper-left 3x3 of ModelView
+            if (program.locNormalMatrix != -1 || program.locNormalScale != -1) {
+                mv.normal(normalMatrix);
+            }
+            if (program.locNormalMatrix != -1) {
+                normalMatrix.get(mat3Buf);
+                GL20.glUniformMatrix3(program.locNormalMatrix, false, mat3Buf);
+            }
+
+            // Normal scale (for GL_RESCALE_NORMAL without GL_NORMALIZE)
+            if (program.locNormalScale != -1) {
+                // Scale factor = 1/length of first column of normal matrix
+                final float scale = 1.0f / normalMatrix.getColumn(0, tempVec3).length();
+                GL20.glUniform1f(program.locNormalScale, scale);
+            }
         }
 
         // Projection
-        if (program.locProjectionMatrix != -1) {
-            proj.get(mat4Buf);
-            GL20.glUniformMatrix4(program.locProjectionMatrix, false, mat4Buf);
+        if (projChanged) {
+            if (program.locProjectionMatrix != -1) {
+                proj.get(mat4Buf);
+                GL20.glUniformMatrix4(program.locProjectionMatrix, false, mat4Buf);
+            }
         }
 
-        // MVP = Projection * ModelView
-        if (program.locMVPMatrix != -1) {
+        // MVP = Projection * ModelView — needs recompute if either input changed
+        if ((mvChanged || projChanged) && program.locMVPMatrix != -1) {
             proj.mul(mv, mvpMatrix);
             mvpMatrix.get(mat4Buf);
             GL20.glUniformMatrix4(program.locMVPMatrix, false, mat4Buf);
         }
 
-        // Normal matrix = inverse transpose of upper-left 3x3 of ModelView
-        if (program.locNormalMatrix != -1 || program.locNormalScale != -1) {
-            mv.normal(normalMatrix);
-        }
-        if (program.locNormalMatrix != -1) {
-            normalMatrix.get(mat3Buf);
-            GL20.glUniformMatrix3(program.locNormalMatrix, false, mat3Buf);
-        }
+        // Texture matrices
+        if (texMatChanged) {
+            // Texture matrix unit 0
+            if (program.locTextureMatrix0 != -1) {
+                final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
+                texMat.get(mat4Buf);
+                GL20.glUniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
+            }
 
-        // Normal scale (for GL_RESCALE_NORMAL without GL_NORMALIZE)
-        if (program.locNormalScale != -1) {
-            // Scale factor = 1/length of first column of normal matrix
-            final float scale = 1.0f / normalMatrix.getColumn(0, tempVec3).length();
-            GL20.glUniform1f(program.locNormalScale, scale);
-        }
-
-        // Texture matrix unit 0
-        if (program.locTextureMatrix0 != -1) {
-            final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
-            texMat.get(mat4Buf);
-            GL20.glUniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
-        }
-
-        // Texture matrix unit 1 (lightmap)
-        if (program.locLightmapTextureMatrix != -1) {
-            final Matrix4f lmTexMat = GLStateManager.getTextures().getTextureUnitMatrix(1);
-            lmTexMat.get(mat4Buf);
-            GL20.glUniformMatrix4(program.locLightmapTextureMatrix, false, mat4Buf);
+            // Texture matrix unit 1 (lightmap)
+            if (program.locLightmapTextureMatrix != -1) {
+                final Matrix4f lmTexMat = GLStateManager.getTextures().getTextureUnitMatrix(1);
+                lmTexMat.get(mat4Buf);
+                GL20.glUniformMatrix4(program.locLightmapTextureMatrix, false, mat4Buf);
+            }
         }
     }
 

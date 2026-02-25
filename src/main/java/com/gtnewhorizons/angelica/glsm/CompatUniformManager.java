@@ -74,7 +74,9 @@ public class CompatUniformManager {
 
     // Dirty tracking: skip uploads when state hasn't changed and program is the same
     private static int lastProgram = -1;
-    private static int lastMatrixGen = -1;
+    private static int lastMvGen = -1;
+    private static int lastProjGen = -1;
+    private static int lastTexMatGen = -1;
     private static int lastFragmentGen = -1;
 
     private CompatUniformManager() {}
@@ -104,10 +106,17 @@ public class CompatUniformManager {
         lastProgram = program;
 
         // Matrix uniforms — skip if generation unchanged and same program
-        final int matGen = GLStateManager.matrixGeneration;
-        if (programChanged || matGen != lastMatrixGen) {
-            lastMatrixGen = matGen;
-            uploadMatrices(locs);
+        final int mvGen = GLStateManager.mvGeneration;
+        final int projGen = GLStateManager.projGeneration;
+        final int texMatGen = GLStateManager.texMatrixGeneration;
+        final boolean mvChanged = programChanged || mvGen != lastMvGen;
+        final boolean projChanged = programChanged || projGen != lastProjGen;
+        final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
+        if (mvChanged || projChanged || texMatChanged) {
+            uploadMatrices(locs, mvChanged, projChanged, texMatChanged);
+            lastMvGen = mvGen;
+            lastProjGen = projGen;
+            lastTexMatGen = texMatGen;
         }
 
         // Fragment-category uniforms (fog, alpha) — skip if generation unchanged
@@ -118,67 +127,73 @@ public class CompatUniformManager {
         }
     }
 
-    private static void uploadMatrices(int[] locs) {
-        Matrix4f mv = GLStateManager.getModelViewMatrix();
-        Matrix4f proj = GLStateManager.getProjectionMatrix();
+    private static void uploadMatrices(int[] locs, boolean mvChanged, boolean projChanged, boolean texMatChanged) {
+        final Matrix4f mv = GLStateManager.getModelViewMatrix();
+        final Matrix4f proj = GLStateManager.getProjectionMatrix();
 
-        // ModelView
-        if (locs[LOC_MODELVIEW] != -1 || locs[LOC_IRIS_MODELVIEW] != -1) {
-            mv.get(mat4Buf);
-            if (locs[LOC_MODELVIEW] != -1) {
-                GL20.glUniformMatrix4(locs[LOC_MODELVIEW], false, mat4Buf);
+        if (mvChanged) {
+            // ModelView
+            if (locs[LOC_MODELVIEW] != -1 || locs[LOC_IRIS_MODELVIEW] != -1) {
+                mv.get(mat4Buf);
+                if (locs[LOC_MODELVIEW] != -1) {
+                    GL20.glUniformMatrix4(locs[LOC_MODELVIEW], false, mat4Buf);
+                }
+                if (locs[LOC_IRIS_MODELVIEW] != -1) {
+                    GL20.glUniformMatrix4(locs[LOC_IRIS_MODELVIEW], false, mat4Buf);
+                }
             }
-            if (locs[LOC_IRIS_MODELVIEW] != -1) {
-                GL20.glUniformMatrix4(locs[LOC_IRIS_MODELVIEW], false, mat4Buf);
-            }
-        }
 
-        // ModelView Inverse
-        if (locs[LOC_MODELVIEW_INVERSE] != -1) {
-            mv.invert(scratchMatrix);
-            scratchMatrix.get(mat4Buf);
-            GL20.glUniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
-        }
-
-        // Projection
-        if (locs[LOC_PROJECTION] != -1 || locs[LOC_IRIS_PROJECTION] != -1) {
-            proj.get(mat4Buf);
-            if (locs[LOC_PROJECTION] != -1) {
-                GL20.glUniformMatrix4(locs[LOC_PROJECTION], false, mat4Buf);
+            // ModelView Inverse
+            if (locs[LOC_MODELVIEW_INVERSE] != -1) {
+                mv.invert(scratchMatrix);
+                scratchMatrix.get(mat4Buf);
+                GL20.glUniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
             }
-            if (locs[LOC_IRIS_PROJECTION] != -1) {
-                GL20.glUniformMatrix4(locs[LOC_IRIS_PROJECTION], false, mat4Buf);
-            }
-        }
 
-        // Projection Inverse
-        if (locs[LOC_PROJECTION_INVERSE] != -1) {
-            proj.invert(scratchMatrix);
-            scratchMatrix.get(mat4Buf);
-            GL20.glUniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
-        }
-
-        // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
-        if (locs[LOC_NORMAL] != -1 || locs[LOC_IRIS_NORMAL] != -1) {
-            mv.normal(normalMatrix);
-            normalMatrix.get(mat3Buf);
-            if (locs[LOC_NORMAL] != -1) {
-                GL20.glUniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
-            }
-            if (locs[LOC_IRIS_NORMAL] != -1) {
-                GL20.glUniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
+            // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
+            if (locs[LOC_NORMAL] != -1 || locs[LOC_IRIS_NORMAL] != -1) {
+                mv.normal(normalMatrix);
+                normalMatrix.get(mat3Buf);
+                if (locs[LOC_NORMAL] != -1) {
+                    GL20.glUniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
+                }
+                if (locs[LOC_IRIS_NORMAL] != -1) {
+                    GL20.glUniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
+                }
             }
         }
 
-        // Iris lightmap texture matrix (constant)
-        if (locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] != -1) {
-            GL20.glUniformMatrix4(locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX], false, lightmapMatrixBuf);
+        if (projChanged) {
+            // Projection
+            if (locs[LOC_PROJECTION] != -1 || locs[LOC_IRIS_PROJECTION] != -1) {
+                proj.get(mat4Buf);
+                if (locs[LOC_PROJECTION] != -1) {
+                    GL20.glUniformMatrix4(locs[LOC_PROJECTION], false, mat4Buf);
+                }
+                if (locs[LOC_IRIS_PROJECTION] != -1) {
+                    GL20.glUniformMatrix4(locs[LOC_IRIS_PROJECTION], false, mat4Buf);
+                }
+            }
+
+            // Projection Inverse
+            if (locs[LOC_PROJECTION_INVERSE] != -1) {
+                proj.invert(scratchMatrix);
+                scratchMatrix.get(mat4Buf);
+                GL20.glUniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
+            }
         }
 
-        // angelica_LightmapTextureMatrix — actual GLSM texture unit 1 matrix (set by enableLightmap())
-        if (locs[LOC_LIGHTMAP_TEXTURE_MATRIX] != -1) {
-            GLStateManager.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
-            GL20.glUniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
+        if (texMatChanged) {
+            // Iris lightmap texture matrix (constant)
+            if (locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] != -1) {
+                GL20.glUniformMatrix4(locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX], false, lightmapMatrixBuf);
+            }
+
+            // angelica_LightmapTextureMatrix — actual GLSM texture unit 1 matrix (set by enableLightmap())
+            if (locs[LOC_LIGHTMAP_TEXTURE_MATRIX] != -1) {
+                GLStateManager.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
+                GL20.glUniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
+            }
         }
     }
 

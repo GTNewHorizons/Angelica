@@ -53,6 +53,7 @@ configurations {
     embedOnly.canBeResolved = true
     compileClasspath.extendsFrom(embedOnly)
     testCompileClasspath.extendsFrom(embedOnly)
+    testRuntimeClasspath.extendsFrom(embedOnly)
 }
 
 

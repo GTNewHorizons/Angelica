@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -47,6 +48,7 @@ public class CeleritasDebugScreenHandler {
         if (sm != null) {
             event.right.add(sm.getDebugInfo());
         }
+        event.right.add(TessellatorStreamingDrawer.getDebugInfo());
         event.right.add("");
     }
 
