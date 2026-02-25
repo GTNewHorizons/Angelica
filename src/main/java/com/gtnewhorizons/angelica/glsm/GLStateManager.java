@@ -66,6 +66,7 @@ import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ARBMultitexture;
+import org.lwjgl.opengl.ARBShaderObjects;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.Drawable;
@@ -4653,6 +4654,178 @@ public class GLStateManager {
     public static void glDeleteProgram(int program) {
         CompatUniformManager.onDeleteProgram(program);
         GL20.glDeleteProgram(program);
+    }
+
+    public static int glCreateShader(int type) {
+        return GL20.glCreateShader(type);
+    }
+
+    public static void glCompileShader(int shader) {
+        GL20.glCompileShader(shader);
+    }
+
+    public static int glCreateProgram() {
+        return GL20.glCreateProgram();
+    }
+
+    public static void glAttachShader(int program, int shader) {
+        GL20.glAttachShader(program, shader);
+    }
+
+    public static void glDetachShader(int program, int shader) {
+        GL20.glDetachShader(program, shader);
+    }
+
+    public static void glValidateProgram(int program) {
+        GL20.glValidateProgram(program);
+    }
+
+    public static int glGetUniformLocation(int program, CharSequence name) {
+        return GL20.glGetUniformLocation(program, name);
+    }
+
+    public static int glGetUniformLocation(int program, ByteBuffer name) {
+        return GL20.glGetUniformLocation(program, name);
+    }
+
+    public static void glDeleteObjectARB(int obj) {
+        if (GL20.glIsShader(obj)) {
+            GL20.glDeleteShader(obj);
+        } else {
+            glDeleteProgram(obj);
+        }
+    }
+
+    public static int glGetHandleARB(int pname) {
+        return pname == ARBShaderObjects.GL_PROGRAM_OBJECT_ARB ? glGetInteger(GL20.GL_CURRENT_PROGRAM) : GL11.glGetInteger(pname);
+    }
+
+    public static void glGetObjectParameterARB(int obj, int pname, IntBuffer params) {
+        if (GL20.glIsShader(obj)) {
+            GL20.glGetShader(obj, pname, params);
+        } else {
+            GL20.glGetProgram(obj, pname, params);
+        }
+    }
+
+    public static void glGetObjectParameterARB(int obj, int pname, FloatBuffer params) {
+        params.put(params.position(), (float) (GL20.glIsShader(obj) ? GL20.glGetShaderi(obj, pname) : GL20.glGetProgrami(obj, pname)));
+    }
+
+    public static int glGetObjectParameteriARB(int obj, int pname) {
+        return GL20.glIsShader(obj) ? GL20.glGetShaderi(obj, pname) : GL20.glGetProgrami(obj, pname);
+    }
+
+    public static String glGetInfoLogARB(int obj, int maxLength) {
+        return GL20.glIsShader(obj) ? GL20.glGetShaderInfoLog(obj, maxLength) : GL20.glGetProgramInfoLog(obj, maxLength);
+    }
+
+    public static void glGetInfoLogARB(int obj, IntBuffer length, ByteBuffer infoLog) {
+        if (GL20.glIsShader(obj)) {
+            GL20.glGetShaderInfoLog(obj, length, infoLog);
+        } else {
+            GL20.glGetProgramInfoLog(obj, length, infoLog);
+        }
+    }
+
+    public static void glUniform1f(int location, float v0) {
+        GL20.glUniform1f(location, v0);
+    }
+
+    public static void glUniform2f(int location, float v0, float v1) {
+        GL20.glUniform2f(location, v0, v1);
+    }
+
+    public static void glUniform3f(int location, float v0, float v1, float v2) {
+        GL20.glUniform3f(location, v0, v1, v2);
+    }
+
+    public static void glUniform4f(int location, float v0, float v1, float v2, float v3) {
+        GL20.glUniform4f(location, v0, v1, v2, v3);
+    }
+
+    public static void glUniform1i(int location, int v0) {
+        GL20.glUniform1i(location, v0);
+    }
+
+    public static void glUniform2i(int location, int v0, int v1) {
+        GL20.glUniform2i(location, v0, v1);
+    }
+
+    public static void glUniform3i(int location, int v0, int v1, int v2) {
+        GL20.glUniform3i(location, v0, v1, v2);
+    }
+
+    public static void glUniform4i(int location, int v0, int v1, int v2, int v3) {
+        GL20.glUniform4i(location, v0, v1, v2, v3);
+    }
+
+    public static void glUniform1(int location, FloatBuffer values) {
+        GL20.glUniform1(location, values);
+    }
+
+    public static void glUniform1(int location, IntBuffer values) {
+        GL20.glUniform1(location, values);
+    }
+
+    public static void glUniform2(int location, FloatBuffer values) {
+        GL20.glUniform2(location, values);
+    }
+
+    public static void glUniform2(int location, IntBuffer values) {
+        GL20.glUniform2(location, values);
+    }
+
+    public static void glUniform3(int location, FloatBuffer values) {
+        GL20.glUniform3(location, values);
+    }
+
+    public static void glUniform3(int location, IntBuffer values) {
+        GL20.glUniform3(location, values);
+    }
+
+    public static void glUniform4(int location, FloatBuffer values) {
+        GL20.glUniform4(location, values);
+    }
+
+    public static void glUniform4(int location, IntBuffer values) {
+        GL20.glUniform4(location, values);
+    }
+
+    public static void glUniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {
+        GL20.glUniformMatrix2(location, transpose, matrices);
+    }
+
+    public static void glUniformMatrix3(int location, boolean transpose, FloatBuffer matrices) {
+        GL20.glUniformMatrix3(location, transpose, matrices);
+    }
+
+    public static void glUniformMatrix4(int location, boolean transpose, FloatBuffer matrices) {
+        GL20.glUniformMatrix4(location, transpose, matrices);
+    }
+
+    public static void glGetActiveUniform(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
+        GL20.glGetActiveUniform(program, index, length, size, type, name);
+    }
+
+    public static void glGetAttachedShaders(int program, IntBuffer count, IntBuffer shaders) {
+        GL20.glGetAttachedShaders(program, count, shaders);
+    }
+
+    public static String glGetShaderSource(int shader, int maxLength) {
+        return GL20.glGetShaderSource(shader, maxLength);
+    }
+
+    public static void glGetShaderSource(int shader, IntBuffer length, ByteBuffer source) {
+        GL20.glGetShaderSource(shader, length, source);
+    }
+
+    public static void glGetUniform(int program, int location, FloatBuffer params) {
+        GL20.glGetUniform(program, location, params);
+    }
+
+    public static void glGetUniform(int program, int location, IntBuffer params) {
+        GL20.glGetUniform(program, location, params);
     }
 
 }

@@ -46,6 +46,7 @@ public final class AngelicaRedirector {
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
+    private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
 
     // Redirect VAO related calls from NHLib and LWJGLService
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -267,6 +268,32 @@ public final class AngelicaRedirector {
             .add("glShaderSource")
             .add("glLinkProgram")
             .add("glDeleteProgram")
+            .add("glCreateShader")
+            .add("glCompileShader")
+            .add("glCreateProgram")
+            .add("glAttachShader")
+            .add("glDetachShader")
+            .add("glValidateProgram")
+            .add("glGetUniformLocation")
+            .add("glUniform1f")
+            .add("glUniform2f")
+            .add("glUniform3f")
+            .add("glUniform4f")
+            .add("glUniform1i")
+            .add("glUniform2i")
+            .add("glUniform3i")
+            .add("glUniform4i")
+            .add("glUniform1")
+            .add("glUniform2")
+            .add("glUniform3")
+            .add("glUniform4")
+            .add("glUniformMatrix2")
+            .add("glUniformMatrix3")
+            .add("glUniformMatrix4")
+            .add("glGetActiveUniform")
+            .add("glGetAttachedShaders")
+            .add("glGetShaderSource")
+            .add("glGetUniform")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
@@ -292,6 +319,42 @@ public final class AngelicaRedirector {
         // ARB
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap()
             .add("glActiveTextureARB")
+        );
+        methodRedirects.put(ARBShaderObjects, RedirectMap.newMap()
+            .add("glUseProgramObjectARB", "glUseProgram")
+            .add("glShaderSourceARB", "glShaderSource")
+            .add("glLinkProgramARB", "glLinkProgram")
+            .add("glCreateShaderObjectARB", "glCreateShader")
+            .add("glCompileShaderARB", "glCompileShader")
+            .add("glCreateProgramObjectARB", "glCreateProgram")
+            .add("glAttachObjectARB", "glAttachShader")
+            .add("glDetachObjectARB", "glDetachShader")
+            .add("glValidateProgramARB", "glValidateProgram")
+            .add("glGetUniformLocationARB", "glGetUniformLocation")
+            .add("glDeleteObjectARB")
+            .add("glGetObjectParameterARB")
+            .add("glGetObjectParameteriARB")
+            .add("glGetInfoLogARB")
+            .add("glGetHandleARB")
+            .add("glUniform1fARB", "glUniform1f")
+            .add("glUniform2fARB", "glUniform2f")
+            .add("glUniform3fARB", "glUniform3f")
+            .add("glUniform4fARB", "glUniform4f")
+            .add("glUniform1iARB", "glUniform1i")
+            .add("glUniform2iARB", "glUniform2i")
+            .add("glUniform3iARB", "glUniform3i")
+            .add("glUniform4iARB", "glUniform4i")
+            .add("glUniform1ARB", "glUniform1")
+            .add("glUniform2ARB", "glUniform2")
+            .add("glUniform3ARB", "glUniform3")
+            .add("glUniform4ARB", "glUniform4")
+            .add("glUniformMatrix2ARB", "glUniformMatrix2")
+            .add("glUniformMatrix3ARB", "glUniformMatrix3")
+            .add("glUniformMatrix4ARB", "glUniformMatrix4")
+            .add("glGetActiveUniformARB", "glGetActiveUniform")
+            .add("glGetAttachedObjectsARB", "glGetAttachedShaders")
+            .add("glGetShaderSourceARB", "glGetShaderSource")
+            .add("glGetUniformARB", "glGetUniform")
         );
         methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
             .add("glBindVertexArray")
@@ -331,6 +394,7 @@ public final class AngelicaRedirector {
         stringsToSearch.add(OpenGlHelper);
         stringsToSearch.add(EXTBlendFunc);
         stringsToSearch.add(ARBMultiTexture);
+        stringsToSearch.add(ARBShaderObjects);
         stringsToSearch.add(Project);
         stringsToSearch.add(UniversalVAO);
         stringsToSearch.add(VaoFunctions);
